@@ -85,19 +85,27 @@ Example usage: `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PA
 ## State Management
 #### Track only essential orchestration state
 
-- **PROJECT_NAME**: String from user command arguments - used as identifier for human-driven plan generation phase
-- **ANALYST_LOOP_ID**: String returned from MCP `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PATH, loop_type='analyst')` - required for MCP loop management during analyst validation
-- **QUALITY_SCORE**: Integer from plan-critic feedback retrieval - for user decision support
-- **ANALYST_SCORE**: Integer from analyst-critic feedback retrieval - needed for MCP loop decisions
+- **PROJECT_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
+- **CONVERSATION_CONTEXT**: JSON object returned from /specter-plan-conversation - conversation results from Step 2
+- **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
+- **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
+- **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
 - **USER_DECISION**: String from user choice - values: "continue_conversation", "refine_plan", "accept_plan"
+- **ANALYST_LOOP_ID**: String returned from MCP `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PATH, loop_type='analyst')` - required for MCP loop management during analyst validation (Steps 6-9)
+- **ANALYST_SCORE**: Integer from analyst-critic feedback retrieval - needed for MCP loop decisions
 
 #### Data Storage Pattern
-All workflow data is stored in MCP Server using PROJECT_NAME as identifier for human-driven phases:
-- Conversation context → `mcp__specter__store_conversation_context(PROJECT_NAME, context)`
-- Strategic plans → `mcp__specter__store_project_plan(PROJECT_NAME, plan_markdown)`
-- Plan feedback → `mcp__specter__store_critic_feedback(PROJECT_NAME, feedback_markdown)`
-- Analysis results → Agent MCP tools handle storage using ANALYST_LOOP_ID during analyst validation phase
-- Human-driven phases use PROJECT_NAME; agentic validation uses ANALYST_LOOP_ID
+Human-driven phase (Steps 1-5):
+- Uses variables for orchestration state (CONVERSATION_CONTEXT, CURRENT_PLAN, CRITIC_FEEDBACK)
+- Stores plan in MCP using PROJECT_NAME: `mcp__specter__store_project_plan(project_path, project_name, plan_markdown)`
+- Writes plan to external file/platform using platform-specific tools
+- Plan-critic returns feedback to Main Agent (not stored in MCP during human phase)
+
+Automated analyst phase (Steps 6-9):
+- Initializes MCP refinement loop with ANALYST_LOOP_ID
+- Stores plan copy in analyst loop: `mcp__specter__store_project_plan(project_path, ANALYST_LOOP_ID, plan_markdown)`
+- Analyst agents use ANALYST_LOOP_ID for all MCP operations
+- MCP Server manages loop state and decisions
 
 ## Step 1: Initialize Conversation Context
 
@@ -114,15 +122,13 @@ All workflow data is stored in MCP Server using PROJECT_NAME as identifier for h
 
 #### Use the /specter-plan-conversation command to conduct conversational discovery.
 
-Invoke the plan-conversation agent with initial context:
-```text
-Initial Context: $ARGUMENTS or "I need help creating a strategic plan for my project"
+Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PROJECT_NAME) as the initial conversation context:
+
+```bash
+/specter-plan-conversation [arguments from $ARGUMENTS after PROJECT_NAME, or "I need help creating a strategic plan for my project"]
 ```
 
-#### Store conversation results in MCP
-```text
-Store conversation context using: mcp__specter__store_conversation_context(project_path=PROJECT_PATH, project_name=PROJECT_NAME, conversation_context=conversation_results)
-```
+The plan-conversation command will conduct the three-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
 
 Expected structured format from plan-conversation:
 ```json
@@ -156,57 +162,67 @@ Expected structured format from plan-conversation:
 
 #### Transform conversation context into a strategic plan document
 
-Retrieve conversation context from MCP and create strategic plan:
-```text
-Conversation context available via: mcp__specter__get_conversation_context(project_path=PROJECT_PATH, project_name=PROJECT_NAME)
-Previous feedback available via: mcp__specter__get_feedback(project_path=PROJECT_PATH, project_name=PROJECT_NAME, count=2)
-```
+Use the CONVERSATION_CONTEXT variable returned from Step 2 to create the strategic plan:
 
 #### Create strategic plan using template
 ```markdown
 {project_plan_template}
 ```
 
-#### Store the strategic plan in MCP
+Strategic plan creation process:
+1. **Use conversation context** from CONVERSATION_CONTEXT variable
+2. **Structure into strategic plan format** using the template above
+3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
+4. **Store in variable** as CURRENT_PLAN for next steps
+5. **Store in MCP** using: `mcp__specter__store_project_plan(project_path=PROJECT_PATH, project_name=PROJECT_NAME, project_plan_markdown=CURRENT_PLAN)`
+
+## Step 3b: Write Plan to External File/Platform
+
+#### Make the plan visible to the user BEFORE requesting acceptance
+
+Write the strategic plan to the user's platform using the platform-specific tool:
 ```text
-Store strategic plan using: mcp__specter__store_project_plan(PROJECT_NAME, strategic_plan_markdown)
+{tools.create_project_external}
 ```
 
-Strategic plan creation process:
-1. **Retrieve conversation context** from MCP storage (automatic)
-2. **Structure into strategic plan format** using the template above
-3. **Incorporate previous feedback** if available from MCP
-4. **Store complete strategic plan** in MCP for agent access
+This creates:
+- **Markdown platform**: `.specter/projects/PROJECT_NAME/project_plan.md`
+- **Linear platform**: Linear project with plan details
+- **GitHub platform**: GitHub project with plan details
+
+The user can now review the plan file before making their decision.
 
 ## Step 4: Quality Assessment
 
 Invoke the plan-critic agent with project name for plan retrieval:
 
 ```text
-Invoke: plan-critic
+Invoke: specter-plan-critic
 Input: PROJECT_NAME
 ```
 
 #### Plan-critic workflow
-1. **Agent retrieves strategic plan** from MCP using get_project_plan_markdown(PROJECT_NAME)
+1. **Agent retrieves strategic plan** from MCP using `mcp__specter__get_project_plan_markdown(project_path=PROJECT_PATH, project_name=PROJECT_NAME)`
 2. **Agent evaluates plan** against FSDD framework
-3. **Agent stores feedback** using store_critic_feedback(PROJECT_NAME, feedback_markdown)
+3. **Agent returns feedback markdown** to Main Agent (human-driven workflow)
 
-#### Extract quality score for user decision
+#### Extract quality score from returned feedback
+Store the returned feedback markdown as CRITIC_FEEDBACK variable.
+
+Parse the QUALITY_SCORE from the markdown:
 ```text
-Retrieve feedback using: mcp__specter__get_feedback(PROJECT_NAME, count=1)
-Extract QUALITY_SCORE from feedback overall_score field
+Extract "Overall Score: [number]" from CRITIC_FEEDBACK markdown
+Store as QUALITY_SCORE variable
 ```
 
 ## Step 5: Present Quality Assessment and User Decision
 
 #### Present the quality assessment to the user
 
-Retrieve and display plan quality results:
+Display the quality feedback from CRITIC_FEEDBACK variable:
 
 ```text
-Retrieve quality feedback: mcp__specter__get_feedback(PROJECT_NAME, count=1)
-Display QUALITY_SCORE and feedback summary to user
+Display QUALITY_SCORE and CRITIC_FEEDBACK to user
 ```
 
 Present options to user:
@@ -214,11 +230,14 @@ Present options to user:
    ```markdown
    ## Strategic Plan Quality Assessment
 
+   #### Plan Location
+   [Display path to the plan file created in Step 3b]
+
    #### Plan Overview
-   - Quality Score: [QUALITY_SCORE from MCP feedback]%
+   - Quality Score: [QUALITY_SCORE from CRITIC_FEEDBACK]%
 
    #### Quality Summary
-   [Feedback summary from MCP stored feedback]
+   [Display CRITIC_FEEDBACK markdown - the full feedback from plan-critic]
 
    #### Your Options
 
@@ -241,17 +260,19 @@ Present options to user:
 
 #### If user chooses "1" (Continue conversation)
 - Set USER_DECISION = "continue_conversation"
-- Return to Step 2 (conversation context already stored in MCP)
-- plan-conversation agent will access existing context and continue discovery
+- CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
+- Return to Step 2 to add more details via /specter-plan-conversation
 
 #### If user chooses "2" (Refine plan)
 - Set USER_DECISION = "refine_plan"
-- Append refinement context to MCP: store critic feedback as refinement guidance
-- Return to Step 3 to generate improved strategic plan using stored feedback
+- CRITIC_FEEDBACK now available for refinement guidance
+- Return to Step 3 to generate improved strategic plan incorporating feedback
+- Step 3b will update the external plan file
 
 #### If user chooses "3" (Accept plan)
 - Set USER_DECISION = "accept_plan"
-- Strategic plan already stored in MCP from Step 3 using PROJECT_NAME
+- Strategic plan already stored in MCP from Step 3
+- Plan file already written in Step 3b
 - Proceed to Step 6 for automated objective extraction
 
 ## Error Recovery and Resilience
@@ -343,8 +364,9 @@ Present options to user:
 
 Use the MCP tool `mcp__specter__initialize_refinement_loop`:
 - Call `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PATH, loop_type='analyst')`
-- Store the returned `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
-- Copy strategic plan from PROJECT_NAME to ANALYST_LOOP_ID for analyst processing
+- Store the returned loop ID as `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
+- Retrieve the strategic plan from MCP using `mcp__specter__get_project_plan_markdown(project_path=PROJECT_PATH, project_name=PROJECT_NAME)`
+- Store it in the analyst loop using `mcp__specter__store_project_plan(project_path=PROJECT_PATH, project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
 
 ## Step 7: Extract Objectives
 

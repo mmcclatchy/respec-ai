@@ -154,7 +154,33 @@ After completing all conversation stages and meeting completion criteria, struct
 ```
 
 #### Handoff Protocol
-Once `CONVERSATION_CONTEXT` is populated, the calling `/specter-plan` command will automatically proceed with strategic plan generation using this structured context.
+Once `CONVERSATION_CONTEXT` is populated:
+
+**If called from /specter-plan**: The calling command will automatically proceed with strategic plan generation using this structured context.
+
+**If called standalone**: Display the following message to the user:
+
+```markdown
+## Conversation Complete
+
+I've gathered comprehensive context for your project plan.
+
+#### Next Steps
+The /specter-plan command is designed to call this command internally. To use this workflow:
+
+\`\`\`bash
+/specter-plan [project-name] [optional: initial context]
+\`\`\`
+
+The /specter-plan command will:
+1. Call /specter-plan-conversation to gather requirements (if needed)
+2. Transform the conversation into a structured strategic plan
+3. Create a plan file/project for your review
+4. Evaluate the plan quality using the FSDD framework
+5. Guide you through refinement or acceptance
+
+**Note**: Run /specter-plan directly for the full workflow.
+```
 
 ## Error Handling and Recovery
 
