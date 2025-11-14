@@ -1,7 +1,7 @@
 from services.platform.models import PlanRoadmapCommandTools
 
 
-def generate_plan_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
+def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     return f"""---
 allowed-tools:
 {tools.tools_yaml}
@@ -16,11 +16,26 @@ Orchestrate the transformation of strategic plans into discrete, implementable p
 
 ## Workflow Steps
 
+### 0. Initialize Project Context
+
+Capture the current project directory for multi-project support:
+
+```bash
+pwd
+```
+
+Store the result as PROJECT_PATH:
+```text
+PROJECT_PATH = [result of pwd command]
+```
+
+**Important**: All `mcp__specter__*` tool calls must include `project_path=PROJECT_PATH` as the first parameter.
+
 ### 1. Strategic Plan Retrieval and Validation
 Retrieve and validate completed strategic plan from /specter-plan command:
 
-#### Retrieve Project Plan:
-```
+#### Retrieve Project Plan
+```text
 STRATEGIC_PLAN = mcp__specter__get_project_plan_markdown(project_name)
 IF STRATEGIC_PLAN not found:
   ERROR: "No strategic plan found for project: [project_name]"
@@ -32,15 +47,15 @@ PHASING_PREFERENCES = [user provided preferences or empty]
 
 ### 2. Initialize Roadmap Generation Loop
 Set up MCP-managed quality refinement loop:
-```
+```text
 ROADMAP_LOOP_ID = initialize_refinement_loop(loop_type='roadmap')
 ```
 
 ### 3. Roadmap Generation Loop
 Coordinate roadmap → roadmap-critic → MCP decision cycle:
 
-#### Phase Breakdown Generation:
-```
+#### Phase Breakdown Generation
+```text
 Invoke roadmap agent with:
 - Strategic Plan: ${{STRATEGIC_PLAN}}
 - Phasing Preferences: ${{PHASING_PREFERENCES}}
@@ -75,21 +90,21 @@ Choose strategy based on project characteristics. Phases should be:
 - Naturally ordered by dependencies
 ```
 
-#### Store Roadmap:
-```
+#### Store Roadmap
+```text
 create_roadmap(project_id, roadmap_markdown)
 ```
 
-#### Quality Assessment:
-```
+#### Quality Assessment
+```text
 Invoke roadmap-critic agent with:
 - Implementation Roadmap: ${{CURRENT_ROADMAP}}
 
 Expected: CriticFeedback with numerical score and improvements
 ```
 
-#### MCP Decision:
-```
+#### MCP Decision
+```text
 MCP_DECISION = decide_loop_next_action(
     loop_id=ROADMAP_LOOP_ID,
     current_score=QUALITY_SCORE
@@ -99,19 +114,19 @@ MCP_DECISION = decide_loop_next_action(
 ### 4. MCP Decision Handling
 Handle MCP Server response actions:
 
-#### If MCP_DECISION == "refine":
-```
+#### If MCP_DECISION == "refine"
+```text
 Pass critic feedback to roadmap agent for improvements
 Continue refinement cycle with updated roadmap
 ```
 
-#### If MCP_DECISION == "complete":
-```
+#### If MCP_DECISION == "complete"
+```text
 Proceed to parallel spec creation workflow
 ```
 
-#### If MCP_DECISION == "user_input":
-```
+#### If MCP_DECISION == "user_input"
+```text
 Request targeted technical input from software engineer user:
 - Specific technology stack preferences or constraints
 - Architecture pattern preferences (microservices, monolith, etc.)
@@ -125,14 +140,14 @@ Incorporate technical feedback and continue refinement with updated context
 ### 5. Spec Planning and Analysis
 Plan sprint-sized specifications before creation:
 
-#### Retrieve Final Roadmap:
-```
+#### Retrieve Final Roadmap
+```text
 FINAL_ROADMAP = get_roadmap(project_id)
 ROADMAP_PHASES = parse_roadmap_phases(FINAL_ROADMAP)
 ```
 
-#### Analyze Phase Sizing:
-```
+#### Analyze Phase Sizing
+```text
 For each phase in ROADMAP_PHASES:
   - Validate sprint-appropriate scope (1-3 weeks of work)
   - Identify prerequisite dependencies and proper ordering
@@ -140,8 +155,8 @@ For each phase in ROADMAP_PHASES:
   - Plan platform tool integration requirements
 ```
 
-#### Create Spec Plan:
-```
+#### Create Spec Plan
+```text
 SPEC_CREATION_PLAN = Generate specification creation plan with:
   - Phase ordering based on dependencies
   - Sprint-sized scope validation per phase
@@ -160,8 +175,8 @@ SPEC_CREATION_PLAN = Generate specification creation plan with:
 ### 6. Parallel Spec Creation
 Execute planned specifications using platform tools:
 
-#### Launch Parallel Spec Creation:
-```
+#### Launch Parallel Spec Creation
+```text
 For each planned_spec in SPEC_CREATION_PLAN:
     Task(
         agent="specter-create-spec",
@@ -175,8 +190,8 @@ For each planned_spec in SPEC_CREATION_PLAN:
     )
 ```
 
-#### Aggregate Results:
-```
+#### Aggregate Results
+```text
 Collect all create-spec results with detailed status tracking:
 - Track successful spec creations with platform tool confirmations
 - Track partial failures with specific error details
@@ -188,7 +203,7 @@ Report final status with roadmap + all specs created via platform tools
 
 ### 7. Final Integration and Comprehensive Reporting
 Complete workflow and report results with detailed status:
-```
+```text
 Present completed roadmap with:
 - Quality score achieved during refinement process
 - Number of phases created in roadmap
@@ -209,15 +224,15 @@ Present completed roadmap with:
 
 ### Graceful Degradation Patterns
 
-#### Strategic Plan Not Available:
-```
+#### Strategic Plan Not Available
+```text
 Display: "No strategic plan found for project: [project-name]"
 Suggest: "/specter-plan [project-name] to create strategic plan"
 Exit gracefully with guidance
 ```
 
-#### Agent Failures:
-```
+#### Agent Failures
+```text
 IF roadmap fails:
   Retry once with simplified input
   Create basic 3-phase roadmap as fallback
@@ -229,16 +244,16 @@ IF roadmap-critic fails:
   Note manual review recommended
 ```
 
-#### MCP Loop Failures:
-```
+#### MCP Loop Failures
+```text
 IF loop initialization fails:
   Continue with single-pass roadmap generation
   Skip refinement cycles
   Note quality assessment unavailable
 ```
 
-#### Parallel Spec Creation Failures:
-```
+#### Parallel Spec Creation Failures
+```text
 IF some create-spec agents fail:
   Continue with successful spec creations
   Categorize failures by type:

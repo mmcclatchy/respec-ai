@@ -41,7 +41,7 @@ Edit `~/.claude/config.json` and add:
   "mcpServers": {
     "specter": {
       "command": "uv",
-      "args": ["run", "spec-driven-workflow-server"],
+      "args": ["run", "specter-server"],
       "cwd": "/absolute/path/to/specter"
     }
   }
@@ -70,13 +70,13 @@ Once the MCP server is configured, set up any project:
 **Local installation:**
 ```bash
 cd /path/to/your/project
-~/coding/projects/specter/scripts/install-specter.sh
-claude
+~/coding/projects/specter/scripts/install-specter.sh --platform linear
+# Choose: linear, github, or markdown
+claude  # Restart to load commands
 ```
 
 Then in Claude Code:
 ```text
-/specter-setup
 /specter-plan  # Start your first workflow
 ```
 
@@ -86,25 +86,13 @@ Then in Claude Code:
 
 ```bash
 cd /path/to/your/project
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash
-claude
+curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear
+claude  # Restart to load commands
 ```
 
 Then in Claude Code:
 ```text
-/specter-setup
 /specter-plan  # Start your first workflow
-```
-
-**Bootstrap via Claude Code (alternative):**
-```bash
-cd /path/to/your/project
-claude
-```
-
-```text
-Install the Specter bootstrap files for this project
-/specter-setup
 ```
 
 ### 3. Start Using
@@ -204,11 +192,11 @@ Install the Specter bootstrap files for this project
 
 ## Available Commands
 
-- **`/specter-setup [platform]`** - Setup project with platform-specific tools
 - **`/specter-plan [project-name]`** - Create strategic project plans
 - **`/specter-roadmap [project-name]`** - Generate multi-phase implementation roadmaps
 - **`/specter-spec [spec-name]`** - Convert plans to detailed specifications
 - **`/specter-build [spec-name]`** - Implement specifications with code
+- **`/specter-plan-conversation`** - Convert conversations into structured plans
 
 ## Contributing
 

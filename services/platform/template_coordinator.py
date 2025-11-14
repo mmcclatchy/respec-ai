@@ -22,7 +22,7 @@ class TemplateCoordinator:
             CommandTemplate.PLAN: PlanCommandStrategy(self.tool_registry),
             CommandTemplate.SPEC: SpecCommandStrategy(self.tool_registry),
             CommandTemplate.BUILD: BuildCommandStrategy(self.tool_registry),
-            CommandTemplate.PLAN_ROADMAP: PlanRoadmapCommandStrategy(self.tool_registry),
+            CommandTemplate.ROADMAP: PlanRoadmapCommandStrategy(self.tool_registry),
             CommandTemplate.PLAN_CONVERSATION: PlanConversationCommandStrategy(self.tool_registry),
         }
 

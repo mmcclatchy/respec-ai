@@ -60,12 +60,28 @@ Main Agent (via /specter-spec)
 
 ## Implementation Instructions
 
+### Step 0: Initialize Project Context
+
+Capture the current project directory for multi-project support:
+
+```bash
+pwd
+```
+
+Store the result as PROJECT_PATH:
+```text
+PROJECT_PATH = [result of pwd command]
+```
+
+**Important**: All `mcp__specter__*` tool calls must include `project_path: $PROJECT_PATH` as the first parameter.
+
 ### Step 1: Initialize Technical Design Process
 Retrieve the strategic plan and set up the technical specification workflow:
 
 ```text
 # Initialize MCP refinement loop
 mcp__specter__initialize_refinement_loop:
+  project_path: $PROJECT_PATH
   loop_type: "spec"
 
 # Retrieve strategic plan context
@@ -309,44 +325,44 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 
 ## Expected Output Structure
 
-```markdown
-# Technical Specification: [Project Name]
+    ```markdown
+    # Technical Specification: [Project Name]
 
-## Overview
-[Technical summary and objectives]
+    ## Overview
+    [Technical summary and objectives]
 
-## Architecture Design
-### System Components
-[Component descriptions and interactions]
+    ## Architecture Design
+    ### System Components
+    [Component descriptions and interactions]
 
-### Technology Stack
-- Frontend: [Technologies with justification]
-- Backend: [Technologies with justification]  
-- Database: [Technologies with justification]
-- Infrastructure: [Technologies with justification]
+    ### Technology Stack
+    - Frontend: [Technologies with justification]
+    - Backend: [Technologies with justification]  
+    - Database: [Technologies with justification]
+    - Infrastructure: [Technologies with justification]
 
-## Data Models
-[Entity relationships and schemas]
+    ## Data Models
+    [Entity relationships and schemas]
 
-## API Design  
-[Endpoints and contracts]
+    ## API Design  
+    [Endpoints and contracts]
 
-## Security Architecture
-[Security measures and protocols]
+    ## Security Architecture
+    [Security measures and protocols]
 
-## Performance Requirements
-[Metrics and benchmarks]
+    ## Performance Requirements
+    [Metrics and benchmarks]
 
-## Research Requirements
-### Existing Documentation
-- Read: [paths to existing docs]
+    ## Research Requirements
+    ### Existing Documentation
+    - Read: [paths to existing docs]
 
-### External Research Needed  
-- Synthesize: [research prompts for current practices]
+    ### External Research Needed  
+    - Synthesize: [research prompts for current practices]
 
-## Implementation Considerations
-[Technical constraints and decisions]
-```
+    ## Implementation Considerations
+    [Technical constraints and decisions]
+    ```
 
 ## Context Preservation
 

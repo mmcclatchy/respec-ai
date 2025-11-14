@@ -33,13 +33,13 @@ This document outlines all changes required to make Specter installation as easy
 
 ✅ **MCP Server Configured**:
 - File: `~/.claude/config.json` created
-- Command: `spec-driven-workflow-server` via `uv run`
+- Command: `specter-server` via `uv run`
 - Working directory: `/Users/markmcclatchy/coding/projects/specter`
 
 ✅ **Bootstrap Installation Tested**:
 - Test project: `/tmp/specter-validation-test`
 - Installation script: `scripts/install-specter.sh` working correctly
-- Files created: `.claude/commands/specter-setup.md`, `.specter/config/platform.json`
+- Files created: `.claude/commands/init-specter.md`, `.specter/config/platform.json`
 
 ✅ **Code Quality**:
 - All 404 tests passing
@@ -61,7 +61,7 @@ claude
 
 # 3. Test in validation project
 cd /tmp/specter-validation-test
-/specter-setup markdown
+/init-specter markdown
 # Expected: Generates all workflow templates
 
 # 4. Verify files created
@@ -344,7 +344,7 @@ These can be done alongside or after multi-project implementation:
 ### install-specter.sh Improvements
 
 **Medium Priority**:
-- [ ] Remove duplicate platform configuration (let /specter-setup handle it entirely)
+- [ ] Remove duplicate platform configuration (let /init-specter handle it entirely)
 - [ ] Add uv availability check with helpful error message
 - [ ] Add Python version validation (3.13+)
 
@@ -384,7 +384,7 @@ These can be done alongside or after multi-project implementation:
 
 1. **Restart Claude Code** to load new MCP configuration
 2. **Test `/mcp list`** to verify Specter server is loaded
-3. **Run `/specter-setup markdown`** in test project
+3. **Run `/init-specter markdown`** in test project
 4. **Verify end-to-end workflow** works as expected
 
 ### Future (Post-MVP)

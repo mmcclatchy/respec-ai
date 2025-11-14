@@ -1,206 +1,125 @@
 import json
+import subprocess
 from pathlib import Path
-
-from services.mcp.tools.specter_setup_tools import SpecterSetupTools
-from services.platform.platform_orchestrator import PlatformOrchestrator
 
 
 class TestSpecterSetupEndToEnd:
     def test_full_linear_project_setup_workflow(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
+        project_path = tmp_path / 'test_project'
+        project_path.mkdir()
 
-        project_path = str(tmp_path / 'test_project')
-        result = setup_tools.generate_specter_setup(project_path=project_path, platform='linear')
+        result = subprocess.run(
+            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'linear'],
+            capture_output=True,
+            text=True,
+        )
 
-        assert result['success'] is True
-        assert result['platform'] == 'linear'
-        assert result['total_files'] > 0
+        assert result.returncode == 0
+        assert (project_path / '.claude' / 'commands' / 'specter-plan.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'specter-spec.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'specter-build.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'specter-roadmap.md').exists()
+        assert (project_path / '.claude' / 'agents' / 'specter-create-spec.md').exists()
+        assert (project_path / '.specter' / 'config.json').exists()
 
-        (tmp_path / 'test_project' / '.claude' / 'commands').mkdir(parents=True)
-        (tmp_path / 'test_project' / '.claude' / 'agents').mkdir(parents=True)
-        (tmp_path / 'test_project' / '.specter' / 'config').mkdir(parents=True)
-
-        for file_info in result['files']:
-            file_path = tmp_path / 'test_project' / file_info['path']
-            file_path.write_text(file_info['content'])
-
-        validation_result = setup_tools.validate_specter_setup(project_path)
-
-        assert validation_result['success'] is True
-        assert len(validation_result['errors']) == 0
+        config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
+        assert config_data['platform'] == 'linear'
 
     def test_full_github_project_setup_workflow(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
+        project_path = tmp_path / 'test_project'
+        project_path.mkdir()
 
-        project_path = str(tmp_path / 'test_project')
-        result = setup_tools.generate_specter_setup(project_path=project_path, platform='github')
+        result = subprocess.run(
+            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'github'],
+            capture_output=True,
+            text=True,
+        )
 
-        assert result['success'] is True
-        assert result['platform'] == 'github'
+        assert result.returncode == 0
+        assert (project_path / '.claude' / 'commands' / 'specter-plan.md').exists()
+        assert (project_path / '.specter' / 'config.json').exists()
 
-        (tmp_path / 'test_project' / '.claude' / 'commands').mkdir(parents=True)
-        (tmp_path / 'test_project' / '.claude' / 'agents').mkdir(parents=True)
-        (tmp_path / 'test_project' / '.specter' / 'config').mkdir(parents=True)
-
-        for file_info in result['files']:
-            file_path = tmp_path / 'test_project' / file_info['path']
-            file_path.write_text(file_info['content'])
-
-        validation_result = setup_tools.validate_specter_setup(project_path)
-
-        assert validation_result['success'] is True
+        config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
+        assert config_data['platform'] == 'github'
 
     def test_full_markdown_project_setup_workflow(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
+        project_path = tmp_path / 'test_project'
+        project_path.mkdir()
 
-        project_path = str(tmp_path / 'test_project')
-        result = setup_tools.generate_specter_setup(project_path=project_path, platform='markdown')
+        result = subprocess.run(
+            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'markdown'],
+            capture_output=True,
+            text=True,
+        )
 
-        assert result['success'] is True
-        assert result['platform'] == 'markdown'
+        assert result.returncode == 0
+        assert (project_path / '.claude' / 'commands' / 'specter-plan.md').exists()
+        assert (project_path / '.specter' / 'config.json').exists()
 
-        (tmp_path / 'test_project' / '.claude' / 'commands').mkdir(parents=True)
-        (tmp_path / 'test_project' / '.claude' / 'agents').mkdir(parents=True)
-        (tmp_path / 'test_project' / '.specter' / 'config').mkdir(parents=True)
-
-        for file_info in result['files']:
-            file_path = tmp_path / 'test_project' / file_info['path']
-            file_path.write_text(file_info['content'])
-
-        validation_result = setup_tools.validate_specter_setup(project_path)
-
-        assert validation_result['success'] is True
+        config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
+        assert config_data['platform'] == 'markdown'
 
     def test_command_templates_contain_platform_specific_tools(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
-
-        project_path = str(tmp_path / 'test_project')
-
         for platform in ['linear', 'github', 'markdown']:
-            result = setup_tools.generate_specter_setup(
-                project_path=project_path,
-                platform=platform,  # type: ignore[arg-type]
+            platform_project = tmp_path / f'{platform}_project'
+            platform_project.mkdir()
+
+            result = subprocess.run(
+                ['uv', 'run', 'specter-setup', '--project-path', str(platform_project), '--platform', platform],
+                capture_output=True,
+                text=True,
             )
 
-            spec_command = next(f for f in result['files'] if f['path'] == '.claude/commands/specter-spec.md')
+            assert result.returncode == 0
+
+            spec_command_path = platform_project / '.claude' / 'commands' / 'specter-spec.md'
+            spec_command_content = spec_command_path.read_text()
 
             if platform == 'linear':
-                assert 'mcp__linear-server__create_issue' in spec_command['content']
+                assert 'mcp__linear-server__create_issue' in spec_command_content
             elif platform == 'github':
-                assert 'mcp__github__create_issue' in spec_command['content']
+                assert 'mcp__github__create_issue' in spec_command_content
             elif platform == 'markdown':
-                assert 'Write' in spec_command['content']
+                assert 'Write' in spec_command_content
 
     def test_agent_templates_contain_platform_specific_tools(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
-
-        project_path = str(tmp_path / 'test_project')
-
         for platform in ['linear', 'github', 'markdown']:
-            result = setup_tools.generate_specter_setup(
-                project_path=project_path,
-                platform=platform,  # type: ignore[arg-type]
+            project_path = tmp_path / f'{platform}_test_project'
+            project_path.mkdir()
+
+            result = subprocess.run(
+                ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', platform],
+                capture_output=True,
+                text=True,
             )
 
-            create_spec_agent = next(f for f in result['files'] if f['path'] == '.claude/agents/specter-create-spec.md')
+            assert result.returncode == 0
+
+            create_spec_agent_path = project_path / '.claude' / 'agents' / 'specter-create-spec.md'
+            create_spec_agent_content = create_spec_agent_path.read_text()
 
             if platform == 'linear':
-                assert 'mcp__linear-server__create_issue' in create_spec_agent['content']
+                assert 'mcp__linear-server__create_issue' in create_spec_agent_content
             elif platform == 'github':
-                assert 'mcp__github__create_issue' in create_spec_agent['content']
+                assert 'mcp__github__create_issue' in create_spec_agent_content
             elif platform == 'markdown':
-                assert 'Write' in create_spec_agent['content']
+                assert 'Write' in create_spec_agent_content
 
     def test_platform_config_contains_correct_metadata(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
+        project_path = tmp_path / 'test_project'
+        project_path.mkdir()
 
-        project_path = str(tmp_path / 'test_project')
-        result = setup_tools.generate_specter_setup(project_path=project_path, platform='linear')
+        result = subprocess.run(
+            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'linear'],
+            capture_output=True,
+            text=True,
+        )
 
-        config_file = next(f for f in result['files'] if f['path'] == '.specter/config/platform.json')
+        assert result.returncode == 0
 
-        config_data = json.loads(config_file['content'])
+        config_file_path = project_path / '.specter' / 'config.json'
+        config_data = json.loads(config_file_path.read_text())
 
         assert config_data['platform'] == 'linear'
         assert 'created_at' in config_data
         assert config_data['version'] == '1.0'
-
-    def test_validation_detects_missing_command_file(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
-
-        project_path = tmp_path / 'incomplete_project'
-        (project_path / '.claude' / 'commands').mkdir(parents=True)
-        (project_path / '.claude' / 'agents').mkdir(parents=True)
-        (project_path / '.specter' / 'config').mkdir(parents=True)
-
-        (project_path / '.claude' / 'commands' / 'specter-plan.md').write_text('# Plan')
-        (project_path / '.claude' / 'commands' / 'specter-build.md').write_text('# Build')
-
-        (project_path / '.claude' / 'agents' / 'specter-plan-analyst.md').write_text('# Analyst')
-        (project_path / '.claude' / 'agents' / 'specter-plan-critic.md').write_text('# Critic')
-        (project_path / '.claude' / 'agents' / 'specter-create-spec.md').write_text('# Spec')
-        (project_path / '.claude' / 'agents' / 'specter-roadmap-critic.md').write_text('# Roadmap')
-
-        (project_path / '.specter' / 'config' / 'platform.json').write_text('{"platform": "linear"}')
-
-        validation_result = setup_tools.validate_specter_setup(str(project_path))
-
-        assert validation_result['success'] is False
-        assert any('specter-spec.md' in error for error in validation_result['errors'])
-        assert any('specter-roadmap.md' in error for error in validation_result['errors'])
-
-    def test_validation_detects_missing_agent_file(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
-
-        project_path = tmp_path / 'incomplete_project'
-        (project_path / '.claude' / 'commands').mkdir(parents=True)
-        (project_path / '.claude' / 'agents').mkdir(parents=True)
-        (project_path / '.specter' / 'config').mkdir(parents=True)
-
-        (project_path / '.claude' / 'commands' / 'specter-plan.md').write_text('# Plan')
-        (project_path / '.claude' / 'commands' / 'specter-spec.md').write_text('# Spec')
-        (project_path / '.claude' / 'commands' / 'specter-build.md').write_text('# Build')
-        (project_path / '.claude' / 'commands' / 'specter-roadmap.md').write_text('# Roadmap')
-
-        (project_path / '.claude' / 'agents' / 'plan-analyst.md').write_text('# Analyst')
-        (project_path / '.claude' / 'agents' / 'create-spec.md').write_text('# Spec')
-
-        (project_path / '.specter' / 'config' / 'platform.json').write_text('{"platform": "linear"}')
-
-        validation_result = setup_tools.validate_specter_setup(str(project_path))
-
-        assert validation_result['success'] is False
-        assert any('plan-critic.md' in error for error in validation_result['errors'])
-        assert any('roadmap-critic.md' in error for error in validation_result['errors'])
-
-    def test_validation_detects_missing_platform_config(self, tmp_path: Path) -> None:
-        orchestrator = PlatformOrchestrator.create_with_default_config()
-        setup_tools = SpecterSetupTools(orchestrator)
-
-        project_path = tmp_path / 'incomplete_project'
-        (project_path / '.claude' / 'commands').mkdir(parents=True)
-        (project_path / '.claude' / 'agents').mkdir(parents=True)
-        (project_path / '.specter' / 'config').mkdir(parents=True)
-
-        (project_path / '.claude' / 'commands' / 'specter-plan.md').write_text('# Plan')
-        (project_path / '.claude' / 'commands' / 'specter-spec.md').write_text('# Spec')
-        (project_path / '.claude' / 'commands' / 'specter-build.md').write_text('# Build')
-        (project_path / '.claude' / 'commands' / 'specter-roadmap.md').write_text('# Roadmap')
-
-        (project_path / '.claude' / 'agents' / 'specter-plan-analyst.md').write_text('# Analyst')
-        (project_path / '.claude' / 'agents' / 'specter-plan-critic.md').write_text('# Critic')
-        (project_path / '.claude' / 'agents' / 'specter-create-spec.md').write_text('# Spec')
-        (project_path / '.claude' / 'agents' / 'specter-roadmap-critic.md').write_text('# Roadmap')
-
-        validation_result = setup_tools.validate_specter_setup(str(project_path))
-
-        assert validation_result['success'] is False
-        assert any('platform configuration' in error.lower() for error in validation_result['errors'])

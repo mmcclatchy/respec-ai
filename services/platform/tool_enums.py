@@ -122,11 +122,6 @@ class SpecterMCPTool(Enum):
     LIST_PLAN_COMPLETION_REPORTS = 'mcp__specter__list_plan_completion_reports'
     DELETE_PLAN_COMPLETION_REPORT = 'mcp__specter__delete_plan_completion_report'
 
-    # Specter Setup Tools
-    GENERATE_SPECTER_SETUP = 'mcp__specter__generate_specter_setup'
-    VALIDATE_SPECTER_SETUP = 'mcp__specter__validate_specter_setup'
-    GET_BOOTSTRAP_FILES = 'mcp__specter__get_bootstrap_files'
-
 
 class AbstractOperation(Enum):
     # Spec Management Operations
@@ -151,7 +146,7 @@ class CommandTemplate(Enum):
     PLAN = 'specter-plan'
     SPEC = 'specter-spec'
     BUILD = 'specter-build'
-    PLAN_ROADMAP = 'specter-roadmap'
+    ROADMAP = 'specter-roadmap'
     PLAN_CONVERSATION = 'specter-plan-conversation'
 
 

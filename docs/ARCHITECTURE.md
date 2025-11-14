@@ -42,7 +42,7 @@ Specter is a **meta MCP server** that generates platform-specific workflow tools
 │  └──────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │           MCP Tools & State Management                   │   │
-│  │  • 32 Production MCP Tools (8 modules, 1,488 lines)      │   │
+│  │  • 29 Production MCP Tools (7 modules, 1,300+ lines)     │   │
 │  │  • 8 Document Models with MCPModel base (198 lines)      │   │
 │  │  • Functional Loop Management (refinement cycles)        │   │
 │  │  • Session-Scoped State (in-memory persistence)          │   │
@@ -188,7 +188,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 **Generative Agents (Content Creation):**
 - **plan-analyst** - Business objectives analysis
-- **plan-roadmap** - Implementation roadmap generation
+- **roadmap** - Implementation roadmap generation
 - **spec-architect** - Technical specification design
 - **build-planner** - Implementation planning
 - **build-coder** - Code implementation
@@ -249,16 +249,15 @@ def generate_spec_command_template(tools: SpecCommandTools) -> str
 
 ### Tool Implementation Summary
 
-**32 production MCP tools** across 8 modules (1,488 lines of code):
+**29 production MCP tools** across 7 modules (1,300+ lines of code):
 
-1. **Loop Management** (9 tools) - Refinement cycle operations
-2. **Feedback Systems** (6 tools) - Critic feedback storage
+1. **Loop Management** (8 tools) - Refinement cycle operations
+2. **Feedback Systems** (5 tools) - Critic feedback storage
 3. **Plan Completion** (6 tools) - Completion reporting
-4. **Roadmap Management** (6 tools) - Roadmap operations
+4. **Roadmap Management** (2 tools) - Roadmap operations
 5. **Project Planning** (5 tools) - High-level project management
 6. **Technical Specs** (4 tools) - Specification management
 7. **Build Planning** (4 tools) - Implementation planning
-8. **Setup Tools** (2 tools) - Project setup and validation
 
 ### Tool Categories
 
@@ -290,13 +289,6 @@ mcp__specter__get_roadmap
 mcp__specter__store_feedback
 mcp__specter__get_feedback
 mcp__specter__list_feedback
-```
-
-**Setup Tools:**
-```text
-mcp__specter__generate_specter_setup
-mcp__specter__validate_specter_setup
-mcp__specter__get_bootstrap_files
 ```
 
 ## Document Models
@@ -352,39 +344,28 @@ curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/ins
 
 #### Local Installation (repository-based)
 ```bash
-./scripts/install-specter.sh --platform linear --path ~/project
-```
-
-#### MCP Tool (containerized deployments)
-```python
-mcp__specter__get_bootstrap_files(platform='linear')
+cd /path/to/your/project
+~/coding/projects/specter/scripts/install-specter.sh --platform linear
 ```
 
 ### Project Setup Workflow
 
-**1. Bootstrap (Initial Setup):**
-- Creates `.claude/` and `.specter/` directories
-- Installs setup command
-- Creates initial platform configuration
+**Direct Installation:**
+- Script generates all workflow files directly using CLI
+- Creates `.claude/commands/` with platform-specific commands
+- Creates `.claude/agents/` with workflow agents
+- Creates `.specter/config.json` with platform configuration
+- User restarts Claude Code to load new commands
 
-**2. Setup Command (`/specter-setup`):**
-- Generates platform-specific commands and agents
-- Uses Write tool for file creation
-- Uses Bash tool for directory management
-- Validates MCP server availability
-
-**3. Validation:**
-- Checks directory structure
-- Validates file contents
-- Confirms platform MCP server availability
+**No manual setup required** - installation script handles everything
 
 ### Architecture Benefits
 
-**Container-Ready Design:**
-- MCP server stateless (no file system access required)
-- Claude Agent handles file I/O (native permissions)
-- Template generation returns JSON (file paths + contents)
-- Secure deployment through Claude's approval model
+**Simplified Installation:**
+- CLI-based setup eliminates multi-step configuration
+- Single command installs all workflow files
+- Platform selection happens upfront
+- Single Claude Code restart required
 
 ## Directory Structure
 
@@ -394,28 +375,24 @@ mcp__specter__get_bootstrap_files(platform='linear')
 project/
 ├── .claude/
 │   ├── commands/
-│   │   ├── specter-setup.md       # Setup orchestration
 │   │   ├── specter-plan.md        # Generated (platform-specific)
 │   │   ├── specter-spec.md        # Generated (platform-specific)
 │   │   ├── specter-build.md       # Generated (platform-specific)
 │   │   ├── specter-roadmap.md     # Generated (static)
 │   │   └── specter-plan-conversation.md  # Generated (static)
 │   └── agents/
-│       ├── plan-analyst.md        # Generated (static)
-│       ├── plan-critic.md         # Generated (static)
-│       ├── analyst-critic.md      # Generated (static)
-│       ├── plan-roadmap.md        # Generated (static)
-│       ├── roadmap-critic.md      # Generated (static)
-│       ├── create-spec.md         # Generated (platform-specific)
-│       ├── spec-architect.md      # Generated (static)
-│       ├── spec-critic.md         # Generated (static)
-│       ├── build-planner.md       # Generated (static)
-│       ├── build-critic.md        # Generated (static)
-│       ├── build-coder.md         # Generated (static)
-│       └── build-reviewer.md      # Generated (static)
+│       ├── specter-plan-analyst.md        # Generated (static)
+│       ├── specter-plan-critic.md         # Generated (static)
+│       ├── specter-analyst-critic.md      # Generated (static)
+│       ├── specter-roadmap.md             # Generated (static)
+│       ├── specter-roadmap-critic.md      # Generated (static)
+│       ├── specter-create-spec.md         # Generated (platform-specific)
+│       ├── specter-build-planner.md       # Generated (static)
+│       ├── specter-build-critic.md        # Generated (static)
+│       ├── specter-build-coder.md         # Generated (platform-specific)
+│       └── specter-build-reviewer.md      # Generated (static)
 └── .specter/
-    ├── config/
-    │   └── platform.json          # Platform configuration
+    ├── config.json                # Platform configuration
     └── projects/                  # Markdown platform only
         └── [project-name]/
             ├── project_plan.md
@@ -537,11 +514,11 @@ project/
 
 | Aspect | Documentation Claim | Actual Implementation | Assessment |
 |--------|-------------------|---------------------|------------|
-| MCP Tools | 30 tools, 1,264+ lines | 32 tools, 1,488 lines | ✅ **Exceeds claims** |
+| MCP Tools | 30 tools, 1,264+ lines | 29 tools, 1,300+ lines | ✅ **Matches claims** |
 | Document Models | 7 models, 193-line base | 8 models, 198-line base | ✅ **Exceeds claims** |
 | Platform System | Not documented | 11-file enterprise system | ✅ **Missing from docs** |
 | State Management | "Sophisticated" | Good basic implementation | ⚠️ **Claims overstated** |
-| Template System | Platform injection | Full implementation + deployment | ✅ **Exceeds claims** |
+| Template System | Platform injection | Full implementation + CLI | ✅ **Exceeds claims** |
 | Quality Level | "Production-ready" | Enterprise-grade | ✅ **Exceeds claims** |
 
 **Overall Assessment:** Implementation is **more robust** than documentation suggests, with notable architectural achievements undocumented.

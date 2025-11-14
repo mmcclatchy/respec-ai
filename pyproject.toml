@@ -37,7 +37,8 @@ package = true
 packages = ["services"]
 
 [project.scripts]
-spec-driven-workflow-server = "services.mcp.server:run_local_server"
+specter-server = "services.mcp.server:run_local_server"
+specter-setup = "services.cli.setup:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -50,7 +51,7 @@ filterwarnings = [
     # Suppress coroutine warnings in MCP server tests - these are expected due to async mocking
     "ignore:coroutine.*was never awaited:RuntimeWarning:.*test_mcp_server.*",
     # Suppress pytest cleanup warnings for unawaited coroutines during garbage collection
-    "ignore:.*coroutine.*main.*was never awaited.*"
+    "ignore:.*coroutine.*main.*was never awaited.*",
 ]
 markers = [
     "agent_coordination: marks tests for agent coordination and parameter passing",
@@ -105,7 +106,7 @@ indent-width = 4
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["E4", "E7", "E9", "F"]
 ignore = [
-    "D", # Disable all Docstring rules
+    "D",    # Disable all Docstring rules
     "E741", # Disable errors on single letter variable names. Allowing them for list comprehensions.
 ]
 

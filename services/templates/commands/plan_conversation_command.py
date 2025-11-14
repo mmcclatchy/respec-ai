@@ -10,6 +10,21 @@ description: Conduct conversational requirements gathering
 
 # Conversational Requirements Discovery
 
+## Step 0: Initialize Project Context
+
+Capture the current project directory for multi-project support:
+
+```bash
+pwd
+```
+
+Store the result as PROJECT_PATH:
+```text
+PROJECT_PATH = [result of pwd command]
+```
+
+**Important**: All `mcp__specter__*` tool calls must include `project_path=PROJECT_PATH` as the first parameter.
+
 ## Command Integration
 
 #### Purpose
@@ -80,14 +95,14 @@ Refine understanding with specific validation:
 
 ## Conversation Completion Criteria
 
-#### Ready to Complete When:
+#### Ready to Complete When
 - All three stages have been conducted with meaningful user engagement
 - User has provided sufficient detail in each major area (vision, requirements, constraints, priorities)
 - Key questions have been answered and understanding has been validated
 - User expresses satisfaction that their needs have been captured
 - No critical information gaps remain that would prevent strategic plan creation
 
-#### Completion Checklist:
+#### Completion Checklist
 - [ ] Vision and desired outcomes clearly articulated
 - [ ] Key requirements and constraints identified
 - [ ] Priorities and trade-offs discussed
@@ -144,35 +159,35 @@ Once `CONVERSATION_CONTEXT` is populated, the calling `/specter-plan` command wi
 ## Error Handling and Recovery
 
 ### Conversation Stalls
-#### If user becomes unresponsive or provides minimal answers:
+#### If user becomes unresponsive or provides minimal answers
 - Rephrase questions using simpler language or concrete examples
 - Offer multiple-choice options to jumpstart engagement
 - Break complex questions into smaller, more manageable parts
 - Example: "I notice you're hesitating. Would it help if I gave you some examples of what I mean?"
 
 ### Scope Overwhelm
-#### If user seems overwhelmed by the scope of questions:
+#### If user seems overwhelmed by the scope of questions
 - Focus on one area at a time and reassure about the process
 - Emphasize that incomplete answers can be refined later
 - Suggest starting with what they're most confident about
 - Example: "Let's start with just the core problem you're trying to solve. We can build from there."
 
 ### Technical Confusion
-#### If user gets bogged down in technical details:
+#### If user gets bogged down in technical details
 - Redirect to business outcomes and user value
 - Defer technical implementation discussions
 - Focus on "what" rather than "how"
 - Example: "Let's focus on what you want to achieve first. We'll figure out the technical approach later."
 
 ### Information Gaps
-#### If critical information is missing after all stages:
+#### If critical information is missing after all stages
 - Identify specific gaps and ask targeted follow-up questions
 - Use hypothetical scenarios to help user think through unclear areas
 - Suggest reasonable assumptions that can be validated later
 - Document gaps clearly for strategic plan generation
 
 ### Conversation Recovery
-#### If conversation derails or becomes unproductive:
+#### If conversation derails or becomes unproductive
 - Summarize progress made so far to re-establish momentum
 - Identify the most important remaining areas to cover
 - Offer to change approach or take a break if needed
