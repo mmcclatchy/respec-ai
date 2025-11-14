@@ -286,7 +286,7 @@ async def create_project_plan(
 - ✅ `feedback_tools_unified.py` - All feedback operations (5 tools)
 - ✅ `roadmap_tools.py` - Roadmap operations (2 tools)
 - ✅ `plan_completion_report_tools.py` - Completion reports (6 tools)
-- ✅ `specter_setup_tools.py` - Setup operations (already had project_path)
+- ✅ `init_specter_tools.py` - Setup operations (already had project_path)
 
 ### Phase 2: Command Template Updates ⏸️ PLANNED
 
@@ -317,7 +317,7 @@ mcp__specter__create_project_plan:
 
 **Affected Commands**:
 - `plan_command.py`
-- `plan_roadmap_command.py`
+- `roadmap_command.py`
 - `spec_command.py`
 - `build_command.py`
 - `plan_conversation_command.py`
@@ -340,7 +340,7 @@ class ConfigManager:
         # Load from project directory, not global
         if not self.config_file.exists():
             raise ProjectNotSetupError(
-                f"Project not set up. Run /specter-setup in {self.config_dir.parent.parent}"
+                f"Project not set up. Run /init-specter in {self.config_dir.parent.parent}"
             )
         return ProjectConfig.model_validate_json(self.config_file.read_text())
 
@@ -373,7 +373,7 @@ class PlatformOrchestrator:
             PlatformOrchestrator configured for the project
 
         Raises:
-            ProjectNotSetupError: If project not set up with /specter-setup
+            ProjectNotSetupError: If project not set up with /init-specter
         """
         config_manager = ConfigManager(project_path)
         config = config_manager.load_config()
@@ -490,7 +490,7 @@ uv sync
   "mcpServers": {
     "specter": {
       "command": "uv",
-      "args": ["run", "spec-driven-workflow-server"],
+      "args": ["run", "specter-server"],
       "cwd": "/absolute/path/to/specter"
     }
   }
@@ -516,7 +516,7 @@ cd /path/to/my-project
 claude
 
 # In Claude Code:
-/specter-setup markdown  # or linear, github
+/init-specter markdown  # or linear, github
 
 # This creates:
 # - .claude/commands/specter-*.md
@@ -641,11 +641,11 @@ def test_switch_between_projects():
    cp -r ~/.specter ~/specter-backup
    ```
 
-2. **Run /specter-setup again**:
+2. **Run /init-specter again**:
    ```bash
    cd /path/to/existing-project
    claude
-   /specter-setup <your-platform>
+   /init-specter <your-platform>
    ```
    This creates `.specter/config/platform.json` in project directory
 

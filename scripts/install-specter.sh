@@ -2,12 +2,7 @@
 set -e
 
 # Specter Installation Script
-# Installs Specter workflow system to a target project
-# Supports both local execution and remote curl-based installation
-
-# GitHub repository details
-GITHUB_RAW_URL="https://raw.githubusercontent.com/mmcclatchy/specter/main"
-SETUP_COMMAND_PATH=".claude/commands/specter-setup.md"
+# Generates Specter workflow files directly using the specter-setup CLI
 
 # Color codes for output
 RED='\033[0;31m'
@@ -29,10 +24,6 @@ print_info() {
     echo -e "${YELLOW}➜ $1${NC}"
 }
 
-print_debug() {
-    echo -e "${BLUE}DEBUG: $1${NC}"
-}
-
 # Detect if running via curl (remote) or direct execution (local)
 detect_execution_mode() {
     if [ -n "$BASH_SOURCE" ] && [ -f "$BASH_SOURCE" ]; then
@@ -47,47 +38,36 @@ show_usage() {
     echo ""
     echo "Specter Installation Script"
     echo ""
-    echo "Usage:"
-    echo "  Remote install:  curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash"
-    echo "  With platform:   curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- linear"
-    echo "  With options:    curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform github --path ~/project"
+    echo "Installs Specter workflow files to the current directory."
     echo ""
-    echo "  Local install:   ./scripts/install-specter.sh"
-    echo "  With platform:   ./scripts/install-specter.sh linear"
-    echo "  With options:    ./scripts/install-specter.sh --platform linear --path ~/project"
+    echo "Usage:"
+    echo "  Local install:   cd ~/myproject && ~/path/to/specter/scripts/install-specter.sh --platform linear"
+    echo ""
+    echo "  Remote install:  cd ~/myproject && curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear --specter-path ~/coding/projects/specter"
     echo ""
     echo "Arguments:"
-    echo "  --platform       Platform choice: linear, github, or markdown (default: markdown)"
-    echo "  --path           Target directory (default: current directory)"
-    echo "  First arg        If no flags, treated as platform name"
+    echo "  --platform       Platform choice: linear, github, or markdown (required)"
+    echo "  --specter-path   Path to Specter installation (required for remote install only)"
     echo ""
     echo "Examples:"
-    echo "  bash -s -- linear                    # Install to current dir with Linear"
-    echo "  bash -s -- --platform github         # Install to current dir with GitHub"
-    echo "  bash -s -- --path ~/app --platform linear  # Install to specific path"
+    echo "  cd ~/myproject"
+    echo "  ~/specter/scripts/install-specter.sh --platform linear"
     echo ""
 }
 
-# Parse arguments (supports both positional and flag-based)
+# Parse arguments
 parse_arguments() {
-    TARGET_DIR="$(pwd)"
-    PLATFORM="markdown"
+    PLATFORM=""
+    SPECTER_PATH=""
 
-    # If first argument doesn't start with --, treat it as platform
-    if [ $# -eq 1 ] && [[ ! "$1" =~ ^-- ]]; then
-        PLATFORM="$1"
-        return
-    fi
-
-    # Parse flag-based arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
             --platform)
                 PLATFORM="$2"
                 shift 2
                 ;;
-            --path)
-                TARGET_DIR="$2"
+            --specter-path)
+                SPECTER_PATH="$2"
                 shift 2
                 ;;
             --help|-h)
@@ -101,13 +81,55 @@ parse_arguments() {
                 ;;
         esac
     done
+
+    # Validate required arguments
+    if [ -z "$PLATFORM" ]; then
+        print_error "Platform is required. Use --platform linear|github|markdown"
+        show_usage
+        exit 1
+    fi
 }
 
 # Parse arguments
 parse_arguments "$@"
 
+# Target directory is always current directory
+TARGET_DIR="$(pwd)"
+
 # Detect execution mode
 EXECUTION_MODE=$(detect_execution_mode)
+
+# Determine Specter installation path
+if [ "$EXECUTION_MODE" = "local" ]; then
+    # Local execution: calculate path from script location
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SPECTER_PATH="$(dirname "$SCRIPT_DIR")"
+    print_info "Detected local Specter installation: $SPECTER_PATH"
+else
+    # Remote execution: require --specter-path
+    if [ -z "$SPECTER_PATH" ]; then
+        print_error "Remote installation requires --specter-path argument"
+        echo ""
+        echo "Example:"
+        echo "  curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear --specter-path ~/coding/projects/specter"
+        echo ""
+        echo "Make sure you have:"
+        echo "  1. Cloned the Specter repository"
+        echo "  2. Registered the Specter MCP server with Claude Code"
+        exit 1
+    fi
+fi
+
+# Validate Specter installation
+if [ ! -d "$SPECTER_PATH" ]; then
+    print_error "Specter directory does not exist: $SPECTER_PATH"
+    exit 1
+fi
+
+if [ ! -f "$SPECTER_PATH/pyproject.toml" ]; then
+    print_error "Invalid Specter installation (missing pyproject.toml): $SPECTER_PATH"
+    exit 1
+fi
 
 # Validate platform
 if [[ ! "$PLATFORM" =~ ^(linear|github|markdown)$ ]]; then
@@ -121,6 +143,7 @@ TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 
 print_info "Specter Installation"
 print_info "Execution mode: $EXECUTION_MODE"
+print_info "Specter path: $SPECTER_PATH"
 print_info "Target directory: $TARGET_DIR"
 print_info "Platform: $PLATFORM"
 echo ""
@@ -131,72 +154,27 @@ if [ ! -d "$TARGET_DIR" ]; then
     exit 1
 fi
 
-# Create directory structure
-print_info "Creating directory structure..."
-mkdir -p "$TARGET_DIR/.claude/commands"
-mkdir -p "$TARGET_DIR/.claude/agents"
-mkdir -p "$TARGET_DIR/.specter/config"
-print_success "Directory structure created"
-
-# Install setup command (method depends on execution mode)
-print_info "Installing setup command..."
-
-if [ "$EXECUTION_MODE" = "local" ]; then
-    # Local execution: copy from repository
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    SPECTER_ROOT="$(dirname "$SCRIPT_DIR")"
-
-    if [ ! -f "$SPECTER_ROOT/$SETUP_COMMAND_PATH" ]; then
-        print_error "Could not find setup command at: $SPECTER_ROOT/$SETUP_COMMAND_PATH"
-        print_error "This script must be run from the Specter repository"
-        exit 1
-    fi
-
-    cp "$SPECTER_ROOT/$SETUP_COMMAND_PATH" "$TARGET_DIR/.claude/commands/"
-    print_success "Setup command installed (local copy)"
+# Run the setup CLI
+print_info "Generating Specter workflow files..."
+if uv run --directory "$SPECTER_PATH" specter-setup --project-path "$TARGET_DIR" --platform "$PLATFORM"; then
+    echo ""
+    print_success "Installation complete!"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Restart Claude Code to load the new commands"
+    echo "  2. Start using Specter workflows:"
+    echo "     • /specter-plan - Create strategic plans"
+    echo "     • /specter-roadmap - Create phased roadmaps"
+    echo "     • /specter-spec - Generate technical specifications"
+    echo "     • /specter-build - Execute implementation"
+    echo ""
 else
-    # Remote execution: fetch from GitHub
-    SETUP_COMMAND_URL="$GITHUB_RAW_URL/$SETUP_COMMAND_PATH"
-
-    if command -v curl &> /dev/null; then
-        curl -fsSL "$SETUP_COMMAND_URL" -o "$TARGET_DIR/.claude/commands/specter-setup.md"
-    elif command -v wget &> /dev/null; then
-        wget -qO "$TARGET_DIR/.claude/commands/specter-setup.md" "$SETUP_COMMAND_URL"
-    else
-        print_error "Neither curl nor wget is available"
-        print_error "Please install curl or wget to use remote installation"
-        exit 1
-    fi
-
-    if [ ! -f "$TARGET_DIR/.claude/commands/specter-setup.md" ]; then
-        print_error "Failed to download setup command from GitHub"
-        print_error "URL: $SETUP_COMMAND_URL"
-        exit 1
-    fi
-
-    print_success "Setup command installed (downloaded from GitHub)"
+    print_error "Installation failed"
+    echo ""
+    echo "Troubleshooting:"
+    echo "  1. Verify uv is installed: uv --version"
+    echo "  2. Verify Specter dependencies: cd $SPECTER_PATH && uv sync"
+    echo "  3. Check Specter MCP server is registered: claude mcp list"
+    echo ""
+    exit 1
 fi
-
-# Create initial platform config
-print_info "Creating platform configuration..."
-cat > "$TARGET_DIR/.specter/config/platform.json" <<EOF
-{
-  "platform": "$PLATFORM",
-  "created_at": "$(date -u +"%Y-%m-%dT%H:%M:%S.%6N")",
-  "version": "1.0",
-  "bootstrap": true
-}
-EOF
-print_success "Platform configuration created"
-
-# Success message
-echo ""
-print_success "Specter bootstrap complete!"
-echo ""
-echo "Next steps:"
-echo "  1. Open target project in Claude Code: cd $TARGET_DIR"
-echo "  2. Run setup command: /specter-setup $PLATFORM"
-echo ""
-echo "This will generate all workflow templates for the $PLATFORM platform."
-echo ""
-echo "To check MCP server availability: /mcp list"

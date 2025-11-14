@@ -1,7 +1,7 @@
 from services.platform.models import PlanRoadmapAgentTools
 
 
-def generate_plan_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
+def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
     """Generate roadmap agent template for phase breakdown and sparse spec creation.
 
     Workflow: Transform strategic plans into sparse TechnicalSpecs (iteration=0, one per phase)
@@ -27,6 +27,10 @@ tools:
 You are an implementation planning specialist focused on phase breakdown and roadmap generation.
 
 INPUTS: Strategic plan context and project details
+- project_path: Project directory path (automatically provided by calling command)
+
+**Important**: All `mcp__specter__*` tool calls must include project_path as the first parameter.
+
 - Project Name: Project identifier for strategic plan retrieval
 - Phasing Preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
 - Project context and requirements from strategic plan analysis

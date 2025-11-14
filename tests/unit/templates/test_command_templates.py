@@ -1,14 +1,14 @@
 """Tests for command template generation functions."""
 
-from services.platform.template_coordinator import TemplateCoordinator
 from services.platform.platform_selector import PlatformType
+from services.platform.template_coordinator import TemplateCoordinator
 from services.platform.tool_enums import CommandTemplate
 
 
 class TestPlanRoadmapCommandTemplate:
     def test_template_has_required_tools(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Check YAML frontmatter tools
         assert '- Task(specter-roadmap)' in template
@@ -20,7 +20,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_includes_required_yaml_sections(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         assert '---' in template
         assert 'allowed-tools:' in template
@@ -29,7 +29,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_is_orchestration_focused(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should contain orchestration keywords
         orchestration_terms = ['Orchestration', 'Workflow', 'Coordination']
@@ -48,7 +48,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_has_no_quality_thresholds(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should not contain threshold percentages or direct threshold logic
         threshold_terms = ['85%', '90%', 'quality gate', 'threshold:', 'threshold =', 'if score >']
@@ -57,7 +57,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_includes_parallel_spec_creation(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should include create-spec agent and parallel coordination
         assert 'Task(specter-create-spec)' in template
@@ -65,7 +65,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_includes_mcp_action_handling(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should include MCP action patterns
         mcp_actions = ['refine', 'complete', 'user_input']
@@ -74,7 +74,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_size_is_reasonable(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         lines = template.split('\n')
         line_count = len(lines)
@@ -84,7 +84,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_has_no_agent_behavioral_instructions(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should not contain agent behavioral instructions
         behavioral_instructions = [
@@ -101,7 +101,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_includes_error_handling(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should include error handling
         error_handling_terms = ['Error Handling', 'ERROR', 'failure', 'graceful']
@@ -110,7 +110,7 @@ class TestPlanRoadmapCommandTemplate:
 
     def test_template_maintains_platform_tool_injection(self) -> None:
         coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(CommandTemplate.PLAN_ROADMAP, PlatformType.LINEAR)
+        template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should properly inject platform tools
         assert 'mcp__linear-server__' in template  # Should contain Linear tools

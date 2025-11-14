@@ -578,7 +578,7 @@ async def get_user_feedback(
 
 ### Dual Tool Architecture Pattern
 
-All agent templates follow the established pattern from `plan_roadmap.py`:
+All agent templates follow the established pattern from `roadmap.py`:
 
 **Two Categories of Tools**:
 1. **MCP Specter Tools**: Explicitly defined in frontmatter (always the same regardless of platform)

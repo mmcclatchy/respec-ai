@@ -2,14 +2,14 @@
 
 from services.platform.models import CreateSpecAgentTools, PlanRoadmapAgentTools
 from services.templates.agents.create_spec import generate_create_spec_template
-from services.templates.agents.plan_roadmap import generate_plan_roadmap_template
+from services.templates.agents.roadmap import generate_roadmap_template
 from services.templates.agents.roadmap_critic import generate_roadmap_critic_template
 
 
 class TestPlanRoadmapTemplate:
     def test_template_structure(self) -> None:
         tools = PlanRoadmapAgentTools(create_spec_external='mcp__specter__add_spec')
-        template = generate_plan_roadmap_template(tools)
+        template = generate_roadmap_template(tools)
 
         # Check YAML frontmatter
         assert '---' in template
@@ -34,7 +34,7 @@ class TestPlanRoadmapTemplate:
 
     def test_template_follows_imperative_pattern(self) -> None:
         tools = PlanRoadmapAgentTools(create_spec_external='mcp__specter__add_spec')
-        template = generate_plan_roadmap_template(tools)
+        template = generate_roadmap_template(tools)
 
         # Should contain imperative verbs
         imperative_verbs = ['Parse', 'Break', 'Extract', 'Create', 'Establish', 'Define']
@@ -43,7 +43,7 @@ class TestPlanRoadmapTemplate:
 
     def test_template_no_threshold_references(self) -> None:
         tools = PlanRoadmapAgentTools(create_spec_external='mcp__specter__add_spec')
-        template = generate_plan_roadmap_template(tools)
+        template = generate_roadmap_template(tools)
 
         # Should not contain threshold percentages or scores
         threshold_terms = ['85%', '90%', 'threshold', 'score', '%']
@@ -52,7 +52,7 @@ class TestPlanRoadmapTemplate:
 
     def test_template_includes_error_handling(self) -> None:
         tools = PlanRoadmapAgentTools(create_spec_external='mcp__specter__add_spec')
-        template = generate_plan_roadmap_template(tools)
+        template = generate_roadmap_template(tools)
 
         assert 'ERROR HANDLING' in template or 'Error Handling' in template
 
@@ -166,7 +166,7 @@ class TestTemplateConsistency:
         )
 
         templates = [
-            generate_plan_roadmap_template(plan_tools),
+            generate_roadmap_template(plan_tools),
             generate_roadmap_critic_template(),
             generate_create_spec_template(spec_tools),
         ]
@@ -183,7 +183,7 @@ class TestTemplateConsistency:
         )
 
         templates = [
-            generate_plan_roadmap_template(plan_tools),
+            generate_roadmap_template(plan_tools),
             generate_roadmap_critic_template(),
             generate_create_spec_template(spec_tools),
         ]
@@ -203,7 +203,7 @@ class TestTemplateConsistency:
         )
 
         templates = [
-            generate_plan_roadmap_template(plan_tools),
+            generate_roadmap_template(plan_tools),
             generate_roadmap_critic_template(),
             generate_create_spec_template(spec_tools),
         ]

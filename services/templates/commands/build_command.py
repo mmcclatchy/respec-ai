@@ -16,11 +16,26 @@ Orchestrate the complete implementation workflow, transforming technical specifi
 
 ## Workflow Steps
 
+### 0. Initialize Project Context
+
+Capture the current project directory for multi-project support:
+
+```bash
+pwd
+```
+
+Store the result as PROJECT_PATH:
+```text
+PROJECT_PATH = [result of pwd command]
+```
+
+**Important**: All `mcp__specter__*` tool calls must include `project_path=PROJECT_PATH` (or `project_path: $PROJECT_PATH` in YAML format) as the first parameter.
+
 ### 1. Specification Retrieval and Validation
 Retrieve and validate completed TechnicalSpec from /specter-spec command:
 
-#### Retrieve TechnicalSpec:
-```
+#### Retrieve TechnicalSpec
+```text
 SPEC_NAME = [user provided spec name]
 PROJECT_ID = [extracted from context or user provided]
 
@@ -38,8 +53,8 @@ TECH_STACK = [Extract from TechnicalSpec Technology Stack section]
 ### 2. Parallel Research Orchestration
 Coordinate research synthesis for implementation guidance:
 
-#### Parse Research Requirements:
-```
+#### Parse Research Requirements
+```text
 DOCUMENTATION_PATHS = []
 
 For each item in RESEARCH_REQUIREMENTS:
@@ -67,16 +82,16 @@ Collect: COMPLETE_DOCUMENTATION_PATHS = [All paths from existing docs + research
 ### 3. Planning Loop Initialization and Refinement
 Set up and execute MCP-managed planning quality refinement:
 
-#### Initialize Planning Loop:
-```
+#### Initialize Planning Loop
+```text
 PLANNING_LOOP_ID = mcp__specter__initialize_refinement_loop(loop_type='build_plan')
 
 State to maintain:
 - planning_loop_id: For BuildPlan storage and retrieval
 ```
 
-#### Planning Refinement Cycle:
-```
+#### Planning Refinement Cycle
+```text
 Invoke build-planner agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - research_file_paths: {{COMPLETE_DOCUMENTATION_PATHS}}
@@ -97,8 +112,8 @@ Agent will autonomously:
 Expected: BuildPlan stored in MCP with planning_loop_id
 ```
 
-#### Planning Quality Assessment:
-```
+#### Planning Quality Assessment
+```text
 Invoke build-critic agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - project_id: {{PROJECT_ID}}
@@ -117,8 +132,8 @@ Agent will autonomously:
 Expected: CriticFeedback with Overall Score stored in MCP
 ```
 
-#### MCP Planning Decision:
-```
+#### MCP Planning Decision
+```text
 PLANNING_DECISION = mcp__specter__decide_loop_next_action(
     loop_id=PLANNING_LOOP_ID,
     current_score=PLAN_QUALITY_SCORE
@@ -133,8 +148,8 @@ Returns:
 ### 4. Planning Decision Handling
 Handle MCP Server planning phase responses:
 
-#### If PLANNING_DECISION == "refine":
-```
+#### If PLANNING_DECISION == "refine"
+```text
 Re-invoke build-planner agent (same parameters)
 Agent retrieves previous critic feedback and incorporates into refinement
 Re-invoke build-critic agent
@@ -142,13 +157,13 @@ Call MCP decision again
 Continue until "complete" or "user_input"
 ```
 
-#### If PLANNING_DECISION == "complete":
-```
+#### If PLANNING_DECISION == "complete"
+```text
 Proceed to Step 5: Coding Loop Initialization
 ```
 
-#### If PLANNING_DECISION == "user_input":
-```
+#### If PLANNING_DECISION == "user_input"
+```text
 Stagnation detected in planning loop. Request user guidance:
 
 Retrieve current state:
@@ -181,8 +196,8 @@ Continue refinement with user guidance
 ### 5. Coding Loop Initialization and Refinement
 Set up and execute MCP-managed code quality refinement:
 
-#### Initialize Coding Loop:
-```
+#### Initialize Coding Loop
+```text
 CODING_LOOP_ID = mcp__specter__initialize_refinement_loop(loop_type='build_code')
 
 State to maintain (CRITICAL - TWO loop IDs):
@@ -190,8 +205,8 @@ State to maintain (CRITICAL - TWO loop IDs):
 - coding_loop_id: For code feedback storage/retrieval
 ```
 
-#### Code Implementation Cycle:
-```
+#### Code Implementation Cycle
+```text
 Invoke build-coder agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for BuildPlan retrieval)
@@ -220,8 +235,8 @@ Agent will autonomously:
 Expected: Code implementation committed, platform status updated
 ```
 
-#### Code Quality Assessment:
-```
+#### Code Quality Assessment
+```text
 Invoke build-reviewer agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for BuildPlan retrieval)
@@ -244,8 +259,8 @@ Agent will autonomously:
 Expected: CriticFeedback with Overall Score and test results stored in MCP
 ```
 
-#### MCP Coding Decision:
-```
+#### MCP Coding Decision
+```text
 CODING_DECISION = mcp__specter__decide_loop_next_action(
     loop_id=CODING_LOOP_ID,
     current_score=CODE_QUALITY_SCORE
@@ -260,8 +275,8 @@ Returns:
 ### 6. Coding Decision Handling
 Handle MCP Server coding phase responses:
 
-#### If CODING_DECISION == "refine":
-```
+#### If CODING_DECISION == "refine"
+```text
 Re-invoke build-coder agent (same parameters)
 Agent retrieves previous critic feedback and user feedback (if any)
 Agent addresses feedback items and continues implementation
@@ -270,13 +285,13 @@ Call MCP decision again
 Continue until "complete" or "user_input"
 ```
 
-#### If CODING_DECISION == "complete":
-```
+#### If CODING_DECISION == "complete"
+```text
 Proceed to Step 7: Integration & Documentation
 ```
 
-#### If CODING_DECISION == "user_input":
-```
+#### If CODING_DECISION == "user_input"
+```text
 Stagnation detected in coding loop. Request user guidance:
 
 Retrieve current state:
@@ -313,8 +328,8 @@ Continue refinement with user guidance
 ### 7. Integration & Documentation
 Complete implementation workflow and update specification:
 
-#### Generate Implementation Summary:
-```
+#### Generate Implementation Summary
+```text
 Retrieve final state:
 - BuildPlan: mcp__specter__get_build_plan_markdown(PLANNING_LOOP_ID)
 - Final Feedback: mcp__specter__get_feedback(CODING_LOOP_ID, count=1)
@@ -328,8 +343,8 @@ Generate IMPLEMENTATION_SUMMARY including:
 - Commit Summary: {{GIT_LOG_SUMMARY}}
 ```
 
-#### Update TechnicalSpec:
-```
+#### Update TechnicalSpec
+```text
 Update specification status and implementation details using {{tools.update_spec_tool}}:
 
 Status: "IMPLEMENTED"
@@ -340,8 +355,8 @@ Test Coverage: {{COVERAGE_PERCENTAGE}}%
 Implementation Date: {{CURRENT_DATE}}
 ```
 
-#### Report Completion:
-```
+#### Report Completion
+```text
 Present final summary:
 "✓ Implementation complete for {{SPEC_NAME}}
 
@@ -399,15 +414,15 @@ Ready for deployment."
 
 ### Graceful Degradation Patterns
 
-#### TechnicalSpec Not Available:
-```
+#### TechnicalSpec Not Available
+```text
 Display: "No technical specification found: [spec-name]"
 Suggest: "/specter-spec [spec-name] to create technical specification"
 Exit gracefully with guidance
 ```
 
-#### Research Synthesis Failures:
-```
+#### Research Synthesis Failures
+```text
 IF some research-synthesizer agents fail:
   Continue with available documentation
   Note missing research areas in DOCUMENTATION_PATHS
@@ -415,8 +430,8 @@ IF some research-synthesizer agents fail:
   Proceed with available research
 ```
 
-#### Planning Loop Failures:
-```
+#### Planning Loop Failures
+```text
 IF build-planner fails:
   Retry once with simplified context
   Create minimal BuildPlan from TechnicalSpec
@@ -429,8 +444,8 @@ IF build-critic fails:
   Suggest manual review before coding
 ```
 
-#### Coding Loop Failures:
-```
+#### Coding Loop Failures
+```text
 IF build-coder fails:
   Preserve git commits for rollback
   Report failure with TodoList state
@@ -444,8 +459,8 @@ IF build-reviewer fails:
   Note automated review unavailable
 ```
 
-#### MCP Loop Failures:
-```
+#### MCP Loop Failures
+```text
 IF loop initialization fails:
   Continue with single-pass workflow
   Skip refinement cycles

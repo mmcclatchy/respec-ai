@@ -18,8 +18,8 @@ Specter is a **meta MCP server** that generates platform-specific workflow tools
 **MVP Complete** - Specter is ready for real-world usage:
 - ✅ MCP server fully functional
 - ✅ Multi-project architecture implemented (Phase 1)
-- ✅ All 36+ tools operational
-- ✅ 404 tests passing
+- ✅ All 29+ tools operational
+- ✅ 391 tests passing
 - ✅ Installation and setup validated
 
 See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and [MULTI_PROJECT_DESIGN.md](MULTI_PROJECT_DESIGN.md) for architecture details.
@@ -88,53 +88,33 @@ Installed XX packages in XXms
 - Verify Python 3.13+ is installed: `python --version` or `python3 --version`
 - Install uv if missing: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
-#### Step 3: Configure MCP Server in Claude Code
+#### Step 3: Register Specter MCP Server with Claude Code
 
-Add Specter to your Claude Code MCP configuration.
+Add Specter to your Claude Code MCP configuration using the `claude mcp add` command.
 
-**Edit `~/.claude/config.json`:**
+**Run this command** (replace the path with your actual Specter location from Step 1):
 
-```json
-{
-  "mcpServers": {
-    "specter": {
-      "command": "uv",
-      "args": ["run", "spec-driven-workflow-server"],
-      "cwd": "/absolute/path/to/specter"
-    }
-  }
-}
-```
-
-**Important configuration notes:**
-- Replace `/absolute/path/to/specter` with the actual absolute path from Step 1
-- Use **absolute paths** not relative paths or `~`
-  - ✅ Correct: `"/Users/username/coding/projects/specter"`
-  - ❌ Wrong: `"~/coding/projects/specter"` (tilde won't expand)
-  - ❌ Wrong: `"../specter"` (relative paths won't work)
-
-**If `config.json` doesn't exist:**
 ```bash
-mkdir -p ~/.claude
-echo '{"mcpServers": {}}' > ~/.claude/config.json
-# Then add the specter configuration
+claude mcp add --transport stdio specter -- uv run --directory /absolute/path/to/specter specter-server
 ```
 
-**If you have existing MCP servers**, add Specter to the existing `mcpServers` object:
-```json
-{
-  "mcpServers": {
-    "linear-server": {
-      "command": "...",
-      "args": ["..."]
-    },
-    "specter": {
-      "command": "uv",
-      "args": ["run", "spec-driven-workflow-server"],
-      "cwd": "/absolute/path/to/specter"
-    }
-  }
-}
+**Example with actual path:**
+```bash
+# If you cloned to ~/coding/projects/specter:
+claude mcp add --transport stdio specter -- uv run --directory /Users/username/coding/projects/specter specter-server
+```
+
+**Important notes:**
+- Replace `/absolute/path/to/specter` with your actual Specter directory
+- Use **absolute paths** not relative paths or `~`
+  - ✅ Correct: `/Users/username/coding/projects/specter`
+  - ❌ Wrong: `~/coding/projects/specter` (tilde won't expand)
+  - ❌ Wrong: `../specter` (relative paths won't work)
+- The `--directory` flag tells `uv` where to find the Specter project
+
+**Expected output:**
+```text
+✓ Successfully added MCP server: specter
 ```
 
 #### Step 4: Verify MCP Server
@@ -154,16 +134,16 @@ In Claude Code, run:
 ```text
 Available MCP Servers:
   specter
-    ├─ 36+ tools available
-    ├─ get_bootstrap_files
-    ├─ generate_setup_command
-    ├─ create_plan
+    ├─ 29+ tools available
+    ├─ create_project_plan
+    ├─ store_project_plan
+    ├─ initialize_refinement_loop
     └─ [other tools...]
 ```
 
 **✓ Success criteria:**
 - Specter appears in the MCP server list
-- Tool count shows 36+ tools
+- Tool count shows 29+ tools
 - No error messages
 
 **If Specter doesn't appear**, see [Troubleshooting](#platform-mcp-server-not-found) below.
@@ -195,35 +175,45 @@ cd /path/to/your/project
 
 **Step 2: Run installation script**
 ```bash
-# Use absolute path to Specter installation from Part 1
-~/coding/projects/specter/scripts/install-specter.sh
+# Navigate to your project directory first
+cd ~/path/to/your/project
+
+# Run installation script with platform choice
+~/coding/projects/specter/scripts/install-specter.sh --platform linear
+# or --platform github
+# or --platform markdown
 ```
 
 This creates:
-- `.claude/commands/specter-setup.md` - Setup command file
-- `.specter/config/platform.json` - Platform configuration
+- `.claude/commands/` - All Specter workflow commands
+- `.claude/agents/` - All Specter workflow agents
+- `.specter/config.json` - Platform configuration
 
 **Expected output:**
 ```text
-➜ Specter Installation
-➜ Execution mode: local
-➜ Target directory: /path/to/your/project
-➜ Platform: markdown
-...
-✓ Specter bootstrap complete!
+✅ Specter setup complete!
+
+Platform: linear
+Files Created: 15
+Location: /path/to/your/project
+
+⚠️  IMPORTANT: Restart Claude Code to activate the new commands!
+
+Available Commands (after restart):
+  • /specter-plan - Create strategic plans
+  • /specter-spec - Transform plans into technical specifications
+  • /specter-build - Execute implementation workflows
+  • /specter-roadmap - Create phased roadmaps
+  • /specter-plan-conversation - Convert conversations into plans
+
+🚀 Ready to begin! Restart Claude Code to use the Specter commands.
 ```
 
-**Step 3: Complete setup**
+**Step 3: Restart Claude Code**
 ```bash
+# Exit and restart Claude Code to load new commands
 claude
 ```
-
-In Claude Code:
-```text
-/specter-setup
-```
-
-Choose your platform when prompted (or specify directly: `/specter-setup markdown`).
 
 ---
 
@@ -235,45 +225,16 @@ Choose your platform when prompted (or specify directly: `/specter-setup markdow
 ```bash
 cd /path/to/your/project
 
-# With default platform (markdown)
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash
-
-# With specific platform
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- markdown
+# Choose your platform: linear, github, or markdown
+curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear
 ```
 
-**Step 2: Complete setup**
+This installs all workflow files and creates platform configuration.
+
+**Step 2: Restart Claude Code**
 ```bash
+# Exit and restart Claude Code to load new commands
 claude
-```
-
-In Claude Code:
-```text
-/specter-setup
-```
-
----
-
-#### Method 3: Bootstrap via Claude Code
-
-Use this when installation scripts fail or you prefer manual setup.
-
-**Step 1: Navigate to your project**
-```bash
-cd /path/to/your/project
-claude
-```
-
-**Step 2: Ask Claude Code to install bootstrap files**
-```text
-Install the Specter bootstrap files for this project
-```
-
-This uses the `get_bootstrap_files` MCP tool to create `.claude/commands/specter-setup.md`.
-
-**Step 3: Run setup command**
-```text
-/specter-setup
 ```
 
 ---
@@ -306,7 +267,7 @@ project/
 │       ├── plan-analyst.md
 │       ├── plan-critic.md
 │       ├── analyst-critic.md
-│       ├── plan-roadmap.md
+│       ├── roadmap.md
 │       ├── roadmap-critic.md
 │       └── create-spec.md
 └── .specter/
@@ -388,7 +349,7 @@ Specter supports running multiple projects with explicit project context. Each p
 **For single user / solo development**: Works perfectly with no limitations.
 
 **For multiple projects**:
-- ✅ Set up each project independently with `/specter-setup`
+- ✅ Set up each project independently with `/init-specter`
 - ✅ Different projects can use different platforms
 - ✅ Commands work correctly when project context is clear
 - ⏸️ State resets on MCP server restart (acceptable for MVP)
@@ -841,14 +802,16 @@ Platform selection stored in `.specter/config/platform.json`:
 
 ### Changing Platforms
 
-To switch platforms, simply re-run setup with the new platform:
+To switch platforms, simply re-run the installation script with the new platform:
 
-```text
-/specter-setup [new-platform]
+```bash
+cd /path/to/your/project
+~/coding/projects/specter/scripts/install-specter.sh --platform [new-platform]
+# Then restart Claude Code
 ```
 
-The setup command will:
-- Update `.specter/config/platform.json` with new platform
+The installation will:
+- Update `.specter/config.json` with new platform
 - Regenerate all commands in `.claude/commands/` with new platform-specific tools
 - Regenerate all agents in `.claude/agents/` with updated configurations
 
@@ -864,44 +827,48 @@ The setup command will:
 **Symptoms:**
 - `/mcp list` doesn't show "specter"
 - Error: "MCP server 'specter' not found"
-- Commands like `/specter-setup` not available
+- Specter workflow commands not available
 
 **Solution:**
 
-1. **Verify Claude Code configuration**
+1. **Verify Specter was registered correctly**
    ```bash
-   cat ~/.claude/config.json | grep -A 5 specter
+   claude mcp list
    ```
 
-   Should show:
-   ```json
-   "specter": {
-     "command": "uv",
-     "args": ["run", "spec-driven-workflow-server"],
-     "cwd": "/absolute/path/to/specter"
-   }
+   Should show `specter` in the list of configured servers.
+
+   To see full details:
+   ```bash
+   claude mcp get specter
    ```
 
-2. **Check path is absolute (not relative or tilde)**
-   - ✅ Correct: `"/Users/username/coding/projects/specter"`
-   - ❌ Wrong: `"~/coding/projects/specter"` (tilde won't expand)
-   - ❌ Wrong: `"../specter"` (relative path won't work)
-   - ❌ Wrong: `"./specter"` (relative path won't work)
+2. **If Specter is missing, register it**
+   ```bash
+   claude mcp add --transport stdio specter -- uv run --directory /absolute/path/to/specter specter-server
+   ```
+
+   Replace `/absolute/path/to/specter` with your actual path:
+   - ✅ Correct: `/Users/username/coding/projects/specter`
+   - ❌ Wrong: `~/coding/projects/specter` (tilde won't expand)
+   - ❌ Wrong: `../specter` (relative path won't work)
 
 3. **Verify Specter repository exists and has dependencies**
    ```bash
-   cd /path/to/specter  # Use the path from config.json
+   cd /path/to/specter  # Use the path from your installation
    ls -la  # Should show pyproject.toml, services/, etc.
    uv sync  # Re-install dependencies if needed
    ```
 
-4. **Test Specter runs manually**
+4. **Test Specter runs manually (optional)**
    ```bash
    cd /path/to/specter
-   uv run spec-driven-workflow-server
+   uv run specter-server
    ```
 
    Should start without errors. Press Ctrl+C to stop.
+
+   **Note:** You may see a KeyboardInterrupt error when stopping - this is harmless and does not affect functionality.
 
 5. **Verify uv is available**
    ```bash
@@ -934,9 +901,12 @@ The setup command will:
    ```
 
 **If still not working:**
+- Remove and re-add the MCP server:
+  ```bash
+  claude mcp remove specter
+  claude mcp add --transport stdio specter -- uv run --directory /absolute/path/to/specter specter-server
+  ```
 - Check Claude Code logs for errors (location varies by OS)
-- Verify no typos in config.json (JSON syntax must be valid)
-- Try removing and re-adding the MCP server configuration
 - Ensure no other process is using the same MCP server name
 
 ---
@@ -975,7 +945,7 @@ The setup command will:
 
 **Symptoms:**
 - Typing `/specter-` doesn't autocomplete
-- Error: "Command not found: /specter-setup"
+- Error: "Command not found: /specter-plan"
 - `.claude/commands/` directory is empty or missing files
 
 **Solution:**
@@ -998,13 +968,10 @@ The setup command will:
    ls .claude/  # Should exist
    ```
 
-3. **If files are missing, re-run setup**
+3. **If files are missing, re-run installation**
    ```bash
-   claude
-   ```
-
-   ```text
-   /specter-setup markdown  # or your platform choice
+   ~/coding/projects/specter/scripts/install-specter.sh --platform [your-platform]
+   # Then restart Claude Code
    ```
 
 4. **Verify Specter MCP server is available**
@@ -1107,9 +1074,10 @@ The setup command will:
    chmod -R 755 .specter/
    ```
 
-6. **Re-run setup if configuration is corrupted**
-   ```text
-   /specter-setup [platform]
+6. **Re-run installation if configuration is corrupted**
+   ```bash
+   ~/coding/projects/specter/scripts/install-specter.sh --platform [platform]
+   # Then restart Claude Code
    ```
 
 ---
@@ -1256,15 +1224,12 @@ The setup command will:
    uv sync  # Re-sync with correct Python version
    ```
 
-4. **Update config.json if needed**
+4. **Specify Python version if needed**
 
-   If multiple Python versions exist, specify the correct one in your MCP config:
-   ```json
-   "specter": {
-     "command": "uv",
-     "args": ["run", "--python", "3.13", "spec-driven-workflow-server"],
-     "cwd": "/absolute/path/to/specter"
-   }
+   If multiple Python versions exist, you can specify Python 3.13 when registering:
+   ```bash
+   claude mcp remove specter  # Remove existing registration
+   claude mcp add --transport stdio specter -- uv run --python 3.13 --directory /absolute/path/to/specter specter-server
    ```
 
 ## Best Practices
@@ -1410,8 +1375,8 @@ A: Pull latest changes from repository and re-run installation script. Existing 
 
 ## Next Steps
 
-1. **Install Specter** using one of the installation methods
-2. **Set up your project** with `/specter-setup`
+1. **Install Specter** using the installation script
+2. **Restart Claude Code** to load workflow commands
 3. **Start planning** with `/specter-plan`
 4. **Breakdown the plan into specifications** with `/specter-roadmap`
 5. **Design and Refine specifications** with `/specter-spec`

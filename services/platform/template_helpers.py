@@ -109,7 +109,7 @@ def create_build_command_tools(platform_tools: list[str]) -> str:
     return builder.render_yaml_tools()
 
 
-def create_plan_roadmap_tools(platform_tools: list[str]) -> str:
+def create_roadmap_tools(platform_tools: list[str]) -> str:
     builder = (
         TemplateToolBuilder()
         .add_task_agent('specter-roadmap')

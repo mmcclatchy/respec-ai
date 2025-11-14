@@ -3,9 +3,9 @@ from collections.abc import Callable
 from services.platform.command_strategies.base import CommandStrategy
 from services.platform.models import PlanRoadmapCommandTools
 from services.platform.platform_selector import PlatformType
-from services.platform.template_helpers import create_plan_roadmap_tools
+from services.platform.template_helpers import create_roadmap_tools
 from services.platform.tool_enums import AbstractOperation
-from services.templates.commands import generate_plan_roadmap_command_template
+from services.templates.commands import generate_roadmap_command_template
 
 
 class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
@@ -36,7 +36,7 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
             get_spec_tool,
             update_spec_tool,
         ]
-        tools_yaml = create_plan_roadmap_tools(platform_tools)
+        tools_yaml = create_roadmap_tools(platform_tools)
 
         return PlanRoadmapCommandTools(
             tools_yaml=tools_yaml,
@@ -48,4 +48,4 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
         )
 
     def get_template_func(self) -> Callable[[PlanRoadmapCommandTools], str]:
-        return generate_plan_roadmap_command_template
+        return generate_roadmap_command_template

@@ -15,7 +15,6 @@ from services.mcp.tools import (
     register_all_tools,
     roadmap_tools,
     spec_tools,
-    specter_setup_tools,
 )
 
 from .tool_enums import SpecterMCPTool
@@ -53,7 +52,6 @@ def discover_tool_registration_functions() -> dict[str, list[str]]:
         roadmap_tools,
         spec_tools,
         build_plan_tools,
-        specter_setup_tools,
     ]
 
     discovered_tools: dict[str, list[str]] = {}
