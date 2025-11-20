@@ -91,7 +91,7 @@ Main Agent (via /specter-roadmap)
     │
     ├── 3. Roadmap Generation Loop
     │   ├── Task: roadmap (phase breakdown → roadmap markdown)
-    │   ├── mcp_tool: create_roadmap(project_id, roadmap_markdown)
+    │   ├── mcp_tool: create_roadmap(project_name, roadmap_markdown)
     │   ├── Task: roadmap-critic (quality assessment → CriticFeedback)
     │   ├── mcp_tool: store_critic_feedback(critic_feedback_markdown)
     │   └── mcp_tool: decide_loop_next_action(roadmap_loop_id, quality_score)
@@ -102,7 +102,7 @@ Main Agent (via /specter-roadmap)
     │   └── IF "user_input" → Request roadmap clarification with feedback context
     │
     └── 5. Finalize & Prepare for Spec Phase
-        ├── mcp_tool: get_roadmap(project_id)
+        ├── mcp_tool: get_roadmap(project_name)
         └── Roadmap ready for multiple /specter-spec command invocations
 ```
 
@@ -110,13 +110,13 @@ Main Agent (via /specter-roadmap)
 - **Main Agent → MCP Server**: `get_project_plan_markdown(plan_loop_id)` - Retrieve strategic plan
 - **Main Agent → roadmap**: Strategic plan + objectives + preferences
 - **roadmap → Main Agent**: Implementation roadmap with phased breakdown (markdown)
-- **Main Agent → MCP Server**: `create_roadmap(project_id, roadmap_markdown)` - Create Roadmap model
+- **Main Agent → MCP Server**: `create_roadmap(project_name, roadmap_markdown)` - Create Roadmap model
 - **Main Agent → roadmap-critic**: Roadmap for FSDD assessment
 - **roadmap-critic → Main Agent**: Structured CriticFeedback (markdown format)
 - **Main Agent → MCP Server**: `store_critic_feedback(feedback_markdown)` - Store feedback model
 - **Main Agent → MCP Server**: `decide_loop_next_action(roadmap_loop_id, quality_score)` - Decision logic
 - **MCP Server → Main Agent**: Next action (refine/complete/user_input) with loop state
-- **Main Agent → MCP Server**: `get_roadmap(project_id)` - Final retrieval for /specter-spec phase
+- **Main Agent → MCP Server**: `get_roadmap(project_name)` - Final retrieval for /specter-spec phase
 
 ## Structured Data Models
 
@@ -429,19 +429,19 @@ Main Agent: Creating roadmap with 2-week sprint phases targeting MVP delivery in
 **Roadmap Generation Workflow:**
 - `get_project_plan_markdown(plan_loop_id)` - Retrieve strategic plan from /specter-plan phase
 - `initialize_refinement_loop(loop_type='roadmap')` - Create roadmap refinement loop
-- `create_roadmap(project_id, roadmap_markdown)` - Store Roadmap model
+- `create_roadmap(project_name, roadmap_markdown)` - Store Roadmap model
 - `store_critic_feedback(feedback_markdown)` - Store structured CriticFeedback
 - `decide_loop_next_action(roadmap_loop_id, current_score)` - Loop decision engine
-- `get_roadmap(project_id)` - Retrieve final roadmap for /specter-spec phase
+- `get_roadmap(project_name)` - Retrieve final roadmap for /specter-spec phase
 - `get_loop_status(roadmap_loop_id)` - Monitor loop state (optional)
 - `get_feedback_history(roadmap_loop_id, count)` - Retrieve recent feedback for context
 
 **Unified Spec Management Tools:**
-- `store_spec(project_id, spec_name, spec_markdown)` - Store spec with auto-versioning
-- `get_spec_markdown(project_id, spec_name, loop_id)` - Retrieve spec (by project OR loop)
-- `list_specs(project_id)` - List all specs in project
-- `delete_spec(project_id, spec_name)` - Remove spec from storage
-- `link_loop_to_spec(loop_id, project_id, spec_name)` - Link refinement loop to spec
+- `store_spec(project_name, spec_name, spec_markdown)` - Store spec with auto-versioning
+- `get_spec_markdown(project_name, spec_name, loop_id)` - Retrieve spec (by project OR loop)
+- `list_specs(project_name)` - List all specs in project
+- `delete_spec(project_name, spec_name)` - Remove spec from storage
+- `link_loop_to_spec(loop_id, project_name, spec_name)` - Link refinement loop to spec
 - `unlink_loop(loop_id)` - Remove loop mapping
 
 ### Environment Variables

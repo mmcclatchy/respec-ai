@@ -74,7 +74,7 @@ Exit
 #### Step 2.1: Retrieve TechnicalSpec
 - **Actor**: Main Agent
 - **File**: [build_command.py](services/templates/commands/build_command.py)
-- **Action**: Call `mcp__specter__get_spec_markdown(project_id, spec_name)`
+- **Action**: Call `mcp__specter__get_spec_markdown(project_name, spec_name)`
 - **Implementation Needed**:
   - Add error handling for non-existent spec
   - Validate spec exists before proceeding
@@ -169,7 +169,7 @@ Each research-synthesizer returns a file path:
 - **Action**: Create BuildPlan from TechnicalSpec + research briefs
 
 **Agent Workflow**:
-1. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_id, spec_name)`
+1. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
 2. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)` (empty if first iteration)
 3. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(planning_loop_id)` (none if first iteration)
 4. Read research briefs from file paths (provided as agent parameter)
@@ -180,7 +180,7 @@ Each research-synthesizer returns a file path:
 **Agent Inputs** (passed by Main Agent):
 - `planning_loop_id` (for MCP retrieval/storage)
 - `research_file_paths` (list of paths to research documents)
-- `project_id` (for TechnicalSpec retrieval)
+- `project_name` (for TechnicalSpec retrieval)
 - `spec_name` (for TechnicalSpec retrieval)
 
 **Tools Needed** (in agent frontmatter):
@@ -203,7 +203,7 @@ Each research-synthesizer returns a file path:
 **Agent Workflow**:
 1. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)`
 2. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(planning_loop_id)` (to track progress)
-3. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_id, spec_name)`
+3. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
 4. Critique plan against FSDD criteria
 5. Determine score (0-100, threshold: 80%)
 6. Generate CriticFeedback markdown (score, assessment, issues, recommendations)
@@ -212,7 +212,7 @@ Each research-synthesizer returns a file path:
 
 **Agent Inputs** (passed by Main Agent):
 - `planning_loop_id`
-- `project_id`
+- `project_name`
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
@@ -308,7 +308,7 @@ Each research-synthesizer returns a file path:
 **Agent Workflow**:
 1. Read coding standards from `.specter/coding-standards.md` (if exists, otherwise use BuildPlan Code Standards)
 2. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-3. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_id, spec_name)`
+3. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
 4. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(coding_loop_id)` (if any)
 5. Retrieve user feedback via `mcp__specter__get_user_feedback(coding_loop_id)` (if any)
 6. Check current state of implementation (file system inspection via Read/Glob)
@@ -325,7 +325,7 @@ Each research-synthesizer returns a file path:
 **Agent Inputs** (passed by Main Agent):
 - `coding_loop_id` (for storing critic feedback)
 - `planning_loop_id` (for retrieving BuildPlan - **CRITICAL**)
-- `project_id`
+- `project_name`
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
@@ -356,7 +356,7 @@ Each research-synthesizer returns a file path:
 
 **Agent Workflow**:
 1. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-2. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_id, spec_name)`
+2. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
 3. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(coding_loop_id)` (to track progress)
 4. Inspect codebase (file system inspection via Read/Glob)
 5. Run static analysis (Bash: mypy, ruff)
@@ -377,7 +377,7 @@ Each research-synthesizer returns a file path:
 **Agent Inputs** (passed by Main Agent):
 - `coding_loop_id`
 - `planning_loop_id` (**CRITICAL** - for BuildPlan access)
-- `project_id`
+- `project_name`
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
@@ -449,12 +449,12 @@ Score breakdown (suggested weighting):
 - **File**: [build_command.py](services/templates/commands/build_command.py)
 - **Action**: Update TechnicalSpec with implementation completion status
 - **Implementation Needed**:
-  - Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_id, spec_name)`
+  - Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
   - Update `spec_status` field to `IMPLEMENTED`
   - Optionally add metadata fields:
     - `build_planning_score`: final planning loop score
     - `build_coding_score`: final coding loop score
-  - Store updated spec via `mcp__specter__store_spec(project_id, spec_name, updated_markdown)`
+  - Store updated spec via `mcp__specter__store_spec(project_name, spec_name, updated_markdown)`
 
 **Note**: Do NOT increment `iteration` field - that tracks spec refinement, not build implementation.
 
@@ -790,7 +790,7 @@ Main Agent maintains minimal state (just identifiers):
 ```text
 - planning_loop_id (from Phase 4.1 - initialize_refinement_loop)
 - coding_loop_id (from Phase 5.1 - initialize_refinement_loop)
-- project_id (from command context)
+- project_name (from command context)
 - spec_name (from command parameter)
 - research_file_paths (from Phase 3.2 - collected from research-synthesizer agents)
 ```
@@ -816,9 +816,9 @@ Main Agent collects paths into list.
 **Planning Loop Flow:**
 
 ```text
-1. Main Agent invokes: Task(subagent_type=build_planner, loop_id=planning_loop_id, research_paths=..., project_id=..., spec_name=...)
+1. Main Agent invokes: Task(subagent_type=build_planner, loop_id=planning_loop_id, research_paths=..., project_name=..., spec_name=...)
 2. build_planner agent executes autonomously (retrieve → process → store → exit)
-3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_id=..., spec_name=...)
+3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., spec_name=...)
 4. build_critic agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__specter__decide_loop_next_action(planning_loop_id, current_score)
 6. Main Agent receives MCPResponse with decision and acts:
@@ -831,9 +831,9 @@ Main Agent collects paths into list.
 **Coding Loop Flow:**
 
 ```text
-1. Main Agent invokes: Task(subagent_type=build_coder, coding_loop_id=..., planning_loop_id=..., project_id=..., spec_name=...)
+1. Main Agent invokes: Task(subagent_type=build_coder, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
 2. build_coder agent executes autonomously (retrieve → process → store → exit)
-3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_id=..., spec_name=...)
+3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
 4. build_reviewer agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__specter__decide_loop_next_action(coding_loop_id, current_score)
 6. Main Agent receives MCPResponse with decision and acts:
@@ -968,7 +968,7 @@ When MCP returns status="user_input" (stagnation detected):
 **Decision**: Pure orchestrator. Receives MCP decisions and acts on them. No thinking, just routing. Maintains minimal state (loop IDs only).
 
 ### 9. Agent Autonomy ✅
-**Decision**: All agents retrieve documents from MCP autonomously. Main Agent passes only identifiers (loop IDs, project_id, spec_name), never content.
+**Decision**: All agents retrieve documents from MCP autonomously. Main Agent passes only identifiers (loop IDs, project_name, spec_name), never content.
 
 ---
 

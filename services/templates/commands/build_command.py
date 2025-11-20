@@ -18,18 +18,13 @@ Orchestrate the complete implementation workflow, transforming technical specifi
 
 ### 0. Initialize Project Context
 
-Capture the current project directory for multi-project support:
-
-```bash
-pwd
-```
-
-Store the result as PROJECT_PATH:
+Read project configuration:
 ```text
-PROJECT_PATH = [result of pwd command]
+Read .specter/config.json
+PROJECT_NAME = config["project_name"]
 ```
 
-**Important**: All `mcp__specter__*` tool calls must include `project_path=PROJECT_PATH` (or `project_path: $PROJECT_PATH` in YAML format) as the first parameter.
+**Important**: PROJECT_NAME from config is used for all MCP storage operations.
 
 ### 1. Specification Retrieval and Validation
 Retrieve and validate completed TechnicalSpec from /specter-spec command:
@@ -37,9 +32,8 @@ Retrieve and validate completed TechnicalSpec from /specter-spec command:
 #### Retrieve TechnicalSpec
 ```text
 SPEC_NAME = [user provided spec name]
-PROJECT_ID = [extracted from context or user provided]
 
-TECHNICAL_SPEC = mcp__specter__get_spec_markdown(PROJECT_ID, SPEC_NAME)
+TECHNICAL_SPEC = mcp__specter__get_spec_markdown(PROJECT_NAME, SPEC_NAME)
 IF TECHNICAL_SPEC not found:
   ERROR: "No technical specification found: [SPEC_NAME]"
   SUGGEST: "Run '/specter-spec [SPEC_NAME]' to create technical specification first"
@@ -95,7 +89,7 @@ State to maintain:
 Invoke build-planner agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - research_file_paths: {{COMPLETE_DOCUMENTATION_PATHS}}
-- project_id: {{PROJECT_ID}}
+- project_name: {{PROJECT_NAME}}
 - spec_name: {{SPEC_NAME}}
 
 Agent will autonomously:
@@ -116,7 +110,7 @@ Expected: BuildPlan stored in MCP with planning_loop_id
 ```text
 Invoke build-critic agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
-- project_id: {{PROJECT_ID}}
+- project_name: {{PROJECT_NAME}}
 - spec_name: {{SPEC_NAME}}
 
 Agent will autonomously:
@@ -210,7 +204,7 @@ State to maintain (CRITICAL - TWO loop IDs):
 Invoke build-coder agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for BuildPlan retrieval)
-- project_id: {{PROJECT_ID}}
+- project_name: {{PROJECT_NAME}}
 - spec_name: {{SPEC_NAME}}
 
 Agent will autonomously:
@@ -229,7 +223,7 @@ Agent will autonomously:
    - Run full suite (Bash: pytest --cov)
    - Run static analysis (Bash: mypy, ruff)
 9. Commit changes (Bash: git add, git commit with test results)
-10. Update platform task status using {{tools.update_task_status}}
+10. Update platform task status (using agent's platform-specific tool)
 11. Exit
 
 Expected: Code implementation committed, platform status updated
@@ -240,7 +234,7 @@ Expected: Code implementation committed, platform status updated
 Invoke build-reviewer agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for BuildPlan retrieval)
-- project_id: {{PROJECT_ID}}
+- project_name: {{PROJECT_NAME}}
 - spec_name: {{SPEC_NAME}}
 
 Agent will autonomously:
@@ -345,7 +339,7 @@ Generate IMPLEMENTATION_SUMMARY including:
 
 #### Update TechnicalSpec
 ```text
-Update specification status and implementation details using {{tools.update_spec_tool}}:
+Update specification status and implementation details using mcp__specter__store_spec:
 
 Status: "IMPLEMENTED"
 Implementation Summary: {{IMPLEMENTATION_SUMMARY}}
@@ -376,7 +370,7 @@ Implementation artifacts:
 - BuildPlan: Available via planning_loop_id={{PLANNING_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
-- Platform Status: Updated via {{tools.update_spec_tool}}
+- Spec Status: Updated via mcp__specter__store_spec
 
 Ready for deployment."
 ```

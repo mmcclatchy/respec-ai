@@ -7,14 +7,14 @@ from services.utils.loop_state import MCPResponse
 
 
 @pytest.fixture
-def project_path() -> str:
-    return '/tmp/test-project'
+def project_name() -> str:
+    return 'test-project'
 
 
 class TestLoopToolsIntegration:
-    def test_complete_mcp_tool_workflow_end_to_end(self, project_path: str) -> None:
+    def test_complete_mcp_tool_workflow_end_to_end(self, project_name: str) -> None:
         # Initialize loop
-        init_result = loop_tools.initialize_refinement_loop(project_path, 'spec')
+        init_result = loop_tools.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         assert init_result.status == LoopStatus.INITIALIZED
@@ -29,9 +29,9 @@ class TestLoopToolsIntegration:
         final_result = loop_tools.decide_loop_next_action(loop_id, scores[-1])
         assert final_result.status == LoopStatus.COMPLETED
 
-    def test_realistic_score_progression_scenarios(self, project_path: str) -> None:
+    def test_realistic_score_progression_scenarios(self, project_name: str) -> None:
         # Test gradual improvement scenario
-        loop1 = loop_tools.initialize_refinement_loop(project_path, 'plan')
+        loop1 = loop_tools.initialize_refinement_loop(project_name, 'plan')
 
         # Gradual improvement that should complete (plan threshold is 85)
         progression = [65, 70, 75, 80, 82, 85]
@@ -42,8 +42,8 @@ class TestLoopToolsIntegration:
             else:
                 assert result.status == LoopStatus.COMPLETED
 
-    def test_stagnation_detection_in_full_context(self, project_path: str) -> None:
-        loop_id = loop_tools.initialize_refinement_loop(project_path, 'build_plan').id
+    def test_stagnation_detection_in_full_context(self, project_name: str) -> None:
+        loop_id = loop_tools.initialize_refinement_loop(project_name, 'build_plan').id
 
         # Create stagnation pattern
         stagnant_scores = [70, 71, 70, 71, 70]
@@ -56,9 +56,9 @@ class TestLoopToolsIntegration:
         # Should detect stagnation and request user input
         assert results[-1].status == LoopStatus.USER_INPUT
 
-    def test_configuration_loading_from_environment(self, project_path: str) -> None:
+    def test_configuration_loading_from_environment(self, project_name: str) -> None:
         # Test different loop types use correct thresholds
-        build_code_loop = loop_tools.initialize_refinement_loop(project_path, 'build_code')
+        build_code_loop = loop_tools.initialize_refinement_loop(project_name, 'build_code')
 
         # Score just below build_code threshold (95%) should refine
         result = loop_tools.decide_loop_next_action(build_code_loop.id, 94)
@@ -68,10 +68,10 @@ class TestLoopToolsIntegration:
         result = loop_tools.decide_loop_next_action(build_code_loop.id, 95)
         assert result.status == LoopStatus.COMPLETED
 
-    def test_error_recovery_scenarios(self, project_path: str) -> None:
+    def test_error_recovery_scenarios(self, project_name: str) -> None:
         # Test invalid loop type
         with pytest.raises(LoopValidationError):
-            loop_tools.initialize_refinement_loop(project_path, 'invalid_type')
+            loop_tools.initialize_refinement_loop(project_name, 'invalid_type')
 
         # Test operations on non-existent loop
         with pytest.raises(LoopStateError):
@@ -81,7 +81,7 @@ class TestLoopToolsIntegration:
             loop_tools.get_loop_status('non-existent-id')
 
         # Test score validation
-        valid_loop = loop_tools.initialize_refinement_loop(project_path, 'plan')
+        valid_loop = loop_tools.initialize_refinement_loop(project_name, 'plan')
 
         with pytest.raises(LoopValidationError):
             loop_tools.decide_loop_next_action(valid_loop.id, -1)
@@ -89,15 +89,15 @@ class TestLoopToolsIntegration:
         with pytest.raises(LoopValidationError):
             loop_tools.decide_loop_next_action(valid_loop.id, 101)
 
-    def test_concurrent_loop_management(self, project_path: str) -> None:
+    def test_concurrent_loop_management(self, project_name: str) -> None:
         # Create multiple loops
         loops = []
         for loop_type in ['plan', 'spec', 'build_plan', 'build_code']:
-            loop = loop_tools.initialize_refinement_loop(project_path, loop_type)
+            loop = loop_tools.initialize_refinement_loop(project_name, loop_type)
             loops.append(loop)
 
         # Verify all loops are active
-        active_loops = loop_tools.list_active_loops(project_path)
+        active_loops = loop_tools.list_active_loops(project_name)
         assert len(active_loops) >= 4
 
         loop_ids = {loop.id for loop in active_loops}
@@ -111,8 +111,8 @@ class TestLoopToolsIntegration:
             assert isinstance(result, MCPResponse)
             assert result.id == loop.id
 
-    def test_checkpoint_frequency_boundary_conditions(self, project_path: str) -> None:
-        loop_id = loop_tools.initialize_refinement_loop(project_path, 'plan').id
+    def test_checkpoint_frequency_boundary_conditions(self, project_name: str) -> None:
+        loop_id = loop_tools.initialize_refinement_loop(project_name, 'plan').id
 
         # Add scores up to checkpoint frequency
         for i in range(5):  # Plan loops have checkpoint_frequency = 5
@@ -121,9 +121,9 @@ class TestLoopToolsIntegration:
         # Should trigger user input at checkpoint frequency
         assert result.status == LoopStatus.USER_INPUT
 
-    def test_cross_loop_independence(self, project_path: str) -> None:
-        loop1 = loop_tools.initialize_refinement_loop(project_path, 'spec')
-        loop2 = loop_tools.initialize_refinement_loop(project_path, 'plan')
+    def test_cross_loop_independence(self, project_name: str) -> None:
+        loop1 = loop_tools.initialize_refinement_loop(project_name, 'spec')
+        loop2 = loop_tools.initialize_refinement_loop(project_name, 'plan')
 
         # Advance loop1 significantly
         for score in [70, 75, 80, 85]:
@@ -141,8 +141,8 @@ class TestLoopToolsIntegration:
         result2 = loop_tools.decide_loop_next_action(loop2.id, 70)
         assert result2.status == LoopStatus.REFINE
 
-    def test_score_history_preservation(self, project_path: str) -> None:
-        loop_id = loop_tools.initialize_refinement_loop(project_path, 'spec').id
+    def test_score_history_preservation(self, project_name: str) -> None:
+        loop_id = loop_tools.initialize_refinement_loop(project_name, 'spec').id
 
         scores = [65, 70, 75, 80]
         for score in scores:

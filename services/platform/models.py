@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from .platform_selector import PlatformType
 from .tool_enums import (
@@ -159,6 +159,24 @@ class SpecCommandTools(BaseModel):
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
 
+    @computed_field
+    def create_spec_tool_interpolated(self) -> str:
+        if '*' not in self.create_spec_tool:
+            return self.create_spec_tool
+        return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def get_spec_tool_interpolated(self) -> str:
+        if '*' not in self.get_spec_tool:
+            return self.get_spec_tool
+        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def update_spec_tool_interpolated(self) -> str:
+        if '*' not in self.update_spec_tool:
+            return self.update_spec_tool
+        return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
 
 class PlanCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -167,11 +185,35 @@ class PlanCommandTools(BaseModel):
         ..., description='Platform-specific tool for creating external project completion'
     )
 
+    @computed_field
+    def create_project_tool_interpolated(self) -> str:
+        if '*' not in self.create_project_external:
+            return self.create_project_external
+        return self.create_project_external.replace('*', '{project_name}')
+
+    @computed_field
+    def create_completion_tool_interpolated(self) -> str:
+        if '*' not in self.create_project_completion_external:
+            return self.create_project_completion_external
+        return self.create_project_completion_external.replace('*', '{project_name}')
+
 
 class BuildCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     comment_spec_tool: str = Field(..., description='Platform-specific tool for commenting on specs')
+
+    @computed_field
+    def get_spec_tool_interpolated(self) -> str:
+        if '*' not in self.get_spec_tool:
+            return self.get_spec_tool
+        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def comment_spec_tool_interpolated(self) -> str:
+        if '*' not in self.comment_spec_tool:
+            return self.comment_spec_tool
+        return self.comment_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 
 class PlanRoadmapCommandTools(BaseModel):
@@ -182,9 +224,45 @@ class PlanRoadmapCommandTools(BaseModel):
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
 
+    @computed_field
+    def get_project_plan_tool_interpolated(self) -> str:
+        if '*' not in self.get_project_plan_tool:
+            return self.get_project_plan_tool
+        return self.get_project_plan_tool.replace('*', '{project_name}')
+
+    @computed_field
+    def update_project_plan_tool_interpolated(self) -> str:
+        if '*' not in self.update_project_plan_tool:
+            return self.update_project_plan_tool
+        return self.update_project_plan_tool.replace('*', '{project_name}')
+
+    @computed_field
+    def create_spec_tool_interpolated(self) -> str:
+        if '*' not in self.create_spec_tool:
+            return self.create_spec_tool
+        return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def get_spec_tool_interpolated(self) -> str:
+        if '*' not in self.get_spec_tool:
+            return self.get_spec_tool
+        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def update_spec_tool_interpolated(self) -> str:
+        if '*' not in self.update_spec_tool:
+            return self.update_spec_tool
+        return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
 
 class PlanRoadmapAgentTools(BaseModel):
     create_spec_external: str = Field(..., description='Platform-specific tool for creating external specs')
+
+    @computed_field
+    def create_spec_tool_interpolated(self) -> str:
+        if '*' not in self.create_spec_external:
+            return self.create_spec_external
+        return self.create_spec_external.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 
 class CreateSpecAgentTools(BaseModel):
@@ -192,6 +270,34 @@ class CreateSpecAgentTools(BaseModel):
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
 
+    @computed_field
+    def create_spec_tool_interpolated(self) -> str:
+        if '*' not in self.create_spec_tool:
+            return self.create_spec_tool
+        # Markdown: Write(.specter/projects/*/specter-specs/*.md)
+        return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def get_spec_tool_interpolated(self) -> str:
+        if '*' not in self.get_spec_tool:
+            return self.get_spec_tool
+        # Markdown: Read(.specter/projects/*/specter-specs/*.md)
+        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+    @computed_field
+    def update_spec_tool_interpolated(self) -> str:
+        if '*' not in self.update_spec_tool:
+            return self.update_spec_tool
+        # Markdown: Edit(.specter/projects/*/specter-specs/*.md)
+        return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
 
 class BuildCoderAgentTools(BaseModel):
     update_task_status: str = Field(..., description='Platform-specific tool for updating task/issue status')
+
+    @computed_field
+    def update_task_tool_interpolated(self) -> str:
+        if '*' not in self.update_task_status:
+            return self.update_task_status
+        # Unlikely to have wildcards for task status updates, but handle just in case
+        return self.update_task_status.replace('*', '{project_name}', 1)

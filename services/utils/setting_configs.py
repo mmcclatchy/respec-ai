@@ -41,6 +41,13 @@ class MCPSettings(BaseSettings):
     port: int = 8000
     debug: bool = False
 
+    # Logging configuration
+    log_level: str = Field(default='INFO', description='Logging level: DEBUG, INFO, WARNING, ERROR')
+    log_file: str | None = Field(
+        default='mcp-server.log',
+        description='Log file path. Set to "stdout" for container environments, or absolute path for file logging. None = stderr only',
+    )
+
 
 loop_config = LoopConfig()
 mcp_settings = MCPSettings()

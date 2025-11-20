@@ -62,18 +62,13 @@ Main Agent (via /specter-spec)
 
 ### Step 0: Initialize Project Context
 
-Capture the current project directory for multi-project support:
-
-```bash
-pwd
-```
-
-Store the result as PROJECT_PATH:
+Read project configuration:
 ```text
-PROJECT_PATH = [result of pwd command]
+Read .specter/config.json
+PROJECT_NAME = config["project_name"]
 ```
 
-**Important**: All `mcp__specter__*` tool calls must include `project_path: $PROJECT_PATH` as the first parameter.
+**Important**: PROJECT_NAME from config is used for all MCP storage operations.
 
 ### Step 1: Initialize Technical Design Process
 Retrieve the strategic plan and set up the technical specification workflow:
@@ -81,7 +76,6 @@ Retrieve the strategic plan and set up the technical specification workflow:
 ```text
 # Initialize MCP refinement loop
 mcp__specter__initialize_refinement_loop:
-  project_path: $PROJECT_PATH
   loop_type: "spec"
 
 # Retrieve strategic plan context
@@ -200,7 +194,7 @@ IF LOOP_DECISION == "max_iterations":
 Store the technical specification:
 
 ```text
-Use {tools.create_spec_tool} to store the technical specification:
+Use {tools.create_spec_tool_interpolated} to store the technical specification:
 
 Title: Technical Specification: [Project Name]
 Content: [Complete technical specification with research requirements]

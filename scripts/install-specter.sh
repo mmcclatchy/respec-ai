@@ -41,17 +41,18 @@ show_usage() {
     echo "Installs Specter workflow files to the current directory."
     echo ""
     echo "Usage:"
-    echo "  Local install:   cd ~/myproject && ~/path/to/specter/scripts/install-specter.sh --platform linear"
+    echo "  Local install:   cd ~/myproject && ~/path/to/specter/scripts/install-specter.sh -n myproject -p linear"
     echo ""
-    echo "  Remote install:  cd ~/myproject && curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear --specter-path ~/coding/projects/specter"
+    echo "  Remote install:  cd ~/myproject && curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- -n myproject -p linear --specter-path ~/coding/projects/specter"
     echo ""
     echo "Arguments:"
-    echo "  --platform       Platform choice: linear, github, or markdown (required)"
-    echo "  --specter-path   Path to Specter installation (required for remote install only)"
+    echo "  -n, --project-name   Name for this project (required)"
+    echo "  -p, --platform       Platform choice: linear, github, or markdown (required)"
+    echo "  --specter-path       Path to Specter installation (required for remote install only)"
     echo ""
     echo "Examples:"
     echo "  cd ~/myproject"
-    echo "  ~/specter/scripts/install-specter.sh --platform linear"
+    echo "  ~/specter/scripts/install-specter.sh -n myproject -p linear"
     echo ""
 }
 
@@ -59,10 +60,15 @@ show_usage() {
 parse_arguments() {
     PLATFORM=""
     SPECTER_PATH=""
+    PROJECT_NAME=""
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --platform)
+            -n|--project-name)
+                PROJECT_NAME="$2"
+                shift 2
+                ;;
+            -p|--platform)
                 PLATFORM="$2"
                 shift 2
                 ;;
@@ -70,7 +76,7 @@ parse_arguments() {
                 SPECTER_PATH="$2"
                 shift 2
                 ;;
-            --help|-h)
+            -h|--help)
                 show_usage
                 exit 0
                 ;;
@@ -83,8 +89,14 @@ parse_arguments() {
     done
 
     # Validate required arguments
+    if [ -z "$PROJECT_NAME" ]; then
+        print_error "Project name is required. Use -n <name> or --project-name <name>"
+        show_usage
+        exit 1
+    fi
+
     if [ -z "$PLATFORM" ]; then
-        print_error "Platform is required. Use --platform linear|github|markdown"
+        print_error "Platform is required. Use -p linear|github|markdown or --platform linear|github|markdown"
         show_usage
         exit 1
     fi
@@ -145,6 +157,7 @@ print_info "Specter Installation"
 print_info "Execution mode: $EXECUTION_MODE"
 print_info "Specter path: $SPECTER_PATH"
 print_info "Target directory: $TARGET_DIR"
+print_info "Project name: $PROJECT_NAME"
 print_info "Platform: $PLATFORM"
 echo ""
 
@@ -156,7 +169,7 @@ fi
 
 # Run the setup CLI
 print_info "Generating Specter workflow files..."
-if uv run --directory "$SPECTER_PATH" specter-setup --project-path "$TARGET_DIR" --platform "$PLATFORM"; then
+if uv run --directory "$SPECTER_PATH" specter-setup --project-path "$TARGET_DIR" --project-name "$PROJECT_NAME" --platform "$PLATFORM"; then
     echo ""
     print_success "Installation complete!"
     echo ""

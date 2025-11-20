@@ -10,21 +10,6 @@ description: Conduct conversational requirements gathering
 
 # Conversational Requirements Discovery
 
-## Step 0: Initialize Project Context
-
-Capture the current project directory for multi-project support:
-
-```bash
-pwd
-```
-
-Store the result as PROJECT_PATH:
-```text
-PROJECT_PATH = [result of pwd command]
-```
-
-**Important**: All `mcp__specter__*` tool calls must include `project_path=PROJECT_PATH` as the first parameter.
-
 ## Command Integration
 
 #### Purpose
@@ -168,9 +153,9 @@ I've gathered comprehensive context for your project plan.
 #### Next Steps
 The /specter-plan command is designed to call this command internally. To use this workflow:
 
-\`\`\`bash
+```bash
 /specter-plan [project-name] [optional: initial context]
-\`\`\`
+```
 
 The /specter-plan command will:
 1. Call /specter-plan-conversation to gather requirements (if needed)

@@ -17,7 +17,7 @@ The `/specter-spec` command transforms strategic plans into comprehensive techni
 ```
 
 **Parameters**:
-- `project_name`: User-friendly project identifier (system treats this as project_id)
+- `project_name`: User-friendly Project name (system treats this as project_name)
 - `spec_name`: Specification phase name (e.g., "Phase 1: Core API")
 - `focus`: Optional technical area emphasis (e.g., "API design", "data architecture")
 

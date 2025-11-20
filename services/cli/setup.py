@@ -33,12 +33,13 @@ from services.templates.agents.roadmap import generate_roadmap_template
 from services.templates.agents.roadmap_critic import generate_roadmap_critic_template
 
 
-def setup_project(project_path: str, platform: Literal['linear', 'github', 'markdown']) -> int:
+def setup_project(project_path: str, platform: Literal['linear', 'github', 'markdown'], project_name: str) -> int:
     """Set up Specter workflow files for a project.
 
     Args:
         project_path: Absolute path to project directory
         platform: Platform type (linear, github, or markdown)
+        project_name: Name for this project
 
     Returns:
         Exit code (0 for success, 1 for failure)
@@ -80,7 +81,12 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
             file_path.write_text(content, encoding='utf-8')
             files_written.append(str(file_path.relative_to(project)))
 
-        config = {'platform': platform, 'created_at': datetime.now().isoformat(), 'version': '1.0'}
+        config = {
+            'project_name': project_name,
+            'platform': platform,
+            'created_at': datetime.now().isoformat(),
+            'version': '1.0',
+        }
         config_path = project / '.specter' / 'config.json'
         config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         files_written.append(str(config_path.relative_to(project)))
@@ -144,6 +150,7 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
 def main() -> int:
     parser = argparse.ArgumentParser(description='Set up Specter workflow files for a project')
     parser.add_argument('--project-path', required=True, help='Absolute path to project directory')
+    parser.add_argument('--project-name', required=True, help='Name for this project')
     parser.add_argument(
         '--platform',
         required=True,
@@ -153,7 +160,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    return setup_project(args.project_path, args.platform)
+    return setup_project(args.project_path, args.platform, args.project_name)
 
 
 if __name__ == '__main__':

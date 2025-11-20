@@ -170,7 +170,7 @@ class TestMarkdownPlatformScoping:
 
         assert info['platform_capabilities'] == expected_capabilities
 
-        # Should include all scoped tools
+        # Should include all scoped tools (9 total)
         assert len(info['platform_tools']) == 9
         assert 'create_spec_tool' in info['platform_tools']
         assert info['platform_tools']['create_spec_tool'] == 'Write(.specter/projects/*/specter-specs/*.md)'
