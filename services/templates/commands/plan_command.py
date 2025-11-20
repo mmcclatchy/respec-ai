@@ -63,24 +63,20 @@ description: Orchestrate strategic planning workflow
 
 ## Step 0: Initialize Project Context
 
-Capture the current project directory for multi-project support:
-
-```bash
-pwd
-```
-
-Store the result as PROJECT_PATH. This will be passed to all Specter MCP tools.
-
+Read project configuration:
 ```text
-PROJECT_PATH = [result of pwd command]
+Read .specter/config.json
+PROJECT_NAME = config["project_name"]
 ```
+
+**Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during Specter installation.
 
 ## Context Variables
 
 All Specter MCP tools require project context:
-- **PROJECT_PATH**: Current working directory from Step 0 - MUST be passed as first parameter to all `mcp__specter__*` tool calls
+- **PROJECT_NAME**: From config - used as identifier for all MCP storage operations
 
-Example usage: `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PATH, loop_type='plan')`
+Example usage: `mcp__specter__initialize_refinement_loop(loop_type='plan')`
 
 ## State Management
 #### Track only essential orchestration state
@@ -91,19 +87,19 @@ Example usage: `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PA
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
 - **USER_DECISION**: String from user choice - values: "continue_conversation", "refine_plan", "accept_plan"
-- **ANALYST_LOOP_ID**: String returned from MCP `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PATH, loop_type='analyst')` - required for MCP loop management during analyst validation (Steps 6-9)
+- **ANALYST_LOOP_ID**: String returned from MCP `mcp__specter__initialize_refinement_loop(loop_type='analyst')` - required for MCP loop management during analyst validation (Steps 6-9)
 - **ANALYST_SCORE**: Integer from analyst-critic feedback retrieval - needed for MCP loop decisions
 
 #### Data Storage Pattern
 Human-driven phase (Steps 1-5):
 - Uses variables for orchestration state (CONVERSATION_CONTEXT, CURRENT_PLAN, CRITIC_FEEDBACK)
-- Stores plan in MCP using PROJECT_NAME: `mcp__specter__store_project_plan(project_path, project_name, plan_markdown)`
+- Stores plan in MCP using PROJECT_NAME: `mcp__specter__store_project_plan(project_name, plan_markdown)`
 - Writes plan to external file/platform using platform-specific tools
 - Plan-critic returns feedback to Main Agent (not stored in MCP during human phase)
 
 Automated analyst phase (Steps 6-9):
 - Initializes MCP refinement loop with ANALYST_LOOP_ID
-- Stores plan copy in analyst loop: `mcp__specter__store_project_plan(project_path, ANALYST_LOOP_ID, plan_markdown)`
+- Stores plan copy in analyst loop: `mcp__specter__store_project_plan(ANALYST_LOOP_ID, plan_markdown)`
 - Analyst agents use ANALYST_LOOP_ID for all MCP operations
 - MCP Server manages loop state and decisions
 
@@ -174,7 +170,7 @@ Strategic plan creation process:
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
 4. **Store in variable** as CURRENT_PLAN for next steps
-5. **Store in MCP** using: `mcp__specter__store_project_plan(project_path=PROJECT_PATH, project_name=PROJECT_NAME, project_plan_markdown=CURRENT_PLAN)`
+5. **Store in MCP** using: `mcp__specter__store_project_plan(project_name=PROJECT_NAME, project_plan_markdown=CURRENT_PLAN)`
 
 ## Step 3b: Write Plan to External File/Platform
 
@@ -182,7 +178,7 @@ Strategic plan creation process:
 
 Write the strategic plan to the user's platform using the platform-specific tool:
 ```text
-{tools.create_project_external}
+{tools.create_project_tool_interpolated}
 ```
 
 This creates:
@@ -202,7 +198,7 @@ Input: PROJECT_NAME
 ```
 
 #### Plan-critic workflow
-1. **Agent retrieves strategic plan** from MCP using `mcp__specter__get_project_plan_markdown(project_path=PROJECT_PATH, project_name=PROJECT_NAME)`
+1. **Agent retrieves strategic plan** from MCP using `mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)`
 2. **Agent evaluates plan** against FSDD framework
 3. **Agent returns feedback markdown** to Main Agent (human-driven workflow)
 
@@ -363,10 +359,10 @@ Present options to user:
 #### Initialize the MCP refinement loop for analyst validation
 
 Use the MCP tool `mcp__specter__initialize_refinement_loop`:
-- Call `mcp__specter__initialize_refinement_loop(project_path=PROJECT_PATH, loop_type='analyst')`
+- Call `mcp__specter__initialize_refinement_loop(loop_type='analyst')`
 - Store the returned loop ID as `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
-- Retrieve the strategic plan from MCP using `mcp__specter__get_project_plan_markdown(project_path=PROJECT_PATH, project_name=PROJECT_NAME)`
-- Store it in the analyst loop using `mcp__specter__store_project_plan(project_path=PROJECT_PATH, project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
+- Retrieve the strategic plan from MCP using `mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)`
+- Store it in the analyst loop using `mcp__specter__store_project_plan(project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
 
 ## Step 7: Extract Objectives
 
@@ -432,8 +428,8 @@ Use the MCP tool `mcp__specter__decide_loop_next_action`:
 - Store completion report: `mcp__specter__store_plan_completion_report(PROJECT_NAME, completion_report_markdown)`
 - Display completion message with final analyst score
 - Present final output using the stored completion report
-- Create external project using {tools.create_project_external}
-- Create external project completion using {tools.create_project_completion_external}
+- Create external project using {tools.create_project_tool_interpolated}
+- Create external project completion using {tools.create_completion_tool_interpolated}
 
 ## Final Output Format
 ```markdown

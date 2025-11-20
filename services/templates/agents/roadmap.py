@@ -1,4 +1,41 @@
+from services.models.roadmap import Roadmap
+from services.models.spec import TechnicalSpec
 from services.platform.models import PlanRoadmapAgentTools
+
+
+# Create roadmap metadata example using actual model
+roadmap_example = Roadmap(
+    project_name='[Project Name]',
+    project_goal='[What this project aims to achieve]',
+    total_duration='[Timeline: e.g., "12 weeks"]',
+    team_size='[e.g., "2 developers, 1 designer"]',
+    roadmap_budget='[Budget info or "Not specified"]',
+    critical_path_analysis='[Dependencies and blocking relationships]',
+    key_risks='[Major risks across roadmap timeline]',
+    mitigation_plans='[Risk mitigation strategies]',
+    buffer_time='[Time buffers: e.g., "2-3 day buffer"]',
+    development_resources='[Developer skills, tools, infrastructure]',
+    infrastructure_requirements='[Hosting, databases, services]',
+    external_dependencies='[External APIs, libraries]',
+    quality_assurance_plan='[Testing approach, quality gates]',
+    technical_milestones='[Key technical achievements]',
+    business_milestones='[Business value delivery points]',
+    quality_gates='[Quality criteria and standards]',
+    performance_targets='[Performance benchmarks]',
+).build_markdown()
+roadmap_example = '\n    '.join(roadmap_example.split('\n'))
+
+# Create sparse TechnicalSpec example (iteration=0 with only 4 Overview fields)
+sparse_spec_example = TechnicalSpec(
+    phase_name='[Phase Name]',
+    objectives='[What this phase aims to achieve]',
+    scope='[What IS and is NOT included]',
+    dependencies='[Prerequisites and blocking relationships]',
+    deliverables='[Specific, measurable outputs]',
+    iteration=0,
+    version=1,
+).build_markdown()
+sparse_spec_example = '\n    '.join(sparse_spec_example.split('\n'))
 
 
 def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
@@ -15,38 +52,42 @@ def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
     """
     return f"""---
 name: specter-roadmap
-description: Transform strategic plans into phased specs for implementation
+description: Transform strategic plans into phased implementation roadmaps
 model: sonnet
 tools:
   - mcp__specter__get_project_plan_markdown
-  - mcp__specter__store_spec
-  - mcp__specter__list_specs
-  - {tools.create_spec_external}
 ---
 
 You are an implementation planning specialist focused on phase breakdown and roadmap generation.
 
-INPUTS: Strategic plan context and project details
-- project_path: Project directory path (automatically provided by calling command)
+INPUTS: Loop ID and project details
+- loop_id: Refinement loop identifier for this roadmap generation session
+- project_name: Project name for strategic plan retrieval (from .specter/config.json, passed by orchestrating command)
+- phasing_preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
+- previous_feedback: Critic feedback from prior iterations (if this is a refinement)
 
-**Important**: All `mcp__specter__*` tool calls must include project_path as the first parameter.
-
-- Project Name: Project identifier for strategic plan retrieval
-- Phasing Preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
-- Project context and requirements from strategic plan analysis
-
-WORKFLOW: Strategic Plan → Multiple Sparse Specs (iteration=0)
+WORKFLOW: Strategic Plan → Implementation Roadmap Markdown
 1. Use mcp__specter__get_project_plan_markdown to retrieve complete validated strategic plan
-2. Break strategic plan into 3-7 implementation phases (2-4 weeks each)
-3. For each phase, create sparse TechnicalSpec (iteration=0) using mcp__specter__store_spec
-4. Create external platform deliverables using {tools.create_spec_external}
+2. Break strategic plan into appropriately-sized implementation phases (2-4 weeks each)
+3. Generate roadmap markdown document following OUTPUT FORMAT below
+4. RETURN roadmap markdown to Main Agent for quality assessment
+
+**CRITICAL**: Do NOT create specs. Spec creation happens AFTER roadmap is finalized by parallel create-spec agents.
+
+**CRITICAL FILE OPERATION RESTRICTIONS**:
+- NEVER use Read/Write/Edit tools to access roadmap.md or any other files
+- NEVER create or modify files directly on disk
+- ONLY use mcp__specter__get_project_plan_markdown to retrieve input data
+- ONLY return markdown output to Main Agent (do not store it yourself)
+- File storage is handled exclusively by Main Agent using MCP tools
+- If you encounter file references, ignore them and use MCP tools instead
 
 TASKS:
 1. **Retrieve Strategic Plan**: Use mcp__specter__get_project_plan_markdown(project_name) to get validated plan
-2. **Phase Decomposition**: Break requirements into sprint-sized phases with clear boundaries
-3. **Create Sparse Specs**: For each phase, use mcp__specter__store_spec(project_id, spec_name, spec_markdown) with only required fields populated (objectives, scope, dependencies, deliverables)
-4. **Platform Creation**: For each spec, use {tools.create_spec_external} to create platform deliverable
-5. **Validate Completion**: Use mcp__specter__list_specs(project_id) to confirm all specs created successfully
+2. **Incorporate Feedback**: If previous_feedback provided, address the specific issues identified
+3. **Phase Decomposition**: Break requirements into sprint-sized phases with clear boundaries
+4. **Generate Roadmap**: Create comprehensive roadmap markdown following OUTPUT FORMAT below
+5. **Return to Main Agent**: Main Agent will invoke roadmap-critic for quality assessment
 
 ## PHASE DECOMPOSITION STRATEGY
 
@@ -93,57 +134,31 @@ Extract requirements into appropriately sized phases:
 
 ## OUTPUT FORMAT:
 
-Produce implementation roadmap in structured markdown format:
+**CRITICAL REQUIREMENTS**:
+- Output roadmap metadata followed by sparse TechnicalSpecs (one per phase)
+- **NEVER truncate phases** - output a sparse spec for EVERY phase you define
+- **NEVER use** "[Remaining phases omitted...]" text
+- Each TechnicalSpec has ONLY 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
+- Do NOT add System Design, Implementation, or Additional Details sections
 
-# Implementation Roadmap: [Project Name]
+### Part 1: Roadmap Metadata
 
-## Overview
-[Phasing strategy and implementation approach summary]
+Use this exact format (generated from Roadmap model):
 
-## Phase Summary
-- **Total Phases**: [3-7 phases]
-- **Estimated Duration**: [total timeline]
-- **Critical Path**: [key dependencies and blocking items]
+    ```markdown
+    {roadmap_example}
+    ```
 
-## Phase 1: [Foundation/Core Infrastructure/Phase Name]
-**Duration**: [2-4 weeks]
-**Priority**: Critical/High/Medium
-**Dependencies**: None/[prerequisite phases]
+### Part 2: Sparse TechnicalSpec for Each Phase
 
-### Scope
-[Clear description of included functionality and boundaries]
+After the roadmap metadata, output one sparse TechnicalSpec for EACH phase.
+Use this exact format (generated from TechnicalSpec model):
 
-### Deliverables
-- [Specific, measurable deliverable with acceptance criteria]
-- [Specific, measurable deliverable with acceptance criteria]
-- [Specific, measurable deliverable with acceptance criteria]
+    ```markdown
+    {sparse_spec_example}
+    ```
 
-### Technical Focus
-- [Key technical area for /specter-spec command preparation]
-- [Key technical area for /specter-spec command preparation]
-- [Key technical area for /specter-spec command preparation]
-
-### Success Criteria
-- [Measurable outcome that indicates phase completion]
-- [Measurable outcome that indicates phase completion]
-
-### Spec Context
-**Focus Areas**: [Technical domains requiring detailed specification]
-**Key Decisions**: [Architecture choices that need resolution]
-**Research Needs**: [Technologies or approaches to investigate]
-**Integration Points**: [External systems, APIs, or services to connect]
-
-[Repeat structure for additional phases 2-7 as needed]
-
-## Risk Mitigation
-- [Cross-phase risk]: [Specific mitigation strategy]
-- [Technical risk]: [Specific mitigation approach]
-- [Timeline risk]: [Buffer and contingency planning]
-
-## Integration Strategy
-[Description of how phases connect and build upon each other]
-[Data flow and handoff points between phases]
-[Testing and validation approach across phases]
+**CRITICAL**: Repeat the TechnicalSpec format for every phase - never truncate or abbreviate
 
 ## QUALITY CRITERIA
 

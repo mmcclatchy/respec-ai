@@ -9,17 +9,17 @@ from services.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture
-def project_path() -> str:
-    return '/tmp/test-project'
+def project_name() -> str:
+    return 'test-project'
 
 
 class TestBuildPlanToolsIntegration:
-    def test_store_build_plan_end_to_end(self, project_path: str) -> None:
+    def test_store_build_plan_end_to_end(self, project_name: str) -> None:
         state_manager = InMemoryStateManager()
         build_plan_tools = BuildPlanTools(state_manager)
         loop_tools = LoopTools(state_manager)
 
-        loop_response = loop_tools.initialize_refinement_loop(project_path, 'build_plan')
+        loop_response = loop_tools.initialize_refinement_loop(project_name, 'build_plan')
         loop_id = loop_response.id
 
         build_plan = BuildPlan(
@@ -43,22 +43,22 @@ class TestBuildPlanToolsIntegration:
             build_status=BuildStatus.PLANNING,
         )
 
-        result = build_plan_tools.store_build_plan(project_path, build_plan, loop_id)
+        result = build_plan_tools.store_build_plan(loop_id, build_plan)
 
         assert result.id == loop_id
         assert result.status in [LoopStatus.INITIALIZED, LoopStatus.IN_PROGRESS]
         assert 'E-Commerce Platform' in result.message
 
-        stored_plan = build_plan_tools.get_build_plan_data(project_path, loop_id)
+        stored_plan = build_plan_tools.get_build_plan_data(loop_id)
         assert stored_plan.project_name == 'E-Commerce Platform'
         assert stored_plan.project_goal == 'Build scalable online marketplace'
 
-    def test_get_build_plan_markdown_integration(self, project_path: str) -> None:
+    def test_get_build_plan_markdown_integration(self, project_name: str) -> None:
         state_manager = InMemoryStateManager()
         build_plan_tools = BuildPlanTools(state_manager)
         loop_tools = LoopTools(state_manager)
 
-        loop_response = loop_tools.initialize_refinement_loop(project_path, 'build_plan')
+        loop_response = loop_tools.initialize_refinement_loop(project_name, 'build_plan')
         loop_id = loop_response.id
 
         build_plan = BuildPlan(
@@ -70,8 +70,8 @@ class TestBuildPlanToolsIntegration:
             database='PostgreSQL with connection pooling',
         )
 
-        build_plan_tools.store_build_plan(project_path, build_plan, loop_id)
-        result = build_plan_tools.get_build_plan_markdown(project_path, loop_id)
+        build_plan_tools.store_build_plan(loop_id, build_plan)
+        result = build_plan_tools.get_build_plan_markdown(loop_id)
 
         assert result.id == loop_id
         assert 'API Gateway Service' in result.message
@@ -79,7 +79,7 @@ class TestBuildPlanToolsIntegration:
         assert '## Technology Stack' in result.message
         assert '### Primary Language' in result.message
 
-    def test_list_build_plans_integration(self, project_path: str) -> None:
+    def test_list_build_plans_integration(self, project_name: str) -> None:
         state_manager = InMemoryStateManager()
         build_plan_tools = BuildPlanTools(state_manager)
         loop_tools = LoopTools(state_manager)
@@ -91,26 +91,26 @@ class TestBuildPlanToolsIntegration:
         ]
 
         for project_name, project_goal in plans_data:
-            loop_response = loop_tools.initialize_refinement_loop(project_path, 'build_plan')
+            loop_response = loop_tools.initialize_refinement_loop(project_name, 'build_plan')
             loop_id = loop_response.id
 
             build_plan = BuildPlan(
                 project_name=project_name,
                 project_goal=project_goal,
             )
-            build_plan_tools.store_build_plan(project_path, build_plan, loop_id)
+            build_plan_tools.store_build_plan(loop_id, build_plan)
 
-        result = build_plan_tools.list_build_plans(project_path, 2)
+        result = build_plan_tools.list_build_plans(2)
         assert 'Found 2 build plan' in result.message
         assert 'Notification Service' in result.message
         assert 'User Management System' in result.message
 
-    def test_delete_build_plan_integration(self, project_path: str) -> None:
+    def test_delete_build_plan_integration(self, project_name: str) -> None:
         state_manager = InMemoryStateManager()
         build_plan_tools = BuildPlanTools(state_manager)
         loop_tools = LoopTools(state_manager)
 
-        loop_response = loop_tools.initialize_refinement_loop(project_path, 'build_plan')
+        loop_response = loop_tools.initialize_refinement_loop(project_name, 'build_plan')
         loop_id = loop_response.id
 
         build_plan = BuildPlan(
@@ -118,27 +118,27 @@ class TestBuildPlanToolsIntegration:
             project_goal='Headless CMS with REST and GraphQL APIs',
         )
 
-        build_plan_tools.store_build_plan(project_path, build_plan, loop_id)
-        result = build_plan_tools.delete_build_plan(project_path, loop_id)
+        build_plan_tools.store_build_plan(loop_id, build_plan)
+        result = build_plan_tools.delete_build_plan(loop_id)
 
         assert result.id == loop_id
         assert 'Content Management System' in result.message
 
-    def test_build_plan_not_found_error(self, project_path: str) -> None:
+    def test_build_plan_not_found_error(self, project_name: str) -> None:
         state_manager = InMemoryStateManager()
         build_plan_tools = BuildPlanTools(state_manager)
         loop_tools = LoopTools(state_manager)
 
-        loop_response = loop_tools.initialize_refinement_loop(project_path, 'build_plan')
+        loop_response = loop_tools.initialize_refinement_loop(project_name, 'build_plan')
         loop_id = loop_response.id
 
         try:
-            build_plan_tools.get_build_plan_data(project_path, loop_id)
+            build_plan_tools.get_build_plan_data(loop_id)
             assert False, 'Should have raised ResourceError'
         except Exception as e:
             assert 'No build plan stored' in str(e)
 
-    def test_loop_not_found_error(self, project_path: str) -> None:
+    def test_loop_not_found_error(self) -> None:
         state_manager = InMemoryStateManager()
         build_plan_tools = BuildPlanTools(state_manager)
 
@@ -148,7 +148,7 @@ class TestBuildPlanToolsIntegration:
         )
 
         try:
-            build_plan_tools.store_build_plan(project_path, build_plan, 'invalid-loop-id')
+            build_plan_tools.store_build_plan('invalid-loop-id', build_plan)
             assert False, 'Should have raised ResourceError'
         except Exception as e:
             assert 'Loop does not exist' in str(e)

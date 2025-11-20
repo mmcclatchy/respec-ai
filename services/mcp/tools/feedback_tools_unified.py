@@ -20,25 +20,20 @@ class UnifiedFeedbackTools:
         self.state = state
         # Store user feedback separately (simple markdown strings)
         # Critic feedback goes into LoopState.feedback_history (structured CriticFeedback objects)
-        # Storage key format: "project_path:loop_id"
-        self._user_feedback: dict[str, list[str]] = {}
+        self._user_feedback: dict[str, list[str]] = {}  # loop_id -> list of feedback
         # Analysis storage for plan-analyst workflow
-        # Storage key format: "project_path:loop_id"
-        self._analysis_storage: dict[str, str] = {}
+        self._analysis_storage: dict[str, str] = {}  # loop_id -> analysis
 
-    def store_critic_feedback(self, project_path: str, loop_id: str, feedback_markdown: str) -> MCPResponse:
+    def store_critic_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
         """Store structured critic feedback from automated assessment.
 
         Args:
-            project_path: Absolute path to project directory
             loop_id: Loop identifier
             feedback_markdown: CriticFeedback in markdown format
 
         Returns:
             MCPResponse with confirmation and score
         """
-        if not project_path or not project_path.strip():
-            raise ToolError('Project path cannot be empty')
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
         if not feedback_markdown or not feedback_markdown.strip():
@@ -61,19 +56,16 @@ class UnifiedFeedbackTools:
             message=f'Stored critic feedback for loop {loop_id} (Score: {feedback.overall_score})',
         )
 
-    def store_user_feedback(self, project_path: str, loop_id: str, feedback_markdown: str) -> MCPResponse:
+    def store_user_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
         """Store user-provided feedback during stagnation or user_input status.
 
         Args:
-            project_path: Absolute path to project directory
             loop_id: Loop identifier
             feedback_markdown: User feedback in markdown format
 
         Returns:
             MCPResponse with confirmation
         """
-        if not project_path or not project_path.strip():
-            raise ToolError('Project path cannot be empty')
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
         if not feedback_markdown or not feedback_markdown.strip():
@@ -84,7 +76,7 @@ class UnifiedFeedbackTools:
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = f'{project_path}:{loop_id}'
+        storage_key = loop_id
 
         # Initialize user feedback list if needed
         if storage_key not in self._user_feedback:
@@ -99,7 +91,7 @@ class UnifiedFeedbackTools:
             message=f'Stored user feedback for loop {loop_id}',
         )
 
-    def get_feedback(self, project_path: str, loop_id: str, count: int = 2) -> MCPResponse:
+    def get_feedback(self, loop_id: str, count: int = 2) -> MCPResponse:
         """Get recent feedback (critic + user) for a loop in chronological order.
 
         Returns combined feedback showing recent iteration progression and user guidance.
@@ -107,7 +99,6 @@ class UnifiedFeedbackTools:
         previous iteration for stagnation detection (aligns with <5 points over 2 iterations).
 
         Args:
-            project_path: Absolute path to project directory
             loop_id: Loop identifier
             count: Number of recent critic feedback iterations to retrieve (default: 2)
                    User feedback always included as it's typically sparse
@@ -115,8 +106,6 @@ class UnifiedFeedbackTools:
         Returns:
             MCPResponse with combined feedback markdown or empty message
         """
-        if not project_path or not project_path.strip():
-            raise ToolError('Project path cannot be empty')
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
         if count <= 0:
@@ -127,7 +116,7 @@ class UnifiedFeedbackTools:
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = f'{project_path}:{loop_id}'
+        storage_key = loop_id
 
         # Get recent critic feedback from loop state (limited by count)
         critic_feedback_list = loop_state.get_recent_feedback(count=count)
@@ -174,19 +163,16 @@ class UnifiedFeedbackTools:
         message = '\n'.join(feedback_parts)
         return MCPResponse(id=loop_id, status=loop_state.status, message=message)
 
-    def store_current_analysis(self, project_path: str, loop_id: str, analysis: str) -> MCPResponse:
+    def store_current_analysis(self, loop_id: str, analysis: str) -> MCPResponse:
         """Store current analysis (used by plan-analyst workflow).
 
         Args:
-            project_path: Absolute path to project directory
             loop_id: Loop identifier
             analysis: Structured analysis in markdown format
 
         Returns:
             MCPResponse with confirmation
         """
-        if not project_path or not project_path.strip():
-            raise ToolError('Project path cannot be empty')
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
         if not analysis or not analysis.strip():
@@ -197,22 +183,19 @@ class UnifiedFeedbackTools:
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = f'{project_path}:{loop_id}'
+        storage_key = loop_id
         self._analysis_storage[storage_key] = analysis
         return MCPResponse(id=loop_id, status=loop_state.status, message=f'Stored analysis for loop {loop_id}')
 
-    def get_previous_analysis(self, project_path: str, loop_id: str) -> MCPResponse:
+    def get_previous_analysis(self, loop_id: str) -> MCPResponse:
         """Get previous analysis (used by plan-analyst workflow).
 
         Args:
-            project_path: Absolute path to project directory
             loop_id: Loop identifier
 
         Returns:
             MCPResponse with analysis content or empty message
         """
-        if not project_path or not project_path.strip():
-            raise ToolError('Project path cannot be empty')
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
 
@@ -221,7 +204,7 @@ class UnifiedFeedbackTools:
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = f'{project_path}:{loop_id}'
+        storage_key = loop_id
         analysis = self._analysis_storage.get(storage_key, '')
         if analysis:
             message = f'Previous analysis for loop {loop_id}:\n\n{analysis}'
@@ -255,25 +238,22 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
     feedback_tools = UnifiedFeedbackTools(state_manager)
 
     @mcp.tool()
-    async def store_critic_feedback(
-        project_path: str, loop_id: str, feedback_markdown: str, ctx: Context
-    ) -> MCPResponse:
+    async def store_critic_feedback(loop_id: str, feedback_markdown: str, ctx: Context) -> MCPResponse:
         """Store critic feedback from automated assessment agents.
 
         Parses structured markdown into CriticFeedback model and stores in LoopState.
         Used by all critic agents (build-critic, plan-critic, analyst-critic, etc.).
 
         Parameters:
-        - project_path: Absolute path to project directory
         - loop_id: Loop identifier
         - feedback_markdown: CriticFeedback in structured markdown format
 
         Returns:
         - MCPResponse: Contains loop_id, status, confirmation with score
         """
-        await ctx.info(f'Storing critic feedback for loop {loop_id} in project {project_path}')
+        await ctx.info(f'Storing critic feedback for loop {loop_id}')
         try:
-            result = feedback_tools.store_critic_feedback(project_path, loop_id, feedback_markdown)
+            result = feedback_tools.store_critic_feedback(loop_id, feedback_markdown)
             await ctx.info(f'Stored critic feedback for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -284,7 +264,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
             raise ToolError(f'Unexpected error storing critic feedback: {str(e)}')
 
     @mcp.tool()
-    async def store_user_feedback(project_path: str, loop_id: str, feedback_markdown: str, ctx: Context) -> MCPResponse:
+    async def store_user_feedback(loop_id: str, feedback_markdown: str, ctx: Context) -> MCPResponse:
         """Store user-provided feedback during stagnation or user_input status.
 
         Stores free-form markdown feedback from users when refinement stagnates
@@ -292,16 +272,15 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         critic feedback in subsequent iterations.
 
         Parameters:
-        - project_path: Absolute path to project directory
         - loop_id: Loop identifier
         - feedback_markdown: User feedback in markdown format
 
         Returns:
         - MCPResponse: Contains loop_id, status, confirmation
         """
-        await ctx.info(f'Storing user feedback for loop {loop_id} in project {project_path}')
+        await ctx.info(f'Storing user feedback for loop {loop_id}')
         try:
-            result = feedback_tools.store_user_feedback(project_path, loop_id, feedback_markdown)
+            result = feedback_tools.store_user_feedback(loop_id, feedback_markdown)
             await ctx.info(f'Stored user feedback for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -312,7 +291,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
             raise ToolError(f'Unexpected error storing user feedback: {str(e)}')
 
     @mcp.tool()
-    async def get_feedback(project_path: str, loop_id: str, count: int, ctx: Context) -> MCPResponse:
+    async def get_feedback(loop_id: str, count: int, ctx: Context) -> MCPResponse:
         """Get recent feedback (critic + user) for a loop in chronological order.
 
         Returns combined feedback showing recent iteration progression and user guidance.
@@ -320,7 +299,6 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         (current + previous to see if <5 points improvement).
 
         Parameters:
-        - project_path: Absolute path to project directory
         - loop_id: Loop identifier
         - count: Number of recent critic feedback iterations to retrieve (default: 2)
                  Agents can request more if needed for broader context
@@ -328,9 +306,9 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         Returns:
         - MCPResponse: Contains recent feedback in chronological markdown format
         """
-        await ctx.info(f'Retrieving {count} recent feedback(s) for loop {loop_id} in project {project_path}')
+        await ctx.info(f'Retrieving {count} recent feedback(s) for loop {loop_id}')
         try:
-            result = feedback_tools.get_feedback(project_path, loop_id, count)
+            result = feedback_tools.get_feedback(loop_id, count)
             await ctx.info(f'Retrieved {count} feedback(s) for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -341,10 +319,10 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
             raise ResourceError(f'Feedback unavailable for loop {loop_id}: {str(e)}')
 
     @mcp.tool()
-    async def store_current_analysis(project_path: str, loop_id: str, analysis: str, ctx: Context) -> MCPResponse:
-        await ctx.info(f'Storing analysis for loop {loop_id} in project {project_path}')
+    async def store_current_analysis(loop_id: str, analysis: str, ctx: Context) -> MCPResponse:
+        await ctx.info(f'Storing analysis for loop {loop_id}')
         try:
-            result = feedback_tools.store_current_analysis(project_path, loop_id, analysis)
+            result = feedback_tools.store_current_analysis(loop_id, analysis)
             await ctx.info(f'Stored analysis for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -355,10 +333,10 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
             raise ToolError(f'Unexpected error storing analysis: {str(e)}')
 
     @mcp.tool()
-    async def get_previous_analysis(project_path: str, loop_id: str, ctx: Context) -> MCPResponse:
-        await ctx.info(f'Retrieving previous analysis for loop {loop_id} in project {project_path}')
+    async def get_previous_analysis(loop_id: str, ctx: Context) -> MCPResponse:
+        await ctx.info(f'Retrieving previous analysis for loop {loop_id}')
         try:
-            result = feedback_tools.get_previous_analysis(project_path, loop_id)
+            result = feedback_tools.get_previous_analysis(loop_id)
             await ctx.info(f'Retrieved analysis for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:

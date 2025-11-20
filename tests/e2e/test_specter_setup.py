@@ -9,7 +9,17 @@ class TestSpecterSetupEndToEnd:
         project_path.mkdir()
 
         result = subprocess.run(
-            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'linear'],
+            [
+                'uv',
+                'run',
+                'specter-setup',
+                '--project-path',
+                str(project_path),
+                '--project-name',
+                'test-project',
+                '--platform',
+                'linear',
+            ],
             capture_output=True,
             text=True,
         )
@@ -24,13 +34,24 @@ class TestSpecterSetupEndToEnd:
 
         config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
         assert config_data['platform'] == 'linear'
+        assert config_data['project_name'] == 'test-project'
 
     def test_full_github_project_setup_workflow(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'
         project_path.mkdir()
 
         result = subprocess.run(
-            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'github'],
+            [
+                'uv',
+                'run',
+                'specter-setup',
+                '--project-path',
+                str(project_path),
+                '--project-name',
+                'test-project',
+                '--platform',
+                'github',
+            ],
             capture_output=True,
             text=True,
         )
@@ -41,13 +62,24 @@ class TestSpecterSetupEndToEnd:
 
         config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
         assert config_data['platform'] == 'github'
+        assert config_data['project_name'] == 'test-project'
 
     def test_full_markdown_project_setup_workflow(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'
         project_path.mkdir()
 
         result = subprocess.run(
-            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'markdown'],
+            [
+                'uv',
+                'run',
+                'specter-setup',
+                '--project-path',
+                str(project_path),
+                '--project-name',
+                'test-project',
+                '--platform',
+                'markdown',
+            ],
             capture_output=True,
             text=True,
         )
@@ -58,6 +90,7 @@ class TestSpecterSetupEndToEnd:
 
         config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
         assert config_data['platform'] == 'markdown'
+        assert config_data['project_name'] == 'test-project'
 
     def test_command_templates_contain_platform_specific_tools(self, tmp_path: Path) -> None:
         for platform in ['linear', 'github', 'markdown']:
@@ -65,7 +98,17 @@ class TestSpecterSetupEndToEnd:
             platform_project.mkdir()
 
             result = subprocess.run(
-                ['uv', 'run', 'specter-setup', '--project-path', str(platform_project), '--platform', platform],
+                [
+                    'uv',
+                    'run',
+                    'specter-setup',
+                    '--project-path',
+                    str(platform_project),
+                    '--project-name',
+                    'test-project',
+                    '--platform',
+                    platform,
+                ],
                 capture_output=True,
                 text=True,
             )
@@ -88,7 +131,17 @@ class TestSpecterSetupEndToEnd:
             project_path.mkdir()
 
             result = subprocess.run(
-                ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', platform],
+                [
+                    'uv',
+                    'run',
+                    'specter-setup',
+                    '--project-path',
+                    str(project_path),
+                    '--project-name',
+                    'test-project',
+                    '--platform',
+                    platform,
+                ],
                 capture_output=True,
                 text=True,
             )
@@ -110,7 +163,17 @@ class TestSpecterSetupEndToEnd:
         project_path.mkdir()
 
         result = subprocess.run(
-            ['uv', 'run', 'specter-setup', '--project-path', str(project_path), '--platform', 'linear'],
+            [
+                'uv',
+                'run',
+                'specter-setup',
+                '--project-path',
+                str(project_path),
+                '--project-name',
+                'test-project',
+                '--platform',
+                'linear',
+            ],
             capture_output=True,
             text=True,
         )
@@ -121,5 +184,6 @@ class TestSpecterSetupEndToEnd:
         config_data = json.loads(config_file_path.read_text())
 
         assert config_data['platform'] == 'linear'
+        assert config_data['project_name'] == 'test-project'
         assert 'created_at' in config_data
         assert config_data['version'] == '1.0'

@@ -3,8 +3,8 @@ from datetime import datetime
 import pytest
 
 from services.models.enums import RoadmapStatus, SpecStatus
-from services.models.spec import TechnicalSpec
 from services.models.roadmap import Roadmap
+from services.models.spec import TechnicalSpec
 from services.utils.enums import LoopType
 from services.utils.errors import LoopAlreadyExistsError, LoopNotFoundError, RoadmapNotFoundError, SpecNotFoundError
 from services.utils.loop_state import LoopState
@@ -71,8 +71,8 @@ class TestInMemoryStateManager:
         return InMemoryStateManager(max_history_size=3)
 
     @pytest.fixture
-    def project_path(self) -> str:
-        return '/tmp/test-project'
+    def project_name(self) -> str:
+        return 'test-project'
 
     @pytest.fixture
     def sample_roadmap(self) -> Roadmap:
@@ -121,22 +121,22 @@ class TestInMemoryStateManager:
 
 
 class TestRoadmapOperations(TestInMemoryStateManager):
-    def test_store_roadmap_returns_project_id(
+    def test_store_roadmap_returns_project_name(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_id = 'test-project'
+        project_name = 'test-project'
 
-        result = state_manager.store_roadmap(project_id, sample_roadmap)
+        result = state_manager.store_roadmap(project_name, sample_roadmap)
 
-        assert result == project_id
+        assert result == project_name
 
     def test_store_roadmap_makes_retrievable(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_id = 'test-project'
+        project_name = 'test-project'
 
-        state_manager.store_roadmap(project_id, sample_roadmap)
-        retrieved_roadmap = state_manager.get_roadmap(project_id)
+        state_manager.store_roadmap(project_name, sample_roadmap)
+        retrieved_roadmap = state_manager.get_roadmap(project_name)
 
         assert retrieved_roadmap == sample_roadmap
         assert retrieved_roadmap.project_name == 'Test Roadmap'
@@ -148,7 +148,7 @@ class TestRoadmapOperations(TestInMemoryStateManager):
         assert 'non-existent-project' in str(exc_info.value)
 
     def test_store_roadmap_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
-        project_id = 'same-project'
+        project_name = 'same-project'
         original_roadmap = Roadmap(
             project_name='Original',
             project_goal='Test goal',
@@ -198,14 +198,14 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             spec_count=0,
         )
 
-        state_manager.store_roadmap(project_id, original_roadmap)
-        state_manager.store_roadmap(project_id, updated_roadmap)
+        state_manager.store_roadmap(project_name, original_roadmap)
+        state_manager.store_roadmap(project_name, updated_roadmap)
 
-        retrieved = state_manager.get_roadmap(project_id)
+        retrieved = state_manager.get_roadmap(project_name)
         assert retrieved.project_name == 'Updated'
 
     @pytest.mark.parametrize(
-        'project_id,roadmap_name',
+        'project_name,roadmap_name',
         [
             ('proj-1', 'Roadmap 1'),
             ('project-with-dashes', 'Complex Project Roadmap'),
@@ -213,7 +213,7 @@ class TestRoadmapOperations(TestInMemoryStateManager):
         ],
     )
     def test_roadmap_storage_with_various_ids(
-        self, state_manager: InMemoryStateManager, project_id: str, roadmap_name: str
+        self, state_manager: InMemoryStateManager, project_name: str, roadmap_name: str
     ) -> None:
         roadmap = Roadmap(
             project_name=roadmap_name,
@@ -240,10 +240,10 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             spec_count=0,
         )
 
-        stored_id = state_manager.store_roadmap(project_id, roadmap)
-        retrieved = state_manager.get_roadmap(project_id)
+        stored_id = state_manager.store_roadmap(project_name, roadmap)
+        retrieved = state_manager.get_roadmap(project_name)
 
-        assert stored_id == project_id
+        assert stored_id == project_name
         assert retrieved.project_name == roadmap_name
 
 
@@ -257,21 +257,21 @@ class TestSpecOperations(TestInMemoryStateManager):
     def test_store_spec_returns_spec_name(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
-        project_id = 'test-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'test-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
-        result = state_manager.store_spec(project_id, sample_spec)
+        result = state_manager.store_spec(project_name, sample_spec)
 
         assert result == sample_spec.phase_name
 
     def test_store_spec_makes_retrievable(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
-        project_id = 'test-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'test-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
-        state_manager.store_spec(project_id, sample_spec)
-        retrieved_spec = state_manager.get_spec(project_id, sample_spec.phase_name)
+        state_manager.store_spec(project_name, sample_spec)
+        retrieved_spec = state_manager.get_spec(project_name, sample_spec.phase_name)
 
         assert retrieved_spec == sample_spec
         assert retrieved_spec.objectives == 'Test objectives'
@@ -283,27 +283,27 @@ class TestSpecOperations(TestInMemoryStateManager):
     def test_get_spec_raises_error_when_spec_not_found(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_id = 'test-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'test-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
         with pytest.raises(SpecNotFoundError):
-            state_manager.get_spec(project_id, 'non-existent-spec')
+            state_manager.get_spec(project_name, 'non-existent-spec')
 
     def test_list_specs_returns_empty_for_empty_roadmap(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_id = 'empty-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'empty-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec_names = state_manager.list_specs(project_id)
+        spec_names = state_manager.list_specs(project_name)
 
         assert spec_names == []
 
     def test_list_specs_returns_all_spec_names(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_id = 'multi-spec-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'multi-spec-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
         spec1 = TechnicalSpec(
             phase_name='Spec 1',
@@ -328,10 +328,10 @@ class TestSpecOperations(TestInMemoryStateManager):
             spec_owner='Test Owner',
         )
 
-        state_manager.store_spec(project_id, spec1)
-        state_manager.store_spec(project_id, spec2)
+        state_manager.store_spec(project_name, spec1)
+        state_manager.store_spec(project_name, spec2)
 
-        spec_names = state_manager.list_specs(project_id)
+        spec_names = state_manager.list_specs(project_name)
 
         assert len(spec_names) == 2
         assert 'Spec 1' in spec_names
@@ -344,34 +344,34 @@ class TestSpecOperations(TestInMemoryStateManager):
     def test_delete_spec_returns_true_when_spec_exists(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
-        project_id = 'test-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
-        state_manager.store_spec(project_id, sample_spec)
+        project_name = 'test-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
+        state_manager.store_spec(project_name, sample_spec)
 
-        result = state_manager.delete_spec(project_id, sample_spec.phase_name)
+        result = state_manager.delete_spec(project_name, sample_spec.phase_name)
 
         assert result is True
 
     def test_delete_spec_removes_spec_from_roadmap(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
-        project_id = 'test-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
-        state_manager.store_spec(project_id, sample_spec)
+        project_name = 'test-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
+        state_manager.store_spec(project_name, sample_spec)
 
-        state_manager.delete_spec(project_id, sample_spec.phase_name)
+        state_manager.delete_spec(project_name, sample_spec.phase_name)
 
         # Should raise SpecNotFoundError now
         with pytest.raises(SpecNotFoundError):
-            state_manager.get_spec(project_id, sample_spec.phase_name)
+            state_manager.get_spec(project_name, sample_spec.phase_name)
 
     def test_delete_spec_returns_false_when_spec_not_found(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_id = 'test-project'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'test-project'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
-        result = state_manager.delete_spec(project_id, 'non-existent-spec')
+        result = state_manager.delete_spec(project_name, 'non-existent-spec')
 
         assert result is False
 
@@ -390,8 +390,8 @@ class TestSpecOperations(TestInMemoryStateManager):
     def test_spec_operations_with_multiple_specs(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, spec_names: list[str]
     ) -> None:
-        project_id = 'multi-spec-test'
-        state_manager.store_roadmap(project_id, sample_roadmap)
+        project_name = 'multi-spec-test'
+        state_manager.store_roadmap(project_name, sample_roadmap)
 
         # Store all specs
         for spec_name in spec_names:
@@ -406,10 +406,10 @@ class TestSpecOperations(TestInMemoryStateManager):
                 last_updated=datetime.now().isoformat(),
                 spec_owner='Test Owner',
             )
-            state_manager.store_spec(project_id, spec)
+            state_manager.store_spec(project_name, spec)
 
         # List should return all names
-        listed_names = state_manager.list_specs(project_id)
+        listed_names = state_manager.list_specs(project_name)
         assert len(listed_names) == len(spec_names)
         for name in spec_names:
             assert name in listed_names
@@ -417,11 +417,11 @@ class TestSpecOperations(TestInMemoryStateManager):
         # Delete half the specs
         to_delete = spec_names[: len(spec_names) // 2] if len(spec_names) > 1 else []
         for name in to_delete:
-            result = state_manager.delete_spec(project_id, name)
+            result = state_manager.delete_spec(project_name, name)
             assert result is True
 
         # List should return remaining specs
-        remaining_names = state_manager.list_specs(project_id)
+        remaining_names = state_manager.list_specs(project_name)
         expected_remaining = [name for name in spec_names if name not in to_delete]
         assert len(remaining_names) == len(expected_remaining)
         for name in expected_remaining:
@@ -430,30 +430,30 @@ class TestSpecOperations(TestInMemoryStateManager):
 
 class TestLoopOperations(TestInMemoryStateManager):
     def test_add_loop_stores_loop_state(
-        self, state_manager: InMemoryStateManager, project_path: str, sample_loop: LoopState
+        self, state_manager: InMemoryStateManager, project_name: str, sample_loop: LoopState
     ) -> None:
-        state_manager.add_loop(sample_loop, project_path)
+        state_manager.add_loop(sample_loop, project_name)
 
         retrieved_loop = state_manager.get_loop(sample_loop.id)
         assert retrieved_loop == sample_loop
 
     def test_add_loop_raises_error_for_duplicate_id(
-        self, state_manager: InMemoryStateManager, project_path: str, sample_loop: LoopState
+        self, state_manager: InMemoryStateManager, project_name: str, sample_loop: LoopState
     ) -> None:
-        state_manager.add_loop(sample_loop, project_path)
+        state_manager.add_loop(sample_loop, project_name)
 
         duplicate_loop = LoopState(loop_type=LoopType.PLAN)
         duplicate_loop.id = sample_loop.id  # Force same ID
 
         with pytest.raises(LoopAlreadyExistsError):
-            state_manager.add_loop(duplicate_loop, project_path)
+            state_manager.add_loop(duplicate_loop, project_name)
 
     def test_get_loop_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
         with pytest.raises(LoopNotFoundError):
             state_manager.get_loop('non-existent-loop-id')
 
     def test_loop_history_management_respects_max_size(
-        self, state_manager: InMemoryStateManager, project_path: str
+        self, state_manager: InMemoryStateManager, project_name: str
     ) -> None:
         # State manager initialized with max_history_size=3
         loops = [
@@ -464,7 +464,7 @@ class TestLoopOperations(TestInMemoryStateManager):
         ]
 
         for loop in loops:
-            state_manager.add_loop(loop, project_path)
+            state_manager.add_loop(loop, project_name)
 
         # First loop should have been dropped from active loops
         with pytest.raises(LoopNotFoundError):
@@ -567,10 +567,10 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         assert 'P2 Spec' not in p1_specs
 
     def test_loops_and_roadmaps_coexist_independently(
-        self, state_manager: InMemoryStateManager, project_path: str, sample_roadmap: Roadmap, sample_loop: LoopState
+        self, state_manager: InMemoryStateManager, project_name: str, sample_roadmap: Roadmap, sample_loop: LoopState
     ) -> None:
         # Add both loop and roadmap data
-        state_manager.add_loop(sample_loop, project_path)
+        state_manager.add_loop(sample_loop, project_name)
         state_manager.store_roadmap('test-project', sample_roadmap)
 
         # Both should be retrievable independently
@@ -580,7 +580,7 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         assert retrieved_loop == sample_loop
         assert retrieved_roadmap == sample_roadmap
 
-    def test_state_manager_initialization_parameters(self, project_path: str) -> None:
+    def test_state_manager_initialization_parameters(self, project_name: str) -> None:
         # Test with custom max_history_size
         custom_state_manager = InMemoryStateManager(max_history_size=5)
 
@@ -588,7 +588,7 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         loops = [LoopState(loop_type=LoopType.PLAN) for _ in range(6)]
 
         for loop in loops:
-            custom_state_manager.add_loop(loop, project_path)
+            custom_state_manager.add_loop(loop, project_name)
 
         # First loop should be dropped (6 > 5)
         with pytest.raises(LoopNotFoundError):

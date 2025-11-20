@@ -74,9 +74,9 @@ class TestProjectPlanTools:
 
 class TestCreateProjectPlan:
     def test_create_project_plan_creates_new_project_entry(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
+        self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
-        response = project_plan_tools.create_project_plan(project_path, sample_project_plan)
+        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         assert isinstance(response, MCPResponse)
         assert response.status == LoopStatus.INITIALIZED
@@ -84,32 +84,27 @@ class TestCreateProjectPlan:
         assert response.id == sample_project_plan.project_name
 
         # Verify project plan was stored by project name
-        stored_plan = project_plan_tools.get_project_plan_data(project_path, sample_project_plan.project_name)
+        stored_plan = project_plan_tools.get_project_plan_data(sample_project_plan.project_name)
         assert stored_plan.project_name == sample_project_plan.project_name
 
-    def test_create_project_plan_validates_project_plan_model(
-        self, project_plan_tools: ProjectPlanTools, project_path: str
-    ) -> None:
+    def test_create_project_plan_validates_project_plan_model(self, project_plan_tools: ProjectPlanTools) -> None:
         with pytest.raises(ToolError):
-            project_plan_tools.create_project_plan(project_path, None)  # type: ignore[arg-type]
+            project_plan_tools.create_project_plan('test-project', None)  # type: ignore[arg-type]
 
 
 class TestStoreProjectPlan:
-    def test_store_project_plan_validates_project_plan_model(
-        self, project_plan_tools: ProjectPlanTools, project_path: str
-    ) -> None:
+    def test_store_project_plan_validates_project_plan_model(self, project_plan_tools: ProjectPlanTools) -> None:
         with pytest.raises(ToolError, match='Invalid project plan: ProjectPlan cannot be None'):
-            project_plan_tools.store_project_plan(project_path, None, 'some-project-name')  # type: ignore[arg-type]
+            project_plan_tools.store_project_plan('some-project-name', None)  # type: ignore[arg-type]
 
     def test_store_project_plan_updates_existing_project(
         self,
         project_plan_tools: ProjectPlanTools,
-        project_path: str,
         sample_project_plan: ProjectPlan,
     ) -> None:
         project_name = sample_project_plan.project_name
 
-        response = project_plan_tools.store_project_plan(project_path, sample_project_plan, project_name)
+        response = project_plan_tools.store_project_plan(project_name, sample_project_plan)
 
         assert response.id == project_name
         assert response.status == LoopStatus.IN_PROGRESS
@@ -118,15 +113,14 @@ class TestStoreProjectPlan:
     def test_store_project_plan_stores_structured_data(
         self,
         project_plan_tools: ProjectPlanTools,
-        project_path: str,
         sample_project_plan: ProjectPlan,
     ) -> None:
         project_name = sample_project_plan.project_name
 
-        project_plan_tools.store_project_plan(project_path, sample_project_plan, project_name)
+        project_plan_tools.store_project_plan(project_name, sample_project_plan)
 
         # Verify structured data is stored (not just markdown)
-        stored_plan = project_plan_tools.get_project_plan_data(project_path, project_name)
+        stored_plan = project_plan_tools.get_project_plan_data(project_name)
         assert stored_plan.project_name == sample_project_plan.project_name
         assert stored_plan.project_vision == sample_project_plan.project_vision
         assert stored_plan.primary_objectives == sample_project_plan.primary_objectives
@@ -134,35 +128,33 @@ class TestStoreProjectPlan:
 
 class TestGetProjectPlan:
     def test_get_project_plan_returns_structured_data(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
+        self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
         # Create plan first
-        response = project_plan_tools.create_project_plan(project_path, sample_project_plan)
+        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         # Retrieve plan
-        retrieved_plan = project_plan_tools.get_project_plan_data(project_path, response.id)
+        retrieved_plan = project_plan_tools.get_project_plan_data(response.id)
 
         assert isinstance(retrieved_plan, ProjectPlan)
         assert retrieved_plan.project_name == sample_project_plan.project_name
         assert retrieved_plan.project_vision == sample_project_plan.project_vision
         assert retrieved_plan.primary_objectives == sample_project_plan.primary_objectives
 
-    def test_get_project_plan_raises_error_when_project_not_found(
-        self, project_plan_tools: ProjectPlanTools, project_path: str
-    ) -> None:
+    def test_get_project_plan_raises_error_when_project_not_found(self, project_plan_tools: ProjectPlanTools) -> None:
         with pytest.raises(ResourceError) as exc_info:
-            project_plan_tools.get_project_plan_data(project_path, 'non-existent-project')
+            project_plan_tools.get_project_plan_data('non-existent-project')
 
         assert 'No project plan found for project' in str(exc_info.value)
 
 
 class TestGetProjectPlanMarkdown:
     def test_get_project_plan_markdown_generates_platform_output(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
+        self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
-        response = project_plan_tools.create_project_plan(project_path, sample_project_plan)
+        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
-        markdown_response = project_plan_tools.get_project_plan_markdown(project_path, response.id)
+        markdown_response = project_plan_tools.get_project_plan_markdown(response.id)
 
         assert isinstance(markdown_response, MCPResponse)
         assert markdown_response.id == response.id
@@ -172,36 +164,34 @@ class TestGetProjectPlanMarkdown:
         assert sample_project_plan.project_vision in markdown_response.message
 
     def test_get_project_plan_markdown_platform_agnostic(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
+        self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
-        response = project_plan_tools.create_project_plan(project_path, sample_project_plan)
+        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
-        markdown_response = project_plan_tools.get_project_plan_markdown(project_path, response.id)
+        markdown_response = project_plan_tools.get_project_plan_markdown(response.id)
         assert isinstance(markdown_response, MCPResponse)
         assert sample_project_plan.project_name in markdown_response.message
 
     def test_get_project_plan_markdown_raises_error_when_project_not_found(
-        self, project_plan_tools: ProjectPlanTools, project_path: str
+        self, project_plan_tools: ProjectPlanTools
     ) -> None:
         with pytest.raises(ToolError):
-            project_plan_tools.get_project_plan_markdown(project_path, 'non-existent-project')
+            project_plan_tools.get_project_plan_markdown('non-existent-project')
 
 
 class TestListProjectPlans:
-    def test_list_project_plans_returns_empty_for_no_plans(
-        self, project_plan_tools: ProjectPlanTools, project_path: str
-    ) -> None:
-        response = project_plan_tools.list_project_plans(project_path)
+    def test_list_project_plans_returns_empty_for_no_plans(self, project_plan_tools: ProjectPlanTools) -> None:
+        response = project_plan_tools.list_project_plans()
 
         assert isinstance(response, MCPResponse)
         assert response.status == LoopStatus.INITIALIZED
         assert 'No project plans found' in response.message
 
     def test_list_project_plans_returns_multiple_plans(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
+        self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
         # Store multiple plans
-        plan1_response = project_plan_tools.create_project_plan(project_path, sample_project_plan)
+        plan1_response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         plan2 = ProjectPlan(
             project_name='E-commerce Analytics Platform',
@@ -239,10 +229,10 @@ class TestListProjectPlans:
             last_updated='2024-01-15',
             version='1.0',
         )
-        plan2_response = project_plan_tools.create_project_plan(project_path, plan2)
+        plan2_response = project_plan_tools.create_project_plan(plan2.project_name, plan2)
 
         # List all plans
-        response = project_plan_tools.list_project_plans(project_path)
+        response = project_plan_tools.list_project_plans()
 
         assert 'Found 2 project plans:' in response.message
         assert sample_project_plan.project_name in response.message
@@ -250,16 +240,14 @@ class TestListProjectPlans:
         assert plan1_response.id in response.message
         assert plan2_response.id in response.message
 
-    def test_list_project_plans_respects_count_limit(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
-    ) -> None:
+    def test_list_project_plans_respects_count_limit(self, project_plan_tools: ProjectPlanTools) -> None:
         # Store 3 plans
         for i in range(3):
             plan = create_project_plan(f'Project {i + 1}')
-            project_plan_tools.create_project_plan(project_path, plan)
+            project_plan_tools.create_project_plan(plan.project_name, plan)
 
         # List with limit
-        response = project_plan_tools.list_project_plans(project_path, count=2)
+        response = project_plan_tools.list_project_plans(count=2)
 
         assert 'Found 2 project plans:' in response.message
         assert 'Project 2' in response.message
@@ -269,13 +257,13 @@ class TestListProjectPlans:
 
 class TestDeleteProjectPlan:
     def test_delete_project_plan_removes_plan(
-        self, project_plan_tools: ProjectPlanTools, project_path: str, sample_project_plan: ProjectPlan
+        self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
         # Store plan first
-        response = project_plan_tools.create_project_plan(project_path, sample_project_plan)
+        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         # Delete plan
-        delete_response = project_plan_tools.delete_project_plan(project_path, response.id)
+        delete_response = project_plan_tools.delete_project_plan(response.id)
 
         assert isinstance(delete_response, MCPResponse)
         assert delete_response.id == response.id
@@ -283,12 +271,12 @@ class TestDeleteProjectPlan:
 
         # Verify plan is removed
         with pytest.raises(ResourceError):
-            project_plan_tools.get_project_plan_data(project_path, response.id)
+            project_plan_tools.get_project_plan_data(response.id)
 
     def test_delete_project_plan_raises_error_when_project_not_found(
-        self, project_plan_tools: ProjectPlanTools, project_path: str
+        self, project_plan_tools: ProjectPlanTools
     ) -> None:
         with pytest.raises(ResourceError) as exc_info:
-            project_plan_tools.delete_project_plan(project_path, 'non-existent-project')
+            project_plan_tools.delete_project_plan('non-existent-project')
 
         assert 'No project plan found for project' in str(exc_info.value)

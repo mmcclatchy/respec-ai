@@ -76,7 +76,7 @@ AFTER: 6 tools (45% reduction)
 ├── Roadmap: create_roadmap, get_roadmap (2)
 └── Unified Spec: store_spec, get_spec_markdown, list_specs, delete_spec, link_loop_to_spec, unlink_loop (6)
 
-get_spec_markdown accepts: (project_id, spec_name) OR (loop_id) - dual mode
+get_spec_markdown accepts: (project_name, spec_name) OR (loop_id) - dual mode
 ```
 
 **How to Identify**:
@@ -87,7 +87,7 @@ get_spec_markdown accepts: (project_id, spec_name) OR (loop_id) - dual mode
 
 **Consolidation Patterns**:
 1. **Upsert Semantics**: `add_X` + `update_X` → `store_X` (checks existence internally)
-2. **Dual-Mode Retrieval**: Accept multiple identifier types (project_id+name OR loop_id)
+2. **Dual-Mode Retrieval**: Accept multiple identifier types (project_name+name OR loop_id)
 3. **Optional Parameters**: Use optional fields instead of separate tools
 4. **Lifecycle Management**: Use dedicated link/unlink tools for temp mappings
 
@@ -147,7 +147,7 @@ Agent invocation:
 Agent workflow (autonomous):
   1. Call mcp__specter__get_spec_markdown(loop_id=abc123)
   2. Process retrieved spec content
-  3. Call mcp__specter__store_spec(project_id, spec_name, updated_markdown)
+  3. Call mcp__specter__store_spec(project_name, spec_name, updated_markdown)
 
 Benefits:
 - Retry Safe: Agent always retrieves last successful state from MCP
@@ -156,7 +156,7 @@ Benefits:
 ```
 
 **Idempotent Agent Contract**:
-1. **Receive**: Identifiers only (`loop_id`, `project_id`), never data
+1. **Receive**: Identifiers only (`loop_id`, `project_name`), never data
 2. **Retrieve**: Agent calls MCP tool to get current state (first operation)
 3. **Process**: Agent performs its specialized work
 4. **Store**: Agent calls MCP tool to save result (last operation)
@@ -191,7 +191,7 @@ Benefits:
 **Example from Spec Workflow**:
 ```text
 Need: Access specs by loop_id during refinement (temporary workflow scope)
-Also: Access specs by project_id + spec_name for permanent storage (domain scope)
+Also: Access specs by project_name + spec_name for permanent storage (domain scope)
 
 Storage must support both access patterns simultaneously
 ```
@@ -200,19 +200,19 @@ Storage must support both access patterns simultaneously
 ```python
 # Permanent Storage (Domain Entities)
 self._specs: dict[str, dict[str, TechnicalSpec]] = {}
-# Key: project_id -> spec_name -> TechnicalSpec
+# Key: project_name -> spec_name -> TechnicalSpec
 # Lifecycle: Persists beyond workflow sessions
 
 # Temporary Mapping (Workflow Sessions)
 self._loop_to_spec: dict[str, tuple[str, str]] = {}
-# Key: loop_id -> (project_id, spec_name)
+# Key: loop_id -> (project_name, spec_name)
 # Lifecycle: Created at workflow start, destroyed at completion
 ```
 
 **Lifecycle Management**:
 ```python
 # Workflow Start
-link_loop_to_spec(loop_id="abc", project_id="proj1", spec_name="phase1")
+link_loop_to_spec(loop_id="abc", project_name="proj1", spec_name="phase1")
 
 # During Workflow
 spec = get_spec_by_loop(loop_id="abc")  # Uses mapping to find permanent location
@@ -741,7 +741,7 @@ iteration: int = 0
 version: int = 1
 
 # ✅ Dual-Mode Retrieval
-def get_spec_markdown(project_id: str | None, spec_name: str | None, loop_id: str | None)
+def get_spec_markdown(project_name: str | None, spec_name: str | None, loop_id: str | None)
 
 # ✅ Idempotent Agent
 tools:

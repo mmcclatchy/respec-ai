@@ -70,8 +70,8 @@ Once the MCP server is configured, set up any project:
 **Local installation:**
 ```bash
 cd /path/to/your/project
-~/coding/projects/specter/scripts/install-specter.sh --platform linear
-# Choose: linear, github, or markdown
+~/coding/projects/specter/scripts/install-specter.sh -n myproject -p linear
+# Choose platform: linear, github, or markdown
 claude  # Restart to load commands
 ```
 
@@ -86,7 +86,7 @@ Then in Claude Code:
 
 ```bash
 cd /path/to/your/project
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear
+curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- -n myproject -p linear --specter-path ~/coding/projects/specter
 claude  # Restart to load commands
 ```
 

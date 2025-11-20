@@ -189,15 +189,15 @@ class InMemoryStateManager:
         self._specs: dict[str, dict[str, TechnicalSpec]] = {}
         self._loops: dict[str, LoopState] = {}
 
-    def store_plan(self, project_id: str, plan: ProjectPlan) -> None:
-        self._plans[project_id] = plan
+    def store_plan(self, project_name: str, plan: ProjectPlan) -> None:
+        self._plans[project_name] = plan
 
-    def get_plan(self, project_id: str) -> ProjectPlan:
-        return self._plans[project_id]
+    def get_plan(self, project_name: str) -> ProjectPlan:
+        return self._plans[project_name]
 ```
 
 **Current Guarantees**:
-- ✅ State isolated by project_id in memory
+- ✅ State isolated by project_name in memory
 - ✅ No cross-project state contamination
 - ⚠️ State lost on MCP server restart (acceptable for MVP)
 
@@ -205,10 +205,10 @@ class InMemoryStateManager:
 ```python
 # Planned for post-MVP
 class DatabaseStateManager:
-    def store_plan(self, project_id: str, plan: ProjectPlan) -> None:
+    def store_plan(self, project_name: str, plan: ProjectPlan) -> None:
         db.execute(
             "INSERT OR REPLACE INTO plans VALUES (?, ?)",
-            (project_id, plan.model_dump_json())
+            (project_name, plan.model_dump_json())
         )
 ```
 

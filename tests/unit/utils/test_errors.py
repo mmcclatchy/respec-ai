@@ -139,7 +139,7 @@ class TestRoadmapErrors:
 
 class TestRoadmapValidationError:
     def test_roadmap_validation_error_inheritance(self) -> None:
-        error = RoadmapValidationError('project_id', 'Cannot be empty')
+        error = RoadmapValidationError('project_name', 'Cannot be empty')
 
         assert isinstance(error, ToolError)
         assert isinstance(error, Exception)
@@ -159,7 +159,7 @@ class TestRoadmapValidationError:
     @pytest.mark.parametrize(
         'field,message,expected_format',
         [
-            ('project_id', 'Too long', 'Invalid project_id: Too long'),
+            ('project_name', 'Too long', 'Invalid project_name: Too long'),
             ('roadmap_name', 'Contains invalid chars', 'Invalid roadmap_name: Contains invalid chars'),
             ('spec_content', 'Empty content', 'Invalid spec_content: Empty content'),
         ],

@@ -115,7 +115,7 @@ mcp__specter__get_feedback_history(loop_id=loop_id, count=3)
 
 **Spec Storage** (Always - Final Step):
 ```text
-mcp__specter__store_spec(project_id=project_id, spec_name=spec_name, spec_markdown=updated_spec)
+mcp__specter__store_spec(project_name=project_name, spec_name=spec_name, spec_markdown=updated_spec)
 → Action: Stores spec with auto-incremented iteration and version
 ```
 
@@ -151,7 +151,7 @@ Glob: ~/.claude/best-practices/*authentication*.md
       - iteration>0: Retrieve feedback and improve existing spec
    3. If iteration>0: mcp__specter__get_feedback_history(loop_id, count=3)
    4. Generate/improve comprehensive technical specification
-   5. Store updated spec: mcp__specter__store_spec(project_id, spec_name, updated_spec)
+   5. Store updated spec: mcp__specter__store_spec(project_name, spec_name, updated_spec)
    6. Return completion message
    ```
 

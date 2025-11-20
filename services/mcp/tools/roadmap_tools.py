@@ -2,6 +2,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
 from services.models.roadmap import Roadmap
+from services.models.spec import TechnicalSpec
 from services.shared import state_manager
 from services.utils.state_manager import StateManager
 
@@ -10,69 +11,73 @@ class RoadmapTools:
     def __init__(self, state: StateManager) -> None:
         self.state = state
 
-    def create_roadmap(self, project_path: str, project_id: str, roadmap_data: str) -> str:
-        if not project_path:
-            raise ToolError('Project path cannot be empty')
-        if not project_id:
-            raise ToolError('Project ID cannot be empty')
+    def create_roadmap(self, project_name: str, roadmap_data: str) -> str:
+        if not project_name:
+            raise ToolError('Project name cannot be empty')
         if not roadmap_data:
             raise ToolError('Roadmap data cannot be empty')
 
         try:
-            roadmap = Roadmap.parse_markdown(roadmap_data)
+            spec_blocks = roadmap_data.split('# Technical Specification:')
+            roadmap_metadata = spec_blocks[0]
 
-            self.state.store_roadmap(project_id, roadmap)
-            return f'Created roadmap "{roadmap.project_name}" for project {project_id}'
+            roadmap = Roadmap.parse_markdown(roadmap_metadata)
+
+            for i, spec_block in enumerate(spec_blocks[1:], 1):
+                spec_markdown = f'# Technical Specification:{spec_block}'
+                spec = TechnicalSpec.parse_markdown(spec_markdown)
+                roadmap.add_spec(spec)
+
+            self.state.store_roadmap(project_name, roadmap)
+            return (
+                f'Created roadmap "{roadmap.project_name}" with {len(spec_blocks) - 1} specs for project {project_name}'
+            )
         except Exception as e:
             raise ToolError(f'Failed to create roadmap: {str(e)}')
 
-    def get_roadmap(self, project_path: str, project_id: str) -> str:
-        if not project_path:
-            raise ToolError('Project path cannot be empty')
-        if not project_id:
-            raise ToolError('Project ID cannot be empty')
+    def get_roadmap(self, project_name: str) -> str:
+        if not project_name:
+            raise ToolError('Project name cannot be empty')
 
         try:
-            roadmap = self.state.get_roadmap(project_id)
+            roadmap = self.state.get_roadmap(project_name)
             return roadmap.build_markdown()
         except Exception as e:
-            raise ResourceError(f'Roadmap not found for project {project_id}: {str(e)}')
+            raise ResourceError(f'Roadmap not found for project {project_name}: {str(e)}')
 
 
 def register_roadmap_tools(mcp: FastMCP) -> None:
     roadmap_tools = RoadmapTools(state_manager)
 
     @mcp.tool()
-    async def create_roadmap(project_path: str, project_id: str, roadmap_name: str, ctx: Context) -> str:
+    async def create_roadmap(project_name: str, roadmap_data: str, ctx: Context) -> str:
         """Create a new roadmap for a project.
 
         Parameters:
-        - project_path: Absolute path to project directory
-        - project_id: Project identifier
-        - roadmap_name: Roadmap markdown content
+        - project_name: Name for this project
+        - roadmap_data: Complete roadmap markdown content including all TechnicalSpec sections
 
         Returns:
         - str: Confirmation message
         """
-        await ctx.info(f'Creating roadmap for project {project_id} at {project_path}')
-        result = roadmap_tools.create_roadmap(project_path, project_id, roadmap_name)
-        await ctx.info(f'Created roadmap for project {project_id}')
+        await ctx.info(f'Creating roadmap for project: {project_name}')
+        result = roadmap_tools.create_roadmap(project_name, roadmap_data)
+        await ctx.info(f'Created roadmap for project: {project_name}')
         return result
 
     @mcp.tool()
-    async def get_roadmap(project_path: str, project_id: str, ctx: Context) -> str:
+    async def get_roadmap(project_name: str, ctx: Context) -> str:
         """Retrieve roadmap as markdown.
 
         Parameters:
-        - project_path: Absolute path to project directory
-        - project_id: Project identifier
+        - project_name: Name of the project
 
         Returns:
         - str: Roadmap markdown
         """
-        await ctx.info(f'Getting roadmap for project {project_id} at {project_path}')
-        result = roadmap_tools.get_roadmap(project_path, project_id)
-        await ctx.info(f'Got roadmap for project {project_id}')
+        await ctx.info(f'Getting roadmap for project: {project_name}')
+        result = roadmap_tools.get_roadmap(project_name)
+        await ctx.info(f'Got roadmap for project: {project_name}')
         return result
 
 

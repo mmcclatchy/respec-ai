@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from collections import deque
 
-from services.models.spec import TechnicalSpec
 from services.models.roadmap import Roadmap
+from services.models.spec import TechnicalSpec
 from services.utils.errors import LoopAlreadyExistsError, LoopNotFoundError, RoadmapNotFoundError, SpecNotFoundError
 from services.utils.loop_state import LoopState, MCPResponse
 
@@ -10,7 +10,7 @@ from services.utils.loop_state import LoopState, MCPResponse
 class StateManager(ABC):
     # Loop Management
     @abstractmethod
-    def add_loop(self, loop: LoopState, project_path: str) -> None: ...
+    def add_loop(self, loop: LoopState, project_name: str) -> None: ...
 
     @abstractmethod
     def get_loop(self, loop_id: str) -> LoopState: ...
@@ -22,7 +22,7 @@ class StateManager(ABC):
     def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse: ...
 
     @abstractmethod
-    def list_active_loops(self, project_path: str) -> list[MCPResponse]: ...
+    def list_active_loops(self, project_name: str) -> list[MCPResponse]: ...
 
     @abstractmethod
     def get_objective_feedback(self, loop_id: str) -> MCPResponse: ...
@@ -32,27 +32,27 @@ class StateManager(ABC):
 
     # Roadmap Management
     @abstractmethod
-    def store_roadmap(self, project_id: str, roadmap: Roadmap) -> str: ...
+    def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str: ...
 
     @abstractmethod
-    def get_roadmap(self, project_id: str) -> Roadmap: ...
+    def get_roadmap(self, project_name: str) -> Roadmap: ...
 
     # Unified Spec Management (replaces InitialSpec + TechnicalSpec separation)
     @abstractmethod
-    def store_spec(self, project_id: str, spec: TechnicalSpec) -> str: ...
+    def store_spec(self, project_name: str, spec: TechnicalSpec) -> str: ...
 
     @abstractmethod
-    def get_spec(self, project_id: str, spec_name: str) -> TechnicalSpec: ...
+    def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec: ...
 
     @abstractmethod
-    def list_specs(self, project_id: str) -> list[str]: ...
+    def list_specs(self, project_name: str) -> list[str]: ...
 
     @abstractmethod
-    def delete_spec(self, project_id: str, spec_name: str) -> bool: ...
+    def delete_spec(self, project_name: str, spec_name: str) -> bool: ...
 
     # Loop-to-Spec Mapping (for temporary refinement sessions)
     @abstractmethod
-    def link_loop_to_spec(self, loop_id: str, project_id: str, spec_name: str) -> None: ...
+    def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None: ...
 
     @abstractmethod
     def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec: ...
@@ -88,15 +88,14 @@ class InMemoryStateManager(StateManager):
         self._roadmaps: dict[str, Roadmap] = {}
 
         # UNIFIED spec storage (single source of truth)
-        self._specs: dict[str, dict[str, TechnicalSpec]] = {}  # project_id -> {spec_name -> TechnicalSpec}
+        self._specs: dict[str, dict[str, TechnicalSpec]] = {}  # project_name -> {spec_name -> TechnicalSpec}
 
         # Temporary loop-to-spec mapping (for active refinement sessions)
-        self._loop_to_spec: dict[str, tuple[str, str]] = {}  # loop_id -> (project_id, spec_name)
+        self._loop_to_spec: dict[str, tuple[str, str]] = {}  # loop_id -> (project_name, spec_name)
 
-    def add_loop(self, loop: LoopState, project_path: str) -> None:
+    def add_loop(self, loop: LoopState, project_name: str) -> None:
         if loop.id in self._active_loops:
             raise LoopAlreadyExistsError(f'Loop already exists: {loop.id}')
-        # TODO: Phase 5 - Store project_path association for proper multi-project isolation
         self._active_loops[loop.id] = loop
         dropped_loop_id = self._loop_history.append(loop.id)
         if dropped_loop_id:
@@ -116,8 +115,7 @@ class InMemoryStateManager(StateManager):
         loop_state.add_score(current_score)
         return loop_state.decide_next_loop_action()
 
-    def list_active_loops(self, project_path: str) -> list[MCPResponse]:
-        # TODO: Phase 5 - Filter by project_path for proper multi-project isolation
+    def list_active_loops(self, project_name: str) -> list[MCPResponse]:
         return [loop.mcp_response for loop in self._active_loops.values()]
 
     def get_objective_feedback(self, loop_id: str) -> MCPResponse:
@@ -134,65 +132,65 @@ class InMemoryStateManager(StateManager):
             id=loop_id, status=loop_state.status, message=f'Objective feedback stored for loop {loop_id}'
         )
 
-    def store_roadmap(self, project_id: str, roadmap: Roadmap) -> str:
-        self._roadmaps[project_id] = roadmap
-        return project_id
+    def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str:
+        self._roadmaps[project_name] = roadmap
+        return project_name
 
-    def get_roadmap(self, project_id: str) -> Roadmap:
-        if project_id not in self._roadmaps:
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_id}')
-        return self._roadmaps[project_id]
+    def get_roadmap(self, project_name: str) -> Roadmap:
+        if project_name not in self._roadmaps:
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
+        return self._roadmaps[project_name]
 
     # Unified Spec Management (single source of truth)
-    def store_spec(self, project_id: str, spec: TechnicalSpec) -> str:
-        if project_id not in self._roadmaps:
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_id}')
+    def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
+        if project_name not in self._roadmaps:
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
         # Store in unified spec storage
-        if project_id not in self._specs:
-            self._specs[project_id] = {}
+        if project_name not in self._specs:
+            self._specs[project_name] = {}
 
         # Auto-increment iteration and version if spec already exists
-        if spec.phase_name in self._specs[project_id]:
-            existing_spec = self._specs[project_id][spec.phase_name]
+        if spec.phase_name in self._specs[project_name]:
+            existing_spec = self._specs[project_name][spec.phase_name]
             spec.iteration = existing_spec.iteration + 1
             spec.version = existing_spec.version + 1
 
-        self._specs[project_id][spec.phase_name] = spec
+        self._specs[project_name][spec.phase_name] = spec
 
         # Add spec to roadmap if not already there (for roadmap listings)
-        roadmap = self._roadmaps[project_id]
+        roadmap = self._roadmaps[project_name]
         roadmap.add_spec(spec)
 
         return spec.phase_name
 
-    def get_spec(self, project_id: str, spec_name: str) -> TechnicalSpec:
-        if project_id not in self._roadmaps:
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_id}')
+    def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
+        if project_name not in self._roadmaps:
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
-        if project_id not in self._specs or spec_name not in self._specs[project_id]:
+        if project_name not in self._specs or spec_name not in self._specs[project_name]:
             raise SpecNotFoundError(f'Spec not found: {spec_name}')
 
-        return self._specs[project_id][spec_name]
+        return self._specs[project_name][spec_name]
 
-    def list_specs(self, project_id: str) -> list[str]:
-        if project_id not in self._roadmaps:
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_id}')
-        roadmap = self._roadmaps[project_id]
+    def list_specs(self, project_name: str) -> list[str]:
+        if project_name not in self._roadmaps:
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
+        roadmap = self._roadmaps[project_name]
         return [spec.phase_name for spec in roadmap.specs]
 
-    def delete_spec(self, project_id: str, spec_name: str) -> bool:
-        if project_id not in self._roadmaps:
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_id}')
+    def delete_spec(self, project_name: str, spec_name: str) -> bool:
+        if project_name not in self._roadmaps:
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
         # Remove from specs storage
         removed_from_specs = False
-        if project_id in self._specs and spec_name in self._specs[project_id]:
-            del self._specs[project_id][spec_name]
+        if project_name in self._specs and spec_name in self._specs[project_name]:
+            del self._specs[project_name][spec_name]
             removed_from_specs = True
 
         # Remove from roadmap
-        roadmap = self._roadmaps[project_id]
+        roadmap = self._roadmaps[project_name]
         for i, spec in enumerate(roadmap.specs):
             if spec.phase_name == spec_name:
                 roadmap.specs.pop(i)
@@ -202,22 +200,22 @@ class InMemoryStateManager(StateManager):
         return removed_from_specs
 
     # Loop-to-Spec Mapping (for temporary refinement sessions)
-    def link_loop_to_spec(self, loop_id: str, project_id: str, spec_name: str) -> None:
-        if project_id not in self._specs or spec_name not in self._specs[project_id]:
+    def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None:
+        if project_name not in self._specs or spec_name not in self._specs[project_name]:
             raise SpecNotFoundError(f'Cannot link loop to non-existent spec: {spec_name}')
-        self._loop_to_spec[loop_id] = (project_id, spec_name)
+        self._loop_to_spec[loop_id] = (project_name, spec_name)
 
     def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec:
         if loop_id not in self._loop_to_spec:
             raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
-        project_id, spec_name = self._loop_to_spec[loop_id]
-        return self.get_spec(project_id, spec_name)
+        project_name, spec_name = self._loop_to_spec[loop_id]
+        return self.get_spec(project_name, spec_name)
 
     def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None:
         if loop_id not in self._loop_to_spec:
             raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
-        project_id, spec_name = self._loop_to_spec[loop_id]
-        self.store_spec(project_id, spec)
+        project_name, spec_name = self._loop_to_spec[loop_id]
+        self.store_spec(project_name, spec)
 
     def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
         return self._loop_to_spec.pop(loop_id, None)
