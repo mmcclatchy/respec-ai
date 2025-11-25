@@ -19,10 +19,10 @@ class TestPlanRoadmapTemplate:
         assert 'tools:' in template
 
         # Check MCP tools section - roadmap agent only retrieves plan, doesn't create specs
-        assert '- mcp__specter__get_project_plan_markdown' in template
+        assert 'mcp__specter__get_project_plan_markdown' in template
         # Roadmap agent no longer creates specs - that's done by parallel create-spec agents
-        assert '- mcp__specter__add_spec' not in template
-        assert '- mcp__specter__list_specs' not in template
+        assert 'mcp__specter__add_spec' not in template
+        assert 'mcp__specter__list_specs' not in template
 
         # Check agent identity
         assert 'You are a' in template
@@ -70,8 +70,8 @@ class TestRoadmapCriticTemplate:
         assert 'tools:' in template
 
         # Check MCP tools - roadmap-critic works with loop_id
-        assert '- mcp__specter__get_roadmap' in template  # Uses get_roadmap, not get_roadmap_markdown
-        assert '- mcp__specter__store_critic_feedback' in template
+        assert 'mcp__specter__get_roadmap' in template  # Uses get_roadmap, not get_roadmap_markdown
+        assert 'mcp__specter__store_critic_feedback' in template
         # Removed get_feedback - critic retrieves roadmap directly using loop_id
 
     def test_template_includes_critic_feedback_format(self) -> None:
@@ -153,8 +153,8 @@ class TestCreateSpecTemplate:
         )
         template = generate_create_spec_template(tools)
 
-        # Should reference InitialSpec
-        assert 'InitialSpec' in template
+        # Should reference TechnicalSpec
+        assert 'TechnicalSpec' in template
 
 
 class TestTemplateConsistency:

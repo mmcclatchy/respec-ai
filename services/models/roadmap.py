@@ -57,10 +57,7 @@ class Roadmap(MCPModel):
     spec_count: int = 0
 
     def build_markdown(self) -> str:
-        # Generate specs list dynamically from TechnicalSpec objects
-        specs_list = '\n'.join(f'- **Spec {i + 1}**: {spec.phase_name}' for i, spec in enumerate(self.specs))
-
-        return f"""{self.TITLE_PATTERN}: {self.project_name}
+        roadmap_metadata = f"""{self.TITLE_PATTERN}: {self.project_name}
 
 ## Project Details
 
@@ -75,9 +72,6 @@ class Roadmap(MCPModel):
 
 ### Budget
 {self.roadmap_budget}
-
-## Specifications
-{specs_list}
 
 ## Risk Assessment
 
@@ -129,6 +123,12 @@ class Roadmap(MCPModel):
 ### Spec Count
 {self.spec_count}
 """
+        # Append full TechnicalSpec markdown for round-trip consistency
+        if self.specs:
+            specs_markdown = '\n\n'.join(spec.build_markdown() for spec in self.specs)
+            return roadmap_metadata + '\n' + specs_markdown
+
+        return roadmap_metadata
 
     def get_spec_name(self, spec_name: str) -> str:
         for spec in self.specs:

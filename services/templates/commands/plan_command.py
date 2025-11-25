@@ -53,8 +53,7 @@ plan_completion_template = PlanCompletionReport(
 
 def generate_plan_command_template(tools: PlanCommandTools) -> str:
     return f"""---
-allowed-tools:
-{tools.tools_yaml}
+allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [starting-prompt]
 description: Orchestrate strategic planning workflow
 ---

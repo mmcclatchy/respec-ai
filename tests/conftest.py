@@ -1,3 +1,4 @@
+import logging
 from typing import Generator
 from unittest.mock import patch
 
@@ -6,6 +7,10 @@ import pytest
 from services.mcp.tools.loop_tools import LoopTools
 from services.mcp.tools.roadmap_tools import RoadmapTools
 from services.utils.state_manager import InMemoryStateManager
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    logging.getLogger('state_manager').setLevel(logging.WARNING)
 
 
 # No longer need to mock the entire MCP server module since we removed fake markdown tools

@@ -13,6 +13,54 @@ from services.utils.loop_state import HealthStatus
 from services.utils.setting_configs import mcp_settings
 
 
+class MCPRequestFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Only enhance debug logs about received messages
+        if record.levelno != logging.DEBUG or 'Received message:' not in record.getMessage():
+            return True
+
+        # Extract the message object from log args
+        if not record.args or len(record.args) < 1:
+            return True
+
+        message = record.args[0]
+
+        try:
+            # Handle RequestResponder (requests)
+            if hasattr(message, 'request') and hasattr(message.request, 'root'):
+                req = message.request.root
+                method = getattr(req, 'method', 'unknown')
+
+                # Extract additional details based on method
+                details = []
+                if hasattr(req, 'params') and req.params:
+                    if hasattr(req.params, 'name'):
+                        details.append(f'name={req.params.name}')
+                    if hasattr(req.params, 'uri'):
+                        details.append(f'uri={req.params.uri}')
+
+                detail_str = f', {", ".join(details)}' if details else ''
+                record.msg = f'Received request: method={method}{detail_str}'
+                record.args = ()
+
+            # Handle ClientNotification (notifications)
+            elif hasattr(message, 'root') and hasattr(message.root, 'method'):
+                method = message.root.method
+                record.msg = f'Received notification: method={method}'
+                record.args = ()
+
+            # Handle exceptions
+            elif isinstance(message, Exception):
+                record.msg = f'Received exception: {type(message).__name__}: {message}'
+                record.args = ()
+
+        except Exception as e:
+            # If extraction fails, allow original log through
+            logging.getLogger(__name__).warning(f'Failed to enhance MCP log: {e}', exc_info=True)
+
+        return True
+
+
 def _configure_logging() -> logging.Logger:
     log_level = getattr(logging, mcp_settings.log_level.upper(), logging.INFO)
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -49,6 +97,14 @@ def _configure_logging() -> logging.Logger:
     tool_logger = logging.getLogger('mcp_tools')
     tool_logger.setLevel(log_level)
 
+    # Configure third-party loggers
+    logging.getLogger('markdown_it').setLevel(logging.WARNING)
+
+    # Add custom filter to MCP lowlevel server logger to extract useful request info
+    mcp_server_logger = logging.getLogger('mcp.server.lowlevel.server')
+    mcp_server_logger.setLevel(log_level)  # Allow DEBUG logs through
+    mcp_server_logger.addFilter(MCPRequestFilter())
+
     return tool_logger
 
 
@@ -73,7 +129,7 @@ def create_mcp_server() -> FastMCP:
             logger=tool_logger,
             log_level=log_level,
             include_payloads=True,
-            max_payload_length=500,
+            max_payload_length=50000,
         )
     )
 

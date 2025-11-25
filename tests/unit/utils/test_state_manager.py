@@ -2,11 +2,18 @@ from datetime import datetime
 
 import pytest
 
-from services.models.enums import RoadmapStatus, SpecStatus
+from services.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
+from services.models.project_plan import ProjectPlan
 from services.models.roadmap import Roadmap
 from services.models.spec import TechnicalSpec
 from services.utils.enums import LoopType
-from services.utils.errors import LoopAlreadyExistsError, LoopNotFoundError, RoadmapNotFoundError, SpecNotFoundError
+from services.utils.errors import (
+    LoopAlreadyExistsError,
+    LoopNotFoundError,
+    ProjectPlanNotFoundError,
+    RoadmapNotFoundError,
+    SpecNotFoundError,
+)
 from services.utils.loop_state import LoopState
 from services.utils.state_manager import InMemoryStateManager, Queue
 
@@ -474,6 +481,410 @@ class TestLoopOperations(TestInMemoryStateManager):
         for loop in loops[1:]:
             retrieved = state_manager.get_loop(loop.id)
             assert retrieved == loop
+
+
+class TestProjectPlanOperations(TestInMemoryStateManager):
+    def test_store_project_plan_returns_project_name(self, state_manager: InMemoryStateManager) -> None:
+        project_name = 'test-project'
+        project_plan = ProjectPlan(
+            project_name=project_name,
+            project_vision='Test vision',
+            project_mission='Test mission',
+            project_timeline='Q1 2024',
+            project_budget='$100K',
+            primary_objectives='Test objectives',
+            success_metrics='Test metrics',
+            key_performance_indicators='Test KPIs',
+            included_features='Feature A, Feature B',
+            excluded_features='Feature C',
+            project_assumptions='Test assumptions',
+            project_constraints='Test constraints',
+            project_sponsor='Test sponsor',
+            key_stakeholders='Stakeholder A, Stakeholder B',
+            end_users='End users',
+            work_breakdown='Phase 1, Phase 2',
+            phases_overview='2 phases',
+            project_dependencies='Dependency A',
+            team_structure='3 developers',
+            technology_requirements='Python, FastAPI',
+            infrastructure_needs='Cloud hosting',
+            identified_risks='Risk A',
+            mitigation_strategies='Strategy A',
+            contingency_plans='Plan A',
+            quality_standards='High quality',
+            testing_strategy='Unit and integration tests',
+            acceptance_criteria='All tests pass',
+            reporting_structure='Weekly updates',
+            meeting_schedule='Daily standups',
+            documentation_standards='Standard docs',
+            project_status=ProjectStatus.DRAFT,
+        )
+
+        result = state_manager.store_project_plan(project_name, project_plan)
+
+        assert result == project_name
+
+    def test_store_project_plan_makes_retrievable(self, state_manager: InMemoryStateManager) -> None:
+        project_name = 'test-project'
+        project_plan = ProjectPlan(
+            project_name=project_name,
+            project_vision='Test vision',
+            project_mission='Test mission',
+            project_timeline='Q1 2024',
+            project_budget='$100K',
+            primary_objectives='Test objectives',
+            success_metrics='Test metrics',
+            key_performance_indicators='Test KPIs',
+            included_features='Feature A',
+            excluded_features='Feature B',
+            project_assumptions='Test assumptions',
+            project_constraints='Test constraints',
+            project_sponsor='Test sponsor',
+            key_stakeholders='Stakeholders',
+            end_users='Users',
+            work_breakdown='Phases',
+            phases_overview='Overview',
+            project_dependencies='Dependencies',
+            team_structure='Team',
+            technology_requirements='Tech',
+            infrastructure_needs='Infrastructure',
+            identified_risks='Risks',
+            mitigation_strategies='Strategies',
+            contingency_plans='Plans',
+            quality_standards='Standards',
+            testing_strategy='Testing',
+            acceptance_criteria='Criteria',
+            reporting_structure='Reporting',
+            meeting_schedule='Meetings',
+            documentation_standards='Docs',
+            project_status=ProjectStatus.DRAFT,
+        )
+
+        state_manager.store_project_plan(project_name, project_plan)
+        retrieved_plan = state_manager.get_project_plan(project_name)
+
+        assert retrieved_plan == project_plan
+        assert retrieved_plan.project_name == project_name
+        assert retrieved_plan.project_vision == 'Test vision'
+
+    def test_get_project_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
+        with pytest.raises(ProjectPlanNotFoundError) as exc_info:
+            state_manager.get_project_plan('non-existent-project')
+
+        assert 'non-existent-project' in str(exc_info.value)
+        assert 'Project plan not found' in str(exc_info.value)
+
+    def test_store_project_plan_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
+        project_name = 'same-project'
+        original_plan = ProjectPlan(
+            project_name='Original Plan',
+            project_vision='Original vision',
+            project_mission='Original mission',
+            project_timeline='Q1 2024',
+            project_budget='$100K',
+            primary_objectives='Original objectives',
+            success_metrics='Original metrics',
+            key_performance_indicators='Original KPIs',
+            included_features='Feature A',
+            excluded_features='Feature B',
+            project_assumptions='Assumptions',
+            project_constraints='Constraints',
+            project_sponsor='Sponsor',
+            key_stakeholders='Stakeholders',
+            end_users='Users',
+            work_breakdown='Breakdown',
+            phases_overview='Overview',
+            project_dependencies='Dependencies',
+            team_structure='Team',
+            technology_requirements='Tech',
+            infrastructure_needs='Infrastructure',
+            identified_risks='Risks',
+            mitigation_strategies='Strategies',
+            contingency_plans='Plans',
+            quality_standards='Standards',
+            testing_strategy='Testing',
+            acceptance_criteria='Criteria',
+            reporting_structure='Reporting',
+            meeting_schedule='Meetings',
+            documentation_standards='Docs',
+            project_status=ProjectStatus.DRAFT,
+        )
+        updated_plan = ProjectPlan(
+            project_name='Updated Plan',
+            project_vision='Updated vision',
+            project_mission='Updated mission',
+            project_timeline='Q2 2024',
+            project_budget='$200K',
+            primary_objectives='Updated objectives',
+            success_metrics='Updated metrics',
+            key_performance_indicators='Updated KPIs',
+            included_features='Feature C',
+            excluded_features='Feature D',
+            project_assumptions='Updated assumptions',
+            project_constraints='Updated constraints',
+            project_sponsor='Updated sponsor',
+            key_stakeholders='Updated stakeholders',
+            end_users='Updated users',
+            work_breakdown='Updated breakdown',
+            phases_overview='Updated overview',
+            project_dependencies='Updated dependencies',
+            team_structure='Updated team',
+            technology_requirements='Updated tech',
+            infrastructure_needs='Updated infrastructure',
+            identified_risks='Updated risks',
+            mitigation_strategies='Updated strategies',
+            contingency_plans='Updated plans',
+            quality_standards='Updated standards',
+            testing_strategy='Updated testing',
+            acceptance_criteria='Updated criteria',
+            reporting_structure='Updated reporting',
+            meeting_schedule='Updated meetings',
+            documentation_standards='Updated docs',
+            project_status=ProjectStatus.ACTIVE,
+        )
+
+        state_manager.store_project_plan(project_name, original_plan)
+        state_manager.store_project_plan(project_name, updated_plan)
+        retrieved_plan = state_manager.get_project_plan(project_name)
+
+        assert retrieved_plan == updated_plan
+        assert retrieved_plan.project_name == 'Updated Plan'
+        assert retrieved_plan.project_vision == 'Updated vision'
+        assert retrieved_plan.project_status == ProjectStatus.ACTIVE
+
+    def test_list_project_plans_returns_empty_for_no_plans(self, state_manager: InMemoryStateManager) -> None:
+        result = state_manager.list_project_plans()
+
+        assert result == []
+
+    def test_list_project_plans_returns_all_plan_names(self, state_manager: InMemoryStateManager) -> None:
+        plan1 = ProjectPlan(
+            project_name='Plan 1',
+            project_vision='Vision 1',
+            project_mission='Mission 1',
+            project_timeline='Q1 2024',
+            project_budget='$100K',
+            primary_objectives='Objectives 1',
+            success_metrics='Metrics 1',
+            key_performance_indicators='KPIs 1',
+            included_features='Features 1',
+            excluded_features='Excluded 1',
+            project_assumptions='Assumptions 1',
+            project_constraints='Constraints 1',
+            project_sponsor='Sponsor 1',
+            key_stakeholders='Stakeholders 1',
+            end_users='Users 1',
+            work_breakdown='Breakdown 1',
+            phases_overview='Overview 1',
+            project_dependencies='Dependencies 1',
+            team_structure='Team 1',
+            technology_requirements='Tech 1',
+            infrastructure_needs='Infrastructure 1',
+            identified_risks='Risks 1',
+            mitigation_strategies='Strategies 1',
+            contingency_plans='Plans 1',
+            quality_standards='Standards 1',
+            testing_strategy='Testing 1',
+            acceptance_criteria='Criteria 1',
+            reporting_structure='Reporting 1',
+            meeting_schedule='Meetings 1',
+            documentation_standards='Docs 1',
+            project_status=ProjectStatus.DRAFT,
+        )
+        plan2 = ProjectPlan(
+            project_name='Plan 2',
+            project_vision='Vision 2',
+            project_mission='Mission 2',
+            project_timeline='Q2 2024',
+            project_budget='$200K',
+            primary_objectives='Objectives 2',
+            success_metrics='Metrics 2',
+            key_performance_indicators='KPIs 2',
+            included_features='Features 2',
+            excluded_features='Excluded 2',
+            project_assumptions='Assumptions 2',
+            project_constraints='Constraints 2',
+            project_sponsor='Sponsor 2',
+            key_stakeholders='Stakeholders 2',
+            end_users='Users 2',
+            work_breakdown='Breakdown 2',
+            phases_overview='Overview 2',
+            project_dependencies='Dependencies 2',
+            team_structure='Team 2',
+            technology_requirements='Tech 2',
+            infrastructure_needs='Infrastructure 2',
+            identified_risks='Risks 2',
+            mitigation_strategies='Strategies 2',
+            contingency_plans='Plans 2',
+            quality_standards='Standards 2',
+            testing_strategy='Testing 2',
+            acceptance_criteria='Criteria 2',
+            reporting_structure='Reporting 2',
+            meeting_schedule='Meetings 2',
+            documentation_standards='Docs 2',
+            project_status=ProjectStatus.ACTIVE,
+        )
+
+        state_manager.store_project_plan('project-1', plan1)
+        state_manager.store_project_plan('project-2', plan2)
+        result = state_manager.list_project_plans()
+
+        assert len(result) == 2
+        assert 'project-1' in result
+        assert 'project-2' in result
+
+    def test_delete_project_plan_returns_true_when_plan_exists(self, state_manager: InMemoryStateManager) -> None:
+        project_name = 'test-project'
+        project_plan = ProjectPlan(
+            project_name=project_name,
+            project_vision='Test vision',
+            project_mission='Test mission',
+            project_timeline='Q1 2024',
+            project_budget='$100K',
+            primary_objectives='Test objectives',
+            success_metrics='Test metrics',
+            key_performance_indicators='Test KPIs',
+            included_features='Features',
+            excluded_features='Excluded',
+            project_assumptions='Assumptions',
+            project_constraints='Constraints',
+            project_sponsor='Sponsor',
+            key_stakeholders='Stakeholders',
+            end_users='Users',
+            work_breakdown='Breakdown',
+            phases_overview='Overview',
+            project_dependencies='Dependencies',
+            team_structure='Team',
+            technology_requirements='Tech',
+            infrastructure_needs='Infrastructure',
+            identified_risks='Risks',
+            mitigation_strategies='Strategies',
+            contingency_plans='Plans',
+            quality_standards='Standards',
+            testing_strategy='Testing',
+            acceptance_criteria='Criteria',
+            reporting_structure='Reporting',
+            meeting_schedule='Meetings',
+            documentation_standards='Docs',
+            project_status=ProjectStatus.DRAFT,
+        )
+
+        state_manager.store_project_plan(project_name, project_plan)
+        result = state_manager.delete_project_plan(project_name)
+
+        assert result is True
+
+    def test_delete_project_plan_removes_plan(self, state_manager: InMemoryStateManager) -> None:
+        project_name = 'test-project'
+        project_plan = ProjectPlan(
+            project_name=project_name,
+            project_vision='Test vision',
+            project_mission='Test mission',
+            project_timeline='Q1 2024',
+            project_budget='$100K',
+            primary_objectives='Test objectives',
+            success_metrics='Test metrics',
+            key_performance_indicators='Test KPIs',
+            included_features='Features',
+            excluded_features='Excluded',
+            project_assumptions='Assumptions',
+            project_constraints='Constraints',
+            project_sponsor='Sponsor',
+            key_stakeholders='Stakeholders',
+            end_users='Users',
+            work_breakdown='Breakdown',
+            phases_overview='Overview',
+            project_dependencies='Dependencies',
+            team_structure='Team',
+            technology_requirements='Tech',
+            infrastructure_needs='Infrastructure',
+            identified_risks='Risks',
+            mitigation_strategies='Strategies',
+            contingency_plans='Plans',
+            quality_standards='Standards',
+            testing_strategy='Testing',
+            acceptance_criteria='Criteria',
+            reporting_structure='Reporting',
+            meeting_schedule='Meetings',
+            documentation_standards='Docs',
+            project_status=ProjectStatus.DRAFT,
+        )
+
+        state_manager.store_project_plan(project_name, project_plan)
+        state_manager.delete_project_plan(project_name)
+
+        with pytest.raises(ProjectPlanNotFoundError):
+            state_manager.get_project_plan(project_name)
+
+    def test_delete_project_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
+        with pytest.raises(ProjectPlanNotFoundError) as exc_info:
+            state_manager.delete_project_plan('non-existent-project')
+
+        assert 'non-existent-project' in str(exc_info.value)
+        assert 'Project plan not found' in str(exc_info.value)
+
+    @pytest.mark.parametrize(
+        'project_names',
+        [
+            ['proj-1', 'proj-2', 'proj-3'],
+            ['simple', 'with-dashes', 'with_underscores'],
+            ['A', 'B', 'C', 'D', 'E'],
+        ],
+    )
+    def test_project_plan_operations_with_multiple_plans(
+        self, state_manager: InMemoryStateManager, project_names: list[str]
+    ) -> None:
+        # Store multiple plans
+        for i, project_name in enumerate(project_names):
+            plan = ProjectPlan(
+                project_name=f'Plan {i}',
+                project_vision=f'Vision {i}',
+                project_mission=f'Mission {i}',
+                project_timeline='Q1 2024',
+                project_budget='$100K',
+                primary_objectives=f'Objectives {i}',
+                success_metrics=f'Metrics {i}',
+                key_performance_indicators=f'KPIs {i}',
+                included_features=f'Features {i}',
+                excluded_features=f'Excluded {i}',
+                project_assumptions=f'Assumptions {i}',
+                project_constraints=f'Constraints {i}',
+                project_sponsor=f'Sponsor {i}',
+                key_stakeholders=f'Stakeholders {i}',
+                end_users=f'Users {i}',
+                work_breakdown=f'Breakdown {i}',
+                phases_overview=f'Overview {i}',
+                project_dependencies=f'Dependencies {i}',
+                team_structure=f'Team {i}',
+                technology_requirements=f'Tech {i}',
+                infrastructure_needs=f'Infrastructure {i}',
+                identified_risks=f'Risks {i}',
+                mitigation_strategies=f'Strategies {i}',
+                contingency_plans=f'Plans {i}',
+                quality_standards=f'Standards {i}',
+                testing_strategy=f'Testing {i}',
+                acceptance_criteria=f'Criteria {i}',
+                reporting_structure=f'Reporting {i}',
+                meeting_schedule=f'Meetings {i}',
+                documentation_standards=f'Docs {i}',
+                project_status=ProjectStatus.DRAFT,
+                creation_date='2024-01-01',
+                last_updated='2024-01-01',
+                version='1.0',
+            )
+            state_manager.store_project_plan(project_name, plan)
+
+        # Verify all plans are stored
+        all_plans = state_manager.list_project_plans()
+        assert len(all_plans) == len(project_names)
+        for project_name in project_names:
+            assert project_name in all_plans
+
+        # Verify each plan can be retrieved
+        for i, project_name in enumerate(project_names):
+            plan = state_manager.get_project_plan(project_name)
+            assert plan.project_name == f'Plan {i}'
+            assert plan.project_vision == f'Vision {i}'
 
 
 class TestCrossOperationIntegration(TestInMemoryStateManager):

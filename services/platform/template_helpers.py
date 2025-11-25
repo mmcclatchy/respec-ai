@@ -42,6 +42,10 @@ class TemplateToolBuilder:
         tool_strings = self.build()
         return '\n'.join(f'{indent}- {tool}' for tool in tool_strings)
 
+    def render_comma_separated_tools(self) -> str:
+        tool_strings = self.build()
+        return ', '.join(tool_strings)
+
 
 def create_spec_command_tools(platform_tools: list[str]) -> str:
     builder = (
@@ -56,7 +60,7 @@ def create_spec_command_tools(platform_tools: list[str]) -> str:
         .add_platform_tools(platform_tools)
     )
 
-    return builder.render_yaml_tools()
+    return builder.render_comma_separated_tools()
 
 
 def create_plan_command_tools(platform_tools: list[str]) -> str:
@@ -88,7 +92,7 @@ def create_plan_command_tools(platform_tools: list[str]) -> str:
         .add_platform_tools(platform_tools)
     )
 
-    return builder.render_yaml_tools()
+    return builder.render_comma_separated_tools()
 
 
 def create_build_command_tools(platform_tools: list[str]) -> str:
@@ -106,7 +110,7 @@ def create_build_command_tools(platform_tools: list[str]) -> str:
         .add_platform_tools(platform_tools)
     )
 
-    return builder.render_yaml_tools()
+    return builder.render_comma_separated_tools()
 
 
 def create_roadmap_tools(platform_tools: list[str]) -> str:
@@ -118,9 +122,12 @@ def create_roadmap_tools(platform_tools: list[str]) -> str:
         .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
         .add_specter_tool(SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION)
         .add_specter_tool(SpecterMCPTool.GET_LOOP_STATUS)
+        .add_specter_tool(SpecterMCPTool.CREATE_ROADMAP)
+        .add_specter_tool(SpecterMCPTool.GET_ROADMAP)
         .add_specter_tool(SpecterMCPTool.STORE_SPEC)
+        .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
         .add_specter_tool(SpecterMCPTool.LIST_SPECS)
         .add_platform_tools(platform_tools)
     )
 
-    return builder.render_yaml_tools()
+    return builder.render_comma_separated_tools()

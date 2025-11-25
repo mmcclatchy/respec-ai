@@ -29,6 +29,10 @@ class RoadmapTools:
                 roadmap.add_spec(spec)
 
             self.state.store_roadmap(project_name, roadmap)
+
+            # Store each spec individually in _specs storage for retrieval
+            for spec in roadmap.specs:
+                self.state.store_spec(project_name, spec)
             return (
                 f'Created roadmap "{roadmap.project_name}" with {len(spec_blocks) - 1} specs for project {project_name}'
             )

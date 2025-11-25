@@ -3,8 +3,7 @@ from services.platform.models import PlanRoadmapCommandTools
 
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     return f"""---
-allowed-tools:
-{tools.tools_yaml}
+allowed-tools: {tools.tools_yaml}
 argument-hint: [optional: phasing-preferences]
 description: Transform strategic plans into multiple InitialSpecs through quality-driven refinement
 ---
@@ -58,7 +57,11 @@ Input:
   - phasing_preferences: PHASING_PREFERENCES
   - previous_feedback: CRITIC_FEEDBACK (if this is a refinement iteration)
 
-Store result as: CURRENT_ROADMAP
+**CRITICAL**: Capture the agent's complete output markdown as CURRENT_ROADMAP.
+The agent returns the full roadmap markdown but does NOT store it.
+You MUST store this output in Step 3b using mcp__specter__create_roadmap.
+
+CURRENT_ROADMAP = [complete markdown output from roadmap agent]
 ```
 
 Expected: Implementation roadmap with appropriately-sized phases using one of these strategies:
@@ -91,17 +94,25 @@ Choose strategy based on project characteristics. Phases should be:
 - Naturally ordered by dependencies
 ```
 
-#### Step 3b: Store Roadmap in MCP
+
+#### Step 3b: Store Roadmap in MCP (MANDATORY - DO NOT SKIP)
+
+**CRITICAL: This step MUST be executed immediately after Step 3a completes.**
+
+The roadmap agent returns markdown but does NOT store it. YOU must store it now.
+
 ```text
-TRY:
-  mcp__specter__create_roadmap(project_name=PROJECT_NAME, roadmap_data=CURRENT_ROADMAP)
-CATCH (if MCP storage fails):
-  **CRITICAL ERROR HANDLING**:
+STORE_RESULT = mcp__specter__create_roadmap(
+    project_name=PROJECT_NAME,
+    roadmap_data=CURRENT_ROADMAP
+)
+
+IF STORE_RESULT contains error:
+  **CRITICAL ERROR - STOP WORKFLOW**:
+  - Report the specific MCP error message to user
   - DO NOT create roadmap.md files as workaround
   - DO NOT use file-based storage as alternative to MCP
-  - Report the specific MCP error message to user
-  - Stop workflow immediately
-  - Instruct user to debug MCP server connection
+  - DO NOT proceed to Step 3c
 
   Example error message:
   "ERROR: MCP roadmap storage failed: [error details]
@@ -109,6 +120,15 @@ CATCH (if MCP storage fails):
    DO NOT create file-based workarounds - MCP storage is required."
 
   EXIT: Workflow terminated
+
+VERIFY storage succeeded:
+VERIFICATION = mcp__specter__get_roadmap(project_name=PROJECT_NAME)
+
+IF VERIFICATION fails:
+  ERROR: "Roadmap storage verification failed - roadmap was not saved to MCP"
+  EXIT: Workflow terminated
+
+Display to user: "✓ Roadmap stored in MCP successfully"
 ```
 
 #### Step 3c: Invoke Roadmap-Critic Agent
@@ -126,7 +146,8 @@ Roadmap-critic will:
 
 #### Step 3d: Get Feedback and Extract Score
 ```text
-CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=ROADMAP_LOOP_ID, count=1)
+CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=ROADMAP_LOOP_ID, count=2)
+Note: Retrieves 2 most recent iterations for stagnation detection (<10 points improvement threshold)
 Extract QUALITY_SCORE from CRITIC_FEEDBACK markdown (look for "Overall Score: [number]")
 ```
 
@@ -201,7 +222,6 @@ For each phase in ROADMAP_PHASES:
   - Validate sprint-appropriate scope (2-4 weeks of work per roadmap design)
   - Identify prerequisite dependencies and proper ordering
   - Determine specific spec responsibilities and technical focus
-  - Plan platform tool integration requirements
 ```
 
 #### Create Spec Extraction Plan
@@ -209,53 +229,29 @@ For each phase in ROADMAP_PHASES:
 SPEC_EXTRACTION_PLAN = Generate plan for extracting specs from roadmap:
   - Phase ordering based on dependencies
   - One spec per phase (PHASE_COUNT total specs to extract and save)
-  - Platform tool for external deliverables: {tools.create_spec_tool_interpolated}
   - Success criteria: Each extracted spec is sparse (iteration=0) matching roadmap content
 
-**Remember**: Specs already exist in roadmap - we're just extracting and saving them.
+**Remember**: Specs already exist in roadmap - we're just extracting and saving them to MCP.
 ```
 
-### 6. Parallel Spec Extraction and Platform Delivery
-Extract sparse TechnicalSpecs from roadmap and save to platform:
+### 6. Parallel Spec Extraction
+Extract sparse TechnicalSpecs from roadmap and save to MCP storage:
 
-**CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse TechnicalSpec objects (iteration=0) embedded in the roadmap markdown. The create-spec agents DO NOT generate new specs - they extract existing specs from the roadmap and save them to the platform.
+**CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse TechnicalSpec objects (iteration=0) embedded in the roadmap markdown. The create-spec agents DO NOT generate new specs - they extract existing specs from the roadmap and save them to MCP.
 
 #### Launch Parallel Spec Extraction Agents
 ```text
-IMPORTANT: Launch ALL agents in a SINGLE message using multiple Task tool calls for true parallelism.
+IMPORTANT: Launch ALL agents in a SINGLE message using multiple agent invocations for true parallelism.
 
 For each phase in ROADMAP_PHASES, invoke specter-create-spec agent:
 
-Task(
-    subagent_type="specter-create-spec",
-    description="Extract and save spec for [phase_name]",
-    prompt='''
-    Extract the existing sparse TechnicalSpec (iteration=0) from roadmap and save to platform.
+Invoke: specter-create-spec
+Input:
+  - project_name: PROJECT_NAME
+  - spec_name: [phase_name from ROADMAP_PHASES]
+  - loop_id: ROADMAP_LOOP_ID
 
-    **CRITICAL**: DO NOT generate new specifications. The roadmap already contains sparse TechnicalSpec objects.
-    Your job is to EXTRACT the existing spec and SAVE it to the platform.
-
-    PROJECT_NAME: [PROJECT_NAME from Step 0]
-    LOOP_ID: [ROADMAP_LOOP_ID from Step 2]
-    Phase Name: [phase_name from ROADMAP_PHASES]
-
-    IMPORTANT: Use correct parameters when calling MCP tools:
-    - mcp__specter__get_roadmap(project_name=PROJECT_NAME)
-    - mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=PHASE_NAME, spec_markdown=...)
-      * Use actual phase name (e.g., "Phase 1 - Vector Storage"), not loop_id
-
-    The create-spec agent will:
-    1. Retrieve roadmap using mcp__specter__get_roadmap
-    2. Extract the existing TechnicalSpec for this phase from the roadmap
-    3. Write platform deliverable using {tools.create_spec_tool_interpolated} (pass extracted spec markdown)
-    4. Store in MCP using mcp__specter__store_spec
-    5. Return status confirmation
-
-    This should take seconds, not minutes - you're just extracting and saving existing content.
-    '''
-)
-
-Launch all Task calls in parallel (one message with multiple tool uses).
+Launch all invocations in parallel (one message with multiple agent invocations).
 ```
 
 #### Aggregate Results
@@ -267,38 +263,74 @@ After all agents complete, collect results:
 
 Validate that each planned phase has a corresponding spec result.
 ```
-Report final status with roadmap + all specs created via platform tools
+
+### 6.5. Verify Spec Creation (MANDATORY)
+
+**CRITICAL**: Verify actual MCP storage, not agent completion messages.
+
+Verification Sequence:
+```text
+STEP 1: Query MCP Storage
+STORED_SPECS = mcp__specter__list_specs(project_name=PROJECT_NAME)
+
+STEP 2: Compare Results
+EXPECTED_COUNT = PHASE_COUNT (from Step 5)
+ACTUAL_COUNT = length of STORED_SPECS
+
+STEP 3: Detailed Verification
+For each phase in ROADMAP_PHASES:
+  EXPECTED_SPEC_NAME = phase.name
+
+  IF EXPECTED_SPEC_NAME in STORED_SPECS:
+    STATUS = "✅ SUCCESS"
+    VERIFY_SPEC = mcp__specter__get_spec_markdown(
+      project_name=PROJECT_NAME,
+      spec_name=EXPECTED_SPEC_NAME
+    )
+    CONFIRM: Spec contains valid TechnicalSpec markdown
+  ELSE:
+    STATUS = "❌ FAILED"
+    LOG: Spec not found in MCP storage despite agent completion
+
+  Record: (phase_name, status, evidence)
+
+STEP 4: Generate Evidence-Based Report
+Report actual verification results:
+  - Total phases: PHASE_COUNT
+  - Successfully stored: [count with ✅]
+  - Failed storage: [count with ❌]
+  - Evidence: MCP list_specs response
+
+DO NOT rely on agent completion messages.
+Only report success for specs verified in MCP storage.
 ```
 
 ### 7. Final Integration and Comprehensive Reporting
-Complete workflow and report results with detailed status:
 
-#### Validation: Ensure Specs Were Created
-```text
-CRITICAL VALIDATION STEP:
-- Verify SUCCESSFUL_SPECS count > 0 (at least some specs were created)
-- Verify TOTAL_SPECS = PHASE_COUNT (all phases have spec attempts)
-- If SUCCESSFUL_SPECS = 0: WORKFLOW INCOMPLETE - report failure and exit
-- If FAILED_SPECS > 0: PARTIAL COMPLETION - report with recovery guidance
-- If SUCCESSFUL_SPECS = PHASE_COUNT: FULL SUCCESS - proceed with final report
-```
+Present verified results only:
 
-#### Final Report
 ```text
-Present completed roadmap with:
-- Quality score achieved during refinement process
-- Number of phases created in roadmap
-- Detailed spec creation results:
-  * Total specs planned from roadmap phases
-  * Successfully created InitialSpec objects (count and names)
-  * Platform tool confirmations (Linear tickets, GitHub issues, Notion pages)
-  * Failed spec creation attempts with specific error categories
-  * Recovery actions taken for partial failures
-- Readiness assessment for /specter-spec command execution:
-  * Phases ready for immediate technical specification
-  * Phases requiring manual intervention before /specter-spec execution
-  * Recommended next steps based on completion status
-- Overall workflow health metrics and any warnings or recommendations
+**Roadmap Completed**:
+- Quality Score: [score from Step 3e]
+- Total Phases: [PHASE_COUNT from Step 5]
+
+**Spec Storage Verification** (from Step 6.5):
+- Specs in MCP Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
+- Verified Specs: [list of ✅ spec names]
+- Missing Specs: [list of ❌ spec names]
+- Evidence: mcp__specter__list_specs output
+
+**Readiness Assessment**:
+IF ACTUAL_COUNT == EXPECTED_COUNT:
+  ✅ All phases ready for /specter-spec execution
+  Next: Execute /specter-spec on individual phases
+ELSE:
+  ⚠️ Partial completion - manual intervention required
+  Missing: [list specific phase names without MCP storage]
+  Action: Review Step 6 agent failures and retry failed specs
+
+**Next Steps**:
+[Provide specific guidance based on actual verification results]
 ```
 
 ## Error Handling
@@ -338,7 +370,6 @@ IF loop initialization fails:
 IF some create-spec agents fail:
   Continue with successful spec creations
   Categorize failures by type:
-    - Platform tool failures: Retry with alternative platform
     - Phase context extraction failures: Provide manual spec template
     - MCP storage failures: Retry storage operation once
     - Complete agent failures: Log error and continue with remaining specs
@@ -349,7 +380,6 @@ IF some create-spec agents fail:
     - Failed completely: W
   Provide specific guidance for each failed spec:
     - Manual creation templates for context extraction failures
-    - Alternative platform options for tool failures
     - Debugging information for technical issues
 ```
 
@@ -360,13 +390,12 @@ The command maintains orchestration focus by:
 - **Coordinating agent invocations** without defining their behavior
 - **Handling MCP Server responses** without evaluating quality scores
 - **Managing spec planning** before parallel creation
-- **Orchestrating platform tool integration** for final spec creation
 - **Providing error recovery** without detailed implementation guidance
 
 All specialized work delegated to appropriate agents:
 - **roadmap**: Phase breakdown and roadmap generation (with MCP tool access)
 - **roadmap-critic**: Quality assessment and feedback
-- **create-spec**: Individual InitialSpec creation + platform tool integration
+- **create-spec**: Individual InitialSpec extraction and MCP storage
 - **MCP Server**: Decision logic and threshold management
 
 ## Workflow Enhancements
@@ -378,13 +407,8 @@ All specialized work delegated to appropriate agents:
 
 ### Spec Planning Integration
 - Analyzes sprint-appropriate sizing before spec creation
-- Plans platform tool selection and integration
 - Coordinates prerequisite ordering and dependencies
+- Manages MCP storage for spec tracking
 
-### Platform Tool Integration
-- Final specs created via platform-specific tools (Linear, GitHub, Notion)
-- MCP tools used for internal state management
-- Platform tools used for external specification delivery
-
-Ready for technical specification development through /specter-spec command execution on individual phases with validated input and platform integration.
+Ready for technical specification development through /specter-spec command execution on individual phases with validated input.
 """

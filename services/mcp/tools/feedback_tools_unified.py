@@ -1,3 +1,5 @@
+import logging
+
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
@@ -6,6 +8,9 @@ from services.shared import state_manager
 from services.utils.errors import LoopNotFoundError
 from services.utils.loop_state import MCPResponse
 from services.utils.state_manager import StateManager
+
+
+logger = logging.getLogger(__name__)
 
 
 class UnifiedFeedbackTools:
@@ -138,6 +143,10 @@ class UnifiedFeedbackTools:
         if critic_feedback_list:
             feedback_parts.append('# Critic Feedback History\n')
             for i, critic_feedback in enumerate(critic_feedback_list, 1):
+                logger.debug(
+                    f'get_feedback: formatting iteration {i} with score={critic_feedback.overall_score}, '
+                    f'iteration={critic_feedback.iteration}'
+                )
                 feedback_parts.append(f'## Iteration {i} - Score: {critic_feedback.overall_score}\n')
                 feedback_parts.append(f'{critic_feedback.assessment_summary}\n')
                 if critic_feedback.key_issues:
@@ -219,8 +228,8 @@ class UnifiedFeedbackTools:
         except Exception as e:
             raise ToolError(f'Failed to parse feedback markdown: {str(e)}')
 
-        # Validation checks
-        if 'UNKNOWN' in feedback_markdown.upper():
+        # Validation checks - look for template placeholders, not legitimate use of "unknown"
+        if 'Critic Feedback: UNKNOWN' in feedback_markdown or '# Critic Feedback: UNKNOWN' in feedback_markdown:
             raise ToolError('Feedback must specify a valid critic agent')
         if '# Critic Feedback:' not in feedback_markdown:
             raise ToolError('Feedback missing critic feedback header')

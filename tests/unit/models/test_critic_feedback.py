@@ -145,6 +145,52 @@ The specification demonstrates thorough understanding of requirements and provid
         assert len(feedback.recommendations) == 3
         assert 'Add performance requirements section' in feedback.recommendations
 
+    def test_parse_markdown_with_score_fraction_format(self) -> None:
+        markdown = """# Critic Feedback: ROADMAP-CRITIC
+
+## Assessment Summary
+- **Loop ID**: test-loop-roadmap
+- **Iteration**: 2
+- **Overall Score**: 42/100
+- **Assessment Summary**: Roadmap needs significant improvements in phase scoping and dependencies.
+
+## Analysis
+
+The roadmap provides a foundation but requires refinement in several critical areas including phase boundaries and dependency mapping.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- Phase scoping too broad in Phase 1
+- Missing dependency documentation
+
+### Recommendations
+
+- Break Phase 1 into smaller deliverables
+- Add explicit dependency tree
+
+## Metadata
+- **Critic**: ROADMAP-CRITIC
+- **Timestamp**: 2024-01-15T14:30:00Z
+- **Status**: completed
+"""
+
+        feedback = CriticFeedback.parse_markdown(markdown)
+
+        assert feedback.loop_id == 'test-loop-roadmap'
+        assert feedback.critic_agent == CriticAgent.ROADMAP_CRITIC
+        assert feedback.iteration == 2
+        assert feedback.overall_score == 42
+        assert (
+            feedback.assessment_summary == 'Roadmap needs significant improvements in phase scoping and dependencies.'
+        )
+        assert 'requires refinement in several critical areas' in feedback.detailed_feedback
+        assert len(feedback.key_issues) == 2
+        assert 'Phase scoping too broad in Phase 1' in feedback.key_issues
+        assert len(feedback.recommendations) == 2
+        assert 'Break Phase 1 into smaller deliverables' in feedback.recommendations
+
     def test_build_markdown_creates_valid_template(self) -> None:
         feedback = CriticFeedback(
             loop_id='test-loop-456',

@@ -3,10 +3,7 @@ def generate_plan_analyst_template() -> str:
 name: specter-plan-analyst
 description: Extract structured objectives from strategic plans
 model: sonnet
-tools:
-  - mcp__specter__get_project_plan_markdown
-  - mcp__specter__get_previous_analysis
-  - mcp__specter__store_current_analysis
+tools: mcp__specter__get_project_plan_markdown, mcp__specter__get_previous_analysis, mcp__specter__store_current_analysis
 ---
 
 You are a business analyst focused on extracting and structuring actionable objectives from strategic plans.

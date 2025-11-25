@@ -10,13 +10,13 @@ class TestPlanRoadmapCommandTemplate:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
-        # Check YAML frontmatter tools
-        assert '- Task(specter-roadmap)' in template
-        assert '- Task(specter-roadmap-critic)' in template
-        assert '- Task(specter-create-spec)' in template
-        assert '- mcp__linear-server__' in template  # Should contain Linear tools
-        assert '- mcp__specter__initialize_refinement_loop' in template
-        assert '- mcp__specter__decide_loop_next_action' in template
+        # Check YAML frontmatter tools (comma-separated format)
+        assert 'Task(specter-roadmap)' in template
+        assert 'Task(specter-roadmap-critic)' in template
+        assert 'Task(specter-create-spec)' in template
+        assert 'mcp__linear-server__' in template  # Should contain Linear tools
+        assert 'mcp__specter__initialize_refinement_loop' in template
+        assert 'mcp__specter__decide_loop_next_action' in template
 
     def test_template_includes_required_yaml_sections(self) -> None:
         coordinator = TemplateCoordinator()

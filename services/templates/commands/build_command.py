@@ -3,8 +3,7 @@ from services.platform.models import BuildCommandTools
 
 def generate_build_command_template(tools: BuildCommandTools) -> str:
     return f"""---
-allowed-tools:
-{tools.tools_yaml}
+allowed-tools: {tools.tools_yaml}
 argument-hint: [spec-name]
 description: Transform technical specifications into production-ready code through parallel research, implementation planning, and TDD development
 ---

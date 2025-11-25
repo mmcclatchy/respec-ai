@@ -225,10 +225,10 @@ class TestGetRoadmap(TestRoadmapTools):
 
         assert isinstance(result, str)
         assert 'Test Roadmap' in result
-        # Check for the actual spec listing format
-        assert '- **Spec 1**: spec1' in result
-        assert '- **Spec 2**: spec2' in result
-        assert '- **Spec 3**: spec3' in result
+        # Check for full TechnicalSpec content (not summary list)
+        assert '# Technical Specification: spec1' in result
+        assert '# Technical Specification: spec2' in result
+        assert '# Technical Specification: spec3' in result
 
     def test_get_roadmap_raises_error_when_not_found(
         self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
@@ -268,5 +268,8 @@ class TestGetRoadmap(TestRoadmapTools):
         result = roadmap_tools.get_roadmap('empty-project')
 
         assert isinstance(result, str)
-        # For empty specs list, the Specifications section should be empty
-        assert '## Specifications\n\n\n## Risk Assessment' in result
+        # For empty specs list, no TechnicalSpec sections should be present
+        assert '# Technical Specification:' not in result
+        # Metadata should still be present
+        assert '## Metadata' in result
+        assert '### Spec Count\n0' in result

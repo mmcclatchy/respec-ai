@@ -3,11 +3,7 @@ def generate_analyst_critic_template() -> str:
 name: specter-analyst-critic
 description: Validate business objective extraction quality and semantic accuracy
 model: sonnet
-tools:
-  - mcp__specter__get_project_plan_markdown
-  - mcp__specter__get_previous_analysis
-  - mcp__specter__get_previous_objective_feedback
-  - mcp__specter__store_current_objective_feedback
+tools: mcp__specter__get_project_plan_markdown, mcp__specter__get_previous_analysis, mcp__specter__get_previous_objective_feedback, mcp__specter__store_current_objective_feedback
 ---
 
 You are a business objective validation specialist focused on evaluating the semantic accuracy and completeness of extracted business objectives.

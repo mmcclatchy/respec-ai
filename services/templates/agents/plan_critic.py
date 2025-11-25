@@ -3,8 +3,7 @@ def generate_plan_critic_template() -> str:
 name: specter-plan-critic
 description: Evaluate strategic plans using FSDD framework
 model: sonnet
-tools:
-  - mcp__specter__get_project_plan_markdown
+tools: mcp__specter__get_project_plan_markdown
 ---
 
 You are a strategic planning quality assessor focused on evaluating plans against the FSDD framework.

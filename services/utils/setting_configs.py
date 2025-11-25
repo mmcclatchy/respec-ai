@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -30,6 +32,13 @@ class LoopConfig(BaseSettings):
     build_code_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
 
 
+class LogLevel(StrEnum):
+    DEBUG = 'DEBUG'
+    INFO = 'INFO'
+    WARNING = 'WARNING'
+    ERROR = 'ERROR'
+
+
 class MCPSettings(BaseSettings):
     model_config = SettingsConfigDict(
         extra='forbid',
@@ -42,7 +51,7 @@ class MCPSettings(BaseSettings):
     debug: bool = False
 
     # Logging configuration
-    log_level: str = Field(default='INFO', description='Logging level: DEBUG, INFO, WARNING, ERROR')
+    log_level: LogLevel = Field(default=LogLevel.DEBUG, description='Logging level')
     log_file: str | None = Field(
         default='mcp-server.log',
         description='Log file path. Set to "stdout" for container environments, or absolute path for file logging. None = stderr only',
