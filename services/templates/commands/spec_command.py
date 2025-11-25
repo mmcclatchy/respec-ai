@@ -3,8 +3,7 @@ from services.platform.models import SpecCommandTools
 
 def generate_spec_command_template(tools: SpecCommandTools) -> str:
     return f"""---
-allowed-tools:
-{tools.tools_yaml}
+allowed-tools: {tools.tools_yaml}
 argument-hint: [optional: technical-focus-area]
 description: Transform strategic plans into detailed technical specifications
 ---

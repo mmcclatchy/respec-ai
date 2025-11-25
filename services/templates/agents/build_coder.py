@@ -6,17 +6,7 @@ def generate_build_coder_template(tools: BuildCoderAgentTools) -> str:
 name: build-coder
 description: Implement code using strict TDD methodology with test-first discipline
 model: sonnet
-tools:
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_feedback
-  - Write
-  - Edit
-  - Read
-  - Glob
-  - Bash
-  - TodoWrite
-  - {tools.update_task_status}
+tools: mcp__specter__get_build_plan_markdown, mcp__specter__get_spec_markdown, mcp__specter__get_feedback, Write, Edit, Read, Glob, Bash, TodoWrite, {tools.update_task_status}
 ---
 
 You are a software implementation specialist focused on producing production-ready code through strict Test-Driven Development (TDD) methodology.

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from services.models.project_plan import ProjectPlan
 from services.shared import state_manager
 from services.utils.enums import LoopStatus
+from services.utils.errors import ProjectPlanNotFoundError
 from services.utils.loop_state import MCPResponse
 from services.utils.state_manager import StateManager
 
@@ -12,7 +13,6 @@ from services.utils.state_manager import StateManager
 class ProjectPlanTools:
     def __init__(self, state: StateManager) -> None:
         self.state = state
-        self._project_plans: dict[str, ProjectPlan] = {}
 
     def create_project_plan(self, project_name: str, project_plan: ProjectPlan) -> MCPResponse:
         try:
@@ -22,7 +22,7 @@ class ProjectPlanTools:
             if not project_name:
                 raise ValueError('Project name cannot be empty')
 
-            self._project_plans[project_name] = project_plan
+            self.state.store_project_plan(project_name, project_plan)
             return MCPResponse(
                 id=project_name,
                 status=LoopStatus.INITIALIZED,
@@ -42,7 +42,7 @@ class ProjectPlanTools:
             if not project_name:
                 raise ValueError('Project name cannot be empty')
 
-            self._project_plans[project_name] = project_plan
+            self.state.store_project_plan(project_name, project_plan)
             return MCPResponse(
                 id=project_name,
                 status=LoopStatus.IN_PROGRESS,
@@ -60,10 +60,9 @@ class ProjectPlanTools:
             if not project_name:
                 raise ToolError('Project name cannot be empty')
 
-            if project_name not in self._project_plans:
-                raise ResourceError(f'No project plan found for project: {project_name}')
-
-            return self._project_plans[project_name]
+            return self.state.get_project_plan(project_name)
+        except ProjectPlanNotFoundError as e:
+            raise ResourceError(str(e))
         except (ResourceError, ToolError):
             raise
         except Exception as e:
@@ -79,17 +78,21 @@ class ProjectPlanTools:
 
     def list_project_plans(self, count: int = 10) -> MCPResponse:
         try:
-            if not self._project_plans:
+            plan_names = self.state.list_project_plans()
+            if not plan_names:
                 return MCPResponse(id='list', status=LoopStatus.INITIALIZED, message='No project plans found')
 
-            plan_items = list(self._project_plans.items())[-count:]
-            plan_count = len(plan_items)
-
+            recent_names = plan_names[-count:]
             plan_summaries = []
-            for project_name, plan in plan_items:
-                summary = f'Project: {project_name}, Status: {plan.project_status.value}'
-                plan_summaries.append(summary)
+            for project_name in recent_names:
+                try:
+                    plan = self.state.get_project_plan(project_name)
+                    summary = f'Project: {project_name}, Status: {plan.project_status.value}'
+                    plan_summaries.append(summary)
+                except Exception:
+                    pass
 
+            plan_count = len(plan_summaries)
             message = f'Found {plan_count} project plan{"s" if plan_count != 1 else ""}: ' + '; '.join(plan_summaries)
             return MCPResponse(id='list', status=LoopStatus.COMPLETED, message=message)
         except Exception as e:
@@ -100,13 +103,12 @@ class ProjectPlanTools:
             if not project_name:
                 raise ToolError('Project name cannot be empty')
 
-            if project_name in self._project_plans:
-                del self._project_plans[project_name]
-                return MCPResponse(
-                    id=project_name, status=LoopStatus.COMPLETED, message=f'Deleted project plan: {project_name}'
-                )
-            else:
-                raise ResourceError(f'No project plan found for project: {project_name}')
+            self.state.delete_project_plan(project_name)
+            return MCPResponse(
+                id=project_name, status=LoopStatus.COMPLETED, message=f'Deleted project plan: {project_name}'
+            )
+        except ProjectPlanNotFoundError as e:
+            raise ResourceError(str(e))
         except (ResourceError, ToolError):
             raise
         except Exception as e:

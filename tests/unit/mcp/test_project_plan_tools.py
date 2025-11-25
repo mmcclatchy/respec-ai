@@ -145,7 +145,7 @@ class TestGetProjectPlan:
         with pytest.raises(ResourceError) as exc_info:
             project_plan_tools.get_project_plan_data('non-existent-project')
 
-        assert 'No project plan found for project' in str(exc_info.value)
+        assert 'Project plan not found for project' in str(exc_info.value)
 
 
 class TestGetProjectPlanMarkdown:
@@ -279,4 +279,4 @@ class TestDeleteProjectPlan:
         with pytest.raises(ResourceError) as exc_info:
             project_plan_tools.delete_project_plan('non-existent-project')
 
-        assert 'No project plan found for project' in str(exc_info.value)
+        assert 'Project plan not found for project' in str(exc_info.value)

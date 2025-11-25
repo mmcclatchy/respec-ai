@@ -219,9 +219,9 @@ class TestTemplateHelpers:
 
         yaml_output = create_spec_command_tools(platform_tools)
 
-        assert '- Task(specter-spec-architect)' in yaml_output
-        assert '- mcp__specter__initialize_refinement_loop' in yaml_output
-        assert '- mcp__linear-server__create_issue' in yaml_output
+        assert 'Task(specter-spec-architect)' in yaml_output
+        assert 'mcp__specter__initialize_refinement_loop' in yaml_output
+        assert 'mcp__linear-server__create_issue' in yaml_output
 
 
 class TestStartupValidation:

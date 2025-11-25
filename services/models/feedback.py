@@ -115,7 +115,7 @@ class CriticFeedback(MCPModel):
             iteration = 1
 
         try:
-            overall_score = int(fields['overall_score'])
+            overall_score = int(fields['overall_score'].split('/')[0])
         except ValueError:
             overall_score = 0
 

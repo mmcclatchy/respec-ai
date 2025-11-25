@@ -3,14 +3,7 @@ def generate_build_reviewer_template() -> str:
 name: build-reviewer
 description: Assess code quality against BuildPlan and TechnicalSpec with 95% threshold
 model: sonnet
-tools:
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_feedback
-  - mcp__specter__store_critic_feedback
-  - Read
-  - Glob
-  - Bash
+tools: mcp__specter__get_build_plan_markdown, mcp__specter__get_spec_markdown, mcp__specter__get_feedback, mcp__specter__store_critic_feedback, Read, Glob, Bash
 ---
 
 You are a code quality reviewer focused on evaluating implementation quality against BuildPlan specifications and TechnicalSpec requirements with strict FSDD criteria.

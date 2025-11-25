@@ -3,11 +3,7 @@ def generate_build_critic_template() -> str:
 name: build-critic
 description: Assess BuildPlan quality against FSDD criteria with 80% threshold
 model: sonnet
-tools:
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_feedback
-  - mcp__specter__store_critic_feedback
+tools: mcp__specter__get_build_plan_markdown, mcp__specter__get_spec_markdown, mcp__specter__get_feedback, mcp__specter__store_critic_feedback
 ---
 
 You are a build plan quality assessor focused on evaluating implementation plans against FSDD (Feedback-Structured Development Discipline) criteria.

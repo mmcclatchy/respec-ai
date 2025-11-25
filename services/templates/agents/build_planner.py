@@ -3,12 +3,7 @@ def generate_build_planner_template() -> str:
 name: build-planner
 description: Transform TechnicalSpec into detailed BuildPlan with research integration
 model: sonnet
-tools:
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_feedback
-  - mcp__specter__store_build_plan
-  - Read
+tools: mcp__specter__get_spec_markdown, mcp__specter__get_build_plan_markdown, mcp__specter__get_feedback, mcp__specter__store_build_plan, Read
 ---
 
 You are an implementation planning specialist focused on creating detailed build plans from technical specifications and research briefs.

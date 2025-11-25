@@ -203,13 +203,14 @@ class TestDynamicRoadmapParsing:
         assert '### Total Duration\n8 weeks' in markdown
         assert '### Team Size\n4 developers' in markdown
         assert '### Budget\n$100,000' in markdown
-        assert '## Specifications' in markdown
-        assert '- **Spec 1**: User Authentication System' in markdown
-        assert '- **Spec 2**: Product Catalog Management' in markdown
-        assert '- **Spec 3**: Shopping Cart & Checkout' in markdown
         assert '## Metadata' in markdown
         assert '### Status\ndraft' in markdown
         assert '### Spec Count\n3' in markdown
+
+        # Verify full TechnicalSpec content is included (not summary list)
+        assert '# Technical Specification: User Authentication System' in markdown
+        assert '# Technical Specification: Product Catalog Management' in markdown
+        assert '# Technical Specification: Shopping Cart & Checkout' in markdown
 
     def test_round_trip_parsing_maintains_data_integrity(self, sample_dynamic_roadmap_markdown: str) -> None:
         original_roadmap = Roadmap.parse_markdown(sample_dynamic_roadmap_markdown)
@@ -229,6 +230,103 @@ class TestDynamicRoadmapParsing:
 
         # Specs lists should both be empty (specs not parsed from markdown)
         assert len(original_roadmap.specs) == len(reparsed_roadmap.specs) == 0
+
+
+class TestRoadmapRoundTripWithSpecs:
+    def test_build_markdown_includes_full_spec_content(self, sample_specs_list: list[TechnicalSpec]) -> None:
+        roadmap = Roadmap(
+            project_name='Test Project',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=sample_specs_list,
+            spec_count=3,
+        )
+
+        markdown = roadmap.build_markdown()
+
+        # Should include full TechnicalSpec content, not just names
+        assert '# Technical Specification: User Authentication System' in markdown
+        assert '## Overview' in markdown
+        assert '### Objectives' in markdown
+        assert 'Implement secure login' in markdown
+        assert '### Scope' in markdown
+        assert 'Login, logout, registration' in markdown
+
+    def test_build_markdown_round_trip_with_create_roadmap_parser(self, sample_specs_list: list[TechnicalSpec]) -> None:
+        original_roadmap = Roadmap(
+            project_name='Test Project',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=sample_specs_list,
+            spec_count=3,
+        )
+
+        # Build markdown
+        markdown = original_roadmap.build_markdown()
+
+        # Parse like create_roadmap does (split on # Technical Specification:)
+        spec_blocks = markdown.split('# Technical Specification:')
+        roadmap_metadata = spec_blocks[0]
+
+        # Parse roadmap metadata
+        reparsed_roadmap = Roadmap.parse_markdown(roadmap_metadata)
+
+        # Parse specs
+        for spec_block in spec_blocks[1:]:
+            spec_markdown = f'# Technical Specification:{spec_block}'
+            spec = TechnicalSpec.parse_markdown(spec_markdown)
+            reparsed_roadmap.add_spec(spec)
+
+        # Verify round-trip preserved data
+        assert reparsed_roadmap.project_name == original_roadmap.project_name
+        assert reparsed_roadmap.project_goal == original_roadmap.project_goal
+        assert len(reparsed_roadmap.specs) == len(original_roadmap.specs)
+
+        # Verify spec content preserved
+        for orig_spec, reparsed_spec in zip(original_roadmap.specs, reparsed_roadmap.specs):
+            assert reparsed_spec.phase_name == orig_spec.phase_name
+            assert reparsed_spec.objectives == orig_spec.objectives
+            assert reparsed_spec.scope == orig_spec.scope
+            assert reparsed_spec.dependencies == orig_spec.dependencies
+            assert reparsed_spec.deliverables == orig_spec.deliverables
+
+    def test_sparse_specs_only_include_overview_and_metadata(self) -> None:
+        sparse_spec = TechnicalSpec(
+            phase_name='Phase 1 - Foundation',
+            objectives='Build core infrastructure',
+            scope='Database and API setup',
+            dependencies='None',
+            deliverables='Working backend',
+            iteration=0,  # Sparse spec
+        )
+
+        roadmap = Roadmap(
+            project_name='Test Project',
+            project_goal='Test goal',
+            specs=[sparse_spec],
+            spec_count=1,
+        )
+
+        markdown = roadmap.build_markdown()
+
+        # Should include Overview section
+        assert '# Technical Specification: Phase 1 - Foundation' in markdown
+        assert '## Overview' in markdown
+        assert '### Objectives' in markdown
+        assert 'Build core infrastructure' in markdown
+
+        # Should include Metadata section
+        assert '## Metadata' in markdown
+        assert '### Iteration' in markdown
+        assert '\n0\n' in markdown
+
+        # Should NOT include System Design or Implementation (not set)
+        assert '## System Design' not in markdown
+        assert '## Implementation' not in markdown
 
 
 class TestDynamicRoadmapUtilities:
