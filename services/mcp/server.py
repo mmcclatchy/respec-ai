@@ -23,7 +23,10 @@ class MCPRequestFilter(logging.Filter):
         if not record.args or len(record.args) < 1:
             return True
 
-        message = record.args[0]
+        # record.args is a tuple at runtime, despite type stubs saying Mapping
+        message = record.args[0] if isinstance(record.args, tuple) else None
+        if message is None:
+            return True
 
         try:
             # Handle RequestResponder (requests)

@@ -33,6 +33,61 @@ class MCPModel(BaseModel, ABC):
         return ' '.join(cls._extract_text_content(child) for child in node.children)
 
     @classmethod
+    def _extract_content_from_raw_markdown(cls, markdown: str, path: tuple[str, ...]) -> str:
+        """Extract content from raw markdown between headers, preserving all formatting.
+
+        This extracts the raw markdown text between headers without parsing,
+        preserving code blocks, lists, blockquotes, and all other formatting.
+        """
+        h2_header = path[0]
+        h3_header = path[1] if len(path) > 1 else None
+
+        lines = markdown.split('\n')
+
+        # Find h2 header
+        h2_idx = None
+        for i, line in enumerate(lines):
+            if line.startswith('## ') and h2_header in line:
+                h2_idx = i
+                break
+
+        if h2_idx is None:
+            return ''
+
+        # If no h3 specified, get content from h2 until next h2
+        if h3_header is None:
+            content_lines = []
+            for i in range(h2_idx + 1, len(lines)):
+                if lines[i].startswith('## '):
+                    break
+                content_lines.append(lines[i])
+
+            content = '\n'.join(content_lines).strip()
+            return content if content else ''
+
+        # Find h3 header after h2
+        h3_idx = None
+        for i in range(h2_idx + 1, len(lines)):
+            if lines[i].startswith('## '):
+                break  # Stop at next h2
+            if lines[i].startswith('### ') and h3_header in lines[i]:
+                h3_idx = i
+                break
+
+        if h3_idx is None:
+            return ''
+
+        # Extract content from h3 until next h2 or h3
+        content_lines = []
+        for i in range(h3_idx + 1, len(lines)):
+            if lines[i].startswith('## ') or lines[i].startswith('### '):
+                break
+            content_lines.append(lines[i])
+
+        content = '\n'.join(content_lines).strip()
+        return content if content else ''
+
+    @classmethod
     def _extract_content_by_header_path(cls, tree: SyntaxTreeNode, path: tuple[str, ...]) -> str:
         h2_header = path[0]
         h3_header = path[1] if len(path) > 1 else None
@@ -56,7 +111,15 @@ class MCPModel(BaseModel, ABC):
                 next_node = nodes[j]
                 if next_node.type == 'heading' and next_node.tag == 'h2':
                     break
-                if next_node.type in ['paragraph', 'list', 'blockquote', 'code_block']:
+                if next_node.type in [
+                    'paragraph',
+                    'list',
+                    'bullet_list',
+                    'ordered_list',
+                    'blockquote',
+                    'code_block',
+                    'fence',
+                ]:
                     content_parts.append(cls._extract_text_content(next_node).strip())
             return '\n\n'.join(content_parts).strip()
 
@@ -79,7 +142,15 @@ class MCPModel(BaseModel, ABC):
             next_node = nodes[j]
             if next_node.type == 'heading' and next_node.tag in ['h2', 'h3']:
                 break
-            if next_node.type in ['paragraph', 'list', 'blockquote', 'code_block']:
+            if next_node.type in [
+                'paragraph',
+                'list',
+                'bullet_list',
+                'ordered_list',
+                'blockquote',
+                'code_block',
+                'fence',
+            ]:
                 content_parts.append(cls._extract_text_content(next_node).strip())
 
         return '\n\n'.join(content_parts).strip()
@@ -186,8 +257,8 @@ class MCPModel(BaseModel, ABC):
                     # Store the list under the base field name
                     fields[base_field] = extracted_list
             else:
-                # Handle content fields - extract as string
-                extracted_content = cls._extract_content_by_header_path(tree, header_path)
+                # Handle content fields - extract raw markdown preserving all formatting
+                extracted_content = cls._extract_content_from_raw_markdown(markdown, header_path)
                 if extracted_content:  # Only set if we found actual content
                     fields[field_name] = extracted_content
 
