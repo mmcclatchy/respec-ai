@@ -2,7 +2,7 @@ import pytest
 
 from services.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
 from services.models.plan_completion_report import PlanCompletionReport
-from services.templates.commands.plan_command import plan_completion_template
+from services.platform.templates.commands.plan_command import plan_completion_template
 from services.utils.enums import LoopStatus, LoopType
 from services.utils.loop_state import LoopState, MCPResponse
 from services.utils.state_manager import InMemoryStateManager

@@ -24,6 +24,7 @@ dev = [
     "types-pyyaml >=6.0.12.20250809,<7.0.0",
     "types-aiofiles >=24.1.0.20250822,<25.0.0",
     "autoimport>=1.6.1",
+    "pytest-env>=1.2.0",
 ]
 
 [build-system]
@@ -47,6 +48,15 @@ python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
 asyncio_mode = "auto"
+log_cli_level = "WARNING"
+log_level = "WARNING"
+log_file = "logs/pytest.log"
+log_file_level = "WARNING"
+env = [
+    "MCP_LOG_LEVEL=WARNING",
+    "MCP_LOG_FILE=",
+    "FSDD_MCP_LOG_LEVEL=WARNING",
+]
 filterwarnings = [
     # Suppress coroutine warnings in MCP server tests - these are expected due to async mocking
     "ignore:coroutine.*was never awaited:RuntimeWarning:.*test_mcp_server.*",

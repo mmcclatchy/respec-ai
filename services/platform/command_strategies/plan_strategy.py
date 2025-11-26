@@ -5,7 +5,9 @@ from services.platform.models import PlanCommandTools
 from services.platform.platform_selector import PlatformType
 from services.platform.template_helpers import create_plan_command_tools
 from services.platform.tool_enums import AbstractOperation
-from services.templates.commands import generate_plan_command_template
+
+
+from services.platform.templates.commands import generate_plan_command_template
 
 
 class PlanCommandStrategy(CommandStrategy[PlanCommandTools]):

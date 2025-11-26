@@ -53,7 +53,7 @@ class MCPSettings(BaseSettings):
     # Logging configuration
     log_level: LogLevel = Field(default=LogLevel.DEBUG, description='Logging level')
     log_file: str | None = Field(
-        default='mcp-server.log',
+        default='logs/mcp-server.log',
         description='Log file path. Set to "stdout" for container environments, or absolute path for file logging. None = stderr only',
     )
 
