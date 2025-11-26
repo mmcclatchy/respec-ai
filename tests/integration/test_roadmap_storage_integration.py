@@ -379,3 +379,326 @@ draft
         retrieved = roadmap_tools.get_roadmap(project_name)
         assert '# Project Roadmap: Minimal Project' in retrieved
         assert '# Technical Specification:' not in retrieved
+
+    def test_roadmap_refinement_cleans_orphaned_specs(
+        self, roadmap_tools: RoadmapTools, project_name: str, state_manager: InMemoryStateManager
+    ) -> None:
+        # Create initial roadmap with 3 phases
+        roadmap_v1_markdown = """# Project Roadmap: Test Project
+
+## Project Details
+
+### Project Goal
+Test goal for refinement
+
+### Total Duration
+8 weeks
+
+### Team Size
+4 developers
+
+### Budget
+$100,000
+
+## Risk Assessment
+
+### Critical Path Analysis
+Test analysis
+
+### Key Risks
+Test risks
+
+### Mitigation Plans
+Test mitigation
+
+### Buffer Time
+1 week
+
+## Resource Planning
+
+### Development Resources
+4 developers
+
+### Infrastructure Requirements
+Cloud hosting
+
+### External Dependencies
+None
+
+### Quality Assurance Plan
+Automated testing
+
+## Success Metrics
+
+### Technical Milestones
+MVP delivery
+
+### Business Milestones
+User acceptance
+
+### Quality Gates
+All tests pass
+
+### Performance Targets
+Fast response
+
+## Metadata
+
+### Status
+draft
+
+### Spec Count
+3
+
+# Technical Specification: Phase 1 - Setup
+
+## Overview
+
+### Objectives
+Setup infrastructure
+
+### Scope
+Infrastructure setup only
+
+### Dependencies
+None
+
+### Deliverables
+Working infrastructure
+
+## Metadata
+
+### Iteration
+0
+
+### Version
+1
+
+### Status
+draft
+
+# Technical Specification: Phase 2 - Development
+
+## Overview
+
+### Objectives
+Build features
+
+### Scope
+Core feature development
+
+### Dependencies
+Phase 1 complete
+
+### Deliverables
+Working features
+
+## Metadata
+
+### Iteration
+0
+
+### Version
+1
+
+### Status
+draft
+
+# Technical Specification: Phase 3 - Testing
+
+## Overview
+
+### Objectives
+Test system
+
+### Scope
+Full system testing
+
+### Dependencies
+Phase 2 complete
+
+### Deliverables
+Test results
+
+## Metadata
+
+### Iteration
+0
+
+### Version
+1
+
+### Status
+draft
+"""
+
+        roadmap_tools.create_roadmap(project_name, roadmap_v1_markdown)
+
+        # Verify 3 specs stored
+        specs_v1 = state_manager.list_specs(project_name)
+        assert len(specs_v1) == 3
+        assert 'Phase 1 - Setup' in specs_v1
+        assert 'Phase 2 - Development' in specs_v1
+        assert 'Phase 3 - Testing' in specs_v1
+
+        # Refine roadmap: Change phase 2 and 3 names
+        roadmap_v2_markdown = """# Project Roadmap: Test Project
+
+## Project Details
+
+### Project Goal
+Test goal for refinement
+
+### Total Duration
+8 weeks
+
+### Team Size
+4 developers
+
+### Budget
+$100,000
+
+## Risk Assessment
+
+### Critical Path Analysis
+Test analysis
+
+### Key Risks
+Test risks
+
+### Mitigation Plans
+Test mitigation
+
+### Buffer Time
+1 week
+
+## Resource Planning
+
+### Development Resources
+4 developers
+
+### Infrastructure Requirements
+Cloud hosting
+
+### External Dependencies
+None
+
+### Quality Assurance Plan
+Automated testing
+
+## Success Metrics
+
+### Technical Milestones
+MVP delivery
+
+### Business Milestones
+User acceptance
+
+### Quality Gates
+All tests pass
+
+### Performance Targets
+Fast response
+
+## Metadata
+
+### Status
+draft
+
+### Spec Count
+3
+
+# Technical Specification: Phase 1 - Setup
+
+## Overview
+
+### Objectives
+Setup infrastructure (unchanged)
+
+### Scope
+Infrastructure setup only
+
+### Dependencies
+None
+
+### Deliverables
+Working infrastructure
+
+## Metadata
+
+### Iteration
+0
+
+### Version
+1
+
+### Status
+draft
+
+# Technical Specification: Phase 2 - Implementation
+
+## Overview
+
+### Objectives
+Implement features (RENAMED)
+
+### Scope
+Core feature implementation
+
+### Dependencies
+Phase 1 complete
+
+### Deliverables
+Implemented features
+
+## Metadata
+
+### Iteration
+0
+
+### Version
+1
+
+### Status
+draft
+
+# Technical Specification: Phase 3 - Quality Assurance
+
+## Overview
+
+### Objectives
+QA testing (RENAMED)
+
+### Scope
+Comprehensive QA
+
+### Dependencies
+Phase 2 complete
+
+### Deliverables
+QA report
+
+## Metadata
+
+### Iteration
+0
+
+### Version
+1
+
+### Status
+draft
+"""
+
+        roadmap_tools.create_roadmap(project_name, roadmap_v2_markdown)
+
+        # Verify orphaned specs deleted, new specs stored
+        specs_v2 = state_manager.list_specs(project_name)
+        assert len(specs_v2) == 3
+        assert 'Phase 1 - Setup' in specs_v2
+        assert 'Phase 2 - Implementation' in specs_v2
+        assert 'Phase 3 - Quality Assurance' in specs_v2
+
+        # Verify old specs removed
+        assert 'Phase 2 - Development' not in specs_v2
+        assert 'Phase 3 - Testing' not in specs_v2

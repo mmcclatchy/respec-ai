@@ -81,6 +81,7 @@ def _configure_logging() -> logging.Logger:
         if not log_path.is_absolute():
             # Make relative paths relative to the specter project directory
             log_path = Path(__file__).parent.parent.parent / log_path
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(log_path, mode='a'))
         handlers.append(logging.StreamHandler(sys.stderr))  # Also log to stderr
         print(f'[MCP Server] Logging to file: {log_path} (level={mcp_settings.log_level})', file=sys.stderr, flush=True)

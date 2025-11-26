@@ -11,6 +11,10 @@ from services.utils.state_manager import InMemoryStateManager
 
 def pytest_configure(config: pytest.Config) -> None:
     logging.getLogger('state_manager').setLevel(logging.WARNING)
+    logging.getLogger('mcp.server.lowlevel.server').setLevel(logging.WARNING)
+    logging.getLogger('asyncio').setLevel(logging.WARNING)
+    logging.getLogger('mcp').setLevel(logging.WARNING)
+    logging.basicConfig(level=logging.WARNING)
 
 
 # No longer need to mock the entire MCP server module since we removed fake markdown tools

@@ -1009,3 +1009,399 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         for loop in loops[1:]:
             retrieved = custom_state_manager.get_loop(loop.id)
             assert retrieved == loop
+
+
+class TestOrphanedSpecCleanup(TestInMemoryStateManager):
+    def test_cleanup_orphaned_specs_deletes_old_phase_names(
+        self, state_manager: InMemoryStateManager, project_name: str
+    ) -> None:
+        # Create roadmap v1 with 3 phases
+        roadmap_v1 = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[
+                TechnicalSpec(
+                    phase_name='Phase 1',
+                    objectives='Obj 1',
+                    scope='Scope 1',
+                    dependencies='Dep 1',
+                    deliverables='Del 1',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 2',
+                    objectives='Obj 2',
+                    scope='Scope 2',
+                    dependencies='Dep 2',
+                    deliverables='Del 2',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 3',
+                    objectives='Obj 3',
+                    scope='Scope 3',
+                    dependencies='Dep 3',
+                    deliverables='Del 3',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+            ],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=3,
+        )
+        state_manager.store_roadmap(project_name, roadmap_v1)
+        state_manager.store_spec(project_name, roadmap_v1.specs[0])
+        state_manager.store_spec(project_name, roadmap_v1.specs[1])
+        state_manager.store_spec(project_name, roadmap_v1.specs[2])
+
+        # Verify 3 specs exist
+        assert len(state_manager.list_specs(project_name)) == 3
+
+        # Refine roadmap: Change 2 phase names
+        roadmap_v2 = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[
+                TechnicalSpec(
+                    phase_name='Phase 1',
+                    objectives='Obj 1',
+                    scope='Scope 1',
+                    dependencies='Dep 1',
+                    deliverables='Del 1',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 2-Updated',
+                    objectives='Obj 2 Updated',
+                    scope='Scope 2 Updated',
+                    dependencies='Dep 2',
+                    deliverables='Del 2',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 3-Updated',
+                    objectives='Obj 3 Updated',
+                    scope='Scope 3 Updated',
+                    dependencies='Dep 3',
+                    deliverables='Del 3',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+            ],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=3,
+        )
+        state_manager.store_roadmap(project_name, roadmap_v2)
+
+        # Verify orphaned specs were deleted
+        specs = state_manager.list_specs(project_name)
+        assert len(specs) == 1
+        assert 'Phase 1' in specs
+        assert 'Phase 2' not in specs
+        assert 'Phase 3' not in specs
+
+        # Add new specs
+        state_manager.store_spec(project_name, roadmap_v2.specs[1])
+        state_manager.store_spec(project_name, roadmap_v2.specs[2])
+
+        # Verify final state
+        specs = state_manager.list_specs(project_name)
+        assert len(specs) == 3
+        assert 'Phase 1' in specs
+        assert 'Phase 2-Updated' in specs
+        assert 'Phase 3-Updated' in specs
+
+    def test_cleanup_orphaned_specs_empty_roadmap_deletes_all(
+        self, state_manager: InMemoryStateManager, project_name: str
+    ) -> None:
+        # Setup: Roadmap with specs
+        roadmap_v1 = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[
+                TechnicalSpec(
+                    phase_name='Phase 1',
+                    objectives='Obj 1',
+                    scope='Scope 1',
+                    dependencies='Dep 1',
+                    deliverables='Del 1',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 2',
+                    objectives='Obj 2',
+                    scope='Scope 2',
+                    dependencies='Dep 2',
+                    deliverables='Del 2',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+            ],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=2,
+        )
+        state_manager.store_roadmap(project_name, roadmap_v1)
+        state_manager.store_spec(project_name, roadmap_v1.specs[0])
+        state_manager.store_spec(project_name, roadmap_v1.specs[1])
+
+        assert len(state_manager.list_specs(project_name)) == 2
+
+        # Refine to empty roadmap
+        roadmap_v2 = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=0,
+        )
+        state_manager.store_roadmap(project_name, roadmap_v2)
+
+        # Verify all specs deleted
+        assert len(state_manager.list_specs(project_name)) == 0
+
+    def test_cleanup_orphaned_specs_first_roadmap_no_errors(self, state_manager: InMemoryStateManager) -> None:
+        project_name = 'new-project'
+
+        # First roadmap - no existing specs
+        roadmap = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[
+                TechnicalSpec(
+                    phase_name='Phase 1',
+                    objectives='Obj 1',
+                    scope='Scope 1',
+                    dependencies='Dep 1',
+                    deliverables='Del 1',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                )
+            ],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=1,
+        )
+        state_manager.store_roadmap(project_name, roadmap)
+
+        # Add spec
+        state_manager.store_spec(project_name, roadmap.specs[0])
+
+        assert len(state_manager.list_specs(project_name)) == 1
+
+    def test_cleanup_orphaned_specs_no_changes_keeps_all(
+        self, state_manager: InMemoryStateManager, project_name: str
+    ) -> None:
+        # Setup
+        roadmap_v1 = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[
+                TechnicalSpec(
+                    phase_name='Phase 1',
+                    objectives='Obj 1',
+                    scope='Scope 1',
+                    dependencies='Dep 1',
+                    deliverables='Del 1',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 2',
+                    objectives='Obj 2',
+                    scope='Scope 2',
+                    dependencies='Dep 2',
+                    deliverables='Del 2',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+            ],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=2,
+        )
+        state_manager.store_roadmap(project_name, roadmap_v1)
+        state_manager.store_spec(project_name, roadmap_v1.specs[0])
+        state_manager.store_spec(project_name, roadmap_v1.specs[1])
+
+        # Refine with SAME phase names (only metadata changed)
+        roadmap_v2 = Roadmap(
+            project_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            specs=[
+                TechnicalSpec(
+                    phase_name='Phase 1',
+                    objectives='Obj 1 Updated',
+                    scope='Scope 1 Updated',
+                    dependencies='Dep 1',
+                    deliverables='Del 1',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+                TechnicalSpec(
+                    phase_name='Phase 2',
+                    objectives='Obj 2 Updated',
+                    scope='Scope 2 Updated',
+                    dependencies='Dep 2',
+                    deliverables='Del 2',
+                    spec_status=SpecStatus.DRAFT,
+                    creation_date=datetime.now().isoformat(),
+                    last_updated=datetime.now().isoformat(),
+                    spec_owner='Test Owner',
+                ),
+            ],
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+            creation_date=datetime.now().isoformat(),
+            last_updated=datetime.now().isoformat(),
+            spec_count=2,
+        )
+        state_manager.store_roadmap(project_name, roadmap_v2)
+
+        # Verify no specs deleted
+        specs = state_manager.list_specs(project_name)
+        assert len(specs) == 2
+        assert 'Phase 1' in specs
+        assert 'Phase 2' in specs

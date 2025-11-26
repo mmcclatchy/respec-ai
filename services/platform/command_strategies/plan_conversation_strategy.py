@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 from services.platform.command_strategies.base import CommandStrategy
 from services.platform.platform_selector import PlatformType
-from services.templates.commands import generate_plan_conversation_command_template
+from services.platform.templates.commands import generate_plan_conversation_command_template
 
 
 class PlanConversationCommandStrategy(CommandStrategy[None]):

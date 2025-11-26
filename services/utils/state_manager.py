@@ -226,9 +226,40 @@ class InMemoryStateManager(StateManager):
             f'spec_count={roadmap.spec_count}'
         )
         self._roadmaps[project_name] = roadmap
+
+        deleted_specs = self._cleanup_orphaned_specs(project_name)
+        if deleted_specs:
+            logger.info(f'store_roadmap: Cleaned up {len(deleted_specs)} orphaned specs: {deleted_specs}')
+
         self._log_state()
         self._log_state_snapshot('store_roadmap', 'EXIT')
         return project_name
+
+    def _cleanup_orphaned_specs(self, project_name: str) -> list[str]:
+        if project_name not in self._roadmaps:
+            return []
+
+        if project_name not in self._specs:
+            return []
+
+        roadmap = self._roadmaps[project_name]
+        valid_phase_names = {spec.phase_name for spec in roadmap.specs}
+
+        current_spec_names = set(self._specs[project_name].keys())
+        orphaned_specs = current_spec_names - valid_phase_names
+
+        deleted_specs = []
+        for spec_name in orphaned_specs:
+            del self._specs[project_name][spec_name]
+            deleted_specs.append(spec_name)
+            logger.info(f'_cleanup_orphaned_specs: Deleted orphaned spec {spec_name} from project {project_name}')
+
+        if deleted_specs:
+            logger.info(f'_cleanup_orphaned_specs: Removed {len(deleted_specs)} orphaned specs: {deleted_specs}')
+        else:
+            logger.debug(f'_cleanup_orphaned_specs: No orphaned specs found for project {project_name}')
+
+        return deleted_specs
 
     def get_roadmap(self, project_name: str) -> Roadmap:
         self._log_state_snapshot('get_roadmap', 'ENTRY')

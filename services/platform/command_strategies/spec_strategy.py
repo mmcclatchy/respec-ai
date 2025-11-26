@@ -5,7 +5,9 @@ from services.platform.models import SpecCommandTools
 from services.platform.platform_selector import PlatformType
 from services.platform.template_helpers import create_spec_command_tools
 from services.platform.tool_enums import AbstractOperation
-from services.templates.commands import generate_spec_command_template
+
+
+from services.platform.templates.commands import generate_spec_command_template
 
 
 class SpecCommandStrategy(CommandStrategy[SpecCommandTools]):
