@@ -1,9 +1,11 @@
 """Tests for agent template generation functions."""
 
 from services.platform.models import CreateSpecAgentTools, PlanRoadmapAgentTools
-from services.templates.agents.create_spec import generate_create_spec_template
-from services.templates.agents.roadmap import generate_roadmap_template
-from services.templates.agents.roadmap_critic import generate_roadmap_critic_template
+from services.platform.templates.agents import (
+    generate_create_spec_template,
+    generate_roadmap_critic_template,
+    generate_roadmap_template,
+)
 
 
 class TestPlanRoadmapTemplate:

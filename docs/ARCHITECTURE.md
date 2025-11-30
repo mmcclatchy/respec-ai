@@ -204,6 +204,54 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 **Specialized Agents:**
 - **create-spec** - External platform spec creation
 
+### Frontmatter Formatting Standards
+
+**Agent Frontmatter** uses `tools:` key with comma-separated tool list:
+```yaml
+---
+name: specter-agent-name
+description: Agent purpose
+model: sonnet
+tools: tool1, tool2, tool3
+---
+```
+
+**Command Frontmatter** uses `allowed-tools:` key with variable interpolation:
+```yaml
+---
+allowed-tools: {tools.tools_yaml}
+argument-hint: [param-name]
+description: Command purpose
+---
+```
+
+**Critical Formatting Rules**:
+1. **Tools on single line**: All tools comma-separated on one line (never multi-line YAML array)
+2. **No YAML arrays**: Do NOT use `-` prefix or multi-line format
+3. **Tool names only**: No arguments or signatures in frontmatter
+4. **Variable interpolation**: Commands use `{tools.tools_yaml}` variable containing pre-formatted list
+
+**Tool Invocation Section** (required for all agents):
+```markdown
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+```
+
+**Why This Matters**:
+- Prevents agents from describing tool usage instead of executing
+- Eliminates XML-style tool invocation attempts
+- Provides clear examples of correct invocation syntax
+- Reduces ambiguity in agent behavior
+
 ### Strategy Pattern Architecture
 
 **Command generation uses Strategy Pattern** to eliminate code smells:

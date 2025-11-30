@@ -464,6 +464,34 @@ Specter supports three platforms with different capabilities:
 
 ## Available Commands
 
+### Understanding Command and Agent Templates
+
+**Commands** (what you invoke with `/specter-*`) use `allowed-tools:` in their frontmatter:
+```yaml
+---
+allowed-tools: {tools.tools_yaml}
+argument-hint: [param-name]
+description: Command description
+---
+```
+
+**Agents** (invoked by commands) use `tools:` with comma-separated list:
+```yaml
+---
+name: agent-name
+description: Agent purpose
+model: sonnet
+tools: tool1, tool2, tool3
+---
+```
+
+**Important Formatting Rules**:
+- **Tools must be comma-separated on a single line** (not YAML array format with `-` prefix)
+- Commands use variable interpolation `{tools.tools_yaml}` for platform-specific tools
+- Agents list tools explicitly, separated by commas
+
+**Note**: As a user, you don't interact with frontmatter directly. This formatting ensures commands and agents have proper tool access for your platform (Linear/GitHub/Markdown).
+
 ### `/specter-plan`
 
 **Purpose:** Create strategic project plans through interactive discovery

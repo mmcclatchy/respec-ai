@@ -60,7 +60,7 @@ Exit
 
 #### Step 1.2: Main Agent Initialization
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Parse command, validate spec_name, initialize workflow
 - **Implementation Needed**:
   - Parse spec_name from command
@@ -73,7 +73,7 @@ Exit
 
 #### Step 2.1: Retrieve TechnicalSpec
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Call `mcp__specter__get_spec_markdown(project_name, spec_name)`
 - **Implementation Needed**:
   - Add error handling for non-existent spec
@@ -81,7 +81,7 @@ Exit
 
 #### Step 2.2: Parse Specification Content
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Parse TechnicalSpec markdown into structured object
 - **Implementation Needed**:
   - Call `TechnicalSpec.parse_markdown(spec_markdown)`
@@ -93,7 +93,7 @@ Exit
 
 #### Step 3.1: Extract Research Requirements
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Extract research items from TechnicalSpec `research_requirements` field
 - **Implementation Needed**:
   - Parse `research_requirements` markdown section
@@ -121,7 +121,7 @@ Extract research items from TechnicalSpec markdown:
 
 #### Step 3.2: Launch Parallel Research Agents
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Invoke multiple research-synthesizer agents in parallel
 - **Implementation Needed**:
   - **CRITICAL**: Use **single message** with **multiple Task calls** (one per research item)
@@ -144,7 +144,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 3.3: Collect Research Paths
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Collect file paths from research-synthesizer agents
 - **Implementation Needed**:
   - Aggregate file paths into list
@@ -157,7 +157,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 4.1: Initialize Planning Refinement Loop
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Call `mcp__specter__initialize_refinement_loop(loop_type='build_plan')`
 - **Implementation Needed**:
   - Store returned `planning_loop_id` in Main Agent state
@@ -165,7 +165,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 4.2: Invoke build_planner Agent (Iteration 1)
 - **Actor**: build_planner agent
-- **File**: `services/templates/agents/build_planner.py` (**NEEDS CREATION**)
+- **File**: `services/platform/templates/agents/build_planner.py` (**NEEDS CREATION**)
 - **Action**: Create BuildPlan from TechnicalSpec + research briefs
 
 **Agent Workflow**:
@@ -197,7 +197,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 4.3: Invoke build_critic Agent (Iteration 1)
 - **Actor**: build_critic agent
-- **File**: `services/templates/agents/build_critic.py` (**NEEDS CREATION**)
+- **File**: `services/platform/templates/agents/build_critic.py` (**NEEDS CREATION**)
 - **Action**: Assess BuildPlan quality against FSDD criteria
 
 **Agent Workflow**:
@@ -261,7 +261,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 4.5: Handle Refinement Decision
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Implementation Needed**:
 
 **If status = "refine"**:
@@ -294,7 +294,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 5.1: Initialize Coding Refinement Loop
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Call `mcp__specter__initialize_refinement_loop(loop_type='build_code')`
 - **Implementation Needed**:
   - Store returned `coding_loop_id` in Main Agent state
@@ -302,7 +302,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 5.2: Invoke build_coder Agent (Iteration 1 - TDD)
 - **Actor**: build_coder agent
-- **File**: `services/templates/agents/build_coder.py` (**NEEDS CREATION**)
+- **File**: `services/platform/templates/agents/build_coder.py` (**NEEDS CREATION**)
 - **Action**: Implement code following TDD methodology (tests first, then implementation)
 
 **Agent Workflow**:
@@ -351,7 +351,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 5.3: Invoke build_reviewer Agent (Iteration 1)
 - **Actor**: build_reviewer agent
-- **File**: `services/templates/agents/build_reviewer.py` (**NEEDS CREATION**)
+- **File**: `services/platform/templates/agents/build_reviewer.py` (**NEEDS CREATION**)
 - **Action**: Review code quality, test coverage, alignment with BuildPlan/TechnicalSpec
 
 **Agent Workflow**:
@@ -410,7 +410,7 @@ Score breakdown (suggested weighting):
 
 #### Step 5.5: Handle Refinement Decision
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Implementation Needed**:
 
 **If status = "refine"**:
@@ -446,7 +446,7 @@ Score breakdown (suggested weighting):
 
 #### Step 6.1: Update TechnicalSpec Status
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Update TechnicalSpec with implementation completion status
 - **Implementation Needed**:
   - Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
@@ -460,7 +460,7 @@ Score breakdown (suggested weighting):
 
 #### Step 6.2: Platform Integration Updates
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Update platform artifacts with implementation status
 - **Implementation Needed**:
 
@@ -490,7 +490,7 @@ Platform tools are pre-configured in command frontmatter. Use consistent logic a
 
 #### Step 6.3: Generate Implementation Summary
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Create summary for user
 - **Implementation Needed**:
 
@@ -505,7 +505,7 @@ Generate simple markdown summary (no need to overcomplicate).
 
 #### Step 6.4: Present Completion to User
 - **Actor**: Main Agent
-- **File**: [build_command.py](services/templates/commands/build_command.py)
+- **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Display implementation summary
 - **Implementation Needed**:
   - Output implementation summary as message to user
@@ -596,7 +596,7 @@ All agent templates follow the established pattern from `roadmap.py`:
 class MyAgentTools(BaseModel):
     platform_tool_name: str = Field(..., description='Platform-specific operation')
 
-# In services/templates/agents/my_agent.py
+# In services/platform/templates/agents/my_agent.py
 def generate_my_agent_template(tools: MyAgentTools) -> str:
     return f'''---
 tools:
@@ -614,7 +614,7 @@ tools:
 
 ### Agent 1: build_planner.py
 
-**Location**: `services/templates/agents/build_planner.py`
+**Location**: `services/platform/templates/agents/build_planner.py`
 
 **Frontmatter Tools**:
 ```yaml
@@ -647,7 +647,7 @@ tools:
 
 ### Agent 2: build_critic.py
 
-**Location**: `services/templates/agents/build_critic.py`
+**Location**: `services/platform/templates/agents/build_critic.py`
 
 **Frontmatter Tools**:
 ```yaml
@@ -684,7 +684,7 @@ tools:
 
 ### Agent 3: build_coder.py
 
-**Location**: `services/templates/agents/build_coder.py`
+**Location**: `services/platform/templates/agents/build_coder.py`
 
 **Agent Tools Model** (needs creation in `services/platform/models.py`):
 ```python
@@ -741,7 +741,7 @@ tools:
 
 ### Agent 4: build_reviewer.py
 
-**Location**: `services/templates/agents/build_reviewer.py`
+**Location**: `services/platform/templates/agents/build_reviewer.py`
 
 **Frontmatter Tools**:
 ```yaml
@@ -779,7 +779,7 @@ tools:
 
 ## build_command.py Updates
 
-**File**: `services/templates/commands/build_command.py`
+**File**: `services/platform/templates/commands/build_command.py`
 
 ### Key Implementation Points
 
@@ -1064,7 +1064,7 @@ When MCP returns status="user_input" (stagnation detected):
 - [services/models/build_plan.py](services/models/build_plan.py) - BuildPlan model
 - [services/models/spec.py](services/models/spec.py) - TechnicalSpec model
 - [services/mcp/tools/build_plan_tools.py](services/mcp/tools/build_plan_tools.py) - BuildPlan MCP tools
-- [services/templates/commands/build_command.py](services/templates/commands/build_command.py) - Main command
+- [services/platform/templates/commands/build_command.py](services/platform/templates/commands/build_command.py) - Main command
 - [docs/commands/specter-build.md](docs/commands/specter-build.md) - Command specification
 - [docs/WORKFLOW_REFACTORING_LESSONS.md](docs/WORKFLOW_REFACTORING_LESSONS.md) - Design patterns
 
@@ -1072,14 +1072,14 @@ When MCP returns status="user_input" (stagnation detected):
 - `services/mcp/tools/user_feedback_tools.py` - User feedback storage
 
 **Agent Templates** (with dual tool architecture):
-- `services/templates/agents/build_planner.py` - Planning agent (function: `generate_build_planner_template()`)
-- `services/templates/agents/build_critic.py` - Plan critique agent (function: `generate_build_critic_template()`)
-- `services/templates/agents/build_coder.py` - TDD implementation agent (function: `generate_build_coder_template(tools: BuildCoderAgentTools)`)
-- `services/templates/agents/build_reviewer.py` - Code review agent (function: `generate_build_reviewer_template()`)
+- `services/platform/templates/agents/build_planner.py` - Planning agent (function: `generate_build_planner_template()`)
+- `services/platform/templates/agents/build_critic.py` - Plan critique agent (function: `generate_build_critic_template()`)
+- `services/platform/templates/agents/build_coder.py` - TDD implementation agent (function: `generate_build_coder_template(tools: BuildCoderAgentTools)`)
+- `services/platform/templates/agents/build_reviewer.py` - Code review agent (function: `generate_build_reviewer_template()`)
 
 ### Files to Update
 - `services/platform/models.py` - Add `BuildCoderAgentTools` model for platform-specific tool injection
-- `services/templates/commands/build_command.py` - Add workflow logic
+- `services/platform/templates/commands/build_command.py` - Add workflow logic
 - `services/platform/tool_discovery.py` - Register user_feedback_tools
 
 ---

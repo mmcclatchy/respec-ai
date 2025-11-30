@@ -70,6 +70,14 @@ PROJECT_NAME = config["project_name"]
 
 **Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during Specter installation.
 
+## Step 0a: Load Existing Project Plan from Platform
+
+Load existing project plan from platform (if exists):
+
+```text
+{tools.sync_project_plan_instructions}
+```
+
 ## Context Variables
 
 All Specter MCP tools require project context:

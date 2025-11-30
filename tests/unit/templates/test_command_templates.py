@@ -80,7 +80,7 @@ class TestPlanRoadmapCommandTemplate:
         line_count = len(lines)
 
         # Target is 150-200 lines, allow some flexibility
-        assert 100 <= line_count <= 410, f'Template should be 100-410 lines, got {line_count}'
+        assert 100 <= line_count <= 450, f'Template should be 100-450 lines, got {line_count}'
 
     def test_template_has_no_agent_behavioral_instructions(self) -> None:
         coordinator = TemplateCoordinator()

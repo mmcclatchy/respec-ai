@@ -18,6 +18,10 @@ class TemplateToolBuilder:
         self.tools.append(ToolReference(tool=tool))
         return self
 
+    def add_builtin_tool(self, tool: BuiltInTool, parameters: str = '') -> 'TemplateToolBuilder':
+        self.tools.append(ToolReference(tool=tool, parameters=parameters))
+        return self
+
     def add_platform_tools(self, platform_tools: list[str]) -> 'TemplateToolBuilder':
         for tool_string in platform_tools:
             # For platform tools, we don't validate the enum since they're already processed
@@ -130,4 +134,29 @@ def create_roadmap_tools(platform_tools: list[str]) -> str:
         .add_platform_tools(platform_tools)
     )
 
+    return builder.render_comma_separated_tools()
+
+
+def create_spec_architect_agent_tools() -> str:
+    builder = (
+        TemplateToolBuilder()
+        .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
+        .add_specter_tool(SpecterMCPTool.STORE_SPEC)
+        .add_specter_tool(SpecterMCPTool.LINK_LOOP_TO_SPEC)
+        .add_specter_tool(SpecterMCPTool.GET_FEEDBACK)
+        .add_builtin_tool(BuiltInTool.READ)
+        .add_builtin_tool(BuiltInTool.BASH, '~/.claude/scripts/research-advisor-archive-scan.sh:*')
+        .add_builtin_tool(BuiltInTool.GREP)
+        .add_builtin_tool(BuiltInTool.GLOB)
+    )
+    return builder.render_comma_separated_tools()
+
+
+def create_spec_critic_agent_tools() -> str:
+    builder = (
+        TemplateToolBuilder()
+        .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
+        .add_specter_tool(SpecterMCPTool.GET_FEEDBACK)
+        .add_specter_tool(SpecterMCPTool.STORE_CRITIC_FEEDBACK)
+    )
     return builder.render_comma_separated_tools()
