@@ -31,6 +31,7 @@ class SpecCommandStrategy(CommandStrategy[SpecCommandTools]):
             create_spec_tool=create_spec_tool,
             get_spec_tool=get_spec_tool,
             update_spec_tool=update_spec_tool,
+            platform=platform,
         )
 
     def get_template_func(self) -> Callable[[SpecCommandTools], str]:

@@ -66,7 +66,7 @@ Producer Agent → Content → Critic Agent → Score → MCP Decision
 
 **Pattern**: Create templates as functions that receive platform tool dataclasses and inject tools via string interpolation.
 
-**Actual Implementation Pattern** (from `services/templates/commands/spec_command.py`):
+**Actual Implementation Pattern** (from `services/platform/templates/commands/spec_command.py`):
 ```python
 from services.platform.models import SpecCommandTools
 
@@ -478,7 +478,7 @@ description: Create strategic plans through conversational discovery
 
 **Directory Organization**:
 ```text
-services/templates/
+services/platform/templates/
 ├── agents/
 │   ├── plan_command.py
 │   ├── spec_command.py

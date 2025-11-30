@@ -4,7 +4,7 @@ from services.platform.models import SpecCommandTools
 def generate_spec_command_template(tools: SpecCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [optional: technical-focus-area]
+argument-hint: [plan-name] [spec-name] [optional: instructions]
 description: Transform strategic plans into detailed technical specifications
 ---
 
@@ -59,15 +59,31 @@ Main Agent (via /specter-spec)
 
 ## Implementation Instructions
 
-### Step 0: Initialize Project Context
+### Step 0: Extract Command Arguments
 
-Read project configuration:
+Parse command arguments from user input:
 ```text
+PLAN_NAME = [first argument from command - the plan name]
+SPEC_NAME = [second argument from command - the spec name]
+OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
+
 Read .specter/config.json
 PROJECT_NAME = config["project_name"]
 ```
 
-**Important**: PROJECT_NAME from config is used for all MCP storage operations.
+**Important**:
+- PLAN_NAME identifies which strategic plan to use for context
+- SPEC_NAME identifies this technical specification
+- PROJECT_NAME from config is used for all MCP storage operations
+- OPTIONAL_INSTRUCTIONS provides additional context for spec development
+
+### Step 0a: Load Existing Spec from Platform
+
+Load existing spec from platform (if exists):
+
+```text
+{tools.sync_spec_instructions}
+```
 
 ### Step 1: Initialize Technical Design Process
 Retrieve the strategic plan and set up the technical specification workflow:
@@ -77,13 +93,17 @@ Retrieve the strategic plan and set up the technical specification workflow:
 mcp__specter__initialize_refinement_loop:
   loop_type: "spec"
 
-# Retrieve strategic plan context
-STRATEGIC_PLAN_CONTEXT = [Previous /specter-plan output or user-provided plan]
-TECHNICAL_FOCUS_AREA = [User argument if provided, otherwise "comprehensive architecture"]
+# Retrieve strategic plan using PLAN_NAME argument
+STRATEGIC_PLAN_MARKDOWN = mcp__specter__get_project_plan_markdown(project_name=PLAN_NAME)
+
+IF STRATEGIC_PLAN_MARKDOWN not found:
+  ERROR: "No strategic plan found: [PLAN_NAME]"
+  SUGGEST: "Run '/specter-plan [PLAN_NAME]' to create strategic plan first"
+  EXIT: Graceful failure with guidance
 
 Invoke the plan-analyst agent with this input:
 
-Strategic Plan Source: ${{STRATEGIC_PLAN_CONTEXT}}
+Strategic Plan Source: ${{STRATEGIC_PLAN_MARKDOWN}}
 Context: Preparing for technical specification phase
 
 Expected Output Format:
@@ -108,7 +128,9 @@ Invoke the spec-architect agent with this input:
 Strategic Plan Summary:
 ${{STRATEGIC_PLAN_SUMMARY}}
 
-Technical Focus Area: ${{TECHNICAL_FOCUS_AREA}}
+Spec Name: ${{SPEC_NAME}}
+
+Additional Instructions: ${{OPTIONAL_INSTRUCTIONS}}
 
 Archive Scan Results:
 ${{ARCHIVE_SCAN_RESULTS}}

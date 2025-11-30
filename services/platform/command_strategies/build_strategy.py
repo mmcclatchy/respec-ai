@@ -27,6 +27,7 @@ class BuildCommandStrategy(CommandStrategy[BuildCommandTools]):
             tools_yaml=tools_yaml,
             get_spec_tool=get_spec_tool,
             comment_spec_tool=comment_spec_tool,
+            platform=platform,
         )
 
     def get_template_func(self) -> Callable[[BuildCommandTools], str]:

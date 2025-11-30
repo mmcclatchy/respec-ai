@@ -292,7 +292,7 @@ async def create_project_plan(
 
 **Status**: Not Started
 
-**Files to Update**: All files in `services/templates/commands/` (~5 commands)
+**Files to Update**: All files in `services/platform/templates/commands/` (~5 commands)
 
 **Pattern to Add**:
 ```python

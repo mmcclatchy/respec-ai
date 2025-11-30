@@ -16,21 +16,31 @@ from services.platform.models import (
     BuildCoderAgentTools,
     CreateSpecAgentTools,
     PlanRoadmapAgentTools,
+    SpecArchitectAgentTools,
+    SpecCriticAgentTools,
 )
 from services.platform.platform_orchestrator import PlatformOrchestrator
 from services.platform.platform_selector import PlatformType
+from services.platform.template_helpers import (
+    create_spec_architect_agent_tools,
+    create_spec_critic_agent_tools,
+)
+from services.platform.templates.agents import (
+    generate_analyst_critic_template,
+    generate_build_coder_template,
+    generate_build_critic_template,
+    generate_build_planner_template,
+    generate_build_reviewer_template,
+    generate_create_spec_template,
+    generate_plan_analyst_template,
+    generate_plan_critic_template,
+    generate_roadmap_critic_template,
+    generate_roadmap_template,
+    generate_spec_architect_template,
+    generate_spec_critic_template,
+)
 from services.platform.tool_enums import AbstractOperation, CommandTemplate
 from services.platform.tool_registry import ToolRegistry
-from services.templates.agents.analyst_critic import generate_analyst_critic_template
-from services.templates.agents.build_coder import generate_build_coder_template
-from services.templates.agents.build_critic import generate_build_critic_template
-from services.templates.agents.build_planner import generate_build_planner_template
-from services.templates.agents.build_reviewer import generate_build_reviewer_template
-from services.templates.agents.create_spec import generate_create_spec_template
-from services.templates.agents.plan_analyst import generate_plan_analyst_template
-from services.templates.agents.plan_critic import generate_plan_critic_template
-from services.templates.agents.roadmap import generate_roadmap_template
-from services.templates.agents.roadmap_critic import generate_roadmap_critic_template
 
 
 def setup_project(project_path: str, platform: Literal['linear', 'github', 'markdown'], project_name: str) -> int:
@@ -133,6 +143,9 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         update_task_status=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type)
     )
 
+    spec_architect_tools = SpecArchitectAgentTools(tools_yaml=create_spec_architect_agent_tools())
+    spec_critic_tools = SpecCriticAgentTools(tools_yaml=create_spec_critic_agent_tools())
+
     return [
         ('specter-plan-analyst', generate_plan_analyst_template()),
         ('specter-plan-critic', generate_plan_critic_template()),
@@ -140,6 +153,8 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         ('specter-roadmap', generate_roadmap_template(roadmap_tools)),
         ('specter-roadmap-critic', generate_roadmap_critic_template()),
         ('specter-create-spec', generate_create_spec_template(spec_tools)),
+        ('specter-spec-architect', generate_spec_architect_template(spec_architect_tools)),
+        ('specter-spec-critic', generate_spec_critic_template(spec_critic_tools)),
         ('specter-build-planner', generate_build_planner_template()),
         ('specter-build-critic', generate_build_critic_template()),
         ('specter-build-coder', generate_build_coder_template(build_coder_tools)),

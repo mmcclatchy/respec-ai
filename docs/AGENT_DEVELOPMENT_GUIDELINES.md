@@ -25,11 +25,7 @@ These guidelines focus on the four core agent concerns: inputs, tools, imperativ
 name: specter-spec-architect
 description: Design technical architecture from strategic plans
 model: sonnet
-tools:
-  - Read
-  - Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*)
-  - Grep
-  - Glob
+tools: Read, Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*), Grep, Glob
 ---
 
 You are a technical architecture specialist focused on system design.
@@ -49,7 +45,22 @@ OUTPUTS: Technical specification in structured markdown format with:
 - Implementation guidelines
 ```
 
-**Note**: Agent names use `specter-*` prefix for consistency. Tools are listed in YAML array format, one per line with `- ` prefix.
+**Note**: Agent names use `specter-*` prefix for consistency.
+
+**CRITICAL FORMATTING RULE**: Tools must be **comma-separated on a single line**. YAML array format (with `-` prefix) is **NOT supported**.
+
+**Correct tools format**:
+```yaml
+tools: tool1, tool2, tool3
+```
+
+**Incorrect format** (DO NOT USE):
+```yaml
+tools:
+  - tool1
+  - tool2
+  - tool3
+```
 
 **Anti-Pattern**: Agents that reference external systems:
 ```markdown
@@ -219,56 +230,75 @@ DECISION CRITERIA:
 
 **Critic Agents** (with MCP retrieval and storage):
 ```markdown
-tools:
-  - mcp__specter__get_project_plan_markdown  # Retrieve content to evaluate
-  - mcp__specter__store_critic_feedback      # Store feedback directly
+tools: mcp__specter__get_project_plan_markdown, mcp__specter__store_critic_feedback
 # Use for: plan-critic, roadmap-critic evaluating via MCP
 ```
 
 **Content Generation Agents**:
 ```markdown
-tools:
-  - Read
-  - Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*)
+tools: Read, Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*)
 # Use for: architects, planners (input-only + research)
 ```
 
 **Implementation Agents**:
 ```markdown
-tools:
-  - Read
-  - Edit
-  - Write
-  - Bash
+tools: Read, Edit, Write, Bash
 # Use for: coders, build agents
 ```
 
 **Spec Creation Agents** (with platform integration):
 ```markdown
-tools:
-  - mcp__specter__get_roadmap
-  - mcp__specter__store_spec
-  - {tools.create_spec_tool}  # Platform-injected
-  - {tools.update_spec_tool}  # Platform-injected
+tools: mcp__specter__get_roadmap, mcp__specter__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
 # Use for: create-spec agents with dual storage (MCP + platform)
 ```
+
+### Platform Tool Usage Pattern
+
+**Important**: When agents use platform-specific tools (like `Write`, `Read`, `Edit` for Markdown or Linear/GitHub API tools), there are two forms:
+
+**1. Permission Form** (in frontmatter `tools:` list):
+- Uses wildcards: `Write(.specter/projects/*/specs/*.md)`
+- Defines what file paths the agent is ALLOWED to access
+- Referenced as `{tools.create_spec_tool}` in frontmatter
+
+**2. Invocation Form** (in workflow instructions):
+- Uses placeholders: `Write(.specter/projects/{project_name}/specs/{spec_name}.md)`
+- Shows actual usage pattern with named parameter placeholders
+- Accessed via `{tools.create_spec_tool_interpolated}` computed field from AgentTools model
+
+**Example from create-spec agent:**
+
+Frontmatter:
+```yaml
+tools: mcp__specter__store_spec, {tools.create_spec_tool}
+# Markdown permission: Write(.specter/projects/*/specs/*.md)
+# Linear permission: mcp__linear-server__create_issue(*)
+```
+
+Workflow Instructions:
+```markdown
+STEP 4: Store to Platform
+CALL {tools.create_spec_tool_interpolated}
+
+# Markdown actual usage: Write(.specter/projects/{project_name}/specs/{spec_name}.md, spec_markdown)
+# Linear actual usage: mcp__linear-server__create_issue(project={project_name}, title={spec_name}, ...)
+```
+
+**Why Two Forms?**
+- **Wildcards** enable permission validation (Claude Code checks agent can access those paths)
+- **Placeholders** show agents how to substitute actual runtime values
+- **Computed fields** in AgentTools models provide the `_interpolated` versions automatically
 
 **✅ Correct Tool Boundaries** (actual patterns from codebase):
 ```markdown
 ---
 name: specter-plan-critic
-tools:
-  - mcp__specter__get_project_plan_markdown
-  - mcp__specter__store_critic_feedback
+tools: mcp__specter__get_project_plan_markdown, mcp__specter__store_critic_feedback
 ---
 
 ---
 name: specter-create-spec
-tools:
-  - mcp__specter__get_roadmap
-  - mcp__specter__store_spec
-  - {tools.create_spec_tool}
-  - {tools.update_spec_tool}
+tools: mcp__specter__get_roadmap, mcp__specter__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
 ---
 ```
 
@@ -276,11 +306,7 @@ tools:
 ```markdown
 ---
 name: specter-spec-critic  # Quality evaluation agent
-tools:
-  - Read
-  - Edit
-  - Write
-  - Bash  # ❌ Can modify files during evaluation
+tools: Read, Edit, Write, Bash  # ❌ Can modify files during evaluation
 ---
 ```
 
@@ -332,8 +358,20 @@ OUTPUTS: Technical specification in structured format
 name: [agent-name]
 description: [When this agent should be invoked - action-oriented]
 model: [sonnet|haiku] # Optional - defaults to sonnet
-tools: [minimal required tools only]
+tools: tool1, tool2, tool3  # Comma-separated on single line
 ---
+
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
 
 You are a [specific role] focused on [specific function].
 
@@ -431,9 +469,20 @@ ERROR HANDLING:
 ---
 name: specter-[content-type]-generator
 description: Generate [specific content type] from [specific input]
-tools:
-  - Read  # Input-only for most generators
+tools: Read  # Input-only for most generators
 ---
+
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
 
 You are a [domain] specialist focused on [content creation type].
 
@@ -499,8 +548,20 @@ QUALITY CRITERIA:
 ---
 name: [content-type]-critic
 description: Evaluate [content type] against quality criteria
-tools: Read # Read-only for evaluation
+tools: mcp__specter__get_[content]_markdown, mcp__specter__store_critic_feedback
 ---
+
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: content = mcp__specter__get_[content]_markdown(loop_id="...")
+  ❌ WRONG: <mcp__specter__get_[content]_markdown><loop_id>...</loop_id>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
 
 You are a [domain] quality specialist focused on [evaluation type].
 
@@ -530,10 +591,20 @@ QUALITY CRITERIA:
 ---
 name: specter-spec-critic
 description: Evaluate technical specifications against quality criteria
-tools:
-  - mcp__specter__get_technical_spec_markdown
-  - mcp__specter__store_critic_feedback
+tools: mcp__specter__get_technical_spec_markdown, mcp__specter__store_critic_feedback
 ---
+
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: spec = mcp__specter__get_technical_spec_markdown(loop_id="...")
+  ❌ WRONG: <mcp__specter__get_technical_spec_markdown><loop_id>...</loop_id>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
 
 You are a technical specification quality specialist.
 
@@ -571,12 +642,20 @@ QUALITY CRITERIA:
 ---
 name: specter-[implementation-type]-[agent-type]
 description: [Implementation function] based on [specification type]
-tools:
-  - Read
-  - Edit
-  - Write
-  - Bash  # Full implementation access
+tools: Read, Edit, Write, Bash  # Full implementation access
 ---
+
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
 
 You are a [implementation domain] specialist focused on [execution type].
 
@@ -607,12 +686,20 @@ QUALITY CRITERIA:
 ---
 name: specter-build-coder
 description: Implement code based on implementation plans and specifications
-tools:
-  - Read
-  - Edit
-  - Write
-  - Bash
+tools: Read, Edit, Write, Bash
 ---
+
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
 
 You are a software implementation specialist focused on code development.
 
@@ -815,9 +902,7 @@ tools:
 # ✅ CORRECT: Critics with MCP retrieval and storage only
 ---
 name: specter-spec-critic
-tools:
-  - mcp__specter__get_technical_spec_markdown  # Retrieve for evaluation
-  - mcp__specter__store_critic_feedback        # Store feedback
+tools: mcp__specter__get_technical_spec_markdown, mcp__specter__store_critic_feedback
 ---
 
 # ✅ CORRECT: Generators with input-only access

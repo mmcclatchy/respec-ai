@@ -18,6 +18,7 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
             AbstractOperation.CREATE_SPEC_TOOL.value,
             AbstractOperation.GET_SPEC_TOOL.value,
             AbstractOperation.UPDATE_SPEC_TOOL.value,
+            AbstractOperation.LIST_PROJECT_SPECS_TOOL.value,
         ]
 
     def build_tools(self, platform: PlatformType) -> PlanRoadmapCommandTools:
@@ -30,6 +31,9 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
         create_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.CREATE_SPEC_TOOL.value, platform)
         get_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_SPEC_TOOL.value, platform)
         update_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform)
+        list_project_specs_tool = self.tool_registry.get_tool_for_platform(
+            AbstractOperation.LIST_PROJECT_SPECS_TOOL.value, platform
+        )
 
         platform_tools = [
             get_project_plan_tool,
@@ -37,6 +41,7 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
             create_spec_tool,
             get_spec_tool,
             update_spec_tool,
+            list_project_specs_tool,
         ]
         tools_yaml = create_roadmap_tools(platform_tools)
 
@@ -47,6 +52,8 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
             create_spec_tool=create_spec_tool,
             get_spec_tool=get_spec_tool,
             update_spec_tool=update_spec_tool,
+            list_project_specs_tool=list_project_specs_tool,
+            platform=platform,
         )
 
     def get_template_func(self) -> Callable[[PlanRoadmapCommandTools], str]:

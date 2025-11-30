@@ -25,6 +25,18 @@ PROJECT_NAME = config["project_name"]
 
 **Important**: PROJECT_NAME from config is used for all MCP storage operations.
 
+### 0a. Load Existing Documents from Platform
+
+Load project plan and all existing specs from platform:
+
+```text
+# Load Project Plan
+{tools.sync_project_plan_instructions}
+
+# Load All Existing Specs
+{tools.sync_all_specs_instructions}
+```
+
 ### 1. Strategic Plan Retrieval and Validation
 Retrieve and validate completed strategic plan from /specter-plan command:
 

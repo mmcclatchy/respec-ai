@@ -158,6 +158,7 @@ class SpecCommandTools(BaseModel):
     create_spec_tool: str = Field(..., description='Platform-specific tool for creating specs')
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     @computed_field
     def create_spec_tool_interpolated(self) -> str:
@@ -177,6 +178,51 @@ class SpecCommandTools(BaseModel):
             return self.update_spec_tool
         return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
+    @computed_field
+    def sync_spec_instructions(self) -> str:
+        if self.platform == PlatformType.MARKDOWN:
+            return """TRY:
+  SPEC_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/specter-specs/{SPEC_NAME}.md)
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  Display: "✓ Loaded existing spec '{SPEC_NAME}' from platform"
+EXCEPT:
+  Display: "No existing spec found - will create new"
+"""
+        elif self.platform == PlatformType.LINEAR:
+            return """TRY:
+  SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
+  SPEC_MARKDOWN = SPEC_RESULT.description
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  Display: "✓ Loaded existing spec '{SPEC_NAME}' from platform"
+EXCEPT:
+  Display: "No existing spec found - will create new"
+"""
+        elif self.platform == PlatformType.GITHUB:
+            return """TRY:
+  SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
+  SPEC_MARKDOWN = SPEC_RESULT.body
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  Display: "✓ Loaded existing spec '{SPEC_NAME}' from platform"
+EXCEPT:
+  Display: "No existing spec found - will create new"
+"""
+        else:
+            return """# Platform-specific sync not configured
+Display: "⚠️ Sync not configured for this platform - continuing without sync"
+"""
+
 
 class PlanCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -184,6 +230,8 @@ class PlanCommandTools(BaseModel):
     create_project_completion_external: str = Field(
         ..., description='Platform-specific tool for creating external project completion'
     )
+    get_project_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
+    platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     @computed_field
     def create_project_tool_interpolated(self) -> str:
@@ -197,11 +245,60 @@ class PlanCommandTools(BaseModel):
             return self.create_project_completion_external
         return self.create_project_completion_external.replace('*', '{project_name}')
 
+    @computed_field
+    def get_project_plan_tool_interpolated(self) -> str:
+        if '*' not in self.get_project_plan_tool:
+            return self.get_project_plan_tool
+        return self.get_project_plan_tool.replace('*', '{project_name}')
+
+    @computed_field
+    def sync_project_plan_instructions(self) -> str:
+        if self.platform == PlatformType.MARKDOWN:
+            return """TRY:
+  PLAN_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/project_plan.md)
+  mcp__specter__store_project_plan(
+    project_name=PROJECT_NAME,
+    project_plan_markdown=PLAN_MARKDOWN
+  )
+  Display: "✓ Loaded existing project plan from platform"
+EXCEPT:
+  Display: "No existing project plan found - will create new"
+"""
+        elif self.platform == PlatformType.LINEAR:
+            return """TRY:
+  PLAN_RESULT = mcp__linear-server__get_document(project_name=PROJECT_NAME)
+  PLAN_MARKDOWN = PLAN_RESULT.content
+  mcp__specter__store_project_plan(
+    project_name=PROJECT_NAME,
+    project_plan_markdown=PLAN_MARKDOWN
+  )
+  Display: "✓ Loaded existing project plan from platform"
+EXCEPT:
+  Display: "No existing project plan found - will create new"
+"""
+        elif self.platform == PlatformType.GITHUB:
+            return """TRY:
+  PLAN_RESULT = mcp__github__get_file(path=".specter/projects/{PROJECT_NAME}/project_plan.md")
+  PLAN_MARKDOWN = PLAN_RESULT.content
+  mcp__specter__store_project_plan(
+    project_name=PROJECT_NAME,
+    project_plan_markdown=PLAN_MARKDOWN
+  )
+  Display: "✓ Loaded existing project plan from platform"
+EXCEPT:
+  Display: "No existing project plan found - will create new"
+"""
+        else:
+            return """# Platform-specific sync not configured
+Display: "⚠️ Sync not configured for this platform - continuing without sync"
+"""
+
 
 class BuildCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     comment_spec_tool: str = Field(..., description='Platform-specific tool for commenting on specs')
+    platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     @computed_field
     def get_spec_tool_interpolated(self) -> str:
@@ -215,6 +312,51 @@ class BuildCommandTools(BaseModel):
             return self.comment_spec_tool
         return self.comment_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
+    @computed_field
+    def sync_spec_instructions(self) -> str:
+        if self.platform == PlatformType.MARKDOWN:
+            return """TRY:
+  SPEC_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/specter-specs/{SPEC_NAME}.md)
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  Display: "✓ Loaded spec '{SPEC_NAME}' from platform"
+EXCEPT:
+  Display: "No existing spec found in platform"
+"""
+        elif self.platform == PlatformType.LINEAR:
+            return """TRY:
+  SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
+  SPEC_MARKDOWN = SPEC_RESULT.description
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  Display: "✓ Loaded spec '{SPEC_NAME}' from platform"
+EXCEPT:
+  Display: "No existing spec found in platform"
+"""
+        elif self.platform == PlatformType.GITHUB:
+            return """TRY:
+  SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
+  SPEC_MARKDOWN = SPEC_RESULT.body
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  Display: "✓ Loaded spec '{SPEC_NAME}' from platform"
+EXCEPT:
+  Display: "No existing spec found in platform"
+"""
+        else:
+            return """# Platform-specific sync not configured
+Display: "⚠️ Sync not configured for this platform - continuing without sync"
+"""
+
 
 class PlanRoadmapCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -223,6 +365,8 @@ class PlanRoadmapCommandTools(BaseModel):
     create_spec_tool: str = Field(..., description='Platform-specific tool for creating specs')
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    list_project_specs_tool: str = Field(..., description='Platform-specific tool for listing project specs')
+    platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     @computed_field
     def get_project_plan_tool_interpolated(self) -> str:
@@ -254,6 +398,105 @@ class PlanRoadmapCommandTools(BaseModel):
             return self.update_spec_tool
         return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
+    @computed_field
+    def list_project_specs_tool_interpolated(self) -> str:
+        if '*' not in self.list_project_specs_tool:
+            return self.list_project_specs_tool
+        return self.list_project_specs_tool.replace('*', '{project_name}')
+
+    @computed_field
+    def sync_project_plan_instructions(self) -> str:
+        if self.platform == PlatformType.MARKDOWN:
+            return """TRY:
+  PLAN_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/project_plan.md)
+  mcp__specter__store_project_plan(
+    project_name=PROJECT_NAME,
+    project_plan_markdown=PLAN_MARKDOWN
+  )
+  Display: "✓ Loaded project plan from platform"
+EXCEPT:
+  Display: "No existing project plan found"
+"""
+        elif self.platform == PlatformType.LINEAR:
+            return """TRY:
+  PLAN_RESULT = mcp__linear-server__get_document(project_name=PROJECT_NAME)
+  PLAN_MARKDOWN = PLAN_RESULT.content
+  mcp__specter__store_project_plan(
+    project_name=PROJECT_NAME,
+    project_plan_markdown=PLAN_MARKDOWN
+  )
+  Display: "✓ Loaded project plan from platform"
+EXCEPT:
+  Display: "No existing project plan found"
+"""
+        elif self.platform == PlatformType.GITHUB:
+            return """TRY:
+  PLAN_RESULT = mcp__github__get_file(path=".specter/projects/{PROJECT_NAME}/project_plan.md")
+  PLAN_MARKDOWN = PLAN_RESULT.content
+  mcp__specter__store_project_plan(
+    project_name=PROJECT_NAME,
+    project_plan_markdown=PLAN_MARKDOWN
+  )
+  Display: "✓ Loaded project plan from platform"
+EXCEPT:
+  Display: "No existing project plan found"
+"""
+        else:
+            return """# Platform-specific sync not configured
+Display: "⚠️ Sync not configured for this platform"
+"""
+
+    @computed_field
+    def sync_all_specs_instructions(self) -> str:
+        if self.platform == PlatformType.MARKDOWN:
+            return """SPECS_LOADED = 0
+SPEC_FILES = Glob(.specter/projects/{PROJECT_NAME}/specter-specs/*.md)
+FOR each spec_file in SPEC_FILES:
+  SPEC_NAME = [extract filename without .md extension]
+  SPEC_MARKDOWN = Read(spec_file)
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  SPECS_LOADED = SPECS_LOADED + 1
+Display: "✓ Loaded {SPECS_LOADED} specs from platform"
+"""
+        elif self.platform == PlatformType.LINEAR:
+            return """SPECS_LOADED = 0
+SPEC_LIST = mcp__linear-server__list_issues(project_name=PROJECT_NAME, label="technical-specification")
+FOR each spec in SPEC_LIST:
+  SPEC_RESULT = mcp__linear-server__get_issue(issue_id=spec.id)
+  SPEC_MARKDOWN = SPEC_RESULT.description
+  SPEC_NAME = SPEC_RESULT.title
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  SPECS_LOADED = SPECS_LOADED + 1
+Display: "✓ Loaded {SPECS_LOADED} specs from platform"
+"""
+        elif self.platform == PlatformType.GITHUB:
+            return """SPECS_LOADED = 0
+SPEC_LIST = mcp__github__list_issues(label="technical-specification")
+FOR each spec in SPEC_LIST:
+  SPEC_RESULT = mcp__github__get_issue(issue_number=spec.number)
+  SPEC_MARKDOWN = SPEC_RESULT.body
+  SPEC_NAME = SPEC_RESULT.title
+  mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=SPEC_MARKDOWN
+  )
+  SPECS_LOADED = SPECS_LOADED + 1
+Display: "✓ Loaded {SPECS_LOADED} specs from platform"
+"""
+        else:
+            return """# Platform-specific sync not configured
+Display: "⚠️ Spec sync not configured for this platform"
+"""
+
 
 class PlanRoadmapAgentTools(BaseModel):
     create_spec_external: str = Field(..., description='Platform-specific tool for creating external specs')
@@ -263,6 +506,14 @@ class PlanRoadmapAgentTools(BaseModel):
         if '*' not in self.create_spec_external:
             return self.create_spec_external
         return self.create_spec_external.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+
+
+class SpecArchitectAgentTools(BaseModel):
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+
+
+class SpecCriticAgentTools(BaseModel):
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
 
 
 class CreateSpecAgentTools(BaseModel):

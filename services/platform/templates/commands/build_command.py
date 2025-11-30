@@ -25,6 +25,19 @@ PROJECT_NAME = config["project_name"]
 
 **Important**: PROJECT_NAME from config is used for all MCP storage operations.
 
+### 0a. Load Existing Spec from Platform
+
+Load existing spec from platform (if exists):
+
+```text
+# Get spec name from user argument
+SPEC_NAME = [user provided spec name]
+
+{tools.sync_spec_instructions}
+```
+
+**Note**: Build plans are not stored in external platforms - they only exist in MCP during the build workflow.
+
 ### 1. Specification Retrieval and Validation
 Retrieve and validate completed TechnicalSpec from /specter-spec command:
 
