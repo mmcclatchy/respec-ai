@@ -51,6 +51,10 @@ class TechnicalSpec(MCPModel):
     success_criteria: str | None = None
     integration_context: str | None = None
 
+    # Flexible storage for domain-specific sections
+    # Examples: {"Data Models": "content", "API Design": "content", "CLI Commands": "content"}
+    additional_sections: dict[str, str] | None = None
+
     # State tracking
     iteration: int = 0
     version: int = 1
@@ -96,6 +100,11 @@ class TechnicalSpec(MCPModel):
                 sections.append(f'\n### Success Criteria\n{self.success_criteria}')
             if self.integration_context:
                 sections.append(f'\n### Integration Context\n{self.integration_context}')
+
+        # Include additional sections before metadata
+        if self.additional_sections:
+            for section_name, content in self.additional_sections.items():
+                sections.append(f'\n## {section_name}\n{content}')
 
         sections.append('\n## Metadata')
         sections.append(f'\n### Iteration\n{self.iteration}')

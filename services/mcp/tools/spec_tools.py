@@ -24,6 +24,8 @@ class SpecTools:
 
         try:
             spec = TechnicalSpec.parse_markdown(spec_markdown)
+            # Phase name extracted from H1 header is canonical source
+            # Validation ensures H1 format: # Technical Specification: {kebab-case-name}
             self.state.store_spec(project_name, spec)
             return f'Stored spec "{spec_name}" in project {project_name} (iteration {spec.iteration}, version {spec.version})'
         except RoadmapNotFoundError as e:
@@ -76,6 +78,17 @@ class SpecTools:
             raise ResourceError(str(e))
         except Exception as e:
             raise ToolError(f'Failed to list specs: {str(e)}')
+
+    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
+        if not project_name:
+            raise ToolError('Project name cannot be empty')
+        if not partial_name:
+            raise ToolError('Partial name cannot be empty')
+
+        try:
+            return self.state.resolve_spec_name(project_name, partial_name)
+        except Exception as e:
+            raise ToolError(f'Failed to resolve spec name: {str(e)}')
 
     def delete_spec(self, project_name: str, spec_name: str) -> MCPResponse:
         if not project_name:
@@ -221,6 +234,37 @@ def register_spec_tools(mcp: FastMCP) -> None:
             return result
         except Exception as e:
             await ctx.error(f'Failed to list specs: {str(e)}')
+            raise
+
+    @mcp.tool()
+    async def resolve_spec_name(project_name: str, partial_name: str, ctx: Context) -> dict:
+        """Resolve partial spec name to matching specifications.
+
+        Searches for specs matching the partial name and returns all matches.
+        If exactly one match found, returns it as canonical_name.
+
+        Parameters:
+        - project_name: Project identifier from .specter/config.json
+        - partial_name: Partial or full spec name to search for
+
+        Returns:
+        - dict with canonical_name (str|None), matches (list), count (int)
+        """
+        await ctx.info(f'Resolving spec name: {partial_name} in project {project_name}')
+
+        try:
+            canonical, matches = spec_tools.resolve_spec_name(project_name, partial_name)
+
+            result = {
+                'canonical_name': canonical,
+                'matches': matches,
+                'count': len(matches),
+            }
+
+            await ctx.info(f'Found {len(matches)} matches')
+            return result
+        except Exception as e:
+            await ctx.error(f'Failed to resolve spec name: {str(e)}')
             raise
 
     @mcp.tool()

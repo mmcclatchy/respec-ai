@@ -1,9 +1,5 @@
 from typing import ClassVar
 
-from pydantic import Field
-
-from services.utils.errors import SpecNotFoundError
-
 from .base import MCPModel
 from .enums import RoadmapStatus
 from .spec import TechnicalSpec
@@ -31,7 +27,6 @@ class Roadmap(MCPModel):
         'quality_gates': ('Success Metrics', 'Quality Gates'),
         'performance_targets': ('Success Metrics', 'Performance Targets'),
         'roadmap_status': ('Metadata', 'Status'),
-        'spec_count': ('Metadata', 'Spec Count'),
     }
 
     # Model fields with defaults
@@ -40,7 +35,6 @@ class Roadmap(MCPModel):
     total_duration: str = 'Total Duration not specified'
     team_size: str = 'Team Size not specified'
     roadmap_budget: str = 'Budget not specified'
-    specs: list[TechnicalSpec] = Field(default_factory=list)
     critical_path_analysis: str = 'Critical Path Analysis not specified'
     key_risks: str = 'Key Risks not specified'
     mitigation_plans: str = 'Mitigation Plans not specified'
@@ -54,9 +48,9 @@ class Roadmap(MCPModel):
     quality_gates: str = 'Quality Gates not specified'
     performance_targets: str = 'Performance Targets not specified'
     roadmap_status: RoadmapStatus = RoadmapStatus.DRAFT
-    spec_count: int = 0
 
-    def build_markdown(self) -> str:
+    def build_markdown(self, specs: list[TechnicalSpec] | None = None) -> str:
+        spec_count = len(specs) if specs else 0
         roadmap_metadata = f"""{self.TITLE_PATTERN}: {self.project_name}
 
 ## Project Details
@@ -121,29 +115,11 @@ class Roadmap(MCPModel):
 {self.roadmap_status.value}
 
 ### Spec Count
-{self.spec_count}
+{spec_count}
 """
         # Append full TechnicalSpec markdown for round-trip consistency
-        if self.specs:
-            specs_markdown = '\n\n'.join(spec.build_markdown() for spec in self.specs)
+        if specs:
+            specs_markdown = '\n\n'.join(spec.build_markdown() for spec in specs)
             return roadmap_metadata + '\n' + specs_markdown
 
         return roadmap_metadata
-
-    def get_spec_name(self, spec_name: str) -> str:
-        for spec in self.specs:
-            if spec.phase_name == spec_name:
-                return spec.phase_name
-
-        raise SpecNotFoundError(f'Spec not found: {spec_name}')
-
-    def add_spec(self, spec: TechnicalSpec) -> None:
-        # Remove existing spec with same name if it exists
-        for i, existing_spec in enumerate(self.specs):
-            if existing_spec.phase_name == spec.phase_name:
-                self.specs[i] = spec  # Replace existing
-                return
-
-        # Add new spec
-        self.specs.append(spec)
-        self.spec_count = len(self.specs)

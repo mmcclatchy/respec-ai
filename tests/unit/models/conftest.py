@@ -46,7 +46,7 @@ def markdown_builder() -> Callable:
 
     def build(model_class: Type[MCPModel], **field_values: Any) -> str:
         title_field = model_class.TITLE_FIELD
-        title = field_values.pop(title_field, 'Test Project')
+        title = field_values.pop(title_field, 'test-project')
 
         lines = [f'{model_class.TITLE_PATTERN}: {title}']
 

@@ -6,7 +6,7 @@ from services.models.enums import SpecStatus
 
 @pytest.fixture
 def sample_initial_spec_markdown() -> str:
-    return """# Technical Specification: User Authentication System
+    return """# Technical Specification: user-authentication-system
 
 ## Overview
 
@@ -34,7 +34,7 @@ class TestInitialSpecParsing:
     def test_parse_markdown_extracts_basic_fields(self, sample_initial_spec_markdown: str) -> None:
         spec = TechnicalSpec.parse_markdown(sample_initial_spec_markdown)
 
-        assert spec.phase_name == 'User Authentication System'
+        assert spec.phase_name == 'user-authentication-system'
         assert spec.objectives == 'Implement secure user login and registration'
         assert spec.scope == 'Login, logout, password reset functionality'
         assert spec.dependencies == 'Database, encryption library'
@@ -43,7 +43,7 @@ class TestInitialSpecParsing:
 
     def test_initial_spec_generates_8_char_id(self) -> None:
         spec = TechnicalSpec(
-            phase_name='Test Spec',
+            phase_name='test-spec',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='None',
@@ -56,7 +56,7 @@ class TestInitialSpecParsing:
 
     def test_build_markdown_creates_initial_spec_format(self) -> None:
         spec = TechnicalSpec(
-            phase_name='Test Spec',
+            phase_name='test-spec',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='Test dependencies',
@@ -66,7 +66,7 @@ class TestInitialSpecParsing:
 
         markdown = spec.build_markdown()
 
-        assert '# Technical Specification: Test Spec' in markdown
+        assert '# Technical Specification: test-spec' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown
         assert '### Dependencies\nTest dependencies' in markdown

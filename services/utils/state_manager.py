@@ -15,7 +15,39 @@ from services.utils.errors import (
 from services.utils.loop_state import LoopState, MCPResponse
 
 
+import re
+
+
 logger = logging.getLogger('state_manager')
+
+
+def normalize_spec_name(spec_name: str) -> str:
+    """
+    Normalize spec name to lowercase-kebab-case for consistent storage/retrieval.
+
+    Examples:
+        "Phase 1 - Foundation" -> "phase-1-foundation"
+        "phase-1-foundation" -> "phase-1-foundation"
+        "PHASE_1_FOUNDATION" -> "phase-1-foundation"
+
+    Args:
+        spec_name: Original spec name from user or markdown title
+
+    Returns:
+        Normalized kebab-case spec name
+    """
+
+    # Convert to lowercase
+    normalized = spec_name.lower()
+    # Replace spaces and underscores with hyphens
+    normalized = re.sub(r'[\s_]+', '-', normalized)
+    # Remove any characters that aren't alphanumeric or hyphens
+    normalized = re.sub(r'[^a-z0-9-]', '', normalized)
+    # Collapse multiple hyphens
+    normalized = re.sub(r'-+', '-', normalized)
+    # Strip leading/trailing hyphens
+    normalized = normalized.strip('-')
+    return normalized
 
 
 class StateManager(ABC):
@@ -48,6 +80,9 @@ class StateManager(ABC):
     @abstractmethod
     def get_roadmap(self, project_name: str) -> Roadmap: ...
 
+    @abstractmethod
+    def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]: ...
+
     # Unified Spec Management (replaces InitialSpec + TechnicalSpec separation)
     @abstractmethod
     def store_spec(self, project_name: str, spec: TechnicalSpec) -> str: ...
@@ -57,6 +92,9 @@ class StateManager(ABC):
 
     @abstractmethod
     def list_specs(self, project_name: str) -> list[str]: ...
+
+    @abstractmethod
+    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
 
     @abstractmethod
     def delete_spec(self, project_name: str, spec_name: str) -> bool: ...
@@ -220,46 +258,12 @@ class InMemoryStateManager(StateManager):
 
     def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str:
         self._log_state_snapshot('store_roadmap', 'ENTRY')
-        logger.info(
-            f'store_roadmap: project_name={project_name}, '
-            f'roadmap_title={roadmap.project_name}, '
-            f'spec_count={roadmap.spec_count}'
-        )
+        logger.info(f'store_roadmap: project_name={project_name}, roadmap_title={roadmap.project_name}')
         self._roadmaps[project_name] = roadmap
-
-        deleted_specs = self._cleanup_orphaned_specs(project_name)
-        if deleted_specs:
-            logger.info(f'store_roadmap: Cleaned up {len(deleted_specs)} orphaned specs: {deleted_specs}')
 
         self._log_state()
         self._log_state_snapshot('store_roadmap', 'EXIT')
         return project_name
-
-    def _cleanup_orphaned_specs(self, project_name: str) -> list[str]:
-        if project_name not in self._roadmaps:
-            return []
-
-        if project_name not in self._specs:
-            return []
-
-        roadmap = self._roadmaps[project_name]
-        valid_phase_names = {spec.phase_name for spec in roadmap.specs}
-
-        current_spec_names = set(self._specs[project_name].keys())
-        orphaned_specs = current_spec_names - valid_phase_names
-
-        deleted_specs = []
-        for spec_name in orphaned_specs:
-            del self._specs[project_name][spec_name]
-            deleted_specs.append(spec_name)
-            logger.info(f'_cleanup_orphaned_specs: Deleted orphaned spec {spec_name} from project {project_name}')
-
-        if deleted_specs:
-            logger.info(f'_cleanup_orphaned_specs: Removed {len(deleted_specs)} orphaned specs: {deleted_specs}')
-        else:
-            logger.debug(f'_cleanup_orphaned_specs: No orphaned specs found for project {project_name}')
-
-        return deleted_specs
 
     def get_roadmap(self, project_name: str) -> Roadmap:
         self._log_state_snapshot('get_roadmap', 'ENTRY')
@@ -268,9 +272,22 @@ class InMemoryStateManager(StateManager):
             logger.error(f'get_roadmap failed: Roadmap not found for project: {project_name}')
             raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
         roadmap = self._roadmaps[project_name]
-        logger.debug(f'get_roadmap: Found roadmap {roadmap.project_name} with {roadmap.spec_count} specs')
+        logger.debug(f'get_roadmap: Found roadmap {roadmap.project_name}')
         self._log_state_snapshot('get_roadmap', 'EXIT')
         return roadmap
+
+    def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]:
+        self._log_state_snapshot('get_roadmap_specs', 'ENTRY')
+        logger.debug(f'get_roadmap_specs: project_name={project_name}')
+
+        if project_name not in self._roadmaps:
+            logger.error(f'get_roadmap_specs failed: Roadmap not found for project: {project_name}')
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
+
+        specs = list(self._specs.get(project_name, {}).values())
+        logger.debug(f'get_roadmap_specs: Found {len(specs)} specs for project {project_name}')
+        self._log_state_snapshot('get_roadmap_specs', 'EXIT')
+        return specs
 
     # Unified Spec Management (single source of truth)
     def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
@@ -281,18 +298,19 @@ class InMemoryStateManager(StateManager):
             f'iteration={spec.iteration}, '
             f'version={spec.version}'
         )
-        if project_name not in self._roadmaps:
-            logger.error(f'store_spec failed: Roadmap not found for project: {project_name}')
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
-        # Store in unified spec storage
+        # Store in unified spec storage - initialize project storage if needed
         if project_name not in self._specs:
             self._specs[project_name] = {}
 
+        # Normalize spec name for consistent storage
+        normalized_name = normalize_spec_name(spec.phase_name)
+        logger.debug(f'store_spec: Normalized "{spec.phase_name}" -> "{normalized_name}"')
+
         # Auto-increment iteration and version if spec already exists
-        is_update = spec.phase_name in self._specs[project_name]
+        is_update = normalized_name in self._specs[project_name]
         if is_update:
-            existing_spec = self._specs[project_name][spec.phase_name]
+            existing_spec = self._specs[project_name][normalized_name]
             old_iteration = existing_spec.iteration
             old_version = existing_spec.version
             spec.iteration = existing_spec.iteration + 1
@@ -303,11 +321,7 @@ class InMemoryStateManager(StateManager):
                 f'version: {old_version} -> {spec.version}'
             )
 
-        self._specs[project_name][spec.phase_name] = spec
-
-        # Add spec to roadmap if not already there (for roadmap listings)
-        roadmap = self._roadmaps[project_name]
-        roadmap.add_spec(spec)
+        self._specs[project_name][normalized_name] = spec
 
         self._log_state()
         logger.info(f'store_spec: Successfully stored spec {spec.phase_name} for project {project_name}')
@@ -317,26 +331,28 @@ class InMemoryStateManager(StateManager):
     def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
         self._log_state_snapshot('get_spec', 'ENTRY')
         logger.debug(f'get_spec: project_name={project_name}, spec_name={spec_name}')
-        if project_name not in self._roadmaps:
-            logger.error(f'get_spec failed: Roadmap not found for project: {project_name}')
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
-        if project_name not in self._specs or spec_name not in self._specs[project_name]:
-            logger.error(f'get_spec failed: Spec not found: {spec_name} in project {project_name}')
-            raise SpecNotFoundError(f'Spec not found: {spec_name}')
+        # Normalize spec name for lookup
+        normalized_name = normalize_spec_name(spec_name)
+        logger.debug(f'get_spec: Normalized "{spec_name}" -> "{normalized_name}"')
 
-        spec = self._specs[project_name][spec_name]
-        logger.debug(f'get_spec: Found spec {spec_name} (iteration={spec.iteration}, version={spec.version})')
+        if project_name not in self._specs or normalized_name not in self._specs[project_name]:
+            logger.error(
+                f'get_spec failed: Spec not found: {spec_name} (normalized: {normalized_name}) '
+                f'in project {project_name}'
+            )
+            raise SpecNotFoundError(f'Spec not found: {spec_name} in project {project_name}')
+
+        spec = self._specs[project_name][normalized_name]
+        logger.debug(
+            f'get_spec: Retrieved spec using normalized name "{normalized_name}" (iteration={spec.iteration}, version={spec.version})'
+        )
         self._log_state_snapshot('get_spec', 'EXIT')
         return spec
 
     def list_specs(self, project_name: str) -> list[str]:
         self._log_state_snapshot('list_specs', 'ENTRY')
         logger.debug(f'list_specs: project_name={project_name}')
-
-        if project_name not in self._roadmaps:
-            logger.error(f'list_specs failed: Roadmap not found for project: {project_name}')
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
         if project_name not in self._specs:
             logger.debug(f'list_specs: No specs found for project: {project_name}')
@@ -348,44 +364,68 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('list_specs', 'EXIT')
         return spec_names
 
+    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
+        self._log_state_snapshot('resolve_spec_name', 'ENTRY')
+        logger.debug(f'resolve_spec_name: project_name={project_name}, partial_name={partial_name}')
+
+        # Get all specs for project
+        all_specs = self.list_specs(project_name)
+
+        if not all_specs:
+            logger.warning(f'No specs found in project {project_name}')
+            return (None, [])
+
+        # Normalize partial name for comparison
+        normalized_partial = normalize_spec_name(partial_name)
+
+        # Try exact match first
+        if normalized_partial in all_specs:
+            logger.info(f'Exact match found: {normalized_partial}')
+            return (normalized_partial, [normalized_partial])
+
+        # Fuzzy match: partial contains
+        matches = [spec for spec in all_specs if normalized_partial in spec]
+
+        logger.info(f'Found {len(matches)} matches for "{partial_name}": {matches}')
+
+        canonical = matches[0] if len(matches) == 1 else None
+        self._log_state_snapshot('resolve_spec_name', 'EXIT')
+        return (canonical, matches)
+
     def delete_spec(self, project_name: str, spec_name: str) -> bool:
         self._log_state_snapshot('delete_spec', 'ENTRY')
         logger.info(f'delete_spec: project_name={project_name}, spec_name={spec_name}')
-        if project_name not in self._roadmaps:
-            logger.error(f'delete_spec failed: Roadmap not found for project: {project_name}')
-            raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
+
+        # Normalize spec name for deletion
+        normalized_name = normalize_spec_name(spec_name)
+        logger.debug(f'delete_spec: Normalized "{spec_name}" -> "{normalized_name}"')
+
+        if project_name not in self._specs or normalized_name not in self._specs[project_name]:
+            logger.warning(
+                f'delete_spec: Spec not found: {spec_name} (normalized: {normalized_name}) in project {project_name}'
+            )
+            self._log_state_snapshot('delete_spec', 'EXIT')
+            return False
 
         # Remove from specs storage
-        removed_from_specs = False
-        if project_name in self._specs and spec_name in self._specs[project_name]:
-            del self._specs[project_name][spec_name]
-            removed_from_specs = True
-            logger.info(f'delete_spec: Removed {spec_name} from specs storage')
+        del self._specs[project_name][normalized_name]
+        logger.info(f'delete_spec: Removed {spec_name} using normalized name "{normalized_name}" from specs storage')
 
-        # Remove from roadmap
-        roadmap = self._roadmaps[project_name]
-        for i, spec in enumerate(roadmap.specs):
-            if spec.phase_name == spec_name:
-                roadmap.specs.pop(i)
-                roadmap.spec_count = len(roadmap.specs)
-                logger.info(f'delete_spec: Removed {spec_name} from roadmap (new count: {roadmap.spec_count})')
-                self._log_state()
-                self._log_state_snapshot('delete_spec', 'EXIT')
-                return True
-
-        logger.warning(f'delete_spec: Spec {spec_name} not found in roadmap, removed_from_specs={removed_from_specs}')
         self._log_state()
         self._log_state_snapshot('delete_spec', 'EXIT')
-        return removed_from_specs
+        return True
 
     # Loop-to-Spec Mapping (for temporary refinement sessions)
     def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None:
         self._log_state_snapshot('link_loop_to_spec', 'ENTRY')
         logger.info(f'link_loop_to_spec: loop_id={loop_id}, project_name={project_name}, spec_name={spec_name}')
-        if project_name not in self._specs or spec_name not in self._specs[project_name]:
-            logger.error(f'link_loop_to_spec failed: Cannot link loop to non-existent spec: {spec_name}')
-            raise SpecNotFoundError(f'Cannot link loop to non-existent spec: {spec_name}')
-        self._loop_to_spec[loop_id] = (project_name, spec_name)
+
+        # Normalize spec name for consistent linking
+        normalized_name = normalize_spec_name(spec_name)
+        logger.debug(f'link_loop_to_spec: Normalized "{spec_name}" -> "{normalized_name}"')
+
+        self._loop_to_spec[loop_id] = (project_name, normalized_name)
+        logger.info(f'Linked loop {loop_id} to spec {normalized_name} in project {project_name}')
         self._log_state()
         self._log_state_snapshot('link_loop_to_spec', 'EXIT')
 

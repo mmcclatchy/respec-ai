@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Self
 
@@ -244,6 +245,15 @@ class MCPModel(BaseModel, ABC):
             else:
                 # For titles without colons, use the full title text
                 title_value = title_text.strip()
+
+            # Validate strict kebab-case format for spec names
+            if cls.TITLE_FIELD == 'phase_name' and not re.match(r'^[a-z0-9]+(-[a-z0-9]+)*$', title_value):
+                raise ValueError(
+                    f"Invalid spec name format: '{title_value}'. "
+                    f'Spec name must be lowercase kebab-case. '
+                    f"Example: 'phase-1-foundation'"
+                )
+
             fields[cls.TITLE_FIELD] = title_value
             break
 
@@ -261,6 +271,30 @@ class MCPModel(BaseModel, ABC):
                 extracted_content = cls._extract_content_from_raw_markdown(markdown, header_path)
                 if extracted_content:  # Only set if we found actual content
                     fields[field_name] = extracted_content
+
+        # Capture unmapped H2 sections in additional_sections (for models that support it)
+        # Build set of mapped H2 headers
+        mapped_h2_headers = {header_path[0] for header_path in cls.HEADER_FIELD_MAPPING.values()}
+
+        # Find all H2 headers in markdown
+        additional_sections: dict[str, str] = {}
+        for node in cls._find_nodes_by_type(tree, 'heading'):
+            if node.tag != 'h2':
+                continue
+            h2_text = cls._extract_text_content(node).strip()
+
+            # Skip if this H2 is in mapped headers or is Metadata
+            if h2_text in mapped_h2_headers or h2_text == 'Metadata':
+                continue
+
+            # Extract content for this unmapped H2 section
+            content = cls._extract_content_from_raw_markdown(markdown, (h2_text,))
+            if content:  # Only store if there's actual content
+                additional_sections[h2_text] = content
+
+        # Set additional_sections if we found any unmapped sections
+        if additional_sections:
+            fields['additional_sections'] = additional_sections
 
         return cls(**fields)
 

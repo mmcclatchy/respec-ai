@@ -173,35 +173,36 @@ class TestGetRoadmap(TestRoadmapTools):
     def test_get_roadmap_returns_success_with_spec_count(
         self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
     ) -> None:
+        mock_specs = [
+            TechnicalSpec(
+                phase_name='spec1',
+                objectives='Test objectives 1',
+                scope='Test scope 1',
+                dependencies='Test deps 1',
+                deliverables='Test deliverables 1',
+            ),
+            TechnicalSpec(
+                phase_name='spec2',
+                objectives='Test objectives 2',
+                scope='Test scope 2',
+                dependencies='Test deps 2',
+                deliverables='Test deliverables 2',
+            ),
+            TechnicalSpec(
+                phase_name='spec3',
+                objectives='Test objectives 3',
+                scope='Test scope 3',
+                dependencies='Test deps 3',
+                deliverables='Test deliverables 3',
+            ),
+        ]
+
         mock_roadmap = Roadmap(
             project_name='Test Roadmap',
             project_goal='Test goal',
             total_duration='6 months',
             team_size='5 developers',
             roadmap_budget='$100k',
-            specs=[
-                TechnicalSpec(
-                    phase_name='spec1',
-                    objectives='Test objectives 1',
-                    scope='Test scope 1',
-                    dependencies='Test deps 1',
-                    deliverables='Test deliverables 1',
-                ),
-                TechnicalSpec(
-                    phase_name='spec2',
-                    objectives='Test objectives 2',
-                    scope='Test scope 2',
-                    dependencies='Test deps 2',
-                    deliverables='Test deliverables 2',
-                ),
-                TechnicalSpec(
-                    phase_name='spec3',
-                    objectives='Test objectives 3',
-                    scope='Test scope 3',
-                    dependencies='Test deps 3',
-                    deliverables='Test deliverables 3',
-                ),
-            ],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test plans',
@@ -217,9 +218,9 @@ class TestGetRoadmap(TestRoadmapTools):
             roadmap_status=RoadmapStatus.DRAFT,
             creation_date=datetime.now().isoformat(),
             last_updated=datetime.now().isoformat(),
-            spec_count=3,
         )
         mock_state_manager.get_roadmap.return_value = mock_roadmap
+        mock_state_manager.get_roadmap_specs.return_value = mock_specs
 
         result = roadmap_tools.get_roadmap('test-project')
 
@@ -245,7 +246,6 @@ class TestGetRoadmap(TestRoadmapTools):
             total_duration='6 months',
             team_size='5 developers',
             roadmap_budget='$100k',
-            specs=[],  # Empty list
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test plans',
@@ -261,9 +261,9 @@ class TestGetRoadmap(TestRoadmapTools):
             roadmap_status=RoadmapStatus.DRAFT,
             creation_date=datetime.now().isoformat(),
             last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
         mock_state_manager.get_roadmap.return_value = mock_roadmap
+        mock_state_manager.get_roadmap_specs.return_value = []
 
         result = roadmap_tools.get_roadmap('empty-project')
 

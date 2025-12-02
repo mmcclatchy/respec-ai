@@ -51,7 +51,7 @@ def sample_roadmap_markdown(markdown_builder: Callable) -> str:
 def sample_spec_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         TechnicalSpec,
-        phase_name='Test Phase',
+        phase_name='test-phase',
         objectives='Implement authentication',
         scope='Login and logout',
         dependencies='User database',

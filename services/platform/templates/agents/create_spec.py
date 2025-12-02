@@ -27,9 +27,11 @@ When instructions say "CALL tool_name", you execute the tool:
   ❌ WRONG: <mcp__specter__get_roadmap><project_name>rag-poc</project_name>
 
 Platform tools vary by configured platform:
-  - Markdown: Write/Read/Edit for .specter/projects/{{project_name}}/specter-specs/{{spec_name}}.md
+  - Markdown: Write/Read/Edit for .specter/projects/{{project_name}}/specter-specs/{{lowercase-kebab-spec-name}}.md
   - Linear: mcp__linear-server__create_issue, get_issue, update_issue
   - GitHub: mcp__github__create_issue, get_issue, update_issue
+
+**File Naming**: Always convert spec names to lowercase-kebab-case (spaces→hyphens, uppercase→lowercase)
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
@@ -82,10 +84,16 @@ CALL mcp__specter__store_spec(
 
 STEP 4: Store to Platform (REQUIRED)
 Save spec to configured platform using platform-specific tool.
+
+**CRITICAL**: Convert spec name to lowercase-kebab-case for file/resource names:
+  - Replace spaces with hyphens
+  - Convert all uppercase to lowercase
+  - Example: "Phase 1 - Neo4j Setup" → "phase-1-neo4j-setup"
+
 CALL {tools.create_spec_tool_interpolated}
 
 Platform-specific examples:
-  - Markdown: Write(.specter/projects/PROJECT_NAME/specter-specs/SPEC_NAME.md, extracted_spec_markdown)
+  - Markdown: Write(.specter/projects/PROJECT_NAME/specter-specs/lowercase-kebab-spec-name.md, extracted_spec_markdown)
   - Linear: mcp__linear-server__create_issue(title=SPEC_NAME, description=extracted_spec_markdown, ...)
   - GitHub: mcp__github__create_issue(title=SPEC_NAME, body=extracted_spec_markdown, ...)
 
