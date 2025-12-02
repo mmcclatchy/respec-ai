@@ -22,20 +22,17 @@ class RoadmapTools:
             roadmap_metadata = spec_blocks[0]
 
             roadmap = Roadmap.parse_markdown(roadmap_metadata)
+            self.state.store_roadmap(project_name, roadmap)
 
+            # Parse and store each spec individually
+            specs = []
             for i, spec_block in enumerate(spec_blocks[1:], 1):
                 spec_markdown = f'# Technical Specification:{spec_block}'
                 spec = TechnicalSpec.parse_markdown(spec_markdown)
-                roadmap.add_spec(spec)
-
-            self.state.store_roadmap(project_name, roadmap)
-
-            # Store each spec individually in _specs storage for retrieval
-            for spec in roadmap.specs:
+                specs.append(spec)
                 self.state.store_spec(project_name, spec)
-            return (
-                f'Created roadmap "{roadmap.project_name}" with {len(spec_blocks) - 1} specs for project {project_name}'
-            )
+
+            return f'Created roadmap "{roadmap.project_name}" with {len(specs)} specs for project {project_name}'
         except Exception as e:
             raise ToolError(f'Failed to create roadmap: {str(e)}')
 
@@ -45,7 +42,8 @@ class RoadmapTools:
 
         try:
             roadmap = self.state.get_roadmap(project_name)
-            return roadmap.build_markdown()
+            specs = self.state.get_roadmap_specs(project_name)
+            return roadmap.build_markdown(specs)
         except Exception as e:
             raise ResourceError(f'Roadmap not found for project {project_name}: {str(e)}')
 

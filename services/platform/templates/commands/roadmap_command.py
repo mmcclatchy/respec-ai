@@ -4,7 +4,7 @@ from services.platform.models import PlanRoadmapCommandTools
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [optional: phasing-preferences]
+argument-hint: [project-name] [optional: phasing-preferences]
 description: Transform strategic plans into multiple InitialSpecs through quality-driven refinement
 ---
 
@@ -14,16 +14,6 @@ description: Transform strategic plans into multiple InitialSpecs through qualit
 Orchestrate the transformation of strategic plans into discrete, implementable phase roadmaps. Bridge strategic planning to technical specification through quality-driven decomposition and refinement.
 
 ## Workflow Steps
-
-### 0. Initialize Project Context
-
-Read project configuration:
-```text
-Read .specter/config.json
-PROJECT_NAME = config["project_name"]
-```
-
-**Important**: PROJECT_NAME from config is used for all MCP storage operations.
 
 ### 0a. Load Existing Documents from Platform
 
@@ -37,6 +27,16 @@ Load project plan and all existing specs from platform:
 {tools.sync_all_specs_instructions}
 ```
 
+### 0. Extract Command Arguments
+
+Parse command arguments from user input:
+```text
+PROJECT_NAME = [first argument from command - the project name]
+PHASING_PREFERENCES = [second argument if provided, otherwise empty string]
+```
+
+**Important**: PROJECT_NAME from command arguments is used for all MCP storage operations.
+
 ### 1. Strategic Plan Retrieval and Validation
 Retrieve and validate completed strategic plan from /specter-plan command:
 
@@ -45,11 +45,12 @@ Retrieve and validate completed strategic plan from /specter-plan command:
 STRATEGIC_PLAN = mcp__specter__get_project_plan_markdown(PROJECT_NAME)
 IF STRATEGIC_PLAN not found:
   ERROR: "No strategic plan found for project: [PROJECT_NAME]"
-  SUGGEST: "Run '/specter-plan' to create strategic plan first"
+  SUGGEST: "Run '/specter-plan [PROJECT_NAME]' to create strategic plan first"
   EXIT: Graceful failure with guidance
 STRUCTURED_OBJECTIVES = [Extract from strategic plan Business Objectives analysis]
-PHASING_PREFERENCES = [user provided preferences or empty]
 ```
+
+Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.
 
 ### 2. Initialize Roadmap Generation Loop
 Set up MCP-managed quality refinement loop:
@@ -176,46 +177,22 @@ Display to user:
 ```
 
 ### 4. MCP Decision Handling
-Handle MCP Server response actions:
+
+**Follow MCP_DECISION exactly. Do not override based on score assessment.**
 
 #### If MCP_DECISION == "refine"
-```text
-CRITIC_FEEDBACK already contains improvement recommendations
-Return to Step 3a with:
-  - previous_feedback: CRITIC_FEEDBACK
-  - All other parameters unchanged
-Roadmap agent will incorporate feedback and generate improved version
-```
+Return to Step 3a with previous_feedback: CRITIC_FEEDBACK
+Execute Steps 3b-3e again.
 
 #### If MCP_DECISION == "user_input"
-```text
-Display CRITIC_FEEDBACK to user
-Request targeted technical input from software engineer user:
-- Specific technology stack preferences or constraints
-- Architecture pattern preferences (microservices, monolith, etc.)
-- Performance requirements or scaling considerations
-- Integration requirements with existing systems
-- Development team expertise and capacity constraints
-- Timeline constraints or business priority adjustments
-
-Store user input as USER_GUIDANCE
-Return to Step 3a with:
-  - previous_feedback: Combined CRITIC_FEEDBACK + USER_GUIDANCE
-  - phasing_preferences: Updated with user input
-```
+Display CRITIC_FEEDBACK to user.
+Request technical input (stack preferences, architecture patterns, constraints).
+Return to Step 3a with previous_feedback: CRITIC_FEEDBACK + user input.
+Execute Steps 3b-3e again.
 
 #### If MCP_DECISION == "complete"
-```text
-Roadmap quality meets threshold.
-
-**CRITICAL: The roadmap loop is complete, but the WORKFLOW CONTINUES with spec creation.**
-
-The roadmap now contains sparse TechnicalSpec objects (iteration=0) with only the 4 Overview fields.
-These specs set the big picture - create-spec agents will fill in detailed fields.
-
-**MANDATORY NEXT STEP: Proceed to Step 5 for Spec Planning and Analysis**
-DO NOT skip to final report - spec creation is REQUIRED before workflow completion.
-```
+Proceed to Step 5.
+Note: Roadmap contains sparse TechnicalSpec objects (iteration=0) with 4 Overview fields only.
 
 ### 5. Spec Extraction Planning
 Plan extraction of sparse TechnicalSpecs from roadmap before parallel processing:
@@ -351,8 +328,8 @@ ELSE:
 
 #### Strategic Plan Not Available
 ```text
-Display: "No strategic plan found for project: [project-name]"
-Suggest: "/specter-plan [project-name] to create strategic plan"
+Display: "No strategic plan found for project: [PROJECT_NAME]"
+Suggest: "/specter-plan [PROJECT_NAME] to create strategic plan"
 Exit gracefully with guidance
 ```
 

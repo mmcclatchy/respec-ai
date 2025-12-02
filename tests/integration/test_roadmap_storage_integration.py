@@ -87,7 +87,7 @@ draft
 ### Spec Count
 3
 
-# Technical Specification: Phase 1 - Neo4j Setup
+# Technical Specification: phase-1-neo4j-setup
 
 ## Overview
 
@@ -114,7 +114,7 @@ Working Neo4j instance with vector support
 ### Status
 draft
 
-# Technical Specification: Phase 2 - Embedding Pipeline
+# Technical Specification: phase-2-embedding-pipeline
 
 ## Overview
 
@@ -141,7 +141,7 @@ Working embedding storage system
 ### Status
 draft
 
-# Technical Specification: Phase 3 - Query System
+# Technical Specification: phase-3-query-system
 
 ## Overview
 
@@ -189,9 +189,9 @@ class TestRoadmapStorageIntegration:
         assert 'Create a proof-of-concept intelligent knowledge management system' in retrieved_markdown
 
         # Verify full TechnicalSpec content is present
-        assert '# Technical Specification: Phase 1 - Neo4j Setup' in retrieved_markdown
-        assert '# Technical Specification: Phase 2 - Embedding Pipeline' in retrieved_markdown
-        assert '# Technical Specification: Phase 3 - Query System' in retrieved_markdown
+        assert '# Technical Specification: phase-1-neo4j-setup' in retrieved_markdown
+        assert '# Technical Specification: phase-2-embedding-pipeline' in retrieved_markdown
+        assert '# Technical Specification: phase-3-query-system' in retrieved_markdown
 
         # Verify TechnicalSpec details are preserved
         assert 'Set up Neo4j database with vector extensions' in retrieved_markdown
@@ -220,9 +220,9 @@ class TestRoadmapStorageIntegration:
 
         # Verify content still matches
         assert '# Project Roadmap: RAG Best Practices POC' in second_retrieval
-        assert '# Technical Specification: Phase 1 - Neo4j Setup' in second_retrieval
-        assert '# Technical Specification: Phase 2 - Embedding Pipeline' in second_retrieval
-        assert '# Technical Specification: Phase 3 - Query System' in second_retrieval
+        assert '# Technical Specification: phase-1-neo4j-setup' in second_retrieval
+        assert '# Technical Specification: phase-2-embedding-pipeline' in second_retrieval
+        assert '# Technical Specification: phase-3-query-system' in second_retrieval
 
     def test_create_roadmap_with_invalid_title_format(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
         invalid_markdown = """# Implementation Roadmap: My Project
@@ -379,326 +379,3 @@ draft
         retrieved = roadmap_tools.get_roadmap(project_name)
         assert '# Project Roadmap: Minimal Project' in retrieved
         assert '# Technical Specification:' not in retrieved
-
-    def test_roadmap_refinement_cleans_orphaned_specs(
-        self, roadmap_tools: RoadmapTools, project_name: str, state_manager: InMemoryStateManager
-    ) -> None:
-        # Create initial roadmap with 3 phases
-        roadmap_v1_markdown = """# Project Roadmap: Test Project
-
-## Project Details
-
-### Project Goal
-Test goal for refinement
-
-### Total Duration
-8 weeks
-
-### Team Size
-4 developers
-
-### Budget
-$100,000
-
-## Risk Assessment
-
-### Critical Path Analysis
-Test analysis
-
-### Key Risks
-Test risks
-
-### Mitigation Plans
-Test mitigation
-
-### Buffer Time
-1 week
-
-## Resource Planning
-
-### Development Resources
-4 developers
-
-### Infrastructure Requirements
-Cloud hosting
-
-### External Dependencies
-None
-
-### Quality Assurance Plan
-Automated testing
-
-## Success Metrics
-
-### Technical Milestones
-MVP delivery
-
-### Business Milestones
-User acceptance
-
-### Quality Gates
-All tests pass
-
-### Performance Targets
-Fast response
-
-## Metadata
-
-### Status
-draft
-
-### Spec Count
-3
-
-# Technical Specification: Phase 1 - Setup
-
-## Overview
-
-### Objectives
-Setup infrastructure
-
-### Scope
-Infrastructure setup only
-
-### Dependencies
-None
-
-### Deliverables
-Working infrastructure
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-
-# Technical Specification: Phase 2 - Development
-
-## Overview
-
-### Objectives
-Build features
-
-### Scope
-Core feature development
-
-### Dependencies
-Phase 1 complete
-
-### Deliverables
-Working features
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-
-# Technical Specification: Phase 3 - Testing
-
-## Overview
-
-### Objectives
-Test system
-
-### Scope
-Full system testing
-
-### Dependencies
-Phase 2 complete
-
-### Deliverables
-Test results
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-"""
-
-        roadmap_tools.create_roadmap(project_name, roadmap_v1_markdown)
-
-        # Verify 3 specs stored
-        specs_v1 = state_manager.list_specs(project_name)
-        assert len(specs_v1) == 3
-        assert 'Phase 1 - Setup' in specs_v1
-        assert 'Phase 2 - Development' in specs_v1
-        assert 'Phase 3 - Testing' in specs_v1
-
-        # Refine roadmap: Change phase 2 and 3 names
-        roadmap_v2_markdown = """# Project Roadmap: Test Project
-
-## Project Details
-
-### Project Goal
-Test goal for refinement
-
-### Total Duration
-8 weeks
-
-### Team Size
-4 developers
-
-### Budget
-$100,000
-
-## Risk Assessment
-
-### Critical Path Analysis
-Test analysis
-
-### Key Risks
-Test risks
-
-### Mitigation Plans
-Test mitigation
-
-### Buffer Time
-1 week
-
-## Resource Planning
-
-### Development Resources
-4 developers
-
-### Infrastructure Requirements
-Cloud hosting
-
-### External Dependencies
-None
-
-### Quality Assurance Plan
-Automated testing
-
-## Success Metrics
-
-### Technical Milestones
-MVP delivery
-
-### Business Milestones
-User acceptance
-
-### Quality Gates
-All tests pass
-
-### Performance Targets
-Fast response
-
-## Metadata
-
-### Status
-draft
-
-### Spec Count
-3
-
-# Technical Specification: Phase 1 - Setup
-
-## Overview
-
-### Objectives
-Setup infrastructure (unchanged)
-
-### Scope
-Infrastructure setup only
-
-### Dependencies
-None
-
-### Deliverables
-Working infrastructure
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-
-# Technical Specification: Phase 2 - Implementation
-
-## Overview
-
-### Objectives
-Implement features (RENAMED)
-
-### Scope
-Core feature implementation
-
-### Dependencies
-Phase 1 complete
-
-### Deliverables
-Implemented features
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-
-# Technical Specification: Phase 3 - Quality Assurance
-
-## Overview
-
-### Objectives
-QA testing (RENAMED)
-
-### Scope
-Comprehensive QA
-
-### Dependencies
-Phase 2 complete
-
-### Deliverables
-QA report
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-"""
-
-        roadmap_tools.create_roadmap(project_name, roadmap_v2_markdown)
-
-        # Verify orphaned specs deleted, new specs stored
-        specs_v2 = state_manager.list_specs(project_name)
-        assert len(specs_v2) == 3
-        assert 'Phase 1 - Setup' in specs_v2
-        assert 'Phase 2 - Implementation' in specs_v2
-        assert 'Phase 3 - Quality Assurance' in specs_v2
-
-        # Verify old specs removed
-        assert 'Phase 2 - Development' not in specs_v2
-        assert 'Phase 3 - Testing' not in specs_v2

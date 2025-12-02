@@ -6,7 +6,7 @@ from services.models.spec import TechnicalSpec
 
 @pytest.fixture
 def complete_spec_markdown() -> str:
-    return """# Technical Specification: Test Phase
+    return """# Technical Specification: test-phase
 
 ## Overview
 
@@ -64,7 +64,7 @@ in-development
 
 @pytest.fixture
 def minimal_spec_markdown() -> str:
-    return """# Technical Specification: Minimal Spec
+    return """# Technical Specification: minimal-spec
 
 ## Overview
 
@@ -75,7 +75,7 @@ Basic functionality
 
 @pytest.fixture
 def round_trip_spec_markdown() -> str:
-    return """# Technical Specification: Round Trip Test
+    return """# Technical Specification: round-trip-test
 
 ## Overview
 **Objectives**: `Test round trip parsing`
@@ -129,7 +129,7 @@ class TestTechnicalSpecParsing:
     def test_parse_markdown_extracts_all_fields(self, complete_spec_markdown: str) -> None:
         spec = TechnicalSpec.parse_markdown(complete_spec_markdown)
 
-        assert spec.phase_name == 'Test Phase'
+        assert spec.phase_name == 'test-phase'
         assert spec.objectives == 'Implement user authentication system'
         assert spec.scope == 'Login, logout, password reset functionality'
         assert spec.dependencies == 'User database, JWT library'
@@ -148,7 +148,7 @@ class TestTechnicalSpecParsing:
     def test_parse_markdown_handles_missing_sections(self, minimal_spec_markdown: str) -> None:
         spec = TechnicalSpec.parse_markdown(minimal_spec_markdown)
 
-        assert spec.phase_name == 'Minimal Spec'
+        assert spec.phase_name == 'minimal-spec'
         assert spec.objectives == 'Basic functionality'
         assert spec.scope != ''
         assert spec.technology_stack != ''
@@ -163,7 +163,7 @@ class TestTechnicalSpecParsing:
 class TestTechnicalSpecMarkdownBuilding:
     def test_build_markdown_creates_valid_template_format(self) -> None:
         spec = TechnicalSpec(
-            phase_name='Test Spec',
+            phase_name='test-spec',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='Test deps',
@@ -182,7 +182,7 @@ class TestTechnicalSpecMarkdownBuilding:
 
         markdown = spec.build_markdown()
 
-        assert '# Technical Specification: Test Spec' in markdown
+        assert '# Technical Specification: test-spec' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown
         assert '### Dependencies\nTest deps' in markdown

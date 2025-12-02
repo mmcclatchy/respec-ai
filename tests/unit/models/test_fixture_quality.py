@@ -54,7 +54,7 @@ def test_markdown_builder_creates_valid_markdown(markdown_builder: Callable, mod
 def test_markdown_builder_respects_field_overrides(markdown_builder: Callable, model_class: Type[MCPModel]) -> None:
     title_field = model_class.TITLE_FIELD
 
-    custom_title = 'Custom Test Title'
+    custom_title = 'custom-test-title'
     markdown = markdown_builder(model_class, **{title_field: custom_title})
 
     instance = model_class.parse_markdown(markdown)

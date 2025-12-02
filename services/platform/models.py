@@ -179,49 +179,32 @@ class SpecCommandTools(BaseModel):
         return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
+    def sync_project_plan_instructions(self) -> str:
+        if self.platform == PlatformType.MARKDOWN:
+            return """PLAN_MARKDOWN = Read(.specter/projects/{PLAN_NAME}/project_plan.md)
+mcp__specter__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_MARKDOWN)"""
+        elif self.platform == PlatformType.LINEAR:
+            return """PLAN_RESULT = mcp__linear-server__get_document(project_name=PLAN_NAME)
+mcp__specter__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
+        elif self.platform == PlatformType.GITHUB:
+            return """PLAN_RESULT = mcp__github__get_file(path=".specter/projects/{PLAN_NAME}/project_plan.md")
+mcp__specter__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
+        else:
+            return """# Platform sync not configured"""
+
+    @computed_field
     def sync_spec_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """TRY:
-  SPEC_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/specter-specs/{SPEC_NAME}.md)
-  mcp__specter__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
-  )
-  Display: "✓ Loaded existing spec '{SPEC_NAME}' from platform"
-EXCEPT:
-  Display: "No existing spec found - will create new"
-"""
+            return """SPEC_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/specter-specs/{SPEC_NAME}.md)
+mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
-            return """TRY:
-  SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
-  SPEC_MARKDOWN = SPEC_RESULT.description
-  mcp__specter__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
-  )
-  Display: "✓ Loaded existing spec '{SPEC_NAME}' from platform"
-EXCEPT:
-  Display: "No existing spec found - will create new"
-"""
+            return """SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
+mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.description)"""
         elif self.platform == PlatformType.GITHUB:
-            return """TRY:
-  SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
-  SPEC_MARKDOWN = SPEC_RESULT.body
-  mcp__specter__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
-  )
-  Display: "✓ Loaded existing spec '{SPEC_NAME}' from platform"
-EXCEPT:
-  Display: "No existing spec found - will create new"
-"""
+            return """SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
+mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.body)"""
         else:
-            return """# Platform-specific sync not configured
-Display: "⚠️ Sync not configured for this platform - continuing without sync"
-"""
+            return """# Platform sync not configured"""
 
 
 class PlanCommandTools(BaseModel):

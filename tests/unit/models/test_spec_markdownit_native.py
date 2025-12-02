@@ -6,7 +6,7 @@ from services.models.spec import TechnicalSpec
 
 @pytest.fixture
 def markdownit_native_spec_markdown() -> str:
-    return """# Technical Specification: User Authentication System
+    return """# Technical Specification: user-authentication-system
 <!-- ID: abc12345 -->
 
 ## Overview
@@ -66,7 +66,7 @@ class TestMarkdownItNativeParsing:
     def test_parse_markdownit_native_format_extracts_all_fields(self, markdownit_native_spec_markdown: str) -> None:
         spec = TechnicalSpec.parse_markdown(markdownit_native_spec_markdown)
 
-        assert spec.phase_name == 'User Authentication System'
+        assert spec.phase_name == 'user-authentication-system'
         assert spec.objectives == 'Implement secure user login and registration'
         assert spec.scope == 'Login, logout, password reset functionality'
         assert spec.dependencies == 'Database, encryption library'
@@ -84,7 +84,7 @@ class TestMarkdownItNativeParsing:
 
     def test_build_markdown_creates_markdownit_native_format(self) -> None:
         spec = TechnicalSpec(
-            phase_name='Test Spec',
+            phase_name='test-spec',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='Test dependencies',
@@ -104,7 +104,7 @@ class TestMarkdownItNativeParsing:
         markdown = spec.build_markdown()
 
         # Should use new list format
-        assert '# Technical Specification: Test Spec' in markdown
+        assert '# Technical Specification: test-spec' in markdown
         assert '## Overview' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown

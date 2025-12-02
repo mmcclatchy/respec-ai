@@ -4,7 +4,7 @@ from services.platform.models import BuildCommandTools
 def generate_build_command_template(tools: BuildCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [spec-name]
+argument-hint: [project-name] [spec-name]
 description: Transform technical specifications into production-ready code through parallel research, implementation planning, and TDD development
 ---
 
@@ -15,40 +15,119 @@ Orchestrate the complete implementation workflow, transforming technical specifi
 
 ## Workflow Steps
 
-### 0. Initialize Project Context
+### 1. Extract Command Arguments and Locate Spec File
 
-Read project configuration:
-```text
-Read .specter/config.json
-PROJECT_NAME = config["project_name"]
-```
-
-**Important**: PROJECT_NAME from config is used for all MCP storage operations.
-
-### 0a. Load Existing Spec from Platform
-
-Load existing spec from platform (if exists):
+Parse command arguments and locate spec file using partial name:
 
 ```text
-# Get spec name from user argument
-SPEC_NAME = [user provided spec name]
+# Step 1.1: Parse arguments
+PROJECT_NAME = [first argument from command - the project name]
+SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
 
-{tools.sync_spec_instructions}
+# Step 1.2: Search file system for matching spec files
+SPEC_GLOB_PATTERN = ".specter/projects/{{PROJECT_NAME}}/specter-specs/{{SPEC_NAME_PARTIAL}}*.md"
+SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
+
+# Step 1.3: Handle multiple matches
+IF count(SPEC_FILE_MATCHES) == 0:
+  ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
+  SUGGEST: "Verify the spec name or check .specter/projects/{{PROJECT_NAME}}/specter-specs/"
+  EXIT: Workflow terminated
+
+ELIF count(SPEC_FILE_MATCHES) == 1:
+  SPEC_FILE_PATH = SPEC_FILE_MATCHES[0]
+
+ELSE:
+  # Multiple matches - use interactive selection
+  Use AskUserQuestion tool to present options:
+    Question: "Multiple spec files match '{{SPEC_NAME_PARTIAL}}'. Which one do you want to use?"
+    Header: "Select Spec"
+    multiSelect: false
+    Options: [
+      {{
+        "label": "{{SPEC_FILE_MATCHES[0]}}",
+        "description": "Use: {{SPEC_FILE_MATCHES[0]}}"
+      }},
+      {{
+        "label": "{{SPEC_FILE_MATCHES[1]}}",
+        "description": "Use: {{SPEC_FILE_MATCHES[1]}}"
+      }},
+      ... for all matches
+    ]
+
+  SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
+
+# Step 1.4: Extract canonical name from file path
+SPEC_NAME = [basename of SPEC_FILE_PATH without .md extension]
+
+Display to user: "✓ Located spec file: {{SPEC_NAME}}"
 ```
+
+**Important**:
+- SPEC_NAME_PARTIAL is the user input (e.g., "phase-2a")
+- SPEC_NAME is the canonical name extracted from file path
+- PROJECT_NAME is used for all MCP storage operations
+- All subsequent operations use SPEC_NAME (canonical)
+
+### 2. Load and Store Existing Spec
+
+Load spec from file system, store in MCP:
+
+```text
+# Step 2.1: Read spec using canonical name
+SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
+
+# Step 2.2: Store in MCP using canonical spec name
+mcp__specter__store_spec(
+  project_name=PROJECT_NAME,
+  spec_name=SPEC_NAME,
+  spec_markdown=SPEC_MARKDOWN
+)
+
+Display to user: "✓ Loaded existing spec: {{SPEC_NAME}}"
+```
+
+**Important**:
+- SPEC_FILE_PATH is the full path from Step 1
+- SPEC_NAME is the canonical name extracted from file path
+- Spec is now in MCP storage for build workflow
 
 **Note**: Build plans are not stored in external platforms - they only exist in MCP during the build workflow.
 
-### 1. Specification Retrieval and Validation
+### 3. Verify Canonical Spec Name
+
+Verify spec is correctly stored in MCP with canonical name:
+
+```text
+# Call resolve_spec_name for validation only
+RESOLVE_RESULT = mcp__specter__resolve_spec_name(
+  project_name=PROJECT_NAME,
+  partial_name=SPEC_NAME
+)
+
+IF RESOLVE_RESULT['count'] != 1:
+  ERROR: "Spec storage validation failed - expected 1 match for '{{SPEC_NAME}}', got {{RESOLVE_RESULT['count']}}"
+  DIAGNOSTIC: Check that Step 2 (Load and Store) completed successfully
+  EXIT: Workflow terminated
+
+# Validation passed - canonical name matches MCP storage
+Display to user: "✓ Using specification: {{SPEC_NAME}}"
+```
+
+**Important**:
+- resolve_spec_name is now used for VALIDATION only, not resolution
+- Confirms storage succeeded with correct canonical name from Step 1
+- Fails loudly if mismatch between file system and MCP
+
+### 4. Specification Retrieval and Validation
 Retrieve and validate completed TechnicalSpec from /specter-spec command:
 
 #### Retrieve TechnicalSpec
 ```text
-SPEC_NAME = [user provided spec name]
-
 TECHNICAL_SPEC = mcp__specter__get_spec_markdown(PROJECT_NAME, SPEC_NAME)
 IF TECHNICAL_SPEC not found:
   ERROR: "No technical specification found: [SPEC_NAME]"
-  SUGGEST: "Run '/specter-spec [SPEC_NAME]' to create technical specification first"
+  SUGGEST: "Run '/specter-spec [PROJECT_NAME] [SPEC_NAME]' to create technical specification first"
   EXIT: Graceful failure with guidance
 
 SPEC_OBJECTIVES = [Extract from TechnicalSpec Objectives section]
@@ -56,7 +135,7 @@ RESEARCH_REQUIREMENTS = [Extract from TechnicalSpec Research Requirements sectio
 TECH_STACK = [Extract from TechnicalSpec Technology Stack section]
 ```
 
-### 2. Parallel Research Orchestration
+### 5. Parallel Research Orchestration
 Coordinate research synthesis for implementation guidance:
 
 #### Parse Research Requirements
@@ -85,7 +164,7 @@ For each item in RESEARCH_REQUIREMENTS:
 Collect: COMPLETE_DOCUMENTATION_PATHS = [All paths from existing docs + research synthesis]
 ```
 
-### 3. Planning Loop Initialization and Refinement
+### 6. Planning Loop Initialization and Refinement
 Set up and execute MCP-managed planning quality refinement:
 
 #### Initialize Planning Loop
@@ -151,55 +230,28 @@ Returns:
 - "user_input" if stagnation detected (<5 points improvement over 2 iterations)
 ```
 
-### 4. Planning Decision Handling
-Handle MCP Server planning phase responses:
+### 7. Planning Decision Handling
+
+**Follow PLANNING_DECISION exactly. Do not override based on score assessment.**
 
 #### If PLANNING_DECISION == "refine"
-```text
-Re-invoke build-planner agent (same parameters)
-Agent retrieves previous critic feedback and incorporates into refinement
-Re-invoke build-critic agent
-Call MCP decision again
-Continue until "complete" or "user_input"
-```
+Re-invoke build-planner agent (same parameters).
+Re-invoke build-critic agent.
+Call MCP decision again.
 
 #### If PLANNING_DECISION == "complete"
-```text
-Proceed to Step 5: Coding Loop Initialization
-```
+Proceed to Step 8.
 
 #### If PLANNING_DECISION == "user_input"
-```text
-Stagnation detected in planning loop. Request user guidance:
+Retrieve BuildPlan and feedback (count=2).
+Present PLAN_QUALITY_SCORE, Key Issues, and Recommendations to user.
+Request technical guidance (approach preferences, strategies, accept/proceed).
+Store user feedback: mcp__specter__store_user_feedback(PLANNING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
+Re-invoke build-planner agent.
+Re-invoke build-critic agent.
+Call MCP decision again.
 
-Retrieve current state:
-- BuildPlan: mcp__specter__get_build_plan_markdown(PLANNING_LOOP_ID)
-- All Feedback: mcp__specter__get_feedback(PLANNING_LOOP_ID, count=2)
-
-Present to user:
-"BuildPlan development has stagnated at {{PLAN_QUALITY_SCORE}}%.
-
-Key Issues:
-{{CriticFeedback Key Issues section}}
-
-Recommendations:
-{{CriticFeedback Recommendations section}}
-
-Please provide guidance on:
-1. Specific technical approach preferences
-2. Alternative implementation strategies
-3. Accept current plan and proceed to coding: yes/no"
-
-Collect user response as USER_FEEDBACK_MARKDOWN
-
-Store user feedback:
-mcp__specter__store_user_feedback(PLANNING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
-
-Re-invoke build-planner (will retrieve user feedback autonomously)
-Continue refinement with user guidance
-```
-
-### 5. Coding Loop Initialization and Refinement
+### 8. Coding Loop Initialization and Refinement
 Set up and execute MCP-managed code quality refinement:
 
 #### Initialize Coding Loop
@@ -278,60 +330,28 @@ Returns:
 - "user_input" if stagnation detected (<5 points improvement over 2 iterations)
 ```
 
-### 6. Coding Decision Handling
-Handle MCP Server coding phase responses:
+### 9. Coding Decision Handling
+
+**Follow CODING_DECISION exactly. Do not override based on score assessment.**
 
 #### If CODING_DECISION == "refine"
-```text
-Re-invoke build-coder agent (same parameters)
-Agent retrieves previous critic feedback and user feedback (if any)
-Agent addresses feedback items and continues implementation
-Re-invoke build-reviewer agent
-Call MCP decision again
-Continue until "complete" or "user_input"
-```
+Re-invoke build-coder agent (same parameters).
+Re-invoke build-reviewer agent.
+Call MCP decision again.
 
 #### If CODING_DECISION == "complete"
-```text
-Proceed to Step 7: Integration & Documentation
-```
+Proceed to Step 10.
 
 #### If CODING_DECISION == "user_input"
-```text
-Stagnation detected in coding loop. Request user guidance:
+Retrieve BuildPlan and feedback (count=2).
+Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
+Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
+Store user feedback: mcp__specter__store_user_feedback(CODING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
+Re-invoke build-coder agent.
+Re-invoke build-reviewer agent.
+Call MCP decision again.
 
-Retrieve current state:
-- BuildPlan: mcp__specter__get_build_plan_markdown(PLANNING_LOOP_ID)
-- All Feedback: mcp__specter__get_feedback(CODING_LOOP_ID, count=2)
-
-Present to user:
-"Code implementation has stagnated at {{CODE_QUALITY_SCORE}}%.
-
-Test Results:
-{{CriticFeedback Test Execution Results section}}
-
-Key Issues:
-{{CriticFeedback Key Issues section}}
-
-Recommendations:
-{{CriticFeedback Recommendations section}}
-
-Please provide guidance on:
-1. Specific code quality concerns or trade-offs
-2. Alternative implementation approaches
-3. Accept current quality and complete: yes/no
-4. Technical constraints or requirements adjustment"
-
-Collect user response as USER_FEEDBACK_MARKDOWN
-
-Store user feedback:
-mcp__specter__store_user_feedback(CODING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
-
-Re-invoke build-coder (will retrieve user feedback autonomously)
-Continue refinement with user guidance
-```
-
-### 7. Integration & Documentation
+### 10. Integration & Documentation
 Complete implementation workflow and update specification:
 
 #### Generate Implementation Summary
@@ -387,6 +407,24 @@ Implementation artifacts:
 Ready for deployment."
 ```
 
+## Spec Name Normalization Rules
+
+**IMPORTANT:** Spec names are automatically normalized to kebab-case:
+
+**File System → MCP Normalization:**
+- Convert to lowercase: `Phase-1` → `phase-1`
+- Replace spaces/underscores with hyphens: `phase 1` → `phase-1`
+- Remove special characters: `phase-1!` → `phase-1`
+- Collapse multiple hyphens: `phase--1` → `phase-1`
+- Strip leading/trailing hyphens: `-phase-1-` → `phase-1`
+
+**Critical:** The H1 header in spec markdown MUST match the normalized file name:
+- File: `phase-2a-neo4j-schema-and-llama-index-integration.md`
+- H1 header: `# Technical Specification: phase-2a-neo4j-schema-and-llama-index-integration`
+- Mismatch will cause storage/retrieval failures
+
+**Build agents:** Use normalized spec names when retrieving specifications via MCP.
+
 ## Quality Gates
 
 ### Planning Quality Threshold
@@ -422,8 +460,8 @@ Ready for deployment."
 
 #### TechnicalSpec Not Available
 ```text
-Display: "No technical specification found: [spec-name]"
-Suggest: "/specter-spec [spec-name] to create technical specification"
+Display: "No technical specification found: [SPEC_NAME]"
+Suggest: "/specter-spec [PROJECT_NAME] [SPEC_NAME] to create technical specification"
 Exit gracefully with guidance
 ```
 

@@ -11,7 +11,7 @@ from services.models.spec import TechnicalSpec
 
 @pytest.fixture
 def spec_with_bullet_lists() -> str:
-    return """# Technical Specification: Authentication System
+    return """# Technical Specification: authentication-system
 
 ## Overview
 
@@ -108,7 +108,7 @@ draft
 
 @pytest.fixture
 def spec_with_mixed_content() -> str:
-    return """# Technical Specification: Data Pipeline
+    return """# Technical Specification: data-pipeline
 
 ## Overview
 
@@ -246,7 +246,7 @@ def test_mixed_content_format_preserved(spec_with_mixed_content: str) -> None:
 
 
 def test_plain_text_content_still_works() -> None:
-    markdown = """# Technical Specification: Simple Spec
+    markdown = """# Technical Specification: simple-spec
 
 ## Overview
 
@@ -288,7 +288,7 @@ def test_character_for_character_round_trip(spec_with_bullet_lists: str) -> None
 
 
 def test_ordered_lists_preserved() -> None:
-    markdown_with_ordered_lists = """# Technical Specification: Ordered Implementation
+    markdown_with_ordered_lists = """# Technical Specification: ordered-implementation
 
 ## Overview
 
@@ -352,7 +352,7 @@ draft
 
 
 def test_code_blocks_preserved() -> None:
-    markdown_with_code_blocks = """# Technical Specification: API Implementation
+    markdown_with_code_blocks = """# Technical Specification: api-implementation
 
 ## Overview
 

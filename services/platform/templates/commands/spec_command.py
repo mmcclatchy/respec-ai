@@ -1,4 +1,41 @@
+from services.models.enums import SpecStatus
+from services.models.spec import TechnicalSpec
 from services.platform.models import SpecCommandTools
+
+
+# Create template instance with instructional placeholders
+technical_spec_template = TechnicalSpec(
+    phase_name='[spec-name-in-kebab-case]',
+    objectives='[Clear, measurable goals with business value]',
+    scope="[Boundaries, what's included/excluded, constraints]",
+    dependencies='[External requirements with versions]',
+    deliverables='[Concrete outputs with acceptance criteria]',
+    architecture='[Component structure, interactions, data flow, design decisions - REQUIRED]',
+    technology_stack='[Technologies with versions, justifications, trade-offs - Optional but recommended]',
+    functional_requirements='[Features, user workflows, edge cases]',
+    non_functional_requirements='[Performance targets, scalability, availability]',
+    development_plan='[Implementation phases, dependencies, resource implications]',
+    testing_strategy='[Coverage approach, test levels, quality gates - REQUIRED]',
+    research_requirements=(
+        '**Existing Documentation**:\n'
+        '- Read: [full paths to archive docs]\n\n'
+        '**External Research Needed**:\n'
+        '- Synthesize: [research prompts with "2025"]'
+    ),
+    success_criteria='[Measurable outcomes, verification methods]',
+    integration_context='[System relationships, interface contracts]',
+    additional_sections={
+        'Data Models': '[Entity relationships, schemas with types - for data-heavy projects]',
+        'API Design': '[Endpoints, request/response formats, authentication - for web services]',
+        'Security Architecture': '[Authentication, authorization, data protection - for security-critical systems]',
+        'Performance Requirements': '[Response time targets, scalability targets - for performance-critical systems]',
+        'Deployment Architecture': '[Platform, containerization, regions, monitoring - for infrastructure-heavy projects]',
+        'CLI Commands': '[Command structure, arguments, usage examples - for CLI tools]',
+    },
+    iteration=0,
+    version=1,
+    spec_status=SpecStatus.DRAFT,
+).build_markdown()
 
 
 def generate_spec_command_template(tools: SpecCommandTools) -> str:
@@ -59,34 +96,123 @@ Main Agent (via /specter-spec)
 
 ## Implementation Instructions
 
-### Step 0: Extract Command Arguments
+### Step 1: Extract Command Arguments and Locate Spec File
 
-Parse command arguments from user input:
+Parse command arguments and locate spec file using partial name:
+
 ```text
+# Step 1.1: Parse arguments
 PLAN_NAME = [first argument from command - the plan name]
-SPEC_NAME = [second argument from command - the spec name]
+SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
 OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
 
 Read .specter/config.json
 PROJECT_NAME = config["project_name"]
+
+# Step 1.2: Search file system for matching spec files
+SPEC_GLOB_PATTERN = ".specter/projects/{{PROJECT_NAME}}/specter-specs/{{SPEC_NAME_PARTIAL}}*.md"
+SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
+
+# Step 1.3: Handle multiple matches
+IF count(SPEC_FILE_MATCHES) == 0:
+  ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
+  SUGGEST: "Verify the spec name or check .specter/projects/{{PROJECT_NAME}}/specter-specs/"
+  EXIT: Workflow terminated
+
+ELIF count(SPEC_FILE_MATCHES) == 1:
+  SPEC_FILE_PATH = SPEC_FILE_MATCHES[0]
+
+ELSE:
+  # Multiple matches - use interactive selection
+  Use AskUserQuestion tool to present options:
+    Question: "Multiple spec files match '{{SPEC_NAME_PARTIAL}}'. Which one do you want to use?"
+    Header: "Select Spec"
+    multiSelect: false
+    Options: [
+      {{
+        "label": "{{SPEC_FILE_MATCHES[0]}}",
+        "description": "Use: {{SPEC_FILE_MATCHES[0]}}"
+      }},
+      {{
+        "label": "{{SPEC_FILE_MATCHES[1]}}",
+        "description": "Use: {{SPEC_FILE_MATCHES[1]}}"
+      }},
+      ... for all matches
+    ]
+
+  SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
+
+# Step 1.4: Extract canonical name from file path
+# Extract: ".specter/projects/X/specter-specs/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
+SPEC_NAME = [basename of SPEC_FILE_PATH without .md extension]
+
+Display to user: "✓ Located spec file: {{SPEC_NAME}}"
 ```
 
 **Important**:
 - PLAN_NAME identifies which strategic plan to use for context
-- SPEC_NAME identifies this technical specification
+- SPEC_NAME_PARTIAL is the user input (e.g., "phase-2a")
+- SPEC_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
 - PROJECT_NAME from config is used for all MCP storage operations
 - OPTIONAL_INSTRUCTIONS provides additional context for spec development
+- All subsequent operations use SPEC_NAME (canonical)
 
-### Step 0a: Load Existing Spec from Platform
+### Step 2: Load and Store Existing Documents
 
-Load existing spec from platform (if exists):
+Load spec and plan from file system, store in MCP:
 
 ```text
-{tools.sync_spec_instructions}
+# Step 2.1: Read documents using canonical names
+PLAN_MARKDOWN = Read(.specter/projects/{{PLAN_NAME}}/project_plan.md)
+SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
+
+# Step 2.2: Store in MCP using canonical spec name
+mcp__specter__store_project_plan(
+  project_name=PLAN_NAME,
+  project_plan_markdown=PLAN_MARKDOWN
+)
+
+mcp__specter__store_spec(
+  project_name=PROJECT_NAME,
+  spec_name=SPEC_NAME,
+  spec_markdown=SPEC_MARKDOWN
+)
+
+Display to user: "✓ Loaded existing spec: {{SPEC_NAME}}"
 ```
 
-### Step 1: Initialize Technical Design Process
-Retrieve the strategic plan and set up the technical specification workflow:
+**Important**:
+- SPEC_FILE_PATH is the full path from Step 1
+- SPEC_NAME is the canonical name extracted from file path
+- Both documents are now in MCP storage for refinement loop
+
+### Step 3: Verify Canonical Spec Name
+
+Verify spec is correctly stored in MCP with canonical name:
+
+```text
+# Call resolve_spec_name for validation only
+RESOLVE_RESULT = mcp__specter__resolve_spec_name(
+  project_name=PROJECT_NAME,
+  partial_name=SPEC_NAME
+)
+
+IF RESOLVE_RESULT['count'] != 1:
+  ERROR: "Spec storage validation failed - expected 1 match for '{{SPEC_NAME}}', got {{RESOLVE_RESULT['count']}}"
+  DIAGNOSTIC: Check that Step 2 (Load and Store) completed successfully
+  EXIT: Workflow terminated
+
+# Validation passed - canonical name matches MCP storage
+Display to user: "✓ Using specification: {{SPEC_NAME}}"
+```
+
+**Important**:
+- resolve_spec_name is now used for VALIDATION only, not resolution
+- Confirms storage succeeded with correct canonical name from Step 1
+- Fails loudly if mismatch between file system and MCP
+
+### Step 4: Initialize Refinement Loop
+Initialize MCP refinement loop and retrieve strategic plan:
 
 ```text
 # Initialize MCP refinement loop
@@ -113,7 +239,44 @@ Expected Output Format:
 - Integration points identified
 ```
 
-### Step 2: Launch Architecture Development
+### Step 4.2: Link Loop to Specification
+
+After initializing loop, link it to specification for idempotent retrieval:
+
+```text
+# Extract loop_id from initialize_refinement_loop result
+LOOP_ID = [loop_id from Step 4.1 MCPResponse]
+
+# Validate loop_id was returned
+IF LOOP_ID is None or LOOP_ID == "":
+    CRITICAL ERROR: "initialize_refinement_loop did not return valid loop_id"
+    DIAGNOSTIC: Show full MCPResponse from Step 4.1
+    EXIT: Workflow terminated
+
+# Link loop to spec for agents to retrieve via loop_id only
+mcp__specter__link_loop_to_spec(
+  loop_id=LOOP_ID,
+  project_name=PROJECT_NAME,
+  spec_name=SPEC_NAME
+)
+
+# Verify the link was created
+LOOP_STATUS = mcp__specter__get_loop_status(loop_id=LOOP_ID)
+
+IF LOOP_STATUS does not show linked spec:
+    CRITICAL ERROR: "Loop linking failed - spec-architect and spec-critic will fail"
+    DIAGNOSTIC: Show LOOP_STATUS details
+    EXIT: Workflow terminated
+
+Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{SPEC_NAME}}"
+```
+
+**Important**:
+- loop_id MUST be extracted and validated before proceeding
+- Agents depend on this link - fail loudly if it's broken
+- Empty string "" is NOT valid - only non-empty string or None
+
+### Step 5: Launch Architecture Development
 Begin technical design with archive integration:
 
 ```text
@@ -122,96 +285,166 @@ ARCHIVE_SCAN_RESULTS = Bash: ~/.claude/scripts/research-advisor-archive-scan.sh 
 
 # Populate context variables from Step 1 output
 STRATEGIC_PLAN_SUMMARY = [plan-analyst output: business objectives, technical requirements, constraints]
-
-Invoke the spec-architect agent with this input:
-
-Strategic Plan Summary:
-${{STRATEGIC_PLAN_SUMMARY}}
-
-Spec Name: ${{SPEC_NAME}}
-
-Additional Instructions: ${{OPTIONAL_INSTRUCTIONS}}
-
-Archive Scan Results:
-${{ARCHIVE_SCAN_RESULTS}}
-
-Expected Output Format:
-- Technical specification in markdown format
-- Research Requirements section with existing docs and external needs
-- Architecture diagrams in ASCII format
-- Technology stack with justifications
 ```
 
-### Step 3: Quality Assessment Loop
-Pass specification to critic agent for evaluation:
+#### Step 5a: Invoke Spec-Architect Agent
 
 ```text
-# Capture current specification from spec-architect output
-CURRENT_SPECIFICATION = [spec-architect output: complete technical specification]
+Invoke: specter-spec-architect
+Input:
+  - loop_id: LOOP_ID
+  - project_name: PROJECT_NAME
+  - spec_name: SPEC_NAME
+  - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
+  - optional_instructions: OPTIONAL_INSTRUCTIONS
+  - archive_scan_results: ARCHIVE_SCAN_RESULTS
+  - previous_feedback: CRITIC_FEEDBACK (if this is a refinement iteration)
 
-Invoke the spec-critic agent with this input:
-${{CURRENT_SPECIFICATION}}
+**CRITICAL**: Capture the agent's complete output markdown as CURRENT_SPEC.
+The agent returns the full specification markdown but does NOT store it.
+You MUST store this output in Step 2b using mcp__specter__store_spec.
 
-Expected Output Format:
-- Overall Quality Score: [0-100 numerical value]
-- Priority Improvements: [List of specific actionable suggestions]
-- Strengths: [List of well-executed areas to preserve]
+CURRENT_SPEC = [complete markdown output from spec-architect agent]
 ```
 
-### Step 4: Handle Refinement Decisions
-Process quality scores and determine next actions:
+#### Step 5b: Store Specification in MCP (MANDATORY - DO NOT SKIP)
+
+**CRITICAL: This step MUST be executed immediately after Step 5a completes.**
+
+The spec-architect agent returns markdown but does NOT store it. YOU must store it now.
 
 ```text
-# Extract quality score from spec-critic output
-QUALITY_SCORE = [spec-critic output: Overall Quality Score (0-100)]
-IMPROVEMENT_FEEDBACK = [spec-critic output: Priority Improvements and specific suggestions]
+STORE_RESULT = mcp__specter__store_spec(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    spec_markdown=CURRENT_SPEC
+)
 
-# MCP decision based on score
-LOOP_DECISION = mcp__specter__decide_loop_next_action:
-  loop_id: [from Step 1 initialization]
-  current_score: ${{QUALITY_SCORE}}
-  feedback: ${{IMPROVEMENT_FEEDBACK}}
+IF STORE_RESULT contains error:
+  **CRITICAL ERROR - STOP WORKFLOW**:
+  - Report the specific MCP error message to user
+  - DO NOT create spec.md files as workaround
+  - DO NOT proceed to Step 3
 
-# Handle MCP decision outcome
-IF LOOP_DECISION == "complete":
-  → Proceed to Step 5: Specification Storage
-  
-IF LOOP_DECISION == "refine":
-  → Return to Step 2 with refined context:
-  
-  PREVIOUS_FEEDBACK = ${{IMPROVEMENT_FEEDBACK}}
-  CURRENT_ITERATION = [increment counter]
-  
-  Invoke spec-architect agent with this input:
-  
-  Previous Specification: ${{CURRENT_SPECIFICATION}}
-  Quality Assessment Feedback: ${{PREVIOUS_FEEDBACK}}
-  Iteration: ${{CURRENT_ITERATION}} of 5
-  
-  Expected Output Format: Refined technical specification addressing feedback
+  Example error message:
+  "ERROR: MCP spec storage failed: [error details]
+   Verify: MCP server running and SPEC_NAME valid
+   DO NOT create file-based workarounds - MCP storage is required."
 
-IF LOOP_DECISION == "user_input":
-  → Escalate with stagnation context:
-  
-  Present to user:
-  "Technical specification has reached quality plateau at ${{QUALITY_SCORE}}%. 
-  Key gaps identified: [Priority Improvements list]
-  
-  Please provide guidance on:
-  1. [Specific technical clarification needed]
-  2. [Alternative approach suggestions]  
-  3. [Accept current quality level: yes/no]"
+  EXIT: Workflow terminated
 
-IF LOOP_DECISION == "max_iterations":
-  → Present final specification with warnings:
-  
-  "Specification completed after maximum iterations.
-  Final Quality Score: ${{QUALITY_SCORE}}%
-  Remaining gaps: [Priority Improvements list]
-  Recommendation: Review gaps before proceeding to implementation."
+VERIFY storage succeeded:
+VERIFICATION = mcp__specter__get_spec_markdown(project_name=PROJECT_NAME, spec_name=SPEC_NAME, loop_id=None)
+
+IF VERIFICATION fails:
+  ERROR: "Specification storage verification failed - spec was not saved to MCP"
+  EXIT: Workflow terminated
+
+Display to user: "✓ Specification stored in MCP successfully"
 ```
 
-### Step 5: Specification Storage
+#### Step 5c: Validate Architecture Development Output
+
+After spec-architect completes, verify the spec was actually updated:
+
+```text
+# Check if spec was modified
+UPDATED_SPEC = mcp__specter__get_spec_markdown(
+  project_name=PROJECT_NAME,
+  spec_name=SPEC_NAME,
+  loop_id=None
+)
+
+# Verify iteration/version increased or content exists
+IF UPDATED_SPEC is empty or contains only template sections:
+  ERROR: "spec-architect claimed success but spec was not properly updated"
+  DIAGNOSTIC:
+    - Check agent logs for MCP tool call failures
+    - Verify loop was linked correctly via get_loop_status
+    - Attempt manual spec retrieval via get_spec_markdown
+  RECOVERY:
+    - Report detailed error to user
+    - DO NOT proceed to spec-critic
+    - DO NOT manually write spec (let user debug workflow)
+```
+
+### Step 6: Quality Assessment Loop
+
+#### Step 6a: Invoke Spec-Critic Agent
+
+```text
+Invoke: specter-spec-critic
+Input:
+  - project_name: PROJECT_NAME
+  - loop_id: LOOP_ID
+  - spec_name: SPEC_NAME
+
+Spec-critic will:
+1. Retrieve spec from MCP using project_name and spec_name
+2. Evaluate against FSDD framework
+3. Store feedback in MCP loop using loop_id
+```
+
+#### Step 6b: Get Feedback and Extract Score
+
+```text
+CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=2)
+Note: Retrieves 2 most recent iterations for stagnation detection
+
+Extract QUALITY_SCORE from CRITIC_FEEDBACK markdown
+```
+
+#### Step 6c: Validate Quality Assessment Feedback
+
+After spec-critic completes, verify feedback was stored:
+
+```text
+# Retrieve feedback to confirm storage
+STORED_FEEDBACK = mcp__specter__get_feedback(
+  loop_id=LOOP_ID,
+  count=1
+)
+
+# Verify feedback contains quality score
+IF STORED_FEEDBACK does NOT contain quality score:
+  ERROR: "spec-critic claimed success but feedback was not stored"
+  DIAGNOSTIC:
+    - Check agent logs for store_critic_feedback call
+    - Verify loop_id is valid via get_loop_status
+  RECOVERY:
+    - Report error to user
+    - DO NOT proceed to loop decision
+```
+
+### Step 7: Handle Refinement Decisions
+
+**Follow LOOP_DECISION exactly. Do not override based on score assessment.**
+
+```text
+LOOP_DECISION = mcp__specter__decide_loop_next_action(
+  loop_id=LOOP_ID,
+  current_score=QUALITY_SCORE
+)
+```
+
+#### If LOOP_DECISION == "complete"
+Proceed to Step 8.
+
+#### If LOOP_DECISION == "refine"
+Return to Step 5a with CRITIC_FEEDBACK as previous_feedback parameter.
+Execute Steps 5b, 6a, 6b, and 7 again.
+
+#### If LOOP_DECISION == "user_input"
+Present QUALITY_SCORE and Priority Improvements to user.
+Request technical clarification.
+Return to Step 5a with combined feedback.
+Execute Steps 5b, 6a, 6b, and 7 again.
+
+#### If LOOP_DECISION == "max_iterations"
+Display warning: "Final Quality Score: QUALITY_SCORE%, Remaining gaps: [list]"
+Proceed to Step 8.
+
+### Step 8: Specification Storage
 Store the technical specification:
 
 ```text
@@ -338,46 +571,57 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Verify storage platform connectivity before final storage
 - Monitor quality score trends for early stagnation detection
 
+## Spec Name Normalization Rules
+
+**IMPORTANT:** Spec names are automatically normalized to kebab-case:
+
+**File System → MCP Normalization:**
+- Convert to lowercase: `Phase-1` → `phase-1`
+- Replace spaces/underscores with hyphens: `phase 1` → `phase-1`
+- Remove special characters: `phase-1!` → `phase-1`
+- Collapse multiple hyphens: `phase--1` → `phase-1`
+- Strip leading/trailing hyphens: `-phase-1-` → `phase-1`
+
+**Critical:** The H1 header in spec markdown MUST match the normalized file name:
+- File: `phase-2a-neo4j-schema-and-llama-index-integration.md`
+- H1 header: `# Technical Specification: phase-2a-neo4j-schema-and-llama-index-integration`
+- Mismatch will cause storage/retrieval failures
+
+**Spec-architect agents:** Generate H1 headers in kebab-case to match file names.
+
 ## Expected Output Structure
 
-    ```markdown
-    # Technical Specification: [Project Name]
+**CRITICAL**: Spec must follow exact H2 > H3 nesting for core sections. Spec name MUST be kebab-case (lowercase, hyphens only).
 
-    ## Overview
-    [Technical summary and objectives]
+### Structure Template
 
-    ## Architecture Design
-    ### System Components
-    [Component descriptions and interactions]
+```markdown
+{technical_spec_template}
+```
 
-    ### Technology Stack
-    - Frontend: [Technologies with justification]
-    - Backend: [Technologies with justification]  
-    - Database: [Technologies with justification]
-    - Infrastructure: [Technologies with justification]
+### Structure Rules
 
-    ## Data Models
-    [Entity relationships and schemas]
+**For Core Sections** (Overview, System Design, Implementation, Additional Details):
+- Always use H2 `##` for main section
+- Always use H3 `###` for subsections
+- Parser expects this exact structure - deviations cause field to be None
 
-    ## API Design  
-    [Endpoints and contracts]
+**For Domain-Specific Sections** (Data Models, API Design, etc.):
+- Use H2 `##` for section header
+- No required subsection structure
+- Content captured in additional_sections dict
 
-    ## Security Architecture
-    [Security measures and protocols]
+**Common Mistakes to Avoid**:
+- ❌ Using "## Architecture" instead of "## System Design\n### Architecture"
+- ❌ Using "## Research Requirements" instead of "## Additional Details\n### Research Requirements"
+- ❌ Using H4 `####` or H5 `#####` for core subsections
+- ❌ Omitting H2 section header (e.g., just "### Architecture" without "## System Design")
 
-    ## Performance Requirements
-    [Metrics and benchmarks]
-
-    ## Research Requirements
-    ### Existing Documentation
-    - Read: [paths to existing docs]
-
-    ### External Research Needed  
-    - Synthesize: [research prompts for current practices]
-
-    ## Implementation Considerations
-    [Technical constraints and decisions]
-    ```
+**Notes**:
+- Core sections (Overview, Architecture, Testing Strategy) should always be present
+- Domain-specific sections should only be included if relevant to the project type
+- No placeholder content ("TBD", "N/A") - omit sections instead
+- Content can use any markdown format (code blocks, lists, tables, diagrams)
 
 ## Context Preservation
 
