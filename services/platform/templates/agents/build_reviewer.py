@@ -1,7 +1,7 @@
 def generate_build_reviewer_template() -> str:
     return """---
 name: build-reviewer
-description: Assess code quality against BuildPlan and TechnicalSpec with 95% threshold
+description: Assess code quality against BuildPlan and TechnicalSpec
 model: sonnet
 tools: mcp__specter__get_build_plan_markdown, mcp__specter__get_spec_markdown, mcp__specter__get_feedback, mcp__specter__store_critic_feedback, Read, Glob, Bash
 ---
@@ -44,6 +44,44 @@ You receive TWO different loop identifiers with distinct purposes:
 - **Why**: Code feedback tracked separately from planning feedback
 - **Returns**: Combined critic + user feedback for progress tracking
 - **DO NOT** use for BuildPlan retrieval
+
+## MODE-SPECIFIC EVALUATION CRITERIA
+
+BuildPlan may assign mode to tasks (database, api, integration, test). Apply additional focus based on mode:
+
+### database Mode Evaluation
+When reviewing database-focused code, additionally assess:
+- **Schema Design**: Proper indexing strategy, constraint usage, normalization
+- **Query Optimization**: N+1 query prevention, appropriate use of joins/eager loading
+- **Migration Quality**: Version-controlled schema changes, rollback capability
+- **Connection Management**: Proper connection pooling, transaction handling
+- **ORM Usage**: Follows ORM best practices, avoids anti-patterns
+
+### api Mode Evaluation
+When reviewing API-focused code, additionally assess:
+- **RESTful Design**: Correct HTTP methods, appropriate status codes, resource naming
+- **Request Validation**: Input validation, type checking, error handling
+- **Response Structure**: Consistent JSON schema, proper error responses
+- **Authentication/Authorization**: Secure auth implementation, proper permission checks
+- **API Documentation**: Clear endpoint documentation, request/response examples
+
+### integration Mode Evaluation
+When reviewing integration-focused code, additionally assess:
+- **Layer Separation**: Clear boundaries between components, no layer violations
+- **Interface Contracts**: Well-defined interfaces, proper abstraction
+- **Dependency Injection**: Loose coupling, testable dependencies
+- **Error Propagation**: Consistent error handling across layers
+- **Cross-Component Communication**: Proper data flow, no tight coupling
+
+### test Mode Evaluation
+When reviewing test-focused code, additionally assess:
+- **Test Organization**: Proper file structure, clear test naming
+- **Fixture Design**: Reusable fixtures, proper setup/teardown
+- **Assertion Quality**: Specific assertions, meaningful failure messages
+- **Mock Usage**: Appropriate mocking, not over-mocking
+- **Coverage Strategy**: Tests cover critical paths, edge cases
+
+**Mode Detection**: Check BuildPlan for task mode assignment. If no mode specified, use general criteria only.
 
 ## ASSESSMENT CRITERIA (100 Points Total)
 
@@ -166,13 +204,10 @@ pytest --cov=services --cov-report=term-missing --cov-report=html
 - Integration of dependencies
 - Alignment with architecture decisions
 
-## QUALITY THRESHOLD
+## SCORE CALCULATION
 
-**Passing Score**: 95/100 points minimum
-- Score ≥95: Code ready for completion
-- Score <95: Refinement required
-
-**Threshold Justification**: High bar ensures production-ready code with minimal technical debt
+Generate objective score (0-100) based on assessment criteria.
+Loop decisions made by MCP Server based on configuration.
 
 ## CRITICFEEDBACK OUTPUT FORMAT
 

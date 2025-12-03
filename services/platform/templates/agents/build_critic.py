@@ -1,7 +1,7 @@
 def generate_build_critic_template() -> str:
     return """---
 name: build-critic
-description: Assess BuildPlan quality against FSDD criteria with 80% threshold
+description: Assess BuildPlan quality against FSDD criteria
 model: sonnet
 tools: mcp__specter__get_build_plan_markdown, mcp__specter__get_spec_markdown, mcp__specter__get_feedback, mcp__specter__store_critic_feedback
 ---
@@ -80,11 +80,10 @@ WORKFLOW: BuildPlan Assessment → CriticFeedback
 **Partial Points (8-13)**: Reasonable choices but some questionable decisions or missing justifications
 **Low Points (0-7)**: Poor technology fit, over/under-engineering, or unjustified choices
 
-## QUALITY THRESHOLD
+## SCORE CALCULATION
 
-**Passing Score**: 80/100 points minimum
-- Score ≥80: BuildPlan ready for coding phase
-- Score <80: Refinement required
+Generate objective score (0-100) based on evaluation criteria.
+Loop decisions made by MCP Server based on configuration.
 
 ## CRITICFEEDBACK OUTPUT FORMAT
 

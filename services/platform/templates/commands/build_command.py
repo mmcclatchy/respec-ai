@@ -251,6 +251,77 @@ Re-invoke build-planner agent.
 Re-invoke build-critic agent.
 Call MCP decision again.
 
+### 7.5. Process Architectural Override Proposals
+
+**CRITICAL**: Check for override proposals after planning completion, before starting code implementation.
+
+After planning decision is "complete", check for architectural override proposals:
+
+```text
+# Retrieve BuildPlan to check for override proposals
+BUILD_PLAN_MARKDOWN = mcp__specter__get_build_plan_markdown(
+    planning_loop_id=PLANNING_LOOP_ID
+)
+
+# Check if BuildPlan contains "Architectural Override Proposals" section
+IF BUILD_PLAN_MARKDOWN contains "## Architectural Override Proposals" section:
+  # Extract override proposals content
+  OVERRIDE_PROPOSALS = [Extract content from "## Architectural Override Proposals" section]
+
+  # Check if section has actual content (not just header)
+  IF OVERRIDE_PROPOSALS is not empty AND not just placeholder text:
+    # STOP build workflow - architectural changes require user approval
+
+    Display to user:
+    "⚠️ Build-planner has identified potential architecture improvements.
+
+    {{OVERRIDE_PROPOSALS}}
+
+    This requires updating TechnicalSpec. Choose action:
+    1. Approve proposal → Re-run /specter-spec to update architecture
+    2. Reject proposal → Continue with current spec as-is
+    3. Modify proposal → Adjust and re-run /specter-spec
+
+    Build workflow paused until TechnicalSpec updated.
+
+    To approve and update:
+      /specter-spec {{PROJECT_NAME}} {{SPEC_NAME}} \"[your instructions based on proposal]\"
+
+    To reject and proceed with current spec:
+      Re-run /specter-build {{PROJECT_NAME}} {{SPEC_NAME}} --ignore-overrides"
+
+    EXIT: Workflow suspended pending user decision
+  ELSE:
+    # Section exists but is empty - proceed normally
+    Proceed to Step 8
+
+ELSE:
+  # No override proposals section - proceed normally
+  Proceed to Step 8
+```
+
+**Important Notes**:
+- Build-planner is a subagent with NO user interaction capability
+- Architectural changes MUST route through /specter-spec workflow
+- TechnicalSpec must remain consistent across refinement loop passes
+- Any changes to architecture, technology stack, or design decisions require spec update
+- If user rejects override, build-planner proceeds with original spec constraints
+
+**Override Proposal Format** (in BuildPlan):
+```markdown
+## Architectural Override Proposals
+
+**Current Spec Decision**: [What spec currently specifies]
+**Proposed Change**: [What build-planner recommends instead]
+
+**Justification**:
+- Research: [Evidence from documentation/research that supports change]
+- Trade-off: [Why original spec concern no longer applies]
+- Impact: [Which spec sections would need updating]
+
+**Next Action Required**: User must approve/reject via /specter-spec
+```
+
 ### 8. Coding Loop Initialization and Refinement
 Set up and execute MCP-managed code quality refinement:
 
@@ -427,32 +498,30 @@ Ready for deployment."
 
 ## Quality Gates
 
-### Planning Quality Threshold
-- **Target Score**: 80/100 points minimum
-- **Maximum Iterations**: 5 (configurable via FSDD_LOOP_BUILD_PLAN_MAX_ITERATIONS)
-- **Stagnation Detection**: <5 points improvement over 2 iterations triggers user_input
-
-### Code Quality Threshold
-- **Target Score**: 95/100 points minimum
-- **Maximum Iterations**: 5 (configurable via FSDD_LOOP_BUILD_CODE_MAX_ITERATIONS)
-- **Stagnation Detection**: <5 points improvement over 2 iterations triggers user_input
+### Quality Assessment
+- **BuildPlan Evaluation**: Assessed by build-critic agent
+- **Code Quality Evaluation**: Assessed by build-reviewer agent
+- **Loop Decisions**: Made by MCP Server based on configuration
+- **Thresholds and Limits**: Managed by MCP Server
 
 ### Assessment Criteria
 
-**BuildPlan Assessment (80% threshold)**:
-1. Plan Completeness (20 points): All sections populated
-2. TechnicalSpec Alignment (25 points): Matches objectives, scope, architecture
-3. Test Strategy Clarity (20 points): TDD approach defined
-4. Implementation Sequence Logic (20 points): Dependencies respected
-5. Technology Appropriateness (15 points): Stack suitable for requirements
+**BuildPlan Assessment Criteria**:
+1. Plan Completeness: All sections populated with substantive content
+2. TechnicalSpec Alignment: Matches objectives, scope, architecture
+3. Test Strategy Clarity: TDD approach and test organization defined
+4. Implementation Sequence Logic: Dependencies respected, phases logical
+5. Technology Appropriateness: Stack suitable for requirements
 
-**Code Assessment (95% threshold)**:
-1. Tests Passing (30 points): All tests pass
-2. Type Checking Clean (15 points): MyPy zero errors
-3. Linting Clean (10 points): Ruff zero issues
-4. Test Coverage (15 points): ≥80% coverage
-5. BuildPlan Alignment (15 points): File structure and features match
-6. TechnicalSpec Requirements (15 points): All objectives implemented
+**Code Quality Assessment Criteria**:
+1. Tests Passing: All tests execute successfully
+2. Type Checking Clean: MyPy reports zero errors
+3. Linting Clean: Ruff reports zero issues
+4. Test Coverage: Adequate coverage of critical paths
+5. BuildPlan Alignment: File structure and features match plan
+6. TechnicalSpec Requirements: All objectives implemented
+
+Note: Loop decisions determined by MCP Server based on scoring and configuration
 
 ## Error Handling
 

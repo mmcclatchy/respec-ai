@@ -8,29 +8,29 @@ technical_spec_template = TechnicalSpec(
     phase_name='[spec-name-in-kebab-case]',
     objectives='[Clear, measurable goals with business value]',
     scope="[Boundaries, what's included/excluded, constraints]",
-    dependencies='[External requirements with versions]',
-    deliverables='[Concrete outputs with acceptance criteria]',
+    dependencies='[External requirements with versions and justifications]',
+    deliverables='[High-level outputs - no specific file names]',
     architecture='[Component structure, interactions, data flow, design decisions - REQUIRED]',
     technology_stack='[Technologies with versions, justifications, trade-offs - Optional but recommended]',
-    functional_requirements='[Features, user workflows, edge cases]',
-    non_functional_requirements='[Performance targets, scalability, availability]',
-    development_plan='[Implementation phases, dependencies, resource implications]',
-    testing_strategy='[Coverage approach, test levels, quality gates - REQUIRED]',
+    functional_requirements='[Features and user workflows]',
+    non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
+    development_plan='[Implementation phases - no time estimates, no file names]',
+    testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
     research_requirements=(
         '**Existing Documentation**:\n'
         '- Read: [full paths to archive docs]\n\n'
         '**External Research Needed**:\n'
         '- Synthesize: [research prompts with "2025"]'
     ),
-    success_criteria='[Measurable outcomes, verification methods]',
-    integration_context='[System relationships, interface contracts]',
+    success_criteria='[Measurable outcomes and verification methods]',
+    integration_context='[System relationships and interface contracts]',
     additional_sections={
-        'Data Models': '[Entity relationships, schemas with types - for data-heavy projects]',
-        'API Design': '[Endpoints, request/response formats, authentication - for web services]',
-        'Security Architecture': '[Authentication, authorization, data protection - for security-critical systems]',
-        'Performance Requirements': '[Response time targets, scalability targets - for performance-critical systems]',
-        'Deployment Architecture': '[Platform, containerization, regions, monitoring - for infrastructure-heavy projects]',
-        'CLI Commands': '[Command structure, arguments, usage examples - for CLI tools]',
+        'Data Models': '[High-level schema, validation rules - ONLY for data-heavy projects]',
+        'API Design': '[Interface contracts, behavior - ONLY for web services]',
+        'Security Architecture': '[Auth methods, data protection approach - ONLY for security-critical systems]',
+        'Performance Requirements': '[Response time targets, scalability constraints - ONLY for performance-critical systems]',
+        'Deployment Architecture': '[Infrastructure approach, hosting strategy - ONLY for infrastructure-heavy projects]',
+        'CLI Commands': '[Command interface design - ONLY for CLI tools]',
     },
     iteration=0,
     version=1,
@@ -65,7 +65,7 @@ Transform strategic plans into detailed technical specifications through quality
 ### 3. Manage Quality Assessment Loop
 - Pass specifications to spec-critic for FSDD framework evaluation
 - Handle MCP Server refinement decisions based on quality scores
-- Iterate until 85% quality threshold achieved (configurable)
+- Iterate until MCP Server determines specification meets quality requirements
 
 ### 4. Specification Storage
 - Store final specification using configured storage tools
@@ -226,17 +226,6 @@ IF STRATEGIC_PLAN_MARKDOWN not found:
   ERROR: "No strategic plan found: [PLAN_NAME]"
   SUGGEST: "Run '/specter-plan [PLAN_NAME]' to create strategic plan first"
   EXIT: Graceful failure with guidance
-
-Invoke the plan-analyst agent with this input:
-
-Strategic Plan Source: ${{STRATEGIC_PLAN_MARKDOWN}}
-Context: Preparing for technical specification phase
-
-Expected Output Format:
-- Business objectives summary
-- Technical requirements list
-- Success criteria and constraints
-- Integration points identified
 ```
 
 ### Step 4.2: Link Loop to Specification
@@ -281,15 +270,12 @@ Begin technical design with archive integration:
 
 ```text
 # Execute archive scanning first
-ARCHIVE_SCAN_RESULTS = Bash: ~/.claude/scripts/research-advisor-archive-scan.sh --query "technical architecture design patterns database integration API security" --output structured
+ARCHIVE_SCAN_RESULTS = Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "technical architecture design patterns database integration API security"
 
-# Populate context variables from Step 1 output
-STRATEGIC_PLAN_SUMMARY = [plan-analyst output: business objectives, technical requirements, constraints]
-```
+# Populate context variables from Step 4 output
+STRATEGIC_PLAN_SUMMARY = [strategic plan content: STRATEGIC_PLAN_MARKDOWN retrieved in Step 4]
 
-#### Step 5a: Invoke Spec-Architect Agent
-
-```text
+# Invoke spec-architect agent
 Invoke: specter-spec-architect
 Input:
   - loop_id: LOOP_ID
@@ -300,72 +286,19 @@ Input:
   - archive_scan_results: ARCHIVE_SCAN_RESULTS
   - previous_feedback: CRITIC_FEEDBACK (if this is a refinement iteration)
 
-**CRITICAL**: Capture the agent's complete output markdown as CURRENT_SPEC.
-The agent returns the full specification markdown but does NOT store it.
-You MUST store this output in Step 2b using mcp__specter__store_spec.
+Agent will:
+1. Retrieve current spec from MCP using loop_id
+2. Refine spec based on strategic plan and feedback
+3. Store updated spec directly in MCP
+4. Return brief status message (no full markdown)
 
-CURRENT_SPEC = [complete markdown output from spec-architect agent]
-```
-
-#### Step 5b: Store Specification in MCP (MANDATORY - DO NOT SKIP)
-
-**CRITICAL: This step MUST be executed immediately after Step 5a completes.**
-
-The spec-architect agent returns markdown but does NOT store it. YOU must store it now.
-
-```text
-STORE_RESULT = mcp__specter__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=CURRENT_SPEC
-)
-
-IF STORE_RESULT contains error:
-  **CRITICAL ERROR - STOP WORKFLOW**:
-  - Report the specific MCP error message to user
-  - DO NOT create spec.md files as workaround
-  - DO NOT proceed to Step 3
-
-  Example error message:
-  "ERROR: MCP spec storage failed: [error details]
-   Verify: MCP server running and SPEC_NAME valid
-   DO NOT create file-based workarounds - MCP storage is required."
-
+Verify agent completed successfully:
+IF agent returns error status:
+  ERROR: "spec-architect failed to update specification"
+  DIAGNOSTIC: Check agent logs for MCP tool call failures
   EXIT: Workflow terminated
 
-VERIFY storage succeeded:
-VERIFICATION = mcp__specter__get_spec_markdown(project_name=PROJECT_NAME, spec_name=SPEC_NAME, loop_id=None)
-
-IF VERIFICATION fails:
-  ERROR: "Specification storage verification failed - spec was not saved to MCP"
-  EXIT: Workflow terminated
-
-Display to user: "✓ Specification stored in MCP successfully"
-```
-
-#### Step 5c: Validate Architecture Development Output
-
-After spec-architect completes, verify the spec was actually updated:
-
-```text
-# Check if spec was modified
-UPDATED_SPEC = mcp__specter__get_spec_markdown(
-  project_name=PROJECT_NAME,
-  spec_name=SPEC_NAME,
-  loop_id=None
-)
-
-# Verify iteration/version increased or content exists
-IF UPDATED_SPEC is empty or contains only template sections:
-  ERROR: "spec-architect claimed success but spec was not properly updated"
-  DIAGNOSTIC:
-    - Check agent logs for MCP tool call failures
-    - Verify loop was linked correctly via get_loop_status
-    - Attempt manual spec retrieval via get_spec_markdown
-  RECOVERY:
-    - Report detailed error to user
-    - DO NOT proceed to spec-critic
-    - DO NOT manually write spec (let user debug workflow)
+Display to user: "✓ Specification refined by spec-architect"
 ```
 
 ### Step 6: Quality Assessment Loop
@@ -455,15 +388,19 @@ Content: [Complete technical specification with research requirements]
 Labels: technical-specification, architecture, phase-2
 ```
 
-## Quality Gates
+## Quality Assessment
 
-### Success Criteria
-- **Quality Threshold**: 85% (configurable via FSDD_LOOP_SPEC_THRESHOLD)
-- **Maximum Iterations**: 5 (configurable via FSDD_LOOP_SPEC_MAX_ITERATIONS)  
-- **Improvement Threshold**: 5 points minimum between iterations
+### Loop Management
+- Quality evaluation performed by spec-critic agent using FSDD framework
+- Loop continuation decisions made by MCP Server based on configuration
+- MCP Server monitors score improvement and iteration limits
+- User input requested when stagnation detected
 
-### Quality Assessment
-Quality evaluation performed by spec-critic agent using established framework with 85% threshold for completion.
+### Loop Decision Types
+- **refine**: Continue refinement with critic feedback
+- **complete**: Specification meets quality requirements
+- **user_input**: Stagnation detected, user guidance needed
+- **max_iterations**: Iteration limit reached
 
 ## Research Integration
 
@@ -643,7 +580,7 @@ Maintain conversation flow while processing complex backend refinement:
 ## Success Metrics
 
 ### Quantitative Targets
-- **Quality Score**: ≥85% 
+- **Quality Score**: Determined by MCP Server configuration 
 - **Iterations to Complete**: ≤3
 - **Archive Hit Rate**: >60% of research needs covered by existing docs
 - **Storage Success**: >99%
