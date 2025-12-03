@@ -1,4 +1,41 @@
+from services.models.enums import SpecStatus
+from services.models.spec import TechnicalSpec
 from services.platform.models import SpecArchitectAgentTools
+
+
+# Generate template instance from model
+technical_spec_template = TechnicalSpec(
+    phase_name='[spec-name-in-kebab-case]',
+    objectives='[Clear, measurable goals with business value]',
+    scope="[Boundaries, what's included/excluded, constraints]",
+    dependencies='[External requirements with versions and justifications]',
+    deliverables='[High-level outputs - no specific file names]',
+    architecture='[Component structure, interactions, data flow, design decisions - REQUIRED]',
+    technology_stack='[Technologies with versions, justifications, trade-offs - Optional but recommended]',
+    functional_requirements='[Features and user workflows]',
+    non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
+    development_plan='[Implementation phases - no time estimates, no file names]',
+    testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
+    research_requirements=(
+        '**Existing Documentation**:\n'
+        '- Read: [full paths to archive docs]\n\n'
+        '**External Research Needed**:\n'
+        '- Synthesize: [research prompts with "2025"]'
+    ),
+    success_criteria='[Measurable outcomes and verification methods]',
+    integration_context='[System relationships and interface contracts]',
+    additional_sections={
+        'Data Models': '[High-level schema, validation rules - ONLY for data-heavy projects]',
+        'API Design': '[Interface contracts, behavior - ONLY for web services]',
+        'Security Architecture': '[Auth methods, data protection approach - ONLY for security-critical systems]',
+        'Performance Requirements': '[Response time targets, scalability constraints - ONLY for performance-critical systems]',
+        'Deployment Architecture': '[Infrastructure approach, hosting strategy - ONLY for infrastructure-heavy projects]',
+        'CLI Commands': '[Command interface design - ONLY for CLI tools]',
+    },
+    iteration=0,
+    version=1,
+    spec_status=SpecStatus.DRAFT,
+).build_markdown()
 
 
 def generate_spec_architect_template(tools: SpecArchitectAgentTools) -> str:
@@ -34,13 +71,6 @@ INPUTS: Loop ID and specification context
 
 WORKFLOW: Strategic Plan Summary → Technical Specification Markdown
 
-**CRITICAL FILE OPERATION RESTRICTIONS**:
-- NEVER use Read/Write/Edit tools to access spec.md or any other files
-- NEVER create or modify files directly on disk
-- ONLY use mcp__specter__get_spec_markdown to retrieve current spec
-- ONLY return markdown output to Main Agent (do not store it yourself)
-- File storage is handled exclusively by Main Agent using MCP tools
-
 TASKS:
 
 STEP 1: Retrieve Current Specification
@@ -64,12 +94,88 @@ Develop comprehensive technical specification based on strategic plan summary
 → Integrate archive_scan_results for research requirements
 → Follow OUTPUT FORMAT below
 
-STEP 4: Return Complete Specification
-Output specification markdown to orchestrator
-→ DO NOT store specification yourself
-→ Orchestrator invokes spec-critic for quality assessment
+STEP 4: Store Complete Specification
+CALL mcp__specter__store_spec(
+  project_name=None,
+  spec_name=None,
+  loop_id=loop_id,
+  spec_markdown=generated_specification
+)
+→ Verify: Specification stored successfully
+→ Expected error: Storage failure (retry once, then report to command)
 
-**CRITICAL**: Return complete specification - NEVER truncate sections
+STEP 5: Return Status Summary
+Return brief status message to orchestrator (do NOT return full markdown):
+
+```
+Technical specification updated successfully.
+- Iteration: [spec.iteration]
+- Version: [spec.version]
+- Sections: [count of major sections]
+```
+
+## OUTPUT DETAIL GUIDELINES
+
+### INCLUDE (Architecture/Requirements Level)
+
+✅ **Technology Choices**:
+- What: "Use LlamaIndex for NL→Cypher translation"
+- Why: "Abstracts LLM prompt engineering, reduces dev time by 60%"
+- Trade-offs: "Adds dependency but simpler than direct OpenAI API"
+
+✅ **Component Architecture**:
+- Structure: "Integration Layer: Neo4j client + LlamaIndex connector"
+- Interactions: "Client receives NL query → LlamaIndex translates → Neo4j executes"
+- Data Flow: "Neo4j records → Result parser → Pydantic BestPractice models"
+
+✅ **Interface Signatures** (not implementations):
+```python
+def query_knowledge_base(query: str) -> List[BestPractice]:
+    '''Translate NL query to Cypher, return structured results.'''
+```
+
+✅ **Non-Functional Requirements**:
+- "Query performance: <2 seconds for POC dataset (<10 nodes)"
+- "Configuration: All credentials via environment variables (security requirement)"
+
+### EXCLUDE (Implementation Details)
+
+❌ **Specific File Names**:
+- Wrong: "Create `src/neo4j_client.py`"
+- Right: "Neo4j client module: Connection management, query execution"
+
+❌ **Time Estimates**:
+- Wrong: "Step 1: Schema setup (30 minutes)"
+- Right: "Phase 1: Schema foundation - define node structure and constraints"
+
+❌ **Complete Code Implementations**:
+- Wrong: Full Pydantic model with validators
+- Right: Model schema with validation requirements
+
+❌ **Test Case IDs**:
+- Wrong: "TC-4.1: Query 'Python errors' → expect result"
+- Right: "Testing Strategy: Validate diverse NL queries return relevant results"
+
+❌ **Configuration Implementations**:
+- Wrong: Complete `Settings` class code
+- Right: "Configuration Requirements: Neo4j connection credentials (URI, username, password)"
+
+### Detail Level Target: ~10 Pages
+
+**Page Allocation**:
+- Overview (Objectives, Scope, Dependencies): 1.5 pages
+- System Design (Architecture, Tech Stack): 3 pages
+- Implementation (Requirements, Phases, Testing): 2.5 pages
+- Integration & Research: 2 pages
+- Domain-Specific (if relevant): 1 page
+- Metadata: 0.5 pages
+
+**Quality Check**:
+- Can a developer understand system structure without implementation details? ✓
+- Are technology choices justified with trade-offs? ✓
+- Are interface contracts clear? ✓
+- Is this readable in 20-30 minutes? ✓
+- Does build-planner have freedom to choose file organization? ✓
 
 ## TECHNICAL SPECIFICATION STRUCTURE
 
@@ -161,69 +267,7 @@ Choose sections based on project needs. Examples:
 #### Mandatory Structure for All Specs
 
 ```markdown
-# Technical Specification: spec-name-in-kebab-case
-
-## Overview
-
-### Objectives
-[Clear, measurable goals with business value]
-
-### Scope
-[Boundaries, what's included/excluded, constraints]
-
-### Dependencies
-[External requirements with versions]
-
-### Deliverables
-[Concrete outputs with acceptance criteria]
-
-## System Design
-
-### Architecture
-[Component structure, interactions, data flow, design decisions - REQUIRED]
-
-### Technology Stack
-[Technologies with versions, justifications, trade-offs - Optional but recommended]
-
-## Implementation
-
-### Functional Requirements
-[Features, user workflows, edge cases]
-
-### Non-Functional Requirements
-[Performance targets, scalability, availability]
-
-### Development Plan
-[Implementation phases, dependencies, resource implications]
-
-### Testing Strategy
-[Coverage approach, test levels, quality gates - REQUIRED]
-
-## Additional Details
-
-### Research Requirements
-**Existing Documentation**:
-- Read: [full paths to archive docs]
-
-**External Research Needed**:
-- Synthesize: [research prompts with "2025"]
-
-### Success Criteria
-[Measurable outcomes, verification methods]
-
-### Integration Context
-[System relationships, interface contracts]
-
-## Metadata
-
-### Iteration
-[iteration number]
-
-### Version
-[version number]
-
-### Status
-[draft/in-review/approved]
+{technical_spec_template}
 ```
 
 **NOTE**:

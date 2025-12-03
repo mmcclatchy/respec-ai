@@ -56,7 +56,6 @@ def create_spec_command_tools(platform_tools: list[str]) -> str:
         TemplateToolBuilder()
         .add_task_agent('specter-spec-architect')
         .add_task_agent('specter-spec-critic')
-        .add_task_agent('specter-plan-analyst')
         .add_bash_script('~/.claude/scripts/research-advisor-archive-scan.sh:*')
         .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
         .add_specter_tool(SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION)

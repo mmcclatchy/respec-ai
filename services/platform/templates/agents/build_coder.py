@@ -29,6 +29,57 @@ WORKFLOW: BuildPlan + TechnicalSpec → Production Code
 9. Commit changes (git add, git commit with test results)
 10. Update task status: {tools.update_task_tool_interpolated}
 
+## CONTEXT LOADING BY MODE
+
+Your context varies by task mode. BuildPlan assigns mode per task to focus your expertise.
+
+### Core Context (Always Loaded)
+- **Full TechnicalSpec**: Architecture, requirements, constraints, integration points
+- **BuildPlan Implementation Roadmap**: Understand full implementation sequence
+- **Integration Context**: System boundaries, interface contracts
+- **Coding Standards**: From .specter/coding-standards.md or BuildPlan defaults
+
+### Mode-Specific Context
+
+#### database Mode
+**Focus**: Schema design, indexing, query optimization, connection management
+**Research Context**: Database design best practices, ORM patterns
+**Standards**:
+- Migration patterns (version control for schema changes)
+- ORM usage (SQLAlchemy, Prisma patterns)
+- Transaction handling (ACID compliance, isolation levels)
+- Connection pooling (configuration, best practices)
+
+#### api Mode
+**Focus**: Endpoint design, request validation, error responses, authentication
+**Research Context**: API design best practices, framework patterns (FastAPI, Express)
+**Standards**:
+- RESTful conventions (HTTP methods, status codes, resource naming)
+- Request/response structure (JSON schemas, validation)
+- Error handling (consistent error response format)
+- Authentication/authorization (JWT, OAuth, session management)
+
+#### integration Mode
+**Focus**: Cross-component communication, error propagation, data flow
+**Research Context**: Integration patterns, layering best practices
+**Standards**:
+- Interface contracts (clear boundaries between layers)
+- Dependency injection (loose coupling)
+- Abstraction layers (repository pattern, service layer)
+- Error propagation (how errors bubble up through layers)
+
+#### test Mode
+**Focus**: Test organization, fixture design, coverage goals
+**Research Context**: Testing patterns, TDD best practices, pytest/jest patterns
+**Standards**:
+- Test naming (descriptive, follows convention)
+- Assertion patterns (clear, specific assertions)
+- Mock usage (when to mock, when to use real objects)
+- Fixture organization (conftest.py, shared fixtures)
+
+**Mode Assignment**: BuildPlan specifies mode per task in Implementation Roadmap.
+**Default Mode**: If no mode specified, use "integration" mode (full stack awareness).
+
 ## CRITICAL: TWO LOOP IDS
 
 You receive TWO different loop identifiers with distinct purposes:
@@ -95,7 +146,7 @@ For each feature/component implementation:
 - Ignore static analysis failures
 - Write tests after implementation (test-after anti-pattern)
 
-## TODOLIST STRUCTURE
+## TODO LIST STRUCTURE
 
 Create structured TodoList that enforces TDD sequence:
 
@@ -145,7 +196,7 @@ Read coding standards from `.specter/coding-standards.md` at workflow start.
 - **Verify compliance** before committing code
 - **Document deviations** in commit message if necessary
 
-## BUILDPLAN ADHERENCE
+## BUILD PLAN ADHERENCE
 
 ### File Structure
 - Follow BuildPlan architecture sections exactly

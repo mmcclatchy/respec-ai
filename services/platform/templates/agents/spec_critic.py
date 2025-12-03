@@ -249,36 +249,85 @@ These sections vary by project type. Identify all sections beyond core sections,
 - Evaluate substance, NOT formatting style
 - Focus on implementation value
 
+### Over-Detailing Penalty (up to -10 points)
+
+Assess spec for implementation details that belong in BuildPlan:
+- **Time estimates for tasks**: -2 points (e.g., "Step 1: Schema setup (30 minutes)")
+- **Specific file names/paths**: -2 points (e.g., "Create `src/neo4j_client.py`")
+- **Complete code implementations**: -3 points (vs interface signatures which are OK)
+- **Configuration file examples**: -2 points (e.g., complete `Settings` class code)
+- **Test case IDs**: -1 point (e.g., "TC-4.1: Query X → expect Y")
+
+**Maximum penalty**: -10 points (caps at 0, cannot go negative)
+
+**Application**:
+- Penalty applies to overall score calculation
+- Document which implementation details found
+- Recommend moving details to BuildPlan phase
+
+### Domain-Specific Section Relevance Penalty
+
+**Relevance Assessment**:
+- Award 3 points presence + 3 points substance ONLY for relevant sections
+- Penalize irrelevant sections: -2 points per section not applicable to project type
+
+**Examples of Irrelevant Sections**:
+- CLI tool with "API Design" section → -2 points (not a web service)
+- Read-only system with "Security Architecture" → 0 points (auth only, minimal security needs)
+- Data pipeline with "Frontend Architecture" → -2 points (no UI)
+- Library with "Deployment Architecture" → -2 points (libraries aren't deployed)
+
+**Evaluation Rule**:
+- If section included, must justify its relevance to project type
+- Placeholder content ("TBD", "N/A") = 0 points presence, 0 points substance
+- Marginally relevant content (1-2 sentences) = presence points only, no substance
+
 ## SCORING METHODOLOGY
 
 ### Overall Score Calculation
 
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus**
+**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Over-Detailing Penalty - Irrelevant Section Penalty**
 
 **Core Sections (70 points)**:
 - Required sections (Objectives, Scope, Architecture, Testing): 40 points
 - Structure compliance bonus: 5 points (if H2 > H3 nesting correct)
-- Optional core sections present and substantive: 30 points (6 points each × 5 sections)
+- Optional core sections present and substantive: 30 points (6 points each x 5 sections)
 
 **Domain-Specific Sections (30 points)**:
-- Section presence: 15 points (3 points each × 5 sections)
-- Section substance: 15 points (3 points each × 5 sections)
+- Section presence: 15 points (3 points each x 5 RELEVANT sections only)
+- Section substance: 15 points (3 points each x 5 RELEVANT sections only)
+
+**Penalties (up to -10 points each)**:
+- Over-detailing penalty: Up to -10 points for implementation details
+- Irrelevant section penalty: -2 points per irrelevant domain-specific section
 
 **Maximum possible: 105 points** (base 100 + 5 structure bonus)
+**Minimum possible: 0 points** (penalties can reduce to 0 but not below)
 
 **Convert to 0-100 scale**:
 ```
-Overall Score = min((Total Points Earned / 100) × 100, 100)
+Raw Score = Core Sections + Domain-Specific Sections + Structure Bonus - Penalties
+Overall Score = max(min((Raw Score / 100) x 100, 100), 0)
 ```
 
-**Note**: Structure bonus allows specs to reach 100/100 even with minor gaps in optional sections.
+**Note**:
+- Structure bonus allows specs to reach 100/100 even with minor gaps in optional sections
+- Penalties discourage over-detailing and padding with irrelevant sections
+- Score cannot go below 0 or above 100
 
 ### Score Interpretation
-- **90-100**: Exceptional - Ready for immediate implementation
-- **80-89**: Good - Minor refinements needed, ready to proceed
-- **70-79**: Acceptable - Significant improvements required
-- **60-69**: Poor - Substantial gaps must be addressed
-- **0-59**: Inadequate - Major rework required
+Provide objective score (0-100) based on evaluation criteria.
+Loop continuation decisions made by MCP Server based on configuration.
+
+**Note**: Score interpretation guidelines shown below are for reference only.
+MCP Server determines quality thresholds and loop decisions.
+
+Reference ranges (informational only):
+- 90-100: Comprehensive coverage with minor gaps
+- 80-89: Good coverage with some improvements needed
+- 70-79: Adequate coverage with notable gaps
+- 60-69: Incomplete with substantial work needed
+- 0-59: Foundational issues requiring rework
 
 ### Assessment Consistency
 - Apply same standards regardless of project
@@ -369,6 +418,30 @@ The feedback markdown must include overall_score for MCP database auto-populatio
 - [Implementation value]
 
 [Continue for each domain-specific section]
+
+### Penalties Assessment
+
+#### Over-Detailing Penalty (X/-10 points)
+**Implementation Details Found:**
+- [ ] Time estimates for tasks (-2 points if found)
+- [ ] Specific file names/paths (-2 points if found)
+- [ ] Complete code implementations (-3 points if found)
+- [ ] Configuration file examples (-2 points if found)
+- [ ] Test case IDs (-1 point if found)
+
+**Total Over-Detailing Penalty**: X points (max -10)
+
+**Specific Examples**:
+- [List specific instances of over-detailing found in spec]
+
+**Recommendation**: Move implementation details to BuildPlan phase
+
+#### Irrelevant Section Penalty (X points)
+**Sections Assessed for Relevance**:
+- **[Section Name]**: [Relevant/Not Relevant] - [Justification]
+- **[Section Name]**: [Relevant/Not Relevant] - [Justification]
+
+**Total Irrelevant Section Penalty**: X points (-2 per irrelevant section)
 
 ### Key Strengths
 - [Standout element 1 with specific reference]

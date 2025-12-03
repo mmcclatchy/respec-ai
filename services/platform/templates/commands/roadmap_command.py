@@ -160,7 +160,7 @@ Roadmap-critic will:
 #### Step 3d: Get Feedback and Extract Score
 ```text
 CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=ROADMAP_LOOP_ID, count=2)
-Note: Retrieves 2 most recent iterations for stagnation detection (<10 points improvement threshold)
+Note: Retrieves 2 most recent iterations for progress tracking
 Extract QUALITY_SCORE from CRITIC_FEEDBACK markdown (look for "Overall Score: [number]")
 ```
 

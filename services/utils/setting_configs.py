@@ -10,11 +10,11 @@ class LoopConfig(BaseSettings):
         env_prefix='LOOP_',
     )
 
-    plan_threshold: int = Field(default=85, ge=1, le=100)
+    plan_threshold: int = Field(default=90, ge=1, le=100)
     analyst_threshold: int = Field(default=90, ge=1, le=100)
     roadmap_threshold: int = Field(default=90, ge=1, le=100)
-    spec_threshold: int = Field(default=85, ge=1, le=100)
-    build_plan_threshold: int = Field(default=80, ge=1, le=100)
+    spec_threshold: int = Field(default=90, ge=1, le=100)
+    build_plan_threshold: int = Field(default=90, ge=1, le=100)
     build_code_threshold: int = Field(default=95, ge=1, le=100)
 
     plan_improvement_threshold: int = Field(default=5, ge=1, le=100)
