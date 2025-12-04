@@ -1,5 +1,5 @@
 from .models import ToolReference
-from .tool_enums import BuiltInTool, SpecterMCPTool
+from .tool_enums import BuiltInTool, SpecAITool
 
 
 class TemplateToolBuilder:
@@ -14,7 +14,7 @@ class TemplateToolBuilder:
         self.tools.append(ToolReference(tool=BuiltInTool.BASH, parameters=script_path))
         return self
 
-    def add_specter_tool(self, tool: SpecterMCPTool) -> 'TemplateToolBuilder':
+    def add_spec_ai_tool(self, tool: SpecAITool) -> 'TemplateToolBuilder':
         self.tools.append(ToolReference(tool=tool))
         return self
 
@@ -54,12 +54,12 @@ class TemplateToolBuilder:
 def create_spec_command_tools(platform_tools: list[str]) -> str:
     builder = (
         TemplateToolBuilder()
-        .add_task_agent('specter-spec-architect')
-        .add_task_agent('specter-spec-critic')
+        .add_task_agent('spec-ai-spec-architect')
+        .add_task_agent('spec-ai-spec-critic')
         .add_bash_script('~/.claude/scripts/research-advisor-archive-scan.sh:*')
-        .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
-        .add_specter_tool(SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION)
-        .add_specter_tool(SpecterMCPTool.GET_LOOP_STATUS)
+        .add_spec_ai_tool(SpecAITool.INITIALIZE_REFINEMENT_LOOP)
+        .add_spec_ai_tool(SpecAITool.DECIDE_LOOP_NEXT_ACTION)
+        .add_spec_ai_tool(SpecAITool.GET_LOOP_STATUS)
         .add_platform_tools(platform_tools)
     )
 
@@ -70,28 +70,28 @@ def create_plan_command_tools(platform_tools: list[str]) -> str:
     """Create validated tool list for plan command.
 
     Note: Some conversation context tools referenced in plan_command.py are not yet
-    defined in SpecterMCPTool enum and need to be added.
+    defined in SpecAITool enum and need to be added.
     """
     builder = (
         TemplateToolBuilder()
-        .add_task_agent('specter-plan-conversation')
-        .add_task_agent('specter-plan-critic')
-        .add_task_agent('specter-plan-analyst')
-        .add_task_agent('specter-analyst-critic')
-        .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
-        .add_specter_tool(SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION)
-        .add_specter_tool(SpecterMCPTool.GET_PREVIOUS_OBJECTIVE_FEEDBACK)
-        .add_specter_tool(SpecterMCPTool.STORE_CURRENT_OBJECTIVE_FEEDBACK)
-        .add_specter_tool(SpecterMCPTool.STORE_PROJECT_PLAN)
-        .add_specter_tool(SpecterMCPTool.GET_PROJECT_PLAN_MARKDOWN)
-        .add_specter_tool(SpecterMCPTool.STORE_CRITIC_FEEDBACK)
-        .add_specter_tool(SpecterMCPTool.GET_FEEDBACK)
-        .add_specter_tool(SpecterMCPTool.STORE_CURRENT_ANALYSIS)
-        .add_specter_tool(SpecterMCPTool.GET_PREVIOUS_ANALYSIS)
-        .add_specter_tool(SpecterMCPTool.CREATE_PLAN_COMPLETION_REPORT)
-        .add_specter_tool(SpecterMCPTool.STORE_PLAN_COMPLETION_REPORT)
-        .add_specter_tool(SpecterMCPTool.GET_PLAN_COMPLETION_REPORT_MARKDOWN)
-        .add_specter_tool(SpecterMCPTool.UPDATE_PLAN_COMPLETION_REPORT)
+        .add_task_agent('spec-ai-plan-conversation')
+        .add_task_agent('spec-ai-plan-critic')
+        .add_task_agent('spec-ai-plan-analyst')
+        .add_task_agent('spec-ai-analyst-critic')
+        .add_spec_ai_tool(SpecAITool.INITIALIZE_REFINEMENT_LOOP)
+        .add_spec_ai_tool(SpecAITool.DECIDE_LOOP_NEXT_ACTION)
+        .add_spec_ai_tool(SpecAITool.GET_PREVIOUS_OBJECTIVE_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.STORE_CURRENT_OBJECTIVE_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.STORE_PROJECT_PLAN)
+        .add_spec_ai_tool(SpecAITool.GET_PROJECT_PLAN_MARKDOWN)
+        .add_spec_ai_tool(SpecAITool.STORE_CRITIC_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.GET_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.STORE_CURRENT_ANALYSIS)
+        .add_spec_ai_tool(SpecAITool.GET_PREVIOUS_ANALYSIS)
+        .add_spec_ai_tool(SpecAITool.CREATE_PLAN_COMPLETION_REPORT)
+        .add_spec_ai_tool(SpecAITool.STORE_PLAN_COMPLETION_REPORT)
+        .add_spec_ai_tool(SpecAITool.GET_PLAN_COMPLETION_REPORT_MARKDOWN)
+        .add_spec_ai_tool(SpecAITool.UPDATE_PLAN_COMPLETION_REPORT)
         .add_platform_tools(platform_tools)
     )
 
@@ -101,15 +101,15 @@ def create_plan_command_tools(platform_tools: list[str]) -> str:
 def create_build_command_tools(platform_tools: list[str]) -> str:
     builder = (
         TemplateToolBuilder()
-        .add_task_agent('specter-build-planner')
-        .add_task_agent('specter-build-critic')
-        .add_task_agent('specter-build-coder')
-        .add_task_agent('specter-build-reviewer')
-        .add_task_agent('specter-research-synthesizer')
+        .add_task_agent('spec-ai-build-planner')
+        .add_task_agent('spec-ai-build-critic')
+        .add_task_agent('spec-ai-build-coder')
+        .add_task_agent('spec-ai-build-reviewer')
+        .add_task_agent('spec-ai-research-synthesizer')
         .add_bash_script('~/.claude/scripts/detect-packages.sh:*')
-        .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
-        .add_specter_tool(SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION)
-        .add_specter_tool(SpecterMCPTool.GET_LOOP_STATUS)
+        .add_spec_ai_tool(SpecAITool.INITIALIZE_REFINEMENT_LOOP)
+        .add_spec_ai_tool(SpecAITool.DECIDE_LOOP_NEXT_ACTION)
+        .add_spec_ai_tool(SpecAITool.GET_LOOP_STATUS)
         .add_platform_tools(platform_tools)
     )
 
@@ -119,17 +119,17 @@ def create_build_command_tools(platform_tools: list[str]) -> str:
 def create_roadmap_tools(platform_tools: list[str]) -> str:
     builder = (
         TemplateToolBuilder()
-        .add_task_agent('specter-roadmap')
-        .add_task_agent('specter-roadmap-critic')
-        .add_task_agent('specter-create-spec')
-        .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
-        .add_specter_tool(SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION)
-        .add_specter_tool(SpecterMCPTool.GET_LOOP_STATUS)
-        .add_specter_tool(SpecterMCPTool.CREATE_ROADMAP)
-        .add_specter_tool(SpecterMCPTool.GET_ROADMAP)
-        .add_specter_tool(SpecterMCPTool.STORE_SPEC)
-        .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
-        .add_specter_tool(SpecterMCPTool.LIST_SPECS)
+        .add_task_agent('spec-ai-roadmap')
+        .add_task_agent('spec-ai-roadmap-critic')
+        .add_task_agent('spec-ai-create-spec')
+        .add_spec_ai_tool(SpecAITool.INITIALIZE_REFINEMENT_LOOP)
+        .add_spec_ai_tool(SpecAITool.DECIDE_LOOP_NEXT_ACTION)
+        .add_spec_ai_tool(SpecAITool.GET_LOOP_STATUS)
+        .add_spec_ai_tool(SpecAITool.CREATE_ROADMAP)
+        .add_spec_ai_tool(SpecAITool.GET_ROADMAP)
+        .add_spec_ai_tool(SpecAITool.STORE_SPEC)
+        .add_spec_ai_tool(SpecAITool.GET_SPEC_MARKDOWN)
+        .add_spec_ai_tool(SpecAITool.LIST_SPECS)
         .add_platform_tools(platform_tools)
     )
 
@@ -139,10 +139,10 @@ def create_roadmap_tools(platform_tools: list[str]) -> str:
 def create_spec_architect_agent_tools() -> str:
     builder = (
         TemplateToolBuilder()
-        .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
-        .add_specter_tool(SpecterMCPTool.UPDATE_SPEC)
-        .add_specter_tool(SpecterMCPTool.LINK_LOOP_TO_SPEC)
-        .add_specter_tool(SpecterMCPTool.GET_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.GET_SPEC_MARKDOWN)
+        .add_spec_ai_tool(SpecAITool.UPDATE_SPEC)
+        .add_spec_ai_tool(SpecAITool.LINK_LOOP_TO_SPEC)
+        .add_spec_ai_tool(SpecAITool.GET_FEEDBACK)
         .add_builtin_tool(BuiltInTool.READ)
         .add_builtin_tool(BuiltInTool.BASH, '~/.claude/scripts/research-advisor-archive-scan.sh:*')
         .add_builtin_tool(BuiltInTool.GREP)
@@ -154,8 +154,8 @@ def create_spec_architect_agent_tools() -> str:
 def create_spec_critic_agent_tools() -> str:
     builder = (
         TemplateToolBuilder()
-        .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
-        .add_specter_tool(SpecterMCPTool.GET_FEEDBACK)
-        .add_specter_tool(SpecterMCPTool.STORE_CRITIC_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.GET_SPEC_MARKDOWN)
+        .add_spec_ai_tool(SpecAITool.GET_FEEDBACK)
+        .add_spec_ai_tool(SpecAITool.STORE_CRITIC_FEEDBACK)
     )
     return builder.render_comma_separated_tools()

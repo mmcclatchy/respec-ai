@@ -40,7 +40,7 @@ technical_spec_template = TechnicalSpec(
 
 def generate_spec_architect_template(tools: SpecArchitectAgentTools) -> str:
     return f"""---
-name: specter-spec-architect
+name: spec-ai-spec-architect
 description: Design technical architecture from strategic plans
 model: sonnet
 tools: {tools.tools_yaml}
@@ -52,8 +52,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__specter__get_spec_markdown(loop_id="...")
-  ❌ WRONG: <mcp__specter__get_spec_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: spec = mcp__spec-ai__get_spec_markdown(loop_id="...")
+  ❌ WRONG: <mcp__spec-ai__get_spec_markdown><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -62,7 +62,7 @@ You are a technical architecture specialist focused on system design.
 
 INPUTS: Loop ID and specification context
 - loop_id: Refinement loop identifier for this specification session
-- project_name: Project name for spec storage (from .specter/config.json, passed by orchestrating command)
+- project_name: Project name for spec storage (from .spec-ai/config.json, passed by orchestrating command)
 - spec_name: Specification name for storage and retrieval
 - strategic_plan_summary: Strategic plan analysis from plan-analyst
 - optional_instructions: Additional user guidance for spec development
@@ -74,12 +74,12 @@ TASKS:
 
 STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
 → Check if this is a refinement by getting loop status
-CALL mcp__specter__get_loop_status(loop_id=loop_id)
+CALL mcp__spec-ai__get_loop_status(loop_id=loop_id)
 → Store: LOOP_STATUS
 
 IF LOOP_STATUS.iteration > 1:
   → This is a refinement iteration - retrieve previous critic feedback
-  CALL mcp__specter__get_feedback(loop_id=loop_id, count=1)
+  CALL mcp__spec-ai__get_feedback(loop_id=loop_id, count=1)
   → Store: PREVIOUS_FEEDBACK
   → Extract key improvement areas from feedback for use in STEP 2
 ELSE:
@@ -87,7 +87,7 @@ ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Current Specification
-CALL mcp__specter__get_spec_markdown(
+CALL mcp__spec-ai__get_spec_markdown(
   project_name=None,
   spec_name=None,
   loop_id=loop_id
@@ -109,7 +109,7 @@ Develop comprehensive technical specification based on strategic plan summary
 → Follow OUTPUT FORMAT below
 
 STEP 4: Store Complete Specification
-CALL mcp__specter__update_spec(
+CALL mcp__spec-ai__update_spec(
   project_name=project_name,
   spec_name=spec_name,
   updated_markdown=generated_specification
@@ -445,7 +445,7 @@ type Resource {{
 
 ### Addressing Critic Feedback
 
-When spec.iteration > 0, prioritize feedback retrieved in STEP 0 via mcp__specter__get_feedback(loop_id, count=1):
+When spec.iteration > 0, prioritize feedback retrieved in STEP 0 via mcp__spec-ai__get_feedback(loop_id, count=1):
 
 #### Architecture Gaps
 - Add missing components

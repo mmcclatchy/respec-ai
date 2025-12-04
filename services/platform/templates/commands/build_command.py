@@ -8,7 +8,7 @@ argument-hint: [project-name] [spec-name]
 description: Transform technical specifications into production-ready code through parallel research, implementation planning, and TDD development
 ---
 
-# /specter-build Command: Implementation Orchestration
+# /spec-ai-build Command: Implementation Orchestration
 
 ## Overview
 Orchestrate the complete implementation workflow, transforming technical specifications into production-ready code through parallel research synthesis, implementation planning, and TDD-driven code development with comprehensive quality validation.
@@ -25,13 +25,13 @@ PROJECT_NAME = [first argument from command - the project name]
 SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
 
 # Step 1.2: Search file system for matching spec files
-SPEC_GLOB_PATTERN = ".specter/projects/{{PROJECT_NAME}}/specter-specs/{{SPEC_NAME_PARTIAL}}*.md"
+SPEC_GLOB_PATTERN = ".spec-ai/projects/{{PROJECT_NAME}}/spec-ai-specs/{{SPEC_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 
 # Step 1.3: Handle multiple matches
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the spec name or check .specter/projects/{{PROJECT_NAME}}/specter-specs/"
+  SUGGEST: "Verify the spec name or check .spec-ai/projects/{{PROJECT_NAME}}/spec-ai-specs/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
@@ -78,7 +78,7 @@ Load spec from file system, store in MCP:
 SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
 
 # Step 2.2: Store in MCP using canonical spec name
-mcp__specter__store_spec(
+mcp__spec-ai__store_spec(
   project_name=PROJECT_NAME,
   spec_name=SPEC_NAME,
   spec_markdown=SPEC_MARKDOWN
@@ -100,7 +100,7 @@ Verify spec is correctly stored in MCP with canonical name:
 
 ```text
 # Call resolve_spec_name for validation only
-RESOLVE_RESULT = mcp__specter__resolve_spec_name(
+RESOLVE_RESULT = mcp__spec-ai__resolve_spec_name(
   project_name=PROJECT_NAME,
   partial_name=SPEC_NAME
 )
@@ -120,14 +120,14 @@ Display to user: "✓ Using specification: {{SPEC_NAME}}"
 - Fails loudly if mismatch between file system and MCP
 
 ### 4. Specification Retrieval and Validation
-Retrieve and validate completed TechnicalSpec from /specter-spec command:
+Retrieve and validate completed TechnicalSpec from /spec-ai-spec command:
 
 #### Retrieve TechnicalSpec
 ```text
-TECHNICAL_SPEC = mcp__specter__get_spec_markdown(PROJECT_NAME, SPEC_NAME)
+TECHNICAL_SPEC = mcp__spec-ai__get_spec_markdown(PROJECT_NAME, SPEC_NAME)
 IF TECHNICAL_SPEC not found:
   ERROR: "No technical specification found: [SPEC_NAME]"
-  SUGGEST: "Run '/specter-spec [PROJECT_NAME] [SPEC_NAME]' to create technical specification first"
+  SUGGEST: "Run '/spec-ai-spec [PROJECT_NAME] [SPEC_NAME]' to create technical specification first"
   EXIT: Graceful failure with guidance
 
 SPEC_OBJECTIVES = [Extract from TechnicalSpec Objectives section]
@@ -169,7 +169,7 @@ Set up and execute MCP-managed planning quality refinement:
 
 #### Initialize Planning Loop
 ```text
-PLANNING_LOOP_ID = mcp__specter__initialize_refinement_loop(loop_type='build_plan')
+PLANNING_LOOP_ID = mcp__spec-ai__initialize_refinement_loop(loop_type='build_plan')
 
 State to maintain:
 - planning_loop_id: For BuildPlan storage and retrieval
@@ -184,7 +184,7 @@ Invoke build-planner agent with:
 - spec_name: {{SPEC_NAME}}
 
 Agent will autonomously:
-1. Read .specter/coding-standards.md (if exists)
+1. Read .spec-ai/coding-standards.md (if exists)
 2. Retrieve TechnicalSpec via MCP
 3. Retrieve existing BuildPlan via MCP (empty on first iteration)
 4. Retrieve critic feedback via MCP (none on first iteration)
@@ -219,7 +219,7 @@ Expected: CriticFeedback with Overall Score stored in MCP
 
 #### MCP Planning Decision
 ```text
-PLANNING_DECISION = mcp__specter__decide_loop_next_action(
+PLANNING_DECISION = mcp__spec-ai__decide_loop_next_action(
     loop_id=PLANNING_LOOP_ID,
     current_score=PLAN_QUALITY_SCORE
 )
@@ -246,7 +246,7 @@ Proceed to Step 8.
 Retrieve BuildPlan and feedback (count=2).
 Present PLAN_QUALITY_SCORE, Key Issues, and Recommendations to user.
 Request technical guidance (approach preferences, strategies, accept/proceed).
-Store user feedback: mcp__specter__store_user_feedback(PLANNING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
+Store user feedback: mcp__spec-ai__store_user_feedback(PLANNING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
 Re-invoke build-planner agent.
 Re-invoke build-critic agent.
 Call MCP decision again.
@@ -259,7 +259,7 @@ After planning decision is "complete", check for architectural override proposal
 
 ```text
 # Retrieve BuildPlan to check for override proposals
-BUILD_PLAN_MARKDOWN = mcp__specter__get_build_plan_markdown(
+BUILD_PLAN_MARKDOWN = mcp__spec-ai__get_build_plan_markdown(
     planning_loop_id=PLANNING_LOOP_ID
 )
 
@@ -278,17 +278,17 @@ IF BUILD_PLAN_MARKDOWN contains "## Architectural Override Proposals" section:
     {{OVERRIDE_PROPOSALS}}
 
     This requires updating TechnicalSpec. Choose action:
-    1. Approve proposal → Re-run /specter-spec to update architecture
+    1. Approve proposal → Re-run /spec-ai-spec to update architecture
     2. Reject proposal → Continue with current spec as-is
-    3. Modify proposal → Adjust and re-run /specter-spec
+    3. Modify proposal → Adjust and re-run /spec-ai-spec
 
     Build workflow paused until TechnicalSpec updated.
 
     To approve and update:
-      /specter-spec {{PROJECT_NAME}} {{SPEC_NAME}} \"[your instructions based on proposal]\"
+      /spec-ai-spec {{PROJECT_NAME}} {{SPEC_NAME}} \"[your instructions based on proposal]\"
 
     To reject and proceed with current spec:
-      Re-run /specter-build {{PROJECT_NAME}} {{SPEC_NAME}} --ignore-overrides"
+      Re-run /spec-ai-build {{PROJECT_NAME}} {{SPEC_NAME}} --ignore-overrides"
 
     EXIT: Workflow suspended pending user decision
   ELSE:
@@ -302,7 +302,7 @@ ELSE:
 
 **Important Notes**:
 - Build-planner is a subagent with NO user interaction capability
-- Architectural changes MUST route through /specter-spec workflow
+- Architectural changes MUST route through /spec-ai-spec workflow
 - TechnicalSpec must remain consistent across refinement loop passes
 - Any changes to architecture, technology stack, or design decisions require spec update
 - If user rejects override, build-planner proceeds with original spec constraints
@@ -319,7 +319,7 @@ ELSE:
 - Trade-off: [Why original spec concern no longer applies]
 - Impact: [Which spec sections would need updating]
 
-**Next Action Required**: User must approve/reject via /specter-spec
+**Next Action Required**: User must approve/reject via /spec-ai-spec
 ```
 
 ### 8. Coding Loop Initialization and Refinement
@@ -327,7 +327,7 @@ Set up and execute MCP-managed code quality refinement:
 
 #### Initialize Coding Loop
 ```text
-CODING_LOOP_ID = mcp__specter__initialize_refinement_loop(loop_type='build_code')
+CODING_LOOP_ID = mcp__spec-ai__initialize_refinement_loop(loop_type='build_code')
 
 State to maintain (CRITICAL - TWO loop IDs):
 - planning_loop_id: For retrieving BuildPlan
@@ -343,7 +343,7 @@ Invoke build-coder agent with:
 - spec_name: {{SPEC_NAME}}
 
 Agent will autonomously:
-1. Read .specter/coding-standards.md (if exists, otherwise use BuildPlan Code Standards)
+1. Read .spec-ai/coding-standards.md (if exists, otherwise use BuildPlan Code Standards)
 2. Retrieve BuildPlan via MCP using planning_loop_id
 3. Retrieve TechnicalSpec via MCP
 4. Retrieve critic feedback via MCP using coding_loop_id (none on first iteration)
@@ -390,7 +390,7 @@ Expected: CriticFeedback with Overall Score and test results stored in MCP
 
 #### MCP Coding Decision
 ```text
-CODING_DECISION = mcp__specter__decide_loop_next_action(
+CODING_DECISION = mcp__spec-ai__decide_loop_next_action(
     loop_id=CODING_LOOP_ID,
     current_score=CODE_QUALITY_SCORE
 )
@@ -417,7 +417,7 @@ Proceed to Step 10.
 Retrieve BuildPlan and feedback (count=2).
 Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
 Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
-Store user feedback: mcp__specter__store_user_feedback(CODING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
+Store user feedback: mcp__spec-ai__store_user_feedback(CODING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
 Re-invoke build-coder agent.
 Re-invoke build-reviewer agent.
 Call MCP decision again.
@@ -428,8 +428,8 @@ Complete implementation workflow and update specification:
 #### Generate Implementation Summary
 ```text
 Retrieve final state:
-- BuildPlan: mcp__specter__get_build_plan_markdown(PLANNING_LOOP_ID)
-- Final Feedback: mcp__specter__get_feedback(CODING_LOOP_ID, count=1)
+- BuildPlan: mcp__spec-ai__get_build_plan_markdown(PLANNING_LOOP_ID)
+- Final Feedback: mcp__spec-ai__get_feedback(CODING_LOOP_ID, count=1)
 
 Generate IMPLEMENTATION_SUMMARY including:
 - Build Plan Quality Score: {{PLAN_QUALITY_SCORE}}%
@@ -442,7 +442,7 @@ Generate IMPLEMENTATION_SUMMARY including:
 
 #### Update TechnicalSpec
 ```text
-Update specification status and implementation details using mcp__specter__store_spec:
+Update specification status and implementation details using mcp__spec-ai__store_spec:
 
 Status: "IMPLEMENTED"
 Implementation Summary: {{IMPLEMENTATION_SUMMARY}}
@@ -473,7 +473,7 @@ Implementation artifacts:
 - BuildPlan: Available via planning_loop_id={{PLANNING_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
-- Spec Status: Updated via mcp__specter__store_spec
+- Spec Status: Updated via mcp__spec-ai__store_spec
 
 Ready for deployment."
 ```
@@ -530,7 +530,7 @@ Note: Loop decisions determined by MCP Server based on scoring and configuration
 #### TechnicalSpec Not Available
 ```text
 Display: "No technical specification found: [SPEC_NAME]"
-Suggest: "/specter-spec [PROJECT_NAME] [SPEC_NAME] to create technical specification"
+Suggest: "/spec-ai-spec [PROJECT_NAME] [SPEC_NAME] to create technical specification"
 Exit gracefully with guidance
 ```
 
@@ -608,7 +608,7 @@ All specialized work delegated to appropriate agents:
 - Agents receive both IDs and use appropriately
 
 ### Coding Standards Integration
-- build-coder reads .specter/coding-standards.md on initialization
+- build-coder reads .spec-ai/coding-standards.md on initialization
 - User-customizable coding standards applied to all generated code
 - Fallback to BuildPlan Code Standards if file doesn't exist
 
@@ -620,8 +620,8 @@ All specialized work delegated to appropriate agents:
 
 ### User Feedback During Stagnation
 - User input requested when quality plateaus (<5 points over 2 iterations)
-- User feedback stored via mcp__specter__store_user_feedback
-- Agents retrieve all feedback (critic + user) via mcp__specter__get_feedback
+- User feedback stored via mcp__spec-ai__store_user_feedback
+- Agents retrieve all feedback (critic + user) via mcp__spec-ai__get_feedback
 - User feedback takes priority over critic suggestions when conflicts exist
 
 Ready for production deployment with validated quality scores and comprehensive test coverage.

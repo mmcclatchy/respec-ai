@@ -13,7 +13,7 @@ from services.platform.tool_enums import (
     AbstractOperation,
     BuiltInTool,
     ExternalPlatformTool,
-    SpecterMCPTool,
+    SpecAITool,
 )
 from services.platform.tool_registry import ToolRegistry
 
@@ -29,9 +29,9 @@ class TestToolEnums:
         assert BuiltInTool.EDIT.value == 'Edit'
         assert BuiltInTool.TASK.value == 'Task'
 
-    def test_specter_tool_values(self) -> None:
-        assert SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP.value == 'mcp__specter__initialize_refinement_loop'
-        assert SpecterMCPTool.DECIDE_LOOP_NEXT_ACTION.value == 'mcp__specter__decide_loop_next_action'
+    def test_spec_ai_tool_values(self) -> None:
+        assert SpecAITool.INITIALIZE_REFINEMENT_LOOP.value == 'mcp__spec-ai__initialize_refinement_loop'
+        assert SpecAITool.DECIDE_LOOP_NEXT_ACTION.value == 'mcp__spec-ai__decide_loop_next_action'
 
     def test_abstract_operation_values(self) -> None:
         assert AbstractOperation.CREATE_SPEC_TOOL.value == 'create_spec_tool'
@@ -44,12 +44,12 @@ class TestToolReference:
         assert tool_ref.render() == 'Read'
 
     def test_tool_reference_render_with_parameters(self) -> None:
-        tool_ref = ToolReference(tool=BuiltInTool.READ, parameters='.specter/projects/*/specter-specs/*.md')
-        assert tool_ref.render() == 'Read(.specter/projects/*/specter-specs/*.md)'
+        tool_ref = ToolReference(tool=BuiltInTool.READ, parameters='.spec-ai/projects/*/spec-ai-specs/*.md')
+        assert tool_ref.render() == 'Read(.spec-ai/projects/*/spec-ai-specs/*.md)'
 
     def test_tool_reference_validation_file_operations(self) -> None:
         # Should work with valid path
-        ToolReference(tool=BuiltInTool.READ, parameters='.specter/projects/*/specter-specs/*.md')
+        ToolReference(tool=BuiltInTool.READ, parameters='.spec-ai/projects/*/spec-ai-specs/*.md')
 
         # Should fail with directory traversal
         with pytest.raises(ValueError, match='directory traversal'):
@@ -67,9 +67,9 @@ class TestToolReference:
         tool_ref = ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE)
         assert tool_ref.render() == 'mcp__linear-server__create_issue'
 
-    def test_tool_reference_specter_tools(self) -> None:
-        tool_ref = ToolReference(tool=SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
-        assert tool_ref.render() == 'mcp__specter__initialize_refinement_loop'
+    def test_tool_reference_spec_ai_tools(self) -> None:
+        tool_ref = ToolReference(tool=SpecAITool.INITIALIZE_REFINEMENT_LOOP)
+        assert tool_ref.render() == 'mcp__spec-ai__initialize_refinement_loop'
 
 
 class TestPlatformToolMapping:
@@ -78,7 +78,7 @@ class TestPlatformToolMapping:
             operation=AbstractOperation.CREATE_SPEC_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
             github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.specter/projects/*/specter-specs/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
         )
 
         assert mapping.operation == AbstractOperation.CREATE_SPEC_TOOL
@@ -90,7 +90,7 @@ class TestPlatformToolMapping:
         mapping = PlatformToolMapping(
             operation=AbstractOperation.CREATE_SPEC_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.specter/projects/*/specter-specs/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
         )
 
         linear_tool = mapping.get_tool_for_platform(PlatformType.LINEAR)
@@ -104,14 +104,14 @@ class TestPlatformToolMapping:
         mapping = PlatformToolMapping(
             operation=AbstractOperation.CREATE_SPEC_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.specter/projects/*/specter-specs/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
         )
 
         linear_rendered = mapping.render_tool_for_platform(PlatformType.LINEAR)
         assert linear_rendered == 'mcp__linear-server__create_issue'
 
         markdown_rendered = mapping.render_tool_for_platform(PlatformType.MARKDOWN)
-        assert markdown_rendered == 'Write(.specter/projects/*/specter-specs/*.md)'
+        assert markdown_rendered == 'Write(.spec-ai/projects/*/spec-ai-specs/*.md)'
 
         github_rendered = mapping.render_tool_for_platform(PlatformType.GITHUB)
         assert github_rendered is None
@@ -135,7 +135,7 @@ class TestPlatformToolMapping:
         # Should work with built-in tools
         mapping = PlatformToolMapping(
             operation=AbstractOperation.CREATE_SPEC_TOOL,
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.specter/projects/*/specter-specs/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
         )
         assert mapping.markdown_tool is not None
 
@@ -163,7 +163,7 @@ class TestToolRegistry:
 
         # Test Markdown platform
         markdown_tool = registry.get_tool_for_platform('create_spec_tool', PlatformType.MARKDOWN)
-        assert markdown_tool == 'Write(.specter/projects/*/specter-specs/*.md)'
+        assert markdown_tool == 'Write(.spec-ai/projects/*/spec-ai-specs/*.md)'
 
     def test_tool_registry_get_all_tools_for_platform(self) -> None:
         registry = ToolRegistry()
@@ -191,23 +191,21 @@ class TestToolRegistry:
 class TestTemplateHelpers:
     def test_template_tool_builder(self) -> None:
         builder = TemplateToolBuilder()
-        tools = (
-            builder.add_task_agent('spec-architect').add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP).build()
-        )
+        tools = builder.add_task_agent('spec-architect').add_spec_ai_tool(SpecAITool.INITIALIZE_REFINEMENT_LOOP).build()
 
         assert 'Task(spec-architect)' in tools
-        assert 'mcp__specter__initialize_refinement_loop' in tools
+        assert 'mcp__spec-ai__initialize_refinement_loop' in tools
 
     def test_template_tool_builder_yaml_rendering(self) -> None:
         builder = TemplateToolBuilder()
         yaml_output = (
             builder.add_task_agent('spec-architect')
-            .add_specter_tool(SpecterMCPTool.INITIALIZE_REFINEMENT_LOOP)
+            .add_spec_ai_tool(SpecAITool.INITIALIZE_REFINEMENT_LOOP)
             .render_yaml_tools()
         )
 
         assert '- Task(spec-architect)' in yaml_output
-        assert '- mcp__specter__initialize_refinement_loop' in yaml_output
+        assert '- mcp__spec-ai__initialize_refinement_loop' in yaml_output
 
     def test_create_spec_command_tools(self) -> None:
         # Simulate what TemplateCoordinator does for LINEAR platform
@@ -219,8 +217,8 @@ class TestTemplateHelpers:
 
         yaml_output = create_spec_command_tools(platform_tools)
 
-        assert 'Task(specter-spec-architect)' in yaml_output
-        assert 'mcp__specter__initialize_refinement_loop' in yaml_output
+        assert 'Task(spec-ai-spec-architect)' in yaml_output
+        assert 'mcp__spec-ai__initialize_refinement_loop' in yaml_output
         assert 'mcp__linear-server__create_issue' in yaml_output
 
 

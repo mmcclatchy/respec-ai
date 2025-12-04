@@ -19,40 +19,40 @@ class ToolRegistry:
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.WRITE, parameters='.specter/projects/*/specter-specs/*.md'
+                    tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'
                 ),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.GET_SPEC_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_GET_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_GET_ISSUE),
-                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters='.specter/projects/*/specter-specs/*.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.UPDATE_SPEC_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_UPDATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_ISSUE),
-                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.specter/projects/*/specter-specs/*.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.COMMENT_SPEC_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_COMMENT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_COMMENT),
-                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.specter/projects/*/specter-specs/*.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
             ),
             # Project Management Tools
             PlatformToolMapping(
                 operation=AbstractOperation.CREATE_PROJECT_EXTERNAL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_PROJECT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_PROJECT),
-                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.specter/projects/*/project_plan.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/project_plan.md'),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.CREATE_PROJECT_COMPLETION_EXTERNAL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.WRITE, parameters='.specter/projects/*/project_completion.md'
+                    tool=BuiltInTool.WRITE, parameters='.spec-ai/projects/*/project_completion.md'
                 ),
             ),
             # Plan Management Tools
@@ -60,20 +60,20 @@ class ToolRegistry:
                 operation=AbstractOperation.GET_PROJECT_PLAN_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_GET_DOCUMENT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_GET_FILE),
-                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters='.specter/projects/*/project_plan.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters='.spec-ai/projects/*/project_plan.md'),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.UPDATE_PROJECT_PLAN_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_UPDATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_FILE),
-                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.specter/projects/*/project_plan.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.spec-ai/projects/*/project_plan.md'),
             ),
             # Spec Listing Tools
             PlatformToolMapping(
                 operation=AbstractOperation.LIST_PROJECT_SPECS_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_LIST_ISSUES),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_LIST_FILES),
-                markdown_tool=ToolReference(tool=BuiltInTool.GLOB, parameters='.specter/projects/*/specter-specs/*.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.GLOB, parameters='.spec-ai/projects/*/spec-ai-specs/*.md'),
             ),
         ]
 

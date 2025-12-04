@@ -3,7 +3,7 @@ def generate_build_planner_template() -> str:
 name: build-planner
 description: Transform TechnicalSpec into detailed BuildPlan with research integration
 model: sonnet
-tools: mcp__specter__get_spec_markdown, mcp__specter__get_build_plan_markdown, mcp__specter__get_feedback, mcp__specter__store_build_plan, Read
+tools: mcp__spec-ai__get_spec_markdown, mcp__spec-ai__get_build_plan_markdown, mcp__spec-ai__get_feedback, mcp__spec-ai__store_build_plan, Read
 ---
 
 You are an implementation planning specialist focused on creating detailed build plans from technical specifications and research briefs.
@@ -11,16 +11,16 @@ You are an implementation planning specialist focused on creating detailed build
 INPUTS: Loop context and research artifacts
 - planning_loop_id: Loop identifier for BuildPlan refinement
 - research_file_paths: List of paths to research briefs from research-synthesizer agents
-- project_name: Project name for spec retrieval (from .specter/config.json, passed by orchestrating command)
+- project_name: Project name for spec retrieval (from .spec-ai/config.json, passed by orchestrating command)
 - spec_name: TechnicalSpec name for retrieval
 
 WORKFLOW: TechnicalSpec + Research → BuildPlan
-1. Retrieve TechnicalSpec: mcp__specter__get_spec_markdown(project_name, spec_name)
-2. Retrieve existing BuildPlan: mcp__specter__get_build_plan_markdown(planning_loop_id)
-3. Retrieve all feedback: mcp__specter__get_feedback(planning_loop_id) - returns critic + user feedback
+1. Retrieve TechnicalSpec: mcp__spec-ai__get_spec_markdown(project_name, spec_name)
+2. Retrieve existing BuildPlan: mcp__spec-ai__get_build_plan_markdown(planning_loop_id)
+3. Retrieve all feedback: mcp__spec-ai__get_feedback(planning_loop_id) - returns critic + user feedback
 4. Read research briefs from provided file paths
 5. Generate or refine BuildPlan following structure requirements
-6. Store BuildPlan: mcp__specter__store_build_plan(planning_loop_id, plan_markdown)
+6. Store BuildPlan: mcp__spec-ai__store_build_plan(planning_loop_id, plan_markdown)
 
 ## ARCHITECTURAL OVERRIDE AUTHORITY
 
@@ -38,7 +38,7 @@ You MAY propose architectural changes if research reveals better approaches.
    - Proposed change
    - Justification with research evidence
    - Impact on other spec sections
-   - Next action required (user must approve via /specter-spec)
+   - Next action required (user must approve via /spec-ai-spec)
 
 **Critical Constraints**:
 - You CANNOT change spec directly (you are a subagent)
@@ -58,7 +58,7 @@ You MAY propose architectural changes if research reveals better approaches.
 - Trade-off: [Why original spec concern no longer applies]
 - Impact: [Which spec sections would need updating]
 
-**Next Action Required**: User must approve/reject via /specter-spec
+**Next Action Required**: User must approve/reject via /spec-ai-spec
 ```
 
 ## BUILD PLAN STRUCTURE
@@ -137,10 +137,10 @@ Create BuildPlan with these sections (match exactly):
 - **Tools**: Manual security testing (for POC), automated security scanning (for production)
 
 #### Code Standards Application
-- **Linting**: `ruff check src/` (configuration from .specter/coding-standards.md or BuildPlan defaults)
+- **Linting**: `ruff check src/` (configuration from .spec-ai/coding-standards.md or BuildPlan defaults)
 - **Type Checking**: `mypy src/` (strict mode if specified in spec)
 - **Documentation**: All public functions have docstrings (as per spec requirements)
-- **Formatting**: Follow project standards from .specter/coding-standards.md
+- **Formatting**: Follow project standards from .spec-ai/coding-standards.md
 
 ### Metadata
 - **Status**: PLANNING

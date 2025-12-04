@@ -136,11 +136,11 @@ class TestPlatformOrchestrator:
     def test_get_available_commands(self) -> None:
         commands = self.orchestrator.get_available_commands()
 
-        assert 'specter-plan' in commands
-        assert 'specter-spec' in commands
-        assert 'specter-build' in commands
-        assert 'specter-roadmap' in commands
-        assert 'specter-plan-conversation' in commands
+        assert 'spec-ai-plan' in commands
+        assert 'spec-ai-spec' in commands
+        assert 'spec-ai-build' in commands
+        assert 'spec-ai-roadmap' in commands
+        assert 'spec-ai-plan-conversation' in commands
 
     def test_recommend_platform_for_requirements(self) -> None:
         # Requirements favoring Linear

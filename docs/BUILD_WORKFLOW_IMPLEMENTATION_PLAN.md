@@ -1,4 +1,4 @@
-# /specter-build Workflow Implementation Plan
+# /spec-ai-build Workflow Implementation Plan
 
 **Status**: Planning Complete - Ready for Implementation
 **Date**: 2025-10-22
@@ -6,14 +6,14 @@
 
 ## Overview
 
-This document outlines the complete implementation plan for the `/specter-build` command workflow. The workflow implements a dual-loop refinement system (planning loop + coding loop) that takes a TechnicalSpec and produces production-ready code following TDD methodology.
+This document outlines the complete implementation plan for the `/spec-ai-build` command workflow. The workflow implements a dual-loop refinement system (planning loop + coding loop) that takes a TechnicalSpec and produces production-ready code following TDD methodology.
 
 ## Workflow Architecture
 
 ### High-Level Flow
 
 ```text
-User: /specter-build [spec_name]
+User: /spec-ai-build [spec_name]
   ↓
 Main Agent (build_command.py)
   ├→ Retrieve TechnicalSpec
@@ -55,7 +55,7 @@ Exit
 
 #### Step 1.1: User Command Submission
 - **Actor**: User
-- **Action**: Execute `/specter-build [spec_name]`
+- **Action**: Execute `/spec-ai-build [spec_name]`
 - **Implementation**: No changes needed (command parsing handled by platform)
 
 #### Step 1.2: Main Agent Initialization
@@ -74,7 +74,7 @@ Exit
 #### Step 2.1: Retrieve TechnicalSpec
 - **Actor**: Main Agent
 - **File**: [build_command.py](services/platform/templates/commands/build_command.py)
-- **Action**: Call `mcp__specter__get_spec_markdown(project_name, spec_name)`
+- **Action**: Call `mcp__spec-ai__get_spec_markdown(project_name, spec_name)`
 - **Implementation Needed**:
   - Add error handling for non-existent spec
   - Validate spec exists before proceeding
@@ -158,7 +158,7 @@ Each research-synthesizer returns a file path:
 #### Step 4.1: Initialize Planning Refinement Loop
 - **Actor**: Main Agent
 - **File**: [build_command.py](services/platform/templates/commands/build_command.py)
-- **Action**: Call `mcp__specter__initialize_refinement_loop(loop_type='build_plan')`
+- **Action**: Call `mcp__spec-ai__initialize_refinement_loop(loop_type='build_plan')`
 - **Implementation Needed**:
   - Store returned `planning_loop_id` in Main Agent state
   - This ID will be passed to all planning agents
@@ -169,12 +169,12 @@ Each research-synthesizer returns a file path:
 - **Action**: Create BuildPlan from TechnicalSpec + research briefs
 
 **Agent Workflow**:
-1. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
-2. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)` (empty if first iteration)
-3. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(planning_loop_id)` (none if first iteration)
+1. Retrieve TechnicalSpec via `mcp__spec-ai__get_spec_markdown(project_name, spec_name)`
+2. Retrieve BuildPlan via `mcp__spec-ai__get_build_plan_markdown(planning_loop_id)` (empty if first iteration)
+3. Retrieve previous critic feedback via `mcp__spec-ai__get_critic_feedback(planning_loop_id)` (none if first iteration)
 4. Read research briefs from file paths (provided as agent parameter)
 5. Generate BuildPlan markdown matching [BuildPlan structure](services/models/build_plan.py)
-6. Store BuildPlan via `mcp__specter__store_build_plan(planning_loop_id, plan_markdown)`
+6. Store BuildPlan via `mcp__spec-ai__store_build_plan(planning_loop_id, plan_markdown)`
 7. Exit
 
 **Agent Inputs** (passed by Main Agent):
@@ -184,10 +184,10 @@ Each research-synthesizer returns a file path:
 - `spec_name` (for TechnicalSpec retrieval)
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__specter__get_spec_markdown`
-- `mcp__specter__get_build_plan_markdown`
-- `mcp__specter__get_critic_feedback`
-- `mcp__specter__store_build_plan`
+- `mcp__spec-ai__get_spec_markdown`
+- `mcp__spec-ai__get_build_plan_markdown`
+- `mcp__spec-ai__get_critic_feedback`
+- `mcp__spec-ai__store_build_plan`
 - `Read` (for reading research briefs)
 
 **Instructions Focus**:
@@ -201,13 +201,13 @@ Each research-synthesizer returns a file path:
 - **Action**: Assess BuildPlan quality against FSDD criteria
 
 **Agent Workflow**:
-1. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)`
-2. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(planning_loop_id)` (to track progress)
-3. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
+1. Retrieve BuildPlan via `mcp__spec-ai__get_build_plan_markdown(planning_loop_id)`
+2. Retrieve previous critic feedback via `mcp__spec-ai__get_critic_feedback(planning_loop_id)` (to track progress)
+3. Retrieve TechnicalSpec via `mcp__spec-ai__get_spec_markdown(project_name, spec_name)`
 4. Critique plan against FSDD criteria
 5. Determine score (0-100, threshold: 80%)
 6. Generate CriticFeedback markdown (score, assessment, issues, recommendations)
-7. Store feedback via `mcp__specter__store_critic_feedback(planning_loop_id, feedback_markdown)`
+7. Store feedback via `mcp__spec-ai__store_critic_feedback(planning_loop_id, feedback_markdown)`
 8. Exit
 
 **Agent Inputs** (passed by Main Agent):
@@ -216,10 +216,10 @@ Each research-synthesizer returns a file path:
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__specter__get_build_plan_markdown`
-- `mcp__specter__get_critic_feedback`
-- `mcp__specter__get_spec_markdown`
-- `mcp__specter__store_critic_feedback`
+- `mcp__spec-ai__get_build_plan_markdown`
+- `mcp__spec-ai__get_critic_feedback`
+- `mcp__spec-ai__get_spec_markdown`
+- `mcp__spec-ai__store_critic_feedback`
 
 **FSDD Criteria for Assessment** (80% threshold):
 - Plan completeness (all BuildPlan sections populated)
@@ -252,7 +252,7 @@ Each research-synthesizer returns a file path:
 
 #### Step 4.4: MCP Loop Decision
 - **Actor**: MCP Server
-- **Action**: Call `mcp__specter__decide_loop_next_action(planning_loop_id, current_score)`
+- **Action**: Call `mcp__spec-ai__decide_loop_next_action(planning_loop_id, current_score)`
 - **Implementation**: Already exists (no changes needed)
 - **Returns**: MCPResponse with status:
   - `refine` if score < 80%
@@ -283,7 +283,7 @@ Each research-synthesizer returns a file path:
   - Options for proceeding with pros/cons
   - Recommendation
 - Collect user feedback
-- Store user feedback via `mcp__specter__store_user_feedback(planning_loop_id, feedback_markdown)` (**NEW TOOL NEEDED**)
+- Store user feedback via `mcp__spec-ai__store_user_feedback(planning_loop_id, feedback_markdown)` (**NEW TOOL NEEDED**)
 - Re-invoke build_planner with user feedback available
 
 **Maximum Iterations**: 5 (per `FSDD_LOOP_BUILD_PLAN_MAX_ITERATIONS`)
@@ -295,7 +295,7 @@ Each research-synthesizer returns a file path:
 #### Step 5.1: Initialize Coding Refinement Loop
 - **Actor**: Main Agent
 - **File**: [build_command.py](services/platform/templates/commands/build_command.py)
-- **Action**: Call `mcp__specter__initialize_refinement_loop(loop_type='build_code')`
+- **Action**: Call `mcp__spec-ai__initialize_refinement_loop(loop_type='build_code')`
 - **Implementation Needed**:
   - Store returned `coding_loop_id` in Main Agent state
   - Main Agent now maintains TWO loop IDs: `planning_loop_id` + `coding_loop_id`
@@ -306,11 +306,11 @@ Each research-synthesizer returns a file path:
 - **Action**: Implement code following TDD methodology (tests first, then implementation)
 
 **Agent Workflow**:
-1. Read coding standards from `.specter/coding-standards.md` (if exists, otherwise use BuildPlan Code Standards)
-2. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-3. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
-4. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(coding_loop_id)` (if any)
-5. Retrieve user feedback via `mcp__specter__get_user_feedback(coding_loop_id)` (if any)
+1. Read coding standards from `.spec-ai/coding-standards.md` (if exists, otherwise use BuildPlan Code Standards)
+2. Retrieve BuildPlan via `mcp__spec-ai__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
+3. Retrieve TechnicalSpec via `mcp__spec-ai__get_spec_markdown(project_name, spec_name)`
+4. Retrieve previous critic feedback via `mcp__spec-ai__get_critic_feedback(coding_loop_id)` (if any)
+5. Retrieve user feedback via `mcp__spec-ai__get_user_feedback(coding_loop_id)` (if any)
 6. Check current state of implementation (file system inspection via Read/Glob)
 7. Create TodoList of actions to take (using TodoWrite tool)
 8. Execute todo list following TDD (applying coding standards to all code):
@@ -329,10 +329,10 @@ Each research-synthesizer returns a file path:
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__specter__get_build_plan_markdown`
-- `mcp__specter__get_spec_markdown`
-- `mcp__specter__get_critic_feedback`
-- `mcp__specter__get_user_feedback` (**NEW TOOL NEEDED**)
+- `mcp__spec-ai__get_build_plan_markdown`
+- `mcp__spec-ai__get_spec_markdown`
+- `mcp__spec-ai__get_critic_feedback`
+- `mcp__spec-ai__get_user_feedback` (**NEW TOOL NEEDED**)
 - `Write`, `Edit`, `Read`, `Glob`
 - `Bash` (pytest, mypy, ruff, git)
 - `TodoWrite` (for task tracking)
@@ -355,9 +355,9 @@ Each research-synthesizer returns a file path:
 - **Action**: Review code quality, test coverage, alignment with BuildPlan/TechnicalSpec
 
 **Agent Workflow**:
-1. Retrieve BuildPlan via `mcp__specter__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-2. Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
-3. Retrieve previous critic feedback via `mcp__specter__get_critic_feedback(coding_loop_id)` (to track progress)
+1. Retrieve BuildPlan via `mcp__spec-ai__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
+2. Retrieve TechnicalSpec via `mcp__spec-ai__get_spec_markdown(project_name, spec_name)`
+3. Retrieve previous critic feedback via `mcp__spec-ai__get_critic_feedback(coding_loop_id)` (to track progress)
 4. Inspect codebase (file system inspection via Read/Glob)
 5. Run static analysis (Bash: mypy, ruff)
 6. Run tests (Bash: pytest --cov)
@@ -371,7 +371,7 @@ Each research-synthesizer returns a file path:
    - No regressions from previous iteration
 8. Determine score (0-100, threshold: 95%)
 9. Generate CriticFeedback markdown (score, assessment, issues, recommendations)
-10. Store feedback via `mcp__specter__store_critic_feedback(coding_loop_id, feedback_markdown)`
+10. Store feedback via `mcp__spec-ai__store_critic_feedback(coding_loop_id, feedback_markdown)`
 11. Exit
 
 **Agent Inputs** (passed by Main Agent):
@@ -381,12 +381,12 @@ Each research-synthesizer returns a file path:
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__specter__get_build_plan_markdown`
-- `mcp__specter__get_spec_markdown`
-- `mcp__specter__get_critic_feedback`
+- `mcp__spec-ai__get_build_plan_markdown`
+- `mcp__spec-ai__get_spec_markdown`
+- `mcp__spec-ai__get_critic_feedback`
 - `Read`, `Glob`
 - `Bash` (pytest, mypy, ruff)
-- `mcp__specter__store_critic_feedback`
+- `mcp__spec-ai__store_critic_feedback`
 
 **95% Threshold Calibration**:
 Score breakdown (suggested weighting):
@@ -401,7 +401,7 @@ Score breakdown (suggested weighting):
 
 #### Step 5.4: MCP Loop Decision (Coding Phase)
 - **Actor**: MCP Server
-- **Action**: Call `mcp__specter__decide_loop_next_action(coding_loop_id, current_score)`
+- **Action**: Call `mcp__spec-ai__decide_loop_next_action(coding_loop_id, current_score)`
 - **Implementation**: Already exists (no changes needed)
 - **Returns**: MCPResponse with status:
   - `refine` if score < 95%
@@ -433,7 +433,7 @@ Score breakdown (suggested weighting):
   - Options for proceeding with pros/cons
   - Recommendation
 - Collect user feedback
-- Store user feedback via `mcp__specter__store_user_feedback(coding_loop_id, feedback_markdown)` (**NEW TOOL NEEDED**)
+- Store user feedback via `mcp__spec-ai__store_user_feedback(coding_loop_id, feedback_markdown)` (**NEW TOOL NEEDED**)
 - Re-invoke build_coder with user feedback available
 
 **Maximum Iterations**: 5 (per `FSDD_LOOP_BUILD_CODE_MAX_ITERATIONS`)
@@ -449,12 +449,12 @@ Score breakdown (suggested weighting):
 - **File**: [build_command.py](services/platform/templates/commands/build_command.py)
 - **Action**: Update TechnicalSpec with implementation completion status
 - **Implementation Needed**:
-  - Retrieve TechnicalSpec via `mcp__specter__get_spec_markdown(project_name, spec_name)`
+  - Retrieve TechnicalSpec via `mcp__spec-ai__get_spec_markdown(project_name, spec_name)`
   - Update `spec_status` field to `IMPLEMENTED`
   - Optionally add metadata fields:
     - `build_planning_score`: final planning loop score
     - `build_coding_score`: final coding loop score
-  - Store updated spec via `mcp__specter__store_spec(project_name, spec_name, updated_markdown)`
+  - Store updated spec via `mcp__spec-ai__store_spec(project_name, spec_name, updated_markdown)`
 
 **Note**: Do NOT increment `iteration` field - that tracks spec refinement, not build implementation.
 
@@ -501,7 +501,7 @@ Aggregate data:
 - Files created/modified (from git log or file system inspection)
 - Test results (pass/fail counts, coverage)
 
-Generate simple markdown summary (no need to overcomplicate).
+Generate simple markdown summary (no need to over-complicate).
 
 #### Step 6.4: Present Completion to User
 - **Actor**: Main Agent
@@ -581,8 +581,8 @@ async def get_user_feedback(
 All agent templates follow the established pattern from `roadmap.py`:
 
 **Two Categories of Tools**:
-1. **MCP Specter Tools**: Explicitly defined in frontmatter (always the same regardless of platform)
-   - Example: `mcp__specter__get_spec_markdown`, `mcp__specter__store_build_plan`
+1. **MCP SpecAI Tools**: Explicitly defined in frontmatter (always the same regardless of platform)
+   - Example: `mcp__spec-ai__get_spec_markdown`, `mcp__spec-ai__store_build_plan`
    - These are hardcoded in the agent frontmatter
 
 2. **Platform-Specific Tools**: Injected via function parameter (varies by platform: Linear/GitHub/Markdown)
@@ -600,14 +600,14 @@ class MyAgentTools(BaseModel):
 def generate_my_agent_template(tools: MyAgentTools) -> str:
     return f'''---
 tools:
-  - mcp__specter__some_tool
+  - mcp__spec-ai__some_tool
   - {tools.platform_tool_name}  # Dynamically rendered
 ---'''
 ```
 
 **When to Use**:
 - Use `AgentTools` parameter **only if** agent needs platform-specific operations (creating issues, updating tasks, etc.)
-- Agents that only use MCP Specter tools + built-in tools (Read, Write, Bash) don't need tools parameter
+- Agents that only use MCP SpecAI tools + built-in tools (Read, Write, Bash) don't need tools parameter
 - build_coder needs platform tools (updating task status), build_planner does not
 
 ---
@@ -619,11 +619,11 @@ tools:
 **Frontmatter Tools**:
 ```yaml
 tools:
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_critic_feedback
-  - mcp__specter__get_user_feedback
-  - mcp__specter__store_build_plan
+  - mcp__spec-ai__get_spec_markdown
+  - mcp__spec-ai__get_build_plan_markdown
+  - mcp__spec-ai__get_critic_feedback
+  - mcp__spec-ai__get_user_feedback
+  - mcp__spec-ai__store_build_plan
   - Read
 ```
 
@@ -652,10 +652,10 @@ tools:
 **Frontmatter Tools**:
 ```yaml
 tools:
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_critic_feedback
-  - mcp__specter__store_critic_feedback
+  - mcp__spec-ai__get_build_plan_markdown
+  - mcp__spec-ai__get_spec_markdown
+  - mcp__spec-ai__get_critic_feedback
+  - mcp__spec-ai__store_critic_feedback
   - Read
 ```
 
@@ -700,10 +700,10 @@ def generate_build_coder_template(tools: BuildCoderAgentTools) -> str:
 **Frontmatter Tools** (dual architecture - MCP + Platform):
 ```yaml
 tools:
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_critic_feedback
-  - mcp__specter__get_user_feedback
+  - mcp__spec-ai__get_build_plan_markdown
+  - mcp__spec-ai__get_spec_markdown
+  - mcp__spec-ai__get_critic_feedback
+  - mcp__spec-ai__get_user_feedback
   - Write
   - Edit
   - Read
@@ -746,10 +746,10 @@ tools:
 **Frontmatter Tools**:
 ```yaml
 tools:
-  - mcp__specter__get_build_plan_markdown
-  - mcp__specter__get_spec_markdown
-  - mcp__specter__get_critic_feedback
-  - mcp__specter__store_critic_feedback
+  - mcp__spec-ai__get_build_plan_markdown
+  - mcp__spec-ai__get_spec_markdown
+  - mcp__spec-ai__get_critic_feedback
+  - mcp__spec-ai__store_critic_feedback
   - Read
   - Glob
   - Bash
@@ -820,7 +820,7 @@ Main Agent collects paths into list.
 2. build_planner agent executes autonomously (retrieve → process → store → exit)
 3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., spec_name=...)
 4. build_critic agent executes autonomously (retrieve → process → store → exit)
-5. Main Agent calls MCP tool: mcp__specter__decide_loop_next_action(planning_loop_id, current_score)
+5. Main Agent calls MCP tool: mcp__spec-ai__decide_loop_next_action(planning_loop_id, current_score)
 6. Main Agent receives MCPResponse with decision and acts:
    - If status="refine": Go to step 1 (repeat loop)
    - If status="complete": Exit planning loop, proceed to coding loop
@@ -835,7 +835,7 @@ Main Agent collects paths into list.
 2. build_coder agent executes autonomously (retrieve → process → store → exit)
 3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
 4. build_reviewer agent executes autonomously (retrieve → process → store → exit)
-5. Main Agent calls MCP tool: mcp__specter__decide_loop_next_action(coding_loop_id, current_score)
+5. Main Agent calls MCP tool: mcp__spec-ai__decide_loop_next_action(coding_loop_id, current_score)
 6. Main Agent receives MCPResponse with decision and acts:
    - If status="refine": Go to step 1 (repeat loop)
    - If status="complete": Exit coding loop, proceed to integration phase
@@ -852,7 +852,7 @@ When MCP returns status="user_input" (stagnation detected):
    - Planning loop: Save BuildPlan via platform tools (Linear/GitHub/Markdown)
    - Coding loop: Ensure latest code committed (should already be done by build_coder)
 
-2. Main Agent retrieves critic feedback via mcp__specter__get_critic_feedback(loop_id)
+2. Main Agent retrieves critic feedback via mcp__spec-ai__get_critic_feedback(loop_id)
 
 3. Main Agent presents to user:
    - Current state recap (iteration count, current score, previous score)
@@ -864,7 +864,7 @@ When MCP returns status="user_input" (stagnation detected):
    - Selected option
    - Additional feedback/guidance
 
-5. Main Agent stores user feedback via mcp__specter__store_user_feedback(loop_id, feedback_markdown)
+5. Main Agent stores user feedback via mcp__spec-ai__store_user_feedback(loop_id, feedback_markdown)
 
 6. Loop continues - next agent invocation will retrieve user feedback autonomously
 ```
@@ -986,7 +986,7 @@ When MCP returns status="user_input" (stagnation detected):
 - Platform updates (Linear, GitHub, Markdown)
 
 ### End-to-End Tests
-- Complete /specter-build workflow from command to completion
+- Complete /spec-ai-build workflow from command to completion
 - User input scenarios (planning stagnation, coding stagnation)
 - Multiple research items (parallel execution)
 - All three platforms (Linear, GitHub, Markdown)
@@ -996,7 +996,7 @@ When MCP returns status="user_input" (stagnation detected):
 ## Success Criteria
 
 ### Workflow Execution
-- ✅ User can invoke `/specter-build [spec_name]`
+- ✅ User can invoke `/spec-ai-build [spec_name]`
 - ✅ Research synthesis executes in parallel
 - ✅ Planning loop refines to 80% quality
 - ✅ Coding loop refines to 95% quality
@@ -1065,7 +1065,7 @@ When MCP returns status="user_input" (stagnation detected):
 - [services/models/spec.py](services/models/spec.py) - TechnicalSpec model
 - [services/mcp/tools/build_plan_tools.py](services/mcp/tools/build_plan_tools.py) - BuildPlan MCP tools
 - [services/platform/templates/commands/build_command.py](services/platform/templates/commands/build_command.py) - Main command
-- [docs/commands/specter-build.md](docs/commands/specter-build.md) - Command specification
+- [docs/commands/spec-ai-build.md](docs/commands/spec-ai-build.md) - Command specification
 - [docs/WORKFLOW_REFACTORING_LESSONS.md](docs/WORKFLOW_REFACTORING_LESSONS.md) - Design patterns
 
 ### Files to Create

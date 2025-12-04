@@ -203,7 +203,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
         updating an existing spec.
 
         Parameters:
-        - project_name: Project identifier from .specter/config.json
+        - project_name: Project identifier from .spec-ai/config.json
         - spec_name: Name/phase of the specification
         - spec_markdown: Complete specification in markdown format
 
@@ -228,7 +228,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
         iteration and version.
 
         Parameters:
-        - project_name: Project identifier from .specter/config.json
+        - project_name: Project identifier from .spec-ai/config.json
         - spec_name: Name/phase of the specification to update
         - updated_markdown: Complete updated specification in markdown format
 
@@ -255,7 +255,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
         2. By project_name + spec_name: Retrieves spec directly from storage
 
         Parameters:
-        - project_name: Project identifier from .specter/config.json (required if not using loop_id)
+        - project_name: Project identifier from .spec-ai/config.json (required if not using loop_id)
         - spec_name: Spec name (required if not using loop_id)
         - loop_id: Loop identifier (alternative to project_name + spec_name)
 
@@ -276,7 +276,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
         """List all specifications for a project.
 
         Parameters:
-        - project_name: Project identifier from .specter/config.json
+        - project_name: Project identifier from .spec-ai/config.json
 
         Returns:
         - MCPResponse: Contains list of spec names in message field
@@ -298,7 +298,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
         If exactly one match found, returns it as canonical_name.
 
         Parameters:
-        - project_name: Project identifier from .specter/config.json
+        - project_name: Project identifier from .spec-ai/config.json
         - partial_name: Partial or full spec name to search for
 
         Returns:
@@ -326,7 +326,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
         """Delete a specification from storage.
 
         Parameters:
-        - project_name: Project identifier from .specter/config.json
+        - project_name: Project identifier from .spec-ai/config.json
         - spec_name: Spec name to delete
 
         Returns:
@@ -350,7 +350,7 @@ def register_spec_tools(mcp: FastMCP) -> None:
 
         Parameters:
         - loop_id: Active loop identifier
-        - project_name: Project identifier from .specter/config.json
+        - project_name: Project identifier from .spec-ai/config.json
         - spec_name: Spec name to link
 
         Returns:

@@ -10,10 +10,10 @@ def generate_create_spec_template(tools: CreateSpecAgentTools) -> str:
         tools: CreateSpecAgentTools containing platform-specific tool names
     """
     return f"""---
-name: specter-create-spec
+name: spec-ai-create-spec
 description: Extract sparse TechnicalSpecs from roadmap and save to platform
 model: sonnet
-tools: mcp__specter__get_roadmap, mcp__specter__store_spec, mcp__specter__get_spec, mcp__specter__update_spec, {tools.create_spec_tool}, {tools.get_spec_tool}, {tools.update_spec_tool}
+tools: mcp__spec-ai__get_roadmap, mcp__spec-ai__store_spec, mcp__spec-ai__get_spec, mcp__spec-ai__update_spec, {tools.create_spec_tool}, {tools.get_spec_tool}, {tools.update_spec_tool}
 ---
 
 ═══════════════════════════════════════════════
@@ -22,12 +22,12 @@ TOOL INVOCATION
 You have access to MCP tools AND platform-specific tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: roadmap = mcp__specter__get_roadmap(project_name="rag-poc")
+  ✅ CORRECT: roadmap = mcp__spec-ai__get_roadmap(project_name="rag-poc")
   ✅ CORRECT: {tools.create_spec_tool_interpolated}
-  ❌ WRONG: <mcp__specter__get_roadmap><project_name>rag-poc</project_name>
+  ❌ WRONG: <mcp__spec-ai__get_roadmap><project_name>rag-poc</project_name>
 
 Platform tools vary by configured platform:
-  - Markdown: Write/Read/Edit for .specter/projects/{{project_name}}/specter-specs/{{lowercase-kebab-spec-name}}.md
+  - Markdown: Write/Read/Edit for .spec-ai/projects/{{project_name}}/spec-ai-specs/{{lowercase-kebab-spec-name}}.md
   - Linear: mcp__linear-server__create_issue, get_issue, update_issue
   - GitHub: mcp__github__create_issue, get_issue, update_issue
 
@@ -51,7 +51,7 @@ INPUTS: Phase-specific context for spec extraction (passed by orchestrating comm
 - loop_id: Refinement loop identifier (optional, for tracking)
 
 SETUP: Roadmap Retrieval and Dual Storage
-1. Use mcp__specter__get_roadmap(project_name) to retrieve complete roadmap
+1. Use mcp__spec-ai__get_roadmap(project_name) to retrieve complete roadmap
 2. The roadmap contains sparse TechnicalSpec objects (iteration=0) already created by roadmap agent
 3. **Your job**: Extract the correct TechnicalSpec and save it to BOTH storage locations:
    - MCP storage for internal tracking
@@ -62,7 +62,7 @@ TASKS:
 **Simple Extraction and Save - Should complete in seconds**
 
 STEP 1: Retrieve Roadmap
-CALL mcp__specter__get_roadmap(project_name=PROJECT_NAME)
+CALL mcp__spec-ai__get_roadmap(project_name=PROJECT_NAME)
 → Verify: Received roadmap markdown
 → Verify: Roadmap contains phases
 → If failed: STOP and report error
@@ -74,7 +74,7 @@ From roadmap markdown, extract the TechnicalSpec matching SPEC_NAME
 → If not found: STOP and report error
 
 STEP 3: Store in MCP (REQUIRED)
-CALL mcp__specter__store_spec(
+CALL mcp__spec-ai__store_spec(
   project_name=PROJECT_NAME,
   spec_name=SPEC_NAME,
   spec_markdown=extracted_spec_markdown
@@ -93,7 +93,7 @@ Save spec to configured platform using platform-specific tool.
 CALL {tools.create_spec_tool_interpolated}
 
 Platform-specific examples:
-  - Markdown: Write(.specter/projects/PROJECT_NAME/specter-specs/lowercase-kebab-spec-name.md, extracted_spec_markdown)
+  - Markdown: Write(.spec-ai/projects/PROJECT_NAME/spec-ai-specs/lowercase-kebab-spec-name.md, extracted_spec_markdown)
   - Linear: mcp__linear-server__create_issue(title=SPEC_NAME, description=extracted_spec_markdown, ...)
   - GitHub: mcp__github__create_issue(title=SPEC_NAME, body=extracted_spec_markdown, ...)
 
@@ -116,9 +116,9 @@ Generate creation confirmation ONLY if both storage operations succeeded:
 Spec Created Successfully:
 - **Project**: [project_name]
 - **Spec Name**: [spec_name from TechnicalSpec]
-- **MCP Storage**: ✅ Stored using mcp__specter__store_spec(project_name, spec_name, spec_markdown)
+- **MCP Storage**: ✅ Stored using mcp__spec-ai__store_spec(project_name, spec_name, spec_markdown)
 - **Platform Storage**: ✅ Saved using {tools.create_spec_tool_interpolated}
-- **Status**: Ready for /specter-spec workflow
+- **Status**: Ready for /spec-ai-spec workflow
 
 If MCP storage fails, report failure and stop.
 If platform storage fails, report partial success with MCP storage complete but platform save failed.
@@ -236,7 +236,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 - Verify all critical phase information extracted successfully
 - Validate TechnicalSpec structure completeness and accuracy
 - Confirm alignment between phase context and specification
-- Ensure specification provides adequate guidance for /specter-spec command execution
+- Ensure specification provides adequate guidance for /spec-ai-spec command execution
 
 #### Specification Readiness Assessment
 - Check that TechnicalSpec contains actionable technical guidance

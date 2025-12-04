@@ -45,7 +45,7 @@ argument-hint: [plan-name] [spec-name] [optional: instructions]
 description: Transform strategic plans into detailed technical specifications
 ---
 
-# /specter-spec Command: Technical Specification Creation
+# /spec-ai-spec Command: Technical Specification Creation
 
 ## Overview
 Transform strategic plans into detailed technical specifications through quality-driven refinement. This command orchestrates technical architecture design, research integration, and platform-specific specification storage.
@@ -53,7 +53,7 @@ Transform strategic plans into detailed technical specifications through quality
 ## Primary Responsibilities
 
 ### 1. Initialize Technical Design Process
-- Retrieve strategic plan from previous `/specter-plan` phase
+- Retrieve strategic plan from previous `/spec-ai-plan` phase
 - Launch spec-architect agent for technical architecture development
 - Initialize MCP refinement loop for specification phase
 
@@ -75,7 +75,7 @@ Transform strategic plans into detailed technical specifications through quality
 ## Orchestration Pattern
 
 ```text
-Main Agent (via /specter-spec)
+Main Agent (via /spec-ai-spec)
     │
     ├── 1. Retrieve Strategic Plan
     │   └── Access plan from previous phase or user input
@@ -106,17 +106,17 @@ PLAN_NAME = [first argument from command - the plan name]
 SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
 OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
 
-Read .specter/config.json
+Read .spec-ai/config.json
 PROJECT_NAME = config["project_name"]
 
 # Step 1.2: Search file system for matching spec files
-SPEC_GLOB_PATTERN = ".specter/projects/{{PROJECT_NAME}}/specter-specs/{{SPEC_NAME_PARTIAL}}*.md"
+SPEC_GLOB_PATTERN = ".spec-ai/projects/{{PROJECT_NAME}}/spec-ai-specs/{{SPEC_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 
 # Step 1.3: Handle multiple matches
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the spec name or check .specter/projects/{{PROJECT_NAME}}/specter-specs/"
+  SUGGEST: "Verify the spec name or check .spec-ai/projects/{{PROJECT_NAME}}/spec-ai-specs/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
@@ -143,7 +143,7 @@ ELSE:
   SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
 
 # Step 1.4: Extract canonical name from file path
-# Extract: ".specter/projects/X/specter-specs/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
+# Extract: ".spec-ai/projects/X/spec-ai-specs/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
 SPEC_NAME = [basename of SPEC_FILE_PATH without .md extension]
 
 Display to user: "✓ Located spec file: {{SPEC_NAME}}"
@@ -163,16 +163,16 @@ Load spec and plan from file system, store in MCP:
 
 ```text
 # Step 2.1: Read documents using canonical names
-PLAN_MARKDOWN = Read(.specter/projects/{{PLAN_NAME}}/project_plan.md)
+PLAN_MARKDOWN = Read(.spec-ai/projects/{{PLAN_NAME}}/project_plan.md)
 SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
 
 # Step 2.2: Store in MCP using canonical spec name
-mcp__specter__store_project_plan(
+mcp__spec-ai__store_project_plan(
   project_name=PLAN_NAME,
   project_plan_markdown=PLAN_MARKDOWN
 )
 
-mcp__specter__store_spec(
+mcp__spec-ai__store_spec(
   project_name=PROJECT_NAME,
   spec_name=SPEC_NAME,
   spec_markdown=SPEC_MARKDOWN
@@ -192,7 +192,7 @@ Verify spec is correctly stored in MCP with canonical name:
 
 ```text
 # Call resolve_spec_name for validation only
-RESOLVE_RESULT = mcp__specter__resolve_spec_name(
+RESOLVE_RESULT = mcp__spec-ai__resolve_spec_name(
   project_name=PROJECT_NAME,
   partial_name=SPEC_NAME
 )
@@ -216,15 +216,15 @@ Initialize MCP refinement loop and retrieve strategic plan:
 
 ```text
 # Initialize MCP refinement loop
-mcp__specter__initialize_refinement_loop:
+mcp__spec-ai__initialize_refinement_loop:
   loop_type: "spec"
 
 # Retrieve strategic plan using PLAN_NAME argument
-STRATEGIC_PLAN_MARKDOWN = mcp__specter__get_project_plan_markdown(project_name=PLAN_NAME)
+STRATEGIC_PLAN_MARKDOWN = mcp__spec-ai__get_project_plan_markdown(project_name=PLAN_NAME)
 
 IF STRATEGIC_PLAN_MARKDOWN not found:
   ERROR: "No strategic plan found: [PLAN_NAME]"
-  SUGGEST: "Run '/specter-plan [PLAN_NAME]' to create strategic plan first"
+  SUGGEST: "Run '/spec-ai-plan [PLAN_NAME]' to create strategic plan first"
   EXIT: Graceful failure with guidance
 ```
 
@@ -243,14 +243,14 @@ IF LOOP_ID is None or LOOP_ID == "":
     EXIT: Workflow terminated
 
 # Link loop to spec for agents to retrieve via loop_id only
-mcp__specter__link_loop_to_spec(
+mcp__spec-ai__link_loop_to_spec(
   loop_id=LOOP_ID,
   project_name=PROJECT_NAME,
   spec_name=SPEC_NAME
 )
 
 # Verify the link was created
-LOOP_STATUS = mcp__specter__get_loop_status(loop_id=LOOP_ID)
+LOOP_STATUS = mcp__spec-ai__get_loop_status(loop_id=LOOP_ID)
 
 IF LOOP_STATUS does not show linked spec:
     CRITICAL ERROR: "Loop linking failed - spec-architect and spec-critic will fail"
@@ -276,7 +276,7 @@ ARCHIVE_SCAN_RESULTS = Bash: ~/.claude/scripts/research-advisor-archive-scan.sh 
 STRATEGIC_PLAN_SUMMARY = [strategic plan content: STRATEGIC_PLAN_MARKDOWN retrieved in Step 4]
 
 # Invoke spec-architect agent
-Invoke: specter-spec-architect
+Invoke: spec-ai-spec-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
@@ -307,7 +307,7 @@ Display to user: "✓ Specification refined by spec-architect"
 #### Step 6a: Invoke Spec-Critic Agent
 
 ```text
-Invoke: specter-spec-critic
+Invoke: spec-ai-spec-critic
 Input:
   - project_name: PROJECT_NAME
   - loop_id: LOOP_ID
@@ -324,7 +324,7 @@ Spec-critic will:
 **MCP Server handles score extraction and loop decision internally.**
 
 ```text
-LOOP_DECISION_RESPONSE = mcp__specter__decide_loop_next_action(loop_id=LOOP_ID)
+LOOP_DECISION_RESPONSE = mcp__spec-ai__decide_loop_next_action(loop_id=LOOP_ID)
 # Returns: {{status: "COMPLETE|REFINE|USER_INPUT", loop_id: "abc123", iteration: N}}
 
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
@@ -348,7 +348,7 @@ Return to Step 5 (spec-architect will retrieve feedback from MCP itself)
 #### If LOOP_DECISION == "USER_INPUT"
 # Step 6.5: Check for Decomposition Requirement
 # Retrieve latest feedback to check for decomposition indicators
-LATEST_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=1)
+LATEST_FEEDBACK = mcp__spec-ai__get_feedback(loop_id=LOOP_ID, count=1)
 
 # Check if decomposition is required based on feedback markers
 IF "DECOMPOSITION_REQUIRED" in LATEST_FEEDBACK or "SCOPE_CREEP" in LATEST_FEEDBACK:
@@ -362,7 +362,7 @@ IF "DECOMPOSITION_REQUIRED" in LATEST_FEEDBACK or "SCOPE_CREEP" in LATEST_FEEDBA
   Recommended: Break into 3-5 focused phases
 
   **Next Steps:**
-  1. Run: /specter-roadmap [PROJECT_NAME]
+  1. Run: /spec-ai-roadmap [PROJECT_NAME]
   2. This will analyze the current spec and create multiple smaller specs
   3. Each resulting spec will be appropriately scoped
 
@@ -393,7 +393,7 @@ Proceed to Step 8.
 Retrieve the specification from MCP storage (which has immutable fields preserved by update_spec):
 
 ```text
-FINAL_SPEC_RESPONSE = mcp__specter__get_spec_markdown(
+FINAL_SPEC_RESPONSE = mcp__spec-ai__get_spec_markdown(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     loop_id=None
@@ -470,11 +470,11 @@ IF no strategic plan available:
   ERROR_RESPONSE = {{
     "error_type": "missing_plan",
     "error_message": "No strategic plan found for technical specification",
-    "recovery_action": "Prompting user for plan location or /specter-plan execution",
-    "user_guidance": "Please provide the strategic plan document path or run /specter-plan command first",
+    "recovery_action": "Prompting user for plan location or /spec-ai-plan execution",
+    "user_guidance": "Please provide the strategic plan document path or run /spec-ai-plan command first",
     "partial_output": "Technical specification template prepared"
   }}
-  → Request plan location OR suggest: "Run /specter-plan [project-name] to create strategic plan first"
+  → Request plan location OR suggest: "Run /spec-ai-plan [project-name] to create strategic plan first"
 ```
 
 #### 2. Archive Scanning Failure
@@ -492,7 +492,7 @@ IF ~/.claude/scripts/research-advisor-archive-scan.sh fails:
 
 #### 3. MCP Loop State Errors
 ```text
-IF mcp__specter__* tools unavailable:
+IF mcp__spec-ai__* tools unavailable:
   ERROR_RESPONSE = {{
     "error_type": "mcp_error",
     "error_message": "MCP loop state management unavailable", 
@@ -509,7 +509,7 @@ IF platform storage tool fails:
   ERROR_RESPONSE = {{
     "error_type": "storage_failure",
     "error_message": "Failed to store specification in configured platform",
-    "recovery_action": "Saving to local Markdown backup at docs/specter-specs/[timestamp]-spec.md",
+    "recovery_action": "Saving to local Markdown backup at docs/spec-ai-specs/[timestamp]-spec.md",
     "user_guidance": "Platform storage failed. Specification saved locally. Check platform connectivity and configuration.",
     "partial_output": "Complete technical specification document"
   }}
@@ -618,5 +618,5 @@ Maintain conversation flow while processing complex backend refinement:
 - **Implementation Ready**: Sufficient detail for development teams
 - **Integration**: Seamless storage and retrieval
 
-The specification is ready for implementation planning. Recommend `/specter-build` command for next phase.
+The specification is ready for implementation planning. Recommend `/spec-ai-build` command for next phase.
 """

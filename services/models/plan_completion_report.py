@@ -52,7 +52,7 @@ class PlanCompletionReport(MCPModel):
     strategic_plan_document: str = '[Strategic plan document content]'
     structured_objectives: str = '[Structured business objectives analysis]'
     next_steps: str = """1. Review the strategic plan for accuracy
-2. Proceed with technical specification using: /specter-spec
+2. Proceed with technical specification using: /spec-ai-spec
 3. The structured objectives will feed directly into spec-architect"""
     analyst_loop_id: str = '[Analyst loop ID from MCP server]'
     completion_timestamp: str = '[Current date/time]'

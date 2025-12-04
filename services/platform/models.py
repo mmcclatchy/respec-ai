@@ -181,28 +181,28 @@ class SpecCommandTools(BaseModel):
     @computed_field
     def sync_project_plan_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """PLAN_MARKDOWN = Read(.specter/projects/{PLAN_NAME}/project_plan.md)
-mcp__specter__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_MARKDOWN)"""
+            return """PLAN_MARKDOWN = Read(.spec-ai/projects/{PLAN_NAME}/project_plan.md)
+mcp__spec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
             return """PLAN_RESULT = mcp__linear-server__get_document(project_name=PLAN_NAME)
-mcp__specter__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
+mcp__spec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
         elif self.platform == PlatformType.GITHUB:
-            return """PLAN_RESULT = mcp__github__get_file(path=".specter/projects/{PLAN_NAME}/project_plan.md")
-mcp__specter__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
+            return """PLAN_RESULT = mcp__github__get_file(path=".spec-ai/projects/{PLAN_NAME}/project_plan.md")
+mcp__spec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
         else:
             return """# Platform sync not configured"""
 
     @computed_field
     def sync_spec_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """SPEC_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/specter-specs/{SPEC_NAME}.md)
-mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_MARKDOWN)"""
+            return """SPEC_MARKDOWN = Read(.spec-ai/projects/{PROJECT_NAME}/spec-ai-specs/{SPEC_NAME}.md)
+mcp__spec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
             return """SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
-mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.description)"""
+mcp__spec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.description)"""
         elif self.platform == PlatformType.GITHUB:
             return """SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
-mcp__specter__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.body)"""
+mcp__spec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.body)"""
         else:
             return """# Platform sync not configured"""
 
@@ -238,8 +238,8 @@ class PlanCommandTools(BaseModel):
     def sync_project_plan_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """TRY:
-  PLAN_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/project_plan.md)
-  mcp__specter__store_project_plan(
+  PLAN_MARKDOWN = Read(.spec-ai/projects/{PROJECT_NAME}/project_plan.md)
+  mcp__spec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
   )
@@ -251,7 +251,7 @@ EXCEPT:
             return """TRY:
   PLAN_RESULT = mcp__linear-server__get_document(project_name=PROJECT_NAME)
   PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__specter__store_project_plan(
+  mcp__spec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
   )
@@ -261,9 +261,9 @@ EXCEPT:
 """
         elif self.platform == PlatformType.GITHUB:
             return """TRY:
-  PLAN_RESULT = mcp__github__get_file(path=".specter/projects/{PROJECT_NAME}/project_plan.md")
+  PLAN_RESULT = mcp__github__get_file(path=".spec-ai/projects/{PROJECT_NAME}/project_plan.md")
   PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__specter__store_project_plan(
+  mcp__spec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
   )
@@ -299,8 +299,8 @@ class BuildCommandTools(BaseModel):
     def sync_spec_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """TRY:
-  SPEC_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/specter-specs/{SPEC_NAME}.md)
-  mcp__specter__store_spec(
+  SPEC_MARKDOWN = Read(.spec-ai/projects/{PROJECT_NAME}/spec-ai-specs/{SPEC_NAME}.md)
+  mcp__spec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     spec_markdown=SPEC_MARKDOWN
@@ -313,7 +313,7 @@ EXCEPT:
             return """TRY:
   SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
   SPEC_MARKDOWN = SPEC_RESULT.description
-  mcp__specter__store_spec(
+  mcp__spec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     spec_markdown=SPEC_MARKDOWN
@@ -326,7 +326,7 @@ EXCEPT:
             return """TRY:
   SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
   SPEC_MARKDOWN = SPEC_RESULT.body
-  mcp__specter__store_spec(
+  mcp__spec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     spec_markdown=SPEC_MARKDOWN
@@ -391,8 +391,8 @@ class PlanRoadmapCommandTools(BaseModel):
     def sync_project_plan_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """TRY:
-  PLAN_MARKDOWN = Read(.specter/projects/{PROJECT_NAME}/project_plan.md)
-  mcp__specter__store_project_plan(
+  PLAN_MARKDOWN = Read(.spec-ai/projects/{PROJECT_NAME}/project_plan.md)
+  mcp__spec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
   )
@@ -404,7 +404,7 @@ EXCEPT:
             return """TRY:
   PLAN_RESULT = mcp__linear-server__get_document(project_name=PROJECT_NAME)
   PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__specter__store_project_plan(
+  mcp__spec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
   )
@@ -414,9 +414,9 @@ EXCEPT:
 """
         elif self.platform == PlatformType.GITHUB:
             return """TRY:
-  PLAN_RESULT = mcp__github__get_file(path=".specter/projects/{PROJECT_NAME}/project_plan.md")
+  PLAN_RESULT = mcp__github__get_file(path=".spec-ai/projects/{PROJECT_NAME}/project_plan.md")
   PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__specter__store_project_plan(
+  mcp__spec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
   )
@@ -433,11 +433,11 @@ Display: "⚠️ Sync not configured for this platform"
     def sync_all_specs_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """SPECS_LOADED = 0
-SPEC_FILES = Glob(.specter/projects/{PROJECT_NAME}/specter-specs/*.md)
+SPEC_FILES = Glob(.spec-ai/projects/{PROJECT_NAME}/spec-ai-specs/*.md)
 FOR each spec_file in SPEC_FILES:
   SPEC_NAME = [extract filename without .md extension]
   SPEC_MARKDOWN = Read(spec_file)
-  mcp__specter__store_spec(
+  mcp__spec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     spec_markdown=SPEC_MARKDOWN
@@ -452,7 +452,7 @@ FOR each spec in SPEC_LIST:
   SPEC_RESULT = mcp__linear-server__get_issue(issue_id=spec.id)
   SPEC_MARKDOWN = SPEC_RESULT.description
   SPEC_NAME = SPEC_RESULT.title
-  mcp__specter__store_spec(
+  mcp__spec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     spec_markdown=SPEC_MARKDOWN
@@ -467,7 +467,7 @@ FOR each spec in SPEC_LIST:
   SPEC_RESULT = mcp__github__get_issue(issue_number=spec.number)
   SPEC_MARKDOWN = SPEC_RESULT.body
   SPEC_NAME = SPEC_RESULT.title
-  mcp__specter__store_spec(
+  mcp__spec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
     spec_markdown=SPEC_MARKDOWN
@@ -509,21 +509,21 @@ class CreateSpecAgentTools(BaseModel):
     def create_spec_tool_interpolated(self) -> str:
         if '*' not in self.create_spec_tool:
             return self.create_spec_tool
-        # Markdown: Write(.specter/projects/*/specter-specs/*.md)
+        # Markdown: Write(.spec-ai/projects/*/spec-ai-specs/*.md)
         return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
     def get_spec_tool_interpolated(self) -> str:
         if '*' not in self.get_spec_tool:
             return self.get_spec_tool
-        # Markdown: Read(.specter/projects/*/specter-specs/*.md)
+        # Markdown: Read(.spec-ai/projects/*/spec-ai-specs/*.md)
         return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
     def update_spec_tool_interpolated(self) -> str:
         if '*' not in self.update_spec_tool:
             return self.update_spec_tool
-        # Markdown: Edit(.specter/projects/*/specter-specs/*.md)
+        # Markdown: Edit(.spec-ai/projects/*/spec-ai-specs/*.md)
         return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 

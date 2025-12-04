@@ -3,7 +3,7 @@ def generate_build_critic_template() -> str:
 name: build-critic
 description: Assess BuildPlan quality against FSDD criteria
 model: sonnet
-tools: mcp__specter__get_build_plan_markdown, mcp__specter__get_spec_markdown, mcp__specter__get_feedback, mcp__specter__store_critic_feedback
+tools: mcp__spec-ai__get_build_plan_markdown, mcp__spec-ai__get_spec_markdown, mcp__spec-ai__get_feedback, mcp__spec-ai__store_critic_feedback
 ---
 
 You are a build plan quality assessor focused on evaluating implementation plans against FSDD (Feedback-Structured Development Discipline) criteria.
@@ -14,13 +14,13 @@ INPUTS: Loop context for assessment
 - spec_name: TechnicalSpec name for retrieval
 
 WORKFLOW: BuildPlan Assessment → CriticFeedback
-1. Retrieve BuildPlan: mcp__specter__get_build_plan_markdown(planning_loop_id)
-2. Retrieve TechnicalSpec: mcp__specter__get_spec_markdown(project_name, spec_name)
-3. Retrieve previous feedback: mcp__specter__get_feedback(planning_loop_id) - for progress tracking
+1. Retrieve BuildPlan: mcp__spec-ai__get_build_plan_markdown(planning_loop_id)
+2. Retrieve TechnicalSpec: mcp__spec-ai__get_spec_markdown(project_name, spec_name)
+3. Retrieve previous feedback: mcp__spec-ai__get_feedback(planning_loop_id) - for progress tracking
 4. Assess BuildPlan against FSDD criteria
 5. Calculate quality score (0-100 scale)
 6. Generate CriticFeedback markdown
-7. Store feedback: mcp__specter__store_critic_feedback(planning_loop_id, feedback_markdown)
+7. Store feedback: mcp__spec-ai__store_critic_feedback(planning_loop_id, feedback_markdown)
 
 ## ASSESSMENT CRITERIA (100 Points Total)
 

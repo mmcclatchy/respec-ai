@@ -64,11 +64,11 @@ description: Orchestrate strategic planning workflow
 
 Read project configuration:
 ```text
-Read .specter/config.json
+Read .spec-ai/config.json
 PROJECT_NAME = config["project_name"]
 ```
 
-**Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during Specter installation.
+**Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during SpecAI installation.
 
 ## Step 0a: Load Existing Project Plan from Platform
 
@@ -80,33 +80,33 @@ Load existing project plan from platform (if exists):
 
 ## Context Variables
 
-All Specter MCP tools require project context:
+All SpecAI MCP tools require project context:
 - **PROJECT_NAME**: From config - used as identifier for all MCP storage operations
 
-Example usage: `mcp__specter__initialize_refinement_loop(loop_type='plan')`
+Example usage: `mcp__spec-ai__initialize_refinement_loop(loop_type='plan')`
 
 ## State Management
 #### Track only essential orchestration state
 
 - **PROJECT_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
-- **CONVERSATION_CONTEXT**: JSON object returned from /specter-plan-conversation - conversation results from Step 2
+- **CONVERSATION_CONTEXT**: JSON object returned from /spec-ai-plan-conversation - conversation results from Step 2
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
 - **USER_DECISION**: String from user choice - values: "continue_conversation", "refine_plan", "accept_plan"
-- **ANALYST_LOOP_ID**: String returned from MCP `mcp__specter__initialize_refinement_loop(loop_type='analyst')` - required for MCP loop management during analyst validation (Steps 6-9)
+- **ANALYST_LOOP_ID**: String returned from MCP `mcp__spec-ai__initialize_refinement_loop(loop_type='analyst')` - required for MCP loop management during analyst validation (Steps 6-9)
 - **ANALYST_SCORE**: Integer from analyst-critic feedback retrieval - needed for MCP loop decisions
 
 #### Data Storage Pattern
 Human-driven phase (Steps 1-5):
 - Uses variables for orchestration state (CONVERSATION_CONTEXT, CURRENT_PLAN, CRITIC_FEEDBACK)
-- Stores plan in MCP using PROJECT_NAME: `mcp__specter__store_project_plan(project_name, plan_markdown)`
+- Stores plan in MCP using PROJECT_NAME: `mcp__spec-ai__store_project_plan(project_name, plan_markdown)`
 - Writes plan to external file/platform using platform-specific tools
 - Plan-critic returns feedback to Main Agent (not stored in MCP during human phase)
 
 Automated analyst phase (Steps 6-9):
 - Initializes MCP refinement loop with ANALYST_LOOP_ID
-- Stores plan copy in analyst loop: `mcp__specter__store_project_plan(ANALYST_LOOP_ID, plan_markdown)`
+- Stores plan copy in analyst loop: `mcp__spec-ai__store_project_plan(ANALYST_LOOP_ID, plan_markdown)`
 - Analyst agents use ANALYST_LOOP_ID for all MCP operations
 - MCP Server manages loop state and decisions
 
@@ -123,12 +123,12 @@ Automated analyst phase (Steps 6-9):
 
 ## Step 2: Conversational Requirements Gathering
 
-#### Use the /specter-plan-conversation command to conduct conversational discovery.
+#### Use the /spec-ai-plan-conversation command to conduct conversational discovery.
 
 Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PROJECT_NAME) as the initial conversation context:
 
 ```bash
-/specter-plan-conversation [arguments from $ARGUMENTS after PROJECT_NAME, or "I need help creating a strategic plan for my project"]
+/spec-ai-plan-conversation [arguments from $ARGUMENTS after PROJECT_NAME, or "I need help creating a strategic plan for my project"]
 ```
 
 The plan-conversation command will conduct the three-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
@@ -177,7 +177,7 @@ Strategic plan creation process:
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
 4. **Store in variable** as CURRENT_PLAN for next steps
-5. **Store in MCP** using: `mcp__specter__store_project_plan(project_name=PROJECT_NAME, project_plan_markdown=CURRENT_PLAN)`
+5. **Store in MCP** using: `mcp__spec-ai__store_project_plan(project_name=PROJECT_NAME, project_plan_markdown=CURRENT_PLAN)`
 
 ## Step 3b: Write Plan to External File/Platform
 
@@ -189,7 +189,7 @@ Write the strategic plan to the user's platform using the platform-specific tool
 ```
 
 This creates:
-- **Markdown platform**: `.specter/projects/PROJECT_NAME/project_plan.md`
+- **Markdown platform**: `.spec-ai/projects/PROJECT_NAME/project_plan.md`
 - **Linear platform**: Linear project with plan details
 - **GitHub platform**: GitHub project with plan details
 
@@ -200,12 +200,12 @@ The user can now review the plan file before making their decision.
 Invoke the plan-critic agent with project name for plan retrieval:
 
 ```text
-Invoke: specter-plan-critic
+Invoke: spec-ai-plan-critic
 Input: PROJECT_NAME
 ```
 
 #### Plan-critic workflow
-1. **Agent retrieves strategic plan** from MCP using `mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)`
+1. **Agent retrieves strategic plan** from MCP using `mcp__spec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)`
 2. **Agent evaluates plan** against FSDD framework
 3. **Agent returns feedback markdown** to Main Agent (human-driven workflow)
 
@@ -244,7 +244,7 @@ Present options to user:
 
    #### Your Options
 
-   1. **Continue conversation** - Add more details through additional /specter-plan-conversation
+   1. **Continue conversation** - Add more details through additional /spec-ai-plan-conversation
       - Best if: Missing requirements, unclear scope, or need more context
       - Action: Return to conversational discovery for specific areas
 
@@ -264,7 +264,7 @@ Present options to user:
 #### If user chooses "1" (Continue conversation)
 - Set USER_DECISION = "continue_conversation"
 - CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
-- Return to Step 2 to add more details via /specter-plan-conversation
+- Return to Step 2 to add more details via /spec-ai-plan-conversation
 
 #### If user chooses "2" (Refine plan)
 - Set USER_DECISION = "refine_plan"
@@ -284,7 +284,7 @@ Present options to user:
 
 **strategic plan creation failures:**
 1. **Empty or Invalid Context**: If CONVERSATION_CONTEXT is empty or malformed:
-   - Retry /specter-plan-conversation command with same initial context
+   - Retry /spec-ai-plan-conversation command with same initial context
    - If second attempt fails, continue with placeholder: "Plan creation failed - proceeding with basic template"
    - Update CURRENT_PLAN with failure notification for critic evaluation
 
@@ -316,7 +316,7 @@ Present options to user:
 
 ### MCP Tool Failures
 
-**mcp__specter__initialize_refinement_loop failures (analyst phase only):**
+**mcp__spec-ai__initialize_refinement_loop failures (analyst phase only):**
 1. **Loop Creation Error**: If ANALYST_LOOP_ID generation fails:
    - Generate local tracking ID (timestamp-based) for analyst phase
    - Continue without MCP loop management for analyst validation
@@ -326,7 +326,7 @@ Present options to user:
    - Fall back to local analyst loop management
    - Display warning: "MCP analyst loop management unavailable - using local fallback"
 
-**mcp__specter__decide_loop_next_action failures:**
+**mcp__spec-ai__decide_loop_next_action failures:**
 1. **Decision Service Error**: If decision cannot be retrieved:
    - Apply basic fallback decision logic based on previous iteration patterns
    - Continue with fallback decision
@@ -365,11 +365,11 @@ Present options to user:
 
 #### Initialize the MCP refinement loop for analyst validation
 
-Use the MCP tool `mcp__specter__initialize_refinement_loop`:
-- Call `mcp__specter__initialize_refinement_loop(loop_type='analyst')`
+Use the MCP tool `mcp__spec-ai__initialize_refinement_loop`:
+- Call `mcp__spec-ai__initialize_refinement_loop(loop_type='analyst')`
 - Store the returned loop ID as `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
-- Retrieve the strategic plan from MCP using `mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)`
-- Store it in the analyst loop using `mcp__specter__store_project_plan(project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
+- Retrieve the strategic plan from MCP using `mcp__spec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)`
+- Store it in the analyst loop using `mcp__spec-ai__store_project_plan(project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
 
 ## Step 7: Extract Objectives
 
@@ -403,7 +403,7 @@ Input: ANALYST_LOOP_ID
 
 #### Extract analyst score for MCP decision
 ```text
-Retrieve feedback using: mcp__specter__get_previous_objective_feedback(ANALYST_LOOP_ID)
+Retrieve feedback using: mcp__spec-ai__get_previous_objective_feedback(ANALYST_LOOP_ID)
 Extract ANALYST_SCORE from feedback overall_score field
 ```
 
@@ -411,8 +411,8 @@ Extract ANALYST_SCORE from feedback overall_score field
 
 #### Call the MCP Server for analyst validation decision
 
-Use the MCP tool `mcp__specter__decide_loop_next_action`:
-- Call `mcp__specter__decide_loop_next_action(LOOP_ID=ANALYST_LOOP_ID, current_score=ANALYST_SCORE)`
+Use the MCP tool `mcp__spec-ai__decide_loop_next_action`:
+- Call `mcp__spec-ai__decide_loop_next_action(LOOP_ID=ANALYST_LOOP_ID, current_score=ANALYST_SCORE)`
 - The MCP Server will determine the next action based on configured criteria
 - Store the returned status as ANALYST_LOOP_STATUS
 - Display the analyst score and MCP decision to the user
@@ -432,7 +432,7 @@ Use the MCP tool `mcp__specter__decide_loop_next_action`:
 #### If status is "completed"
 - Final objectives and feedback already stored in MCP by agent
 - Generate completion report using data from MCP storage
-- Store completion report: `mcp__specter__store_plan_completion_report(PROJECT_NAME, completion_report_markdown)`
+- Store completion report: `mcp__spec-ai__store_plan_completion_report(PROJECT_NAME, completion_report_markdown)`
 - Display completion message with final analyst score
 - Present final output using the stored completion report
 - Create external project using {tools.create_project_tool_interpolated}

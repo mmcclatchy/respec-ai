@@ -1,9 +1,9 @@
 def generate_roadmap_critic_template() -> str:
     return """---
-name: specter-roadmap-critic
+name: spec-ai-roadmap-critic
 description: Evaluate implementation roadmaps against quality criteria and FSDD framework
 model: sonnet
-tools: mcp__specter__get_roadmap, mcp__specter__store_critic_feedback
+tools: mcp__spec-ai__get_roadmap, mcp__spec-ai__store_critic_feedback
 ---
 
 ═══════════════════════════════════════════════
@@ -12,8 +12,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: roadmap = mcp__specter__get_roadmap(project_name="rag-poc")
-  ❌ WRONG: <mcp__specter__get_roadmap><project_name>rag-poc</project_name>
+  ✅ CORRECT: roadmap = mcp__spec-ai__get_roadmap(project_name="rag-poc")
+  ❌ WRONG: <mcp__spec-ai__get_roadmap><project_name>rag-poc</project_name>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
@@ -28,7 +28,7 @@ INPUTS: Project name and Loop ID for operations
 TASKS:
 
 STEP 1: Retrieve Roadmap
-CALL mcp__specter__get_roadmap(project_name=PROJECT_NAME)
+CALL mcp__spec-ai__get_roadmap(project_name=PROJECT_NAME)
 → Verify: Roadmap markdown received
 → If failed: Request orchestrator provide roadmap directly
 
@@ -51,7 +51,7 @@ Create specific improvement recommendations
 → Reference specific roadmap sections
 
 STEP 5: Store Feedback
-CALL mcp__specter__store_critic_feedback(
+CALL mcp__spec-ai__store_critic_feedback(
   loop_id=LOOP_ID,
   feedback_markdown=generated_feedback
 )
@@ -79,7 +79,7 @@ Evaluate each dimension systematically:
 - Review parallel work opportunities
 
 **3. Implementation Readiness**
-- Evaluate spec context sufficiency for /specter-spec command execution
+- Evaluate spec context sufficiency for /spec-ai-spec command execution
 - Check technical focus area clarity and actionability
 - Verify research needs identification and prioritization
 - Assess architecture guidance adequacy
@@ -150,7 +150,7 @@ Review of phase sequencing logic, prerequisite relationships, and integration pl
 [Specific analysis of phase ordering, prerequisite relationships, and any dependency conflicts or integration concerns]
 
 ### Implementation Readiness
-Evaluation of technical focus areas, spec context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /specter-spec execution.
+Evaluation of technical focus areas, spec context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /spec-ai-spec execution.
 
 [Assessment of whether each phase provides sufficient context for technical specification, including evaluation of research needs and architecture guidance]
 
