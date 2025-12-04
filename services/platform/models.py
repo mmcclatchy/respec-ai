@@ -497,6 +497,7 @@ class SpecArchitectAgentTools(BaseModel):
 
 class SpecCriticAgentTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    spec_length_soft_cap: int = Field(default=40000, description='Soft cap for spec length in characters')
 
 
 class CreateSpecAgentTools(BaseModel):

@@ -18,6 +18,7 @@ class MCPResponse(BaseModel):
     id: str
     status: LoopStatus
     message: str = ''
+    char_length: int | None = None
 
 
 class OperationResponse(BaseModel):

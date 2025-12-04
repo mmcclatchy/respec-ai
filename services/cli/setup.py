@@ -25,6 +25,7 @@ from services.platform.template_helpers import (
     create_spec_architect_agent_tools,
     create_spec_critic_agent_tools,
 )
+from services.utils.setting_configs import loop_config
 from services.platform.templates.agents import (
     generate_analyst_critic_template,
     generate_build_coder_template,
@@ -144,7 +145,9 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
     )
 
     spec_architect_tools = SpecArchitectAgentTools(tools_yaml=create_spec_architect_agent_tools())
-    spec_critic_tools = SpecCriticAgentTools(tools_yaml=create_spec_critic_agent_tools())
+    spec_critic_tools = SpecCriticAgentTools(
+        tools_yaml=create_spec_critic_agent_tools(), spec_length_soft_cap=loop_config.spec_length_soft_cap
+    )
 
     return [
         ('specter-plan-analyst', generate_plan_analyst_template()),

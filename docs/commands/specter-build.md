@@ -438,7 +438,7 @@ Summary:
 - `decide_loop_next_action(build_code_loop_id, current_score)` - Implementation decision engine
 
 **Feedback & Monitoring:**
-- `get_feedback_history(loop_id, count)` - Retrieve recent feedback for context
+- `get_feedback(loop_id, count)` - Retrieve recent feedback for context
 - `get_loop_status(loop_id)` - Monitor loop state (optional)
 - `list_build_plans(count)` - List existing build plans
 - `delete_build_plan(loop_id)` - Clean up build plans

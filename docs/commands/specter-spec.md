@@ -93,7 +93,7 @@ The `/specter-spec` command transforms strategic plans into comprehensive techni
 2. Check iteration:
    - If 0: Generate complete spec from sparse template
    - If >0: Retrieve feedback and improve existing spec
-3. If iteration>0: `mcp__specter__get_feedback_history(loop_id, count=3)`
+3. If iteration>0: `mcp__specter__get_feedback(loop_id, count=3)`
 4. Execute archive scanning for technical patterns
 5. Generate/improve TechnicalSpec markdown
 6. Store: `mcp__specter__store_technical_spec(loop_id, updated_spec)`
@@ -108,7 +108,7 @@ The `/specter-spec` command transforms strategic plans into comprehensive techni
 
 **spec-critic Workflow** (Idempotent):
 1. Retrieve spec: `mcp__specter__get_technical_spec_markdown(loop_id)`
-2. Retrieve feedback history: `mcp__specter__get_feedback_history(loop_id, count=3)`
+2. Retrieve feedback history: `mcp__specter__get_feedback(loop_id, count=3)`
 3. Evaluate against FSDD criteria (10 quality gates)
 4. Generate feedback markdown with `overall_score` (0-100)
 5. Store: `mcp__specter__store_critic_feedback(loop_id, feedback_markdown)`
@@ -184,7 +184,7 @@ User: /specter-spec project "Phase 1"
 │    ↓                                             │
 │  spec-critic (Self-Sufficient):                  │
 │    • get_technical_spec_markdown(loop_id)        │
-│    • get_feedback_history(loop_id)               │
+│    • get_feedback(loop_id)               │
 │    • Evaluate spec                               │
 │    • store_critic_feedback(loop_id, feedback)    │
 │    ↓                                             │
@@ -219,7 +219,7 @@ User: "Spec complete! Score: 88%, Platform: Linear #123"
 - `update_spec(project_name, spec_name, status)` - Update roadmap status
 
 ### Feedback Operations
-- `get_feedback_history(loop_id, count)` - Retrieve recent critic feedback
+- `get_feedback(loop_id, count)` - Retrieve recent critic feedback
 - `store_critic_feedback(loop_id, feedback_markdown)` - Store evaluation
 
 ### Roadmap Operations
