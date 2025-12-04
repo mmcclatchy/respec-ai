@@ -1,10 +1,10 @@
-# Specter User Guide
+# SpecAI User Guide
 
-Complete guide to using Specter for AI-driven specification-based development.
+Complete guide to using SpecAI for AI-driven specification-based development.
 
-## What is Specter?
+## What is SpecAI?
 
-Specter is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
+SpecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
 
 ### Key Benefits
 
@@ -15,7 +15,7 @@ Specter is a **meta MCP server** that generates platform-specific workflow tools
 
 ### Current Status
 
-**MVP Complete** - Specter is ready for real-world usage:
+**MVP Complete** - SpecAI is ready for real-world usage:
 - ✅ MCP server fully functional
 - ✅ Multi-project architecture implemented (Phase 1)
 - ✅ All 29+ tools operational
@@ -32,7 +32,7 @@ See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and
 - **Claude Code CLI** installed and configured
 - **Git** for repository access
 
-**For Specter MCP Server (required):**
+**For SpecAI MCP Server (required):**
 - **uv** (Python version and package manager) - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 - **Python 3.13+**
 - **Unix-like operating system** (Linux, macOS, or Windows Subsystem for Linux)
@@ -48,25 +48,25 @@ See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and
 
 ### Installation Overview
 
-Specter installation has two parts:
+SpecAI installation has two parts:
 
-1. **Specter MCP Server Setup** (one-time) - Configure Specter as an MCP server in Claude Code
+1. **SpecAI MCP Server Setup** (one-time) - Configure SpecAI as an MCP server in Claude Code
 2. **Project Setup** (per-project) - Generate workflow files for each project
 
-### Part 1: Specter MCP Server Setup (One-Time)
+### Part 1: SpecAI MCP Server Setup (One-Time)
 
-This configures Specter as an MCP server that Claude Code can use across all your projects.
+This configures SpecAI as an MCP server that Claude Code can use across all your projects.
 
-#### Step 1: Clone Specter Repository
+#### Step 1: Clone SpecAI Repository
 
 ```bash
-# Choose a location for the Specter repository
+# Choose a location for the SpecAI repository
 # Recommended: alongside your other projects
 cd ~/coding/projects  # or your preferred location
 
 # Clone the repository
-git clone git@github.com:mmcclatchy/specter.git
-cd specter
+git clone git@github.com:mmcclatchy/spec-ai.git
+cd spec-ai
 ```
 
 > **Note**: For private repositories, ensure your SSH key is configured with GitHub.
@@ -88,33 +88,33 @@ Installed XX packages in XXms
 - Verify Python 3.13+ is installed: `python --version` or `python3 --version`
 - Install uv if missing: `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
-#### Step 3: Register Specter MCP Server with Claude Code
+#### Step 3: Register SpecAI MCP Server with Claude Code
 
-Add Specter to your Claude Code MCP configuration using the `claude mcp add` command.
+Add SpecAI to your Claude Code MCP configuration using the `claude mcp add` command.
 
-**Run this command** (replace the path with your actual Specter location from Step 1):
+**Run this command** (replace the path with your actual SpecAI location from Step 1):
 
 ```bash
-claude mcp add --transport stdio specter -- uv run --directory /absolute/path/to/specter specter-server
+claude mcp add --transport stdio spec-ai -- uv run --directory /absolute/path/to/spec-ai spec-ai-server
 ```
 
 **Example with actual path:**
 ```bash
-# If you cloned to ~/coding/projects/specter:
-claude mcp add --transport stdio specter -- uv run --directory /Users/username/coding/projects/specter specter-server
+# If you cloned to ~/coding/projects/spec-ai:
+claude mcp add --transport stdio spec-ai -- uv run --directory /Users/username/coding/projects/spec-ai spec-ai-server
 ```
 
 **Important notes:**
-- Replace `/absolute/path/to/specter` with your actual Specter directory
+- Replace `/absolute/path/to/spec-ai` with your actual SpecAI directory
 - Use **absolute paths** not relative paths or `~`
-  - ✅ Correct: `/Users/username/coding/projects/specter`
-  - ❌ Wrong: `~/coding/projects/specter` (tilde won't expand)
-  - ❌ Wrong: `../specter` (relative paths won't work)
-- The `--directory` flag tells `uv` where to find the Specter project
+  - ✅ Correct: `/Users/username/coding/projects/spec-ai`
+  - ❌ Wrong: `~/coding/projects/spec-ai` (tilde won't expand)
+  - ❌ Wrong: `../spec-ai` (relative paths won't work)
+- The `--directory` flag tells `uv` where to find the SpecAI project
 
 **Expected output:**
 ```text
-✓ Successfully added MCP server: specter
+✓ Successfully added MCP server: spec-ai
 ```
 
 #### Step 4: Verify MCP Server
@@ -133,7 +133,7 @@ In Claude Code, run:
 **Expected output should include:**
 ```text
 Available MCP Servers:
-  specter
+  spec-ai
     ├─ 29+ tools available
     ├─ create_project_plan
     ├─ store_project_plan
@@ -142,17 +142,17 @@ Available MCP Servers:
 ```
 
 **✓ Success criteria:**
-- Specter appears in the MCP server list
+- SpecAI appears in the MCP server list
 - Tool count shows 29+ tools
 - No error messages
 
-**If Specter doesn't appear**, see [Troubleshooting](#platform-mcp-server-not-found) below.
+**If SpecAI doesn't appear**, see [Troubleshooting](#platform-mcp-server-not-found) below.
 
 ---
 
 ### Part 2: Project Setup (Per-Project)
 
-Now that Specter MCP Server is configured, you can set up any project to use Specter workflows.
+Now that SpecAI MCP Server is configured, you can set up any project to use SpecAI workflows.
 
 #### Installation Method Selection
 
@@ -166,7 +166,7 @@ Choose the installation method based on your needs:
 
 #### Method 1: Local Script Installation (Recommended for Private Repos)
 
-Use this method when you have Specter cloned locally (from Part 1).
+Use this method when you have SpecAI cloned locally (from Part 1).
 
 **Step 1: Navigate to your project**
 ```bash
@@ -179,19 +179,19 @@ cd /path/to/your/project
 cd ~/path/to/your/project
 
 # Run installation script with platform choice
-~/coding/projects/specter/scripts/install-specter.sh --platform linear
+~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform linear
 # or --platform github
 # or --platform markdown
 ```
 
 This creates:
-- `.claude/commands/` - All Specter workflow commands
-- `.claude/agents/` - All Specter workflow agents
-- `.specter/config.json` - Platform configuration
+- `.claude/commands/` - All SpecAI workflow commands
+- `.claude/agents/` - All SpecAI workflow agents
+- `.spec-ai/config.json` - Platform configuration
 
 **Expected output:**
 ```text
-✅ Specter setup complete!
+✅ SpecAI setup complete!
 
 Platform: linear
 Files Created: 15
@@ -200,13 +200,13 @@ Location: /path/to/your/project
 ⚠️  IMPORTANT: Restart Claude Code to activate the new commands!
 
 Available Commands (after restart):
-  • /specter-plan - Create strategic plans
-  • /specter-spec - Transform plans into technical specifications
-  • /specter-build - Execute implementation workflows
-  • /specter-roadmap - Create phased roadmaps
-  • /specter-plan-conversation - Convert conversations into plans
+  • /spec-ai-plan - Create strategic plans
+  • /spec-ai-spec - Transform plans into technical specifications
+  • /spec-ai-build - Execute implementation workflows
+  • /spec-ai-roadmap - Create phased roadmaps
+  • /spec-ai-plan-conversation - Convert conversations into plans
 
-🚀 Ready to begin! Restart Claude Code to use the Specter commands.
+🚀 Ready to begin! Restart Claude Code to use the SpecAI commands.
 ```
 
 **Step 3: Restart Claude Code**
@@ -226,7 +226,7 @@ claude
 cd /path/to/your/project
 
 # Choose your platform: linear, github, or markdown
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear
+curl -fsSL https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh | bash -s -- --platform linear
 ```
 
 This installs all workflow files and creates platform configuration.
@@ -245,12 +245,12 @@ After completing any installation method, verify your project setup:
 
 ```bash
 # Check directory structure
-ls -la .claude/commands/specter-*.md
+ls -la .claude/commands/spec-ai-*.md
 ls -la .claude/agents/*.md
-ls -la .specter/config/platform.json
+ls -la .spec-ai/config/platform.json
 
 # Check platform configuration
-cat .specter/config/platform.json
+cat .spec-ai/config/platform.json
 ```
 
 **Expected structure:**
@@ -258,11 +258,11 @@ cat .specter/config/platform.json
 project/
 ├── .claude/
 │   ├── commands/
-│   │   ├── specter-plan.md
-│   │   ├── specter-roadmap.md
-│   │   ├── specter-spec.md
-│   │   ├── specter-build.md
-│   │   └── specter-plan-conversation.md
+│   │   ├── spec-ai-plan.md
+│   │   ├── spec-ai-roadmap.md
+│   │   ├── spec-ai-spec.md
+│   │   ├── spec-ai-build.md
+│   │   └── spec-ai-plan-conversation.md
 │   └── agents/
 │       ├── plan-analyst.md
 │       ├── plan-critic.md
@@ -270,7 +270,7 @@ project/
 │       ├── roadmap.md
 │       ├── roadmap-critic.md
 │       └── create-spec.md
-└── .specter/
+└── .spec-ai/
     ├── config/
     │   └── platform.json
     └── projects/ (created when using markdown platform)
@@ -280,14 +280,14 @@ project/
 - [ ] All 5 commands exist in `.claude/commands/`
 - [ ] Agent files exist in `.claude/agents/`
 - [ ] Platform configuration exists and shows correct platform
-- [ ] Commands autocomplete with `/specter-` in Claude Code
-- [ ] Specter MCP server shows in `/mcp list`
+- [ ] Commands autocomplete with `/spec-ai-` in Claude Code
+- [ ] SpecAI MCP server shows in `/mcp list`
 
 **If verification fails**, see [Troubleshooting](#commands-not-found) below.
 
 ---
 
-### Quick Start: Your First Specter Workflow
+### Quick Start: Your First SpecAI Workflow
 
 Now that setup is complete, try creating your first plan:
 
@@ -298,10 +298,10 @@ claude
 
 ```text
 # Start with strategic planning
-/specter-plan
+/spec-ai-plan
 
 # Or if you want to create a multi-phase roadmap
-/specter-roadmap my-project-name
+/spec-ai-roadmap my-project-name
 ```
 
 Follow the interactive prompts to create your first strategic plan. See [Available Commands](#available-commands) below for detailed workflow documentation.
@@ -314,9 +314,9 @@ Follow the interactive prompts to create your first strategic plan. See [Availab
 
 ### Current Implementation
 
-Specter supports running multiple projects with explicit project context. Each project maintains its own:
+SpecAI supports running multiple projects with explicit project context. Each project maintains its own:
 
-- ✅ Platform configuration (`.specter/config/platform.json`)
+- ✅ Platform configuration (`.spec-ai/config/platform.json`)
 - ✅ Command templates (`.claude/commands/*.md`)
 - ✅ Agent templates (`.claude/agents/*.md`)
 - ✅ Explicit project context via `project_path` parameter
@@ -324,7 +324,7 @@ Specter supports running multiple projects with explicit project context. Each p
 
 **What This Means:**
 - All 36+ MCP tools now accept explicit `project_path` parameter
-- Multiple projects can use the same Specter MCP server
+- Multiple projects can use the same SpecAI MCP server
 - Each project's workflows operate independently when project_path is specified
 - No cross-project interference at the tool level
 
@@ -340,7 +340,7 @@ Specter supports running multiple projects with explicit project context. Each p
 - ⏸️ **In-memory state**: Plans, specs, and loop state stored in memory
   - State does not persist across MCP server restarts
   - Acceptable for single-user development workflows
-- ⏸️ **Global configuration**: Platform config stored at `~/.specter/projects/`
+- ⏸️ **Global configuration**: Platform config stored at `~/.spec-ai/projects/`
   - Works fine for solo development
   - Per-project config deferred until team collaboration features needed
 
@@ -349,7 +349,7 @@ Specter supports running multiple projects with explicit project context. Each p
 **For single user / solo development**: Works perfectly with no limitations.
 
 **For multiple projects**:
-- ✅ Set up each project independently with `/init-specter`
+- ✅ Set up each project independently with `/init-spec-ai`
 - ✅ Different projects can use different platforms
 - ✅ Commands work correctly when project context is clear
 - ⏸️ State resets on MCP server restart (acceptable for MVP)
@@ -362,7 +362,7 @@ Specter supports running multiple projects with explicit project context. Each p
 - Enhanced multi-user support
 
 **Per-Project Configuration** (when team collaboration needed):
-- Move config from `~/.specter/projects/` to `.specter/config/`
+- Move config from `~/.spec-ai/projects/` to `.spec-ai/config/`
 - Repository-portable configuration
 - Better team workflow support
 
@@ -378,7 +378,7 @@ Specter supports running multiple projects with explicit project context. Each p
 
 ### Choosing Your Platform
 
-Specter supports three platforms with different capabilities:
+SpecAI supports three platforms with different capabilities:
 
 #### Linear Platform
 
@@ -440,7 +440,7 @@ Specter supports three platforms with different capabilities:
 - None (uses built-in Claude Code tools)
 
 **Workflow:**
-- Specs stored as markdown files in `.specter/projects/[project-name]/specter-specs/`
+- Specs stored as markdown files in `.spec-ai/projects/[project-name]/spec-ai-specs/`
 - Plans stored as markdown files
 - Git-friendly version control
 
@@ -466,7 +466,7 @@ Specter supports three platforms with different capabilities:
 
 ### Understanding Command and Agent Templates
 
-**Commands** (what you invoke with `/specter-*`) use `allowed-tools:` in their frontmatter:
+**Commands** (what you invoke with `/spec-ai-*`) use `allowed-tools:` in their frontmatter:
 ```yaml
 ---
 allowed-tools: {tools.tools_yaml}
@@ -492,12 +492,12 @@ tools: tool1, tool2, tool3
 
 **Note**: As a user, you don't interact with frontmatter directly. This formatting ensures commands and agents have proper tool access for your platform (Linear/GitHub/Markdown).
 
-### `/specter-plan`
+### `/spec-ai-plan`
 
 **Purpose:** Create strategic project plans through interactive discovery
 
 **Workflow:**
-1. Uses `/specter-plan-conversation` for natural language requirements gathering
+1. Uses `/spec-ai-plan-conversation` for natural language requirements gathering
 2. Creates strategic plan document
 3. Evaluates plan quality with plan-critic agent
 4. Refines through iterative improvement loops
@@ -511,14 +511,14 @@ tools: tool1, tool2, tool3
 
 **Example:**
 ```text
-User: /specter-plan
+User: /spec-ai-plan
 
 Claude: I'll help you create a strategic plan. Let me start by understanding your goals.
 
 [Interactive conversation begins...]
 ```
 
-### `/specter-plan-conversation`
+### `/spec-ai-plan-conversation`
 
 **Purpose:** Interactive conversation for requirements gathering
 
@@ -530,9 +530,9 @@ Claude: I'll help you create a strategic plan. Let me start by understanding you
 
 **When to use:**
 - This is not to be used by end-users
-- This command is used as a subcommand of `/specter-plan`
+- This command is used as a subcommand of `/spec-ai-plan`
 
-### `/specter-roadmap`
+### `/spec-ai-roadmap`
 
 **Purpose:** Generate multi-phase implementation roadmaps
 
@@ -550,13 +550,13 @@ Claude: I'll help you create a strategic plan. Let me start by understanding you
 
 **Example:**
 ```text
-User: /specter-roadmap [project-name]
+User: /spec-ai-roadmap [project-name]
 
 Claude: I'll create a multi-phase implementation roadmap.
 [Generates roadmap with phases, milestones, and initial specs]
 ```
 
-### `/specter-spec`
+### `/spec-ai-spec`
 
 **Purpose:** Convert strategic plans into detailed technical specifications
 
@@ -574,13 +574,13 @@ Claude: I'll create a multi-phase implementation roadmap.
 
 **Example:**
 ```text
-User: /specter-spec [spec-name]
+User: /spec-ai-spec [spec-name]
 
 Claude: I'll create a technical specification from your strategic plan.
 [Generates spec with technical details, architecture, and implementation approach]
 ```
 
-### `/specter-build`
+### `/spec-ai-build`
 
 **Purpose:** Implement specifications with automated code generation
 
@@ -599,7 +599,7 @@ Claude: I'll create a technical specification from your strategic plan.
 
 **Example:**
 ```text
-User: /specter-build [spec-name]
+User: /spec-ai-build [spec-name]
 
 Claude: I'll implement the specification with automated code generation.
 [Creates build plan, generates code, reviews quality]
@@ -613,17 +613,17 @@ Claude: I'll implement the specification with automated code generation.
 
 ```text
 1. Strategic Planning:
-   User: /specter-plan [project-name]
+   User: /spec-ai-plan [project-name]
    [Interactive conversation about authentication needs]
    → Creates strategic plan with business objectives
 
 2. Technical Specification:
-   User: /specter-spec [spec-name]
+   User: /spec-ai-spec [spec-name]
    → Generates technical spec with architecture details
    → Creates Linear issue (or GitHub issue, or markdown file)
 
 3. Implementation:
-   User: /specter-build [spec-name]
+   User: /spec-ai-build [spec-name]
    → Creates build plan with implementation steps
    → Generates authentication code
    → Reviews code quality
@@ -636,12 +636,12 @@ Claude: I'll implement the specification with automated code generation.
 
 ```text
 1. Strategic Planning:
-   User: /specter-plan [project-name]
+   User: /spec-ai-plan [project-name]
    → Creates strategic plan for entire SaaS application
    → Defines business objectives and high-level requirements
 
 2. Roadmap Creation:
-   User: /specter-roadmap [project-name]
+   User: /spec-ai-roadmap [project-name]
    → Breaks down strategic plan into implementation phases:
      - Phase 1: User authentication
      - Phase 2: Core features
@@ -651,8 +651,8 @@ Claude: I'll implement the specification with automated code generation.
 
 3. Phase Implementation:
    For each phase/spec created by roadmap:
-   User: /specter-spec [spec-name] (to elaborate technical details)
-   User: /specter-build [spec-name] (to implement the phase)
+   User: /spec-ai-spec [spec-name] (to elaborate technical details)
+   User: /spec-ai-build [spec-name] (to implement the phase)
 ```
 
 ### Example 3: Requirements Discovery
@@ -661,8 +661,8 @@ Claude: I'll implement the specification with automated code generation.
 
 ```text
 1. Strategic Planning with Conversational Discovery:
-   User: /specter-plan [project-name]
-   Claude: (runs /specter-plan-conversation internally)
+   User: /spec-ai-plan [project-name]
+   Claude: (runs /spec-ai-plan-conversation internally)
    Claude: What problem are you trying to solve?
    User: I want users to collaborate in real-time
    Claude: What kind of collaboration? Document editing? Chat? Screen sharing?
@@ -675,14 +675,14 @@ Claude: I'll implement the specification with automated code generation.
 
 ## Quality & Refinement Loops
 
-Specter uses two types of quality loops:
+SpecAI uses two types of quality loops:
 
 ### 1. Human-in-the-Loop with Quality Validation
 
-**Used by:** `/specter-plan`
+**Used by:** `/spec-ai-plan`
 
 **Process:**
-1. **Conversation:** `/specter-plan-conversation` conducts interactive Q&A to gather requirements
+1. **Conversation:** `/spec-ai-plan-conversation` conducts interactive Q&A to gather requirements
 2. **Generation:** Creates strategic plan from conversation context
 3. **Quality Check:** `plan-critic` evaluates the plan and provides quality score
 4. **Human Review:** User sees quality score and decides: continue conversation, refine plan, or accept
@@ -694,7 +694,7 @@ This is a **hybrid approach** - conversational gathering with automated quality 
 
 ### 2. Automated Refinement Loops (MCP-Driven)
 
-**Used by:** `/specter-roadmap`, `/specter-spec`, `/specter-build`
+**Used by:** `/spec-ai-roadmap`, `/spec-ai-spec`, `/spec-ai-build`
 
 **Process:**
 1. **Generation:** A generative agent creates content (roadmap, spec, build plan, code)
@@ -706,7 +706,7 @@ This is a **hybrid approach** - conversational gathering with automated quality 
 
 ### Critic Agents
 
-**For Human-in-the-Loop (`/specter-plan`):**
+**For Human-in-the-Loop (`/spec-ai-plan`):**
 
 **plan-critic:**
 - Evaluates strategic plans after conversational gathering
@@ -718,7 +718,7 @@ This is a **hybrid approach** - conversational gathering with automated quality 
 - Uses MCP-driven automated refinement loop
 - Ensures completeness and accuracy of analysis
 
-**For Automated Loops (`/specter-roadmap`, `/specter-spec`, `/specter-build`):**
+**For Automated Loops (`/spec-ai-roadmap`, `/spec-ai-spec`, `/spec-ai-build`):**
 
 **roadmap-critic:**
 - Evaluates implementation roadmaps
@@ -760,7 +760,7 @@ Quality scores determine progression:
 
 **Plan Storage:**
 ```text
-1. /specter-plan creates strategic plan
+1. /spec-ai-plan creates strategic plan
 2. Stored as Linear project
 3. Issues linked to project
 4. Cycles used for sprint planning
@@ -768,7 +768,7 @@ Quality scores determine progression:
 
 **Spec Creation:**
 ```text
-1. /specter-spec creates Linear issue
+1. /spec-ai-spec creates Linear issue
 2. Issue contains technical specification
 3. Comments added for feedback
 4. Labels applied for categorization
@@ -779,7 +779,7 @@ Quality scores determine progression:
 
 **Plan Storage:**
 ```text
-1. /specter-plan creates strategic plan
+1. /spec-ai-plan creates strategic plan
 2. Stored as GitHub project board
 3. Issues linked to project
 4. Milestones for phases
@@ -787,7 +787,7 @@ Quality scores determine progression:
 
 **Spec Creation:**
 ```text
-1. /specter-spec creates GitHub issue
+1. /spec-ai-spec creates GitHub issue
 2. Issue contains technical specification
 3. Comments for feedback
 4. Labels for categorization
@@ -798,16 +798,16 @@ Quality scores determine progression:
 
 **Plan Storage:**
 ```text
-1. /specter-plan creates markdown file
-2. Stored in .specter/projects/[project-name]/project_plan.md
+1. /spec-ai-plan creates markdown file
+2. Stored in .spec-ai/projects/[project-name]/project_plan.md
 3. Structured sections
 4. Git commit for history
 ```
 
 **Spec Creation:**
 ```text
-1. /specter-spec creates markdown file
-2. Stored in .specter/projects/[project-name]/specter-specs/
+1. /spec-ai-spec creates markdown file
+2. Stored in .spec-ai/projects/[project-name]/spec-ai-specs/
 3. Structured markdown format
 4. Git-friendly version control
 5. Comments as markdown sections
@@ -817,7 +817,7 @@ Quality scores determine progression:
 
 ### Platform Configuration
 
-Platform selection stored in `.specter/config/platform.json`:
+Platform selection stored in `.spec-ai/config/platform.json`:
 
 ```json
 {
@@ -834,12 +834,12 @@ To switch platforms, simply re-run the installation script with the new platform
 
 ```bash
 cd /path/to/your/project
-~/coding/projects/specter/scripts/install-specter.sh --platform [new-platform]
+~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform [new-platform]
 # Then restart Claude Code
 ```
 
 The installation will:
-- Update `.specter/config.json` with new platform
+- Update `.spec-ai/config.json` with new platform
 - Regenerate all commands in `.claude/commands/` with new platform-specific tools
 - Regenerate all agents in `.claude/agents/` with updated configurations
 
@@ -848,50 +848,50 @@ The installation will:
 
 ## Troubleshooting
 
-### Specter MCP Server Not Available
+### SpecAI MCP Server Not Available
 
-**Problem:** Specter doesn't appear in `/mcp list` output
+**Problem:** SpecAI doesn't appear in `/mcp list` output
 
 **Symptoms:**
-- `/mcp list` doesn't show "specter"
-- Error: "MCP server 'specter' not found"
-- Specter workflow commands not available
+- `/mcp list` doesn't show "spec-ai"
+- Error: "MCP server 'spec-ai' not found"
+- SpecAI workflow commands not available
 
 **Solution:**
 
-1. **Verify Specter was registered correctly**
+1. **Verify SpecAI was registered correctly**
    ```bash
    claude mcp list
    ```
 
-   Should show `specter` in the list of configured servers.
+   Should show `spec-ai` in the list of configured servers.
 
    To see full details:
    ```bash
-   claude mcp get specter
+   claude mcp get spec-ai
    ```
 
-2. **If Specter is missing, register it**
+2. **If SpecAI is missing, register it**
    ```bash
-   claude mcp add --transport stdio specter -- uv run --directory /absolute/path/to/specter specter-server
+   claude mcp add --transport stdio spec-ai -- uv run --directory /absolute/path/to/spec-ai spec-ai-server
    ```
 
-   Replace `/absolute/path/to/specter` with your actual path:
-   - ✅ Correct: `/Users/username/coding/projects/specter`
-   - ❌ Wrong: `~/coding/projects/specter` (tilde won't expand)
-   - ❌ Wrong: `../specter` (relative path won't work)
+   Replace `/absolute/path/to/spec-ai` with your actual path:
+   - ✅ Correct: `/Users/username/coding/projects/spec-ai`
+   - ❌ Wrong: `~/coding/projects/spec-ai` (tilde won't expand)
+   - ❌ Wrong: `../spec-ai` (relative path won't work)
 
-3. **Verify Specter repository exists and has dependencies**
+3. **Verify SpecAI repository exists and has dependencies**
    ```bash
-   cd /path/to/specter  # Use the path from your installation
+   cd /path/to/spec-ai  # Use the path from your installation
    ls -la  # Should show pyproject.toml, services/, etc.
    uv sync  # Re-install dependencies if needed
    ```
 
-4. **Test Specter runs manually (optional)**
+4. **Test SpecAI runs manually (optional)**
    ```bash
-   cd /path/to/specter
-   uv run specter-server
+   cd /path/to/spec-ai
+   uv run spec-ai-server
    ```
 
    Should start without errors. Press Ctrl+C to stop.
@@ -931,8 +931,8 @@ The installation will:
 **If still not working:**
 - Remove and re-add the MCP server:
   ```bash
-  claude mcp remove specter
-  claude mcp add --transport stdio specter -- uv run --directory /absolute/path/to/specter specter-server
+  claude mcp remove spec-ai
+  claude mcp add --transport stdio spec-ai -- uv run --directory /absolute/path/to/spec-ai spec-ai-server
   ```
 - Check Claude Code logs for errors (location varies by OS)
 - Ensure no other process is using the same MCP server name
@@ -969,26 +969,26 @@ The installation will:
 
 ### Commands Not Found
 
-**Problem:** Specter commands don't appear or autocomplete
+**Problem:** SpecAI commands don't appear or autocomplete
 
 **Symptoms:**
-- Typing `/specter-` doesn't autocomplete
-- Error: "Command not found: /specter-plan"
+- Typing `/spec-ai-` doesn't autocomplete
+- Error: "Command not found: /spec-ai-plan"
 - `.claude/commands/` directory is empty or missing files
 
 **Solution:**
 
 1. **Verify setup was completed**
    ```bash
-   ls -la .claude/commands/specter-*.md
+   ls -la .claude/commands/spec-ai-*.md
    ```
 
    Should show 5 files:
-   - specter-plan.md
-   - specter-roadmap.md
-   - specter-spec.md
-   - specter-build.md
-   - specter-plan-conversation.md
+   - spec-ai-plan.md
+   - spec-ai-roadmap.md
+   - spec-ai-spec.md
+   - spec-ai-build.md
+   - spec-ai-plan-conversation.md
 
 2. **Check you're in the correct directory**
    ```bash
@@ -998,16 +998,16 @@ The installation will:
 
 3. **If files are missing, re-run installation**
    ```bash
-   ~/coding/projects/specter/scripts/install-specter.sh --platform [your-platform]
+   ~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform [your-platform]
    # Then restart Claude Code
    ```
 
-4. **Verify Specter MCP server is available**
+4. **Verify SpecAI MCP server is available**
    ```text
-   /mcp list  # Should show "specter"
+   /mcp list  # Should show "spec-ai"
    ```
 
-   If Specter MCP server is missing, see [Specter MCP Server Not Available](#specter-mcp-server-not-available) above.
+   If SpecAI MCP server is missing, see [SpecAI MCP Server Not Available](#specai-mcp-server-not-available) above.
 
 5. **Check for file permissions issues**
    ```bash
@@ -1027,7 +1027,7 @@ The installation will:
 
 **If commands still don't appear:**
 - Try creating `.claude/commands/` manually: `mkdir -p .claude/commands`
-- Re-run installation script: `~/path/to/specter/scripts/install-specter.sh`
+- Re-run installation script: `~/path/to/spec-ai/scripts/install-spec-ai.sh`
 - Check Claude Code version is up-to-date
 
 ---
@@ -1045,7 +1045,7 @@ The installation will:
 
 1. **Verify platform configuration**
    ```bash
-   cat .specter/config/platform.json
+   cat .spec-ai/config/platform.json
    ```
 
    Should show correct platform:
@@ -1087,24 +1087,24 @@ The installation will:
 4. **For Markdown platform:**
    ```bash
    # Verify project directory exists
-   ls -la .specter/projects/
+   ls -la .spec-ai/projects/
 
    # If missing, create it:
-   mkdir -p .specter/projects/
+   mkdir -p .spec-ai/projects/
    ```
 
 5. **Check file permissions**
    ```bash
-   ls -la .specter/
+   ls -la .spec-ai/
    # All directories should be writable (755 or 775 permissions)
 
    # Fix if needed:
-   chmod -R 755 .specter/
+   chmod -R 755 .spec-ai/
    ```
 
 6. **Re-run installation if configuration is corrupted**
    ```bash
-   ~/coding/projects/specter/scripts/install-specter.sh --platform [platform]
+   ~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform [platform]
    # Then restart Claude Code
    ```
 
@@ -1159,7 +1159,7 @@ The installation will:
 
 ### Installation Script Fails
 
-**Problem:** `install-specter.sh` script errors or doesn't complete
+**Problem:** `install-spec-ai.sh` script errors or doesn't complete
 
 **Symptoms:**
 - Permission denied errors
@@ -1171,13 +1171,13 @@ The installation will:
 1. **For local script execution:**
    ```bash
    # Verify script exists
-   ls -la ~/coding/projects/specter/scripts/install-specter.sh
+   ls -la ~/coding/projects/spec-ai/scripts/install-spec-ai.sh
 
    # Make executable if needed
-   chmod +x ~/coding/projects/specter/scripts/install-specter.sh
+   chmod +x ~/coding/projects/spec-ai/scripts/install-spec-ai.sh
 
    # Run with explicit path
-   ~/coding/projects/specter/scripts/install-specter.sh --platform markdown
+   ~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform markdown
    ```
 
 2. **For remote curl installation (public repos only):**
@@ -1187,7 +1187,7 @@ The installation will:
    curl --version
 
    # Test URL is accessible
-   curl -I https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh
+   curl -I https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh
 
    # Should return "200 OK"
    ```
@@ -1203,7 +1203,7 @@ The installation will:
    ```
 
    ```text
-   Install the Specter bootstrap files for this project
+   Install the SpecAI bootstrap files for this project
    ```
 
 ---
@@ -1214,7 +1214,7 @@ The installation will:
 
 **Symptoms:**
 - Error: "Python 3.13+ required"
-- Syntax errors in Specter code
+- Syntax errors in SpecAI code
 - Import errors for modern Python features
 
 **Solution:**
@@ -1247,7 +1247,7 @@ The installation will:
 
 3. **Verify uv uses correct Python version**
    ```bash
-   cd /path/to/specter
+   cd /path/to/spec-ai
    uv python list
    uv sync  # Re-sync with correct Python version
    ```
@@ -1256,8 +1256,8 @@ The installation will:
 
    If multiple Python versions exist, you can specify Python 3.13 when registering:
    ```bash
-   claude mcp remove specter  # Remove existing registration
-   claude mcp add --transport stdio specter -- uv run --python 3.13 --directory /absolute/path/to/specter specter-server
+   claude mcp remove spec-ai  # Remove existing registration
+   claude mcp add --transport stdio spec-ai -- uv run --python 3.13 --directory /absolute/path/to/spec-ai spec-ai-server
    ```
 
 ## Best Practices
@@ -1265,7 +1265,7 @@ The installation will:
 ### Strategic Planning
 
 **Do:**
-- Use `/specter-plan` which will automatically guide you through conversational discovery
+- Use `/spec-ai-plan` which will automatically guide you through conversational discovery
 - Be specific about business objectives when answering questions
 - Include constraints and limitations
 - Provide context about users and use cases
@@ -1274,12 +1274,12 @@ The installation will:
 - Skip strategic planning for large features
 - Mix technical details with business objectives
 - Rush through refinement loops
-- Call `/specter-plan-conversation` directly (it's used internally by `/specter-plan`)
+- Call `/spec-ai-plan-conversation` directly (it's used internally by `/spec-ai-plan`)
 
 ### Roadmap Planning
 
 **Do:**
-- Use `/specter-roadmap` for projects that benefit from phased decomposition
+- Use `/spec-ai-roadmap` for projects that benefit from phased decomposition
 - Let the roadmap agent choose the phasing strategy that fits your project:
   - **Feature-based** for most application development (complete capabilities)
   - **Technical-layer** for infrastructure or platform projects (foundational components)
@@ -1342,16 +1342,16 @@ Configure refinement loop thresholds:
 
 ```bash
 # Set via environment variables (future feature)
-export SPECTER_PLAN_THRESHOLD=80
-export SPECTER_SPEC_THRESHOLD=85
-export SPECTER_BUILD_THRESHOLD=90
+export SPEC_AI_PLAN_THRESHOLD=80
+export SPEC_AI_SPEC_THRESHOLD=85
+export SPEC_AI_BUILD_THRESHOLD=90
 ```
 
 ### Multi-Phase Projects
 
 For complex projects:
 
-1. Use `/specter-roadmap` for overall structure
+1. Use `/spec-ai-roadmap` for overall structure
 2. Create separate strategic plans per phase
 3. Generate specifications for each phase
 4. Implement phases sequentially
@@ -1386,7 +1386,7 @@ For complex projects:
 
 ### Common Questions
 
-**Q: Can I use Specter without an external platform?**
+**Q: Can I use SpecAI without an external platform?**
 A: Yes, use the Markdown platform for local file-based workflows.
 
 **Q: Can I switch platforms after setup?**
@@ -1396,16 +1396,16 @@ A: Yes, but you'll need to delete configuration and re-run setup. Existing work 
 A: Yes, agents work together in refinement loops. Removing agents may break workflows.
 
 **Q: Can I customize the templates?**
-A: Templates are generated fresh each time. Customization requires modifying the Specter MCP server code.
+A: Templates are generated fresh each time. Customization requires modifying the SpecAI MCP server code.
 
-**Q: How do I update Specter?**
+**Q: How do I update SpecAI?**
 A: Pull latest changes from repository and re-run installation script. Existing projects won't be affected.
 
 ## Next Steps
 
-1. **Install Specter** using the installation script
+1. **Install SpecAI** using the installation script
 2. **Restart Claude Code** to load workflow commands
-3. **Start planning** with `/specter-plan`
-4. **Breakdown the plan into specifications** with `/specter-roadmap`
-5. **Design and Refine specifications** with `/specter-spec`
-6. **Implement features** with `/specter-build`
+3. **Start planning** with `/spec-ai-plan`
+4. **Breakdown the plan into specifications** with `/spec-ai-roadmap`
+5. **Design and Refine specifications** with `/spec-ai-spec`
+6. **Implement features** with `/spec-ai-build`

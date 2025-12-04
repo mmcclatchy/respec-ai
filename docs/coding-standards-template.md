@@ -1,15 +1,15 @@
 # Coding Standards Template
 
-This file serves as a reference template for `.specter/coding-standards.md` in user projects.
+This file serves as a reference template for `.spec-ai/coding-standards.md` in user projects.
 
 ## Purpose
 
-The `.specter/coding-standards.md` file allows users to customize coding standards that the `build-coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
+The `.spec-ai/coding-standards.md` file allows users to customize coding standards that the `build-coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
 
 ## Location
 
 ```text
-{user-project-workspace}/.specter/coding-standards.md
+{user-project-workspace}/.spec-ai/coding-standards.md
 ```
 
 ## Usage by build-coder Agent
@@ -227,7 +227,7 @@ The `build-coder` agent reads this file at the start of each coding iteration an
 
 To customize this template for your project:
 
-1. Copy this template to `.specter/coding-standards.md` in your project workspace
+1. Copy this template to `.spec-ai/coding-standards.md` in your project workspace
 2. Modify sections to match your team's preferences
 3. Add project-specific rules (framework conventions, domain-specific patterns)
 4. Remove sections that don't apply to your project

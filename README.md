@@ -1,10 +1,10 @@
-# Specter Workflow System
+# SpecAI Workflow System
 
 AI-powered specification-driven development workflow for Claude Code.
 
-## What is Specter?
+## What is SpecAI?
 
-Specter is a **meta MCP server** that generates platform-specific workflow automation tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
+SpecAI is a **meta MCP server** that generates platform-specific workflow automation tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
 
 ### Key Features
 
@@ -15,20 +15,20 @@ Specter is a **meta MCP server** that generates platform-specific workflow autom
 
 ## Quick Start
 
-Specter installation has two parts:
-1. **One-time MCP server setup** (configure Specter globally)
+SpecAI installation has two parts:
+1. **One-time MCP server setup** (configure SpecAI globally)
 2. **Per-project setup** (generate workflow files for each project)
 
 ### 1. MCP Server Setup (One-Time)
 
-Configure Specter as an MCP server in Claude Code:
+Configure SpecAI as an MCP server in Claude Code:
 
-**Step 1: Clone Specter repository**
+**Step 1: Clone SpecAI repository**
 ```bash
 # Clone to a permanent location
 cd ~/coding/projects  # or your preferred location
-git clone git@github.com:mmcclatchy/specter.git
-cd specter
+git clone git@github.com:mmcclatchy/spec-ai.git
+cd spec-ai
 uv sync  # Install dependencies
 ```
 
@@ -39,16 +39,16 @@ Edit `~/.claude/config.json` and add:
 ```json
 {
   "mcpServers": {
-    "specter": {
+    "spec-ai": {
       "command": "uv",
-      "args": ["run", "specter-server"],
-      "cwd": "/absolute/path/to/specter"
+      "args": ["run", "spec-ai-server"],
+      "cwd": "/absolute/path/to/spec-ai"
     }
   }
 }
 ```
 
-> **Important**: Replace `/absolute/path/to/specter` with your actual path from Step 1. Use absolute paths, not `~` or relative paths.
+> **Important**: Replace `/absolute/path/to/spec-ai` with your actual path from Step 1. Use absolute paths, not `~` or relative paths.
 
 **Step 3: Verify setup**
 
@@ -61,7 +61,7 @@ Then in Claude Code:
 /mcp list
 ```
 
-Expected output should include "specter" with 32 tools available.
+Expected output should include "spec-ai" with 32 tools available.
 
 ### 2. Project Setup (Per-Project)
 
@@ -70,14 +70,14 @@ Once the MCP server is configured, set up any project:
 **Local installation:**
 ```bash
 cd /path/to/your/project
-~/coding/projects/specter/scripts/install-specter.sh -n myproject -p linear
+~/coding/projects/spec-ai/scripts/install-spec-ai.sh -n myproject -p linear
 # Choose platform: linear, github, or markdown
 claude  # Restart to load commands
 ```
 
 Then in Claude Code:
 ```text
-/specter-plan  # Start your first workflow
+/spec-ai-plan  # Start your first workflow
 ```
 
 **Remote installation (public repos only):**
@@ -86,22 +86,22 @@ Then in Claude Code:
 
 ```bash
 cd /path/to/your/project
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- -n myproject -p linear --specter-path ~/coding/projects/specter
+curl -fsSL https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh | bash -s -- -n myproject -p linear --spec-ai-path ~/coding/projects/spec-ai
 claude  # Restart to load commands
 ```
 
 Then in Claude Code:
 ```text
-/specter-plan  # Start your first workflow
+/spec-ai-plan  # Start your first workflow
 ```
 
 ### 3. Start Using
 
 ```text
-/specter-plan          # Create strategic plan
-/specter-roadmap       # Break down into phases
-/specter-spec          # Design specifications
-/specter-build         # Implement features
+/spec-ai-plan          # Create strategic plan
+/spec-ai-roadmap       # Break down into phases
+/spec-ai-spec          # Design specifications
+/spec-ai-build         # Implement features
 ```
 
 **For complete installation instructions**, see [User Guide](docs/USER_GUIDE.md)
@@ -166,25 +166,25 @@ Then in Claude Code:
 
 ```text
 1. Strategic Planning
-   /specter-plan
+   /spec-ai-plan
    → Conversational requirements gathering
    → Creates strategic plan with business objectives
    → Quality validation with plan-critic
 
 2. Phase Breakdown
-   /specter-roadmap
+   /spec-ai-roadmap
    → Breaks plan into implementation phases
    → Creates initial specs for each phase
    → Quality refinement with roadmap-critic
 
 3. Technical Design
-   /specter-spec [spec-name]
+   /spec-ai-spec [spec-name]
    → Detailed technical specifications
    → Architecture and implementation approach
    → Quality refinement with spec-critic
 
 4. Implementation
-   /specter-build [spec-name]
+   /spec-ai-build [spec-name]
    → Implementation planning
    → Code generation
    → Quality review with build-critic and build-reviewer
@@ -192,11 +192,11 @@ Then in Claude Code:
 
 ## Available Commands
 
-- **`/specter-plan [project-name]`** - Create strategic project plans
-- **`/specter-roadmap [project-name]`** - Generate multi-phase implementation roadmaps
-- **`/specter-spec [spec-name]`** - Convert plans to detailed specifications
-- **`/specter-build [spec-name]`** - Implement specifications with code
-- **`/specter-plan-conversation`** - Convert conversations into structured plans
+- **`/spec-ai-plan [project-name]`** - Create strategic project plans
+- **`/spec-ai-roadmap [project-name]`** - Generate multi-phase implementation roadmaps
+- **`/spec-ai-spec [spec-name]`** - Convert plans to detailed specifications
+- **`/spec-ai-build [spec-name]`** - Implement specifications with code
+- **`/spec-ai-plan-conversation`** - Convert conversations into structured plans
 
 ## Contributing
 
@@ -215,7 +215,7 @@ This is a production-ready system with enterprise-grade architecture. Contributi
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/mmcclatchy/specter/issues)
+- **Issues**: [GitHub Issues](https://github.com/mmcclatchy/spec-ai/issues)
 - **Documentation**: See [docs/](docs/) directory
 - **User Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 

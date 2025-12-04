@@ -68,7 +68,7 @@ This is a test strategic plan document with comprehensive details.
 
 ## Next Steps
 1. Review the strategic plan for accuracy
-2. Proceed with technical specification using: /specter-spec
+2. Proceed with technical specification using: /spec-ai-spec
 3. The structured objectives will feed directly into spec-architect
 
 ## Metadata

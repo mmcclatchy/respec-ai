@@ -7,7 +7,7 @@ from fastmcp import FastMCP
 
 from services.mcp.tools import register_all_tools
 
-from .tool_enums import ExternalPlatformTool, SpecterMCPTool
+from .tool_enums import ExternalPlatformTool, SpecAITool
 from .tool_registry import ToolRegistry
 
 
@@ -18,7 +18,7 @@ class StartupValidationError(Exception):
     pass
 
 
-def validate_specter_tools_at_startup() -> dict[str, Any]:
+def validate_spec_ai_tools_at_startup() -> dict[str, Any]:
     # Create a temporary MCP server to discover registered tools
     temp_mcp = FastMCP('validation')
 
@@ -32,7 +32,7 @@ def validate_specter_tools_at_startup() -> dict[str, Any]:
             registered_tools = set(temp_mcp._tools.keys())
 
         # Get enum tool names
-        enum_tools = {tool.value for tool in SpecterMCPTool}
+        enum_tools = {tool.value for tool in SpecAITool}
 
         # Find mismatches
         missing_from_enum = registered_tools - enum_tools
@@ -49,18 +49,18 @@ def validate_specter_tools_at_startup() -> dict[str, Any]:
 
         if missing_from_enum:
             validation_result['issues'].append(
-                f'Tools registered but missing from SpecterMCPTool enum: {sorted(missing_from_enum)}'
+                f'Tools registered but missing from SpecAITool enum: {sorted(missing_from_enum)}'
             )
 
         if missing_from_registration:
             validation_result['issues'].append(
-                f'Tools in SpecterMCPTool enum but not registered: {sorted(missing_from_registration)}'
+                f'Tools in SpecAITool enum but not registered: {sorted(missing_from_registration)}'
             )
 
         return validation_result
 
     except Exception as e:
-        logger.error(f'Failed to validate Specter tools: {e}')
+        logger.error(f'Failed to validate SpecAI tools: {e}')
         return {'success': False, 'error': str(e), 'issues': [f'Validation failed with error: {e}']}
 
 
@@ -133,7 +133,7 @@ def run_all_startup_validations() -> dict[str, Any]:
     results: dict[str, Any] = {
         'overall_success': True,
         'validations': {
-            'specter_tools': validate_specter_tools_at_startup(),
+            'spec_ai_tools': validate_spec_ai_tools_at_startup(),
             'external_platform_tools': validate_external_platform_tools(),
             'tool_registry': validate_tool_registry(),
         },

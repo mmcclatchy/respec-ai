@@ -79,7 +79,7 @@ def _configure_logging() -> logging.Logger:
         # File logging mode (local development)
         log_path = Path(mcp_settings.log_file)
         if not log_path.is_absolute():
-            # Make relative paths relative to the specter project directory
+            # Make relative paths relative to the spec-ai project directory
             log_path = Path(__file__).parent.parent.parent / log_path
         log_path.parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(log_path, mode='a'))

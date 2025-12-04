@@ -3,7 +3,7 @@ from services.platform.models import SpecCriticAgentTools
 
 def generate_spec_critic_template(tools: SpecCriticAgentTools) -> str:
     return f"""---
-name: specter-spec-critic
+name: spec-ai-spec-critic
 description: Evaluate technical specifications against FSDD quality criteria
 model: sonnet
 tools: {tools.tools_yaml}
@@ -15,8 +15,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__specter__get_spec_markdown(project_name=None, spec_name=None, loop_id=loop_id)
-  ❌ WRONG: <mcp__specter__get_spec_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: spec = mcp__spec-ai__get_spec_markdown(project_name=None, spec_name=None, loop_id=loop_id)
+  ❌ WRONG: <mcp__spec-ai__get_spec_markdown><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -39,7 +39,7 @@ IF loop_id is None or loop_id == "":
 → Verify: loop_id is valid (non-empty string)
 
 STEP 2: Retrieve Specification via loop_id
-CALL mcp__specter__get_spec_markdown(
+CALL mcp__spec-ai__get_spec_markdown(
   project_name=None,
   spec_name=None,
   loop_id=loop_id
@@ -136,7 +136,7 @@ Create specific improvement recommendations
 → Reference specific spec sections
 
 STEP 6: Store Feedback
-CALL mcp__specter__store_critic_feedback(
+CALL mcp__spec-ai__store_critic_feedback(
   loop_id=loop_id,
   feedback_markdown=generated_feedback
 )
@@ -410,7 +410,7 @@ Reference ranges (informational only):
 
 ## OUTPUT FORMAT
 
-**CRITICAL**: Store feedback directly via mcp__specter__store_critic_feedback.
+**CRITICAL**: Store feedback directly via mcp__spec-ai__store_critic_feedback.
 The feedback markdown must include overall_score for MCP database auto-population.
 
 ### Feedback Structure
@@ -509,7 +509,7 @@ The feedback markdown must include overall_score for MCP database auto-populatio
 [IF ROOT_CAUSE == "SCOPE_CREEP":]
   ⚠️ **DECOMPOSITION_REQUIRED** ⚠️
   This specification covers too much scope for a single implementation phase.
-  **Action Required**: Run `/specter-roadmap [project-name]` to decompose into focused phases.
+  **Action Required**: Run `/spec-ai-roadmap [project-name]` to decompose into focused phases.
 
 [IF ROOT_CAUSE == "VERBOSITY":]
   Content is verbose and can be condensed significantly.

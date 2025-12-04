@@ -17,20 +17,20 @@ from services.mcp.tools import (
     spec_tools,
 )
 
-from .tool_enums import SpecterMCPTool
+from .tool_enums import SpecAITool
 
 
-def discover_registered_specter_tools() -> set[str]:
+def discover_registered_spec_ai_tools() -> set[str]:
     temp_mcp = FastMCP('discovery')
     register_all_tools(temp_mcp)
 
-    tool_names = {f'mcp__specter__{name}' for name in temp_mcp._tool_manager._tools.keys()}
+    tool_names = {f'mcp__spec-ai__{name}' for name in temp_mcp._tool_manager._tools.keys()}
     return tool_names
 
 
-def validate_specter_enum_completeness() -> dict[str, list[str]]:
-    registered_tools = discover_registered_specter_tools()
-    enum_tools = {tool.value for tool in SpecterMCPTool}
+def validate_spec_ai_enum_completeness() -> dict[str, list[str]]:
+    registered_tools = discover_registered_spec_ai_tools()
+    enum_tools = {tool.value for tool in SpecAITool}
 
     missing_from_enum = registered_tools - enum_tools
     missing_from_registration = enum_tools - registered_tools
@@ -72,7 +72,7 @@ def discover_tool_registration_functions() -> dict[str, list[str]]:
 
             for pattern in tool_patterns:
                 matches = re.findall(pattern, source)
-                tools.extend(f'mcp__specter__{match}' for match in matches if not match.startswith('register_'))
+                tools.extend(f'mcp__spec-ai__{match}' for match in matches if not match.startswith('register_'))
 
         discovered_tools[module_name] = list(set(tools))
 
@@ -80,15 +80,15 @@ def discover_tool_registration_functions() -> dict[str, list[str]]:
 
 
 def validate_tool_enum_against_codebase() -> dict[str, Any]:
-    specter_validation = validate_specter_enum_completeness()
+    spec_ai_validation = validate_spec_ai_enum_completeness()
     tool_discovery = discover_tool_registration_functions()
 
-    missing_from_enum = specter_validation['missing_from_enum']
-    missing_from_registration = specter_validation['missing_from_registration']
+    missing_from_enum = spec_ai_validation['missing_from_enum']
+    missing_from_registration = spec_ai_validation['missing_from_registration']
 
     issues = []
     if missing_from_enum:
-        issues.append(f'Tools missing from SpecterMCPTool enum: {missing_from_enum}')
+        issues.append(f'Tools missing from SpecAITool enum: {missing_from_enum}')
 
     if missing_from_registration:
         issues.append(f'Enum tools not found in registration: {missing_from_registration}')
@@ -96,31 +96,31 @@ def validate_tool_enum_against_codebase() -> dict[str, Any]:
     is_complete = not (missing_from_enum or missing_from_registration)
 
     return {
-        'specter_tools': specter_validation,
+        'spec_ai_tools': spec_ai_validation,
         'tool_registration_discovery': tool_discovery,
         'validation_summary': {
-            'specter_enum_complete': is_complete,
+            'spec_ai_enum_complete': is_complete,
             'issues': issues,
         },
     }
 
 
 def generate_enum_updates_from_discovery() -> str:
-    registered_tools = discover_registered_specter_tools()
-    enum_tools = {tool.value for tool in SpecterMCPTool}
+    registered_tools = discover_registered_spec_ai_tools()
+    enum_tools = {tool.value for tool in SpecAITool}
 
     missing_tools = registered_tools - enum_tools
 
     if not missing_tools:
-        return '# SpecterMCPTool enum is up to date'
+        return '# SpecAITool enum is up to date'
 
     enum_additions = []
     for tool in sorted(missing_tools):
         # Convert tool name to enum constant name
-        # mcp__specter__some_tool_name -> SOME_TOOL_NAME
-        enum_name = tool.replace('mcp__specter__', '').upper()
+        # mcp__spec-ai__some_tool_name -> SOME_TOOL_NAME
+        enum_name = tool.replace('mcp__spec-ai__', '').upper()
         enum_additions.append(f'    {enum_name} = "{tool}"')
 
     enum_addition_lines = '\n'.join(enum_additions)
-    return f"""# Add these entries to SpecterMCPTool enum:
+    return f"""# Add these entries to SpecAITool enum:
 {enum_addition_lines}"""

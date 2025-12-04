@@ -49,7 +49,7 @@ class MCPSettings(BaseSettings):
         env_prefix='MCP_',
     )
 
-    server_name: str = 'specter'
+    server_name: str = 'spec-ai'
     host: str = '0.0.0.0'
     port: int = 8000
     debug: bool = False

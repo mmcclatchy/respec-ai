@@ -8,7 +8,7 @@ argument-hint: [project-name] [optional: phasing-preferences]
 description: Transform strategic plans into multiple InitialSpecs through quality-driven refinement
 ---
 
-# /specter-roadmap Command: Implementation Roadmap Orchestration
+# /spec-ai-roadmap Command: Implementation Roadmap Orchestration
 
 ## Overview
 Orchestrate the transformation of strategic plans into discrete, implementable phase roadmaps. Bridge strategic planning to technical specification through quality-driven decomposition and refinement.
@@ -38,14 +38,14 @@ PHASING_PREFERENCES = [second argument if provided, otherwise empty string]
 **Important**: PROJECT_NAME from command arguments is used for all MCP storage operations.
 
 ### 1. Strategic Plan Retrieval and Validation
-Retrieve and validate completed strategic plan from /specter-plan command:
+Retrieve and validate completed strategic plan from /spec-ai-plan command:
 
 #### Retrieve Project Plan
 ```text
-STRATEGIC_PLAN = mcp__specter__get_project_plan_markdown(PROJECT_NAME)
+STRATEGIC_PLAN = mcp__spec-ai__get_project_plan_markdown(PROJECT_NAME)
 IF STRATEGIC_PLAN not found:
   ERROR: "No strategic plan found for project: [PROJECT_NAME]"
-  SUGGEST: "Run '/specter-plan [PROJECT_NAME]' to create strategic plan first"
+  SUGGEST: "Run '/spec-ai-plan [PROJECT_NAME]' to create strategic plan first"
   EXIT: Graceful failure with guidance
 STRUCTURED_OBJECTIVES = [Extract from strategic plan Business Objectives analysis]
 ```
@@ -55,7 +55,7 @@ Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.
 ### 2. Initialize Roadmap Generation Loop
 Set up MCP-managed quality refinement loop:
 ```text
-ROADMAP_LOOP_ID = mcp__specter__initialize_refinement_loop(loop_type='roadmap')
+ROADMAP_LOOP_ID = mcp__spec-ai__initialize_refinement_loop(loop_type='roadmap')
 ```
 
 ### 3. Roadmap Generation Loop
@@ -63,7 +63,7 @@ Coordinate roadmap → roadmap-critic → MCP decision cycle:
 
 #### Step 3a: Invoke Roadmap Agent
 ```text
-Invoke: specter-roadmap
+Invoke: spec-ai-roadmap
 Input:
   - loop_id: ROADMAP_LOOP_ID
   - project_name: PROJECT_NAME
@@ -78,7 +78,7 @@ Agent will:
 
 **CRITICAL**: Capture the agent's complete output markdown as CURRENT_ROADMAP.
 The agent returns the full roadmap markdown but does NOT store it.
-You MUST store this output in Step 3b using mcp__specter__create_roadmap.
+You MUST store this output in Step 3b using mcp__spec-ai__create_roadmap.
 
 CURRENT_ROADMAP = [complete markdown output from roadmap agent]
 ```
@@ -121,7 +121,7 @@ Choose strategy based on project characteristics. Phases should be:
 The roadmap agent returns markdown but does NOT store it. YOU must store it now.
 
 ```text
-STORE_RESULT = mcp__specter__create_roadmap(
+STORE_RESULT = mcp__spec-ai__create_roadmap(
     project_name=PROJECT_NAME,
     roadmap_data=CURRENT_ROADMAP
 )
@@ -143,7 +143,7 @@ IF STORE_RESULT contains error:
 
 #### Step 3c: Invoke Roadmap-Critic Agent
 ```text
-Invoke: specter-roadmap-critic
+Invoke: spec-ai-roadmap-critic
 Input:
   - project_name: PROJECT_NAME
   - loop_id: ROADMAP_LOOP_ID
@@ -156,7 +156,7 @@ Roadmap-critic will:
 
 #### Step 3d: Get Loop Decision
 ```text
-LOOP_DECISION_RESPONSE = mcp__specter__decide_loop_next_action(loop_id=ROADMAP_LOOP_ID)
+LOOP_DECISION_RESPONSE = mcp__spec-ai__decide_loop_next_action(loop_id=ROADMAP_LOOP_ID)
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 
 Note: No need to retrieve feedback or score - MCP handles internally.
@@ -175,7 +175,7 @@ Return to Step 3a (roadmap-analyst will retrieve feedback from MCP itself)
 Display: "⚠ Quality improvements needed - user input required"
 
 # ONLY NOW retrieve feedback for user display
-LATEST_FEEDBACK = mcp__specter__get_feedback(loop_id=ROADMAP_LOOP_ID, count=1)
+LATEST_FEEDBACK = mcp__spec-ai__get_feedback(loop_id=ROADMAP_LOOP_ID, count=1)
 
 Display LATEST_FEEDBACK to user with:
 - Current score and iteration
@@ -194,7 +194,7 @@ Plan extraction of sparse TechnicalSpecs from roadmap before parallel processing
 
 #### Retrieve Final Roadmap
 ```text
-FINAL_ROADMAP = mcp__specter__get_roadmap(project_name=PROJECT_NAME)
+FINAL_ROADMAP = mcp__spec-ai__get_roadmap(project_name=PROJECT_NAME)
 Parse FINAL_ROADMAP to extract:
   - ROADMAP_PHASES: List of all phases with names, durations, dependencies
   - PHASE_COUNT: Total number of phases
@@ -227,9 +227,9 @@ Extract sparse TechnicalSpecs from roadmap and save to MCP storage:
 ```text
 IMPORTANT: Launch ALL agents in a SINGLE message using multiple agent invocations for true parallelism.
 
-For each phase in ROADMAP_PHASES, invoke specter-create-spec agent:
+For each phase in ROADMAP_PHASES, invoke spec-ai-create-spec agent:
 
-Invoke: specter-create-spec
+Invoke: spec-ai-create-spec
 Input:
   - project_name: PROJECT_NAME
   - spec_name: [phase_name from ROADMAP_PHASES]
@@ -255,7 +255,7 @@ Validate that each planned phase has a corresponding spec result.
 Verification Sequence:
 ```text
 STEP 1: Query MCP Storage
-STORED_SPECS = mcp__specter__list_specs(project_name=PROJECT_NAME)
+STORED_SPECS = mcp__spec-ai__list_specs(project_name=PROJECT_NAME)
 
 STEP 2: Compare Results
 EXPECTED_COUNT = PHASE_COUNT (from Step 5)
@@ -267,7 +267,7 @@ For each phase in ROADMAP_PHASES:
 
   IF EXPECTED_SPEC_NAME in STORED_SPECS:
     STATUS = "✅ SUCCESS"
-    VERIFY_SPEC = mcp__specter__get_spec_markdown(
+    VERIFY_SPEC = mcp__spec-ai__get_spec_markdown(
       project_name=PROJECT_NAME,
       spec_name=EXPECTED_SPEC_NAME
     )
@@ -302,12 +302,12 @@ Present verified results only:
 - Specs in MCP Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
 - Verified Specs: [list of ✅ spec names]
 - Missing Specs: [list of ❌ spec names]
-- Evidence: mcp__specter__list_specs output
+- Evidence: mcp__spec-ai__list_specs output
 
 **Readiness Assessment**:
 IF ACTUAL_COUNT == EXPECTED_COUNT:
-  ✅ All phases ready for /specter-spec execution
-  Next: Execute /specter-spec on individual phases
+  ✅ All phases ready for /spec-ai-spec execution
+  Next: Execute /spec-ai-spec on individual phases
 ELSE:
   ⚠️ Partial completion - manual intervention required
   Missing: [list specific phase names without MCP storage]
@@ -324,7 +324,7 @@ ELSE:
 #### Strategic Plan Not Available
 ```text
 Display: "No strategic plan found for project: [PROJECT_NAME]"
-Suggest: "/specter-plan [PROJECT_NAME] to create strategic plan"
+Suggest: "/spec-ai-plan [PROJECT_NAME] to create strategic plan"
 Exit gracefully with guidance
 ```
 
@@ -394,5 +394,5 @@ All specialized work delegated to appropriate agents:
 - Coordinates prerequisite ordering and dependencies
 - Manages MCP storage for spec tracking
 
-Ready for technical specification development through /specter-spec command execution on individual phases with validated input.
+Ready for technical specification development through /spec-ai-spec command execution on individual phases with validated input.
 """

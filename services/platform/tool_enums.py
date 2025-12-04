@@ -1,4 +1,4 @@
-"""Tool enums defining all valid tools across external platforms, built-in Claude Code tools, and Specter MCP tools."""
+"""Tool enums defining all valid tools across external platforms, built-in Claude Code tools, and SpecAI MCP tools."""
 
 from enum import Enum
 
@@ -71,57 +71,57 @@ class BuiltInTool(Enum):
     SLASH_COMMAND = 'SlashCommand'
 
 
-class SpecterMCPTool(Enum):
+class SpecAITool(Enum):
     # Loop Management Tools
-    INITIALIZE_REFINEMENT_LOOP = 'mcp__specter__initialize_refinement_loop'
-    DECIDE_LOOP_NEXT_ACTION = 'mcp__specter__decide_loop_next_action'
-    GET_LOOP_STATUS = 'mcp__specter__get_loop_status'
-    LIST_ACTIVE_LOOPS = 'mcp__specter__list_active_loops'
-    GET_LOOP_FEEDBACK_SUMMARY = 'mcp__specter__get_loop_feedback_summary'
-    GET_LOOP_IMPROVEMENT_ANALYSIS = 'mcp__specter__get_loop_improvement_analysis'
-    GET_PREVIOUS_OBJECTIVE_FEEDBACK = 'mcp__specter__get_previous_objective_feedback'
-    STORE_CURRENT_OBJECTIVE_FEEDBACK = 'mcp__specter__store_current_objective_feedback'
+    INITIALIZE_REFINEMENT_LOOP = 'mcp__spec-ai__initialize_refinement_loop'
+    DECIDE_LOOP_NEXT_ACTION = 'mcp__spec-ai__decide_loop_next_action'
+    GET_LOOP_STATUS = 'mcp__spec-ai__get_loop_status'
+    LIST_ACTIVE_LOOPS = 'mcp__spec-ai__list_active_loops'
+    GET_LOOP_FEEDBACK_SUMMARY = 'mcp__spec-ai__get_loop_feedback_summary'
+    GET_LOOP_IMPROVEMENT_ANALYSIS = 'mcp__spec-ai__get_loop_improvement_analysis'
+    GET_PREVIOUS_OBJECTIVE_FEEDBACK = 'mcp__spec-ai__get_previous_objective_feedback'
+    STORE_CURRENT_OBJECTIVE_FEEDBACK = 'mcp__spec-ai__store_current_objective_feedback'
 
     # Feedback Management Tools
-    STORE_CRITIC_FEEDBACK = 'mcp__specter__store_critic_feedback'
-    STORE_USER_FEEDBACK = 'mcp__specter__store_user_feedback'
-    GET_FEEDBACK = 'mcp__specter__get_feedback'
-    STORE_CURRENT_ANALYSIS = 'mcp__specter__store_current_analysis'
-    GET_PREVIOUS_ANALYSIS = 'mcp__specter__get_previous_analysis'
+    STORE_CRITIC_FEEDBACK = 'mcp__spec-ai__store_critic_feedback'
+    STORE_USER_FEEDBACK = 'mcp__spec-ai__store_user_feedback'
+    GET_FEEDBACK = 'mcp__spec-ai__get_feedback'
+    STORE_CURRENT_ANALYSIS = 'mcp__spec-ai__store_current_analysis'
+    GET_PREVIOUS_ANALYSIS = 'mcp__spec-ai__get_previous_analysis'
 
     # Project Plan Tools
-    CREATE_PROJECT_PLAN = 'mcp__specter__create_project_plan'
-    STORE_PROJECT_PLAN = 'mcp__specter__store_project_plan'
-    GET_PROJECT_PLAN_MARKDOWN = 'mcp__specter__get_project_plan_markdown'
-    LIST_PROJECT_PLANS = 'mcp__specter__list_project_plans'
-    DELETE_PROJECT_PLAN = 'mcp__specter__delete_project_plan'
+    CREATE_PROJECT_PLAN = 'mcp__spec-ai__create_project_plan'
+    STORE_PROJECT_PLAN = 'mcp__spec-ai__store_project_plan'
+    GET_PROJECT_PLAN_MARKDOWN = 'mcp__spec-ai__get_project_plan_markdown'
+    LIST_PROJECT_PLANS = 'mcp__spec-ai__list_project_plans'
+    DELETE_PROJECT_PLAN = 'mcp__spec-ai__delete_project_plan'
 
     # Roadmap Management Tools
-    CREATE_ROADMAP = 'mcp__specter__create_roadmap'
-    GET_ROADMAP = 'mcp__specter__get_roadmap'
+    CREATE_ROADMAP = 'mcp__spec-ai__create_roadmap'
+    GET_ROADMAP = 'mcp__spec-ai__get_roadmap'
 
     # Spec Management Tools
-    GET_SPEC_MARKDOWN = 'mcp__specter__get_spec_markdown'
-    STORE_SPEC = 'mcp__specter__store_spec'
-    UPDATE_SPEC = 'mcp__specter__update_spec'
-    LIST_SPECS = 'mcp__specter__list_specs'
-    DELETE_SPEC = 'mcp__specter__delete_spec'
-    LINK_LOOP_TO_SPEC = 'mcp__specter__link_loop_to_spec'
-    UNLINK_LOOP = 'mcp__specter__unlink_loop'
+    GET_SPEC_MARKDOWN = 'mcp__spec-ai__get_spec_markdown'
+    STORE_SPEC = 'mcp__spec-ai__store_spec'
+    UPDATE_SPEC = 'mcp__spec-ai__update_spec'
+    LIST_SPECS = 'mcp__spec-ai__list_specs'
+    DELETE_SPEC = 'mcp__spec-ai__delete_spec'
+    LINK_LOOP_TO_SPEC = 'mcp__spec-ai__link_loop_to_spec'
+    UNLINK_LOOP = 'mcp__spec-ai__unlink_loop'
 
     # Build Plan Tools
-    STORE_BUILD_PLAN = 'mcp__specter__store_build_plan'
-    GET_BUILD_PLAN_MARKDOWN = 'mcp__specter__get_build_plan_markdown'
-    LIST_BUILD_PLANS = 'mcp__specter__list_build_plans'
-    DELETE_BUILD_PLAN = 'mcp__specter__delete_build_plan'
+    STORE_BUILD_PLAN = 'mcp__spec-ai__store_build_plan'
+    GET_BUILD_PLAN_MARKDOWN = 'mcp__spec-ai__get_build_plan_markdown'
+    LIST_BUILD_PLANS = 'mcp__spec-ai__list_build_plans'
+    DELETE_BUILD_PLAN = 'mcp__spec-ai__delete_build_plan'
 
     # Plan Completion Report Tools
-    CREATE_PLAN_COMPLETION_REPORT = 'mcp__specter__create_plan_completion_report'
-    STORE_PLAN_COMPLETION_REPORT = 'mcp__specter__store_plan_completion_report'
-    GET_PLAN_COMPLETION_REPORT_MARKDOWN = 'mcp__specter__get_plan_completion_report_markdown'
-    UPDATE_PLAN_COMPLETION_REPORT = 'mcp__specter__update_plan_completion_report'
-    LIST_PLAN_COMPLETION_REPORTS = 'mcp__specter__list_plan_completion_reports'
-    DELETE_PLAN_COMPLETION_REPORT = 'mcp__specter__delete_plan_completion_report'
+    CREATE_PLAN_COMPLETION_REPORT = 'mcp__spec-ai__create_plan_completion_report'
+    STORE_PLAN_COMPLETION_REPORT = 'mcp__spec-ai__store_plan_completion_report'
+    GET_PLAN_COMPLETION_REPORT_MARKDOWN = 'mcp__spec-ai__get_plan_completion_report_markdown'
+    UPDATE_PLAN_COMPLETION_REPORT = 'mcp__spec-ai__update_plan_completion_report'
+    LIST_PLAN_COMPLETION_REPORTS = 'mcp__spec-ai__list_plan_completion_reports'
+    DELETE_PLAN_COMPLETION_REPORT = 'mcp__spec-ai__delete_plan_completion_report'
 
 
 class AbstractOperation(Enum):
@@ -144,11 +144,11 @@ class AbstractOperation(Enum):
 
 
 class CommandTemplate(Enum):
-    PLAN = 'specter-plan'
-    SPEC = 'specter-spec'
-    BUILD = 'specter-build'
-    ROADMAP = 'specter-roadmap'
-    PLAN_CONVERSATION = 'specter-plan-conversation'
+    PLAN = 'spec-ai-plan'
+    SPEC = 'spec-ai-spec'
+    BUILD = 'spec-ai-build'
+    ROADMAP = 'spec-ai-roadmap'
+    PLAN_CONVERSATION = 'spec-ai-plan-conversation'
 
 
-ToolEnums = ExternalPlatformTool | BuiltInTool | SpecterMCPTool
+ToolEnums = ExternalPlatformTool | BuiltInTool | SpecAITool

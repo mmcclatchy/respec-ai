@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 
-class TestSpecterSetupEndToEnd:
+class TestSpecAISetupEndToEnd:
     def test_full_linear_project_setup_workflow(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'
         project_path.mkdir()
@@ -12,7 +12,7 @@ class TestSpecterSetupEndToEnd:
             [
                 'uv',
                 'run',
-                'specter-setup',
+                'spec-ai-setup',
                 '--project-path',
                 str(project_path),
                 '--project-name',
@@ -25,14 +25,14 @@ class TestSpecterSetupEndToEnd:
         )
 
         assert result.returncode == 0
-        assert (project_path / '.claude' / 'commands' / 'specter-plan.md').exists()
-        assert (project_path / '.claude' / 'commands' / 'specter-spec.md').exists()
-        assert (project_path / '.claude' / 'commands' / 'specter-build.md').exists()
-        assert (project_path / '.claude' / 'commands' / 'specter-roadmap.md').exists()
-        assert (project_path / '.claude' / 'agents' / 'specter-create-spec.md').exists()
-        assert (project_path / '.specter' / 'config.json').exists()
+        assert (project_path / '.claude' / 'commands' / 'spec-ai-plan.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'spec-ai-spec.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'spec-ai-build.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'spec-ai-roadmap.md').exists()
+        assert (project_path / '.claude' / 'agents' / 'spec-ai-create-spec.md').exists()
+        assert (project_path / '.spec-ai' / 'config.json').exists()
 
-        config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
+        config_data = json.loads((project_path / '.spec-ai' / 'config.json').read_text())
         assert config_data['platform'] == 'linear'
         assert config_data['project_name'] == 'test-project'
 
@@ -44,7 +44,7 @@ class TestSpecterSetupEndToEnd:
             [
                 'uv',
                 'run',
-                'specter-setup',
+                'spec-ai-setup',
                 '--project-path',
                 str(project_path),
                 '--project-name',
@@ -57,10 +57,10 @@ class TestSpecterSetupEndToEnd:
         )
 
         assert result.returncode == 0
-        assert (project_path / '.claude' / 'commands' / 'specter-plan.md').exists()
-        assert (project_path / '.specter' / 'config.json').exists()
+        assert (project_path / '.claude' / 'commands' / 'spec-ai-plan.md').exists()
+        assert (project_path / '.spec-ai' / 'config.json').exists()
 
-        config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
+        config_data = json.loads((project_path / '.spec-ai' / 'config.json').read_text())
         assert config_data['platform'] == 'github'
         assert config_data['project_name'] == 'test-project'
 
@@ -72,7 +72,7 @@ class TestSpecterSetupEndToEnd:
             [
                 'uv',
                 'run',
-                'specter-setup',
+                'spec-ai-setup',
                 '--project-path',
                 str(project_path),
                 '--project-name',
@@ -85,10 +85,10 @@ class TestSpecterSetupEndToEnd:
         )
 
         assert result.returncode == 0
-        assert (project_path / '.claude' / 'commands' / 'specter-plan.md').exists()
-        assert (project_path / '.specter' / 'config.json').exists()
+        assert (project_path / '.claude' / 'commands' / 'spec-ai-plan.md').exists()
+        assert (project_path / '.spec-ai' / 'config.json').exists()
 
-        config_data = json.loads((project_path / '.specter' / 'config.json').read_text())
+        config_data = json.loads((project_path / '.spec-ai' / 'config.json').read_text())
         assert config_data['platform'] == 'markdown'
         assert config_data['project_name'] == 'test-project'
 
@@ -101,7 +101,7 @@ class TestSpecterSetupEndToEnd:
                 [
                     'uv',
                     'run',
-                    'specter-setup',
+                    'spec-ai-setup',
                     '--project-path',
                     str(platform_project),
                     '--project-name',
@@ -115,7 +115,7 @@ class TestSpecterSetupEndToEnd:
 
             assert result.returncode == 0
 
-            spec_command_path = platform_project / '.claude' / 'commands' / 'specter-spec.md'
+            spec_command_path = platform_project / '.claude' / 'commands' / 'spec-ai-spec.md'
             spec_command_content = spec_command_path.read_text()
 
             if platform == 'linear':
@@ -134,7 +134,7 @@ class TestSpecterSetupEndToEnd:
                 [
                     'uv',
                     'run',
-                    'specter-setup',
+                    'spec-ai-setup',
                     '--project-path',
                     str(project_path),
                     '--project-name',
@@ -148,7 +148,7 @@ class TestSpecterSetupEndToEnd:
 
             assert result.returncode == 0
 
-            create_spec_agent_path = project_path / '.claude' / 'agents' / 'specter-create-spec.md'
+            create_spec_agent_path = project_path / '.claude' / 'agents' / 'spec-ai-create-spec.md'
             create_spec_agent_content = create_spec_agent_path.read_text()
 
             if platform == 'linear':
@@ -166,7 +166,7 @@ class TestSpecterSetupEndToEnd:
             [
                 'uv',
                 'run',
-                'specter-setup',
+                'spec-ai-setup',
                 '--project-path',
                 str(project_path),
                 '--project-name',
@@ -180,7 +180,7 @@ class TestSpecterSetupEndToEnd:
 
         assert result.returncode == 0
 
-        config_file_path = project_path / '.specter' / 'config.json'
+        config_file_path = project_path / '.spec-ai' / 'config.json'
         config_data = json.loads(config_file_path.read_text())
 
         assert config_data['platform'] == 'linear'

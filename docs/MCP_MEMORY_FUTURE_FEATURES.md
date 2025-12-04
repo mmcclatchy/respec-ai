@@ -11,7 +11,7 @@ This document captures advanced features and capabilities that were deferred fro
 **Description**: Proactive context size monitoring with automatic summarization to prevent workflow failures due to context window exhaustion.
 
 **Current Problem**:
-- `/specter-plan` workflow manages 15+ variables with complex conversation contexts
+- `/spec-ai-plan` workflow manages 15+ variables with complex conversation contexts
 - No proactive context management leads to workflow crashes when context limits exceeded
 - Multiple refinement cycles cause context bloat without mitigation
 - Context overflow can occur during conversation gathering, plan generation, or critic feedback accumulation
@@ -51,7 +51,7 @@ class ContextManager:
 
 ### 2. Centralized Error Recovery Orchestration
 
-**Description**: Comprehensive error handling framework with automatic recovery strategies and centralized failure management across the entire `/specter-plan` workflow.
+**Description**: Comprehensive error handling framework with automatic recovery strategies and centralized failure management across the entire `/spec-ai-plan` workflow.
 
 **Current Problem**:
 - Error handling scattered across workflow steps with inconsistent patterns
@@ -110,7 +110,7 @@ class WorkflowErrorRecovery:
 
 ### 3. Platform Syncing
 
-**Description**: Allow users to modify platform plans/specter-specs/documents/comments in the external platform. Sync any changes in these documents to the MCP memory.
+**Description**: Allow users to modify platform plans/spec-ai-specs/documents/comments in the external platform. Sync any changes in these documents to the MCP memory.
 
 **Why Future Feature**:
 - Currently there is little to no good way for users to manually modify the MCP memory

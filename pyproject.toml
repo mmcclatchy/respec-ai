@@ -1,9 +1,33 @@
 [project]
-name = "specter"
-version = "0.1.0"
-description = "Add your description here"
+name = "spec-ai"
+version = "0.2.0"
+description = "AI-powered specification-driven development workflow"
 readme = "README.md"
 requires-python = ">=3.13"
+license = { text = "MIT" }
+
+authors = [{ name = "Mark McClatchy" }]
+
+keywords = [
+    "ai",
+    "claude",
+    "mcp",
+    "workflow",
+    "automation",
+    "specification",
+    "spec-ai",
+    "spec-driven-development",
+    "spec driven development",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Code Generators",
+]
+
 dependencies = [
     "pydantic >=2.0.0,<3.0.0",
     "pydantic-settings >=2.0.0,<3.0.0",
@@ -14,6 +38,12 @@ dependencies = [
     "markdown-it-py>=3.0.0",
     "mdformat>=0.7.22",
 ]
+
+[project.urls]
+Homepage = "https://github.com/mmcclatchy/spec-ai"
+Documentation = "https://github.com/mmcclatchy/spec-ai/blob/main/docs/USER_GUIDE.md"
+Repository = "https://github.com/mmcclatchy/spec-ai"
+Issues = "https://github.com/mmcclatchy/spec-ai/issues"
 
 [dependency-groups]
 dev = [
@@ -38,8 +68,9 @@ package = true
 packages = ["services"]
 
 [project.scripts]
-specter-server = "services.mcp.server:run_local_server"
-specter-setup = "services.cli.setup:main"
+spec-ai-server = "services.mcp.server:run_local_server"
+spec-ai = "services.cli.main:main"
+spec-ai-setup = "services.cli.setup:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -52,11 +83,7 @@ log_cli_level = "WARNING"
 log_level = "WARNING"
 log_file = "logs/pytest.log"
 log_file_level = "WARNING"
-env = [
-    "MCP_LOG_LEVEL=WARNING",
-    "MCP_LOG_FILE=",
-    "FSDD_MCP_LOG_LEVEL=WARNING",
-]
+env = ["MCP_LOG_LEVEL=WARNING", "MCP_LOG_FILE=", "FSDD_MCP_LOG_LEVEL=WARNING"]
 filterwarnings = [
     # Suppress coroutine warnings in MCP server tests - these are expected due to async mocking
     "ignore:coroutine.*was never awaited:RuntimeWarning:.*test_mcp_server.*",

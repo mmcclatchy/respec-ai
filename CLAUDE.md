@@ -1,4 +1,4 @@
-# Specter MCP Server - Project Standards
+# SpecAI MCP Server - Project Standards
 
 ## Project Rules (Mandatory)
 

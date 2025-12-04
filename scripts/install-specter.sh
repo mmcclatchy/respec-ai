@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# Specter Installation Script
-# Generates Specter workflow files directly using the specter-setup CLI
+# SpecAI Installation Script
+# Generates SpecAI workflow files directly using the spec-ai-setup CLI
 
 # Color codes for output
 RED='\033[0;31m'
@@ -36,30 +36,30 @@ detect_execution_mode() {
 # Show usage information
 show_usage() {
     echo ""
-    echo "Specter Installation Script"
+    echo "SpecAI Installation Script"
     echo ""
-    echo "Installs Specter workflow files to the current directory."
+    echo "Installs SpecAI workflow files to the current directory."
     echo ""
     echo "Usage:"
-    echo "  Local install:   cd ~/myproject && ~/path/to/specter/scripts/install-specter.sh -n myproject -p linear"
+    echo "  Local install:   cd ~/myproject && ~/path/to/spec-ai/scripts/install-spec-ai.sh -n myproject -p linear"
     echo ""
-    echo "  Remote install:  cd ~/myproject && curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- -n myproject -p linear --specter-path ~/coding/projects/specter"
+    echo "  Remote install:  cd ~/myproject && curl -fsSL https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh | bash -s -- -n myproject -p linear --spec-ai-path ~/coding/projects/spec-ai"
     echo ""
     echo "Arguments:"
     echo "  -n, --project-name   Name for this project (required)"
     echo "  -p, --platform       Platform choice: linear, github, or markdown (required)"
-    echo "  --specter-path       Path to Specter installation (required for remote install only)"
+    echo "  --spec-ai-path       Path to SpecAI installation (required for remote install only)"
     echo ""
     echo "Examples:"
     echo "  cd ~/myproject"
-    echo "  ~/specter/scripts/install-specter.sh -n myproject -p linear"
+    echo "  ~/spec-ai/scripts/install-spec-ai.sh -n myproject -p linear"
     echo ""
 }
 
 # Parse arguments
 parse_arguments() {
     PLATFORM=""
-    SPECTER_PATH=""
+    SPEC_AI_PATH=""
     PROJECT_NAME=""
 
     while [[ $# -gt 0 ]]; do
@@ -72,8 +72,8 @@ parse_arguments() {
                 PLATFORM="$2"
                 shift 2
                 ;;
-            --specter-path)
-                SPECTER_PATH="$2"
+            --spec-ai-path)
+                SPEC_AI_PATH="$2"
                 shift 2
                 ;;
             -h|--help)
@@ -111,35 +111,35 @@ TARGET_DIR="$(pwd)"
 # Detect execution mode
 EXECUTION_MODE=$(detect_execution_mode)
 
-# Determine Specter installation path
+# Determine SpecAI installation path
 if [ "$EXECUTION_MODE" = "local" ]; then
     # Local execution: calculate path from script location
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    SPECTER_PATH="$(dirname "$SCRIPT_DIR")"
-    print_info "Detected local Specter installation: $SPECTER_PATH"
+    SPEC_AI_PATH="$(dirname "$SCRIPT_DIR")"
+    print_info "Detected local SpecAI installation: $SPEC_AI_PATH"
 else
-    # Remote execution: require --specter-path
-    if [ -z "$SPECTER_PATH" ]; then
-        print_error "Remote installation requires --specter-path argument"
+    # Remote execution: require --spec-ai-path
+    if [ -z "$SPEC_AI_PATH" ]; then
+        print_error "Remote installation requires --spec-ai-path argument"
         echo ""
         echo "Example:"
-        echo "  curl -fsSL https://raw.githubusercontent.com/mmcclatchy/specter/main/scripts/install-specter.sh | bash -s -- --platform linear --specter-path ~/coding/projects/specter"
+        echo "  curl -fsSL https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh | bash -s -- --platform linear --spec-ai-path ~/coding/projects/spec-ai"
         echo ""
         echo "Make sure you have:"
-        echo "  1. Cloned the Specter repository"
-        echo "  2. Registered the Specter MCP server with Claude Code"
+        echo "  1. Cloned the SpecAI repository"
+        echo "  2. Registered the SpecAI MCP server with Claude Code"
         exit 1
     fi
 fi
 
-# Validate Specter installation
-if [ ! -d "$SPECTER_PATH" ]; then
-    print_error "Specter directory does not exist: $SPECTER_PATH"
+# Validate SpecAI installation
+if [ ! -d "$SPEC_AI_PATH" ]; then
+    print_error "SpecAI directory does not exist: $SPEC_AI_PATH"
     exit 1
 fi
 
-if [ ! -f "$SPECTER_PATH/pyproject.toml" ]; then
-    print_error "Invalid Specter installation (missing pyproject.toml): $SPECTER_PATH"
+if [ ! -f "$SPEC_AI_PATH/pyproject.toml" ]; then
+    print_error "Invalid SpecAI installation (missing pyproject.toml): $SPEC_AI_PATH"
     exit 1
 fi
 
@@ -153,9 +153,9 @@ fi
 # Convert to absolute path
 TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 
-print_info "Specter Installation"
+print_info "SpecAI Installation"
 print_info "Execution mode: $EXECUTION_MODE"
-print_info "Specter path: $SPECTER_PATH"
+print_info "SpecAI path: $SPEC_AI_PATH"
 print_info "Target directory: $TARGET_DIR"
 print_info "Project name: $PROJECT_NAME"
 print_info "Platform: $PLATFORM"
@@ -168,26 +168,26 @@ if [ ! -d "$TARGET_DIR" ]; then
 fi
 
 # Run the setup CLI
-print_info "Generating Specter workflow files..."
-if uv run --directory "$SPECTER_PATH" specter-setup --project-path "$TARGET_DIR" --project-name "$PROJECT_NAME" --platform "$PLATFORM"; then
+print_info "Generating SpecAI workflow files..."
+if uv run --directory "$SPEC_AI_PATH" spec-ai-setup --project-path "$TARGET_DIR" --project-name "$PROJECT_NAME" --platform "$PLATFORM"; then
     echo ""
     print_success "Installation complete!"
     echo ""
     echo "Next steps:"
     echo "  1. Restart Claude Code to load the new commands"
-    echo "  2. Start using Specter workflows:"
-    echo "     • /specter-plan - Create strategic plans"
-    echo "     • /specter-roadmap - Create phased roadmaps"
-    echo "     • /specter-spec - Generate technical specifications"
-    echo "     • /specter-build - Execute implementation"
+    echo "  2. Start using SpecAI workflows:"
+    echo "     • /spec-ai-plan - Create strategic plans"
+    echo "     • /spec-ai-roadmap - Create phased roadmaps"
+    echo "     • /spec-ai-spec - Generate technical specifications"
+    echo "     • /spec-ai-build - Execute implementation"
     echo ""
 else
     print_error "Installation failed"
     echo ""
     echo "Troubleshooting:"
     echo "  1. Verify uv is installed: uv --version"
-    echo "  2. Verify Specter dependencies: cd $SPECTER_PATH && uv sync"
-    echo "  3. Check Specter MCP server is registered: claude mcp list"
+    echo "  2. Verify SpecAI dependencies: cd $SPEC_AI_PATH && uv sync"
+    echo "  3. Check SpecAI MCP server is registered: claude mcp list"
     echo ""
     exit 1
 fi

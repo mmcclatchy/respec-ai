@@ -214,7 +214,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         the refinement process.
 
         Parameters:
-        - project_name: Name of the project (from .specter/config.json)
+        - project_name: Name of the project (from .spec-ai/config.json)
         - loop_type: One of 'plan', 'spec', 'build_plan', 'build_code'
 
         Returns:
@@ -251,7 +251,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         session. Useful for managing multiple concurrent refinement processes.
 
         Parameters:
-        - project_name: Name of the project (from .specter/config.json)
+        - project_name: Name of the project (from .spec-ai/config.json)
 
         Returns:
         - list[MCPResponse]: List of active loops with their current status

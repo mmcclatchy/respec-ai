@@ -17,7 +17,7 @@ class TestFastMCPServerIntegration:
     def test_fastmcp_server_initialization(self) -> None:
         server = create_mcp_server()
         assert isinstance(server, FastMCP)
-        assert server.name == 'specter'
+        assert server.name == 'spec-ai'
 
     @pytest.mark.asyncio
     async def test_mcp_tool_registration(self) -> None:
@@ -51,14 +51,14 @@ class TestFastMCPServerIntegration:
 
     def test_production_server_creation(self) -> None:
         # Test server configuration
-        assert mcp_settings.server_name == 'specter'
+        assert mcp_settings.server_name == 'spec-ai'
         assert mcp_settings.host == '0.0.0.0'
         assert mcp_settings.port == 8000
 
         # Test server creation
         server = create_mcp_server()
         assert isinstance(server, FastMCP)
-        assert server.name == 'specter'
+        assert server.name == 'spec-ai'
 
     @pytest.mark.asyncio
     async def test_mcp_tool_discovery_and_metadata(self) -> None:
@@ -73,14 +73,10 @@ class TestFastMCPServerIntegration:
 
     @pytest.mark.asyncio
     async def test_error_handling_at_server_level(self) -> None:
-        server = create_mcp_server()
-
-        # Test calling tool with invalid loop_id
+        # Test calling tool with invalid loop_id directly through the tool function
+        # This avoids using private FastMCP methods
         with pytest.raises(Exception):  # Should raise LoopNotFoundError
-            await server._call_tool(
-                'decide_loop_next_action',
-                {'loop_id': 'nonexistent-id', 'current_score': 80},
-            )
+            loop_tools.decide_loop_next_action('nonexistent-id', 80)
 
     def test_tool_parameter_validation_through_fastmcp(self, project_name: str) -> None:
         # Test with valid parameters using new API
@@ -90,7 +86,7 @@ class TestFastMCPServerIntegration:
         assert result.status == LoopStatus.COMPLETED
 
     def test_server_configuration_via_pydantic_settings(self) -> None:
-        assert mcp_settings.server_name == 'specter'
+        assert mcp_settings.server_name == 'spec-ai'
         assert mcp_settings.host == '0.0.0.0'
         assert mcp_settings.port == 8000
         assert mcp_settings.debug is False

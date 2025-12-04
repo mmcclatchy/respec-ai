@@ -24,7 +24,7 @@ class PlatformOrchestrator:
 
     @classmethod
     def create_with_default_config(cls) -> 'PlatformOrchestrator':
-        default_config_dir = str(Path.home() / '.specter' / 'projects')
+        default_config_dir = str(Path.home() / '.spec-ai' / 'projects')
         return cls(default_config_dir)
 
     def setup_project(self, request: ProjectSetupRequest) -> ProjectConfig:

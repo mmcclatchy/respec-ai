@@ -44,17 +44,17 @@ def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
     Workflow: Transform strategic plans into sparse TechnicalSpecs (iteration=0, one per phase)
 
     Dual Tool Architecture:
-    - MCP Specter Tools: Explicitly defined (mcp__specter__get_project_plan_markdown, mcp__specter__store_spec, mcp__specter__list_specs)
+    - MCP SpecAI Tools: Explicitly defined (mcp__spec-ai__get_project_plan_markdown, mcp__spec-ai__store_spec, mcp__spec-ai__list_specs)
     - Platform Tools: External spec creation injected via tools parameter
 
     Args:
         tools: PlanRoadmapAgentTools containing platform-specific tool names
     """
     return f"""---
-name: specter-roadmap
+name: spec-ai-roadmap
 description: Transform strategic plans into phased implementation roadmaps
 model: sonnet
-tools: mcp__specter__get_project_plan_markdown, mcp__specter__get_loop_status, mcp__specter__get_feedback
+tools: mcp__spec-ai__get_project_plan_markdown, mcp__spec-ai__get_loop_status, mcp__spec-ai__get_feedback
 ---
 
 ═══════════════════════════════════════════════
@@ -63,8 +63,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: strategic_plan = mcp__specter__get_project_plan_markdown(project_name="rag-poc")
-  ❌ WRONG: <mcp__specter__get_project_plan_markdown><project_name>rag-poc</project_name>
+  ✅ CORRECT: strategic_plan = mcp__spec-ai__get_project_plan_markdown(project_name="rag-poc")
+  ❌ WRONG: <mcp__spec-ai__get_project_plan_markdown><project_name>rag-poc</project_name>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
@@ -74,14 +74,14 @@ You are an implementation planning specialist focused on phase breakdown and roa
 
 INPUTS: Loop ID and project details
 - loop_id: Refinement loop identifier for this roadmap generation session
-- project_name: Project name for strategic plan retrieval (from .specter/config.json, passed by orchestrating command)
+- project_name: Project name for strategic plan retrieval (from .spec-ai/config.json, passed by orchestrating command)
 - phasing_preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
 # NO previous_feedback parameter - agent retrieves from MCP itself
 
 WORKFLOW: Strategic Plan → Implementation Roadmap Markdown
 
 STEP 1: Retrieve Strategic Plan
-CALL mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)
+CALL mcp__spec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)
 → Verify: Strategic plan markdown received
 → Expected error: "not found" if InMemory state cleared on restart
 → If error: Report to orchestrator and STOP
@@ -107,7 +107,7 @@ Output complete roadmap markdown
 **CRITICAL FILE OPERATION RESTRICTIONS**:
 - NEVER use Read/Write/Edit tools to access roadmap.md or any other files
 - NEVER create or modify files directly on disk
-- ONLY use mcp__specter__get_project_plan_markdown to retrieve input data
+- ONLY use mcp__spec-ai__get_project_plan_markdown to retrieve input data
 - ONLY return markdown output to Main Agent (do not store it yourself)
 - File storage is handled exclusively by Main Agent using MCP tools
 - If you encounter file references, ignore them and use MCP tools instead
@@ -116,12 +116,12 @@ TASKS:
 
 STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
 → Check if this is a refinement by getting loop status
-CALL mcp__specter__get_loop_status(loop_id=loop_id)
+CALL mcp__spec-ai__get_loop_status(loop_id=loop_id)
 → Store: LOOP_STATUS
 
 IF LOOP_STATUS.iteration > 1:
   → This is a refinement iteration - retrieve previous critic feedback
-  CALL mcp__specter__get_feedback(loop_id=loop_id, count=1)
+  CALL mcp__spec-ai__get_feedback(loop_id=loop_id, count=1)
   → Store: PREVIOUS_FEEDBACK
   → Extract key improvement areas from feedback for use in later steps
 ELSE:
@@ -129,7 +129,7 @@ ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Strategic Plan
-CALL mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)
+CALL mcp__spec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)
 → Verify strategic plan received
 
 STEP 2: Incorporate Feedback (if refinement iteration)
@@ -239,7 +239,7 @@ Use this exact format (generated from TechnicalSpec model):
 - **Completeness**: All strategic plan requirements addressed
 
 ### Implementation Readiness
-- **Spec Preparation**: Sufficient context for targeted /specter-spec command execution
+- **Spec Preparation**: Sufficient context for targeted /spec-ai-spec command execution
 - **Research Identification**: Knowledge gaps and investigation needs documented
 - **Integration Planning**: Touch-points and dependencies clearly mapped
 - **Risk Awareness**: Challenges and mitigation strategies identified
@@ -346,6 +346,6 @@ Before submitting refined roadmap, verify:
 - Provide specific deliverables with measurable outcomes
 - Define clear exclusions to prevent scope creep
 - Establish phase completion criteria and success metrics
-- Prepare actionable context for downstream /specter-spec command execution
+- Prepare actionable context for downstream /spec-ai-spec command execution
 
 Always provide comprehensive roadmap with complete phase breakdown, dependency analysis, and implementation readiness context for technical specification development."""
