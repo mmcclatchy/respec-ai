@@ -284,13 +284,14 @@ Input:
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: OPTIONAL_INSTRUCTIONS
   - archive_scan_results: ARCHIVE_SCAN_RESULTS
-  - previous_feedback: CRITIC_FEEDBACK (if this is a refinement iteration)
+  # No previous_feedback - architect retrieves feedback directly from MCP using loop_id
 
 Agent will:
 1. Retrieve current spec from MCP using loop_id
-2. Refine spec based on strategic plan and feedback
-3. Store updated spec directly in MCP
-4. Return brief status message (no full markdown)
+2. Retrieve previous critic feedback from MCP (if iteration > 1)
+3. Refine spec based on strategic plan, feedback, and archive insights
+4. Store updated spec directly in MCP
+5. Return brief status message (no full markdown)
 
 Verify agent completed successfully:
 IF agent returns error status:
@@ -318,75 +319,101 @@ Spec-critic will:
 3. Store feedback in MCP loop using loop_id
 ```
 
-#### Step 6b: Get Feedback and Extract Score
+#### Step 6b: Get Loop Decision
+
+**MCP Server handles score extraction and loop decision internally.**
 
 ```text
-CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=2)
-Note: Retrieves 2 most recent iterations for stagnation detection
+LOOP_DECISION_RESPONSE = mcp__specter__decide_loop_next_action(loop_id=LOOP_ID)
+# Returns: {{status: "COMPLETE|REFINE|USER_INPUT", loop_id: "abc123", iteration: N}}
 
-Extract QUALITY_SCORE from CRITIC_FEEDBACK markdown
-```
+LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 
-#### Step 6c: Validate Quality Assessment Feedback
-
-After spec-critic completes, verify feedback was stored:
-
-```text
-# Retrieve feedback to confirm storage
-STORED_FEEDBACK = mcp__specter__get_feedback(
-  loop_id=LOOP_ID,
-  count=1
-)
-
-# Verify feedback contains quality score
-IF STORED_FEEDBACK does NOT contain quality score:
-  ERROR: "spec-critic claimed success but feedback was not stored"
-  DIAGNOSTIC:
-    - Check agent logs for store_critic_feedback call
-    - Verify loop_id is valid via get_loop_status
-  RECOVERY:
-    - Report error to user
-    - DO NOT proceed to loop decision
+Note: No need to retrieve feedback or score - spec-critic stored feedback in MCP,
+and MCP automatically recorded score and computed loop decision.
 ```
 
 ### Step 7: Handle Refinement Decisions
 
 **Follow LOOP_DECISION exactly. Do not override based on score assessment.**
 
-```text
-LOOP_DECISION = mcp__specter__decide_loop_next_action(
-  loop_id=LOOP_ID,
-  current_score=QUALITY_SCORE
-)
-```
-
-#### If LOOP_DECISION == "complete"
+#### If LOOP_DECISION == "COMPLETE"
+Display to user: "✓ Specification meets quality standards"
 Proceed to Step 8.
 
-#### If LOOP_DECISION == "refine"
-Return to Step 5a with CRITIC_FEEDBACK as previous_feedback parameter.
-Execute Steps 5b, 6a, 6b, and 7 again.
+#### If LOOP_DECISION == "REFINE"
+Display to user: "⟳ Refining specification - spec-architect will address critic feedback"
+Return to Step 5 (spec-architect will retrieve feedback from MCP itself)
 
-#### If LOOP_DECISION == "user_input"
-Present QUALITY_SCORE and Priority Improvements to user.
-Request technical clarification.
-Return to Step 5a with combined feedback.
-Execute Steps 5b, 6a, 6b, and 7 again.
+#### If LOOP_DECISION == "USER_INPUT"
+# Step 6.5: Check for Decomposition Requirement
+# Retrieve latest feedback to check for decomposition indicators
+LATEST_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=1)
 
-#### If LOOP_DECISION == "max_iterations"
-Display warning: "Final Quality Score: QUALITY_SCORE%, Remaining gaps: [list]"
+# Check if decomposition is required based on feedback markers
+IF "DECOMPOSITION_REQUIRED" in LATEST_FEEDBACK or "SCOPE_CREEP" in LATEST_FEEDBACK:
+  Display to user:
+
+  ⚠️ DECOMPOSITION REQUIRED ⚠️
+
+  The specification is too broad for a single implementation phase.
+
+  Current Size: [Extract character count from LATEST_FEEDBACK]
+  Recommended: Break into 3-5 focused phases
+
+  **Next Steps:**
+  1. Run: /specter-roadmap [PROJECT_NAME]
+  2. This will analyze the current spec and create multiple smaller specs
+  3. Each resulting spec will be appropriately scoped
+
+  **Alternative** (not recommended):
+  - Manually condense the spec to <40,000 characters
+  - Provide technical clarification via user feedback
+  - Resume refinement loop
+
+  EXIT: Graceful stop with guidance
+
+ELSE:
+  # Regular USER_INPUT handling (stagnation, checkpoint)
+  Display LATEST_FEEDBACK to user with:
+  - Current score and iteration
+  - Priority improvement areas
+  - Request for technical clarification
+
+  Return to Step 5 (spec-architect will incorporate user guidance)
+
+#### If LOOP_DECISION == "MAX_ITERATIONS"
+Display warning: "Maximum iterations reached. Review feedback and decide next steps."
+Display LATEST_FEEDBACK to user
 Proceed to Step 8.
 
 ### Step 8: Specification Storage
-Store the technical specification:
+
+#### Step 8.1: Retrieve Final Spec from MCP
+Retrieve the specification from MCP storage (which has immutable fields preserved by update_spec):
+
+```text
+FINAL_SPEC_RESPONSE = mcp__specter__get_spec_markdown(
+    project_name=PROJECT_NAME,
+    spec_name=SPEC_NAME,
+    loop_id=None
+)
+
+FINAL_SPEC_MARKDOWN = FINAL_SPEC_RESPONSE.message
+```
+
+#### Step 8.2: Save to External Platform
+Store the technical specification using platform-specific tool:
 
 ```text
 Use {tools.create_spec_tool_interpolated} to store the technical specification:
 
 Title: Technical Specification: [Project Name]
-Content: [Complete technical specification with research requirements]
+Content: [FINAL_SPEC_MARKDOWN]
 Labels: technical-specification, architecture, phase-2
 ```
+
+**Important**: Use FINAL_SPEC_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
 
 ## Quality Assessment
 

@@ -67,11 +67,24 @@ INPUTS: Loop ID and specification context
 - strategic_plan_summary: Strategic plan analysis from plan-analyst
 - optional_instructions: Additional user guidance for spec development
 - archive_scan_results: Existing documentation from archive scan
-- previous_feedback: Critic feedback from prior iterations (if this is a refinement)
 
 WORKFLOW: Strategic Plan Summary → Technical Specification Markdown
 
 TASKS:
+
+STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
+→ Check if this is a refinement by getting loop status
+CALL mcp__specter__get_loop_status(loop_id=loop_id)
+→ Store: LOOP_STATUS
+
+IF LOOP_STATUS.iteration > 1:
+  → This is a refinement iteration - retrieve previous critic feedback
+  CALL mcp__specter__get_feedback(loop_id=loop_id, count=1)
+  → Store: PREVIOUS_FEEDBACK
+  → Extract key improvement areas from feedback for use in STEP 2
+ELSE:
+  → First iteration (or iteration 1) - no previous feedback exists
+  → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Current Specification
 CALL mcp__specter__get_spec_markdown(
@@ -83,10 +96,11 @@ CALL mcp__specter__get_spec_markdown(
 → Expected error: "not found" if new spec (iteration=0)
 
 STEP 2: Incorporate Feedback (if refinement iteration)
-IF previous_feedback provided:
+IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Analyze specific issues identified by critic
   → Address ALL items in "Priority Improvements" section
   → Maintain strengths noted in feedback
+  → Focus improvements on areas critic flagged as deficient
 
 STEP 3: Expand Specification
 Develop comprehensive technical specification based on strategic plan summary
@@ -95,11 +109,10 @@ Develop comprehensive technical specification based on strategic plan summary
 → Follow OUTPUT FORMAT below
 
 STEP 4: Store Complete Specification
-CALL mcp__specter__store_spec(
-  project_name=None,
-  spec_name=None,
-  loop_id=loop_id,
-  spec_markdown=generated_specification
+CALL mcp__specter__update_spec(
+  project_name=project_name,
+  spec_name=spec_name,
+  updated_markdown=generated_specification
 )
 → Verify: Specification stored successfully
 → Expected error: Storage failure (retry once, then report to command)
@@ -432,7 +445,7 @@ type Resource {{
 
 ### Addressing Critic Feedback
 
-When spec.iteration > 0, prioritize feedback from mcp__specter__get_feedback_history:
+When spec.iteration > 0, prioritize feedback retrieved in STEP 0 via mcp__specter__get_feedback(loop_id, count=1):
 
 #### Architecture Gaps
 - Add missing components

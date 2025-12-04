@@ -47,6 +47,76 @@ CALL mcp__specter__get_spec_markdown(
 → Verify: Specification markdown received
 → If failed: CRITICAL ERROR - loop not linked to spec
 
+STEP 2.5: Extract Specification Length from Response Metadata
+Extract length metric calculated by MCP server:
+
+SPEC_RESPONSE = [result from Step 2]
+SPEC_MARKDOWN = SPEC_RESPONSE.message
+CHAR_LENGTH = SPEC_RESPONSE.char_length  # Provided by MCP server
+
+# No need to calculate - server already did it!
+ESTIMATED_TOKENS = CHAR_LENGTH / 4  # Approximate token count (~4 chars per token)
+
+# Length thresholds (based on character count)
+SOFT_CAP = {tools.spec_length_soft_cap}      # ~10k tokens - ideal max (configurable via LOOP_SPEC_LENGTH_SOFT_CAP)
+WARNING = {tools.spec_length_soft_cap + 10000}       # SOFT_CAP + 10k - getting long
+CONCERNING = {tools.spec_length_soft_cap + 20000}    # SOFT_CAP + 20k - too long
+CRITICAL = {tools.spec_length_soft_cap + 40000}      # SOFT_CAP + 40k - way too long
+
+# Determine penalty tier
+IF CHAR_LENGTH <= SOFT_CAP:
+    LENGTH_PENALTY = 0
+    LENGTH_TIER = "IDEAL"
+ELIF CHAR_LENGTH <= WARNING:
+    LENGTH_PENALTY = -5
+    LENGTH_TIER = "WARNING"
+ELIF CHAR_LENGTH <= CONCERNING:
+    LENGTH_PENALTY = -15
+    LENGTH_TIER = "CONCERNING"
+ELIF CHAR_LENGTH <= CRITICAL:
+    LENGTH_PENALTY = -30
+    LENGTH_TIER = "CRITICAL"
+ELSE:
+    LENGTH_PENALTY = -50
+    LENGTH_TIER = "SEVERE"
+
+# Scope vs Verbosity Analysis (only if length > CONCERNING)
+IF CHAR_LENGTH > CONCERNING:
+    # Count structural elements
+    H2_COUNT = count occurrences of '\\n## ' in SPEC_MARKDOWN
+    H3_COUNT = count occurrences of '\\n### ' in SPEC_MARKDOWN
+
+    # Calculate verbosity ratio
+    CHARS_PER_SECTION = CHAR_LENGTH / (H2_COUNT + H3_COUNT)
+
+    # Count major features - extract content between "## System Design" and next H2
+    # Count H2 sections within System Design for complexity detection
+    SYSTEM_DESIGN_H2_COUNT = [count H2 headers within System Design section if present, else 0]
+
+    # Determine root cause
+    IF SYSTEM_DESIGN_H2_COUNT > 5:
+        ROOT_CAUSE = "SCOPE_CREEP"
+        EVIDENCE = f"System Design contains {{SYSTEM_DESIGN_H2_COUNT}} major subsystems (threshold: 5)"
+    ELIF CHARS_PER_SECTION > 3000:
+        ROOT_CAUSE = "VERBOSITY"
+        EVIDENCE = f"Average {{CHARS_PER_SECTION}} chars/section (threshold: 3000)"
+    ELSE:
+        ROOT_CAUSE = "MIXED"
+        EVIDENCE = "Both scope and verbosity contribute to length"
+ELSE:
+    ROOT_CAUSE = None
+    EVIDENCE = None
+
+# Document length assessment for feedback
+LENGTH_ASSESSMENT = {{
+    "character_count": CHAR_LENGTH,
+    "estimated_tokens": ESTIMATED_TOKENS,
+    "penalty": LENGTH_PENALTY,
+    "tier": LENGTH_TIER,
+    "root_cause": ROOT_CAUSE,
+    "evidence": EVIDENCE
+}}
+
 STEP 3: Evaluate Specification Structure
 Assess specification against FSDD quality framework criteria
 → Technical completeness and clarity
@@ -286,7 +356,7 @@ Assess spec for implementation details that belong in BuildPlan:
 
 ### Overall Score Calculation
 
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Over-Detailing Penalty - Irrelevant Section Penalty**
+**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty**
 
 **Core Sections (70 points)**:
 - Required sections (Objectives, Scope, Architecture, Testing): 40 points
@@ -297,7 +367,8 @@ Assess spec for implementation details that belong in BuildPlan:
 - Section presence: 15 points (3 points each x 5 RELEVANT sections only)
 - Section substance: 15 points (3 points each x 5 RELEVANT sections only)
 
-**Penalties (up to -10 points each)**:
+**Penalties**:
+- Length penalty: 0 to -50 points based on spec size (SOFT_CAP=40k chars, WARNING=50k, CONCERNING=60k, CRITICAL=80k, SEVERE=80k+)
 - Over-detailing penalty: Up to -10 points for implementation details
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
 
@@ -306,13 +377,14 @@ Assess spec for implementation details that belong in BuildPlan:
 
 **Convert to 0-100 scale**:
 ```
-Raw Score = Core Sections + Domain-Specific Sections + Structure Bonus - Penalties
+Raw Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty
 Overall Score = max(min((Raw Score / 100) x 100, 100), 0)
 ```
 
 **Note**:
 - Structure bonus allows specs to reach 100/100 even with minor gaps in optional sections
-- Penalties discourage over-detailing and padding with irrelevant sections
+- Length penalty escalates dramatically for oversized specs (0, -5, -15, -30, -50 points)
+- Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
 - Score cannot go below 0 or above 100
 
 ### Score Interpretation
@@ -420,6 +492,36 @@ The feedback markdown must include overall_score for MCP database auto-populatio
 [Continue for each domain-specific section]
 
 ### Penalties Assessment
+
+#### Length Assessment (Penalty: X/0 to -50 points)
+
+**Specification Size:**
+- Character Count: [CHAR_LENGTH]
+- Estimated Tokens: [ESTIMATED_TOKENS]
+- Penalty Tier: [LENGTH_TIER] (IDEAL/WARNING/CONCERNING/CRITICAL/SEVERE)
+- Penalty Applied: [LENGTH_PENALTY] points
+
+**Root Cause:** [Only if length > CONCERNING]
+- Type: [ROOT_CAUSE] (SCOPE_CREEP/VERBOSITY/MIXED if applicable)
+- Evidence: [EVIDENCE from length analysis]
+
+**Recommendation:**
+[IF ROOT_CAUSE == "SCOPE_CREEP":]
+  ⚠️ **DECOMPOSITION_REQUIRED** ⚠️
+  This specification covers too much scope for a single implementation phase.
+  **Action Required**: Run `/specter-roadmap [project-name]` to decompose into focused phases.
+
+[IF ROOT_CAUSE == "VERBOSITY":]
+  Content is verbose and can be condensed significantly.
+  **Action Required**: Reduce wordiness, focus on essential technical details only.
+  Target: <{tools.spec_length_soft_cap} characters (~10k tokens)
+
+[IF ROOT_CAUSE == "MIXED":]
+  Both scope and verbosity issues detected.
+  **Action Required**: Review for decomposition opportunities AND reduce verbosity.
+
+[IF LENGTH_TIER in ("IDEAL", "WARNING"):]
+  Specification length is acceptable. No length-based changes required.
 
 #### Over-Detailing Penalty (X/-10 points)
 **Implementation Details Found:**

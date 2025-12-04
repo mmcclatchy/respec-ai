@@ -93,7 +93,7 @@ Strategic Plan → specter-spec-architect → Technical Spec → specter-spec-cr
 - **mcp__specter__get_spec_markdown**: Retrieve current spec state from loop
 - **mcp__specter__store_spec**: Store spec with auto-versioning
 - **mcp__specter__link_loop_to_spec**: Link loop to spec for refinement workflow
-- **mcp__specter__get_feedback_history**: Retrieve critic feedback for refinement
+- **mcp__specter__get_feedback**: Retrieve critic feedback for refinement
 - **Bash**: Execute archive scanning scripts
 - **Read**: Access existing documentation
 - **Grep**: Search technical patterns
@@ -109,7 +109,7 @@ mcp__specter__get_spec_markdown(loop_id=loop_id)
 
 **Feedback Retrieval** (Refinement Only - When iteration > 0):
 ```text
-mcp__specter__get_feedback_history(loop_id=loop_id, count=3)
+mcp__specter__get_feedback(loop_id=loop_id, count=3)
 → Returns: Recent critic feedback for addressing weak areas
 ```
 
@@ -149,7 +149,7 @@ Glob: ~/.claude/best-practices/*authentication*.md
    2. Check spec.iteration to determine mode:
       - iteration=0: Generate complete spec from sparse template
       - iteration>0: Retrieve feedback and improve existing spec
-   3. If iteration>0: mcp__specter__get_feedback_history(loop_id, count=3)
+   3. If iteration>0: mcp__specter__get_feedback(loop_id, count=3)
    4. Generate/improve comprehensive technical specification
    5. Store updated spec: mcp__specter__store_spec(project_name, spec_name, updated_spec)
    6. Return completion message

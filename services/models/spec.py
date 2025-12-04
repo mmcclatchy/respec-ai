@@ -34,11 +34,11 @@ class TechnicalSpec(MCPModel):
     id: str = Field(default_factory=lambda: str(uuid4())[:8])
     phase_name: str
 
-    # Required fields (present in iteration=0)
-    objectives: str = 'Objectives not specified'
-    scope: str = 'Scope not specified'
-    dependencies: str = 'Dependencies not specified'
-    deliverables: str = 'Deliverables not specified'
+    # Immutable initial state fields (set at iteration=0, preserved thereafter)
+    objectives: str = Field(default='Objectives not specified', frozen=True)
+    scope: str = Field(default='Scope not specified', frozen=True)
+    dependencies: str = Field(default='Dependencies not specified', frozen=True)
+    deliverables: str = Field(default='Deliverables not specified', frozen=True)
 
     # Optional fields (added by spec-architect in iteration 1+)
     architecture: str | None = None

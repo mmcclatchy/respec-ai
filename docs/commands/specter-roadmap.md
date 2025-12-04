@@ -434,7 +434,7 @@ Main Agent: Creating roadmap with 2-week sprint phases targeting MVP delivery in
 - `decide_loop_next_action(roadmap_loop_id, current_score)` - Loop decision engine
 - `get_roadmap(project_name)` - Retrieve final roadmap for /specter-spec phase
 - `get_loop_status(roadmap_loop_id)` - Monitor loop state (optional)
-- `get_feedback_history(roadmap_loop_id, count)` - Retrieve recent feedback for context
+- `get_feedback(roadmap_loop_id, count)` - Retrieve recent feedback for context
 
 **Unified Spec Management Tools:**
 - `store_spec(project_name, spec_name, spec_markdown)` - Store spec with auto-versioning

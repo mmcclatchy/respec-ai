@@ -54,7 +54,7 @@ def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
 name: specter-roadmap
 description: Transform strategic plans into phased implementation roadmaps
 model: sonnet
-tools: mcp__specter__get_project_plan_markdown
+tools: mcp__specter__get_project_plan_markdown, mcp__specter__get_loop_status, mcp__specter__get_feedback
 ---
 
 ═══════════════════════════════════════════════
@@ -76,7 +76,7 @@ INPUTS: Loop ID and project details
 - loop_id: Refinement loop identifier for this roadmap generation session
 - project_name: Project name for strategic plan retrieval (from .specter/config.json, passed by orchestrating command)
 - phasing_preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
-- previous_feedback: Critic feedback from prior iterations (if this is a refinement)
+# NO previous_feedback parameter - agent retrieves from MCP itself
 
 WORKFLOW: Strategic Plan → Implementation Roadmap Markdown
 
@@ -89,7 +89,7 @@ CALL mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)
 STEP 2: Phase Decomposition
 Break strategic plan into appropriately-sized implementation phases (2-4 weeks each)
 → Apply phasing_preferences if provided
-→ Consider previous_feedback if this is a refinement iteration
+→ Consider PREVIOUS_FEEDBACK from STEP 0 if this is a refinement iteration
 
 STEP 3: Generate Roadmap Markdown
 Create comprehensive roadmap following OUTPUT FORMAT below
@@ -114,12 +114,26 @@ Output complete roadmap markdown
 
 TASKS:
 
+STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
+→ Check if this is a refinement by getting loop status
+CALL mcp__specter__get_loop_status(loop_id=loop_id)
+→ Store: LOOP_STATUS
+
+IF LOOP_STATUS.iteration > 1:
+  → This is a refinement iteration - retrieve previous critic feedback
+  CALL mcp__specter__get_feedback(loop_id=loop_id, count=1)
+  → Store: PREVIOUS_FEEDBACK
+  → Extract key improvement areas from feedback for use in later steps
+ELSE:
+  → First iteration (or iteration 1) - no previous feedback exists
+  → Set: PREVIOUS_FEEDBACK = None
+
 STEP 1: Retrieve Strategic Plan
 CALL mcp__specter__get_project_plan_markdown(project_name=PROJECT_NAME)
 → Verify strategic plan received
 
 STEP 2: Incorporate Feedback (if refinement iteration)
-IF previous_feedback provided:
+IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Analyze specific issues identified by critic
   → Address ALL items in "Key Issues" section
   → Implement ALL items in "Recommendations" section
@@ -254,21 +268,22 @@ Use this exact format (generated from TechnicalSpec model):
 - Apply targeted fixes to identified roadmap sections without wholesale restructuring
 - Maintain phase coherence while addressing specific improvement areas
 - **VALIDATION REQUIRED**: Document changes made in response to feedback for traceability:
-  ```
-  ## Feedback Response Summary
 
-  ### Issue 1: [Category] - [Issue Description]
-  **Resolution**: [Specific changes made to address this issue]
-  **Location**: [Which roadmap section was modified]
+      ```markdown
+      ## Feedback Response Summary
 
-  ### Issue 2: [Category] - [Issue Description]
-  **Resolution**: [Specific changes made to address this issue]
-  **Location**: [Which roadmap section was modified]
+      ### Issue 1: [Category] - [Issue Description]
+      **Resolution**: [Specific changes made to address this issue]
+      **Location**: [Which roadmap section was modified]
 
-  ### Recommendation 1: [Priority] - [Recommendation Description]
-  **Implementation**: [How this recommendation was implemented]
-  **Impact**: [Expected improvement from this change]
-  ```
+      ### Issue 2: [Category] - [Issue Description]
+      **Resolution**: [Specific changes made to address this issue]
+      **Location**: [Which roadmap section was modified]
+
+      ### Recommendation 1: [Priority] - [Recommendation Description]
+      **Implementation**: [How this recommendation was implemented]
+      **Impact**: [Expected improvement from this change]
+      ```
 
 #### Quality Score Response Strategy
 - **Score 80-89**: Address 1-2 highest-impact recommendations for optimization

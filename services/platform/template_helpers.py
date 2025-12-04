@@ -140,7 +140,7 @@ def create_spec_architect_agent_tools() -> str:
     builder = (
         TemplateToolBuilder()
         .add_specter_tool(SpecterMCPTool.GET_SPEC_MARKDOWN)
-        .add_specter_tool(SpecterMCPTool.STORE_SPEC)
+        .add_specter_tool(SpecterMCPTool.UPDATE_SPEC)
         .add_specter_tool(SpecterMCPTool.LINK_LOOP_TO_SPEC)
         .add_specter_tool(SpecterMCPTool.GET_FEEDBACK)
         .add_builtin_tool(BuiltInTool.READ)

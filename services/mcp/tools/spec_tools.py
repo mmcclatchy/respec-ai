@@ -35,19 +35,48 @@ class SpecTools:
         except Exception as e:
             raise ToolError(f'Failed to store spec: {str(e)}')
 
+    def update_spec(self, project_name: str, spec_name: str, updated_markdown: str) -> str:
+        if not project_name:
+            raise ToolError('Project name cannot be empty')
+        if not spec_name:
+            raise ToolError('Spec name cannot be empty')
+        if not updated_markdown:
+            raise ToolError('Updated markdown cannot be empty')
+
+        try:
+            updated_spec = TechnicalSpec.parse_markdown(updated_markdown)
+            return self.state.update_spec(project_name, spec_name, updated_spec)
+        except SpecNotFoundError as e:
+            raise ResourceError(f'Spec not found: {str(e)}')
+        except ValidationError:
+            raise ToolError('Invalid specification data provided')
+        except Exception as e:
+            raise ToolError(f'Failed to update spec: {str(e)}')
+
     def get_spec_markdown(self, project_name: str | None, spec_name: str | None, loop_id: str | None) -> MCPResponse:
         try:
             if loop_id:
                 loop_state = self.state.get_loop(loop_id)
                 spec = self.state.get_spec_by_loop(loop_id)
                 markdown = spec.build_markdown()
-                return MCPResponse(id=loop_id, status=loop_state.status, message=markdown)
-            elif project_name and spec_name:
+                char_length = len(markdown)
+                return MCPResponse(
+                    id=loop_id,
+                    status=loop_state.status,
+                    message=markdown,
+                    char_length=char_length,
+                )
+            if project_name and spec_name:
                 spec = self.state.get_spec(project_name, spec_name)
                 markdown = spec.build_markdown()
-                return MCPResponse(id=f'{project_name}/{spec_name}', status=LoopStatus.COMPLETED, message=markdown)
-            else:
-                raise ToolError('Either loop_id OR (project_name AND spec_name) must be provided')
+                char_length = len(markdown)
+                return MCPResponse(
+                    id=f'{project_name}/{spec_name}',
+                    status=LoopStatus.COMPLETED,
+                    message=markdown,
+                    char_length=char_length,
+                )
+            raise ToolError('Either loop_id OR (project_name AND spec_name) must be provided')
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist or is not linked to a spec')
         except RoadmapNotFoundError as e:
@@ -188,6 +217,31 @@ def register_spec_tools(mcp: FastMCP) -> None:
             return result
         except Exception as e:
             await ctx.error(f'Failed to store spec: {str(e)}')
+            raise
+
+    @mcp.tool()
+    async def update_spec(project_name: str, spec_name: str, updated_markdown: str, ctx: Context) -> str:
+        """Update existing technical specification while preserving initial state fields.
+
+        Retrieves existing spec, parses updated markdown, and preserves immutable
+        initial fields (objectives, scope, dependencies, deliverables). Auto-increments
+        iteration and version.
+
+        Parameters:
+        - project_name: Project identifier from .specter/config.json
+        - spec_name: Name/phase of the specification to update
+        - updated_markdown: Complete updated specification in markdown format
+
+        Returns:
+        - str: Confirmation message with iteration and version
+        """
+        await ctx.info(f'Updating spec "{spec_name}" for project {project_name}')
+        try:
+            result = spec_tools.update_spec(project_name, spec_name, updated_markdown)
+            await ctx.info(f'Updated spec "{spec_name}" for project {project_name}')
+            return result
+        except Exception as e:
+            await ctx.error(f'Failed to update spec: {str(e)}')
             raise
 
     @mcp.tool()

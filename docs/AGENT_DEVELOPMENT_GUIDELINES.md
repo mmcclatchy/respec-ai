@@ -339,6 +339,515 @@ OUTPUTS: Technical specification in structured format
 "Consider the 85% quality threshold for progression..."
 ```
 
+## Context Optimization and Data Retrieval Patterns
+
+### Overview
+
+**Problem**: AI agent context windows are limited and expensive. Traditional orchestration patterns where command agents retrieve documents from MCP and pass them as parameters to specialized agents create excessive context consumption.
+
+**Impact**: In a 5-iteration MCP-driven refinement loop, traditional patterns consume ~22,000 characters in the command agent through repeated document retrieval for parameter passing, validation, and score extraction.
+
+**Solution**: Direct MCP access pattern where specialized agents retrieve their own data using `loop_id` instead of receiving it from command agents.
+
+**Key Principle**: Commands orchestrate control flow, not data flow. Data flows directly between MCP Server and specialized agents.
+
+**Scope**: This pattern applies to MCP-driven refinement loops (spec, build workflows). Main Agent driven workflows (plan workflow) manage user interaction differently and do not use this pattern.
+
+### Traditional vs Optimized Architecture
+
+#### Traditional Pattern (Context-Heavy)
+
+In traditional orchestration, the command agent acts as a data intermediary:
+
+```text
+Command Agent                           Specialized Agent               MCP Server
+     |                                          |                           |
+     |--- retrieve feedback (2k chars) ------→  |                           |
+     |                                          |                           |
+     |--- pass feedback as parameter --------→  |                           |
+     |                                          |                           |
+     |←-- receive brief status ------------------|                           |
+     |                                          |                           |
+     |--- retrieve feedback again (2k chars) -→  |                           |
+     |--- extract score manually -------------→  |                           |
+     |                                          |                           |
+     |--- retrieve feedback for validation ---→  |                           |
+     |    (2k chars)                            |                           |
+
+Total Command Context: ~6,000 chars per iteration × 5 iterations = 30,000+ chars
+```
+
+**Problems with Traditional Pattern:**
+- Command retrieves same data multiple times
+- Large documents passed as parameters
+- Command performs data extraction tasks (score parsing)
+- Command validates storage by re-retrieving data
+- All context consumed in command agent
+
+#### Optimized Pattern (Context-Light)
+
+In the optimized pattern, specialized agents retrieve their own data:
+
+```text
+Command Agent                           Specialized Agent               MCP Server
+     |                                          |                           |
+     |--- invoke with loop_id --------------→   |                           |
+     |                                          |--- retrieve feedback --→   |
+     |                                          |    using loop_id          |
+     |                                          |← feedback (2k chars) -----|
+     |                                          |                           |
+     |                                          |--- retrieve spec -------→  |
+     |                                          |← spec data --------------|
+     |                                          |                           |
+     |                                          |--- process & store -----→  |
+     |←-- receive brief status ------------------|                           |
+     |                                          |                           |
+     |--- check MCP decision (50 chars) -----→   |                           |
+     |← decision status (REFINE/COMPLETE) ------|                           |
+
+Total Command Context: ~50 chars per iteration × 5 iterations = 250 chars
+Agent Context: ~2,000 chars × 4 refinement iterations = 8,000 chars
+System Total: 8,250 chars (63% reduction from traditional 22,000+ chars)
+```
+
+**Benefits of Optimized Pattern:**
+- Command only checks control flow decisions
+- Agents retrieve exactly what they need when they need it
+- No large documents passed as parameters
+- MCP Server handles all data operations
+- Context distributed appropriately (heavy in agents, light in commands)
+
+### Responsibility Distribution
+
+| Concern | Command Agent | Specialized Agent | MCP Server |
+|---------|--------------|-------------------|------------|
+| **Control Flow** | ✅ Orchestrates workflow steps | ❌ No workflow knowledge | ✅ Provides decision status |
+| **Data Retrieval** | ❌ Only for USER_INPUT display | ✅ Retrieves own data using loop_id | ✅ Stores all workflow state |
+| **Data Processing** | ❌ No data transformation | ✅ Processes and generates content | ❌ Storage only |
+| **Data Storage** | ❌ Never stores data | ✅ Stores results via MCP tools | ✅ Persists all state |
+| **Decision Logic** | ❌ Only executes decisions | ❌ No decision authority | ✅ Calculates loop decisions |
+| **Context Usage** | ✅ Minimal (50-250 chars) | ✅ Moderate (task-specific) | ❌ No context consumed |
+
+### Implementation Guidelines
+
+#### Agent Design Pattern
+
+When designing agents that participate in MCP-driven refinement loops:
+
+**✅ CORRECT: Agent retrieves own data using loop_id**
+
+```markdown
+INPUTS: Loop ID for specification retrieval and feedback storage
+- loop_id: Refinement loop identifier for this session
+
+STEP 0: Retrieve Previous Feedback (if refinement iteration)
+CALL mcp__specter__get_loop_status(loop_id=loop_id)
+→ Store: LOOP_STATUS
+
+IF LOOP_STATUS.iteration > 1:
+  CALL mcp__specter__get_feedback(loop_id=loop_id, count=1)
+  → Store: PREVIOUS_FEEDBACK
+ELSE:
+  → Set: PREVIOUS_FEEDBACK = None
+
+STEP 1: Retrieve Current Specification
+CALL mcp__specter__get_spec_markdown(loop_id=loop_id)
+→ Store: CURRENT_SPEC
+
+STEP 2: Process Using Retrieved Data
+Use PREVIOUS_FEEDBACK and CURRENT_SPEC to generate improvements
+```
+
+**❌ WRONG: Agent receives data as parameters**
+
+```markdown
+INPUTS:
+- loop_id: Loop identifier
+- previous_feedback: Critic feedback from last iteration  # ❌ Don't pass as parameter
+- current_spec: Specification to improve                  # ❌ Don't pass as parameter
+
+TASKS:
+Use provided feedback and spec to generate improvements  # ❌ Agent is not self-sufficient
+```
+
+#### Command Design Pattern
+
+When designing commands that orchestrate MCP-driven refinement loops:
+
+**✅ CORRECT: Command only checks decisions, retrieves for display**
+
+```markdown
+STEP 5: Invoke Specialized Agent
+CALL specter-spec-architect
+Input:
+  - loop_id: LOOP_ID
+  - project_name: PROJECT_NAME
+  - spec_name: SPEC_NAME
+  - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
+  # NO feedback parameter - architect retrieves from MCP itself
+
+STEP 6: Get Loop Decision
+LOOP_DECISION = mcp__specter__decide_loop_next_action(loop_id=LOOP_ID)
+# Returns: {status: "COMPLETE|REFINE|USER_INPUT"}
+# No feedback retrieval - MCP handles internally
+
+STEP 7: Handle Decisions
+IF LOOP_DECISION == "REFINE":
+  Display: "⟳ Refining - architect will address feedback"
+  Return to Step 5
+
+IF LOOP_DECISION == "USER_INPUT":
+  # ONLY NOW retrieve feedback for user display
+  FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=1)
+  Display: FEEDBACK to user
+  Prompt user for input
+```
+
+**❌ WRONG: Command retrieves data for agents**
+
+```markdown
+STEP 5a: Retrieve Feedback for Agent
+CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=2)  # ❌ Unnecessary
+
+STEP 5b: Invoke Agent with Feedback
+CALL specter-spec-architect
+Input:
+  - previous_feedback: CRITIC_FEEDBACK  # ❌ Don't pass large documents
+
+STEP 6: Retrieve Feedback Again for Validation
+STORED_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=1)  # ❌ Duplicate retrieval
+```
+
+### Example: spec Workflow Implementation
+
+This section demonstrates the context optimization pattern using real examples from the spec workflow implementation.
+
+#### Command Implementation (spec_command.py)
+
+**Step 5: Invoke spec-architect**
+
+The command invokes the spec-architect agent with only the `loop_id` and essential context parameters. No feedback is passed as a parameter - the agent retrieves it directly from MCP.
+
+```markdown
+STEP 5: Spec Refinement
+
+Invoke: specter-spec-architect
+Input:
+  - loop_id: LOOP_ID
+  - project_name: PROJECT_NAME
+  - spec_name: SPEC_NAME
+  - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
+  - optional_instructions: USER_INSTRUCTIONS (if provided)
+  - archive_scan_results: ARCHIVE_SCAN_RESULTS
+
+Agent will:
+1. Retrieve current spec from MCP using loop_id
+2. Retrieve previous critic feedback from MCP (if iteration > 1)
+3. Refine spec based on strategic plan, feedback, and archive insights
+4. Store updated spec to MCP
+
+No feedback passed as parameter - architect retrieves directly from MCP.
+```
+
+**Step 6: Get Loop Decision**
+
+The command checks only the loop decision status, not the feedback itself. The MCP Server handles score calculation and decision logic internally.
+
+```markdown
+STEP 6: Decision Point
+
+#### Step 6b: Get Loop Decision
+LOOP_DECISION_RESPONSE = mcp__specter__decide_loop_next_action(loop_id=LOOP_ID)
+LOOP_DECISION = LOOP_DECISION_RESPONSE.status
+
+Note: No need to retrieve feedback or score - MCP handles internally.
+Decision options: "COMPLETE", "REFINE", "USER_INPUT"
+```
+
+**Step 7: Handle Decisions**
+
+The command only retrieves feedback when USER_INPUT is required - for display to the user. In all other cases, feedback remains in MCP and is accessed directly by the spec-architect agent.
+
+```markdown
+STEP 7: Execute Decision
+
+#### If LOOP_DECISION == "REFINE"
+Display: "⟳ Refining specification - spec-architect will address critic feedback"
+Return to Step 5 (spec-architect will retrieve feedback from MCP itself)
+
+#### If LOOP_DECISION == "USER_INPUT"
+Display: "⚠ Quality improvements needed - user input required"
+
+# ONLY NOW retrieve feedback for user display
+LATEST_FEEDBACK = mcp__specter__get_feedback(loop_id=LOOP_ID, count=1)
+
+Display to user:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITIC FEEDBACK - USER INPUT REQUIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{LATEST_FEEDBACK.message}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Prompt: "Please provide guidance to improve the specification:"
+Store user input and return to Step 5
+```
+
+#### Agent Implementation (spec_architect.py)
+
+**STEP 0: Retrieve Feedback**
+
+The spec-architect agent checks the iteration number to determine if previous feedback exists, then retrieves it directly from MCP using the `loop_id`. This eliminates the need for the command to pass feedback as a parameter.
+
+```markdown
+STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
+→ Check if this is a refinement by getting loop status
+CALL mcp__specter__get_loop_status(loop_id=loop_id)
+→ Store: LOOP_STATUS
+
+IF LOOP_STATUS.iteration > 1:
+  → This is a refinement iteration - retrieve previous critic feedback
+  CALL mcp__specter__get_feedback(loop_id=loop_id, count=1)
+  → Store: PREVIOUS_FEEDBACK
+  → Extract key improvement areas from feedback for use in STEP 2
+ELSE:
+  → First iteration (or iteration 1) - no previous feedback exists
+  → Set: PREVIOUS_FEEDBACK = None
+```
+
+**STEP 1: Retrieve Specification**
+
+The agent retrieves the current specification from MCP using `loop_id`, ensuring it always works with the latest version stored in MCP.
+
+```markdown
+STEP 1: Retrieve Current Specification
+CALL mcp__specter__get_spec_markdown(
+  project_name=None,
+  spec_name=None,
+  loop_id=loop_id
+)
+→ Verify: Specification markdown received
+→ Expected error: "not found" if new spec (iteration=0)
+```
+
+**STEP 2: Use Retrieved Data**
+
+The agent uses the feedback retrieved in STEP 0 to guide improvements. All data retrieval is self-contained within the agent.
+
+```markdown
+STEP 2: Incorporate Feedback (if refinement iteration)
+IF PREVIOUS_FEEDBACK exists (from STEP 0):
+  → Analyze specific issues identified by critic
+  → Address ALL items in "Priority Improvements" section
+  → Maintain strengths noted in feedback
+  → Focus improvements on areas critic flagged as deficient
+```
+
+### Benefits and Metrics
+
+#### Performance Benefits
+
+**Context Window Savings:**
+- Command Agent: 99% reduction (22,000 → 250 chars)
+- System Total: 63% reduction (22,000 → 8,250 chars)
+- Cost Reduction: Proportional to token reduction
+- Speed Improvement: Less data transfer per iteration
+
+**Iteration Breakdown (5-iteration refinement loop):**
+
+| Metric | Before | After | Savings |
+|--------|--------|-------|---------|
+| Command context per iteration | ~4,400 chars | ~50 chars | 99% |
+| Command total (5 iterations) | ~22,000 chars | ~250 chars | 99% |
+| Agent context per iteration | 0 chars | ~2,000 chars | -2,000 |
+| Agent total (4 refinements) | 0 chars | ~8,000 chars | -8,000 |
+| **System Total** | **22,000 chars** | **8,250 chars** | **63%** |
+
+#### Architectural Benefits
+
+**Separation of Concerns:**
+- Commands focus on control flow orchestration
+- Agents focus on specialized processing
+- MCP Server acts as single source of truth
+- No data intermediation by commands
+
+**Agent Self-Sufficiency:**
+- Agents retrieve exactly what they need
+- No dependency on command data passing
+- Agents can retry retrieval independently
+- Clear ownership of data access
+
+**Maintainability:**
+- Changes to feedback structure don't affect commands
+- Agent implementations can evolve independently
+- No brittle parameter passing chains
+- Easier to reason about data flow
+
+#### Scalability Benefits
+
+**Pattern Extensibility:**
+- Applies to all MCP-driven refinement workflows (spec, build)
+- Can add new agents without changing command patterns
+- MCP Server handles complexity of state management
+- Clear pattern for future agent development
+
+### Pattern Application
+
+#### Workflows Using This Pattern
+
+This optimization pattern applies to **MCP-driven refinement loop workflows** only:
+
+**spec Workflow:** ✅ Uses this pattern
+- Command: `spec_command.py`
+- Agents: `spec-architect` ↔ `spec-critic`
+- Pattern: Architect retrieves feedback from MCP using loop_id
+- Loop Driver: MCP Server (decide_loop_next_action)
+
+**build Workflow:** ✅ Should use this pattern
+- Command: `build_command.py`
+- Agents: `build-planner` ↔ `build-critic` (planned)
+- Pattern: Planner retrieves feedback from MCP using loop_id
+- Loop Driver: MCP Server (decide_loop_next_action)
+
+**plan Workflow:** ❌ Exception - does NOT use this pattern
+- Command: `plan_command.py`
+- Agents: `plan-analyst` ↔ `plan-critic`
+- Pattern: Main Agent driven with direct user interaction
+- Loop Driver: Command Agent (not MCP loop)
+- Reason: Conversational workflow requires Main Agent to manage user dialogue directly
+
+#### When to Apply This Pattern
+
+**✅ Use Direct MCP Access Pattern When:**
+- Workflow uses MCP Server for loop control (decide_loop_next_action)
+- Agent participates in MCP-driven refinement loop
+- Agent needs access to workflow state stored in MCP (specs, feedback, plans)
+- Agent needs to check iteration number for conditional logic
+- Agent stores results back to MCP
+- Command orchestrates multiple refinement iterations via MCP decisions
+
+**❌ Don't Use This Pattern When:**
+- Workflow is Main Agent driven (conversational, user-interactive)
+- Command needs to manage user dialogue directly (like plan workflow)
+- Agent operates on static inputs (no loop context)
+- Data is small enough to pass efficiently (<500 chars)
+- Agent has no access to MCP tools
+- Workflow is single-iteration (no refinement)
+- Loop control is handled by command agent, not MCP Server
+
+#### Implementation Checklist
+
+When implementing agents using this pattern:
+
+**Agent Requirements:**
+- [ ] Receives `loop_id` as input parameter
+- [ ] Has MCP retrieval tools in frontmatter
+- [ ] Checks iteration number via `get_loop_status(loop_id)`
+- [ ] Retrieves own data using `loop_id` parameter
+- [ ] Conditionally retrieves feedback (if iteration > 1)
+- [ ] Stores results back to MCP using `loop_id`
+- [ ] Returns brief status message only (no data payloads)
+
+**Command Requirements:**
+- [ ] Initializes refinement loop with MCP
+- [ ] Invokes agents with `loop_id` only (no data parameters)
+- [ ] Checks loop decision using `decide_loop_next_action(loop_id)`
+- [ ] Only retrieves feedback for USER_INPUT display
+- [ ] Never acts as data intermediary
+- [ ] Focuses on control flow orchestration
+
+**MCP Server Requirements:**
+- [ ] Provides loop status retrieval
+- [ ] Stores all workflow state (specs, feedback, plans)
+- [ ] Implements decision logic (`decide_loop_next_action`)
+- [ ] Tracks iterations and scores automatically
+- [ ] Returns data via loop_id queries
+
+### Key Takeaways
+
+**Core Principle**: In MCP-driven refinement loops, commands orchestrate control flow, not data flow. Specialized agents retrieve their own data directly from MCP Server using `loop_id`.
+
+**Context Optimization**: This pattern reduces command agent context by 99% and total system context by 63% in MCP-driven refinement workflows (spec, build).
+
+**Agent Self-Sufficiency**: Agents using this pattern are independent, self-sufficient processors that retrieve exactly what they need when they need it.
+
+**Scalability**: This pattern enables sustainable growth of MCP-driven refinement workflows without exponential context consumption.
+
+**Exception**: Main Agent driven workflows (like plan) manage user dialogue directly and do not use this pattern.
+
+### Reference Implementation and Template Safety
+
+#### Spec Workflow as Reference Pattern
+
+The spec workflow demonstrates the correct context-optimized MCP-driven refinement loop pattern:
+- **Command**: services/platform/templates/commands/spec_command.py
+- **Architect Agent**: services/platform/templates/agents/spec_architect.py
+- **Critic Agent**: services/platform/templates/agents/spec_critic.py
+
+Use these files as the reference implementation when creating new MCP-driven workflows.
+
+#### F-String Template Safety in Commands
+
+Commands are Python f-strings (return f"""..."""). This creates a critical distinction between template generation time and command execution time.
+
+**Template Generation Time** (Python scope):
+- Function executes: `generate_spec_command_template(tools: SpecCommandTools)`
+- Python evaluates f-string and processes all {variable} expressions
+- Available variables: tools, and any Python variables in function scope
+- Output: Markdown template string stored in .claude/commands/
+
+**Command Execution Time** (Main Agent scope):
+- Main Agent reads markdown from .claude/commands/
+- Main Agent executes pseudocode instructions
+- Available variables: LOOP_DECISION, LATEST_FEEDBACK, PROJECT_NAME (defined in pseudocode)
+
+**The Problem**:
+```python
+def generate_command_template(tools):
+    return f"""
+    LATEST_FEEDBACK = mcp__specter__get_feedback(...)  # ← Pseudocode, not Python
+
+    Display: {LATEST_FEEDBACK.message}  # ← Python tries to evaluate this NOW!
+    """
+```
+
+Python sees `{LATEST_FEEDBACK.message}` and tries to find LATEST_FEEDBACK in the Python function scope. It doesn't exist → NameError.
+
+**Solution - Use Plain Text for Pseudocode Variables**:
+```python
+def generate_command_template(tools):
+    return f"""
+    LATEST_FEEDBACK = mcp__specter__get_feedback(...)  # ← Pseudocode
+
+    Display LATEST_FEEDBACK to user with:  # ← Plain text, no curly braces
+    - Current score and iteration
+    - Priority areas
+
+    # OR use square brackets for extraction:
+    Score: [Extract from LATEST_FEEDBACK]
+    """
+```
+
+**Safe Patterns**:
+```text
+✅ LATEST_FEEDBACK = mcp__specter__get_feedback(...)
+✅ IF "error" in LATEST_FEEDBACK:
+✅ Display LATEST_FEEDBACK to user with:
+✅ [Extract score from LATEST_FEEDBACK]
+✅ {tools.tool_name}  ← OK - tools is a Python variable
+
+❌ {LATEST_FEEDBACK.message}
+❌ {LOOP_DECISION}
+❌ {PROJECT_NAME} in pseudocode sections
+```
+
+**Detection Rule**:
+If a variable in curly braces is:
+- A function parameter (tools, project_name passed to function) → ✅ Safe
+- Defined in Python code above the f-string → ✅ Safe
+- Defined in pseudocode/markdown instructions → ❌ Unsafe - remove braces
+
+**Reference**: See spec_command.py lines 348-383 for correct USER_INPUT handling without f-string interpolation.
+
 ## Agent Documentation Structure
 
 ### 1. Standardized Agent Specification Format

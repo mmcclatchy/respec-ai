@@ -88,6 +88,17 @@ class StateManager(ABC):
     def store_spec(self, project_name: str, spec: TechnicalSpec) -> str: ...
 
     @abstractmethod
+    def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
+        """
+        MUST not mutate the following fields:
+            - objectives
+            - scope
+            - dependencies
+            - deliverables
+        """
+        ...
+
+    @abstractmethod
     def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec: ...
 
     @abstractmethod
@@ -327,6 +338,47 @@ class InMemoryStateManager(StateManager):
         logger.info(f'store_spec: Successfully stored spec {spec.phase_name} for project {project_name}')
         self._log_state_snapshot('store_spec', 'EXIT')
         return spec.phase_name
+
+    def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
+        self._log_state_snapshot('update_spec', 'ENTRY')
+        logger.info(
+            f'update_spec: project_name={project_name}, '
+            f'spec_name={spec_name}, '
+            f'updated_iteration={updated_spec.iteration}, '
+            f'updated_version={updated_spec.version}'
+        )
+
+        # Get existing spec to preserve frozen fields
+        existing_spec = self.get_spec(project_name, spec_name)
+
+        # Normalize spec name for storage
+        normalized_name = normalize_spec_name(spec_name)
+
+        # Create new spec with preserved frozen fields and incremented iteration/version
+        final_spec = updated_spec.model_copy(
+            update={
+                'objectives': existing_spec.objectives,
+                'scope': existing_spec.scope,
+                'dependencies': existing_spec.dependencies,
+                'deliverables': existing_spec.deliverables,
+                'iteration': existing_spec.iteration + 1,
+                'version': existing_spec.version + 1,
+            }
+        )
+
+        logger.info(
+            f'update_spec: Preserved frozen fields, '
+            f'iteration: {existing_spec.iteration} -> {final_spec.iteration}, '
+            f'version: {existing_spec.version} -> {final_spec.version}'
+        )
+
+        # Store the updated spec
+        self._specs[project_name][normalized_name] = final_spec
+
+        self._log_state()
+        logger.info(f'update_spec: Successfully updated spec {spec_name} for project {project_name}')
+        self._log_state_snapshot('update_spec', 'EXIT')
+        return f'Updated spec "{spec_name}" to iteration {final_spec.iteration}, version {final_spec.version}'
 
     def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
         self._log_state_snapshot('get_spec', 'ENTRY')

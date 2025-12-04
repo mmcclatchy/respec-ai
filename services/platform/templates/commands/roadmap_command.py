@@ -68,7 +68,13 @@ Input:
   - loop_id: ROADMAP_LOOP_ID
   - project_name: PROJECT_NAME
   - phasing_preferences: PHASING_PREFERENCES
-  - previous_feedback: CRITIC_FEEDBACK (if this is a refinement iteration)
+  # NO feedback parameter - analyst retrieves from MCP itself
+
+Agent will:
+1. Retrieve current roadmap from MCP using loop_id
+2. Retrieve previous critic feedback from MCP (if iteration > 1)
+3. Refine roadmap based on strategic plan and feedback
+4. Store updated roadmap to MCP
 
 **CRITICAL**: Capture the agent's complete output markdown as CURRENT_ROADMAP.
 The agent returns the full roadmap markdown but does NOT store it.
@@ -133,15 +139,6 @@ IF STORE_RESULT contains error:
    DO NOT create file-based workarounds - MCP storage is required."
 
   EXIT: Workflow terminated
-
-VERIFY storage succeeded:
-VERIFICATION = mcp__specter__get_roadmap(project_name=PROJECT_NAME)
-
-IF VERIFICATION fails:
-  ERROR: "Roadmap storage verification failed - roadmap was not saved to MCP"
-  EXIT: Workflow terminated
-
-Display to user: "✓ Roadmap stored in MCP successfully"
 ```
 
 #### Step 3c: Invoke Roadmap-Critic Agent
@@ -157,40 +154,38 @@ Roadmap-critic will:
 3. Store feedback in MCP loop using loop_id
 ```
 
-#### Step 3d: Get Feedback and Extract Score
+#### Step 3d: Get Loop Decision
 ```text
-CRITIC_FEEDBACK = mcp__specter__get_feedback(loop_id=ROADMAP_LOOP_ID, count=2)
-Note: Retrieves 2 most recent iterations for progress tracking
-Extract QUALITY_SCORE from CRITIC_FEEDBACK markdown (look for "Overall Score: [number]")
-```
+LOOP_DECISION_RESPONSE = mcp__specter__decide_loop_next_action(loop_id=ROADMAP_LOOP_ID)
+LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 
-#### Step 3e: MCP Loop Decision
-```text
-MCP_DECISION = mcp__specter__decide_loop_next_action(
-    loop_id=ROADMAP_LOOP_ID,
-    current_score=QUALITY_SCORE
-)
-
-Display to user:
-- Quality Score: QUALITY_SCORE
-- MCP Decision: MCP_DECISION
+Note: No need to retrieve feedback or score - MCP handles internally.
+Decision options: "complete", "refine", "user_input"
 ```
 
 ### 4. MCP Decision Handling
 
-**Follow MCP_DECISION exactly. Do not override based on score assessment.**
+**Follow LOOP_DECISION exactly. Do not override based on score assessment.**
 
-#### If MCP_DECISION == "refine"
-Return to Step 3a with previous_feedback: CRITIC_FEEDBACK
-Execute Steps 3b-3e again.
+#### If LOOP_DECISION == "refine"
+Display: "⟳ Refining roadmap - roadmap-analyst will address critic feedback"
+Return to Step 3a (roadmap-analyst will retrieve feedback from MCP itself)
 
-#### If MCP_DECISION == "user_input"
-Display CRITIC_FEEDBACK to user.
-Request technical input (stack preferences, architecture patterns, constraints).
-Return to Step 3a with previous_feedback: CRITIC_FEEDBACK + user input.
-Execute Steps 3b-3e again.
+#### If LOOP_DECISION == "user_input"
+Display: "⚠ Quality improvements needed - user input required"
 
-#### If MCP_DECISION == "complete"
+# ONLY NOW retrieve feedback for user display
+LATEST_FEEDBACK = mcp__specter__get_feedback(loop_id=ROADMAP_LOOP_ID, count=1)
+
+Display LATEST_FEEDBACK to user with:
+- Current score and iteration
+- Key issues identified by roadmap-critic
+- Recommendations for improvement
+
+Prompt: "Please provide guidance to improve the roadmap:"
+Store user input and return to Step 3a
+
+#### If LOOP_DECISION == "complete"
 Proceed to Step 5.
 Note: Roadmap contains sparse TechnicalSpec objects (iteration=0) with 4 Overview fields only.
 

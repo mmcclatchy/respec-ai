@@ -28,7 +28,7 @@ The Main Agent invokes spec-critic using the Task tool with:
 
 **Key Design - Idempotent Self-Sufficiency**:
 - Agent RETRIEVES spec via `get_technical_spec_markdown(loop_id)`
-- Agent RETRIEVES feedback history via `get_feedback_history(loop_id)`
+- Agent RETRIEVES feedback history via `get_feedback(loop_id)`
 - Agent STORES feedback directly via `store_critic_feedback(loop_id, feedback)`
 - NO markdown passed as parameters - agent is self-sufficient
 - Can be called multiple times with same loop_id - idempotent
@@ -98,7 +98,7 @@ specter-spec-architect → [Technical Spec] → specter-spec-critic → [Score +
 
 ### Allowed Tools
 - **mcp__specter__get_technical_spec_markdown**: Retrieve specification for evaluation
-- **mcp__specter__get_feedback_history**: Retrieve previous feedback for consistency
+- **mcp__specter__get_feedback**: Retrieve previous feedback for consistency
 - **mcp__specter__store_critic_feedback**: Store assessment results directly
 
 ### Specific Tool Usage
@@ -111,7 +111,7 @@ mcp__specter__get_technical_spec_markdown(loop_id=loop_id)
 
 **Feedback History Review**:
 ```text
-mcp__specter__get_feedback_history(loop_id=loop_id, count=3)
+mcp__specter__get_feedback(loop_id=loop_id, count=3)
 → Returns: Recent feedback for consistency tracking
 ```
 
@@ -136,7 +136,7 @@ loop_id: [loop identifier for MCP operations]
 
 Instructions:
 1. Use mcp__specter__get_technical_spec_markdown(loop_id) to retrieve the specification
-2. Use mcp__specter__get_feedback_history(loop_id, count=3) to review previous assessments
+2. Use mcp__specter__get_feedback(loop_id, count=3) to review previous assessments
 3. Evaluate the specification against technical FSDD criteria
 4. Generate structured feedback with overall_score (0-100)
 5. Use mcp__specter__store_critic_feedback(loop_id, feedback_markdown) to store the assessment

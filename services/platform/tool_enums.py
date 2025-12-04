@@ -103,6 +103,7 @@ class SpecterMCPTool(Enum):
     # Spec Management Tools
     GET_SPEC_MARKDOWN = 'mcp__specter__get_spec_markdown'
     STORE_SPEC = 'mcp__specter__store_spec'
+    UPDATE_SPEC = 'mcp__specter__update_spec'
     LIST_SPECS = 'mcp__specter__list_specs'
     DELETE_SPEC = 'mcp__specter__delete_spec'
     LINK_LOOP_TO_SPEC = 'mcp__specter__link_loop_to_spec'

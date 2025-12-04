@@ -31,6 +31,10 @@ class LoopConfig(BaseSettings):
     build_plan_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
     build_code_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
 
+    spec_length_soft_cap: int = Field(
+        default=40_000, ge=30_000, le=60_000, description='Soft cap for spec length in characters (~10k tokens)'
+    )
+
 
 class LogLevel(StrEnum):
     DEBUG = 'DEBUG'
