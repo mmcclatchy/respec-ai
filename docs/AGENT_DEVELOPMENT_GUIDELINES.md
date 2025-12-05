@@ -22,7 +22,7 @@ These guidelines focus on the four core agent concerns: inputs, tools, imperativ
 **Implementation Pattern** (based on actual agent templates):
 ```markdown
 ---
-name: spec-ai-spec-architect
+name: respec-spec-architect
 description: Design technical architecture from strategic plans
 model: sonnet
 tools: Read, Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*), Grep, Glob
@@ -45,7 +45,7 @@ OUTPUTS: Technical specification in structured markdown format with:
 - Implementation guidelines
 ```
 
-**Note**: Agent names use `spec-ai-*` prefix for consistency.
+**Note**: Agent names use `respec-*` prefix for consistency.
 
 **CRITICAL FORMATTING RULE**: Tools must be **comma-separated on a single line**. YAML array format (with `-` prefix) is **NOT supported**.
 
@@ -89,7 +89,7 @@ tools:
 **Pattern Example - Generator Agent**:
 ```markdown
 ---
-name: spec-ai-plan-generator
+name: respec-plan-generator
 description: Generate strategic plans through conversational discovery
 tools: None
 ---
@@ -117,27 +117,27 @@ OUTPUTS: Strategic plan document containing:
 **Pattern Example - Critic Agent**:
 ```markdown
 ---
-name: spec-ai-spec-critic
+name: respec-spec-critic
 description: Evaluate technical specifications against quality criteria
 tools:
-  - mcp__spec-ai__get_technical_spec_markdown
-  - mcp__spec-ai__store_critic_feedback
+  - mcp__respec-ai__get_technical_spec_markdown
+  - mcp__respec-ai__store_critic_feedback
 ---
 
 You are a technical specification quality specialist.
 
 INPUTS: Loop ID for specification retrieval and feedback storage
 - Loop ID provided by Main Agent for MCP operations
-- Use mcp__spec-ai__get_technical_spec_markdown(loop_id) to retrieve specification
+- Use mcp__respec-ai__get_technical_spec_markdown(loop_id) to retrieve specification
 - Evaluate complete technical specification from MCP storage
 
 TASKS:
-1. Retrieve specification using mcp__spec-ai__get_technical_spec_markdown(loop_id)
+1. Retrieve specification using mcp__respec-ai__get_technical_spec_markdown(loop_id)
 2. Evaluate specification against FSDD quality framework
 3. Assess technical completeness and clarity
 4. Identify gaps and improvement opportunities
 5. Calculate numerical quality score (0-100)
-6. Store feedback using mcp__spec-ai__store_critic_feedback(loop_id, feedback_markdown)
+6. Store feedback using mcp__respec-ai__store_critic_feedback(loop_id, feedback_markdown)
 
 OUTPUTS: Quality assessment containing:
 - Overall Quality Score: [numerical value 0-100]
@@ -230,7 +230,7 @@ DECISION CRITERIA:
 
 **Critic Agents** (with MCP retrieval and storage):
 ```markdown
-tools: mcp__spec-ai__get_project_plan_markdown, mcp__spec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_feedback
 # Use for: plan-critic, roadmap-critic evaluating via MCP
 ```
 
@@ -248,7 +248,7 @@ tools: Read, Edit, Write, Bash
 
 **Spec Creation Agents** (with platform integration):
 ```markdown
-tools: mcp__spec-ai__get_roadmap, mcp__spec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
 # Use for: create-spec agents with dual storage (MCP + platform)
 ```
 
@@ -257,12 +257,12 @@ tools: mcp__spec-ai__get_roadmap, mcp__spec-ai__store_spec, {tools.create_spec_t
 **Important**: When agents use platform-specific tools (like `Write`, `Read`, `Edit` for Markdown or Linear/GitHub API tools), there are two forms:
 
 **1. Permission Form** (in frontmatter `tools:` list):
-- Uses wildcards: `Write(.spec-ai/projects/*/specs/*.md)`
+- Uses wildcards: `Write(.respec-ai/projects/*/specs/*.md)`
 - Defines what file paths the agent is ALLOWED to access
 - Referenced as `{tools.create_spec_tool}` in frontmatter
 
 **2. Invocation Form** (in workflow instructions):
-- Uses placeholders: `Write(.spec-ai/projects/{project_name}/specs/{spec_name}.md)`
+- Uses placeholders: `Write(.respec-ai/projects/{project_name}/specs/{spec_name}.md)`
 - Shows actual usage pattern with named parameter placeholders
 - Accessed via `{tools.create_spec_tool_interpolated}` computed field from AgentTools model
 
@@ -270,8 +270,8 @@ tools: mcp__spec-ai__get_roadmap, mcp__spec-ai__store_spec, {tools.create_spec_t
 
 Frontmatter:
 ```yaml
-tools: mcp__spec-ai__store_spec, {tools.create_spec_tool}
-# Markdown permission: Write(.spec-ai/projects/*/specs/*.md)
+tools: mcp__respec-ai__store_spec, {tools.create_spec_tool}
+# Markdown permission: Write(.respec-ai/projects/*/specs/*.md)
 # Linear permission: mcp__linear-server__create_issue(*)
 ```
 
@@ -280,7 +280,7 @@ Workflow Instructions:
 STEP 4: Store to Platform
 CALL {tools.create_spec_tool_interpolated}
 
-# Markdown actual usage: Write(.spec-ai/projects/{project_name}/specs/{spec_name}.md, spec_markdown)
+# Markdown actual usage: Write(.respec-ai/projects/{project_name}/specs/{spec_name}.md, spec_markdown)
 # Linear actual usage: mcp__linear-server__create_issue(project={project_name}, title={spec_name}, ...)
 ```
 
@@ -292,20 +292,20 @@ CALL {tools.create_spec_tool_interpolated}
 **✅ Correct Tool Boundaries** (actual patterns from codebase):
 ```markdown
 ---
-name: spec-ai-plan-critic
-tools: mcp__spec-ai__get_project_plan_markdown, mcp__spec-ai__store_critic_feedback
+name: respec-plan-critic
+tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 ---
-name: spec-ai-create-spec
-tools: mcp__spec-ai__get_roadmap, mcp__spec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
+name: respec-create-spec
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
 ---
 ```
 
 **❌ Incorrect Tool Over-Allocation**:
 ```markdown
 ---
-name: spec-ai-spec-critic  # Quality evaluation agent
+name: respec-spec-critic  # Quality evaluation agent
 tools: Read, Edit, Write, Bash  # ❌ Can modify files during evaluation
 ---
 ```
@@ -441,17 +441,17 @@ INPUTS: Loop ID for specification retrieval and feedback storage
 - loop_id: Refinement loop identifier for this session
 
 STEP 0: Retrieve Previous Feedback (if refinement iteration)
-CALL mcp__spec-ai__get_loop_status(loop_id=loop_id)
+CALL mcp__respec-ai__get_loop_status(loop_id=loop_id)
 → Store: LOOP_STATUS
 
 IF LOOP_STATUS.iteration > 1:
-  CALL mcp__spec-ai__get_feedback(loop_id=loop_id, count=1)
+  CALL mcp__respec-ai__get_feedback(loop_id=loop_id, count=1)
   → Store: PREVIOUS_FEEDBACK
 ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Current Specification
-CALL mcp__spec-ai__get_spec_markdown(loop_id=loop_id)
+CALL mcp__respec-ai__get_spec_markdown(loop_id=loop_id)
 → Store: CURRENT_SPEC
 
 STEP 2: Process Using Retrieved Data
@@ -478,7 +478,7 @@ When designing commands that orchestrate MCP-driven refinement loops:
 
 ```markdown
 STEP 5: Invoke Specialized Agent
-CALL spec-ai-spec-architect
+CALL respec-spec-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
@@ -487,7 +487,7 @@ Input:
   # NO feedback parameter - architect retrieves from MCP itself
 
 STEP 6: Get Loop Decision
-LOOP_DECISION = mcp__spec-ai__decide_loop_next_action(loop_id=LOOP_ID)
+LOOP_DECISION = mcp__respec-ai__decide_loop_next_action(loop_id=LOOP_ID)
 # Returns: {status: "COMPLETE|REFINE|USER_INPUT"}
 # No feedback retrieval - MCP handles internally
 
@@ -498,7 +498,7 @@ IF LOOP_DECISION == "REFINE":
 
 IF LOOP_DECISION == "USER_INPUT":
   # ONLY NOW retrieve feedback for user display
-  FEEDBACK = mcp__spec-ai__get_feedback(loop_id=LOOP_ID, count=1)
+  FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=1)
   Display: FEEDBACK to user
   Prompt user for input
 ```
@@ -507,15 +507,15 @@ IF LOOP_DECISION == "USER_INPUT":
 
 ```markdown
 STEP 5a: Retrieve Feedback for Agent
-CRITIC_FEEDBACK = mcp__spec-ai__get_feedback(loop_id=LOOP_ID, count=2)  # ❌ Unnecessary
+CRITIC_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=2)  # ❌ Unnecessary
 
 STEP 5b: Invoke Agent with Feedback
-CALL spec-ai-spec-architect
+CALL respec-spec-architect
 Input:
   - previous_feedback: CRITIC_FEEDBACK  # ❌ Don't pass large documents
 
 STEP 6: Retrieve Feedback Again for Validation
-STORED_FEEDBACK = mcp__spec-ai__get_feedback(loop_id=LOOP_ID, count=1)  # ❌ Duplicate retrieval
+STORED_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=1)  # ❌ Duplicate retrieval
 ```
 
 ### Example: spec Workflow Implementation
@@ -531,7 +531,7 @@ The command invokes the spec-architect agent with only the `loop_id` and essenti
 ```markdown
 STEP 5: Spec Refinement
 
-Invoke: spec-ai-spec-architect
+Invoke: respec-spec-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
@@ -557,7 +557,7 @@ The command checks only the loop decision status, not the feedback itself. The M
 STEP 6: Decision Point
 
 #### Step 6b: Get Loop Decision
-LOOP_DECISION_RESPONSE = mcp__spec-ai__decide_loop_next_action(loop_id=LOOP_ID)
+LOOP_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=LOOP_ID)
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 
 Note: No need to retrieve feedback or score - MCP handles internally.
@@ -579,7 +579,7 @@ Return to Step 5 (spec-architect will retrieve feedback from MCP itself)
 Display: "⚠ Quality improvements needed - user input required"
 
 # ONLY NOW retrieve feedback for user display
-LATEST_FEEDBACK = mcp__spec-ai__get_feedback(loop_id=LOOP_ID, count=1)
+LATEST_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=1)
 
 Display to user:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -601,12 +601,12 @@ The spec-architect agent checks the iteration number to determine if previous fe
 ```markdown
 STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
 → Check if this is a refinement by getting loop status
-CALL mcp__spec-ai__get_loop_status(loop_id=loop_id)
+CALL mcp__respec-ai__get_loop_status(loop_id=loop_id)
 → Store: LOOP_STATUS
 
 IF LOOP_STATUS.iteration > 1:
   → This is a refinement iteration - retrieve previous critic feedback
-  CALL mcp__spec-ai__get_feedback(loop_id=loop_id, count=1)
+  CALL mcp__respec-ai__get_feedback(loop_id=loop_id, count=1)
   → Store: PREVIOUS_FEEDBACK
   → Extract key improvement areas from feedback for use in STEP 2
 ELSE:
@@ -620,7 +620,7 @@ The agent retrieves the current specification from MCP using `loop_id`, ensuring
 
 ```markdown
 STEP 1: Retrieve Current Specification
-CALL mcp__spec-ai__get_spec_markdown(
+CALL mcp__respec-ai__get_spec_markdown(
   project_name=None,
   spec_name=None,
   loop_id=loop_id
@@ -779,9 +779,9 @@ When implementing agents using this pattern:
 #### Spec Workflow as Reference Pattern
 
 The spec workflow demonstrates the correct context-optimized MCP-driven refinement loop pattern:
-- **Command**: services/platform/templates/commands/spec_command.py
-- **Architect Agent**: services/platform/templates/agents/spec_architect.py
-- **Critic Agent**: services/platform/templates/agents/spec_critic.py
+- **Command**: src/platform/templates/commands/spec_command.py
+- **Architect Agent**: src/platform/templates/agents/spec_architect.py
+- **Critic Agent**: src/platform/templates/agents/spec_critic.py
 
 Use these files as the reference implementation when creating new MCP-driven workflows.
 
@@ -804,7 +804,7 @@ Commands are Python f-strings (return f"""..."""). This creates a critical disti
 ```python
 def generate_command_template(tools):
     return f"""
-    LATEST_FEEDBACK = mcp__spec-ai__get_feedback(...)  # ← Pseudocode, not Python
+    LATEST_FEEDBACK = mcp__respec-ai__get_feedback(...)  # ← Pseudocode, not Python
 
     Display: {LATEST_FEEDBACK.message}  # ← Python tries to evaluate this NOW!
     """
@@ -816,7 +816,7 @@ Python sees `{LATEST_FEEDBACK.message}` and tries to find LATEST_FEEDBACK in the
 ```python
 def generate_command_template(tools):
     return f"""
-    LATEST_FEEDBACK = mcp__spec-ai__get_feedback(...)  # ← Pseudocode
+    LATEST_FEEDBACK = mcp__respec-ai__get_feedback(...)  # ← Pseudocode
 
     Display LATEST_FEEDBACK to user with:  # ← Plain text, no curly braces
     - Current score and iteration
@@ -829,7 +829,7 @@ def generate_command_template(tools):
 
 **Safe Patterns**:
 ```text
-✅ LATEST_FEEDBACK = mcp__spec-ai__get_feedback(...)
+✅ LATEST_FEEDBACK = mcp__respec-ai__get_feedback(...)
 ✅ IF "error" in LATEST_FEEDBACK:
 ✅ Display LATEST_FEEDBACK to user with:
 ✅ [Extract score from LATEST_FEEDBACK]
@@ -976,7 +976,7 @@ ERROR HANDLING:
 **Template Structure**:
 ```markdown
 ---
-name: spec-ai-[content-type]-generator
+name: respec-[content-type]-generator
 description: Generate [specific content type] from [specific input]
 tools: Read  # Input-only for most generators
 ---
@@ -1017,7 +1017,7 @@ QUALITY CRITERIA:
 **Example - Plan Generator**:
 ```markdown
 ---
-name: spec-ai-plan-generator
+name: respec-plan-generator
 description: Generate strategic plans through conversational discovery
 tools: None
 ---
@@ -1057,7 +1057,7 @@ QUALITY CRITERIA:
 ---
 name: [content-type]-critic
 description: Evaluate [content type] against quality criteria
-tools: mcp__spec-ai__get_[content]_markdown, mcp__spec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_[content]_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 ═══════════════════════════════════════════════
@@ -1066,8 +1066,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: content = mcp__spec-ai__get_[content]_markdown(loop_id="...")
-  ❌ WRONG: <mcp__spec-ai__get_[content]_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: content = mcp__respec-ai__get_[content]_markdown(loop_id="...")
+  ❌ WRONG: <mcp__respec-ai__get_[content]_markdown><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -1098,9 +1098,9 @@ QUALITY CRITERIA:
 **Example - Spec Critic**:
 ```markdown
 ---
-name: spec-ai-spec-critic
+name: respec-spec-critic
 description: Evaluate technical specifications against quality criteria
-tools: mcp__spec-ai__get_technical_spec_markdown, mcp__spec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_technical_spec_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 ═══════════════════════════════════════════════
@@ -1109,8 +1109,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__spec-ai__get_technical_spec_markdown(loop_id="...")
-  ❌ WRONG: <mcp__spec-ai__get_technical_spec_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: spec = mcp__respec-ai__get_technical_spec_markdown(loop_id="...")
+  ❌ WRONG: <mcp__respec-ai__get_technical_spec_markdown><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -1119,16 +1119,16 @@ You are a technical specification quality specialist.
 
 INPUTS: Loop ID for specification retrieval and feedback storage
 - Loop ID provided by Main Agent for MCP operations
-- Use mcp__spec-ai__get_technical_spec_markdown(loop_id) to retrieve specification
+- Use mcp__respec-ai__get_technical_spec_markdown(loop_id) to retrieve specification
 - Complete technical specification retrieved from MCP storage
 
 TASKS:
-1. Retrieve specification using mcp__spec-ai__get_technical_spec_markdown(loop_id)
+1. Retrieve specification using mcp__respec-ai__get_technical_spec_markdown(loop_id)
 2. Evaluate specification against FSDD quality framework (12-point criteria)
 3. Assess technical completeness, clarity, and implementability
 4. Identify gaps, inconsistencies, and improvement opportunities
 5. Calculate numerical quality score based on objective criteria
-6. Store feedback using mcp__spec-ai__store_critic_feedback(loop_id, feedback_markdown)
+6. Store feedback using mcp__respec-ai__store_critic_feedback(loop_id, feedback_markdown)
 
 OUTPUTS: Quality assessment containing:
 - Overall Quality Score: [0-100 numerical value]
@@ -1149,7 +1149,7 @@ QUALITY CRITERIA:
 **Template Structure**:
 ```markdown
 ---
-name: spec-ai-[implementation-type]-[agent-type]
+name: respec-[implementation-type]-[agent-type]
 description: [Implementation function] based on [specification type]
 tools: Read, Edit, Write, Bash  # Full implementation access
 ---
@@ -1193,7 +1193,7 @@ QUALITY CRITERIA:
 **Example - Build Coder**:
 ```markdown
 ---
-name: spec-ai-build-coder
+name: respec-build-coder
 description: Implement code based on implementation plans and specifications
 tools: Read, Edit, Write, Bash
 ---
@@ -1388,7 +1388,7 @@ Test Case: Edge Case Handling
 ```markdown
 # ❌ WRONG: Critics with modification tools
 ---
-name: spec-ai-spec-critic
+name: respec-spec-critic
 tools:
   - Read
   - Edit
@@ -1397,7 +1397,7 @@ tools:
 
 # ❌ WRONG: Generators with execution tools
 ---
-name: spec-ai-plan-generator
+name: respec-plan-generator
 tools:
   - Read
   - Bash
@@ -1410,13 +1410,13 @@ tools:
 ```markdown
 # ✅ CORRECT: Critics with MCP retrieval and storage only
 ---
-name: spec-ai-spec-critic
-tools: mcp__spec-ai__get_technical_spec_markdown, mcp__spec-ai__store_critic_feedback
+name: respec-spec-critic
+tools: mcp__respec-ai__get_technical_spec_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 # ✅ CORRECT: Generators with input-only access
 ---
-name: spec-ai-plan-generator
+name: respec-plan-generator
 tools: None  # Content generation from conversation, no file access needed
 ---
 ```

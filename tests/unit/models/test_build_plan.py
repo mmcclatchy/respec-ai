@@ -1,7 +1,6 @@
 import pytest
-
-from services.models.build_plan import BuildPlan
-from services.models.enums import BuildStatus
+from src.models.build_plan import BuildPlan
+from src.models.enums import BuildStatus
 
 
 class TestBuildPlanParsing:

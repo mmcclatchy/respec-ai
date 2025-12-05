@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v0.3.0
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/respec-ai-server
+
+jobs:
+  # Job 1: Extract version from tag
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+  # Job 2: Build and publish CLI package to PyPI
+  publish-cli:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Sync version to server package
+        run: |
+          VERSION=${{ needs.version.outputs.version }}
+          sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.server.toml
+
+      - name: Build CLI package
+        run: uv build
+
+      - name: Publish to PyPI
+        run: uv publish --token ${{ secrets.PYPI_TOKEN }}
+
+  # Job 3: Build and publish Docker image to GHCR
+  publish-docker:
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync version to server package
+        run: |
+          VERSION=${{ needs.version.outputs.version }}
+          sed -i "s/^version = .*/version = \"$VERSION\"/" pyproject.server.toml
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  # Job 4: Create GitHub Release
+  create-release:
+    needs: [version, publish-cli, publish-docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Release v${{ needs.version.outputs.version }}
+          body: |
+            ## respec-ai v${{ needs.version.outputs.version }}
+
+            ### Installation
+            ```bash
+            uv tool install respec-ai
+            ```
+
+            ### What's New
+            See CHANGELOG.md for details
+
+            ### Docker Image
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/respec-ai-server:${{ needs.version.outputs.version }}
+            ```
+          draft: false
+          prerelease: false

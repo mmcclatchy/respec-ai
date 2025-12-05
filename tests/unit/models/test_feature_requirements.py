@@ -1,7 +1,6 @@
 import pytest
-
-from services.models.feature_requirements import FeatureRequirements
-from services.models.enums import RequirementsStatus
+from src.models.enums import RequirementsStatus
+from src.models.feature_requirements import FeatureRequirements
 
 
 class TestFeatureRequirementsParsing:

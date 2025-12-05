@@ -1,17 +1,17 @@
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
 from fastmcp import FastMCP
-
-from services.mcp.tools import register_all_tools
+from pytest_mock import MockerFixture
+from src.mcp.tools import register_all_tools
 
 
 class TestToolRegistration:
     @pytest.fixture
-    def mock_mcp(self) -> Mock:
-        return Mock(spec=FastMCP)
+    def mock_mcp(self, mocker: MockerFixture) -> MagicMock:
+        return mocker.Mock(spec=FastMCP)
 
-    def test_register_all_tools_calls_all_registration_functions(self, mock_mcp: Mock) -> None:
+    def test_register_all_tools_calls_all_registration_functions(self, mock_mcp: MagicMock) -> None:
         register_all_tools(mock_mcp)
 
         # Verify that tools are registered by checking mcp.tool() was called

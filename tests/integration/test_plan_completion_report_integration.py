@@ -1,11 +1,10 @@
 import pytest
-
-from services.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
-from services.models.plan_completion_report import PlanCompletionReport
-from services.platform.templates.commands.plan_command import plan_completion_template
-from services.utils.enums import LoopStatus, LoopType
-from services.utils.loop_state import LoopState, MCPResponse
-from services.utils.state_manager import InMemoryStateManager
+from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
+from src.models.plan_completion_report import PlanCompletionReport
+from src.platform.templates.commands.plan_command import plan_completion_template
+from src.utils.enums import LoopStatus, LoopType
+from src.utils.loop_state import LoopState, MCPResponse
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.mark.integration
@@ -68,7 +67,7 @@ This is a test strategic plan document with comprehensive details.
 
 ## Next Steps
 1. Review the strategic plan for accuracy
-2. Proceed with technical specification using: /spec-ai-spec
+2. Proceed with technical specification using: /respec-spec
 3. The structured objectives will feed directly into spec-architect
 
 ## Metadata

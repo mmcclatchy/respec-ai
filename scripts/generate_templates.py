@@ -8,12 +8,13 @@ templates stay synchronized with model definitions.
 """
 
 from datetime import datetime
-from services.models.roadmap import Roadmap
-from services.models.build_plan import BuildPlan
-from services.models.feature_requirements import FeatureRequirements
-from services.models.project_plan import ProjectPlan
-from services.models.feedback import CriticFeedback
-from services.models.enums import RoadmapStatus, BuildStatus, RequirementsStatus, ProjectStatus, CriticAgent
+
+from src.models.build_plan import BuildPlan
+from src.models.enums import BuildStatus, CriticAgent, ProjectStatus, RequirementsStatus, RoadmapStatus
+from src.models.feature_requirements import FeatureRequirements
+from src.models.feedback import CriticFeedback
+from src.models.project_plan import ProjectPlan
+from src.models.roadmap import Roadmap
 
 
 def generate_roadmap_template() -> str:

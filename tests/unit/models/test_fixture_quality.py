@@ -5,15 +5,15 @@ markdown that successfully parses into model instances. This prevents circular
 testing by ensuring the builder creates independently-constructed markdown.
 """
 
-import pytest
 from typing import Callable, Type
 
-from services.models.base import MCPModel
-from services.models.roadmap import Roadmap
-from services.models.spec import TechnicalSpec
-from services.models.project_plan import ProjectPlan
-from services.models.build_plan import BuildPlan
-from services.models.feature_requirements import FeatureRequirements
+import pytest
+from src.models.base import MCPModel
+from src.models.build_plan import BuildPlan
+from src.models.feature_requirements import FeatureRequirements
+from src.models.project_plan import ProjectPlan
+from src.models.roadmap import Roadmap
+from src.models.spec import TechnicalSpec
 
 
 @pytest.mark.parametrize(

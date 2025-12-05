@@ -1,4 +1,4 @@
-from services.models.spec import TechnicalSpec
+from src.models.spec import TechnicalSpec
 
 
 class TestAdditionalSections:

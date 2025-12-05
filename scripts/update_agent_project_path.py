@@ -9,14 +9,14 @@ def update_agent_inputs(content: str) -> str:
     # Find INPUTS section and add project_path if not present
     if 'INPUTS:' in content and 'project_path:' not in content:
         pattern = r'(INPUTS:[^\n]*\n)'
-        replacement = r'\1- project_path: Project directory path (automatically provided by calling command)\n\n**Important**: All `mcp__spec-ai__*` tool calls must include project_path as the first parameter.\n\n'
+        replacement = r'\1- project_path: Project directory path (automatically provided by calling command)\n\n**Important**: All `mcp__respec-ai__*` tool calls must include project_path as the first parameter.\n\n'
         content = re.sub(pattern, replacement, content, count=1)
 
     return content
 
 
 def main() -> None:
-    agents_dir = Path(__file__).parent.parent / 'services' / 'templates' / 'agents'
+    agents_dir = Path(__file__).parent.parent / 'src' / 'templates' / 'agents'
 
     print('Updating agent templates with project_path documentation...\n')
 
@@ -28,7 +28,7 @@ def main() -> None:
         original = content
 
         # Check if agent uses MCP tools
-        if 'mcp__spec-ai__' not in content:
+        if 'mcp__respec-ai__' not in content:
             print(f'  - Skipped {file_path.name} (no MCP calls)')
             continue
 

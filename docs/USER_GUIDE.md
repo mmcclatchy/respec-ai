@@ -1,10 +1,10 @@
-# SpecAI User Guide
+# RespecAI User Guide
 
-Complete guide to using SpecAI for AI-driven specification-based development.
+Complete guide to using RespecAI for AI-driven specification-based development.
 
-## What is SpecAI?
+## What is RespecAI?
 
-SpecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
+RespecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
 
 ### Key Benefits
 
@@ -15,7 +15,7 @@ SpecAI is a **meta MCP server** that generates platform-specific workflow tools 
 
 ### Current Status
 
-**MVP Complete** - SpecAI is ready for real-world usage:
+**MVP Complete** - RespecAI is ready for real-world usage:
 - ✅ MCP server fully functional
 - ✅ Multi-project architecture implemented (Phase 1)
 - ✅ All 29+ tools operational
@@ -32,7 +32,7 @@ See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and
 - **Claude Code CLI** installed and configured
 - **Git** for repository access
 
-**For SpecAI MCP Server (required):**
+**For RespecAI MCP Server (required):**
 - **uv** (Python version and package manager) - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 - **Python 3.13+**
 - **Unix-like operating system** (Linux, macOS, or Windows Subsystem for Linux)
@@ -48,78 +48,67 @@ See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and
 
 ### Installation Overview
 
-SpecAI installation has two parts:
+RespecAI installation has two parts:
 
-1. **SpecAI MCP Server Setup** (one-time) - Configure SpecAI as an MCP server in Claude Code
-2. **Project Setup** (per-project) - Generate workflow files for each project
+1. **RespecAI Package Installation** (one-time) - Install the respec-ai package from PyPI
+2. **Project Initialization** (per-project) - Initialize RespecAI in your projects
 
-### Part 1: SpecAI MCP Server Setup (One-Time)
+Both parts can be completed with a single command.
 
-This configures SpecAI as an MCP server that Claude Code can use across all your projects.
+### Part 1: RespecAI Package Installation (One-Time)
 
-#### Step 1: Clone SpecAI Repository
+This installs the RespecAI package and makes the CLI available globally.
 
+#### Step 1: Install RespecAI from PyPI
+
+**For development/testing (TestPyPI):**
 ```bash
-# Choose a location for the SpecAI repository
-# Recommended: alongside your other projects
-cd ~/coding/projects  # or your preferred location
+# Install from TestPyPI
+uv add --index https://test.pypi.org/simple/ respec-ai
 
-# Clone the repository
-git clone git@github.com:mmcclatchy/spec-ai.git
-cd spec-ai
+# Verify installation
+respec-ai --version
 ```
 
-> **Note**: For private repositories, ensure your SSH key is configured with GitHub.
-
-#### Step 2: Install Dependencies
-
+**For production (PyPI):**
 ```bash
-# Install Python dependencies using uv
-uv sync
+# Install from PyPI
+uv add respec-ai
+
+# Verify installation
+respec-ai --version
 ```
 
 **Expected output:**
 ```text
-Resolved XX packages in XXms
-Installed XX packages in XXms
+respec-ai 0.2.0
 ```
 
-**If you see errors:**
-- Verify Python 3.13+ is installed: `python --version` or `python3 --version`
-- Install uv if missing: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+#### Step 2: Register MCP Server (Automatic or Manual)
 
-#### Step 3: Register SpecAI MCP Server with Claude Code
+The MCP server can be registered automatically during project initialization (recommended) or manually.
 
-Add SpecAI to your Claude Code MCP configuration using the `claude mcp add` command.
+**Option A: Automatic Registration (Recommended)**
 
-**Run this command** (replace the path with your actual SpecAI location from Step 1):
+The MCP server will be automatically registered when you run `respec-ai init` in your first project.
 
+**Option B: Manual Registration**
+
+If you prefer to register the MCP server separately:
 ```bash
-claude mcp add --transport stdio spec-ai -- uv run --directory /absolute/path/to/spec-ai spec-ai-server
+respec-ai register-mcp
 ```
-
-**Example with actual path:**
-```bash
-# If you cloned to ~/coding/projects/spec-ai:
-claude mcp add --transport stdio spec-ai -- uv run --directory /Users/username/coding/projects/spec-ai spec-ai-server
-```
-
-**Important notes:**
-- Replace `/absolute/path/to/spec-ai` with your actual SpecAI directory
-- Use **absolute paths** not relative paths or `~`
-  - ✅ Correct: `/Users/username/coding/projects/spec-ai`
-  - ❌ Wrong: `~/coding/projects/spec-ai` (tilde won't expand)
-  - ❌ Wrong: `../spec-ai` (relative paths won't work)
-- The `--directory` flag tells `uv` where to find the SpecAI project
 
 **Expected output:**
 ```text
-✓ Successfully added MCP server: spec-ai
+RespecAI MCP server registered successfully
+Package path: /path/to/installed/respec-ai
+Restart Claude Code to activate the MCP server
 ```
 
-#### Step 4: Verify MCP Server
+#### Step 3: Verify Installation
 
-**Restart Claude Code** to load the new configuration, then verify:
+**Restart Claude Code** to load the MCP server, then verify:
 
 ```bash
 claude
@@ -133,80 +122,67 @@ In Claude Code, run:
 **Expected output should include:**
 ```text
 Available MCP Servers:
-  spec-ai
+  RespecAI
     ├─ 29+ tools available
     ├─ create_project_plan
     ├─ store_project_plan
-    ├─ initialize_refinement_loop
     └─ [other tools...]
 ```
 
 **✓ Success criteria:**
-- SpecAI appears in the MCP server list
+- RespecAI appears in the MCP server list
 - Tool count shows 29+ tools
 - No error messages
 
-**If SpecAI doesn't appear**, see [Troubleshooting](#platform-mcp-server-not-found) below.
+**If RespecAI doesn't appear**, see [Troubleshooting](#respecai-mcp-server-not-available) below.
 
 ---
 
 ### Part 2: Project Setup (Per-Project)
 
-Now that SpecAI MCP Server is configured, you can set up any project to use SpecAI workflows.
+Initialize RespecAI in any project with a single command.
 
-#### Installation Method Selection
-
-Choose the installation method based on your needs:
-
-| Method | Best For | Repository Access | Steps |
-|--------|----------|-------------------|-------|
-| **Local Script** | Development, private repos | Local clone required | 3 |
-| **Remote Curl** | Public repos, quick setup | Public URL only | 2 |
-| **Bootstrap** | When script fails, manual setup | MCP server required | 3 |
-
-#### Method 1: Local Script Installation (Recommended for Private Repos)
-
-Use this method when you have SpecAI cloned locally (from Part 1).
+#### Initialize Your Project
 
 **Step 1: Navigate to your project**
 ```bash
 cd /path/to/your/project
 ```
 
-**Step 2: Run installation script**
+**Step 2: Initialize RespecAI**
 ```bash
-# Navigate to your project directory first
-cd ~/path/to/your/project
+# Choose your platform: linear, github, or markdown
+respec-ai init --platform linear
 
-# Run installation script with platform choice
-~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform linear
-# or --platform github
-# or --platform markdown
+# Optional: specify project name (defaults to directory name)
+respec-ai init --platform github --project-name my-project
+
+# Optional: skip automatic MCP registration
+respec-ai init --platform markdown --skip-mcp-registration
 ```
 
-This creates:
-- `.claude/commands/` - All SpecAI workflow commands
-- `.claude/agents/` - All SpecAI workflow agents
-- `.spec-ai/config.json` - Platform configuration
+**What this creates:**
+- `.claude/commands/` - 5 RespecAI workflow commands
+- `.claude/agents/` - 12 RespecAI workflow agents
+- `.respec-ai/config.json` - Platform configuration
 
 **Expected output:**
 ```text
-✅ SpecAI setup complete!
+✅ RespecAI setup complete!
 
-Platform: linear
-Files Created: 15
-Location: /path/to/your/project
+Setting              Value
+Platform             linear
+Files Created        17
+Location             /path/to/project
+MCP Server           ✓ Registered as RespecAI
 
-⚠️  IMPORTANT: Restart Claude Code to activate the new commands!
+Available Commands (restart Claude Code to activate):
+  • /respec-plan - Create strategic plans
+  • /respec-roadmap - Create phased roadmaps
+  • /respec-spec - Transform plans into specs
+  • /respec-build - Execute implementation
 
-Available Commands (after restart):
-  • /spec-ai-plan - Create strategic plans
-  • /spec-ai-spec - Transform plans into technical specifications
-  • /spec-ai-build - Execute implementation workflows
-  • /spec-ai-roadmap - Create phased roadmaps
-  • /spec-ai-plan-conversation - Convert conversations into plans
-
-🚀 Ready to begin! Restart Claude Code to use the SpecAI commands.
+🚀 Ready to begin! Restart Claude Code to use the RespecAI commands.
 ```
 
 **Step 3: Restart Claude Code**
@@ -215,79 +191,43 @@ Available Commands (after restart):
 claude
 ```
 
----
+#### Verify Project Setup
 
-#### Method 2: Remote Curl Installation (Public Repos Only)
-
-> **⚠️ Important**: This method only works for **public repositories**. For private repos, use Method 1 or Method 3.
-
-**Step 1: Run remote installation**
-```bash
-cd /path/to/your/project
-
-# Choose your platform: linear, github, or markdown
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh | bash -s -- --platform linear
-```
-
-This installs all workflow files and creates platform configuration.
-
-**Step 2: Restart Claude Code**
-```bash
-# Exit and restart Claude Code to load new commands
-claude
-```
-
----
-
-### Verify Project Setup
-
-After completing any installation method, verify your project setup:
+Check that everything was created correctly:
 
 ```bash
-# Check directory structure
-ls -la .claude/commands/spec-ai-*.md
-ls -la .claude/agents/*.md
-ls -la .spec-ai/config/platform.json
-
-# Check platform configuration
-cat .spec-ai/config/platform.json
+# Verify installation
+respec-ai status
 ```
 
-**Expected structure:**
+**Expected output:**
 ```text
-project/
-├── .claude/
-│   ├── commands/
-│   │   ├── spec-ai-plan.md
-│   │   ├── spec-ai-roadmap.md
-│   │   ├── spec-ai-spec.md
-│   │   ├── spec-ai-build.md
-│   │   └── spec-ai-plan-conversation.md
-│   └── agents/
-│       ├── plan-analyst.md
-│       ├── plan-critic.md
-│       ├── analyst-critic.md
-│       ├── roadmap.md
-│       ├── roadmap-critic.md
-│       └── create-spec.md
-└── .spec-ai/
-    ├── config/
-    │   └── platform.json
-    └── projects/ (created when using markdown platform)
+Project Configuration
+Setting              Value
+Project Path         /path/to/project
+Platform             linear
+Config Version       0.2.0
+Package Version      0.2.0
+MCP Server           RespecAI (✓ Registered)
+
+Generated Files
+Category            Count
+Commands            5
+Agents              12
 ```
 
 **Verification checklist:**
 - [ ] All 5 commands exist in `.claude/commands/`
-- [ ] Agent files exist in `.claude/agents/`
-- [ ] Platform configuration exists and shows correct platform
-- [ ] Commands autocomplete with `/spec-ai-` in Claude Code
-- [ ] SpecAI MCP server shows in `/mcp list`
+- [ ] All 12 agents exist in `.claude/agents/`
+- [ ] Platform configuration shows correct platform
+- [ ] Commands autocomplete with `/respec-` in Claude Code
+- [ ] RespecAI MCP server shows in `/mcp list`
 
 **If verification fails**, see [Troubleshooting](#commands-not-found) below.
 
 ---
 
-### Quick Start: Your First SpecAI Workflow
+### Quick Start: Your First RespecAI Workflow
 
 Now that setup is complete, try creating your first plan:
 
@@ -298,10 +238,10 @@ claude
 
 ```text
 # Start with strategic planning
-/spec-ai-plan
+/respec-plan
 
 # Or if you want to create a multi-phase roadmap
-/spec-ai-roadmap my-project-name
+/respec-roadmap my-project-name
 ```
 
 Follow the interactive prompts to create your first strategic plan. See [Available Commands](#available-commands) below for detailed workflow documentation.
@@ -314,9 +254,9 @@ Follow the interactive prompts to create your first strategic plan. See [Availab
 
 ### Current Implementation
 
-SpecAI supports running multiple projects with explicit project context. Each project maintains its own:
+RespecAI supports running multiple projects with explicit project context. Each project maintains its own:
 
-- ✅ Platform configuration (`.spec-ai/config/platform.json`)
+- ✅ Platform configuration (`.respec-ai/config/platform.json`)
 - ✅ Command templates (`.claude/commands/*.md`)
 - ✅ Agent templates (`.claude/agents/*.md`)
 - ✅ Explicit project context via `project_path` parameter
@@ -324,7 +264,7 @@ SpecAI supports running multiple projects with explicit project context. Each pr
 
 **What This Means:**
 - All 36+ MCP tools now accept explicit `project_path` parameter
-- Multiple projects can use the same SpecAI MCP server
+- Multiple projects can use the same RespecAI MCP server
 - Each project's workflows operate independently when project_path is specified
 - No cross-project interference at the tool level
 
@@ -340,7 +280,7 @@ SpecAI supports running multiple projects with explicit project context. Each pr
 - ⏸️ **In-memory state**: Plans, specs, and loop state stored in memory
   - State does not persist across MCP server restarts
   - Acceptable for single-user development workflows
-- ⏸️ **Global configuration**: Platform config stored at `~/.spec-ai/projects/`
+- ⏸️ **Global configuration**: Platform config stored at `~/.respec-ai/projects/`
   - Works fine for solo development
   - Per-project config deferred until team collaboration features needed
 
@@ -349,7 +289,7 @@ SpecAI supports running multiple projects with explicit project context. Each pr
 **For single user / solo development**: Works perfectly with no limitations.
 
 **For multiple projects**:
-- ✅ Set up each project independently with `/init-spec-ai`
+- ✅ Set up each project independently with `/init-respec-ai`
 - ✅ Different projects can use different platforms
 - ✅ Commands work correctly when project context is clear
 - ⏸️ State resets on MCP server restart (acceptable for MVP)
@@ -362,7 +302,7 @@ SpecAI supports running multiple projects with explicit project context. Each pr
 - Enhanced multi-user support
 
 **Per-Project Configuration** (when team collaboration needed):
-- Move config from `~/.spec-ai/projects/` to `.spec-ai/config/`
+- Move config from `~/.respec-ai/projects/` to `.respec-ai/config/`
 - Repository-portable configuration
 - Better team workflow support
 
@@ -374,11 +314,241 @@ SpecAI supports running multiple projects with explicit project context. Each pr
 
 ---
 
+## CLI Reference
+
+RespecAI provides a rich CLI for managing your workflow setup.
+
+### `respec-ai init`
+
+Initialize RespecAI in the current project.
+
+**Usage:**
+```bash
+respec-ai init --platform <platform> [OPTIONS]
+```
+
+**Arguments:**
+- `--platform` (required) - Platform type: `linear`, `github`, or `markdown`
+- `--project-name` (optional) - Project name (defaults to directory name)
+- `--skip-mcp-registration` (optional) - Skip automatic MCP server registration
+
+**Examples:**
+```bash
+# Initialize with Linear platform
+respec-ai init --platform linear
+
+# Initialize with custom project name
+respec-ai init --platform github --project-name my-app
+
+# Initialize without MCP registration
+respec-ai init --platform markdown --skip-mcp-registration
+```
+
+---
+
+### `respec-ai platform`
+
+Change platform and regenerate all templates.
+
+**Usage:**
+```bash
+respec-ai platform <platform>
+```
+
+**Arguments:**
+- `platform` (required) - New platform: `linear`, `github`, or `markdown`
+
+**Example:**
+```bash
+# Switch from Linear to GitHub
+respec-ai platform github
+```
+
+**Output:**
+```text
+Platform changed: linear → github
+Regenerated 5 commands and 12 agents
+
+⚠ Restart Claude Code to activate the updated templates
+```
+
+**Note:** Existing work (plans, specs) won't automatically migrate. You'll need to manually recreate them in the new platform.
+
+---
+
+### `respec-ai status`
+
+Show project configuration and status.
+
+**Usage:**
+```bash
+respec-ai status
+```
+
+**Output:**
+```text
+Project Configuration
+Setting              Value
+Project Path         /path/to/project
+Platform             linear
+Config Version       0.2.0
+Package Version      0.2.0
+MCP Server           RespecAI (✓ Registered)
+
+Generated Files
+Category            Count
+Commands            5
+Agents              12
+```
+
+---
+
+### `respec-ai validate`
+
+Validate project setup with comprehensive diagnostics.
+
+**Usage:**
+```bash
+respec-ai validate
+```
+
+**Validation Checks:**
+- Project initialized (config file exists)
+- Config valid (proper JSON format)
+- Platform valid (one of: linear, github, markdown)
+- Version current (config matches package version)
+- Commands directory (expected 5 files)
+- Agents directory (expected 12 files)
+- MCP registered (RespecAI server in Claude Code)
+
+**Output (all passing):**
+```text
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ All validation checks passed!                ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Project: /path/to/project
+
+Validation Results
+Check                Status
+Project Initialized  ✓ Config file exists
+Config Valid         ✓ Config is valid JSON
+Platform Valid       ✓ Platform: linear
+Version Current      ✓ Version: 0.2.0
+Commands Directory   ✓ 5 commands found
+Agents Directory     ✓ 12 agents found
+MCP Registered       ✓ RespecAI server registered
+```
+
+**Output (with failures):**
+```text
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Some validation checks failed                ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Project: /path/to/project
+
+Validation Results
+Check                Status
+Project Initialized  ✗ Not initialized
+Config Valid         ✗ Config missing
+Platform Valid       ✗ Config missing
+Version Current      ✗ Config missing
+Commands Directory   ✗ Directory missing
+Agents Directory     ✗ Directory missing
+MCP Registered       ✗ Not registered in Claude Code
+
+⚠ Run respec-ai init to fix missing files
+```
+
+---
+
+### `respec-ai upgrade`
+
+Update templates to the latest version.
+
+**Usage:**
+```bash
+respec-ai upgrade [--force]
+```
+
+**Options:**
+- `--force` (optional) - Regenerate templates even if version is current
+
+**Example:**
+```bash
+# Standard upgrade
+respec-ai upgrade
+
+# Force regeneration
+respec-ai upgrade --force
+```
+
+**Output:**
+```text
+Templates updated: 0.1.0 → 0.2.0
+Regenerated 5 commands and 12 agents
+
+⚠ Restart Claude Code to activate the updated templates
+```
+
+---
+
+### `respec-ai register-mcp`
+
+Manually register the RespecAI MCP server in Claude Code.
+
+**Usage:**
+```bash
+respec-ai register-mcp [--force]
+```
+
+**Options:**
+- `--force` (optional) - Re-register even if already registered
+
+**Example:**
+```bash
+# Initial registration
+respec-ai register-mcp
+
+# Force re-registration
+respec-ai register-mcp --force
+```
+
+**Output:**
+```text
+RespecAI MCP server registered successfully
+Package path: /path/to/installed/respec-ai
+Restart Claude Code to activate the MCP server
+```
+
+**When to use:**
+- If automatic registration was skipped during `respec-ai init`
+- If MCP server registration was corrupted
+- If you need to update the registration after moving the package
+
+---
+
+### Global Options
+
+**Version:**
+```bash
+respec-ai --version
+```
+
+**Help:**
+```bash
+respec-ai --help
+respec-ai <command> --help
+```
+
+---
+
 ## Platform Selection
 
 ### Choosing Your Platform
 
-SpecAI supports three platforms with different capabilities:
+RespecAI supports three platforms with different capabilities:
 
 #### Linear Platform
 
@@ -440,7 +610,7 @@ SpecAI supports three platforms with different capabilities:
 - None (uses built-in Claude Code tools)
 
 **Workflow:**
-- Specs stored as markdown files in `.spec-ai/projects/[project-name]/spec-ai-specs/`
+- Specs stored as markdown files in `.respec-ai/projects/[project-name]/respec-specs/`
 - Plans stored as markdown files
 - Git-friendly version control
 
@@ -466,7 +636,7 @@ SpecAI supports three platforms with different capabilities:
 
 ### Understanding Command and Agent Templates
 
-**Commands** (what you invoke with `/spec-ai-*`) use `allowed-tools:` in their frontmatter:
+**Commands** (what you invoke with `/respec-*`) use `allowed-tools:` in their frontmatter:
 ```yaml
 ---
 allowed-tools: {tools.tools_yaml}
@@ -492,12 +662,12 @@ tools: tool1, tool2, tool3
 
 **Note**: As a user, you don't interact with frontmatter directly. This formatting ensures commands and agents have proper tool access for your platform (Linear/GitHub/Markdown).
 
-### `/spec-ai-plan`
+### `/respec-plan`
 
 **Purpose:** Create strategic project plans through interactive discovery
 
 **Workflow:**
-1. Uses `/spec-ai-plan-conversation` for natural language requirements gathering
+1. Uses `/respec-plan-conversation` for natural language requirements gathering
 2. Creates strategic plan document
 3. Evaluates plan quality with plan-critic agent
 4. Refines through iterative improvement loops
@@ -511,14 +681,14 @@ tools: tool1, tool2, tool3
 
 **Example:**
 ```text
-User: /spec-ai-plan
+User: /respec-plan
 
 Claude: I'll help you create a strategic plan. Let me start by understanding your goals.
 
 [Interactive conversation begins...]
 ```
 
-### `/spec-ai-plan-conversation`
+### `/respec-plan-conversation`
 
 **Purpose:** Interactive conversation for requirements gathering
 
@@ -530,9 +700,9 @@ Claude: I'll help you create a strategic plan. Let me start by understanding you
 
 **When to use:**
 - This is not to be used by end-users
-- This command is used as a subcommand of `/spec-ai-plan`
+- This command is used as a subcommand of `/respec-plan`
 
-### `/spec-ai-roadmap`
+### `/respec-roadmap`
 
 **Purpose:** Generate multi-phase implementation roadmaps
 
@@ -550,13 +720,13 @@ Claude: I'll help you create a strategic plan. Let me start by understanding you
 
 **Example:**
 ```text
-User: /spec-ai-roadmap [project-name]
+User: /respec-roadmap [project-name]
 
 Claude: I'll create a multi-phase implementation roadmap.
 [Generates roadmap with phases, milestones, and initial specs]
 ```
 
-### `/spec-ai-spec`
+### `/respec-spec`
 
 **Purpose:** Convert strategic plans into detailed technical specifications
 
@@ -574,13 +744,13 @@ Claude: I'll create a multi-phase implementation roadmap.
 
 **Example:**
 ```text
-User: /spec-ai-spec [spec-name]
+User: /respec-spec [spec-name]
 
 Claude: I'll create a technical specification from your strategic plan.
 [Generates spec with technical details, architecture, and implementation approach]
 ```
 
-### `/spec-ai-build`
+### `/respec-build`
 
 **Purpose:** Implement specifications with automated code generation
 
@@ -599,7 +769,7 @@ Claude: I'll create a technical specification from your strategic plan.
 
 **Example:**
 ```text
-User: /spec-ai-build [spec-name]
+User: /respec-build [spec-name]
 
 Claude: I'll implement the specification with automated code generation.
 [Creates build plan, generates code, reviews quality]
@@ -613,17 +783,17 @@ Claude: I'll implement the specification with automated code generation.
 
 ```text
 1. Strategic Planning:
-   User: /spec-ai-plan [project-name]
+   User: /respec-plan [project-name]
    [Interactive conversation about authentication needs]
    → Creates strategic plan with business objectives
 
 2. Technical Specification:
-   User: /spec-ai-spec [spec-name]
+   User: /respec-spec [spec-name]
    → Generates technical spec with architecture details
    → Creates Linear issue (or GitHub issue, or markdown file)
 
 3. Implementation:
-   User: /spec-ai-build [spec-name]
+   User: /respec-build [spec-name]
    → Creates build plan with implementation steps
    → Generates authentication code
    → Reviews code quality
@@ -636,12 +806,12 @@ Claude: I'll implement the specification with automated code generation.
 
 ```text
 1. Strategic Planning:
-   User: /spec-ai-plan [project-name]
+   User: /respec-plan [project-name]
    → Creates strategic plan for entire SaaS application
    → Defines business objectives and high-level requirements
 
 2. Roadmap Creation:
-   User: /spec-ai-roadmap [project-name]
+   User: /respec-roadmap [project-name]
    → Breaks down strategic plan into implementation phases:
      - Phase 1: User authentication
      - Phase 2: Core features
@@ -651,8 +821,8 @@ Claude: I'll implement the specification with automated code generation.
 
 3. Phase Implementation:
    For each phase/spec created by roadmap:
-   User: /spec-ai-spec [spec-name] (to elaborate technical details)
-   User: /spec-ai-build [spec-name] (to implement the phase)
+   User: /respec-spec [spec-name] (to elaborate technical details)
+   User: /respec-build [spec-name] (to implement the phase)
 ```
 
 ### Example 3: Requirements Discovery
@@ -661,8 +831,8 @@ Claude: I'll implement the specification with automated code generation.
 
 ```text
 1. Strategic Planning with Conversational Discovery:
-   User: /spec-ai-plan [project-name]
-   Claude: (runs /spec-ai-plan-conversation internally)
+   User: /respec-plan [project-name]
+   Claude: (runs /respec-plan-conversation internally)
    Claude: What problem are you trying to solve?
    User: I want users to collaborate in real-time
    Claude: What kind of collaboration? Document editing? Chat? Screen sharing?
@@ -675,14 +845,14 @@ Claude: I'll implement the specification with automated code generation.
 
 ## Quality & Refinement Loops
 
-SpecAI uses two types of quality loops:
+RespecAI uses two types of quality loops:
 
 ### 1. Human-in-the-Loop with Quality Validation
 
-**Used by:** `/spec-ai-plan`
+**Used by:** `/respec-plan`
 
 **Process:**
-1. **Conversation:** `/spec-ai-plan-conversation` conducts interactive Q&A to gather requirements
+1. **Conversation:** `/respec-plan-conversation` conducts interactive Q&A to gather requirements
 2. **Generation:** Creates strategic plan from conversation context
 3. **Quality Check:** `plan-critic` evaluates the plan and provides quality score
 4. **Human Review:** User sees quality score and decides: continue conversation, refine plan, or accept
@@ -694,7 +864,7 @@ This is a **hybrid approach** - conversational gathering with automated quality 
 
 ### 2. Automated Refinement Loops (MCP-Driven)
 
-**Used by:** `/spec-ai-roadmap`, `/spec-ai-spec`, `/spec-ai-build`
+**Used by:** `/respec-roadmap`, `/respec-spec`, `/respec-build`
 
 **Process:**
 1. **Generation:** A generative agent creates content (roadmap, spec, build plan, code)
@@ -706,7 +876,7 @@ This is a **hybrid approach** - conversational gathering with automated quality 
 
 ### Critic Agents
 
-**For Human-in-the-Loop (`/spec-ai-plan`):**
+**For Human-in-the-Loop (`/respec-plan`):**
 
 **plan-critic:**
 - Evaluates strategic plans after conversational gathering
@@ -718,7 +888,7 @@ This is a **hybrid approach** - conversational gathering with automated quality 
 - Uses MCP-driven automated refinement loop
 - Ensures completeness and accuracy of analysis
 
-**For Automated Loops (`/spec-ai-roadmap`, `/spec-ai-spec`, `/spec-ai-build`):**
+**For Automated Loops (`/respec-roadmap`, `/respec-spec`, `/respec-build`):**
 
 **roadmap-critic:**
 - Evaluates implementation roadmaps
@@ -760,7 +930,7 @@ Quality scores determine progression:
 
 **Plan Storage:**
 ```text
-1. /spec-ai-plan creates strategic plan
+1. /respec-plan creates strategic plan
 2. Stored as Linear project
 3. Issues linked to project
 4. Cycles used for sprint planning
@@ -768,7 +938,7 @@ Quality scores determine progression:
 
 **Spec Creation:**
 ```text
-1. /spec-ai-spec creates Linear issue
+1. /respec-spec creates Linear issue
 2. Issue contains technical specification
 3. Comments added for feedback
 4. Labels applied for categorization
@@ -779,7 +949,7 @@ Quality scores determine progression:
 
 **Plan Storage:**
 ```text
-1. /spec-ai-plan creates strategic plan
+1. /respec-plan creates strategic plan
 2. Stored as GitHub project board
 3. Issues linked to project
 4. Milestones for phases
@@ -787,7 +957,7 @@ Quality scores determine progression:
 
 **Spec Creation:**
 ```text
-1. /spec-ai-spec creates GitHub issue
+1. /respec-spec creates GitHub issue
 2. Issue contains technical specification
 3. Comments for feedback
 4. Labels for categorization
@@ -798,16 +968,16 @@ Quality scores determine progression:
 
 **Plan Storage:**
 ```text
-1. /spec-ai-plan creates markdown file
-2. Stored in .spec-ai/projects/[project-name]/project_plan.md
+1. /respec-plan creates markdown file
+2. Stored in .respec-ai/projects/[project-name]/project_plan.md
 3. Structured sections
 4. Git commit for history
 ```
 
 **Spec Creation:**
 ```text
-1. /spec-ai-spec creates markdown file
-2. Stored in .spec-ai/projects/[project-name]/spec-ai-specs/
+1. /respec-spec creates markdown file
+2. Stored in .respec-ai/projects/[project-name]/respec-specs/
 3. Structured markdown format
 4. Git-friendly version control
 5. Comments as markdown sections
@@ -817,7 +987,7 @@ Quality scores determine progression:
 
 ### Platform Configuration
 
-Platform selection stored in `.spec-ai/config/platform.json`:
+Platform selection stored in `.respec-ai/config/platform.json`:
 
 ```json
 {
@@ -830,112 +1000,83 @@ Platform selection stored in `.spec-ai/config/platform.json`:
 
 ### Changing Platforms
 
-To switch platforms, simply re-run the installation script with the new platform:
+To switch platforms in an existing project:
 
 ```bash
-cd /path/to/your/project
-~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform [new-platform]
+# Change to a different platform
+respec-ai platform github
+
 # Then restart Claude Code
+claude
 ```
 
-The installation will:
-- Update `.spec-ai/config.json` with new platform
-- Regenerate all commands in `.claude/commands/` with new platform-specific tools
-- Regenerate all agents in `.claude/agents/` with updated configurations
+The command will:
+- Update `.respec-ai/config.json` with new platform
+- Regenerate all 5 commands in `.claude/commands/` with new platform-specific tools
+- Regenerate all 12 agents in `.claude/agents/` with updated configurations
 
 **Note:** Existing work (plans, specs) won't automatically migrate between platforms. You'll need to manually recreate them in the new platform if needed.
-- There are plans to add a migration tool in the future to help with this.
+
+---
+
+### Upgrading RespecAI
+
+When a new version of RespecAI is released:
+
+```bash
+# Update the package
+uv add respec-ai --upgrade
+
+# Update your project templates
+cd /path/to/your/project
+respec-ai upgrade
+```
+
+This preserves your platform choice while updating templates to the latest version.
 
 ## Troubleshooting
 
-### SpecAI MCP Server Not Available
+### RespecAI MCP Server Not Available
 
-**Problem:** SpecAI doesn't appear in `/mcp list` output
-
-**Symptoms:**
-- `/mcp list` doesn't show "spec-ai"
-- Error: "MCP server 'spec-ai' not found"
-- SpecAI workflow commands not available
+**Problem:** RespecAI doesn't appear in `/mcp list` output
 
 **Solution:**
 
-1. **Verify SpecAI was registered correctly**
+1. **Verify RespecAI package is installed**
+   ```bash
+   respec-ai --version
+   ```
+
+   Should show: `respec-ai 0.2.0` (or current version)
+
+   If command not found:
+   ```bash
+   uv add respec-ai
+   # or for TestPyPI:
+   uv add --index https://test.pypi.org/simple/ respec-ai
+   ```
+
+2. **Register MCP server**
+   ```bash
+   respec-ai register-mcp
+   ```
+
+3. **Verify registration**
    ```bash
    claude mcp list
+   # Should show "RespecAI" in the list
    ```
 
-   Should show `spec-ai` in the list of configured servers.
-
-   To see full details:
+4. **Restart Claude Code**
    ```bash
-   claude mcp get spec-ai
-   ```
-
-2. **If SpecAI is missing, register it**
-   ```bash
-   claude mcp add --transport stdio spec-ai -- uv run --directory /absolute/path/to/spec-ai spec-ai-server
-   ```
-
-   Replace `/absolute/path/to/spec-ai` with your actual path:
-   - ✅ Correct: `/Users/username/coding/projects/spec-ai`
-   - ❌ Wrong: `~/coding/projects/spec-ai` (tilde won't expand)
-   - ❌ Wrong: `../spec-ai` (relative path won't work)
-
-3. **Verify SpecAI repository exists and has dependencies**
-   ```bash
-   cd /path/to/spec-ai  # Use the path from your installation
-   ls -la  # Should show pyproject.toml, services/, etc.
-   uv sync  # Re-install dependencies if needed
-   ```
-
-4. **Test SpecAI runs manually (optional)**
-   ```bash
-   cd /path/to/spec-ai
-   uv run spec-ai-server
-   ```
-
-   Should start without errors. Press Ctrl+C to stop.
-
-   **Note:** You may see a KeyboardInterrupt error when stopping - this is harmless and does not affect functionality.
-
-5. **Verify uv is available**
-   ```bash
-   which uv
-   uv --version
-   ```
-
-   If not found, install uv:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-6. **Check Python version**
-   ```bash
-   python --version  # or python3 --version
-   ```
-
-   Must be Python 3.13 or higher. If lower, install Python 3.13+.
-
-7. **Restart Claude Code**
-   ```bash
-   # Exit Claude Code completely
-   # Restart:
    claude
-   ```
-
-8. **Verify MCP server is loaded**
-   ```text
    /mcp list
    ```
 
 **If still not working:**
-- Remove and re-add the MCP server:
-  ```bash
-  claude mcp remove spec-ai
-  claude mcp add --transport stdio spec-ai -- uv run --directory /absolute/path/to/spec-ai spec-ai-server
-  ```
-- Check Claude Code logs for errors (location varies by OS)
-- Ensure no other process is using the same MCP server name
+- Re-register with force: `respec-ai register-mcp --force`
+- Check Python version: `python --version` (must be 3.13+)
+- Check uv installation: `uv --version`
 
 ---
 
@@ -969,26 +1110,26 @@ The installation will:
 
 ### Commands Not Found
 
-**Problem:** SpecAI commands don't appear or autocomplete
+**Problem:** RespecAI commands don't appear or autocomplete
 
 **Symptoms:**
-- Typing `/spec-ai-` doesn't autocomplete
-- Error: "Command not found: /spec-ai-plan"
+- Typing `/respec-` doesn't autocomplete
+- Error: "Command not found: /respec-plan"
 - `.claude/commands/` directory is empty or missing files
 
 **Solution:**
 
 1. **Verify setup was completed**
    ```bash
-   ls -la .claude/commands/spec-ai-*.md
+   ls -la .claude/commands/respec-*.md
    ```
 
    Should show 5 files:
-   - spec-ai-plan.md
-   - spec-ai-roadmap.md
-   - spec-ai-spec.md
-   - spec-ai-build.md
-   - spec-ai-plan-conversation.md
+   - respec-plan.md
+   - respec-roadmap.md
+   - respec-spec.md
+   - respec-build.md
+   - respec-plan-conversation.md
 
 2. **Check you're in the correct directory**
    ```bash
@@ -996,18 +1137,18 @@ The installation will:
    ls .claude/  # Should exist
    ```
 
-3. **If files are missing, re-run installation**
+3. **If files are missing, re-run initialization**
    ```bash
-   ~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform [your-platform]
+   respec-ai init --platform [your-platform]
    # Then restart Claude Code
    ```
 
-4. **Verify SpecAI MCP server is available**
+4. **Verify RespecAI MCP server is available**
    ```text
-   /mcp list  # Should show "spec-ai"
+   /mcp list  # Should show "RespecAI"
    ```
 
-   If SpecAI MCP server is missing, see [SpecAI MCP Server Not Available](#specai-mcp-server-not-available) above.
+   If RespecAI MCP server is missing, see [RespecAI MCP Server Not Available](#respecai-mcp-server-not-available) above.
 
 5. **Check for file permissions issues**
    ```bash
@@ -1027,7 +1168,7 @@ The installation will:
 
 **If commands still don't appear:**
 - Try creating `.claude/commands/` manually: `mkdir -p .claude/commands`
-- Re-run installation script: `~/path/to/spec-ai/scripts/install-spec-ai.sh`
+- Re-run initialization: `respec-ai init --platform [your-platform]`
 - Check Claude Code version is up-to-date
 
 ---
@@ -1045,7 +1186,7 @@ The installation will:
 
 1. **Verify platform configuration**
    ```bash
-   cat .spec-ai/config/platform.json
+   cat .respec-ai/config/platform.json
    ```
 
    Should show correct platform:
@@ -1087,24 +1228,24 @@ The installation will:
 4. **For Markdown platform:**
    ```bash
    # Verify project directory exists
-   ls -la .spec-ai/projects/
+   ls -la .respec-ai/projects/
 
    # If missing, create it:
-   mkdir -p .spec-ai/projects/
+   mkdir -p .respec-ai/projects/
    ```
 
 5. **Check file permissions**
    ```bash
-   ls -la .spec-ai/
+   ls -la .respec-ai/
    # All directories should be writable (755 or 775 permissions)
 
    # Fix if needed:
-   chmod -R 755 .spec-ai/
+   chmod -R 755 .respec-ai/
    ```
 
-6. **Re-run installation if configuration is corrupted**
+6. **Re-run initialization if configuration is corrupted**
    ```bash
-   ~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform [platform]
+   respec-ai init --platform [platform]
    # Then restart Claude Code
    ```
 
@@ -1157,53 +1298,49 @@ The installation will:
 
 ---
 
-### Installation Script Fails
+### Package Installation Fails
 
-**Problem:** `install-spec-ai.sh` script errors or doesn't complete
+**Problem:** `uv add respec-ai` fails or errors
 
 **Symptoms:**
-- Permission denied errors
-- Script not found
-- Curl download fails (for remote installation)
+- Package not found
+- Version conflicts
+- Network errors
 
 **Solution:**
 
-1. **For local script execution:**
+1. **For TestPyPI (development):**
    ```bash
-   # Verify script exists
-   ls -la ~/coding/projects/spec-ai/scripts/install-spec-ai.sh
-
-   # Make executable if needed
-   chmod +x ~/coding/projects/spec-ai/scripts/install-spec-ai.sh
-
-   # Run with explicit path
-   ~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform markdown
+   # Ensure you're using the correct index
+   uv add --index https://test.pypi.org/simple/ respec-ai
    ```
 
-2. **For remote curl installation (public repos only):**
+2. **Check Python version compatibility**
    ```bash
-   # Verify you have curl
-   which curl
-   curl --version
-
-   # Test URL is accessible
-   curl -I https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh
-
-   # Should return "200 OK"
+   python --version  # Must be 3.13+
    ```
 
-3. **For private repositories:**
-
-   Remote curl installation won't work for private repos. Use local installation or bootstrap method instead.
-
-4. **Alternative: Use bootstrap method**
+3. **Update uv to latest version**
    ```bash
-   cd /path/to/your/project
-   claude
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   uv --version
    ```
 
-   ```text
-   Install the SpecAI bootstrap files for this project
+4. **Check network connectivity**
+   ```bash
+   curl -I https://test.pypi.org/simple/respec-ai/
+   # Should return HTTP 200
+   ```
+
+5. **Clear uv cache if needed**
+   ```bash
+   rm -rf ~/.cache/uv
+   uv add respec-ai
+   ```
+
+6. **Alternative: Install from Git (fallback)**
+   ```bash
+   uv add git+https://github.com/mmcclatchy/respec-ai.git
    ```
 
 ---
@@ -1214,7 +1351,7 @@ The installation will:
 
 **Symptoms:**
 - Error: "Python 3.13+ required"
-- Syntax errors in SpecAI code
+- Syntax errors in RespecAI code
 - Import errors for modern Python features
 
 **Solution:**
@@ -1247,7 +1384,7 @@ The installation will:
 
 3. **Verify uv uses correct Python version**
    ```bash
-   cd /path/to/spec-ai
+   cd /path/to/respec-ai
    uv python list
    uv sync  # Re-sync with correct Python version
    ```
@@ -1256,8 +1393,8 @@ The installation will:
 
    If multiple Python versions exist, you can specify Python 3.13 when registering:
    ```bash
-   claude mcp remove spec-ai  # Remove existing registration
-   claude mcp add --transport stdio spec-ai -- uv run --python 3.13 --directory /absolute/path/to/spec-ai spec-ai-server
+   claude mcp remove respec-ai  # Remove existing registration
+   claude mcp add --transport stdio respec-ai -- uv run --python 3.13 --directory /absolute/path/to/respec-ai respec-server
    ```
 
 ## Best Practices
@@ -1265,7 +1402,7 @@ The installation will:
 ### Strategic Planning
 
 **Do:**
-- Use `/spec-ai-plan` which will automatically guide you through conversational discovery
+- Use `/respec-plan` which will automatically guide you through conversational discovery
 - Be specific about business objectives when answering questions
 - Include constraints and limitations
 - Provide context about users and use cases
@@ -1274,12 +1411,12 @@ The installation will:
 - Skip strategic planning for large features
 - Mix technical details with business objectives
 - Rush through refinement loops
-- Call `/spec-ai-plan-conversation` directly (it's used internally by `/spec-ai-plan`)
+- Call `/respec-plan-conversation` directly (it's used internally by `/respec-plan`)
 
 ### Roadmap Planning
 
 **Do:**
-- Use `/spec-ai-roadmap` for projects that benefit from phased decomposition
+- Use `/respec-roadmap` for projects that benefit from phased decomposition
 - Let the roadmap agent choose the phasing strategy that fits your project:
   - **Feature-based** for most application development (complete capabilities)
   - **Technical-layer** for infrastructure or platform projects (foundational components)
@@ -1322,6 +1459,18 @@ The installation will:
 - Ignore code review feedback
 - Bypass quality gates
 
+### Project Setup
+
+**Do:**
+- Run `respec-ai validate` after initial setup
+- Use `respec-ai status` to verify configuration
+- Check MCP registration before starting work
+
+**Don't:**
+- Skip validation after setup
+- Ignore validation warnings
+- Mix different RespecAI versions across projects
+
 ### Platform Selection
 
 **Do:**
@@ -1342,16 +1491,16 @@ Configure refinement loop thresholds:
 
 ```bash
 # Set via environment variables (future feature)
-export SPEC_AI_PLAN_THRESHOLD=80
-export SPEC_AI_SPEC_THRESHOLD=85
-export SPEC_AI_BUILD_THRESHOLD=90
+export RESPEC_AI_PLAN_THRESHOLD=80
+export RESPEC_AI_SPEC_THRESHOLD=85
+export RESPEC_AI_BUILD_THRESHOLD=90
 ```
 
 ### Multi-Phase Projects
 
 For complex projects:
 
-1. Use `/spec-ai-roadmap` for overall structure
+1. Use `/respec-roadmap` for overall structure
 2. Create separate strategic plans per phase
 3. Generate specifications for each phase
 4. Implement phases sequentially
@@ -1386,7 +1535,7 @@ For complex projects:
 
 ### Common Questions
 
-**Q: Can I use SpecAI without an external platform?**
+**Q: Can I use RespecAI without an external platform?**
 A: Yes, use the Markdown platform for local file-based workflows.
 
 **Q: Can I switch platforms after setup?**
@@ -1396,16 +1545,16 @@ A: Yes, but you'll need to delete configuration and re-run setup. Existing work 
 A: Yes, agents work together in refinement loops. Removing agents may break workflows.
 
 **Q: Can I customize the templates?**
-A: Templates are generated fresh each time. Customization requires modifying the SpecAI MCP server code.
+A: Templates are generated fresh each time. Customization requires modifying the RespecAI MCP server code.
 
-**Q: How do I update SpecAI?**
+**Q: How do I update RespecAI?**
 A: Pull latest changes from repository and re-run installation script. Existing projects won't be affected.
 
 ## Next Steps
 
-1. **Install SpecAI** using the installation script
+1. **Install RespecAI** using the installation script
 2. **Restart Claude Code** to load workflow commands
-3. **Start planning** with `/spec-ai-plan`
-4. **Breakdown the plan into specifications** with `/spec-ai-roadmap`
-5. **Design and Refine specifications** with `/spec-ai-spec`
-6. **Implement features** with `/spec-ai-build`
+3. **Start planning** with `/respec-plan`
+4. **Breakdown the plan into specifications** with `/respec-roadmap`
+5. **Design and Refine specifications** with `/respec-spec`
+6. **Implement features** with `/respec-build`

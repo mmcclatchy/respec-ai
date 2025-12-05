@@ -1,9 +1,8 @@
 from datetime import datetime
 
 import pytest
-
-from services.models.enums import CriticAgent
-from services.models.feedback import CriticFeedback
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
 
 
 class TestCriticFeedback:

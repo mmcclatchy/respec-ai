@@ -1,0 +1,14 @@
+services:
+  respec-ai-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: respec-ai-dev
+    volumes:
+      # Mount source code for live reload during development
+      - ./services:/app/services:ro
+      # Mount pyproject.toml for dependency changes
+      - ./pyproject.toml:/app/pyproject.toml:ro
+    restart: unless-stopped
+    # No ports needed - communication via docker exec (stdio)
+    # Container stays alive waiting for MCP requests via docker exec

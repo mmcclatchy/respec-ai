@@ -1,8 +1,8 @@
 """Tests for command template generation functions."""
 
-from services.platform.platform_selector import PlatformType
-from services.platform.template_coordinator import TemplateCoordinator
-from services.platform.tool_enums import CommandTemplate
+from src.platform.platform_selector import PlatformType
+from src.platform.template_coordinator import TemplateCoordinator
+from src.platform.tool_enums import CommandTemplate
 
 
 class TestPlanRoadmapCommandTemplate:
@@ -11,12 +11,12 @@ class TestPlanRoadmapCommandTemplate:
         template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Check YAML frontmatter tools (comma-separated format)
-        assert 'Task(spec-ai-roadmap)' in template
-        assert 'Task(spec-ai-roadmap-critic)' in template
-        assert 'Task(spec-ai-create-spec)' in template
+        assert 'Task(respec-roadmap)' in template
+        assert 'Task(respec-roadmap-critic)' in template
+        assert 'Task(respec-create-spec)' in template
         assert 'mcp__linear-server__' in template  # Should contain Linear tools
-        assert 'mcp__spec-ai__initialize_refinement_loop' in template
-        assert 'mcp__spec-ai__decide_loop_next_action' in template
+        assert 'mcp__respec-ai__initialize_refinement_loop' in template
+        assert 'mcp__respec-ai__decide_loop_next_action' in template
 
     def test_template_includes_required_yaml_sections(self) -> None:
         coordinator = TemplateCoordinator()
@@ -60,7 +60,7 @@ class TestPlanRoadmapCommandTemplate:
         template = coordinator.generate_command_template(CommandTemplate.ROADMAP, PlatformType.LINEAR)
 
         # Should include create-spec agent and parallel coordination
-        assert 'Task(spec-ai-create-spec)' in template
+        assert 'Task(respec-create-spec)' in template
         assert 'parallel' in template.lower() or 'concurrent' in template.lower()
 
     def test_template_includes_mcp_action_handling(self) -> None:

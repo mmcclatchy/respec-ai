@@ -1,7 +1,6 @@
 import pytest
-
-from services.models.enums import ProjectStatus
-from services.models.project_plan import ProjectPlan
+from src.models.enums import ProjectStatus
+from src.models.project_plan import ProjectPlan
 
 
 class TestProjectPlanParsing:

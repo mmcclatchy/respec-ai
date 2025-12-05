@@ -1,0 +1,54 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Testing
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# Documentation
+docs/
+README.md
+*.md
+!pyproject.toml
+
+# Version Control
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+scripts/
+.respec/
+.respec-ai/
+.claude/
+logs/
+*.log
+
+# Lock files (will be copied explicitly)
+# uv.lock is needed and will be copied
+
+# CI/CD
+.github/

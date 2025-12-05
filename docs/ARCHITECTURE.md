@@ -1,10 +1,10 @@
 # Architecture Guide
 
-Production-ready architectural overview of the SpecAI Workflow MCP Server system.
+Production-ready architectural overview of the RespecAI Workflow MCP Server system.
 
 ## Overview
 
-SpecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It provides a sophisticated platform abstraction layer that enables Claude Code to work seamlessly with Linear, GitHub, or local Markdown files through dynamically generated commands and agents.
+RespecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It provides a sophisticated platform abstraction layer that enables Claude Code to work seamlessly with Linear, GitHub, or local Markdown files through dynamically generated commands and agents.
 
 ## System Architecture
 
@@ -16,15 +16,15 @@ SpecAI is a **meta MCP server** that generates platform-specific workflow tools 
 │                 (receives generated tools)                      │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │  .claude/commands/     │  .claude/agents/               │   │
-│   │  • spec-ai-plan.md     │  • plan-analyst.md             │   │
-│   │  • spec-ai-spec.md     │  • spec-architect.md           │   │
-│   │  • spec-ai-build.md    │  • build-planner.md            │   │
-│   │  • spec-ai-roadmap.md  │  • build-coder.md              │   │
+│   │  • respec-plan.md     │  • plan-analyst.md             │   │
+│   │  • respec-spec.md     │  • spec-architect.md           │   │
+│   │  • respec-build.md    │  • build-planner.md            │   │
+│   │  • respec-roadmap.md  │  • build-coder.md              │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
 ┌─────────────────────┴───────────────────────────────────────────┐
-│              SpecAI MCP Server (This Project)                   │
+│              RespecAI MCP Server (This Project)                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │          Platform Orchestrator (11 files)                │   │
 │  │  • Platform Selection (Linear/GitHub/Markdown)           │   │
@@ -100,7 +100,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 **tool_enums.py** - Type-safe tool references
 - CommandTemplate enum for command types
-- SpecAITool enum for internal tools
+- RespecAITool enum for internal tools
 - AbstractOperation enum for platform mapping
 
 **template_helpers.py** - Builder pattern utilities
@@ -143,11 +143,11 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 # Markdown Platform
 {
-    'create_spec_tool': 'Write(.spec-ai/projects/*/spec-ai-specs/*.md)',
-    'get_spec_tool': 'Read(.spec-ai/projects/*/spec-ai-specs/*.md)',
-    'update_spec_tool': 'Edit(.spec-ai/projects/*/spec-ai-specs/*.md)',
-    'comment_spec_tool': 'Edit(.spec-ai/projects/*/spec-ai-specs/*.md)',
-    'create_project_external': 'Write(.spec-ai/projects/*/project_plan.md)'
+    'create_spec_tool': 'Write(.respec-ai/projects/*/respec-specs/*.md)',
+    'get_spec_tool': 'Read(.respec-ai/projects/*/respec-specs/*.md)',
+    'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+    'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+    'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)'
 }
 ```
 
@@ -157,27 +157,27 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 **5 sophisticated command templates** that orchestrate workflows using platform-specific tools:
 
-1. **spec-ai-plan** - Strategic planning orchestration
+1. **respec-plan** - Strategic planning orchestration
    - Coordinates plan-analyst and plan-critic agents
    - Manages refinement loops
    - Stores completed plans
 
-2. **spec-ai-spec** - Technical specification generation
+2. **respec-spec** - Technical specification generation
    - Creates detailed technical specs from plans
    - Integrates with platform spec systems
    - Manages spec refinement cycles
 
-3. **spec-ai-build** - Implementation orchestration
+3. **respec-build** - Implementation orchestration
    - Coordinates build-planner, build-coder, build-reviewer
    - Executes implementation workflows
    - Validates code quality
 
-4. **spec-ai-roadmap** - Multi-phase planning
+4. **respec-roadmap** - Multi-phase planning
    - Generates implementation roadmaps
    - Creates phase-based project structure
    - Produces initial specifications
 
-5. **spec-ai-plan-conversation** - Interactive planning
+5. **respec-plan-conversation** - Interactive planning
    - User conversation and clarification
    - Strategic input gathering
    - Context-aware dialogue
@@ -209,7 +209,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 **Agent Frontmatter** uses `tools:` key with comma-separated tool list:
 ```yaml
 ---
-name: spec-ai-agent-name
+name: respec-agent-name
 description: Agent purpose
 model: sonnet
 tools: tool1, tool2, tool3
@@ -311,32 +311,32 @@ def generate_spec_command_template(tools: SpecCommandTools) -> str
 
 **State Management Tools:**
 ```text
-mcp__spec-ai__initialize_refinement_loop
-mcp__spec-ai__track_loop_iteration
-mcp__spec-ai__get_loop_status
-mcp__spec-ai__should_continue_loop
-mcp__spec-ai__complete_refinement_loop
-mcp__spec-ai__list_active_loops
-mcp__spec-ai__reset_loop_state
+mcp__respec-ai__initialize_refinement_loop
+mcp__respec-ai__track_loop_iteration
+mcp__respec-ai__get_loop_status
+mcp__respec-ai__should_continue_loop
+mcp__respec-ai__complete_refinement_loop
+mcp__respec-ai__list_active_loops
+mcp__respec-ai__reset_loop_state
 ```
 
 **Document Management Tools:**
 ```text
-mcp__spec-ai__save_plan
-mcp__spec-ai__get_plan
-mcp__spec-ai__save_spec
-mcp__spec-ai__get_spec
-mcp__spec-ai__save_build_plan
-mcp__spec-ai__get_build_plan
-mcp__spec-ai__save_roadmap
-mcp__spec-ai__get_roadmap
+mcp__respec-ai__save_plan
+mcp__respec-ai__get_plan
+mcp__respec-ai__save_spec
+mcp__respec-ai__get_spec
+mcp__respec-ai__save_build_plan
+mcp__respec-ai__get_build_plan
+mcp__respec-ai__save_roadmap
+mcp__respec-ai__get_roadmap
 ```
 
 **Feedback Tools:**
 ```text
-mcp__spec-ai__store_feedback
-mcp__spec-ai__get_feedback
-mcp__spec-ai__list_feedback
+mcp__respec-ai__store_feedback
+mcp__respec-ai__get_feedback
+mcp__respec-ai__list_feedback
 ```
 
 ## Document Models
@@ -387,13 +387,13 @@ class MCPModel(BaseModel, ABC):
 
 #### Remote Installation (curl-based)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/spec-ai/main/scripts/install-spec-ai.sh | bash -s -- linear
+curl -fsSL https://raw.githubusercontent.com/mmcclatchy/respec-ai/main/scripts/install-respec-ai.sh | bash -s -- linear
 ```
 
 #### Local Installation (repository-based)
 ```bash
 cd /path/to/your/project
-~/coding/projects/spec-ai/scripts/install-spec-ai.sh --platform linear
+~/coding/projects/respec-ai/scripts/install-respec-ai.sh --platform linear
 ```
 
 ### Project Setup Workflow
@@ -402,7 +402,7 @@ cd /path/to/your/project
 - Script generates all workflow files directly using CLI
 - Creates `.claude/commands/` with platform-specific commands
 - Creates `.claude/agents/` with workflow agents
-- Creates `.spec-ai/config.json` with platform configuration
+- Creates `.respec-ai/config.json` with platform configuration
 - User restarts Claude Code to load new commands
 
 **No manual setup required** - installation script handles everything
@@ -423,29 +423,29 @@ cd /path/to/your/project
 project/
 ├── .claude/
 │   ├── commands/
-│   │   ├── spec-ai-plan.md        # Generated (platform-specific)
-│   │   ├── spec-ai-spec.md        # Generated (platform-specific)
-│   │   ├── spec-ai-build.md       # Generated (platform-specific)
-│   │   ├── spec-ai-roadmap.md     # Generated (static)
-│   │   └── spec-ai-plan-conversation.md  # Generated (static)
+│   │   ├── respec-plan.md        # Generated (platform-specific)
+│   │   ├── respec-spec.md        # Generated (platform-specific)
+│   │   ├── respec-build.md       # Generated (platform-specific)
+│   │   ├── respec-roadmap.md     # Generated (static)
+│   │   └── respec-plan-conversation.md  # Generated (static)
 │   └── agents/
-│       ├── spec-ai-plan-analyst.md        # Generated (static)
-│       ├── spec-ai-plan-critic.md         # Generated (static)
-│       ├── spec-ai-analyst-critic.md      # Generated (static)
-│       ├── spec-ai-roadmap.md             # Generated (static)
-│       ├── spec-ai-roadmap-critic.md      # Generated (static)
-│       ├── spec-ai-create-spec.md         # Generated (platform-specific)
-│       ├── spec-ai-build-planner.md       # Generated (static)
-│       ├── spec-ai-build-critic.md        # Generated (static)
-│       ├── spec-ai-build-coder.md         # Generated (platform-specific)
-│       └── spec-ai-build-reviewer.md      # Generated (static)
-└── .spec-ai/
+│       ├── respec-plan-analyst.md        # Generated (static)
+│       ├── respec-plan-critic.md         # Generated (static)
+│       ├── respec-analyst-critic.md      # Generated (static)
+│       ├── respec-roadmap.md             # Generated (static)
+│       ├── respec-roadmap-critic.md      # Generated (static)
+│       ├── respec-create-spec.md         # Generated (platform-specific)
+│       ├── respec-build-planner.md       # Generated (static)
+│       ├── respec-build-critic.md        # Generated (static)
+│       ├── respec-build-coder.md         # Generated (platform-specific)
+│       └── respec-build-reviewer.md      # Generated (static)
+└── .respec-ai/
     ├── config.json                # Platform configuration
     └── projects/                  # Markdown platform only
         └── [project-name]/
             ├── project_plan.md
             ├── project_completion.md
-            └── spec-ai-specs/     # Specifications
+            └── respec-specs/     # Specifications
 ```
 
 ## Quality Assurance
@@ -503,7 +503,7 @@ project/
 **File-based workflow:**
 - Structured markdown files
 - Local file system storage
-- Scoped to `.spec-ai/projects/` directory
+- Scoped to `.respec-ai/projects/` directory
 - Git-friendly version control
 - No external dependencies
 
@@ -540,7 +540,7 @@ project/
 
 ### Implementation Quality Comparison
 
-| Aspect | Industry Standard | SpecAI Implementation |
+| Aspect | Industry Standard | RespecAI Implementation |
 |--------|------------------|----------------------|
 | Type Safety | Runtime string validation | Compile-time enum validation |
 | Platform Extension | Code changes required | Data-driven configuration |

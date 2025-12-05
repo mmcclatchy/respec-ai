@@ -1,11 +1,11 @@
 import asyncio
 import os
 from typing import Any
-from unittest.mock import patch
 
-from services.mcp.server import create_mcp_server, health_check
-from services.utils.enums import HealthState
-from services.utils.setting_configs import MCPSettings
+from pytest_mock import MockerFixture
+from src.mcp.server import create_mcp_server, health_check
+from src.utils.enums import HealthState
+from src.utils.setting_configs import MCPSettings
 
 
 def create_test_roadmap_markdown(project_name: str) -> str:
@@ -94,14 +94,14 @@ class TestProductionMCPServer:
         assert len(tools) >= 13  # At least 6 loop + 7 roadmap tools (may grow)
 
         # Test server metadata
-        assert server.name == 'spec-ai'
+        assert server.name == 'respec-ai'
 
         # Test prompts endpoint
         prompts = asyncio.run(server.get_prompts())
         # No prompts expected for this server
         assert isinstance(prompts, dict)
 
-    def test_configuration_loading_from_environment_variables(self) -> None:
+    def test_configuration_loading_from_environment_variables(self, mocker: MockerFixture) -> None:
         # Test with custom environment variables
         test_env = {
             'LOOP_PLAN_THRESHOLD': '90',
@@ -110,14 +110,11 @@ class TestProductionMCPServer:
             'MCP_DEBUG': 'true',
         }
 
-        with patch.dict(os.environ, test_env, clear=False):
-            custom_settings = MCPSettings()
+        mocker.patch.dict(os.environ, test_env, clear=False)
+        custom_settings = MCPSettings()
 
-            # Verify custom server name is used
-            assert custom_settings.server_name == 'Test Production Server'
-
-        default_settings = MCPSettings()
-        assert default_settings.server_name == 'spec-ai'
+        # Verify custom server name is used
+        assert custom_settings.server_name == 'Test Production Server'
 
     def test_multi_loop_concurrent_scenarios(self) -> None:
         server = create_mcp_server()
@@ -150,7 +147,7 @@ class TestProductionMCPServer:
         # This would be tested through actual tool calls in real scenarios
         assert server is not None
 
-    def test_health_check_endpoints_and_monitoring(self) -> None:
+    def test_health_check_endpoints_and_monitoring(self, mocker: MockerFixture) -> None:
         server = create_mcp_server()
 
         # Test health check function
@@ -161,11 +158,11 @@ class TestProductionMCPServer:
         assert health_status.error is None
 
         # Test health check with simulated error
-        with patch.object(server, 'get_tools', side_effect=Exception('Test error')):
-            error_health = asyncio.run(health_check(server))
-            assert error_health.status == HealthState.UNHEALTHY
-            assert error_health.error == 'Test error'
-            assert error_health.tools_count == 0
+        mocker.patch.object(server, 'get_tools', side_effect=Exception('Test error'))
+        error_health = asyncio.run(health_check(server))
+        assert error_health.status == HealthState.UNHEALTHY
+        assert error_health.error == 'Test error'
+        assert error_health.tools_count == 0
 
     def test_production_logging_configuration(self) -> None:
         # Test that server creation doesn't raise logging errors
@@ -185,7 +182,7 @@ class TestProductionMCPServer:
         assert server is not None
 
         # Test server info access
-        assert server.name == 'spec-ai'
+        assert server.name == 'respec-ai'
 
         # Test tools are accessible
         tools = asyncio.run(server.get_tools())
@@ -207,9 +204,9 @@ class TestProductionMCPServer:
         assert len(tools) >= 13  # Tools may expand over time
 
         # Test server name works with middleware
-        assert server.name == 'spec-ai'
+        assert server.name == 'respec-ai'
 
-    def test_production_configuration_validation(self) -> None:
+    def test_production_configuration_validation(self, mocker: MockerFixture) -> None:
         # Test with invalid environment variables
         invalid_env = {
             'FSDD_LOOP_PLAN_THRESHOLD': '-10',  # Invalid: below range
@@ -218,14 +215,14 @@ class TestProductionMCPServer:
 
         # Configuration validation should handle invalid values gracefully
         # Pydantic should clamp or use defaults
-        with patch.dict(os.environ, invalid_env):
-            try:
-                server = create_mcp_server()
-                # If server creation succeeds, config validation worked
-                assert server is not None
-            except Exception as e:
-                # If it fails, it should be a validation error, not a crash
-                assert 'validation' in str(e).lower() or 'field' in str(e).lower()
+        mocker.patch.dict(os.environ, invalid_env)
+        try:
+            server = create_mcp_server()
+            # If server creation succeeds, config validation worked
+            assert server is not None
+        except Exception as e:
+            # If it fails, it should be a validation error, not a crash
+            assert 'validation' in str(e).lower() or 'field' in str(e).lower()
 
     def test_concurrent_tool_access_safety(self) -> None:
         server = create_mcp_server()
@@ -264,28 +261,32 @@ class TestProductionMCPServer:
         for tool_set in tool_names_sets:
             assert essential_tools.issubset(tool_set)
 
-    def test_server_error_handling_comprehensive(self) -> None:
+    def test_server_error_handling_comprehensive(self, mocker: MockerFixture) -> None:
         server = create_mcp_server()
 
         # Test server handles middleware errors gracefully
         tools = asyncio.run(server.get_tools())
         assert len(tools) >= 13  # Tools may expand over time
 
-        # Test health check with various error types
-        with patch.object(server, 'get_tools', side_effect=ConnectionError('Network error')):
-            health = asyncio.run(health_check(server))
-            assert health.status == HealthState.UNHEALTHY
-            assert health.error is not None and 'Network error' in health.error
+        # Test health check with ConnectionError
+        mocker.patch.object(server, 'get_tools', side_effect=ConnectionError('Network error'))
+        health = asyncio.run(health_check(server))
+        assert health.status == HealthState.UNHEALTHY
+        assert health.error is not None and 'Network error' in health.error
+        mocker.stopall()
 
-        with patch.object(server, 'get_tools', side_effect=TimeoutError('Timeout error')):
-            health = asyncio.run(health_check(server))
-            assert health.status == HealthState.UNHEALTHY
-            assert health.error is not None and 'Timeout error' in health.error
+        # Test health check with TimeoutError
+        mocker.patch.object(server, 'get_tools', side_effect=TimeoutError('Timeout error'))
+        health = asyncio.run(health_check(server))
+        assert health.status == HealthState.UNHEALTHY
+        assert health.error is not None and 'Timeout error' in health.error
+        mocker.stopall()
 
-        with patch.object(server, 'get_tools', side_effect=RuntimeError('Runtime error')):
-            health = asyncio.run(health_check(server))
-            assert health.status == HealthState.UNHEALTHY
-            assert health.error is not None and 'Runtime error' in health.error
+        # Test health check with RuntimeError
+        mocker.patch.object(server, 'get_tools', side_effect=RuntimeError('Runtime error'))
+        health = asyncio.run(health_check(server))
+        assert health.status == HealthState.UNHEALTHY
+        assert health.error is not None and 'Runtime error' in health.error
 
     def test_tool_registration_error_recovery(self) -> None:
         # Test that server creation works even with potential tool issues
@@ -330,11 +331,11 @@ class TestProductionMCPServer:
         assert isinstance(prompts, dict)
 
         # Test server metadata accessible despite middleware
-        assert server.name == 'spec-ai'
+        assert server.name == 'respec-ai'
         assert server.name is not None
         assert len(server.name) > 0
 
-    def test_configuration_error_handling(self) -> None:
+    def test_configuration_error_handling(self, mocker: MockerFixture) -> None:
         # Test with malformed environment variables
         malformed_env = {
             'FSDD_MCP_SERVER_NAME': '',  # Empty string
@@ -342,15 +343,15 @@ class TestProductionMCPServer:
             'FSDD_MCP_PORT': 'not_a_number',  # Invalid int
         }
 
-        with patch.dict(os.environ, malformed_env, clear=False):
-            try:
-                # Should either use defaults or handle validation gracefully
-                settings = MCPSettings()
-                # Empty string should either be rejected or use default
-                assert settings.server_name != '' or settings.server_name == 'spec-ai'
-            except Exception as e:
-                # If validation fails, it should be a clear validation error
-                assert any(word in str(e).lower() for word in ['validation', 'field', 'value', 'invalid'])
+        mocker.patch.dict(os.environ, malformed_env, clear=False)
+        try:
+            # Should either use defaults or handle validation gracefully
+            settings = MCPSettings()
+            # Empty string should either be rejected or use default
+            assert settings.server_name != '' or settings.server_name == 'respec-ai'
+        except Exception as e:
+            # If validation fails, it should be a clear validation error
+            assert any(word in str(e).lower() for word in ['validation', 'field', 'value', 'invalid'])
 
     def test_async_operation_error_handling(self) -> None:
         server = create_mcp_server()

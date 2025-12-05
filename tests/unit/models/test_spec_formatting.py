@@ -5,8 +5,7 @@ nested lists, etc.) is preserved through parse → build → parse cycles.
 """
 
 import pytest
-
-from services.models.spec import TechnicalSpec
+from src.models.spec import TechnicalSpec
 
 
 @pytest.fixture

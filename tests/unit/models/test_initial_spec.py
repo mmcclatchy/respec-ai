@@ -1,7 +1,6 @@
 import pytest
-
-from services.models.spec import TechnicalSpec
-from services.models.enums import SpecStatus
+from src.models.enums import SpecStatus
+from src.models.spec import TechnicalSpec
 
 
 @pytest.fixture

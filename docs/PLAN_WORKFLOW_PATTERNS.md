@@ -1,8 +1,8 @@
-# Plan Workflow Patterns: /spec-ai-plan Command Analysis
+# Plan Workflow Patterns: /respec-plan Command Analysis
 
 ## Executive Summary
 
-This document captures essential patterns and lessons learned from developing the `/spec-ai-plan` command within the Spec-Driven Development workflow system. Through iterative refinement and architectural evolution, several key patterns emerged that significantly improved command reliability, maintainability, and user experience. These insights provide actionable guidance for future command development.
+This document captures essential patterns and lessons learned from developing the `/respec-plan` command within the Spec-Driven Development workflow system. Through iterative refinement and architectural evolution, several key patterns emerged that significantly improved command reliability, maintainability, and user experience. These insights provide actionable guidance for future command development.
 
 ## Command Architecture Patterns
 
@@ -66,9 +66,9 @@ Producer Agent → Content → Critic Agent → Score → MCP Decision
 
 **Pattern**: Create templates as functions that receive platform tool dataclasses and inject tools via string interpolation.
 
-**Actual Implementation Pattern** (from `services/platform/templates/commands/spec_command.py`):
+**Actual Implementation Pattern** (from `src/platform/templates/commands/spec_command.py`):
 ```python
-from services.platform.models import SpecCommandTools
+from src.platform.models import SpecCommandTools
 
 def generate_spec_command_template(tools: SpecCommandTools) -> str:
     return f"""---
@@ -78,10 +78,10 @@ argument-hint: [optional: technical-focus-area]
 description: Transform strategic plans into detailed technical specifications
 ---
 
-# /spec-ai-spec Command: Technical Specification Creation
+# /respec-spec Command: Technical Specification Creation
 
 ## Step 1: Initialize Technical Design Process
-mcp__spec-ai__initialize_refinement_loop:
+mcp__respec-ai__initialize_refinement_loop:
   loop_type: "spec"
 
 ## Step 2: Launch Architecture Development
@@ -288,7 +288,7 @@ Expected Output Format:
 **Pattern**: Use ASCII diagrams to show data flow and agent relationships
 
 ```text
-/spec-ai-plan command → plan-generator → Strategic Plan → plan-critic
+/respec-plan command → plan-generator → Strategic Plan → plan-critic
        ↑                                              ↓
        └──────────── refinement loop ←───────────────┘
 ```
@@ -471,14 +471,14 @@ argument-hint: [plan-name] [starting-prompt]
 description: Create strategic plans through conversational discovery
 ---
 
-# /spec-ai-plan Command Template
+# /respec-plan Command Template
 [Static content - no platform-specific tools needed]
 """
 ```
 
 **Directory Organization**:
 ```text
-services/platform/templates/
+src/platform/templates/
 ├── agents/
 │   ├── plan_command.py
 │   ├── spec_command.py
@@ -707,7 +707,7 @@ Before creating a new command template, validate these architectural requirement
 
 ## Conclusion
 
-The `/spec-ai-plan` command development process revealed that successful multi-agent workflow systems require:
+The `/respec-plan` command development process revealed that successful multi-agent workflow systems require:
 
 1. **Clear Architecture**: Commands as orchestrators with specialized agents
 2. **Quality-Driven Development**: Measurable criteria and automatic refinement
@@ -720,7 +720,7 @@ These patterns provide a foundation for creating reliable, maintainable, and ext
 
 ## Related Documentation
 
-- [/spec-ai-plan Command Specification](commands/spec-ai-plan.md) - Complete command specification
+- [/respec-plan Command Specification](commands/respec-plan.md) - Complete command specification
 - [MCP Tools Specification](MCP_TOOLS_SPECIFICATION.md) - Loop state management tools
 - [Architecture Guide](ARCHITECTURE.md) - System architecture overview
 - [Agent Development Guidelines](AGENT_DEVELOPMENT_GUIDELINES.md) - Agent creation standards

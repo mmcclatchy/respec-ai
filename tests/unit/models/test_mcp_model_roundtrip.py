@@ -11,14 +11,13 @@ maintenance burden. When model structure changes, fixtures auto-adapt.
 from typing import Callable, Type
 
 import pytest
-
-from services.models.base import MCPModel
-from services.models.build_plan import BuildPlan
-from services.models.enums import BuildStatus, ProjectStatus, RequirementsStatus, RoadmapStatus, SpecStatus
-from services.models.feature_requirements import FeatureRequirements
-from services.models.project_plan import ProjectPlan
-from services.models.roadmap import Roadmap
-from services.models.spec import TechnicalSpec
+from src.models.base import MCPModel
+from src.models.build_plan import BuildPlan
+from src.models.enums import BuildStatus, ProjectStatus, RequirementsStatus, RoadmapStatus, SpecStatus
+from src.models.feature_requirements import FeatureRequirements
+from src.models.project_plan import ProjectPlan
+from src.models.roadmap import Roadmap
+from src.models.spec import TechnicalSpec
 
 
 @pytest.fixture

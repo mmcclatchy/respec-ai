@@ -1,12 +1,11 @@
 import pytest
-
-from services.mcp.tools.loop_tools import LoopTools, loop_tools
-from services.models.enums import CriticAgent
-from services.models.feedback import CriticFeedback
-from services.utils.enums import LoopStatus, LoopType
-from services.utils.errors import LoopStateError, LoopValidationError
-from services.utils.loop_state import LoopState, MCPResponse
-from services.utils.state_manager import InMemoryStateManager
+from src.mcp.tools.loop_tools import LoopTools, loop_tools
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
+from src.utils.enums import LoopStatus, LoopType
+from src.utils.errors import LoopStateError, LoopValidationError
+from src.utils.loop_state import LoopState, MCPResponse
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture

@@ -1,7 +1,6 @@
 import pytest
-
-from services.platform.platform_selector import PlatformType
-from services.platform.tool_registry import ToolRegistry
+from src.platform.platform_selector import PlatformType
+from src.platform.tool_registry import ToolRegistry
 
 
 class TestToolRegistryScoping:
@@ -13,23 +12,23 @@ class TestToolRegistryScoping:
         # Get all tools for Markdown platform
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
-        # Verify all tools are scoped to .spec-ai directories
+        # Verify all tools are scoped to .respec-ai directories
         for abstract_tool, concrete_tool in markdown_tools.items():
-            assert '.spec-ai/projects/' in concrete_tool, f'Tool {abstract_tool} not scoped: {concrete_tool}'
+            assert '.respec-ai/projects/' in concrete_tool, f'Tool {abstract_tool} not scoped: {concrete_tool}'
 
     def test_markdown_tools_use_standard_mcp_tools(self, tool_registry: ToolRegistry) -> None:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
         expected_tool_patterns = {
-            'create_spec_tool': 'Write(.spec-ai/projects/*/spec-ai-specs/*.md)',
-            'get_spec_tool': 'Read(.spec-ai/projects/*/spec-ai-specs/*.md)',
-            'update_spec_tool': 'Edit(.spec-ai/projects/*/spec-ai-specs/*.md)',
-            'comment_spec_tool': 'Edit(.spec-ai/projects/*/spec-ai-specs/*.md)',
-            'create_project_external': 'Write(.spec-ai/projects/*/project_plan.md)',
-            'create_project_completion_external': 'Write(.spec-ai/projects/*/project_completion.md)',
-            'get_project_plan_tool': 'Read(.spec-ai/projects/*/project_plan.md)',
-            'update_project_plan_tool': 'Edit(.spec-ai/projects/*/project_plan.md)',
-            'list_project_specs_tool': 'Glob(.spec-ai/projects/*/spec-ai-specs/*.md)',
+            'create_spec_tool': 'Write(.respec-ai/projects/*/respec-specs/*.md)',
+            'get_spec_tool': 'Read(.respec-ai/projects/*/respec-specs/*.md)',
+            'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+            'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+            'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)',
+            'create_project_completion_external': 'Write(.respec-ai/projects/*/project_completion.md)',
+            'get_project_plan_tool': 'Read(.respec-ai/projects/*/project_plan.md)',
+            'update_project_plan_tool': 'Edit(.respec-ai/projects/*/project_plan.md)',
+            'list_project_specs_tool': 'Glob(.respec-ai/projects/*/respec-specs/*.md)',
         }
 
         for abstract_tool, expected_pattern in expected_tool_patterns.items():
@@ -46,8 +45,8 @@ class TestToolRegistryScoping:
             # Should not allow directory traversal
             assert '..' not in concrete_tool, f'Tool {abstract_tool} allows directory traversal: {concrete_tool}'
 
-            # Should be scoped to .spec-ai directory
-            assert '.spec-ai' in concrete_tool, f'Tool {abstract_tool} not scoped to .spec-ai: {concrete_tool}'
+            # Should be scoped to .respec-ai directory
+            assert '.respec-ai' in concrete_tool, f'Tool {abstract_tool} not scoped to .respec-ai: {concrete_tool}'
 
     def test_markdown_tools_use_wildcard_patterns(self, tool_registry: ToolRegistry) -> None:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
@@ -76,7 +75,7 @@ class TestToolRegistryScoping:
 
         for tool_name in spec_tools:
             tool_path = markdown_tools[tool_name]
-            assert '/spec-ai-specs/' in tool_path, f'Spec tool {tool_name} not scoped to specs directory: {tool_path}'
+            assert '/respec-specs/' in tool_path, f'Spec tool {tool_name} not scoped to specs directory: {tool_path}'
             assert '.md' in tool_path, f'Spec tool {tool_name} should target .md files: {tool_path}'
 
     def test_project_tools_are_scoped_to_project_files(self, tool_registry: ToolRegistry) -> None:
@@ -92,7 +91,7 @@ class TestToolRegistryScoping:
         for tool_name, expected_file in project_file_tools.items():
             tool_path = markdown_tools[tool_name]
             assert expected_file in tool_path, f'Project tool {tool_name} should target {expected_file}: {tool_path}'
-            assert '/spec-ai-specs/' not in tool_path, (
+            assert '/respec-specs/' not in tool_path, (
                 f'Project tool {tool_name} should not target specs directory: {tool_path}'
             )
 
@@ -144,9 +143,11 @@ class TestSecurityScoping:
             assert '..' not in tool_path, f'Tool {tool_name} allows directory traversal: {tool_path}'
             assert not tool_path.startswith('./'), f'Tool {tool_name} allows relative traversal: {tool_path}'
 
-    def test_all_paths_within_spec_ai_scope(self, tool_registry: ToolRegistry) -> None:
+    def test_all_paths_within_reRESPEC_AI_scope(self, tool_registry: ToolRegistry) -> None:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
         for tool_name, tool_path in markdown_tools.items():
-            assert '.spec-ai' in tool_path, f'Tool {tool_name} not scoped to .spec-ai: {tool_path}'
-            assert tool_path.count('.spec-ai') == 1, f'Tool {tool_name} has multiple .spec-ai references: {tool_path}'
+            assert '.respec-ai' in tool_path, f'Tool {tool_name} not scoped to .respec-ai: {tool_path}'
+            assert tool_path.count('.respec-ai') == 1, (
+                f'Tool {tool_name} has multiple .respec-ai references: {tool_path}'
+            )

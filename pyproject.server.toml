@@ -1,0 +1,70 @@
+[project]
+name = "respec-ai-server"
+version = "0.3.0"
+description = "RespecAI MCP Server - Containerized specification-driven development workflow server"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+
+authors = [{ name = "Mark McClatchy" }]
+
+keywords = [
+    "ai",
+    "claude",
+    "mcp",
+    "workflow",
+    "automation",
+    "specification",
+    "respec-ai",
+    "spec-driven-development",
+    "spec driven development",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Code Generators",
+]
+
+# Full MCP server dependencies (for Docker image)
+dependencies = [
+    "pydantic>=2.0.0,<3.0.0",
+    "pydantic-settings>=2.0.0,<3.0.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "markdown-it-py>=3.0.0",
+    "fastmcp>=2.12.2,<3.0.0",
+    "rich>=14.1.0,<15.0.0",
+    "sqlalchemy>=2.0.0,<3.0.0",        # Future: Database-backed StateManager
+    "alembic>=1.13.0,<2.0.0",          # Future: Database migrations
+]
+
+[project.urls]
+Homepage = "https://github.com/mmcclatchy/respec-ai"
+Documentation = "https://github.com/mmcclatchy/respec-ai/blob/main/docs/USER_GUIDE.md"
+Repository = "https://github.com/mmcclatchy/respec-ai"
+Issues = "https://github.com/mmcclatchy/respec-ai/issues"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.1,<2.0.0",
+    "pytest>=8.4.2,<9.0.0",
+    "pytest-asyncio>=1.1.0,<2.0.0",
+    "pytest-mock>=3.15.0,<4.0.0",
+    "types-pyyaml>=6.0.12.20250809,<7.0.0",
+    "types-aiofiles>=24.1.0.20250822,<25.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ['src']
+
+[project.scripts]
+respec-server = "src.mcp.server:run_local_server"

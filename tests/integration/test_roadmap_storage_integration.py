@@ -1,7 +1,6 @@
 import pytest
-
-from services.mcp.tools.roadmap_tools import RoadmapTools
-from services.utils.state_manager import InMemoryStateManager
+from src.mcp.tools.roadmap_tools import RoadmapTools
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture
