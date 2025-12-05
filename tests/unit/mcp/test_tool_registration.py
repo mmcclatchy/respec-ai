@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastmcp import FastMCP
 from pytest_mock import MockerFixture
+
 from src.mcp.tools import register_all_tools
 
 

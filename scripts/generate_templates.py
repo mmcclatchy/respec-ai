@@ -7,8 +7,6 @@ of each model and outputting their markdown representation. This ensures
 templates stay synchronized with model definitions.
 """
 
-from datetime import datetime
-
 from src.models.build_plan import BuildPlan
 from src.models.enums import BuildStatus, CriticAgent, ProjectStatus, RequirementsStatus, RoadmapStatus
 from src.models.feature_requirements import FeatureRequirements
@@ -24,7 +22,6 @@ def generate_roadmap_template() -> str:
         total_duration="[Expected duration, e.g., '6 months']",
         team_size="[Team size, e.g., '5 developers']",
         roadmap_budget="[Budget, e.g., '$500,000']",
-        specs=[],
         critical_path_analysis='[Analysis of critical path dependencies]',
         key_risks='[Primary project risks]',
         mitigation_plans='[Risk mitigation strategies]',
@@ -38,9 +35,6 @@ def generate_roadmap_template() -> str:
         quality_gates='[Quality gates and checkpoints]',
         performance_targets='[Performance targets and metrics]',
         roadmap_status=RoadmapStatus.DRAFT,
-        creation_date=datetime.now().isoformat(),
-        last_updated=datetime.now().isoformat(),
-        spec_count=0,
     )
     return roadmap.build_markdown()
 
@@ -65,9 +59,6 @@ def generate_build_plan_template() -> str:
         performance_requirements='[Performance requirements]',
         security_implementation='[Security implementation approach]',
         build_status=BuildStatus.PLANNING,
-        creation_date=datetime.now().isoformat(),
-        last_updated=datetime.now().isoformat(),
-        build_owner='[Build owner/team]',
     )
     return build_plan.build_markdown()
 
@@ -93,9 +84,6 @@ def generate_feature_requirements_template() -> str:
         could_have_features='[Nice-to-have features - include if time permits]',
         wont_have_features='[Features explicitly out of scope]',
         requirements_status=RequirementsStatus.DRAFT,
-        creation_date=datetime.now().isoformat(),
-        last_updated=datetime.now().isoformat(),
-        feature_owner='[Feature owner/team]',
     )
     return requirements.build_markdown()
 
@@ -133,9 +121,6 @@ def generate_project_plan_template() -> str:
         meeting_schedule='[Meeting schedule]',
         documentation_standards='[Documentation standards]',
         project_status=ProjectStatus.DRAFT,
-        creation_date=datetime.now().isoformat(),
-        last_updated=datetime.now().isoformat(),
-        version='1.0',
     )
     return project_plan.build_markdown()
 

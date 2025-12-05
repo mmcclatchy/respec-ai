@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pytest
 from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
 from src.models.project_plan import ProjectPlan
@@ -88,7 +86,6 @@ class TestInMemoryStateManager:
             total_duration='8 weeks',
             team_size='4 developers',
             roadmap_budget='$100,000',
-            specs=[],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test mitigation',
@@ -102,9 +99,6 @@ class TestInMemoryStateManager:
             quality_gates='All tests pass',
             performance_targets='Fast response',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
 
     @pytest.fixture
@@ -116,9 +110,6 @@ class TestInMemoryStateManager:
             dependencies='Test dependencies',
             deliverables='Test deliverables',
             spec_status=SpecStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_owner='Test Owner',
         )
 
     @pytest.fixture
@@ -161,7 +152,6 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             total_duration='8 weeks',
             team_size='4 developers',
             roadmap_budget='$100,000',
-            specs=[],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test mitigation',
@@ -175,9 +165,6 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             quality_gates='All tests pass',
             performance_targets='Fast response',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
         updated_roadmap = Roadmap(
             project_name='Updated',
@@ -185,7 +172,6 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             total_duration='8 weeks',
             team_size='4 developers',
             roadmap_budget='$100,000',
-            specs=[],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test mitigation',
@@ -199,9 +185,6 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             quality_gates='All tests pass',
             performance_targets='Fast response',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
 
         state_manager.store_roadmap(project_name, original_roadmap)
@@ -227,7 +210,6 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             total_duration='8 weeks',
             team_size='4 developers',
             roadmap_budget='$100,000',
-            specs=[],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test mitigation',
@@ -241,9 +223,6 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             quality_gates='All tests pass',
             performance_targets='Fast response',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
 
         stored_id = state_manager.store_roadmap(project_name, roadmap)
@@ -328,9 +307,6 @@ class TestSpecOperations(TestInMemoryStateManager):
             dependencies='Dep 1',
             deliverables='Del 1',
             spec_status=SpecStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_owner='Test Owner',
         )
         spec2 = TechnicalSpec(
             phase_name='spec-2',
@@ -339,9 +315,6 @@ class TestSpecOperations(TestInMemoryStateManager):
             dependencies='Dep 2',
             deliverables='Del 2',
             spec_status=SpecStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_owner='Test Owner',
         )
 
         state_manager.store_spec(project_name, spec1)
@@ -418,9 +391,6 @@ class TestSpecOperations(TestInMemoryStateManager):
                 dependencies=f'Dep {spec_name}',
                 deliverables=f'Del {spec_name}',
                 spec_status=SpecStatus.DRAFT,
-                creation_date=datetime.now().isoformat(),
-                last_updated=datetime.now().isoformat(),
-                spec_owner='Test Owner',
             )
             state_manager.store_spec(project_name, spec)
 
@@ -877,9 +847,6 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
                 meeting_schedule=f'Meetings {i}',
                 documentation_standards=f'Docs {i}',
                 project_status=ProjectStatus.DRAFT,
-                creation_date='2024-01-01',
-                last_updated='2024-01-01',
-                version='1.0',
             )
             state_manager.store_project_plan(project_name, plan)
 
@@ -905,7 +872,6 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             total_duration='8 weeks',
             team_size='4 developers',
             roadmap_budget='$100,000',
-            specs=[],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test mitigation',
@@ -919,9 +885,6 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             quality_gates='All tests pass',
             performance_targets='Fast response',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
         project2_roadmap = Roadmap(
             project_name='Project 2 Roadmap',
@@ -929,7 +892,6 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             total_duration='8 weeks',
             team_size='4 developers',
             roadmap_budget='$100,000',
-            specs=[],
             critical_path_analysis='Test analysis',
             key_risks='Test risks',
             mitigation_plans='Test mitigation',
@@ -943,9 +905,6 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             quality_gates='All tests pass',
             performance_targets='Fast response',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_count=0,
         )
 
         state_manager.store_roadmap('project-1', project1_roadmap)
@@ -958,9 +917,6 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             dependencies='P1 Dep',
             deliverables='P1 Del',
             spec_status=SpecStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_owner='Test Owner',
         )
         spec2 = TechnicalSpec(
             phase_name='p2-spec',
@@ -969,9 +925,6 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             dependencies='P2 Dep',
             deliverables='P2 Del',
             spec_status=SpecStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
-            spec_owner='Test Owner',
         )
 
         state_manager.store_spec('project-1', spec1)

@@ -48,7 +48,6 @@ def run(args: Namespace) -> int:
         if not container_status['exists']:
             print_warning(f"Docker container 'respec-ai-{version}' does not exist")
             print_info('Run: respec-ai docker pull')
-            print_info('Or: respec-ai docker build')
             return 1
 
         if not container_status['running']:

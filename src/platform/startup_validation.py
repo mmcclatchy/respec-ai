@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from fastmcp import FastMCP
+
 from src.mcp.tools import register_all_tools
 
 from .tool_enums import ExternalPlatformTool, RespecAITool
