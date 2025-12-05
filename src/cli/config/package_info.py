@@ -1,3 +1,4 @@
+from importlib.metadata import version, PackageNotFoundError
 from pathlib import Path
 
 
@@ -18,23 +19,14 @@ def get_package_installation_path() -> Path:
     - editable installs
 
     Returns:
-        Absolute path to respec-ai package root directory
+        Absolute path to respec-ai package root directory (src directory)
 
     Raises:
         PackageInfoError: If package path cannot be determined
     """
     try:
-        services_init = Path(src.__file__).parent
-        package_root = services_init.parent
-
-        if not (package_root / 'pyproject.toml').exists():
-            raise PackageInfoError(
-                'Cannot determine respec-ai installation path. '
-                f'Expected pyproject.toml at: {package_root}\n'
-                'This may indicate a corrupted installation.'
-            )
-
-        return package_root.resolve()
+        src_init = Path(src.__file__).parent
+        return src_init.resolve()
 
     except ImportError as e:
         raise PackageInfoError(
@@ -45,28 +37,17 @@ def get_package_installation_path() -> Path:
 
 
 def get_package_version() -> str:
-    """Get installed package version.
+    """Get installed package version using importlib.metadata.
 
     Returns:
-        Version string (e.g., "0.2.0")
+        Version string (e.g., "0.4.5")
 
     Raises:
         PackageInfoError: If version cannot be determined
     """
     try:
-        package_root = get_package_installation_path()
-        pyproject_path = package_root / 'pyproject.toml'
-
-        content = pyproject_path.read_text(encoding='utf-8')
-
-        for line in content.splitlines():
-            if line.strip().startswith('version ='):
-                version = line.split('=')[1].strip().strip('"').strip("'")
-                return version
-
-        raise PackageInfoError('Version not found in pyproject.toml')
-
-    except PackageInfoError:
-        raise
+        return version('respec-ai')
+    except PackageNotFoundError as e:
+        raise PackageInfoError('respec-ai package not found. The package may not be properly installed.') from e
     except Exception as e:
         raise PackageInfoError(f'Error reading package version: {e}') from e
