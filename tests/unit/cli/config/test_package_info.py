@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
+from importlib.metadata import PackageNotFoundError as MetadataPackageNotFoundError
 
 from src.cli.config.package_info import (
     PackageInfoError,
@@ -12,29 +13,16 @@ from src.cli.config.package_info import (
 
 class TestGetPackageInstallationPath:
     def test_successful_path_detection(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        services_dir = tmp_path / 'src'
-        services_dir.mkdir()
-        (services_dir / '__init__.py').touch()
-        (tmp_path / 'pyproject.toml').touch()
+        src_dir = tmp_path / 'src'
+        src_dir.mkdir()
+        (src_dir / '__init__.py').touch()
 
         mock_src = mocker.MagicMock()
-        mock_src.__file__ = str(services_dir / '__init__.py')
+        mock_src.__file__ = str(src_dir / '__init__.py')
 
         mocker.patch('src.cli.config.package_info.src', mock_src)
         result = get_package_installation_path()
-        assert result == tmp_path.resolve()
-
-    def test_missing_pyproject_toml(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        services_dir = tmp_path / 'src'
-        services_dir.mkdir()
-        (services_dir / '__init__.py').touch()
-
-        mock_src = mocker.MagicMock()
-        mock_src.__file__ = str(services_dir / '__init__.py')
-
-        mocker.patch('src.cli.config.package_info.src', mock_src)
-        with pytest.raises(PackageInfoError, match='Cannot determine respec-ai installation path'):
-            get_package_installation_path()
+        assert result == src_dir.resolve()
 
     def test_import_error(self, mocker: MockerFixture) -> None:
         mock_src = mocker.MagicMock()
@@ -46,56 +34,23 @@ class TestGetPackageInstallationPath:
 
 
 class TestGetPackageVersion:
-    def test_successful_version_extraction(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        services_dir = tmp_path / 'src'
-        services_dir.mkdir()
-        (services_dir / '__init__.py').touch()
-
-        pyproject_content = """[project]
-name = "respec-ai"
-version = "0.2.0"
-description = "Test"
-"""
-        (tmp_path / 'pyproject.toml').write_text(pyproject_content, encoding='utf-8')
-
-        mock_src = mocker.MagicMock()
-        mock_src.__file__ = str(services_dir / '__init__.py')
-
-        mocker.patch('src.cli.config.package_info.src', mock_src)
+    def test_successful_version_extraction(self, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.package_info.version', return_value='0.4.6')
         result = get_package_version()
-        assert result == '0.2.0'
+        assert result == '0.4.6'
 
-    def test_version_with_quotes(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        services_dir = tmp_path / 'src'
-        services_dir.mkdir()
-        (services_dir / '__init__.py').touch()
+    def test_package_not_found(self, mocker: MockerFixture) -> None:
+        mocker.patch(
+            'src.cli.config.package_info.version',
+            side_effect=MetadataPackageNotFoundError('respec-ai'),
+        )
+        with pytest.raises(PackageInfoError, match='respec-ai package not found'):
+            get_package_version()
 
-        pyproject_content = """[project]
-name = "respec-ai"
-version = '1.0.0'
-"""
-        (tmp_path / 'pyproject.toml').write_text(pyproject_content, encoding='utf-8')
-
-        mock_src = mocker.MagicMock()
-        mock_src.__file__ = str(services_dir / '__init__.py')
-
-        mocker.patch('src.cli.config.package_info.src', mock_src)
-        result = get_package_version()
-        assert result == '1.0.0'
-
-    def test_missing_version(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        services_dir = tmp_path / 'src'
-        services_dir.mkdir()
-        (services_dir / '__init__.py').touch()
-
-        pyproject_content = """[project]
-name = "respec-ai"
-"""
-        (tmp_path / 'pyproject.toml').write_text(pyproject_content, encoding='utf-8')
-
-        mock_src = mocker.MagicMock()
-        mock_src.__file__ = str(services_dir / '__init__.py')
-
-        mocker.patch('src.cli.config.package_info.src', mock_src)
-        with pytest.raises(PackageInfoError, match='Version not found in pyproject.toml'):
+    def test_unexpected_error(self, mocker: MockerFixture) -> None:
+        mocker.patch(
+            'src.cli.config.package_info.version',
+            side_effect=RuntimeError('Unexpected error'),
+        )
+        with pytest.raises(PackageInfoError, match='Error reading package version'):
             get_package_version()

@@ -14,6 +14,7 @@ Usage:
 """
 
 import re
+import shutil
 import subprocess
 import sys
 from argparse import ArgumentParser
@@ -124,6 +125,16 @@ def main() -> int:
         update_version_in_file(pyproject_path, current_version, new_version)
         print(f'✓ Updated pyproject.toml to version {new_version}')
 
+        print('Cleaning old build artifacts...')
+        dist_dir = Path.cwd() / 'dist'
+        if dist_dir.exists():
+            shutil.rmtree(dist_dir)
+        print('✓ Removed dist/')
+
+        print('Building package...')
+        run_command(['uv', 'build'], 'Failed to build package')
+        print('✓ Package built successfully')
+
         run_command(['git', 'add', 'pyproject.toml'], 'Failed to stage pyproject.toml')
 
         run_command(
@@ -138,9 +149,14 @@ def main() -> int:
         run_command(['git', 'push', 'origin', f'v{new_version}'], f'Failed to push tag v{new_version}')
 
         print(f'\n✓ Release {new_version} complete!')
+        print('  - Built package')
         print('  - Committed version bump')
         print(f'  - Created tag v{new_version}')
         print('  - Pushed to origin')
+        print('\n✓ GitHub Actions will now:')
+        print('  - Publish to TestPyPI')
+        print('  - Build and push Docker image')
+        print('  - Create GitHub release')
 
         return 0
 
