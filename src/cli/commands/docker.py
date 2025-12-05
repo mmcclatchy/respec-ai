@@ -9,23 +9,11 @@ from src.cli.ui.console import console, print_error, print_success, print_warnin
 def add_arguments(parser: ArgumentParser) -> None:
     subparsers = parser.add_subparsers(dest='docker_command', required=True, help='Docker commands')
 
-    status_parser = subparsers.add_parser('status', help='Show container status')
-    status_parser.add_argument(
-        '--version',
-        help='Specific version to check (defaults to CLI version)',
-    )
+    subparsers.add_parser('status', help='Show container status')
 
-    start_parser = subparsers.add_parser('start', help='Start container')
-    start_parser.add_argument(
-        '--version',
-        help='Specific version to start (defaults to CLI version)',
-    )
+    subparsers.add_parser('start', help='Start container (auto-cleanup old versions)')
 
     stop_parser = subparsers.add_parser('stop', help='Stop container gracefully')
-    stop_parser.add_argument(
-        '--version',
-        help='Specific version to stop (defaults to CLI version)',
-    )
     stop_parser.add_argument(
         '--timeout',
         type=int,
@@ -33,17 +21,9 @@ def add_arguments(parser: ArgumentParser) -> None:
         help='Shutdown timeout in seconds (default: 10)',
     )
 
-    restart_parser = subparsers.add_parser('restart', help='Restart container')
-    restart_parser.add_argument(
-        '--version',
-        help='Specific version to restart (defaults to CLI version)',
-    )
+    subparsers.add_parser('restart', help='Restart container')
 
     logs_parser = subparsers.add_parser('logs', help='Show container logs')
-    logs_parser.add_argument(
-        '--version',
-        help='Specific version (defaults to CLI version)',
-    )
     logs_parser.add_argument(
         '--lines',
         type=int,
@@ -51,13 +31,9 @@ def add_arguments(parser: ArgumentParser) -> None:
         help='Number of log lines to show (default: 100)',
     )
 
-    pull_parser = subparsers.add_parser('pull', help='Pull Docker image from registry')
-    pull_parser.add_argument(
-        '--version',
-        help='Specific version to pull (defaults to CLI version)',
-    )
+    subparsers.add_parser('pull', help='Pull Docker image from registry (auto-cleanup old versions)')
 
-    subparsers.add_parser('list', help='List all respec-ai containers')
+    subparsers.add_parser('cleanup', help='Remove all old containers and images (manual cleanup)')
 
 
 def run(args: Namespace) -> int:
@@ -76,8 +52,8 @@ def run(args: Namespace) -> int:
             return _run_logs(manager, args)
         elif args.docker_command == 'pull':
             return _run_pull(manager, args)
-        elif args.docker_command == 'list':
-            return _run_list(manager, args)
+        elif args.docker_command == 'cleanup':
+            return _run_cleanup(manager, args)
         else:
             print_error(f'Unknown docker command: {args.docker_command}')
             return 1
@@ -91,8 +67,7 @@ def run(args: Namespace) -> int:
 
 
 def _run_status(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
-    status = manager.get_container_status(version)
+    status = manager.get_container_status()
 
     table = Table(title='Container Status')
     table.add_column('Property', style='cyan')
@@ -120,31 +95,28 @@ def _run_status(manager: DockerManager, args: Namespace) -> int:
 
 
 def _run_start(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
-    manager.start_container(version)
+    manager.cleanup_old_versions()
+    manager.start_container()
     print_success('Container started successfully')
     return 0
 
 
 def _run_stop(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
     timeout = args.timeout
-    manager.stop_container(version, timeout)
+    manager.stop_container(None, timeout)
     print_success('Container stopped successfully')
     return 0
 
 
 def _run_restart(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
-    manager.restart_container(version)
+    manager.restart_container()
     print_success('Container restarted successfully')
     return 0
 
 
 def _run_logs(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
     lines = args.lines
-    logs = manager.get_container_logs(version, lines)
+    logs = manager.get_container_logs(None, lines)
     console.print()
     console.print(logs)
     console.print()
@@ -152,36 +124,18 @@ def _run_logs(manager: DockerManager, args: Namespace) -> int:
 
 
 def _run_pull(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
-    manager.pull_image(version)
+    manager.cleanup_old_versions()
+    manager.pull_image()
     print_success('Image pulled successfully')
     return 0
 
 
-def _run_list(manager: DockerManager, args: Namespace) -> int:
-    containers = manager.list_all_containers()
-
-    if not containers:
-        print_warning('No respec-ai containers found')
-        return 0
-
-    table = Table(title='RespecAI Containers')
-    table.add_column('Name', style='cyan')
-    table.add_column('Status', style='green')
-    table.add_column('Image', style='yellow')
-    table.add_column('ID', style='blue')
-
-    for container in containers:
-        table.add_row(
-            container['name'],
-            container['status'],
-            container['image'],
-            container['id'],
-        )
-
-    console.print()
-    console.print(table)
-    console.print()
+def _run_cleanup(manager: DockerManager, args: Namespace) -> int:
+    removed = manager.cleanup_old_versions()
+    if removed:
+        print_success(f'Cleaned up {removed} old version(s)')
+    else:
+        print_warning('No old versions to clean up')
     return 0
 
 

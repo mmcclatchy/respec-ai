@@ -22,6 +22,7 @@ from src.cli.commands import platform
 from src.cli.commands import status
 from src.cli.commands import validate
 from src.cli.commands import upgrade
+from src.cli.commands import update
 from src.cli.commands import register_mcp
 from src.cli.commands import docker
 
@@ -84,6 +85,13 @@ def main() -> int:
 
     upgrade.add_arguments(upgrade_parser)
 
+    update_parser = subparsers.add_parser(
+        'update',
+        help='Update respec-ai CLI and Docker image to latest version',
+    )
+
+    update.add_arguments(update_parser)
+
     register_mcp_parser = subparsers.add_parser(
         'register-mcp',
         help='Register RespecAI MCP server in Claude Code',
@@ -111,6 +119,8 @@ def main() -> int:
             return validate.run(args)
         case 'upgrade':
             return upgrade.run(args)
+        case 'update':
+            return update.run(args)
         case 'register-mcp':
             return register_mcp.run(args)
         case 'docker':

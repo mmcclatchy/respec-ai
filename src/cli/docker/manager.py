@@ -263,3 +263,74 @@ class DockerManager:
             return result
         except DockerException as e:
             raise DockerManagerError(f'Failed to list containers: {e}') from e
+
+    def cleanup_old_versions(self) -> int:
+        """Remove old respec-ai containers and images.
+
+        Keeps only the current version matching the CLI.
+
+        Returns:
+            Number of items removed (containers + images)
+        """
+        current_version = self.get_image_version()
+        current_container_name = self.get_container_name()
+        current_image_tag = self.get_image_tag()
+        removed_count = 0
+
+        try:
+            # Remove old containers
+            containers = self.client.containers.list(
+                all=True,
+                filters={'name': self.CONTAINER_NAME_PREFIX},
+            )
+            for container in containers:
+                if container.name != current_container_name:
+                    print(f'Removing old container: {container.name}')
+                    try:
+                        container.remove(force=True)
+                        removed_count += 1
+                    except DockerException as e:
+                        print(f'Warning: Failed to remove container {container.name}: {e}')
+
+            # Remove old images
+            images = self.client.images.list(name=self.IMAGE_NAME)
+            for image in images:
+                if not image.tags:
+                    continue
+                # Check if any tag matches current version
+                is_current = any(tag == current_image_tag or tag == f'{self.IMAGE_NAME}:latest' for tag in image.tags)
+                if not is_current:
+                    for tag in image.tags:
+                        if self.IMAGE_NAME in tag:
+                            print(f'Removing old image: {tag}')
+                            try:
+                                self.client.images.remove(tag, force=True)
+                                removed_count += 1
+                            except DockerException as e:
+                                print(f'Warning: Failed to remove image {tag}: {e}')
+                            break
+
+            # Also remove registry images (ghcr.io/...)
+            for registry in self.REGISTRIES:
+                images = self.client.images.list(name=registry)
+                for image in images:
+                    if not image.tags:
+                        continue
+                    is_current = any(
+                        tag.endswith(f':{current_version}') or tag.endswith(':latest') for tag in image.tags
+                    )
+                    if not is_current:
+                        for tag in image.tags:
+                            if registry in tag:
+                                print(f'Removing old image: {tag}')
+                                try:
+                                    self.client.images.remove(tag, force=True)
+                                    removed_count += 1
+                                except DockerException as e:
+                                    print(f'Warning: Failed to remove image {tag}: {e}')
+                                break
+
+            return removed_count
+
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to cleanup old versions: {e}') from e
