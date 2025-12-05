@@ -1,12 +1,11 @@
 import pytest
 from fastmcp.exceptions import ResourceError, ToolError
-
-from services.mcp.tools.project_plan_tools import ProjectPlanTools
-from services.models.enums import ProjectStatus
-from services.models.project_plan import ProjectPlan
-from services.utils.enums import LoopStatus
-from services.utils.loop_state import MCPResponse
-from services.utils.state_manager import InMemoryStateManager
+from src.mcp.tools.project_plan_tools import ProjectPlanTools
+from src.models.enums import ProjectStatus
+from src.models.project_plan import ProjectPlan
+from src.utils.enums import LoopStatus
+from src.utils.loop_state import MCPResponse
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture

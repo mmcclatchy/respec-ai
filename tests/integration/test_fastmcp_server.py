@@ -1,11 +1,10 @@
 import pytest
 from fastmcp import FastMCP
-
-from services.mcp.server import create_mcp_server, health_check
-from services.mcp.tools.loop_tools import loop_tools
-from services.utils.enums import HealthState, LoopStatus
-from services.utils.loop_state import HealthStatus
-from services.utils.setting_configs import mcp_settings
+from src.mcp.server import create_mcp_server, health_check
+from src.mcp.tools.loop_tools import loop_tools
+from src.utils.enums import HealthState, LoopStatus
+from src.utils.loop_state import HealthStatus
+from src.utils.setting_configs import mcp_settings
 
 
 @pytest.fixture
@@ -17,7 +16,7 @@ class TestFastMCPServerIntegration:
     def test_fastmcp_server_initialization(self) -> None:
         server = create_mcp_server()
         assert isinstance(server, FastMCP)
-        assert server.name == 'spec-ai'
+        assert server.name == 'respec-ai'
 
     @pytest.mark.asyncio
     async def test_mcp_tool_registration(self) -> None:
@@ -51,14 +50,14 @@ class TestFastMCPServerIntegration:
 
     def test_production_server_creation(self) -> None:
         # Test server configuration
-        assert mcp_settings.server_name == 'spec-ai'
+        assert mcp_settings.server_name == 'respec-ai'
         assert mcp_settings.host == '0.0.0.0'
         assert mcp_settings.port == 8000
 
         # Test server creation
         server = create_mcp_server()
         assert isinstance(server, FastMCP)
-        assert server.name == 'spec-ai'
+        assert server.name == 'respec-ai'
 
     @pytest.mark.asyncio
     async def test_mcp_tool_discovery_and_metadata(self) -> None:
@@ -86,7 +85,7 @@ class TestFastMCPServerIntegration:
         assert result.status == LoopStatus.COMPLETED
 
     def test_server_configuration_via_pydantic_settings(self) -> None:
-        assert mcp_settings.server_name == 'spec-ai'
+        assert mcp_settings.server_name == 'respec-ai'
         assert mcp_settings.host == '0.0.0.0'
         assert mcp_settings.port == 8000
         assert mcp_settings.debug is False

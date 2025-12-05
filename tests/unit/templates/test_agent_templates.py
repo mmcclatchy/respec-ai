@@ -1,7 +1,7 @@
 """Tests for agent template generation functions."""
 
-from services.platform.models import CreateSpecAgentTools, PlanRoadmapAgentTools
-from services.platform.templates.agents import (
+from src.platform.models import CreateSpecAgentTools, PlanRoadmapAgentTools
+from src.platform.templates.agents import (
     generate_create_spec_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
@@ -10,21 +10,21 @@ from services.platform.templates.agents import (
 
 class TestPlanRoadmapTemplate:
     def test_template_structure(self) -> None:
-        tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         template = generate_roadmap_template(tools)
 
         # Check YAML frontmatter
         assert '---' in template
-        assert 'name: spec-ai-roadmap' in template
+        assert 'name: respec-roadmap' in template
         assert 'description:' in template
         assert 'model: sonnet' in template
         assert 'tools:' in template
 
         # Check MCP tools section - roadmap agent only retrieves plan, doesn't create specs
-        assert 'mcp__spec-ai__get_project_plan_markdown' in template
+        assert 'mcp__respec-ai__get_project_plan_markdown' in template
         # Roadmap agent no longer creates specs - that's done by parallel create-spec agents
-        assert 'mcp__spec-ai__add_spec' not in template
-        assert 'mcp__spec-ai__list_specs' not in template
+        assert 'mcp__respec-ai__add_spec' not in template
+        assert 'mcp__respec-ai__list_specs' not in template
 
         # Check agent identity
         assert 'You are a' in template
@@ -36,7 +36,7 @@ class TestPlanRoadmapTemplate:
         assert 'OUTPUTS:' in template or 'OUTPUT FORMAT:' in template
 
     def test_template_follows_imperative_pattern(self) -> None:
-        tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         template = generate_roadmap_template(tools)
 
         # Should contain imperative verbs
@@ -45,7 +45,7 @@ class TestPlanRoadmapTemplate:
         assert has_imperative, 'Template should contain imperative instructions'
 
     def test_template_no_threshold_references(self) -> None:
-        tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         template = generate_roadmap_template(tools)
 
         # Should not contain threshold percentages or scores
@@ -54,7 +54,7 @@ class TestPlanRoadmapTemplate:
             assert term not in template, f'Template should not contain threshold reference: {term}'
 
     def test_template_includes_error_handling(self) -> None:
-        tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         template = generate_roadmap_template(tools)
 
         assert 'ERROR HANDLING' in template or 'Error Handling' in template
@@ -66,14 +66,14 @@ class TestRoadmapCriticTemplate:
 
         # Check YAML frontmatter
         assert '---' in template
-        assert 'name: spec-ai-roadmap-critic' in template
+        assert 'name: respec-roadmap-critic' in template
         assert 'description:' in template
         assert 'model: sonnet' in template
         assert 'tools:' in template
 
         # Check MCP tools - roadmap-critic works with loop_id
-        assert 'mcp__spec-ai__get_roadmap' in template  # Uses get_roadmap, not get_roadmap_markdown
-        assert 'mcp__spec-ai__store_critic_feedback' in template
+        assert 'mcp__respec-ai__get_roadmap' in template  # Uses get_roadmap, not get_roadmap_markdown
+        assert 'mcp__respec-ai__store_critic_feedback' in template
         # Removed get_feedback - critic retrieves roadmap directly using loop_id
 
     def test_template_includes_critic_feedback_format(self) -> None:
@@ -108,24 +108,24 @@ class TestRoadmapCriticTemplate:
 class TestCreateSpecTemplate:
     def test_template_structure(self) -> None:
         tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
         template = generate_create_spec_template(tools)
 
         # Check YAML frontmatter
         assert '---' in template
-        assert 'name: spec-ai-create-spec' in template
+        assert 'name: respec-create-spec' in template
         assert 'description:' in template
         assert 'model: sonnet' in template
         assert 'tools:' in template
 
     def test_template_includes_mcp_tools(self) -> None:
         tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
         template = generate_create_spec_template(tools)
 
@@ -136,9 +136,9 @@ class TestCreateSpecTemplate:
 
     def test_template_supports_parallel_execution(self) -> None:
         tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
         template = generate_create_spec_template(tools)
 
@@ -149,9 +149,9 @@ class TestCreateSpecTemplate:
 
     def test_template_includes_initialspec_creation(self) -> None:
         tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
         template = generate_create_spec_template(tools)
 
@@ -161,11 +161,11 @@ class TestCreateSpecTemplate:
 
 class TestTemplateConsistency:
     def test_all_templates_use_sonnet(self) -> None:
-        plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         spec_tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
 
         templates = [
@@ -178,11 +178,11 @@ class TestTemplateConsistency:
             assert 'model: sonnet' in template
 
     def test_all_templates_have_required_sections(self) -> None:
-        plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         spec_tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
 
         templates = [
@@ -198,11 +198,11 @@ class TestTemplateConsistency:
                 assert section in template, f'Template missing required section: {section}'
 
     def test_no_template_contains_behavioral_descriptions(self) -> None:
-        plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__spec-ai__add_spec')
+        plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
         spec_tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__spec-ai__add_spec',
-            get_spec_tool='mcp__spec-ai__get_spec',
-            update_spec_tool='mcp__spec-ai__update_spec',
+            create_spec_tool='mcp__respec-ai__add_spec',
+            get_spec_tool='mcp__respec-ai__get_spec',
+            update_spec_tool='mcp__respec-ai__update_spec',
         )
 
         templates = [

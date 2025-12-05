@@ -5,8 +5,7 @@ parse -> build -> reparse cycles.
 """
 
 import pytest
-
-from services.models.roadmap import Roadmap
+from src.models.roadmap import Roadmap
 
 
 @pytest.fixture

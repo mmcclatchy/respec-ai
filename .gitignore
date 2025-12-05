@@ -111,3 +111,4 @@ temp*
 
 # secrets
 secrets/
+uv.lock

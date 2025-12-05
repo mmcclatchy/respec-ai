@@ -1,16 +1,13 @@
 import pytest
-
-from services.models.plan_completion_report import (
+from src.models.plan_completion_report import (
+    AnalystLoopStatus,
     PlanCompletionReport,
     PlanCompletionStatus,
     UserDecision,
-    AnalystLoopStatus,
 )
 
 
 class TestPlanCompletionReport:
-    """Test suite for PlanCompletionReport model."""
-
     def test_default_initialization(self) -> None:
         report = PlanCompletionReport()
 

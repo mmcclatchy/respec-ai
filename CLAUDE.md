@@ -1,4 +1,4 @@
-# SpecAI MCP Server - Project Standards
+# RespecAI MCP Server - Project Standards
 
 ## Project Rules (Mandatory)
 
@@ -34,7 +34,7 @@ user_name = get_user_name()  # Get the user name
 
 # ❌ WRONG: Inline import
 def some_function():
-    from services.other import helper  # ❌ Move to top
+    from src.other import helper  # ❌ Move to top
 
 # ✅ CORRECT: No unnecessary documentation
 def get_user_name(self) -> str:
@@ -87,8 +87,8 @@ def calculate_weighted_quality_score(self, gates: dict[str, float]) -> float:
 ### Code Structure
 
 ```text
-services/             # Business logic
-services/models/      # Pydantic models
+src/             # Business logic
+src/models/      # Pydantic models
 tests/unit/           # pytest unit tests
 tests/integration/    # pytest integration tests
 tests/e2e/            # pytest end-to-end tests

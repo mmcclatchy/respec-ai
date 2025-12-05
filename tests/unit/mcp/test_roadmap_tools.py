@@ -1,14 +1,15 @@
 from datetime import datetime
-from unittest.mock import Mock
+
+from unittest.mock import MagicMock
 
 import pytest
 from fastmcp.exceptions import ResourceError, ToolError
-
-from services.mcp.tools.roadmap_tools import RoadmapTools
-from services.models.enums import RoadmapStatus
-from services.models.roadmap import Roadmap
-from services.models.spec import TechnicalSpec
-from services.utils.state_manager import StateManager
+from pytest_mock import MockerFixture
+from src.mcp.tools.roadmap_tools import RoadmapTools
+from src.models.enums import RoadmapStatus
+from src.models.roadmap import Roadmap
+from src.models.spec import TechnicalSpec
+from src.utils.state_manager import StateManager
 
 
 @pytest.fixture
@@ -56,11 +57,11 @@ def create_test_roadmap_markdown(project_name: str) -> str:
 
 class TestRoadmapTools:
     @pytest.fixture
-    def mock_state_manager(self) -> Mock:
-        return Mock(spec=StateManager)
+    def mock_state_manager(self, mocker: MockerFixture) -> MagicMock:
+        return mocker.Mock(spec=StateManager)
 
     @pytest.fixture
-    def roadmap_tools(self, mock_state_manager: Mock) -> RoadmapTools:
+    def roadmap_tools(self, mock_state_manager: MagicMock) -> RoadmapTools:
         return RoadmapTools(mock_state_manager)
 
     @pytest.fixture
@@ -107,7 +108,7 @@ Missing required sections and structure.
 
 class TestCreateRoadmap(TestRoadmapTools):
     def test_create_roadmap_returns_success_message(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         mock_state_manager.store_roadmap.return_value = 'test-project'
         roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
@@ -120,7 +121,7 @@ class TestCreateRoadmap(TestRoadmapTools):
         assert 'Created roadmap' in result
 
     def test_create_roadmap_delegates_to_state_manager(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         mock_state_manager.store_roadmap.return_value = 'project-123'
         roadmap_markdown = create_test_roadmap_markdown('My Roadmap')
@@ -134,13 +135,13 @@ class TestCreateRoadmap(TestRoadmapTools):
         assert call_args[0][1].project_name == 'My Roadmap'
 
     def test_create_roadmap_raises_error_for_empty_project_name(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         with pytest.raises(ToolError, match='Project name cannot be empty'):
             roadmap_tools.create_roadmap('', 'Test Roadmap')
 
     def test_create_roadmap_raises_error_for_empty_roadmap_data(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         with pytest.raises(ToolError, match='Roadmap data cannot be empty'):
             roadmap_tools.create_roadmap('test-project', '')
@@ -156,7 +157,7 @@ class TestCreateRoadmap(TestRoadmapTools):
     def test_create_roadmap_handles_various_inputs(
         self,
         roadmap_tools: RoadmapTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         project_name: str,
         roadmap_name: str,
     ) -> None:
@@ -171,7 +172,7 @@ class TestCreateRoadmap(TestRoadmapTools):
 
 class TestGetRoadmap(TestRoadmapTools):
     def test_get_roadmap_returns_success_with_spec_count(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         mock_specs = [
             TechnicalSpec(
@@ -232,14 +233,16 @@ class TestGetRoadmap(TestRoadmapTools):
         assert '# Technical Specification: spec3' in result
 
     def test_get_roadmap_raises_error_when_not_found(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: Mock
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         mock_state_manager.get_roadmap.side_effect = Exception('Not found')
 
         with pytest.raises(ResourceError, match='Roadmap not found for project non-existent-project'):
             roadmap_tools.get_roadmap('non-existent-project')
 
-    def test_get_roadmap_handles_empty_roadmap(self, roadmap_tools: RoadmapTools, mock_state_manager: Mock) -> None:
+    def test_get_roadmap_handles_empty_roadmap(
+        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
+    ) -> None:
         mock_roadmap = Roadmap(
             project_name='Empty Roadmap',
             project_goal='Test goal',

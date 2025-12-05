@@ -1,21 +1,20 @@
 from datetime import datetime
 
 import pytest
-
-from services.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
-from services.models.project_plan import ProjectPlan
-from services.models.roadmap import Roadmap
-from services.models.spec import TechnicalSpec
-from services.utils.enums import LoopType
-from services.utils.errors import (
+from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
+from src.models.project_plan import ProjectPlan
+from src.models.roadmap import Roadmap
+from src.models.spec import TechnicalSpec
+from src.utils.enums import LoopType
+from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
     ProjectPlanNotFoundError,
     RoadmapNotFoundError,
     SpecNotFoundError,
 )
-from services.utils.loop_state import LoopState
-from services.utils.state_manager import InMemoryStateManager, Queue
+from src.utils.loop_state import LoopState
+from src.utils.state_manager import InMemoryStateManager, Queue
 
 
 # Import feedback module to ensure LoopState model is fully rebuilt with forward references

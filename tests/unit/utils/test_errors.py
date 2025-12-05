@@ -1,7 +1,6 @@
 import pytest
 from fastmcp.exceptions import ToolError
-
-from services.utils.errors import (
+from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopError,
     LoopInvalidError,

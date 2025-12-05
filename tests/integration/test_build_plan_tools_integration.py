@@ -1,11 +1,10 @@
 import pytest
-
-from services.mcp.tools.build_plan_tools import BuildPlanTools
-from services.mcp.tools.loop_tools import LoopTools
-from services.models.build_plan import BuildPlan
-from services.models.enums import BuildStatus
-from services.utils.enums import LoopStatus
-from services.utils.state_manager import InMemoryStateManager
+from src.mcp.tools.build_plan_tools import BuildPlanTools
+from src.mcp.tools.loop_tools import LoopTools
+from src.models.build_plan import BuildPlan
+from src.models.enums import BuildStatus
+from src.utils.enums import LoopStatus
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture

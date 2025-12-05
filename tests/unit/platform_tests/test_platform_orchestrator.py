@@ -5,16 +5,16 @@ from pathlib import Path
 
 import pytest
 
-from services.platform.models import (
+from src.platform.models import (
     PlatformRequirements,
     ProjectPlatformChangeRequest,
     ProjectSetupRequest,
     ProjectSetupWithRecommendationRequest,
     TemplateGenerationRequest,
 )
-from services.platform.platform_orchestrator import PlatformOrchestrator
-from services.platform.platform_selector import PlatformType
-from services.platform.tool_enums import CommandTemplate
+from src.platform.platform_orchestrator import PlatformOrchestrator
+from src.platform.platform_selector import PlatformType
+from src.platform.tool_enums import CommandTemplate
 
 
 class TestPlatformOrchestrator:
@@ -136,11 +136,11 @@ class TestPlatformOrchestrator:
     def test_get_available_commands(self) -> None:
         commands = self.orchestrator.get_available_commands()
 
-        assert 'spec-ai-plan' in commands
-        assert 'spec-ai-spec' in commands
-        assert 'spec-ai-build' in commands
-        assert 'spec-ai-roadmap' in commands
-        assert 'spec-ai-plan-conversation' in commands
+        assert 'respec-plan' in commands
+        assert 'respec-spec' in commands
+        assert 'respec-build' in commands
+        assert 'respec-roadmap' in commands
+        assert 'respec-plan-conversation' in commands
 
     def test_recommend_platform_for_requirements(self) -> None:
         # Requirements favoring Linear

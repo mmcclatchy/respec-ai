@@ -1,10 +1,9 @@
 import pytest
-
-from services.mcp.tools.loop_tools import loop_tools
-from services.utils.enums import LoopStatus
-from services.utils.errors import LoopStateError, LoopValidationError
-from services.utils.loop_state import MCPResponse
-from services.utils.setting_configs import LoopConfig
+from src.mcp.tools.loop_tools import loop_tools
+from src.utils.enums import LoopStatus
+from src.utils.errors import LoopStateError, LoopValidationError
+from src.utils.loop_state import MCPResponse
+from src.utils.setting_configs import LoopConfig
 
 
 @pytest.fixture

@@ -1,13 +1,12 @@
 import logging
 from typing import Generator
-from unittest.mock import patch
 
 import pytest
-
-from services.mcp.tools.loop_tools import LoopTools
-from services.mcp.tools.roadmap_tools import RoadmapTools
-from services.utils.state_manager import InMemoryStateManager
-from services.utils.setting_configs import LoopConfig
+from pytest_mock import MockerFixture
+from src.mcp.tools.loop_tools import LoopTools
+from src.mcp.tools.roadmap_tools import RoadmapTools
+from src.utils.setting_configs import LoopConfig
+from src.utils.state_manager import InMemoryStateManager
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -37,16 +36,17 @@ def isolated_loop_tools(isolated_state_manager: InMemoryStateManager) -> LoopToo
 
 
 @pytest.fixture(autouse=True)
-def mock_shared_state(isolated_state_manager: InMemoryStateManager) -> Generator[InMemoryStateManager, None, None]:
-    with patch('services.shared.state_manager', isolated_state_manager):
-        # Also patch the imported instances in the tool modules
-        with patch('services.mcp.tools.roadmap_tools.state_manager', isolated_state_manager):
-            with patch('services.mcp.tools.loop_tools.state_manager', isolated_state_manager):
-                yield isolated_state_manager
+def mock_shared_state(
+    mocker: MockerFixture, isolated_state_manager: InMemoryStateManager
+) -> Generator[InMemoryStateManager, None, None]:
+    mocker.patch('src.shared.state_manager', isolated_state_manager)
+    mocker.patch('src.mcp.tools.roadmap_tools.state_manager', isolated_state_manager)
+    mocker.patch('src.mcp.tools.loop_tools.state_manager', isolated_state_manager)
+    yield isolated_state_manager
 
 
 @pytest.fixture(autouse=True)
-def stable_loop_config() -> Generator[LoopConfig, None, None]:
+def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, None]:
     """Provide consistent loop configuration for all tests.
 
     This fixture ensures tests use known, stable threshold values regardless of
@@ -76,6 +76,6 @@ def stable_loop_config() -> Generator[LoopConfig, None, None]:
         build_code_checkpoint_frequency=5,
     )
 
-    with patch('services.utils.setting_configs.loop_config', test_config):
-        with patch('services.utils.enums.loop_config', test_config):
-            yield test_config
+    mocker.patch('src.utils.setting_configs.loop_config', test_config)
+    mocker.patch('src.utils.enums.loop_config', test_config)
+    yield test_config

@@ -1,10 +1,9 @@
 import time
 
 import pytest
-
-from services.mcp.tools.loop_tools import loop_tools
-from services.utils.enums import LoopStatus
-from services.utils.loop_state import MCPResponse
+from src.mcp.tools.loop_tools import loop_tools
+from src.utils.enums import LoopStatus
+from src.utils.loop_state import MCPResponse
 
 
 @pytest.fixture

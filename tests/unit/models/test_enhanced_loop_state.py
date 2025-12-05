@@ -1,7 +1,7 @@
-from services.models.enums import CriticAgent
-from services.models.feedback import CriticFeedback
-from services.utils.enums import LoopType
-from services.utils.loop_state import LoopState
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
+from src.utils.enums import LoopType
+from src.utils.loop_state import LoopState
 
 
 class TestEnhancedLoopState:

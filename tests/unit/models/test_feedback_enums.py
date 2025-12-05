@@ -1,4 +1,4 @@
-from services.models.enums import CriticAgent, FSSDCriteria
+from src.models.enums import CriticAgent, FSSDCriteria
 
 
 class TestFSSDCriteria:

@@ -1,16 +1,17 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastmcp.exceptions import ResourceError, ToolError
+from pytest_mock import MockerFixture
 
-from services.mcp.tools.plan_completion_report_tools import (
+from src.mcp.tools.plan_completion_report_tools import (
     PlanCompletionReportTools,
     register_plan_completion_report_tools,
 )
-from services.models.plan_completion_report import PlanCompletionReport
-from services.utils.enums import LoopStatus, LoopType
-from services.utils.errors import LoopNotFoundError
-from services.utils.loop_state import LoopState, MCPResponse
+from src.models.plan_completion_report import PlanCompletionReport
+from src.utils.enums import LoopStatus, LoopType
+from src.utils.errors import LoopNotFoundError
+from src.utils.loop_state import LoopState, MCPResponse
 
 
 @pytest.fixture
@@ -20,11 +21,11 @@ def project_path() -> str:
 
 class TestPlanCompletionReportTools:
     @pytest.fixture
-    def mock_state_manager(self) -> Mock:
-        return Mock()
+    def mock_state_manager(self, mocker: MockerFixture) -> MagicMock:
+        return mocker.Mock()
 
     @pytest.fixture
-    def completion_report_tools(self, mock_state_manager: Mock) -> PlanCompletionReportTools:
+    def completion_report_tools(self, mock_state_manager: MagicMock) -> PlanCompletionReportTools:
         return PlanCompletionReportTools(mock_state_manager)
 
     @pytest.fixture
@@ -45,7 +46,7 @@ class TestPlanCompletionReportTools:
     def test_create_completion_report_success(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -63,7 +64,7 @@ class TestPlanCompletionReportTools:
         assert completion_report_tools._completion_reports[loop_id] == sample_completion_report
 
     def test_create_completion_report_none_report(
-        self, completion_report_tools: PlanCompletionReportTools, mock_state_manager: Mock, project_path: str
+        self, completion_report_tools: PlanCompletionReportTools, mock_state_manager: MagicMock, project_path: str
     ) -> None:
         loop_id = 'test-loop-123'
 
@@ -85,7 +86,7 @@ class TestPlanCompletionReportTools:
     def test_create_completion_report_duplicate(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -103,7 +104,7 @@ class TestPlanCompletionReportTools:
     def test_create_completion_report_loop_not_found(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         project_path: str,
     ) -> None:
@@ -116,7 +117,7 @@ class TestPlanCompletionReportTools:
     def test_store_completion_report_success(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -134,7 +135,7 @@ class TestPlanCompletionReportTools:
     def test_get_completion_report_data_success(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -151,7 +152,7 @@ class TestPlanCompletionReportTools:
     def test_get_completion_report_data_not_found(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_loop_state: LoopState,
         project_path: str,
     ) -> None:
@@ -164,7 +165,7 @@ class TestPlanCompletionReportTools:
     def test_get_completion_report_markdown_success(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -183,7 +184,7 @@ class TestPlanCompletionReportTools:
     def test_update_completion_report_success(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -203,7 +204,7 @@ class TestPlanCompletionReportTools:
     def test_update_completion_report_not_found(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -313,7 +314,7 @@ class TestPlanCompletionReportTools:
     def test_delete_completion_report_success(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_completion_report: PlanCompletionReport,
         sample_loop_state: LoopState,
         project_path: str,
@@ -333,7 +334,7 @@ class TestPlanCompletionReportTools:
     def test_delete_completion_report_not_stored(
         self,
         completion_report_tools: PlanCompletionReportTools,
-        mock_state_manager: Mock,
+        mock_state_manager: MagicMock,
         sample_loop_state: LoopState,
         project_path: str,
     ) -> None:
@@ -346,7 +347,7 @@ class TestPlanCompletionReportTools:
         assert 'Unknown' in result.message
 
     def test_delete_completion_report_loop_not_found(
-        self, completion_report_tools: PlanCompletionReportTools, mock_state_manager: Mock, project_path: str
+        self, completion_report_tools: PlanCompletionReportTools, mock_state_manager: MagicMock, project_path: str
     ) -> None:
         loop_id = 'non-existent-loop'
         mock_state_manager.get_loop.side_effect = LoopNotFoundError('Loop not found')
@@ -355,7 +356,11 @@ class TestPlanCompletionReportTools:
             completion_report_tools.delete_completion_report(project_path, loop_id)
 
     def test_exception_handling_in_methods(
-        self, completion_report_tools: PlanCompletionReportTools, mock_state_manager: Mock, project_path: str
+        self,
+        mocker: MockerFixture,
+        completion_report_tools: PlanCompletionReportTools,
+        mock_state_manager: MagicMock,
+        project_path: str,
     ) -> None:
         loop_id = 'test-loop'
 
@@ -373,8 +378,8 @@ class TestPlanCompletionReportTools:
             completion_report_tools.get_completion_report_data(project_path, loop_id)
 
         # Test unexpected exception in list
-        completion_report_tools._completion_reports = Mock()
-        completion_report_tools._completion_reports.__bool__ = Mock(side_effect=Exception('Unexpected error'))
+        completion_report_tools._completion_reports = mocker.Mock()
+        completion_report_tools._completion_reports.__bool__ = mocker.Mock(side_effect=Exception('Unexpected error'))  # type: ignore[attr-defined]
 
         with pytest.raises(ToolError, match='Unexpected error listing completion reports'):
             completion_report_tools.list_completion_reports(project_path)
@@ -382,30 +387,30 @@ class TestPlanCompletionReportTools:
 
 class TestPlanCompletionReportToolsRegistration:
     @pytest.fixture
-    def mock_mcp(self) -> Mock:
-        return Mock()
+    def mock_mcp(self, mocker: MockerFixture) -> MagicMock:
+        return mocker.Mock()
 
     @pytest.fixture
-    def mock_context(self) -> Mock:
-        context = Mock()
-        context.info = Mock()
-        context.error = Mock()
+    def mock_context(self, mocker: MockerFixture) -> MagicMock:
+        context = mocker.Mock()
+        context.info = mocker.Mock()
+        context.error = mocker.Mock()
         return context
 
-    @patch('services.mcp.tools.plan_completion_report_tools.state_manager')
-    def test_mcp_tools_registration(self, mock_state_manager: Mock, mock_mcp: Mock) -> None:
+    def test_mcp_tools_registration(self, mocker: MockerFixture, mock_mcp: MagicMock) -> None:
+        mocker.patch('src.mcp.tools.plan_completion_report_tools.state_manager')
         register_plan_completion_report_tools(mock_mcp)
 
         # Verify that mcp.tool() was called for each tool
         assert mock_mcp.tool.call_count == 6  # 6 tools total
 
-    @patch('services.mcp.tools.plan_completion_report_tools.PlanCompletionReportTools')
-    @patch('services.mcp.tools.plan_completion_report_tools.state_manager')
     def test_create_tool_integration(
-        self, mock_state_manager: Mock, mock_tools_class: Mock, mock_mcp: Mock, mock_context: Mock
+        self, mocker: MockerFixture, mock_mcp: MagicMock, mock_context: MockerFixture
     ) -> None:
         # Setup mock
-        mock_tools_instance = Mock()
+        mocker.patch('src.mcp.tools.plan_completion_report_tools.state_manager')
+        mock_tools_class = mocker.patch('src.mcp.tools.plan_completion_report_tools.PlanCompletionReportTools')
+        mock_tools_instance = mocker.Mock()
         mock_tools_class.return_value = mock_tools_instance
         mock_tools_instance.create_completion_report.return_value = MCPResponse(
             id='test-id', status=LoopStatus.COMPLETED, message='Success'

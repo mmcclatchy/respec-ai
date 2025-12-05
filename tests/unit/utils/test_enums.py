@@ -1,9 +1,8 @@
 import json
 
 import pytest
-
-from services.utils.enums import HealthState, LoopStatus, LoopType, OperationStatus
-from services.utils.setting_configs import loop_config
+from src.utils.enums import HealthState, LoopStatus, LoopType, OperationStatus
+from src.utils.setting_configs import loop_config
 
 
 class TestOperationStatus:

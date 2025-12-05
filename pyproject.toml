@@ -1,7 +1,7 @@
 [project]
-name = "spec-ai"
-version = "0.2.0"
-description = "AI-powered specification-driven development workflow"
+name = "respec-ai"
+version = "0.3.0"
+description = "RespecAI CLI - Lightweight manager for Docker-based specification-driven development workflow"
 readme = "README.md"
 requires-python = ">=3.13"
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ keywords = [
     "workflow",
     "automation",
     "specification",
-    "spec-ai",
+    "respec-ai",
     "spec-driven-development",
     "spec driven development",
 ]
@@ -29,21 +29,20 @@ classifiers = [
 ]
 
 dependencies = [
-    "pydantic >=2.0.0,<3.0.0",
-    "pydantic-settings >=2.0.0,<3.0.0",
-    "pyyaml >=6.0.2,<7.0.0",
-    "aiofiles >=24.1.0,<25.0.0",
-    "fastmcp >=2.12.2,<3.0.0",
-    "rich >=14.1.0,<15.0.0",
-    "markdown-it-py>=3.0.0",
-    "mdformat>=0.7.22",
+    "pydantic>=2.0.0,<3.0.0",
+    "pydantic-settings>=2.0.0,<3.0.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "rich>=14.1.0,<15.0.0",
+    "markdown-it-py>=3.0.0",           # Docker SDK for container management
+    "fastmcp>=2.13.3,<3.0.0",
+    "docker>=7.1.0,<8.0.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/mmcclatchy/spec-ai"
-Documentation = "https://github.com/mmcclatchy/spec-ai/blob/main/docs/USER_GUIDE.md"
-Repository = "https://github.com/mmcclatchy/spec-ai"
-Issues = "https://github.com/mmcclatchy/spec-ai/issues"
+Homepage = "https://github.com/mmcclatchy/respec-ai"
+Documentation = "https://github.com/mmcclatchy/respec-ai/blob/main/docs/USER_GUIDE.md"
+Repository = "https://github.com/mmcclatchy/respec-ai"
+Issues = "https://github.com/mmcclatchy/respec-ai/issues"
 
 [dependency-groups]
 dev = [
@@ -55,22 +54,27 @@ dev = [
     "types-aiofiles >=24.1.0.20250822,<25.0.0",
     "autoimport>=1.6.1",
     "pytest-env>=1.2.0",
+    "twine>=6.2.0",
+    "ruff>=0.14.8",
+    "types-docker>=7.1.0.20251202",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-package = true
-
 [tool.hatch.build.targets.wheel]
-packages = ["services"]
+only-include = [
+    "src/__init__.py",
+    "src/shared.py",
+    "src/cli",
+    "src/models",
+    "src/platform",
+    "src/utils",
+]
 
 [project.scripts]
-spec-ai-server = "services.mcp.server:run_local_server"
-spec-ai = "services.cli.main:main"
-spec-ai-setup = "services.cli.setup:main"
+respec-ai = "src.cli.main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

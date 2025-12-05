@@ -1,15 +1,15 @@
 # Coding Standards Template
 
-This file serves as a reference template for `.spec-ai/coding-standards.md` in user projects.
+This file serves as a reference template for `.respec-ai/coding-standards.md` in user projects.
 
 ## Purpose
 
-The `.spec-ai/coding-standards.md` file allows users to customize coding standards that the `build-coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
+The `.respec-ai/coding-standards.md` file allows users to customize coding standards that the `build-coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
 
 ## Location
 
 ```text
-{user-project-workspace}/.spec-ai/coding-standards.md
+{user-project-workspace}/.respec-ai/coding-standards.md
 ```
 
 ## Usage by build-coder Agent
@@ -88,12 +88,12 @@ The `build-coder` agent reads this file at the start of each coding iteration an
         from fastapi import FastAPI
         from pydantic import BaseModel
         
-        from services.auth import authenticate_user
-        from services.models import User
+        from src.auth import authenticate_user
+        from src.models import User
         
         # ❌ BAD
         def some_function():
-            from services.other import helper  # Inline import
+            from src.other import helper  # Inline import
         ```
     
     ### Naming Conventions
@@ -179,8 +179,8 @@ The `build-coder` agent reads this file at the start of each coding iteration an
     - **Location**: Mirror source structure in `tests/` directory
     
         ```text
-        services/auth.py       →  tests/unit/services/test_auth.py
-        services/models/user.py → tests/unit/services/models/test_user.py
+        src/auth.py       →  tests/unit/src/test_auth.py
+        src/models/user.py → tests/unit/src/models/test_user.py
         ```
     
     ### Test Requirements
@@ -227,7 +227,7 @@ The `build-coder` agent reads this file at the start of each coding iteration an
 
 To customize this template for your project:
 
-1. Copy this template to `.spec-ai/coding-standards.md` in your project workspace
+1. Copy this template to `.respec-ai/coding-standards.md` in your project workspace
 2. Modify sections to match your team's preferences
 3. Add project-specific rules (framework conventions, domain-specific patterns)
 4. Remove sections that don't apply to your project

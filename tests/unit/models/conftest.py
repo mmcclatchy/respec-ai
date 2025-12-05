@@ -6,11 +6,11 @@ metadata (HEADER_FIELD_MAPPING) rather than using model output, avoiding
 circular testing.
 """
 
-import pytest
 from enum import Enum
 from typing import Any, Callable, Type
 
-from services.models.base import MCPModel
+import pytest
+from src.models.base import MCPModel
 
 
 @pytest.fixture
