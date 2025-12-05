@@ -36,27 +36,12 @@ repos:
       # Run the formatter.
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
+  - repo: local
     hooks:
-      - id: mypy
-        args: [
-          --config-file=pyproject.toml,
-          # --ignore-missing-imports
-        ]
-        additional_dependencies: [
-          "pydantic>=2.0.0",
-          "pydantic-settings>=2.0.0",
-          "python-dotenv>=1.1.1",
-          "pyyaml>=6.0.2",
-          "aiofiles>=24.1.0",
-          "fastmcp>=2.12.0",
-          "pytest>=8.4.1",
-          "pytest-asyncio>=1.1.0",
-          "pytest-mock>=3.14.1",
-          "types-pyyaml>=6.0.12.20250809",
-          "types-aiofiles>=24.1.0.20250822",
-          "rich>=14.1.0",
-          "docker>=7.1.0,<8.0.0",
-          "types-docker>=7.1.0,<8.0.0",
-        ]
+      - id: zmypy
+        name: zmypy (zuban type checker)
+        entry: zmypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true

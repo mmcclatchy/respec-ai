@@ -3,8 +3,10 @@
 import inspect
 import re
 from typing import Any
+from types import ModuleType
 
 from fastmcp import FastMCP
+
 from src.mcp.tools import (
     build_plan_tools,
     feedback_tools_unified,
@@ -43,7 +45,7 @@ def validate_reRESPEC_AI_enum_completeness() -> dict[str, list[str]]:
 
 
 def discover_tool_registration_functions() -> dict[str, list[str]]:
-    modules = [
+    modules: list[ModuleType] = [
         loop_tools,
         feedback_tools_unified,
         project_plan_tools,

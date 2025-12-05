@@ -1,5 +1,6 @@
 import pytest
 from fastmcp.exceptions import ResourceError, ToolError
+
 from src.mcp.tools.project_plan_tools import ProjectPlanTools
 from src.models.enums import ProjectStatus
 from src.models.project_plan import ProjectPlan
@@ -51,9 +52,6 @@ def create_project_plan(name: str = 'AI-Powered Customer Support System') -> Pro
         meeting_schedule='Daily standups, weekly planning',
         documentation_standards='API docs, user guides, technical specs',
         project_status=ProjectStatus.DRAFT,
-        creation_date='2024-01-01',
-        last_updated='2024-01-01',
-        version='1.0',
     )
 
 
@@ -224,9 +222,6 @@ class TestListProjectPlans:
             meeting_schedule='Bi-weekly status updates',
             documentation_standards='Data dictionary, user guides',
             project_status=ProjectStatus.DRAFT,
-            creation_date='2024-01-15',
-            last_updated='2024-01-15',
-            version='1.0',
         )
         plan2_response = project_plan_tools.create_project_plan(plan2.project_name, plan2)
 

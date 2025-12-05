@@ -44,7 +44,6 @@ Issues = "https://github.com/mmcclatchy/respec-ai/issues"
 
 [dependency-groups]
 dev = [
-    "mypy >=1.17.1,<2.0.0",
     "pytest >=8.4.2,<9.0.0",
     "pytest-asyncio >=1.1.0,<2.0.0",
     "pytest-mock >=3.15.0,<4.0.0",
@@ -55,10 +54,10 @@ dev = [
     "twine>=6.2.0",
     "ruff>=0.14.8",
     "types-docker>=7.1.0.20251202",
+    "mypy>=1.19.0",
+    "zuban>=0.3.0",
 ]
-server = [
-    "fastmcp>=2.13.3,<3.0.0",
-]
+server = ["fastmcp>=2.12.2,<3.0.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -188,3 +187,6 @@ plugins = [
 [tool.pydantic-mypy]
 init_typed = true
 warn_required_dynamic_aliases = true
+
+[tool.zuban]
+mypy_path = ['.venv/bin/mypy']

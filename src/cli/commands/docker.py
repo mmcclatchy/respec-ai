@@ -1,6 +1,5 @@
 import sys
 from argparse import ArgumentParser, Namespace
-from pathlib import Path
 
 from rich.table import Table
 from src.cli.docker.manager import DockerManager, DockerManagerError
@@ -58,18 +57,6 @@ def add_arguments(parser: ArgumentParser) -> None:
         help='Specific version to pull (defaults to CLI version)',
     )
 
-    build_parser = subparsers.add_parser('build', help='Build Docker image from source')
-    build_parser.add_argument(
-        '--version',
-        help='Specific version tag (defaults to CLI version)',
-    )
-    build_parser.add_argument(
-        '--path',
-        type=Path,
-        default=Path.cwd(),
-        help='Path to build context (default: current directory)',
-    )
-
     subparsers.add_parser('list', help='List all respec-ai containers')
 
 
@@ -89,8 +76,6 @@ def run(args: Namespace) -> int:
             return _run_logs(manager, args)
         elif args.docker_command == 'pull':
             return _run_pull(manager, args)
-        elif args.docker_command == 'build':
-            return _run_build(manager, args)
         elif args.docker_command == 'list':
             return _run_list(manager, args)
         else:
@@ -130,7 +115,6 @@ def _run_status(manager: DockerManager, args: Namespace) -> int:
     if not status['exists']:
         print_warning(f'Container {status["name"]} does not exist')
         print_warning('Run: respec-ai docker pull')
-        print_warning('Or: respec-ai docker build')
 
     return 0
 
@@ -171,14 +155,6 @@ def _run_pull(manager: DockerManager, args: Namespace) -> int:
     version = args.version
     manager.pull_image(version)
     print_success('Image pulled successfully')
-    return 0
-
-
-def _run_build(manager: DockerManager, args: Namespace) -> int:
-    version = args.version
-    path = args.path
-    manager.build_image(version, path)
-    print_success('Image built successfully')
     return 0
 
 

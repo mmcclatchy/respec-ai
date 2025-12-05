@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from unittest.mock import MagicMock
 
 import pytest
 from fastmcp.exceptions import ResourceError, ToolError
 from pytest_mock import MockerFixture
+
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.models.enums import RoadmapStatus
 from src.models.roadmap import Roadmap
@@ -217,8 +216,6 @@ class TestGetRoadmap(TestRoadmapTools):
             quality_gates='Test gates',
             performance_targets='Test performance',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
         )
         mock_state_manager.get_roadmap.return_value = mock_roadmap
         mock_state_manager.get_roadmap_specs.return_value = mock_specs
@@ -262,8 +259,6 @@ class TestGetRoadmap(TestRoadmapTools):
             quality_gates='Test gates',
             performance_targets='Test performance',
             roadmap_status=RoadmapStatus.DRAFT,
-            creation_date=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat(),
         )
         mock_state_manager.get_roadmap.return_value = mock_roadmap
         mock_state_manager.get_roadmap_specs.return_value = []

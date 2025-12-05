@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from fastmcp.server.middleware import MiddlewareContext
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.server.middleware.logging import LoggingMiddleware
+
 from src.mcp.tools import register_all_tools
 from src.utils.enums import HealthState
 from src.utils.loop_state import HealthStatus
