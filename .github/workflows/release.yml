@@ -40,8 +40,8 @@ jobs:
       - name: Build CLI package
         run: uv build
 
-      - name: Publish to PyPI
-        run: uv publish --token ${{ secrets.PYPI_TOKEN }}
+      - name: Publish to TestPyPI
+        run: uv publish --publish-url https://test.pypi.org/legacy/ --token ${{ secrets.TEST_PYPI_TOKEN }}
 
   # Job 3: Build and publish Docker image to GHCR
   publish-docker:

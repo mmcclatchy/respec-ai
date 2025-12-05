@@ -18,7 +18,9 @@ venv.bak/
 dist/
 build/
 .eggs/
-*.lock
+# Lock files - exclude npm/yarn but track uv.lock for reproducible builds
+package-lock.json
+yarn.lock
 .venv/
 
 # Installer logs
@@ -111,4 +113,3 @@ temp*
 
 # secrets
 secrets/
-uv.lock
