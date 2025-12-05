@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Protocol
+from typing import Generic, Protocol, TypeVar
 
 from src.platform.platform_selector import PlatformType
 from src.platform.tool_registry import ToolRegistry
+
+
+T = TypeVar('T')
 
 
 class CommandStrategyProtocol(Protocol):
@@ -11,7 +14,7 @@ class CommandStrategyProtocol(Protocol):
     def generate_template(self, platform: PlatformType) -> str: ...
 
 
-class CommandStrategy[T](ABC):
+class CommandStrategy(ABC, Generic[T]):
     def __init__(self, tool_registry: ToolRegistry) -> None:
         self.tool_registry = tool_registry
 

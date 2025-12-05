@@ -2,6 +2,7 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from collections import deque
+from typing import Generic, TypeVar
 
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
@@ -17,6 +18,8 @@ from src.utils.loop_state import LoopState, MCPResponse
 
 
 logger = logging.getLogger('state_manager')
+
+T = TypeVar('T')
 
 
 def normalize_spec_name(spec_name: str) -> str:
@@ -135,7 +138,7 @@ class StateManager(ABC):
     def delete_project_plan(self, project_name: str) -> bool: ...
 
 
-class Queue[T]:
+class Queue(Generic[T]):
     def __init__(self, maxlen: int) -> None:
         self._deque: deque[T] = deque(maxlen=maxlen)
         self.maxlen = maxlen
