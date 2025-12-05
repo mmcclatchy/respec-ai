@@ -3,6 +3,9 @@ import subprocess
 from pathlib import Path
 
 
+from src.cli.config.package_info import get_package_version
+
+
 class TestRespecAISetupEndToEnd:
     def test_full_linear_project_setup_workflow(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'
@@ -192,4 +195,4 @@ class TestRespecAISetupEndToEnd:
         assert config_data['platform'] == 'linear'
         assert config_data['project_name'] == 'test-project'
         assert 'created_at' in config_data
-        assert config_data['version'] == '0.3.0'
+        assert config_data['version'] == get_package_version()
