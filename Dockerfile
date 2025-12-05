@@ -10,7 +10,7 @@ COPY pyproject.server.toml pyproject.toml
 COPY src/ ./src/
 
 # Install MCP server dependencies (generates lock file from pyproject.toml)
-RUN uv sync
+RUN uv sync --no-dev
 
 # Container runs in daemon mode, waiting for docker exec commands
 # Keeps container alive and maintains DB connections (for future DatabaseStateManager)
