@@ -1,6 +1,6 @@
 [project]
 name = "respec-ai"
-version = "0.4.5"
+version = "0.4.6"
 description = "RespecAI CLI - Lightweight manager for Docker-based specification-driven development workflow"
 readme = "README.md"
 requires-python = ">=3.13"
