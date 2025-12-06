@@ -3,6 +3,12 @@ name: Update Homebrew Formula
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (e.g., 0.5.1)'
+        required: true
+        type: string
 
 jobs:
   update-formula:
@@ -11,8 +17,12 @@ jobs:
       - name: Extract version from tag
         id: version
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          VERSION="${VERSION#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"
+          fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Set up Python
