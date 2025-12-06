@@ -14,12 +14,14 @@ def run_command(cmd: list[str]) -> str:
 
 def generate_resources() -> str:
     # Generate resources for all dependencies (direct + transitive)
-    # Use poet with all packages at once to get complete dependency tree
     deps = ['pydantic', 'pydantic-settings', 'rich', 'markdown-it-py', 'docker']
 
     try:
-        # Build poet command with --also flags for all dependencies
-        cmd = ['poet'] + deps
+        # Build poet command: poet <first> --also <second> --also <third> ...
+        cmd = ['poet', deps[0]]
+        for dep in deps[1:]:
+            cmd.extend(['--also', dep])
+
         output = run_command(cmd)
 
         # Extract resource blocks (remove warnings/comments)
@@ -28,8 +30,8 @@ def generate_resources() -> str:
         return '\n'.join(resource_lines)
     except subprocess.CalledProcessError as e:
         print(f'Error: Failed to generate resources: {e}', file=sys.stderr)
-        # Return empty string to avoid breaking the formula
-        return ''
+        print(f'Command was: {" ".join(cmd)}', file=sys.stderr)
+        raise  # Re-raise to make the workflow fail loudly
 
 
 def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> None:
