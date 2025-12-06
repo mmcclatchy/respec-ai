@@ -39,9 +39,12 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
         r'url "https://test-files\.pythonhosted\.org/packages/.*/respec_ai-.*\.tar\.gz"', f'url "{url}"', content
     )
 
-    # Update main package SHA256 (first occurrence)
+    # Update main package SHA256 (first occurrence after URL)
     content = re.sub(
-        r'(class RespecAi.*?license "MIT"\s+)sha256 ".*?"', rf'\1sha256 "{sha256}"', content, count=1, flags=re.DOTALL
+        r'(url "https://test-files\.pythonhosted\.org/packages/.*?\.tar\.gz"\s+)sha256 ".*?"',
+        rf'\1sha256 "{sha256}"',
+        content,
+        count=1,
     )
 
     # Update test version assertion
