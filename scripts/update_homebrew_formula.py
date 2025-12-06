@@ -13,22 +13,23 @@ def run_command(cmd: list[str]) -> str:
 
 
 def generate_resources() -> str:
-    # Generate resources for the 5 direct dependencies
+    # Generate resources for all dependencies (direct + transitive)
+    # Use poet with all packages at once to get complete dependency tree
     deps = ['pydantic', 'pydantic-settings', 'rich', 'markdown-it-py', 'docker']
 
-    resources = []
-    for dep in deps:
-        try:
-            output = run_command(['poet', dep])
-            # Extract just the resource block (remove warnings)
-            lines = output.split('\n')
-            resource_lines = [line for line in lines if not line.strip().startswith('/')]
-            resources.append('\n'.join(resource_lines))
-        except subprocess.CalledProcessError as e:
-            print(f'Warning: Failed to generate resource for {dep}: {e}', file=sys.stderr)
-            continue
+    try:
+        # Build poet command with --also flags for all dependencies
+        cmd = ['poet'] + deps
+        output = run_command(cmd)
 
-    return '\n\n  '.join(resources)
+        # Extract resource blocks (remove warnings/comments)
+        lines = output.split('\n')
+        resource_lines = [line for line in lines if not line.strip().startswith('/')]
+        return '\n'.join(resource_lines)
+    except subprocess.CalledProcessError as e:
+        print(f'Error: Failed to generate resources: {e}', file=sys.stderr)
+        # Return empty string to avoid breaking the formula
+        return ''
 
 
 def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> None:
@@ -55,8 +56,9 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
     resources = generate_resources()
 
     # Replace resource blocks section (between depends_on and def install)
-    pattern = r'(depends_on "python@3\.11"\s+)(.*?)(\s+def install)'
-    replacement = rf'\1\n  {resources}\n\3'
+    # Support both "python" and "python@X.Y" patterns
+    pattern = r'(depends_on "python(?:@[\d.]+)?".+?\n)(.*?)(\n\s+def install)'
+    replacement = rf'\1\n  {resources}\3'
     content = re.sub(pattern, replacement, content, flags=re.DOTALL)
 
     formula_path.write_text(content)
