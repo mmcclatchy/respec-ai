@@ -69,13 +69,15 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
     # Create virtualenv
     venv = virtualenv_create(libexec, "python3")
 
-    # Install resources - allow binary wheels to avoid Rust compilation issues
-    # (pydantic-core and other Rust-based packages require maturin/Rust to build from source)
+    # Install resources with binary wheels allowed for Rust packages
+    # (pydantic-core requires maturin/Rust to build from source, which fails in Homebrew)
     resources.each do |r|
-      venv.pip_install r
+      # Use direct pip call to allow binary wheels, avoiding --no-binary :all: flag
+      system libexec/"bin/pip", "install", "--verbose", "--no-deps",
+             "--config-settings=--build-option=--no-user-cfg", r.cached_download
     end
 
-    # Install main package from TestPyPI
+    # Install main package
     venv.pip_install_and_link buildpath
   end"""
 
