@@ -24,6 +24,49 @@ RespecAI is a **meta MCP server** that generates platform-specific workflow tool
 
 See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and [MULTI_PROJECT_DESIGN.md](MULTI_PROJECT_DESIGN.md) for architecture details.
 
+## Table of Contents
+
+- [What is RespecAI?](#what-is-respecai)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation Overview](#installation-overview)
+  - [Part 1: RespecAI Package Installation](#part-1-respecai-package-installation-one-time)
+  - [Part 2: Project Setup](#part-2-project-setup-per-project)
+  - [Quick Start: Your First RespecAI Workflow](#quick-start-your-first-respecai-workflow)
+- [Multi-Project Support](#multi-project-support)
+- [CLI Reference](#cli-reference)
+  - [respec-ai init](#respec-ai-init)
+  - [respec-ai platform](#respec-ai-platform)
+  - [respec-ai status](#respec-ai-status)
+  - [respec-ai validate](#respec-ai-validate)
+  - [respec-ai upgrade](#respec-ai-upgrade)
+  - [respec-ai register-mcp](#respec-ai-register-mcp)
+- [Platform Selection](#platform-selection)
+- [Available Commands](#available-commands)
+  - [/respec-plan](#respec-plan)
+  - [/respec-roadmap](#respec-roadmap)
+  - [/respec-spec](#respec-spec)
+  - [/respec-build](#respec-build)
+- [Workflow Examples](#workflow-examples)
+- [Quality & Refinement Loops](#quality--refinement-loops)
+- [Platform-Specific Workflows](#platform-specific-workflows)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+  - [RespecAI MCP Server Not Available](#respecai-mcp-server-not-available)
+  - [Commands Not Found](#commands-not-found)
+  - [Homebrew Installation Issues](#homebrew-installation-issues)
+- [Best Practices](#best-practices)
+- [Advanced Usage](#advanced-usage)
+- [Local Development Setup](#local-development-setup)
+  - [Prerequisites](#prerequisites-1)
+  - [Quick Setup (Recommended)](#quick-setup-recommended)
+  - [Alternative: Manual Configuration](#alternative-manual-configuration)
+  - [Choosing a State Manager](#choosing-a-state-manager)
+  - [Development Workflows](#development-workflows)
+  - [Troubleshooting Local Development](#troubleshooting-local-development)
+- [Getting Help](#getting-help)
+- [Next Steps](#next-steps)
+
 ## Getting Started
 
 ### Prerequisites
@@ -32,19 +75,23 @@ See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and
 - **Claude Code CLI** installed and configured
 - **Git** for repository access
 
-**For RespecAI MCP Server (required):**
+**For RespecAI installation (choose one method):**
+
+**Option A: Homebrew (macOS only):**
+- **macOS** operating system
+- **Homebrew** package manager
+- **Docker Desktop** (required for MCP server functionality)
+
+**Option B: uv Tool (all platforms):**
 - **uv** (Python version and package manager) - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
-- **Python 3.13+**
+- **Python 3.11+**
 - **Unix-like operating system** (Linux, macOS, or Windows Subsystem for Linux)
+- **Docker** (Linux) or **Docker Desktop** (macOS, Windows, WSL)
 
 **For platform integrations (optional):**
 - **Linear MCP Server** - If using Linear platform
 - **GitHub MCP Server** - If using GitHub platform
 - **Markdown platform** - No additional requirements (uses local files)
-
-**For containerized deployments (optional):**
-- **Docker** (Linux)
-- **Docker Desktop** (macOS, Windows, Windows Subsystem for Linux)
 
 ### Installation Overview
 
@@ -59,21 +106,23 @@ Both parts can be completed with a single command.
 
 This installs the RespecAI package and makes the CLI available globally.
 
-#### Step 1: Install RespecAI from PyPI
+Choose the installation method that best fits your platform:
 
-**For development/testing (TestPyPI):**
+#### Option A: Homebrew Installation (macOS - Recommended)
+
+⚠️ **Development Version**: Currently installing from TestPyPI for testing. Production release coming soon.
+
+**Prerequisites:**
+- macOS with Homebrew installed
+- Docker Desktop (required for MCP server functionality)
+
+**Installation:**
 ```bash
-# Install from TestPyPI
-uv add --index https://test.pypi.org/simple/ respec-ai
+# Add the development tap
+brew tap mmcclatchy/respec-ai
 
-# Verify installation
-respec-ai --version
-```
-
-**For production (PyPI):**
-```bash
-# Install from PyPI
-uv add respec-ai
+# Install respec-ai
+brew install respec-ai
 
 # Verify installation
 respec-ai --version
@@ -81,12 +130,54 @@ respec-ai --version
 
 **Expected output:**
 ```text
-respec-ai 0.2.0
+respec-ai 0.5.15
 ```
+
+**What gets installed:**
+- ✅ respec-ai CLI tool
+- ✅ All Python dependencies (pydantic, rich, docker, etc.)
+- ✅ Isolated virtualenv (no conflicts with system Python)
+
+**Note:** The MCP server will be automatically registered in Step 2 or can be registered manually.
+
+#### Option B: uv Tool Installation (All Platforms)
+
+**Prerequisites:**
+- uv installed ([Install uv](https://docs.astral.sh/uv/getting-started/installation/))
+- Python 3.11+
+- Docker or Docker Desktop
+
+**For development/testing (TestPyPI):**
+```bash
+# Install from TestPyPI
+uv tool install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ respec-ai
+
+# Verify installation
+respec-ai --version
+```
+
+**For production (PyPI):**
+```bash
+# Install from PyPI (when available)
+uv tool install respec-ai
+
+# Verify installation
+respec-ai --version
+```
+
+**Expected output:**
+```text
+respec-ai 0.5.15
+```
+
+**What gets installed:**
+- ✅ respec-ai CLI tool in isolated environment
+- ✅ All Python dependencies automatically
+- ✅ Cross-platform compatibility
 
 #### Step 2: Register MCP Server (Automatic or Manual)
 
-The MCP server can be registered automatically during project initialization (recommended) or manually.
+The MCP server can be registered automatically during project initialization (recommended) or manually. **This step works the same regardless of which installation method you used** (Homebrew or uv tool).
 
 **Option A: Automatic Registration (Recommended)**
 
@@ -94,7 +185,7 @@ The MCP server will be automatically registered when you run `respec-ai init` in
 
 **Option B: Manual Registration**
 
-If you prefer to register the MCP server separately:
+If you prefer to register the MCP server separately (or if automatic registration was skipped):
 ```bash
 respec-ai register-mcp
 ```
@@ -1345,6 +1436,57 @@ This preserves your platform choice while updating templates to the latest versi
 
 ---
 
+### Homebrew Installation Issues
+
+**Problem:** `brew install` fails or Homebrew tap not found
+
+**Symptoms:**
+- Error: "Error: No available formula with the name \"respec-ai\""
+- Tap not showing in `brew tap` list
+- Installation hangs or fails with dependency errors
+
+**Solution:**
+
+1. **Verify tap is added:**
+   ```bash
+   brew tap
+   # Should show: mmcclatchy/respec-ai
+   ```
+
+2. **If tap is missing:**
+   ```bash
+   brew tap mmcclatchy/respec-ai
+   brew update
+   brew install respec-ai
+   ```
+
+3. **Check Homebrew is up to date:**
+   ```bash
+   brew update
+   brew --version
+   ```
+
+4. **For dylib errors (can be safely ignored):**
+   - Error about pydantic_core dylib paths is cosmetic
+   - Software will work despite the warning
+   - The error message will mention "Failed to fix install linkage"
+   - This doesn't affect functionality - `respec-ai --version` will still work
+
+5. **Reinstall if needed:**
+   ```bash
+   brew uninstall respec-ai
+   brew update
+   brew install mmcclatchy/respec-ai/respec-ai
+   ```
+
+6. **Verify installation:**
+   ```bash
+   respec-ai --version
+   # Should show current version (e.g., 0.5.15)
+   ```
+
+---
+
 ### Python Version Errors
 
 **Problem:** Python version compatibility issues
@@ -1524,6 +1666,685 @@ For complex projects:
 - Review via pull requests
 - Track changes with Git history
 - Collaborate async
+
+## Local Development Setup
+
+### Overview
+
+For developers who want to contribute to RespecAI or test changes locally before deploying.
+
+This section covers:
+- Setting up the local development environment
+- Configuring Claude Code to use your local MCP server
+- Rapid iteration workflows for MCP tools and templates
+- Testing and code quality procedures
+
+### Prerequisites
+
+Before starting local development, ensure you have:
+
+- **Git** - Repository cloned locally
+- **Python 3.11+** - Check with `python --version`
+- **uv** - Package and version manager ([Install uv](https://docs.astral.sh/uv/getting-started/installation/))
+- **Docker/Docker Desktop** - Required for MCP server functionality
+- **Claude Code CLI** - For testing MCP server integration
+
+### Quick Setup (Recommended)
+
+The fastest way to set up local development is using the install script:
+
+```bash
+# 1. Clone and set up the repository
+git clone git@github.com:mmcclatchy/respec-ai.git
+cd respec-ai
+uv sync
+
+# 2. Run the install script from your project directory
+cd ~/path/to/your/project
+~/path/to/respec-ai/scripts/install-respec-ai.sh -n <PROJECT_NAME> -p <PLATFORM>
+```
+
+**Example:**
+```bash
+# For markdown platform (no external dependencies)
+cd ~/myproject
+~/coding/projects/respec-ai/scripts/install-respec-ai.sh -n myproject -p markdown
+
+# For linear platform
+cd ~/myproject
+~/coding/projects/respec-ai/scripts/install-respec-ai.sh -n myproject -p linear
+```
+
+**What the script does:**
+- ✅ Configures Claude Code to use your local RespecAI repository
+- ✅ Sets up MCP server with `uv run respec-server`
+- ✅ Uses in-memory state manager (default - clean slate on restart)
+- ✅ Generates workflow files in your project
+- ✅ No Docker required for memory mode
+
+**After running:**
+1. Restart Claude Code to load the local MCP server
+2. Verify with `/mcp list` - should show `respec-ai` with 32 tools
+3. Start developing!
+
+---
+
+### Alternative: Manual Configuration
+
+If you prefer to configure manually without using the install script:
+
+#### Step 1: Clone Repository
+
+```bash
+# Clone the repository
+git clone git@github.com:mmcclatchy/respec-ai.git
+cd respec-ai
+
+# Install dependencies
+uv sync
+
+# Verify installation
+uv run respec-server --help
+```
+
+#### Step 2: Register MCP Server with Claude Code
+
+Use the Claude Code CLI to register your local MCP server:
+
+```bash
+cd /absolute/path/to/respec-ai
+claude mcp add -s user -t stdio respec-ai -- uv run respec-server
+```
+
+**Example:**
+```bash
+cd ~/coding/projects/respec-ai
+claude mcp add -s user -t stdio respec-ai -- uv run respec-server
+```
+
+**Note:** The `--` separator is required to prevent command arguments from being parsed as options.
+
+**Verify registration:**
+```bash
+claude mcp list
+# Should show "respec-ai" in the list
+```
+
+**Important Configuration Notes:**
+- `"command": "uv"` - Uses uv to run the local server
+- `"args": ["run", "respec-server"]` - Runs the respec-server entry point
+- `"cwd"` - **MUST be an absolute path** to your local respec-ai repository
+  - Example: `/Users/yourname/coding/projects/respec-ai`
+  - Do NOT use relative paths like `~/coding/projects/respec-ai`
+
+**Alternative Configuration (using Python directly):**
+
+If you prefer not to use `uv`, you can run with Python:
+
+```json
+{
+  "mcpServers": {
+    "respec-ai": {
+      "command": "python",
+      "args": ["-m", "src.mcp"],
+      "cwd": "/absolute/path/to/respec-ai"
+    }
+  }
+}
+```
+
+#### Step 3: Restart Claude Code
+
+```bash
+# Exit Claude Code completely
+# Then restart
+claude
+```
+
+In Claude Code, verify the local server is loaded:
+
+```text
+/mcp list
+```
+
+**Expected output:**
+```text
+Available MCP Servers:
+  respec-ai
+    ├─ 32 tools available
+    ├─ create_project_plan
+    ├─ store_project_plan
+    ├─ get_project_plan
+    └─ [other tools...]
+```
+
+### Choosing a State Manager
+
+RespecAI supports two state management modes for local development:
+
+#### Memory Mode (Default - Recommended for Development)
+
+**Use for:**
+- ✅ Rapid iteration on workflow logic
+- ✅ Testing changes without data pollution
+- ✅ Clean slate on every restart
+- ✅ Fast startup (no database setup)
+
+**Configuration:**
+
+This is the default mode used in the local development setup above. The state manager is already configured when you set up your local MCP server.
+
+**How it works:**
+- State stored in memory only
+- Restarting Claude Code clears all state
+- No database required
+- Perfect for testing workflow changes
+
+**Example Claude Code Configuration:**
+```json
+{
+  "mcpServers": {
+    "respec-ai": {
+      "command": "uv",
+      "args": ["run", "respec-server"],
+      "cwd": "/absolute/path/to/respec-ai",
+      "env": {
+        "STATE_MANAGER": "memory"
+      }
+    }
+  }
+}
+```
+
+#### Database Mode (Future - Persistent State)
+
+⚠️ **Status:** Stubbed for future implementation
+
+**Will be used for:**
+- Data persistence across restarts
+- Testing multi-session workflows
+- Production-like behavior
+
+**Future Configuration (when available):**
+
+When database support is implemented, you'll be able to use Docker Compose for persistent state:
+
+```bash
+# Start database and MCP server
+cd /path/to/respec-ai
+docker compose -f docker-compose.dev.yml up -d
+
+# Claude Code will connect to the containerized MCP server
+```
+
+**Future Claude Code Configuration:**
+```json
+{
+  "mcpServers": {
+    "respec-ai": {
+      "command": "docker",
+      "args": ["compose", "-f", "/absolute/path/to/respec-ai/docker-compose.dev.yml", "exec", "-T", "mcp-server", "respec-server"],
+      "cwd": "/absolute/path/to/respec-ai",
+      "env": {
+        "STATE_MANAGER": "database"
+      }
+    }
+  }
+}
+```
+
+**Future Implementation Details:**
+- PostgreSQL database with raw SQL + Pydantic models
+- Docker Compose setup with volume-mounted code for live reloading
+- Data survives MCP server restarts
+- Requires Docker Compose
+
+**Note:** Database mode is currently stubbed. Attempting to use it will raise a clear `NotImplementedError` with instructions to use memory mode. Database support coming in a future release.
+
+---
+
+### Development Workflows
+
+#### MCP Server Development
+
+**Making changes to MCP tools:**
+
+1. **Edit files** in `src/mcp/tools/`
+   ```bash
+   vim src/mcp/tools/project_plan_tools.py
+   ```
+
+2. **Write/update tests** in `tests/unit/mcp/`
+   ```bash
+   vim tests/unit/mcp/test_project_plan_tools.py
+   ```
+
+3. **Run tests**
+   ```bash
+   uv run pytest tests/unit/mcp/ -v
+   ```
+
+4. **Restart Claude Code** to load changes
+   ```bash
+   # Exit and restart
+   claude
+   ```
+
+5. **Test interactively**
+   ```text
+   /mcp list
+   # Call tools directly or through commands
+   ```
+
+**Key Points:**
+- **No publishing required** - Changes are immediate after Claude Code restart
+- **Fast iteration** - Edit, test, restart, verify
+- **Full MCP tool access** - Test with real Claude Code integration
+
+**Adding New MCP Tools:**
+
+1. Create tool in `src/mcp/tools/new_tool.py`
+2. Register in `src/mcp/server.py::register_all_tools()`
+3. Write tests in `tests/unit/mcp/test_new_tool.py`
+4. Run tests: `uv run pytest tests/unit/mcp/`
+5. Restart Claude Code to load new tool
+
+#### Template Refinement
+
+**Quick iteration on agent/command templates:**
+
+**Method 1: Script Testing (Fastest)**
+
+Generate and view templates without side effects:
+
+```bash
+uv run python scripts/generate_templates.py
+```
+
+This shows formatted markdown for all document types to stdout. Use this for:
+- Quick verification of template changes
+- Checking tool configurations
+- Validating YAML frontmatter
+
+**Method 2: Test in Isolated Project**
+
+Test full template generation in a real project context:
+
+```bash
+cd /tmp
+respec-ai init --platform markdown --project-name test-templates
+cat .claude/agents/plan-analyst.md
+cat .claude/commands/respec-plan.md
+```
+
+This verifies:
+- Templates generate correctly
+- Platform-specific tools are included
+- File structure is correct
+
+**Method 3: Live Testing in Claude Code**
+
+Test templates with actual workflow execution:
+
+1. Modify template in `src/platform/templates/agents/` or `src/platform/templates/commands/`
+2. Run `respec-ai init` in a test project
+3. Restart Claude Code to load updated templates
+4. Test with `/respec-plan` or other commands
+5. Verify behavior matches expectations
+
+**Typical Template Changes:**
+
+**Updating Agent Instructions:**
+```bash
+# 1. Edit agent template
+vim src/platform/templates/agents/plan_analyst.py
+
+# 2. Test generation
+uv run python scripts/generate_templates.py
+
+# 3. Run unit tests
+uv run pytest tests/unit/templates/ -v
+
+# 4. Test in real project
+cd /tmp/test-project
+respec-ai init --platform markdown
+cat .claude/agents/plan-analyst.md
+```
+
+**Updating Command Configuration:**
+```bash
+# 1. Edit command strategy
+vim src/platform/command_strategies/plan_command.py
+
+# 2. Test generation
+uv run python scripts/generate_templates.py
+
+# 3. Verify in test project
+cd /tmp/test-project
+respec-ai init --platform linear
+cat .claude/commands/respec-plan.md
+```
+
+#### Running Tests
+
+**All Tests:**
+```bash
+uv run pytest tests/
+```
+
+**By Test Level:**
+```bash
+# Unit tests only (fast, isolated)
+uv run pytest tests/unit/ -v
+
+# Integration tests (component interactions)
+uv run pytest tests/integration/ -v
+
+# E2E tests (full workflows)
+uv run pytest tests/e2e/ -v
+```
+
+**Specific Test Files:**
+```bash
+# Test specific MCP tools
+uv run pytest tests/unit/mcp/test_project_plan_tools.py -v
+
+# Test template generation
+uv run pytest tests/unit/templates/test_template_generator.py -v
+
+# Test platform strategies
+uv run pytest tests/integration/test_platform_strategies.py -v
+```
+
+**With Coverage:**
+```bash
+# Generate HTML coverage report
+uv run pytest tests/ --cov=src --cov-report=html
+
+# View coverage report
+open htmlcov/index.html
+```
+
+**Test Markers:**
+```bash
+# Run tests with specific markers
+uv run pytest -m "integration" tests/
+uv run pytest -m "mcp_orchestration" tests/
+```
+
+#### Code Quality
+
+**Pre-commit Hooks (Automatic):**
+
+Installed hooks run automatically on `git commit`:
+- ✅ Ruff linting with auto-fix
+- ✅ Ruff formatting
+- ✅ Type checking (mypy)
+- ✅ Markdown validation
+- ✅ Docstring enforcement
+- ✅ Import location validation
+
+**Install Pre-commit Hooks:**
+```bash
+pre-commit install
+```
+
+**Manual Quality Checks:**
+
+```bash
+# Lint and auto-fix
+uv run ruff check . --fix
+
+# Type checking
+uv run mypy src/
+
+# Markdown linting
+markdownlint-cli2 '**/*.md'
+```
+
+**Before Committing:**
+```bash
+# Run all quality checks
+uv run pytest tests/ -v
+uv run ruff check .
+uv run mypy src/
+```
+
+### Switching Between Local and Production
+
+**Local Development Mode:**
+
+Use your local repository for development:
+
+```json
+{
+  "mcpServers": {
+    "respec-ai": {
+      "command": "uv",
+      "args": ["run", "respec-server"],
+      "cwd": "/Users/yourname/coding/projects/respec-ai"
+    }
+  }
+}
+```
+
+Benefits:
+- ✅ Changes immediate after Claude Code restart
+- ✅ No publishing required
+- ✅ Fast iteration
+- ✅ Full debugging capabilities
+
+**Production Mode:**
+
+Use the installed version from Homebrew or uv tool:
+
+```json
+{
+  "mcpServers": {
+    "respec-ai": {
+      "command": "respec-server"
+    }
+  }
+}
+```
+
+Benefits:
+- ✅ Uses stable released version
+- ✅ No local repository required
+- ✅ Consistent with production deployments
+
+**Switching Between Modes:**
+
+1. Edit `~/.claude/config.json`
+2. Add or remove the `cwd` parameter
+3. Restart Claude Code
+
+### Project Structure
+
+**Key Directories:**
+
+```text
+respec-ai/
+├── src/
+│   ├── cli/                    # CLI commands and interface
+│   ├── mcp/                    # MCP server and tools
+│   │   ├── server.py          # MCP server creation
+│   │   ├── tools/             # 32 MCP tools across 7 modules
+│   │   └── __main__.py        # Entry point for respec-server
+│   └── platform/
+│       ├── templates/          # Agent and command templates
+│       │   ├── agents/        # 12 agent templates
+│       │   └── commands/      # 5 command templates
+│       ├── template_generator.py
+│       ├── template_coordinator.py
+│       └── command_strategies/
+├── tests/
+│   ├── unit/                  # Unit tests (fast, isolated)
+│   ├── integration/           # Integration tests
+│   ├── e2e/                   # End-to-end tests
+│   └── conftest.py           # Global fixtures
+├── scripts/
+│   ├── generate_templates.py # Template testing script
+│   └── build.sh              # Build and release script
+└── pyproject.toml            # Project configuration
+```
+
+**Important Files:**
+
+- `src/mcp/server.py` - MCP server creation and tool registration
+- `src/mcp/tools/` - All MCP tool implementations
+- `src/platform/templates/` - Agent and command templates
+- `tests/conftest.py` - Test fixtures and configuration
+- `.pre-commit-config.yaml` - Code quality hooks
+
+### Troubleshooting Local Development
+
+#### MCP Server Not Starting
+
+**Symptoms:**
+- RespecAI doesn't appear in `/mcp list`
+- Error messages in Claude Code output
+- Server fails to initialize
+
+**Solutions:**
+
+1. **Verify `cwd` path is absolute and correct:**
+   ```bash
+   # Check the path exists
+   ls -la /absolute/path/to/respec-ai
+
+   # Should show the respec-ai repository contents
+   ```
+
+2. **Check `uv` is in PATH:**
+   ```bash
+   which uv
+   # Should show: /Users/yourname/.cargo/bin/uv or similar
+
+   uv --version
+   # Should show: uv X.Y.Z
+   ```
+
+3. **Look for errors in Claude Code output:**
+   - Check Claude Code terminal for error messages
+   - Look for Python import errors
+   - Verify all dependencies are installed: `uv sync`
+
+4. **Test server manually:**
+   ```bash
+   cd /path/to/respec-ai
+   uv run respec-server
+   # Should start without errors
+   ```
+
+#### Changes Not Appearing
+
+**Symptoms:**
+- Modified MCP tools don't reflect in Claude Code
+- Updated templates don't show in generated files
+- Code changes seem to be ignored
+
+**Solutions:**
+
+1. **Restart Claude Code completely:**
+   ```bash
+   # Must fully exit and restart, not just reload
+   # Exit Claude Code
+   claude
+   ```
+
+2. **Verify you edited the correct file:**
+   ```bash
+   # Check file modification time
+   ls -la src/mcp/tools/your_tool.py
+
+   # Verify file contents
+   cat src/mcp/tools/your_tool.py | grep "your change"
+   ```
+
+3. **Check for syntax errors:**
+   ```bash
+   # Test server starts without errors
+   uv run python -m src.mcp
+
+   # Run tests to catch errors
+   uv run pytest tests/unit/mcp/ -v
+   ```
+
+4. **Verify configuration points to correct repository:**
+   ```bash
+   cat ~/.claude/config.json | grep -A 5 respec-ai
+   # Should show correct cwd path
+   ```
+
+#### Tools Not Showing
+
+**Symptoms:**
+- New tools don't appear in `/mcp list`
+- Tool count is lower than expected
+- Specific tools are missing
+
+**Solutions:**
+
+1. **Check tools are registered in `src/mcp/server.py`:**
+   ```python
+   # Verify your tool is registered in register_all_tools()
+   def register_all_tools(server: Server) -> None:
+       # ... other tools ...
+       register_your_tool(server)  # Should be here
+   ```
+
+2. **Verify import statements:**
+   ```python
+   # Check imports at top of server.py
+   from src.mcp.tools.your_tool import register_your_tool
+   ```
+
+3. **Check MCP server logs for errors:**
+   - Look for import errors in Claude Code output
+   - Check for registration errors
+   - Verify tool function signatures match MCP requirements
+
+4. **Test tool registration:**
+   ```bash
+   # Run server and check output
+   uv run respec-server
+   # Look for successful registration messages
+   ```
+
+#### Test Failures
+
+**Symptoms:**
+- Tests fail after making changes
+- New tests don't pass
+- Unexpected test errors
+
+**Solutions:**
+
+1. **Run specific test with verbose output:**
+   ```bash
+   uv run pytest tests/unit/mcp/test_your_tool.py -v -s
+   # -v for verbose, -s to see print statements
+   ```
+
+2. **Check test fixtures:**
+   ```bash
+   # Verify fixtures in tests/conftest.py
+   cat tests/conftest.py | grep "your_fixture"
+   ```
+
+3. **Run tests in isolation:**
+   ```bash
+   # Run single test method
+   uv run pytest tests/unit/mcp/test_your_tool.py::test_specific_function -v
+   ```
+
+4. **Clear pytest cache:**
+   ```bash
+   rm -rf .pytest_cache
+   find . -type d -name __pycache__ -exec rm -rf {} +
+   uv run pytest tests/ -v
+   ```
 
 ## Getting Help
 

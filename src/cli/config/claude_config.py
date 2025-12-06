@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from src.cli.config.package_info import get_package_version
@@ -143,7 +144,7 @@ def register_mcp_server(
     force: bool = False,
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
-    """Register RespecAI MCP server in Claude Code config.
+    """Register RespecAI MCP server in Claude Code config using Claude CLI.
 
     Args:
         force: Overwrite existing registration
@@ -155,30 +156,62 @@ def register_mcp_server(
     Raises:
         ClaudeConfigError: If Claude Code not installed or registration fails
     """
-    config = load_claude_config(config_path)
-
-    if 'mcpServers' not in config:
-        config['mcpServers'] = {}
-
-    if MCP_SERVER_NAME in config['mcpServers'] and not force:
+    # Check if already registered
+    if is_mcp_server_registered(config_path) and not force:
         return False
 
     version = get_package_version()
     container_name = f'respec-ai-{version}'
 
-    config['mcpServers'][MCP_SERVER_NAME] = {
-        'command': 'docker',
-        'args': ['exec', '-i', container_name, 'uv', 'run', 'python', '-m', 'src.mcp.server'],
-    }
+    # Remove existing registration if present (for force re-registration)
+    if force:
+        subprocess.run(
+            ['claude', 'mcp', 'remove', MCP_SERVER_NAME],
+            capture_output=True,
+            check=False,
+        )
 
-    save_claude_config(config, config_path)
-    return True
+    # Register using Claude CLI
+    # Note: '--' separator is required to prevent '-i' from being parsed as an option
+    try:
+        subprocess.run(
+            [
+                'claude',
+                'mcp',
+                'add',
+                '-s',
+                'user',
+                '-t',
+                'stdio',
+                MCP_SERVER_NAME,
+                '--',
+                'docker',
+                'exec',
+                '-i',
+                container_name,
+                'uv',
+                'run',
+                'python',
+                '-m',
+                'src.mcp.server',
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        raise ClaudeConfigError(f'Failed to register MCP server: {e.stderr}') from e
+    except FileNotFoundError as e:
+        raise ClaudeConfigError(
+            'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
+        ) from e
 
 
 def unregister_mcp_server(
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
-    """Remove RespecAI MCP server from Claude Code config.
+    """Remove RespecAI MCP server from Claude Code config using Claude CLI.
 
     Args:
         config_path: Path to config file (defaults to ~/.claude/config.json)
@@ -187,17 +220,27 @@ def unregister_mcp_server(
         True if removed, False if not registered
 
     Raises:
-        ClaudeConfigError: If save fails
+        ClaudeConfigError: If removal fails
     """
-    config = load_claude_config(config_path)
-
-    mcp_servers = config.get('mcpServers', {})
-    if MCP_SERVER_NAME not in mcp_servers:
+    # Check if registered
+    if not is_mcp_server_registered(config_path):
         return False
 
-    del mcp_servers[MCP_SERVER_NAME]
-    save_claude_config(config, config_path)
-    return True
+    # Remove using Claude CLI
+    try:
+        subprocess.run(
+            ['claude', 'mcp', 'remove', MCP_SERVER_NAME],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        raise ClaudeConfigError(f'Failed to unregister MCP server: {e.stderr}') from e
+    except FileNotFoundError as e:
+        raise ClaudeConfigError(
+            'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
+        ) from e
 
 
 def get_mcp_server_config(config_path: Path = CLAUDE_CONFIG_PATH) -> dict | None:

@@ -2,7 +2,7 @@
 set -e
 
 # RespecAI Installation Script
-# Generates RespecAI workflow files directly using the respec-setup CLI
+# Generates RespecAI workflow files in the current directory using respec-ai init
 
 # Color codes for output
 RED='\033[0;31m'
@@ -61,6 +61,7 @@ parse_arguments() {
     PLATFORM=""
     RESPEC_AI_PATH=""
     PROJECT_NAME=""
+    STATE_MANAGER="memory"  # Default to memory
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -70,6 +71,10 @@ parse_arguments() {
                 ;;
             -p|--platform)
                 PLATFORM="$2"
+                shift 2
+                ;;
+            --state-manager)
+                STATE_MANAGER="$2"
                 shift 2
                 ;;
             --respec-path)
@@ -98,6 +103,13 @@ parse_arguments() {
     if [ -z "$PLATFORM" ]; then
         print_error "Platform is required. Use -p linear|github|markdown or --platform linear|github|markdown"
         show_usage
+        exit 1
+    fi
+
+    # Validate state manager
+    if [[ ! "$STATE_MANAGER" =~ ^(memory|database)$ ]]; then
+        print_error "Invalid state manager: $STATE_MANAGER"
+        echo "State manager must be one of: memory, database"
         exit 1
     fi
 }
@@ -167,27 +179,116 @@ if [ ! -d "$TARGET_DIR" ]; then
     exit 1
 fi
 
-# Run the setup CLI
+# Configure state manager mode
+if [ "$STATE_MANAGER" = "memory" ]; then
+    print_info "State Manager: In-Memory (clean slate on restart)"
+    STATE_MANAGER_MODE="memory"
+    MCP_COMMAND="uv"
+    MCP_ARGS='["run", "respec-server"]'
+elif [ "$STATE_MANAGER" = "database" ]; then
+    print_info "State Manager: Database (persistent state)"
+
+    # Check if Docker is available
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is required for database mode"
+        echo "Install Docker Desktop or docker-compose"
+        exit 1
+    fi
+
+    # Start Docker Compose services
+    print_info "Starting database and MCP server containers..."
+    cd "$RESPEC_AI_PATH"
+    docker compose -f docker-compose.dev.yml up -d
+
+    # Wait for services to be healthy
+    print_info "Waiting for services to be ready..."
+    sleep 5
+
+    STATE_MANAGER_MODE="database"
+    MCP_COMMAND="docker"
+    MCP_ARGS='["compose", "-f", "'"$RESPEC_AI_PATH/docker-compose.dev.yml"'", "exec", "-T", "mcp-server", "respec-server"]'
+
+    cd "$TARGET_DIR"
+fi
+
+echo ""
+
+# Run the setup CLI (skip MCP registration - we'll register local version manually)
 print_info "Generating RespecAI workflow files..."
-if uv run --directory "$RESPEC_AI_PATH" respec-setup --project-path "$TARGET_DIR" --project-name "$PROJECT_NAME" --platform "$PLATFORM"; then
+if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration; then
     echo ""
-    print_success "Installation complete!"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Restart Claude Code to load the new commands"
-    echo "  2. Start using RespecAI workflows:"
-    echo "     • /respec-plan - Create strategic plans"
-    echo "     • /respec-roadmap - Create phased roadmaps"
-    echo "     • /respec-spec - Generate technical specifications"
-    echo "     • /respec-build - Execute implementation"
-    echo ""
+
+    # Register local MCP server in Claude Code
+    print_info "Registering local MCP server in Claude Code..."
+
+    # Remove existing registration if present
+    claude mcp remove respec-ai 2>/dev/null || true
+
+    # Register MCP server using Claude CLI
+    cd "$RESPEC_AI_PATH"
+    if [ "$STATE_MANAGER" = "memory" ]; then
+        if claude mcp add -s user -t stdio respec-ai -- uv run respec-server; then
+            print_success "✓ Registered local MCP server (state: $STATE_MANAGER_MODE, cwd: $RESPEC_AI_PATH)"
+        else
+            print_error "✗ Failed to register MCP server"
+            exit 1
+        fi
+    else
+        # Database mode - use docker compose command
+        if claude mcp add -s user -t stdio respec-ai -- docker compose -f "$RESPEC_AI_PATH/docker-compose.dev.yml" exec -T mcp-server respec-server; then
+            print_success "✓ Registered local MCP server (state: $STATE_MANAGER_MODE, database mode)"
+        else
+            print_error "✗ Failed to register MCP server"
+            exit 1
+        fi
+    fi
+
+    cd "$TARGET_DIR"
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        print_success "Installation complete!"
+        echo ""
+        print_info "Local Development Mode Active"
+        echo "  • MCP server runs from: $RESPEC_AI_PATH"
+        echo "  • State manager: $STATE_MANAGER_MODE"
+        echo "  • Changes take effect after restarting Claude Code"
+        if [ "$STATE_MANAGER" = "memory" ]; then
+            echo "  • No Docker required (in-memory state)"
+        else
+            echo "  • Database running in Docker (persistent state)"
+        fi
+        echo ""
+        echo "Next steps:"
+        echo "  1. Restart Claude Code to load the new commands"
+        echo "  2. Verify MCP server: /mcp list"
+        echo "  3. Start using RespecAI workflows:"
+        echo "     • /respec-plan - Create strategic plans"
+        echo "     • /respec-roadmap - Create phased roadmaps"
+        echo "     • /respec-spec - Generate technical specifications"
+        echo "     • /respec-build - Execute implementation"
+        echo ""
+    else
+        print_warning "Workflow files created but MCP registration failed"
+        echo ""
+        echo "Manual registration:"
+        echo "  Run this command:"
+        echo ""
+        if [ "$STATE_MANAGER" = "memory" ]; then
+            echo "  cd $RESPEC_AI_PATH"
+            echo "  claude mcp add -s user -t stdio respec-ai -- uv run respec-server"
+        else
+            echo "  claude mcp add -s user -t stdio respec-ai -- docker compose -f $RESPEC_AI_PATH/docker-compose.dev.yml exec -T mcp-server respec-server"
+        fi
+        echo ""
+    fi
 else
     print_error "Installation failed"
     echo ""
     echo "Troubleshooting:"
     echo "  1. Verify uv is installed: uv --version"
     echo "  2. Verify RespecAI dependencies: cd $RESPEC_AI_PATH && uv sync"
-    echo "  3. Check RespecAI MCP server is registered: claude mcp list"
+    echo "  3. Check Python is available: python3 --version"
     echo ""
     exit 1
 fi
