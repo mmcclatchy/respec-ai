@@ -105,22 +105,21 @@ class TestRegisterMcpServer:
         config_file = tmp_path / 'config.json'
         config_file.write_text('{}', encoding='utf-8')
 
+        # Mock subprocess.run to simulate successful claude mcp add
+        mock_run = mocker.patch('subprocess.run')
+        mock_run.return_value = mocker.Mock(returncode=0, stderr='', stdout='')
+
         result = register_mcp_server(force=False, config_path=config_file)
         assert result is True
 
-        config = json.loads(config_file.read_text(encoding='utf-8'))
-        assert MCP_SERVER_NAME in config['mcpServers']
-        assert config['mcpServers'][MCP_SERVER_NAME]['command'] == 'docker'
-        assert config['mcpServers'][MCP_SERVER_NAME]['args'] == [
-            'exec',
-            '-i',
-            'respec-ai-0.3.0',
-            'uv',
-            'run',
-            'python',
-            '-m',
-            'src.mcp.server',
-        ]
+        # Verify subprocess was called with correct arguments
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0:3] == ['claude', 'mcp', 'add']
+        assert MCP_SERVER_NAME in call_args
+        assert '--' in call_args
+        assert 'docker' in call_args
+        assert 'respec-ai-0.3.0' in call_args
 
     def test_already_registered_without_force(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mocker.patch('src.cli.config.claude_config.get_package_version', return_value='0.3.0')
@@ -137,34 +136,39 @@ class TestRegisterMcpServer:
         config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'old'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
+        # Mock subprocess.run to simulate successful claude mcp commands
+        mock_run = mocker.patch('subprocess.run')
+        mock_run.return_value = mocker.Mock(returncode=0, stderr='', stdout='')
+
         result = register_mcp_server(force=True, config_path=config_file)
         assert result is True
 
-        config = json.loads(config_file.read_text(encoding='utf-8'))
-        assert config['mcpServers'][MCP_SERVER_NAME]['command'] == 'docker'
-        assert config['mcpServers'][MCP_SERVER_NAME]['args'] == [
-            'exec',
-            '-i',
-            'respec-ai-0.3.0',
-            'uv',
-            'run',
-            'python',
-            '-m',
-            'src.mcp.server',
-        ]
+        # Verify subprocess was called (remove then add)
+        assert mock_run.call_count == 2  # remove + add
+        # First call should be remove
+        assert mock_run.call_args_list[0][0][0][:3] == ['claude', 'mcp', 'remove']
+        # Second call should be add
+        assert mock_run.call_args_list[1][0][0][:3] == ['claude', 'mcp', 'add']
 
 
 class TestUnregisterMcpServer:
-    def test_successful_unregister(self, tmp_path: Path) -> None:
+    def test_successful_unregister(self, mocker: MockerFixture, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'uv'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
+        # Mock subprocess.run to simulate successful claude mcp remove
+        mock_run = mocker.patch('subprocess.run')
+        mock_run.return_value = mocker.Mock(returncode=0, stderr='', stdout='')
+
         result = unregister_mcp_server(config_file)
         assert result is True
 
-        config = json.loads(config_file.read_text(encoding='utf-8'))
-        assert MCP_SERVER_NAME not in config['mcpServers']
+        # Verify subprocess was called with correct arguments
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert call_args[:3] == ['claude', 'mcp', 'remove']
+        assert MCP_SERVER_NAME in call_args
 
     def test_not_registered(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'

@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Mount source code for live reloading
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+    environment:
+      - STATE_MANAGER=database
+      - DATABASE_URL=postgresql://respec:respec@db:5432/respec_dev
+      - MCP_LOG_LEVEL=DEBUG
+      - MCP_DEBUG=true
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    command: ["uv", "run", "respec-server"]
+    stdin_open: true
+    tty: true
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=respec_dev
+      - POSTGRES_USER=respec
+      - POSTGRES_PASSWORD=respec
+    volumes:
+      - respec_dev_data:/var/lib/postgresql/data
+      # Future: Add init scripts here
+      # - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U respec -d respec_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  respec_dev_data:
+    driver: local
+
+# Future: Add migrations service
+# migrations:
+#   image: migrate/migrate
+#   volumes:
+#     - ./migrations:/migrations
+#   command: ["-path", "/migrations", "-database", "postgresql://respec:respec@db:5432/respec_dev?sslmode=disable", "up"]

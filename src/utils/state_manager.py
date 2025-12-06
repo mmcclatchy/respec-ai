@@ -556,3 +556,107 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('delete_project_plan', 'EXIT')
         return True
+
+
+class DatabaseStateManager(StateManager):
+    """Database-backed state manager (STUB - Not yet implemented).
+
+    Future implementation will:
+    - Store state in PostgreSQL database using raw SQL + asyncpg
+    - Provide data persistence across MCP server restarts
+    - Use Pydantic models for data validation/serialization
+    - Maintain same StateManager interface as InMemoryStateManager
+
+    Current stub raises NotImplementedError for all methods.
+
+    When implementing (future PR):
+    - Use asyncpg for PostgreSQL connection pooling
+    - Write raw SQL queries with parameterized statements
+    - Convert query results to existing Pydantic models
+    - Run migrations from migrations/*.sql files
+    - See plan for complete architecture and examples
+    """
+
+    def __init__(self) -> None:
+        """Initialize database state manager.
+
+        Raises:
+            NotImplementedError: Database implementation not yet available
+        """
+        raise NotImplementedError(
+            'DatabaseStateManager is not yet implemented. '
+            'Use STATE_MANAGER=memory (default) for development. '
+            'Database support coming in future release.'
+        )
+
+    def add_loop(self, loop: LoopState, project_name: str) -> None:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_loop(self, loop_id: str) -> LoopState:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_loop_status(self, loop_id: str) -> MCPResponse:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def list_active_loops(self, project_name: str) -> list[MCPResponse]:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_objective_feedback(self, loop_id: str) -> MCPResponse:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def store_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_roadmap(self, project_name: str) -> Roadmap:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def list_specs(self, project_name: str) -> list[str]:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def delete_spec(self, project_name: str, spec_name: str) -> bool:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> str:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def get_project_plan(self, project_name: str) -> ProjectPlan:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def list_project_plans(self) -> list[str]:
+        raise NotImplementedError('Database state manager not implemented')
+
+    def delete_project_plan(self, project_name: str) -> bool:
+        raise NotImplementedError('Database state manager not implemented')

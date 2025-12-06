@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,6 +60,17 @@ class MCPSettings(BaseSettings):
         default='logs/mcp-server.log',
         description='Log file path. Set to "stdout" for container environments, or absolute path for file logging. None = stderr only',
     )
+
+    # State Manager Configuration
+    state_manager: str = Field(default='memory', description='State manager type: memory or database')
+
+    @field_validator('state_manager')
+    @classmethod
+    def validate_state_manager(cls, v: str) -> str:
+        allowed = {'memory', 'database'}
+        if v.lower() not in allowed:
+            raise ValueError(f'state_manager must be one of {allowed}, got: {v}')
+        return v.lower()
 
 
 loop_config = LoopConfig()
