@@ -119,6 +119,9 @@ jobs:
       - name: Install homebrew-pypi-poet
         run: pip install homebrew-pypi-poet
 
+      - name: Install dependencies for poet
+        run: pip install pydantic pydantic-settings rich markdown-it-py docker
+
       - name: Get TestPyPI package info
         id: testpypi
         run: |
