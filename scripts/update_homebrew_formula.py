@@ -25,6 +25,19 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
     # Update test version assertion
     content = re.sub(r'assert_match ".*?", shell_output', f'assert_match "{version}", shell_output', content)
 
+    # Ensure install method stays simple (no resource blocks needed)
+    # This pattern catches old virtualenv_install_with_resources and replaces with custom method
+    old_install_pattern = r'def install\s+virtualenv_install_with_resources\s+end'
+    new_install = """def install
+    # Create virtualenv and install package with dependencies
+    # No resource blocks needed - pip fetches dependencies from PyPI as wheels
+    venv = virtualenv_create(libexec, "python3")
+    venv.pip_install_and_link buildpath
+  end"""
+
+    if re.search(old_install_pattern, content, re.DOTALL):
+        content = re.sub(old_install_pattern, new_install, content, re.DOTALL)
+
     formula_path.write_text(content)
     print(f'Updated formula to version {version}', file=sys.stderr)
 
