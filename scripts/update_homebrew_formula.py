@@ -63,6 +63,25 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
     replacement = rf'\1\n  {resources}\3'
     content = re.sub(pattern, replacement, content, flags=re.DOTALL)
 
+    # Ensure custom install method is preserved (handles binary wheels for Rust packages)
+    install_pattern = r'def install\s+virtualenv_install_with_resources\s+end'
+    custom_install = """def install
+    # Create virtualenv
+    venv = virtualenv_create(libexec, "python3")
+
+    # Install resources - allow binary wheels to avoid Rust compilation issues
+    # (pydantic-core and other Rust-based packages require maturin/Rust to build from source)
+    resources.each do |r|
+      venv.pip_install r
+    end
+
+    # Install main package from TestPyPI
+    venv.pip_install_and_link buildpath
+  end"""
+
+    if re.search(install_pattern, content, re.DOTALL):
+        content = re.sub(install_pattern, custom_install, content, re.DOTALL)
+
     formula_path.write_text(content)
     print(f'Updated formula to version {version}', file=sys.stderr)
 
