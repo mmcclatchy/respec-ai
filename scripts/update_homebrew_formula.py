@@ -29,10 +29,15 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
     # This pattern catches old virtualenv_install_with_resources and replaces with custom method
     old_install_pattern = r'def install\s+virtualenv_install_with_resources\s+end'
     new_install = """def install
-    # Create virtualenv and install package with dependencies
-    # No resource blocks needed - pip fetches dependencies from PyPI as wheels
+    # Create virtualenv
     venv = virtualenv_create(libexec, "python3")
-    venv.pip_install_and_link buildpath
+
+    # Install package with dependencies (pip fetches dependencies from PyPI as wheels)
+    # Must use direct system call instead of pip_install_and_link to avoid --no-deps flag
+    system libexec/"bin/pip", "install", "--verbose", buildpath
+
+    # Create symlink to bin
+    bin.install_symlink libexec/"bin/respec-ai"
   end"""
 
     if re.search(old_install_pattern, content, re.DOTALL):
