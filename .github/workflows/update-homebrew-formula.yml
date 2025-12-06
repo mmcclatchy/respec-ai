@@ -39,12 +39,12 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
-          # TestPyPI URL pattern
-          TESTPYPI_URL="https://test-files.pythonhosted.org/packages/source/r/respec-ai/respec-ai-${VERSION}.tar.gz"
+          # Query TestPyPI API for actual URL and SHA256
+          PACKAGE_INFO=$(curl -s "https://test.pypi.org/pypi/respec-ai/${VERSION}/json")
 
-          # Download and calculate SHA256
-          curl -sL "${TESTPYPI_URL}" -o package.tar.gz
-          SHA256=$(sha256sum package.tar.gz | cut -d' ' -f1)
+          # Extract tarball URL and SHA256 from JSON
+          TESTPYPI_URL=$(echo "$PACKAGE_INFO" | python3 -c "import sys, json; data = json.load(sys.stdin); tarball = [f for f in data['urls'] if f['filename'].endswith('.tar.gz')][0]; print(tarball['url'])")
+          SHA256=$(echo "$PACKAGE_INFO" | python3 -c "import sys, json; data = json.load(sys.stdin); tarball = [f for f in data['urls'] if f['filename'].endswith('.tar.gz')][0]; print(tarball['digests']['sha256'])")
 
           echo "url=${TESTPYPI_URL}" >> $GITHUB_OUTPUT
           echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
