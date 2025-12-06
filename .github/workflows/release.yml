@@ -116,12 +116,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install homebrew-pypi-poet
-        run: pip install homebrew-pypi-poet
-
-      - name: Install dependencies for poet
-        run: pip install pydantic pydantic-settings rich markdown-it-py docker
-
       - name: Get TestPyPI package info
         id: testpypi
         run: |
@@ -175,8 +169,7 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Update respec-ai to ${{ needs.version.outputs.version }}" \
-              -m "Automated update from release workflow:" \
-              -m "- Updated package URL and SHA256" \
-              -m "- Regenerated resource blocks for dependencies"
+              -m "Automated update from release workflow" \
+              -m "Updated package URL and SHA256"
             git push
           fi
