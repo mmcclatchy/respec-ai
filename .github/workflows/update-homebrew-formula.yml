@@ -67,10 +67,9 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update respec-ai to ${{ steps.version.outputs.version }}
-
-Automated update from release workflow:
-- Updated package URL and SHA256
-- Regenerated resource blocks for dependencies"
+            git commit -m "Update respec-ai to ${{ steps.version.outputs.version }}" \
+              -m "Automated update from release workflow:" \
+              -m "- Updated package URL and SHA256" \
+              -m "- Regenerated resource blocks for dependencies"
             git push
           fi
