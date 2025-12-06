@@ -1,8 +1,9 @@
 name: Update Homebrew Formula
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       version:
@@ -20,8 +21,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ inputs.version }}"
           else
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
+            VERSION="${GITHUB_REF#refs/tags/v}"
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
