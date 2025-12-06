@@ -21,7 +21,26 @@ RespecAI installation has two parts:
 
 ### 1. MCP Server Setup (One-Time)
 
-Configure RespecAI as an MCP server in Claude Code:
+Configure RespecAI as an MCP server in Claude Code.
+
+#### Option A: Homebrew Installation (macOS - Recommended)
+
+⚠️ **Development Version**: Currently installing from TestPyPI for testing. Production release coming soon.
+
+```bash
+# Add the development tap
+brew tap mmcclatchy/respec-ai
+
+# Install respec-ai
+brew install respec-ai
+
+# Register MCP server with Claude Code
+respec-ai register-mcp
+```
+
+Homebrew installation handles dependencies automatically and provides easy updates via `brew upgrade respec-ai`.
+
+#### Option B: Manual Installation (All Platforms)
 
 **Step 1: Clone RespecAI repository**
 ```bash

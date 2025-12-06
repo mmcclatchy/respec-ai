@@ -1,0 +1,76 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install homebrew-pypi-poet
+        run: |
+          pip install homebrew-pypi-poet
+
+      - name: Get TestPyPI package info
+        id: testpypi
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # TestPyPI URL pattern
+          TESTPYPI_URL="https://test-files.pythonhosted.org/packages/source/r/respec-ai/respec-ai-${VERSION}.tar.gz"
+
+          # Download and calculate SHA256
+          curl -sL "${TESTPYPI_URL}" -o package.tar.gz
+          SHA256=$(sha256sum package.tar.gz | cut -d' ' -f1)
+
+          echo "url=${TESTPYPI_URL}" >> $GITHUB_OUTPUT
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      - name: Clone homebrew tap
+        run: |
+          git clone https://${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/mmcclatchy/homebrew-respec-ai.git tap
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update formula
+        run: |
+          chmod +x main/scripts/update_homebrew_formula.py
+          python3 main/scripts/update_homebrew_formula.py \
+            tap/Formula/respec-ai.rb \
+            "${{ steps.version.outputs.version }}" \
+            "${{ steps.testpypi.outputs.url }}" \
+            "${{ steps.testpypi.outputs.sha256 }}"
+
+      - name: Commit and push
+        run: |
+          cd tap
+          git add Formula/respec-ai.rb
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update respec-ai to ${{ steps.version.outputs.version }}
+
+Automated update from release workflow:
+- Updated package URL and SHA256
+- Regenerated resource blocks for dependencies"
+            git push
+          fi
