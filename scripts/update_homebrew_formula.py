@@ -36,7 +36,7 @@ def update_formula(formula_path: Path, version: str, url: str, sha256: str) -> N
     # Use system pip with --python flag since venv is created --without-pip
     system "python3", "-m", "pip",
            "--python=#{libexec}/bin/python",
-           "install", "--verbose",
+           "install",
            buildpath
 
     # Create symlink to bin
