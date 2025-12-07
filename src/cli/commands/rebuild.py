@@ -77,17 +77,19 @@ def run(args: Namespace) -> int:
                     print_warning('Run respec-ai register-mcp to register manually later')
                 else:
                     try:
-                        progress.update(task, description='Checking Docker container...')
-                        container_status = docker_manager.get_container_status()
+                        progress.update(task, description='Checking Docker image...')
+                        if not docker_manager.verify_image_exists():
+                            progress.update(task, description='Pulling Docker image...')
+                            try:
+                                docker_manager.pull_image()
+                            except DockerManagerError:
+                                print_warning('Failed to pull image from registry')
+                                print_info('Run: respec-ai docker build')
+                                print_info('Then: respec-ai register-mcp')
 
-                        if not container_status['exists']:
-                            print_warning('Docker container does not exist')
-                            print_info('Run: respec-ai docker pull')
-                            print_info('Then: respec-ai register-mcp')
-                        else:
-                            if not container_status['running']:
-                                progress.update(task, description='Starting Docker container...')
-                                docker_manager.ensure_running()
+                        if docker_manager.verify_image_exists():
+                            progress.update(task, description='Starting Docker container...')
+                            docker_manager.ensure_running()
 
                             progress.update(task, description='Re-registering MCP server...')
                             try:

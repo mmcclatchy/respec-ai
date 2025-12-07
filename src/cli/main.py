@@ -32,6 +32,7 @@ from src.cli.commands import register_mcp
 from src.cli.commands import unregister_mcp
 from src.cli.commands import cleanup
 from src.cli.commands import docker
+from src.cli.commands import mcp_server
 
 
 def main() -> int:
@@ -134,6 +135,13 @@ def main() -> int:
 
     docker.add_arguments(docker_parser)
 
+    mcp_server_parser = subparsers.add_parser(
+        'mcp-server',
+        help='Start RespecAI MCP server (used by Claude Code)',
+    )
+
+    mcp_server.add_arguments(mcp_server_parser)
+
     args = parser.parse_args()
 
     match args.command:
@@ -159,6 +167,8 @@ def main() -> int:
             return cleanup.run(args)
         case 'docker':
             return docker.run(args)
+        case 'mcp-server':
+            return mcp_server.run(args)
         case _:
             parser.print_help()
             return 1

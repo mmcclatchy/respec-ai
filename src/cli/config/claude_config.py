@@ -2,8 +2,6 @@ import json
 import subprocess
 from pathlib import Path
 
-from src.cli.config.package_info import get_package_version
-
 
 CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
 MCP_SERVER_NAME = 'RespecAI'
@@ -160,9 +158,6 @@ def register_mcp_server(
     if is_mcp_server_registered(config_path) and not force:
         return False
 
-    version = get_package_version()
-    container_name = f'respec-ai-{version}'
-
     # Remove existing registration if present (for force re-registration)
     if force:
         subprocess.run(
@@ -171,8 +166,7 @@ def register_mcp_server(
             check=False,
         )
 
-    # Register using Claude CLI
-    # Note: '--' separator is required to prevent '-i' from being parsed as an option
+    # Register using Claude CLI with clean command
     try:
         subprocess.run(
             [
@@ -184,14 +178,8 @@ def register_mcp_server(
                 '-t',
                 'stdio',
                 MCP_SERVER_NAME,
-                '--',
-                'docker',
-                'exec',
-                '-i',
-                container_name,
-                'uv',
-                'run',
-                'respec-server',
+                'respec-ai',
+                'mcp-server',
             ],
             capture_output=True,
             text=True,
