@@ -2,12 +2,13 @@ services:
   respec-ai-server:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
+    image: respec-ai-server:latest
     container_name: respec-ai-prod
     environment:
       # Use PostgreSQL for persistent state management
       - STATE_MANAGER=database
-      - DATABASE_URL=postgresql://respec:respec_secure_password_change_me@db:5432/respec_prod
+      - DATABASE_URL=postgresql://respec:respec_prod@db:5432/respec_prod
       # Production logging
       - MCP_LOG_LEVEL=INFO
       - MCP_DEBUG=false
@@ -18,7 +19,7 @@ services:
     # No ports needed - communication via docker exec (stdio)
     # Container stays alive waiting for MCP requests via docker exec
     networks:
-      - respec-network
+      - respec-prod-network
 
   db:
     image: postgres:16-alpine
@@ -26,8 +27,7 @@ services:
     environment:
       - POSTGRES_DB=respec_prod
       - POSTGRES_USER=respec
-      # IMPORTANT: Change this password before deploying to production
-      - POSTGRES_PASSWORD=respec_secure_password_change_me
+      - POSTGRES_PASSWORD=respec_prod
     volumes:
       - respec_prod_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d:ro
@@ -39,11 +39,11 @@ services:
       start_period: 30s
     restart: unless-stopped
     networks:
-      - respec-network
+      - respec-prod-network
     # Database not exposed externally for security
 
 networks:
-  respec-network:
+  respec-prod-network:
     driver: bridge
 
 volumes:

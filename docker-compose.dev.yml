@@ -4,32 +4,40 @@ services:
   mcp-server:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+    image: respec-ai-dev:latest
+    container_name: respec-ai-mcp-dev
     volumes:
       # Mount source code for live reloading
       - ./src:/app/src:ro
       - ./tests:/app/tests:ro
+    networks:
+      - respec-dev-network
     environment:
       - STATE_MANAGER=database
-      - DATABASE_URL=postgresql://respec:respec@db:5432/respec_dev
+      - DATABASE_URL=postgresql://respec:respec_dev@db:5432/respec_dev
       - MCP_LOG_LEVEL=DEBUG
       - MCP_DEBUG=true
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8000:8000"
-    command: ["uv", "run", "respec-server"]
+    # Port 9876 can be exposed for debugging if needed
+    # ports:
+    #   - "9876:9876"
+    # Container uses tail -f /dev/null from Dockerfile
+    # MCP server started via docker exec when needed
     stdin_open: true
     tty: true
 
   db:
     image: postgres:16-alpine
-    container_name: respec-ai-db
+    container_name: respec-ai-db-dev
     environment:
       - POSTGRES_DB=respec_dev
       - POSTGRES_USER=respec
-      - POSTGRES_PASSWORD=respec
+      - POSTGRES_PASSWORD=respec_dev
+    networks:
+      - respec-dev-network
     volumes:
       - respec_ai_dev_data:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d:ro
@@ -40,6 +48,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+networks:
+  respec-dev-network:
+    driver: bridge
 
 volumes:
   respec_ai_dev_data:

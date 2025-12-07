@@ -1,0 +1,24 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Install uv from official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy package definitions (both server and CLI for dev)
+COPY pyproject.server.toml pyproject.toml
+COPY src/ ./src/
+
+# Install all dependencies including dev/test
+RUN uv sync --all-extras
+
+# Debug environment
+ENV MCP_DEBUG=true
+ENV MCP_LOG_LEVEL=DEBUG
+
+# Expose debug port (uncommon port to avoid conflicts)
+EXPOSE 9876
+
+# Container runs in daemon mode, waiting for docker exec commands
+# Keeps container alive and maintains DB connections
+CMD ["tail", "-f", "/dev/null"]
