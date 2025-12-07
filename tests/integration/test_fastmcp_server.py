@@ -76,12 +76,13 @@ class TestFastMCPServerIntegration:
         # Test calling tool with invalid loop_id directly through the tool function
         # This avoids using private FastMCP methods
         with pytest.raises(Exception):  # Should raise LoopNotFoundError
-            loop_tools.decide_loop_next_action('nonexistent-id', 80)
+            await loop_tools.decide_loop_next_action('nonexistent-id', 80)
 
-    def test_tool_parameter_validation_through_fastmcp(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_tool_parameter_validation_through_fastmcp(self, project_name: str) -> None:
         # Test with valid parameters using new API
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'plan')
-        result = loop_tools.decide_loop_next_action(init_result.id, 90)
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        result = await loop_tools.decide_loop_next_action(init_result.id, 90)
 
         assert result.status == LoopStatus.COMPLETED
 

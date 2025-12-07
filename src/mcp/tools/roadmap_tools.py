@@ -10,7 +10,7 @@ class RoadmapTools:
     def __init__(self, state: StateManager) -> None:
         self.state = state
 
-    def create_roadmap(self, project_name: str, roadmap_data: str) -> str:
+    async def create_roadmap(self, project_name: str, roadmap_data: str) -> str:
         if not project_name:
             raise ToolError('Project name cannot be empty')
         if not roadmap_data:
@@ -21,7 +21,7 @@ class RoadmapTools:
             roadmap_metadata = spec_blocks[0]
 
             roadmap = Roadmap.parse_markdown(roadmap_metadata)
-            self.state.store_roadmap(project_name, roadmap)
+            await self.state.store_roadmap(project_name, roadmap)
 
             # Parse and store each spec individually
             specs = []
@@ -29,19 +29,19 @@ class RoadmapTools:
                 spec_markdown = f'# Technical Specification:{spec_block}'
                 spec = TechnicalSpec.parse_markdown(spec_markdown)
                 specs.append(spec)
-                self.state.store_spec(project_name, spec)
+                await self.state.store_spec(project_name, spec)
 
             return f'Created roadmap "{roadmap.project_name}" with {len(specs)} specs for project {project_name}'
         except Exception as e:
             raise ToolError(f'Failed to create roadmap: {str(e)}')
 
-    def get_roadmap(self, project_name: str) -> str:
+    async def get_roadmap(self, project_name: str) -> str:
         if not project_name:
             raise ToolError('Project name cannot be empty')
 
         try:
-            roadmap = self.state.get_roadmap(project_name)
-            specs = self.state.get_roadmap_specs(project_name)
+            roadmap = await self.state.get_roadmap(project_name)
+            specs = await self.state.get_roadmap_specs(project_name)
             return roadmap.build_markdown(specs)
         except Exception as e:
             raise ResourceError(f'Roadmap not found for project {project_name}: {str(e)}')
@@ -62,7 +62,7 @@ def register_roadmap_tools(mcp: FastMCP) -> None:
         - str: Confirmation message
         """
         await ctx.info(f'Creating roadmap for project: {project_name}')
-        result = roadmap_tools.create_roadmap(project_name, roadmap_data)
+        result = await roadmap_tools.create_roadmap(project_name, roadmap_data)
         await ctx.info(f'Created roadmap for project: {project_name}')
         return result
 
@@ -77,7 +77,7 @@ def register_roadmap_tools(mcp: FastMCP) -> None:
         - str: Roadmap markdown
         """
         await ctx.info(f'Getting roadmap for project: {project_name}')
-        result = roadmap_tools.get_roadmap(project_name)
+        result = await roadmap_tools.get_roadmap(project_name)
         await ctx.info(f'Got roadmap for project: {project_name}')
         return result
 

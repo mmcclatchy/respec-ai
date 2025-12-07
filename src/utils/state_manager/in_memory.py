@@ -1,6 +1,3 @@
-import logging
-import re
-from abc import ABC, abstractmethod
 from collections import deque
 from typing import Generic, TypeVar
 
@@ -16,126 +13,10 @@ from src.utils.errors import (
 )
 from src.utils.loop_state import LoopState, MCPResponse
 
+from .base import FROZEN_SPEC_FIELDS, StateManager, logger, normalize_spec_name
 
-logger = logging.getLogger('state_manager')
 
 T = TypeVar('T')
-
-
-def normalize_spec_name(spec_name: str) -> str:
-    """
-    Normalize spec name to lowercase-kebab-case for consistent storage/retrieval.
-
-    Examples:
-        "Phase 1 - Foundation" -> "phase-1-foundation"
-        "phase-1-foundation" -> "phase-1-foundation"
-        "PHASE_1_FOUNDATION" -> "phase-1-foundation"
-
-    Args:
-        spec_name: Original spec name from user or markdown title
-
-    Returns:
-        Normalized kebab-case spec name
-    """
-
-    # Convert to lowercase
-    normalized = spec_name.lower()
-    # Replace spaces and underscores with hyphens
-    normalized = re.sub(r'[\s_]+', '-', normalized)
-    # Remove any characters that aren't alphanumeric or hyphens
-    normalized = re.sub(r'[^a-z0-9-]', '', normalized)
-    # Collapse multiple hyphens
-    normalized = re.sub(r'-+', '-', normalized)
-    # Strip leading/trailing hyphens
-    normalized = normalized.strip('-')
-    return normalized
-
-
-class StateManager(ABC):
-    # Loop Management
-    @abstractmethod
-    def add_loop(self, loop: LoopState, project_name: str) -> None: ...
-
-    @abstractmethod
-    def get_loop(self, loop_id: str) -> LoopState: ...
-
-    @abstractmethod
-    def get_loop_status(self, loop_id: str) -> MCPResponse: ...
-
-    @abstractmethod
-    def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse: ...
-
-    @abstractmethod
-    def list_active_loops(self, project_name: str) -> list[MCPResponse]: ...
-
-    @abstractmethod
-    def get_objective_feedback(self, loop_id: str) -> MCPResponse: ...
-
-    @abstractmethod
-    def store_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse: ...
-
-    # Roadmap Management
-    @abstractmethod
-    def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str: ...
-
-    @abstractmethod
-    def get_roadmap(self, project_name: str) -> Roadmap: ...
-
-    @abstractmethod
-    def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]: ...
-
-    # Unified Spec Management (replaces InitialSpec + TechnicalSpec separation)
-    @abstractmethod
-    def store_spec(self, project_name: str, spec: TechnicalSpec) -> str: ...
-
-    @abstractmethod
-    def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
-        """
-        MUST not mutate the following fields:
-            - objectives
-            - scope
-            - dependencies
-            - deliverables
-        """
-        ...
-
-    @abstractmethod
-    def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec: ...
-
-    @abstractmethod
-    def list_specs(self, project_name: str) -> list[str]: ...
-
-    @abstractmethod
-    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
-
-    @abstractmethod
-    def delete_spec(self, project_name: str, spec_name: str) -> bool: ...
-
-    # Loop-to-Spec Mapping (for temporary refinement sessions)
-    @abstractmethod
-    def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None: ...
-
-    @abstractmethod
-    def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec: ...
-
-    @abstractmethod
-    def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None: ...
-
-    @abstractmethod
-    def unlink_loop(self, loop_id: str) -> tuple[str, str] | None: ...
-
-    # Project Plan Management
-    @abstractmethod
-    def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> str: ...
-
-    @abstractmethod
-    def get_project_plan(self, project_name: str) -> ProjectPlan: ...
-
-    @abstractmethod
-    def list_project_plans(self) -> list[str]: ...
-
-    @abstractmethod
-    def delete_project_plan(self, project_name: str) -> bool: ...
 
 
 class Queue(Generic[T]):
@@ -193,7 +74,7 @@ class InMemoryStateManager(StateManager):
             f'  objective_feedback_loops={list(self._objective_feedback.keys())}'
         )
 
-    def add_loop(self, loop: LoopState, project_name: str) -> None:
+    async def add_loop(self, loop: LoopState, project_name: str) -> None:
         self._log_state_snapshot('add_loop', 'ENTRY')
         logger.info(f'add_loop: loop_id={loop.id}, project_name={project_name}')
         if loop.id in self._active_loops:
@@ -207,7 +88,7 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('add_loop', 'EXIT')
 
-    def get_loop(self, loop_id: str) -> LoopState:
+    async def get_loop(self, loop_id: str) -> LoopState:
         self._log_state_snapshot('get_loop', 'ENTRY')
         logger.debug(f'get_loop: loop_id={loop_id}')
         if loop_id in self._active_loops:
@@ -217,26 +98,26 @@ class InMemoryStateManager(StateManager):
         logger.error(f'get_loop failed: Loop not found: {loop_id}')
         raise LoopNotFoundError(f'Loop not found: {loop_id}')
 
-    def get_loop_status(self, loop_id: str) -> MCPResponse:
+    async def get_loop_status(self, loop_id: str) -> MCPResponse:
         self._log_state_snapshot('get_loop_status', 'ENTRY')
         logger.debug(f'get_loop_status: loop_id={loop_id}')
-        loop_state = self.get_loop(loop_id)
+        loop_state = await self.get_loop(loop_id)
         response = loop_state.mcp_response
         logger.debug(f'get_loop_status: status={response.status}')
         self._log_state_snapshot('get_loop_status', 'EXIT')
         return response
 
-    def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
+    async def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
         self._log_state_snapshot('decide_loop_next_action', 'ENTRY')
         logger.info(f'decide_loop_next_action: loop_id={loop_id}, current_score={current_score}')
-        loop_state = self.get_loop(loop_id)
+        loop_state = await self.get_loop(loop_id)
         loop_state.add_score(current_score)
         response = loop_state.decide_next_loop_action()
         logger.info(f'decide_loop_next_action: decision={response.status}, message={response.message[:100]}')
         self._log_state_snapshot('decide_loop_next_action', 'EXIT')
         return response
 
-    def list_active_loops(self, project_name: str) -> list[MCPResponse]:
+    async def list_active_loops(self, project_name: str) -> list[MCPResponse]:
         self._log_state_snapshot('list_active_loops', 'ENTRY')
         logger.debug(f'list_active_loops: project_name={project_name}')
         loops = [loop.mcp_response for loop in self._active_loops.values()]
@@ -244,10 +125,10 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('list_active_loops', 'EXIT')
         return loops
 
-    def get_objective_feedback(self, loop_id: str) -> MCPResponse:
+    async def get_objective_feedback(self, loop_id: str) -> MCPResponse:
         self._log_state_snapshot('get_objective_feedback', 'ENTRY')
         logger.debug(f'get_objective_feedback: loop_id={loop_id}')
-        loop_state = self.get_loop(loop_id)
+        loop_state = await self.get_loop(loop_id)
         feedback = self._objective_feedback.get(loop_id, '')
         has_feedback = bool(feedback)
         logger.debug(f'get_objective_feedback: has_feedback={has_feedback}')
@@ -256,11 +137,11 @@ class InMemoryStateManager(StateManager):
             id=loop_id, status=loop_state.status, message=feedback or 'No previous objective feedback found'
         )
 
-    def store_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
+    async def store_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
         self._log_state_snapshot('store_objective_feedback', 'ENTRY')
         logger.info(f'store_objective_feedback: loop_id={loop_id}, feedback_length={len(feedback)}')
         logger.debug(f'store_objective_feedback: feedback_preview={feedback[:200]}...')
-        loop_state = self.get_loop(loop_id)
+        loop_state = await self.get_loop(loop_id)
         self._objective_feedback[loop_id] = feedback
         self._log_state()
         self._log_state_snapshot('store_objective_feedback', 'EXIT')
@@ -268,7 +149,7 @@ class InMemoryStateManager(StateManager):
             id=loop_id, status=loop_state.status, message=f'Objective feedback stored for loop {loop_id}'
         )
 
-    def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str:
+    async def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str:
         self._log_state_snapshot('store_roadmap', 'ENTRY')
         logger.info(f'store_roadmap: project_name={project_name}, roadmap_title={roadmap.project_name}')
         self._roadmaps[project_name] = roadmap
@@ -277,7 +158,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('store_roadmap', 'EXIT')
         return project_name
 
-    def get_roadmap(self, project_name: str) -> Roadmap:
+    async def get_roadmap(self, project_name: str) -> Roadmap:
         self._log_state_snapshot('get_roadmap', 'ENTRY')
         logger.debug(f'get_roadmap: project_name={project_name}')
         if project_name not in self._roadmaps:
@@ -288,7 +169,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_roadmap', 'EXIT')
         return roadmap
 
-    def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]:
+    async def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]:
         self._log_state_snapshot('get_roadmap_specs', 'ENTRY')
         logger.debug(f'get_roadmap_specs: project_name={project_name}')
 
@@ -302,7 +183,7 @@ class InMemoryStateManager(StateManager):
         return specs
 
     # Unified Spec Management (single source of truth)
-    def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
+    async def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
         self._log_state_snapshot('store_spec', 'ENTRY')
         logger.info(
             f'store_spec: project_name={project_name}, '
@@ -320,17 +201,28 @@ class InMemoryStateManager(StateManager):
         logger.debug(f'store_spec: Normalized "{spec.phase_name}" -> "{normalized_name}"')
 
         # Auto-increment iteration and version if spec already exists
+        # Also preserve frozen fields (objectives, scope, dependencies, deliverables)
         is_update = normalized_name in self._specs[project_name]
         if is_update:
             existing_spec = self._specs[project_name][normalized_name]
-            old_iteration = existing_spec.iteration
-            old_version = existing_spec.version
-            spec.iteration = existing_spec.iteration + 1
-            spec.version = existing_spec.version + 1
+            existing_data = existing_spec.model_dump()
+            new_data = spec.model_dump()
+
+            frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
+
+            spec = TechnicalSpec(
+                **{
+                    **new_data,
+                    **frozen_fields,
+                    'iteration': existing_data['iteration'] + 1,
+                    'version': existing_data['version'] + 1,
+                }
+            )
             logger.info(
                 f'store_spec: Updating existing spec - '
-                f'iteration: {old_iteration} -> {spec.iteration}, '
-                f'version: {old_version} -> {spec.version}'
+                f'iteration: {existing_data["iteration"]} -> {spec.iteration}, '
+                f'version: {existing_data["version"]} -> {spec.version}, '
+                f'frozen fields preserved'
             )
 
         self._specs[project_name][normalized_name] = spec
@@ -340,7 +232,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('store_spec', 'EXIT')
         return spec.phase_name
 
-    def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
+    async def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
         self._log_state_snapshot('update_spec', 'ENTRY')
         logger.info(
             f'update_spec: project_name={project_name}, '
@@ -350,27 +242,30 @@ class InMemoryStateManager(StateManager):
         )
 
         # Get existing spec to preserve frozen fields
-        existing_spec = self.get_spec(project_name, spec_name)
+        existing_spec = await self.get_spec(project_name, spec_name)
 
         # Normalize spec name for storage
         normalized_name = normalize_spec_name(spec_name)
 
         # Create new spec with preserved frozen fields and incremented iteration/version
-        final_spec = updated_spec.model_copy(
-            update={
-                'objectives': existing_spec.objectives,
-                'scope': existing_spec.scope,
-                'dependencies': existing_spec.dependencies,
-                'deliverables': existing_spec.deliverables,
-                'iteration': existing_spec.iteration + 1,
-                'version': existing_spec.version + 1,
+        existing_data = existing_spec.model_dump()
+        new_data = updated_spec.model_dump()
+
+        frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
+
+        final_spec = TechnicalSpec(
+            **{
+                **new_data,
+                **frozen_fields,
+                'iteration': existing_data['iteration'] + 1,
+                'version': existing_data['version'] + 1,
             }
         )
 
         logger.info(
             f'update_spec: Preserved frozen fields, '
-            f'iteration: {existing_spec.iteration} -> {final_spec.iteration}, '
-            f'version: {existing_spec.version} -> {final_spec.version}'
+            f'iteration: {existing_data["iteration"]} -> {final_spec.iteration}, '
+            f'version: {existing_data["version"]} -> {final_spec.version}'
         )
 
         # Store the updated spec
@@ -381,7 +276,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('update_spec', 'EXIT')
         return f'Updated spec "{spec_name}" to iteration {final_spec.iteration}, version {final_spec.version}'
 
-    def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
+    async def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
         self._log_state_snapshot('get_spec', 'ENTRY')
         logger.debug(f'get_spec: project_name={project_name}, spec_name={spec_name}')
 
@@ -403,7 +298,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_spec', 'EXIT')
         return spec
 
-    def list_specs(self, project_name: str) -> list[str]:
+    async def list_specs(self, project_name: str) -> list[str]:
         self._log_state_snapshot('list_specs', 'ENTRY')
         logger.debug(f'list_specs: project_name={project_name}')
 
@@ -417,12 +312,12 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('list_specs', 'EXIT')
         return spec_names
 
-    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
+    async def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
         self._log_state_snapshot('resolve_spec_name', 'ENTRY')
         logger.debug(f'resolve_spec_name: project_name={project_name}, partial_name={partial_name}')
 
         # Get all specs for project
-        all_specs = self.list_specs(project_name)
+        all_specs = await self.list_specs(project_name)
 
         if not all_specs:
             logger.warning(f'No specs found in project {project_name}')
@@ -445,7 +340,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('resolve_spec_name', 'EXIT')
         return (canonical, matches)
 
-    def delete_spec(self, project_name: str, spec_name: str) -> bool:
+    async def delete_spec(self, project_name: str, spec_name: str) -> bool:
         self._log_state_snapshot('delete_spec', 'ENTRY')
         logger.info(f'delete_spec: project_name={project_name}, spec_name={spec_name}')
 
@@ -469,7 +364,7 @@ class InMemoryStateManager(StateManager):
         return True
 
     # Loop-to-Spec Mapping (for temporary refinement sessions)
-    def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None:
+    async def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None:
         self._log_state_snapshot('link_loop_to_spec', 'ENTRY')
         logger.info(f'link_loop_to_spec: loop_id={loop_id}, project_name={project_name}, spec_name={spec_name}')
 
@@ -482,7 +377,7 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('link_loop_to_spec', 'EXIT')
 
-    def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec:
+    async def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec:
         self._log_state_snapshot('get_spec_by_loop', 'ENTRY')
         logger.debug(f'get_spec_by_loop: loop_id={loop_id}')
         if loop_id not in self._loop_to_spec:
@@ -491,9 +386,9 @@ class InMemoryStateManager(StateManager):
         project_name, spec_name = self._loop_to_spec[loop_id]
         logger.debug(f'get_spec_by_loop: Loop {loop_id} linked to spec {spec_name} in project {project_name}')
         self._log_state_snapshot('get_spec_by_loop', 'EXIT')
-        return self.get_spec(project_name, spec_name)
+        return await self.get_spec(project_name, spec_name)
 
-    def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None:
+    async def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None:
         self._log_state_snapshot('update_spec_by_loop', 'ENTRY')
         logger.info(f'update_spec_by_loop: loop_id={loop_id}, spec_name={spec.phase_name}')
         if loop_id not in self._loop_to_spec:
@@ -501,10 +396,10 @@ class InMemoryStateManager(StateManager):
             raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
         project_name, spec_name = self._loop_to_spec[loop_id]
         logger.debug(f'update_spec_by_loop: Updating spec {spec_name} in project {project_name}')
-        self.store_spec(project_name, spec)
+        await self.store_spec(project_name, spec)
         self._log_state_snapshot('update_spec_by_loop', 'EXIT')
 
-    def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
+    async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
         self._log_state_snapshot('unlink_loop', 'ENTRY')
         logger.info(f'unlink_loop: loop_id={loop_id}')
         result = self._loop_to_spec.pop(loop_id, None)
@@ -518,7 +413,7 @@ class InMemoryStateManager(StateManager):
         return result
 
     # Project Plan Management
-    def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> str:
+    async def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> str:
         self._log_state_snapshot('store_project_plan', 'ENTRY')
         logger.info(f'store_project_plan: project_name={project_name}')
         self._project_plans[project_name] = project_plan
@@ -526,7 +421,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('store_project_plan', 'EXIT')
         return project_name
 
-    def get_project_plan(self, project_name: str) -> ProjectPlan:
+    async def get_project_plan(self, project_name: str) -> ProjectPlan:
         self._log_state_snapshot('get_project_plan', 'ENTRY')
         logger.debug(f'get_project_plan: project_name={project_name}')
         if project_name not in self._project_plans:
@@ -537,7 +432,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_project_plan', 'EXIT')
         return project_plan
 
-    def list_project_plans(self) -> list[str]:
+    async def list_project_plans(self) -> list[str]:
         self._log_state_snapshot('list_project_plans', 'ENTRY')
         logger.debug('list_project_plans: Listing all project plans')
         plan_names = list(self._project_plans.keys())
@@ -545,7 +440,7 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('list_project_plans', 'EXIT')
         return plan_names
 
-    def delete_project_plan(self, project_name: str) -> bool:
+    async def delete_project_plan(self, project_name: str) -> bool:
         self._log_state_snapshot('delete_project_plan', 'ENTRY')
         logger.info(f'delete_project_plan: project_name={project_name}')
         if project_name not in self._project_plans:
@@ -556,107 +451,3 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('delete_project_plan', 'EXIT')
         return True
-
-
-class DatabaseStateManager(StateManager):
-    """Database-backed state manager (STUB - Not yet implemented).
-
-    Future implementation will:
-    - Store state in PostgreSQL database using raw SQL + asyncpg
-    - Provide data persistence across MCP server restarts
-    - Use Pydantic models for data validation/serialization
-    - Maintain same StateManager interface as InMemoryStateManager
-
-    Current stub raises NotImplementedError for all methods.
-
-    When implementing (future PR):
-    - Use asyncpg for PostgreSQL connection pooling
-    - Write raw SQL queries with parameterized statements
-    - Convert query results to existing Pydantic models
-    - Run migrations from migrations/*.sql files
-    - See plan for complete architecture and examples
-    """
-
-    def __init__(self) -> None:
-        """Initialize database state manager.
-
-        Raises:
-            NotImplementedError: Database implementation not yet available
-        """
-        raise NotImplementedError(
-            'DatabaseStateManager is not yet implemented. '
-            'Use STATE_MANAGER=memory (default) for development. '
-            'Database support coming in future release.'
-        )
-
-    def add_loop(self, loop: LoopState, project_name: str) -> None:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_loop(self, loop_id: str) -> LoopState:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_loop_status(self, loop_id: str) -> MCPResponse:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def list_active_loops(self, project_name: str) -> list[MCPResponse]:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_objective_feedback(self, loop_id: str) -> MCPResponse:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def store_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def store_roadmap(self, project_name: str, roadmap: Roadmap) -> str:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_roadmap(self, project_name: str) -> Roadmap:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def list_specs(self, project_name: str) -> list[str]:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def delete_spec(self, project_name: str, spec_name: str) -> bool:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> str:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def get_project_plan(self, project_name: str) -> ProjectPlan:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def list_project_plans(self) -> list[str]:
-        raise NotImplementedError('Database state manager not implemented')
-
-    def delete_project_plan(self, project_name: str) -> bool:
-        raise NotImplementedError('Database state manager not implemented')

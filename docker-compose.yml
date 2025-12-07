@@ -3,12 +3,49 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: respec-ai-dev
-    volumes:
-      # Mount source code for live reload during development
-      - ./services:/app/services:ro
-      # Mount pyproject.toml for dependency changes
-      - ./pyproject.toml:/app/pyproject.toml:ro
+    container_name: respec-ai-prod
+    environment:
+      # Use PostgreSQL for persistent state management
+      - STATE_MANAGER=database
+      - DATABASE_URL=postgresql://respec:respec_secure_password_change_me@db:5432/respec_prod
+      # Production logging
+      - MCP_LOG_LEVEL=INFO
+      - MCP_DEBUG=false
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     # No ports needed - communication via docker exec (stdio)
     # Container stays alive waiting for MCP requests via docker exec
+    networks:
+      - respec-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: respec-ai-db-prod
+    environment:
+      - POSTGRES_DB=respec_prod
+      - POSTGRES_USER=respec
+      # IMPORTANT: Change this password before deploying to production
+      - POSTGRES_PASSWORD=respec_secure_password_change_me
+    volumes:
+      - respec_prod_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U respec -d respec_prod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - respec-network
+    # Database not exposed externally for security
+
+networks:
+  respec-network:
+    driver: bridge
+
+volumes:
+  respec_prod_data:
+    driver: local

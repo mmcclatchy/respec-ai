@@ -15,7 +15,7 @@ class PlanCompletionReportTools:
         self.state = state
         self._completion_reports: dict[str, PlanCompletionReport] = {}
 
-    def create_completion_report(
+    async def create_completion_report(
         self, project_path: str, completion_report: PlanCompletionReport, loop_id: str
     ) -> MCPResponse:
         try:
@@ -29,7 +29,7 @@ class PlanCompletionReportTools:
                 raise ValueError('Loop ID cannot be empty')
 
             # Verify loop exists
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
 
             # Check if report already exists for this loop
             if loop_id in self._completion_reports:
@@ -50,7 +50,7 @@ class PlanCompletionReportTools:
         except Exception as e:
             raise ToolError(f'Unexpected error creating completion report: {str(e)}')
 
-    def store_completion_report(
+    async def store_completion_report(
         self, project_path: str, completion_report: PlanCompletionReport, loop_id: str
     ) -> MCPResponse:
         try:
@@ -63,7 +63,7 @@ class PlanCompletionReportTools:
             if not loop_id or not loop_id.strip():
                 raise ValueError('Loop ID cannot be empty')
 
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
             self._completion_reports[loop_id] = completion_report
             return MCPResponse(
                 id=loop_id,
@@ -79,7 +79,7 @@ class PlanCompletionReportTools:
         except Exception as e:
             raise ToolError(f'Unexpected error storing completion report: {str(e)}')
 
-    def get_completion_report_data(self, project_path: str, loop_id: str) -> PlanCompletionReport:
+    async def get_completion_report_data(self, project_path: str, loop_id: str) -> PlanCompletionReport:
         try:
             if not project_path or not project_path.strip():
                 raise ValueError('Project path cannot be empty')
@@ -88,7 +88,7 @@ class PlanCompletionReportTools:
                 raise ValueError('Loop ID cannot be empty')
 
             # Check if loop exists
-            self.state.get_loop(loop_id)
+            await self.state.get_loop(loop_id)
 
             if loop_id not in self._completion_reports:
                 raise ResourceError('No completion report stored for this loop')
@@ -103,13 +103,13 @@ class PlanCompletionReportTools:
         except Exception as e:
             raise ToolError(f'Unexpected error retrieving completion report: {str(e)}')
 
-    def get_completion_report_markdown(self, project_path: str, loop_id: str) -> MCPResponse:
+    async def get_completion_report_markdown(self, project_path: str, loop_id: str) -> MCPResponse:
         try:
             if not project_path or not project_path.strip():
                 raise ValueError('Project path cannot be empty')
 
-            loop_state = self.state.get_loop(loop_id)
-            completion_report = self.get_completion_report_data(project_path, loop_id)
+            loop_state = await self.state.get_loop(loop_id)
+            completion_report = await self.get_completion_report_data(project_path, loop_id)
 
             markdown = completion_report.build_markdown()
             return MCPResponse(id=loop_id, status=loop_state.status, message=markdown)
@@ -118,7 +118,7 @@ class PlanCompletionReportTools:
         except Exception as e:
             raise ToolError(f'Unexpected error generating completion report markdown: {str(e)}')
 
-    def update_completion_report(
+    async def update_completion_report(
         self, project_path: str, completion_report: PlanCompletionReport, loop_id: str
     ) -> MCPResponse:
         try:
@@ -132,7 +132,7 @@ class PlanCompletionReportTools:
                 raise ValueError('Loop ID cannot be empty')
 
             # Check if loop and report exist
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
             if loop_id not in self._completion_reports:
                 raise ResourceError('No completion report stored for this loop')
 
@@ -153,7 +153,7 @@ class PlanCompletionReportTools:
         except Exception as e:
             raise ToolError(f'Unexpected error updating completion report: {str(e)}')
 
-    def list_completion_reports(self, project_path: str, count: int = 10) -> MCPResponse:
+    async def list_completion_reports(self, project_path: str, count: int = 10) -> MCPResponse:
         try:
             if not project_path or not project_path.strip():
                 raise ValueError('Project path cannot be empty')
@@ -182,7 +182,7 @@ class PlanCompletionReportTools:
         except Exception as e:
             raise ToolError(f'Unexpected error listing completion reports: {str(e)}')
 
-    def delete_completion_report(self, project_path: str, loop_id: str) -> MCPResponse:
+    async def delete_completion_report(self, project_path: str, loop_id: str) -> MCPResponse:
         try:
             if not project_path or not project_path.strip():
                 raise ValueError('Project path cannot be empty')
@@ -191,7 +191,7 @@ class PlanCompletionReportTools:
                 raise ValueError('Loop ID cannot be empty')
 
             # Check if loop exists
-            self.state.get_loop(loop_id)
+            await self.state.get_loop(loop_id)
 
             # Remove completion report
             if loop_id in self._completion_reports:
@@ -242,7 +242,7 @@ def register_plan_completion_report_tools(mcp: FastMCP) -> None:
 
             # Parse markdown into PlanCompletionReport model
             completion_report = PlanCompletionReport.parse_markdown(completion_report_markdown)
-            result = completion_report_tools.create_completion_report(project_path, completion_report, loop_id)
+            result = await completion_report_tools.create_completion_report(project_path, completion_report, loop_id)
 
             await ctx.info(f'Created completion report for loop ID: {result.id}')
             return result
@@ -280,7 +280,7 @@ def register_plan_completion_report_tools(mcp: FastMCP) -> None:
 
             # Parse markdown into PlanCompletionReport model
             completion_report = PlanCompletionReport.parse_markdown(completion_report_markdown)
-            result = completion_report_tools.store_completion_report(project_path, completion_report, loop_id)
+            result = await completion_report_tools.store_completion_report(project_path, completion_report, loop_id)
 
             await ctx.info(f'Stored completion report with ID: {result.id}')
             return result
@@ -306,7 +306,7 @@ def register_plan_completion_report_tools(mcp: FastMCP) -> None:
             if not loop_id or not loop_id.strip():
                 raise ValueError('Loop ID cannot be empty')
 
-            result = completion_report_tools.get_completion_report_markdown(project_path, loop_id)
+            result = await completion_report_tools.get_completion_report_markdown(project_path, loop_id)
             await ctx.info(f'Generated markdown for completion report {loop_id}')
             return result
         except Exception as e:
@@ -341,7 +341,7 @@ def register_plan_completion_report_tools(mcp: FastMCP) -> None:
 
             # Parse markdown into PlanCompletionReport model
             completion_report = PlanCompletionReport.parse_markdown(completion_report_markdown)
-            result = completion_report_tools.update_completion_report(project_path, completion_report, loop_id)
+            result = await completion_report_tools.update_completion_report(project_path, completion_report, loop_id)
 
             await ctx.info(f'Updated completion report for loop ID: {result.id}')
             return result
@@ -367,7 +367,7 @@ def register_plan_completion_report_tools(mcp: FastMCP) -> None:
             if count <= 0:
                 raise ValueError('Count must be a positive integer')
 
-            result = completion_report_tools.list_completion_reports(project_path, count)
+            result = await completion_report_tools.list_completion_reports(project_path, count)
             await ctx.info('Retrieved completion report list')
             return result
         except Exception as e:
@@ -392,7 +392,7 @@ def register_plan_completion_report_tools(mcp: FastMCP) -> None:
             if not loop_id or not loop_id.strip():
                 raise ValueError('Loop ID cannot be empty')
 
-            result = completion_report_tools.delete_completion_report(project_path, loop_id)
+            result = await completion_report_tools.delete_completion_report(project_path, loop_id)
             await ctx.info(f'Deleted completion report {loop_id}')
             return result
         except Exception as e:

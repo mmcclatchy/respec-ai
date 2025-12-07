@@ -70,10 +70,11 @@ class TestProjectPlanTools:
 
 
 class TestCreateProjectPlan:
-    def test_create_project_plan_creates_new_project_entry(
+    @pytest.mark.asyncio
+    async def test_create_project_plan_creates_new_project_entry(
         self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
-        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
+        response = await project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         assert isinstance(response, MCPResponse)
         assert response.status == LoopStatus.INITIALIZED
@@ -81,77 +82,86 @@ class TestCreateProjectPlan:
         assert response.id == sample_project_plan.project_name
 
         # Verify project plan was stored by project name
-        stored_plan = project_plan_tools.get_project_plan_data(sample_project_plan.project_name)
+        stored_plan = await project_plan_tools.get_project_plan_data(sample_project_plan.project_name)
         assert stored_plan.project_name == sample_project_plan.project_name
 
-    def test_create_project_plan_validates_project_plan_model(self, project_plan_tools: ProjectPlanTools) -> None:
+    @pytest.mark.asyncio
+    async def test_create_project_plan_validates_project_plan_model(self, project_plan_tools: ProjectPlanTools) -> None:
         with pytest.raises(ToolError):
-            project_plan_tools.create_project_plan('test-project', None)  # type: ignore[arg-type]
+            await project_plan_tools.create_project_plan('test-project', None)  # type: ignore[arg-type]
 
 
 class TestStoreProjectPlan:
-    def test_store_project_plan_validates_project_plan_model(self, project_plan_tools: ProjectPlanTools) -> None:
+    @pytest.mark.asyncio
+    async def test_store_project_plan_validates_project_plan_model(self, project_plan_tools: ProjectPlanTools) -> None:
         with pytest.raises(ToolError, match='Invalid project plan: ProjectPlan cannot be None'):
-            project_plan_tools.store_project_plan('some-project-name', None)  # type: ignore[arg-type]
+            await project_plan_tools.store_project_plan('some-project-name', None)  # type: ignore[arg-type]
 
-    def test_store_project_plan_updates_existing_project(
+    @pytest.mark.asyncio
+    async def test_store_project_plan_updates_existing_project(
         self,
         project_plan_tools: ProjectPlanTools,
         sample_project_plan: ProjectPlan,
     ) -> None:
         project_name = sample_project_plan.project_name
 
-        response = project_plan_tools.store_project_plan(project_name, sample_project_plan)
+        response = await project_plan_tools.store_project_plan(project_name, sample_project_plan)
 
         assert response.id == project_name
         assert response.status == LoopStatus.IN_PROGRESS
         assert 'Stored project plan' in response.message
 
-    def test_store_project_plan_stores_structured_data(
+    @pytest.mark.asyncio
+    async def test_store_project_plan_stores_structured_data(
         self,
         project_plan_tools: ProjectPlanTools,
         sample_project_plan: ProjectPlan,
     ) -> None:
         project_name = sample_project_plan.project_name
 
-        project_plan_tools.store_project_plan(project_name, sample_project_plan)
+        await project_plan_tools.store_project_plan(project_name, sample_project_plan)
 
         # Verify structured data is stored (not just markdown)
-        stored_plan = project_plan_tools.get_project_plan_data(project_name)
+        stored_plan = await project_plan_tools.get_project_plan_data(project_name)
         assert stored_plan.project_name == sample_project_plan.project_name
         assert stored_plan.project_vision == sample_project_plan.project_vision
         assert stored_plan.primary_objectives == sample_project_plan.primary_objectives
 
 
 class TestGetProjectPlan:
-    def test_get_project_plan_returns_structured_data(
+    @pytest.mark.asyncio
+    async def test_get_project_plan_returns_structured_data(
         self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
         # Create plan first
-        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
+        response = await project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         # Retrieve plan
-        retrieved_plan = project_plan_tools.get_project_plan_data(response.id)
+        retrieved_plan = await project_plan_tools.get_project_plan_data(response.id)
 
         assert isinstance(retrieved_plan, ProjectPlan)
         assert retrieved_plan.project_name == sample_project_plan.project_name
         assert retrieved_plan.project_vision == sample_project_plan.project_vision
         assert retrieved_plan.primary_objectives == sample_project_plan.primary_objectives
 
-    def test_get_project_plan_raises_error_when_project_not_found(self, project_plan_tools: ProjectPlanTools) -> None:
+    @pytest.mark.asyncio
+    async def test_get_project_plan_raises_error_when_project_not_found(
+        self, project_plan_tools: ProjectPlanTools
+    ) -> None:
         with pytest.raises(ResourceError) as exc_info:
-            project_plan_tools.get_project_plan_data('non-existent-project')
+            await project_plan_tools.get_project_plan_data('non-existent-project')
 
         assert 'Project plan not found for project' in str(exc_info.value)
 
 
 class TestGetProjectPlanMarkdown:
-    def test_get_project_plan_markdown_generates_platform_output(
+    @pytest.mark.asyncio
+    async def test_get_project_plan_markdown_generates_platform_output(
         self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
-        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
+        response = await project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
-        markdown_response = project_plan_tools.get_project_plan_markdown(response.id)
+        markdown_response = await project_plan_tools.get_project_plan_markdown(response.id)
 
         assert isinstance(markdown_response, MCPResponse)
         assert markdown_response.id == response.id
@@ -160,35 +170,41 @@ class TestGetProjectPlanMarkdown:
         assert sample_project_plan.project_name in markdown_response.message
         assert sample_project_plan.project_vision in markdown_response.message
 
-    def test_get_project_plan_markdown_platform_agnostic(
+    @pytest.mark.asyncio
+    async def test_get_project_plan_markdown_platform_agnostic(
         self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
-        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
+        response = await project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
-        markdown_response = project_plan_tools.get_project_plan_markdown(response.id)
+        markdown_response = await project_plan_tools.get_project_plan_markdown(response.id)
         assert isinstance(markdown_response, MCPResponse)
         assert sample_project_plan.project_name in markdown_response.message
 
-    def test_get_project_plan_markdown_raises_error_when_project_not_found(
+    @pytest.mark.asyncio
+    async def test_get_project_plan_markdown_raises_error_when_project_not_found(
         self, project_plan_tools: ProjectPlanTools
     ) -> None:
         with pytest.raises(ToolError):
-            project_plan_tools.get_project_plan_markdown('non-existent-project')
+            await project_plan_tools.get_project_plan_markdown('non-existent-project')
 
 
 class TestListProjectPlans:
-    def test_list_project_plans_returns_empty_for_no_plans(self, project_plan_tools: ProjectPlanTools) -> None:
-        response = project_plan_tools.list_project_plans()
+    @pytest.mark.asyncio
+    async def test_list_project_plans_returns_empty_for_no_plans(self, project_plan_tools: ProjectPlanTools) -> None:
+        response = await project_plan_tools.list_project_plans()
 
         assert isinstance(response, MCPResponse)
         assert response.status == LoopStatus.INITIALIZED
         assert 'No project plans found' in response.message
 
-    def test_list_project_plans_returns_multiple_plans(
+    @pytest.mark.asyncio
+    async def test_list_project_plans_returns_multiple_plans(
         self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
         # Store multiple plans
-        plan1_response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
+        plan1_response = await project_plan_tools.create_project_plan(
+            sample_project_plan.project_name, sample_project_plan
+        )
 
         plan2 = ProjectPlan(
             project_name='E-commerce Analytics Platform',
@@ -223,10 +239,10 @@ class TestListProjectPlans:
             documentation_standards='Data dictionary, user guides',
             project_status=ProjectStatus.DRAFT,
         )
-        plan2_response = project_plan_tools.create_project_plan(plan2.project_name, plan2)
+        plan2_response = await project_plan_tools.create_project_plan(plan2.project_name, plan2)
 
         # List all plans
-        response = project_plan_tools.list_project_plans()
+        response = await project_plan_tools.list_project_plans()
 
         assert 'Found 2 project plans:' in response.message
         assert sample_project_plan.project_name in response.message
@@ -234,14 +250,15 @@ class TestListProjectPlans:
         assert plan1_response.id in response.message
         assert plan2_response.id in response.message
 
-    def test_list_project_plans_respects_count_limit(self, project_plan_tools: ProjectPlanTools) -> None:
+    @pytest.mark.asyncio
+    async def test_list_project_plans_respects_count_limit(self, project_plan_tools: ProjectPlanTools) -> None:
         # Store 3 plans
         for i in range(3):
             plan = create_project_plan(f'Project {i + 1}')
-            project_plan_tools.create_project_plan(plan.project_name, plan)
+            await project_plan_tools.create_project_plan(plan.project_name, plan)
 
         # List with limit
-        response = project_plan_tools.list_project_plans(count=2)
+        response = await project_plan_tools.list_project_plans(count=2)
 
         assert 'Found 2 project plans:' in response.message
         assert 'Project 2' in response.message
@@ -250,14 +267,15 @@ class TestListProjectPlans:
 
 
 class TestDeleteProjectPlan:
-    def test_delete_project_plan_removes_plan(
+    @pytest.mark.asyncio
+    async def test_delete_project_plan_removes_plan(
         self, project_plan_tools: ProjectPlanTools, sample_project_plan: ProjectPlan
     ) -> None:
         # Store plan first
-        response = project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
+        response = await project_plan_tools.create_project_plan(sample_project_plan.project_name, sample_project_plan)
 
         # Delete plan
-        delete_response = project_plan_tools.delete_project_plan(response.id)
+        delete_response = await project_plan_tools.delete_project_plan(response.id)
 
         assert isinstance(delete_response, MCPResponse)
         assert delete_response.id == response.id
@@ -265,12 +283,13 @@ class TestDeleteProjectPlan:
 
         # Verify plan is removed
         with pytest.raises(ResourceError):
-            project_plan_tools.get_project_plan_data(response.id)
+            await project_plan_tools.get_project_plan_data(response.id)
 
-    def test_delete_project_plan_raises_error_when_project_not_found(
+    @pytest.mark.asyncio
+    async def test_delete_project_plan_raises_error_when_project_not_found(
         self, project_plan_tools: ProjectPlanTools
     ) -> None:
         with pytest.raises(ResourceError) as exc_info:
-            project_plan_tools.delete_project_plan('non-existent-project')
+            await project_plan_tools.delete_project_plan('non-existent-project')
 
         assert 'Project plan not found for project' in str(exc_info.value)

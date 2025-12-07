@@ -14,7 +14,7 @@ class ProjectPlanTools:
     def __init__(self, state: StateManager) -> None:
         self.state = state
 
-    def create_project_plan(self, project_name: str, project_plan: ProjectPlan) -> MCPResponse:
+    async def create_project_plan(self, project_name: str, project_plan: ProjectPlan) -> MCPResponse:
         try:
             if project_plan is None:
                 raise ValueError('ProjectPlan cannot be None')
@@ -22,7 +22,7 @@ class ProjectPlanTools:
             if not project_name:
                 raise ValueError('Project name cannot be empty')
 
-            self.state.store_project_plan(project_name, project_plan)
+            await self.state.store_project_plan(project_name, project_plan)
             return MCPResponse(
                 id=project_name,
                 status=LoopStatus.INITIALIZED,
@@ -35,14 +35,14 @@ class ProjectPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error creating project plan: {str(e)}')
 
-    def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> MCPResponse:
+    async def store_project_plan(self, project_name: str, project_plan: ProjectPlan) -> MCPResponse:
         try:
             if project_plan is None:
                 raise ValueError('ProjectPlan cannot be None')
             if not project_name:
                 raise ValueError('Project name cannot be empty')
 
-            self.state.store_project_plan(project_name, project_plan)
+            await self.state.store_project_plan(project_name, project_plan)
             return MCPResponse(
                 id=project_name,
                 status=LoopStatus.IN_PROGRESS,
@@ -55,12 +55,12 @@ class ProjectPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error storing project plan: {str(e)}')
 
-    def get_project_plan_data(self, project_name: str) -> ProjectPlan:
+    async def get_project_plan_data(self, project_name: str) -> ProjectPlan:
         try:
             if not project_name:
                 raise ToolError('Project name cannot be empty')
 
-            return self.state.get_project_plan(project_name)
+            return await self.state.get_project_plan(project_name)
         except ProjectPlanNotFoundError as e:
             raise ResourceError(str(e))
         except (ResourceError, ToolError):
@@ -68,17 +68,17 @@ class ProjectPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error retrieving project plan: {str(e)}')
 
-    def get_project_plan_markdown(self, project_name: str) -> MCPResponse:
+    async def get_project_plan_markdown(self, project_name: str) -> MCPResponse:
         try:
-            project_plan = self.get_project_plan_data(project_name)
+            project_plan = await self.get_project_plan_data(project_name)
             markdown = project_plan.build_markdown()
             return MCPResponse(id=project_name, status=LoopStatus.COMPLETED, message=markdown)
         except Exception as e:
             raise ToolError(f'Unexpected error generating markdown: {str(e)}')
 
-    def list_project_plans(self, count: int = 10) -> MCPResponse:
+    async def list_project_plans(self, count: int = 10) -> MCPResponse:
         try:
-            plan_names = self.state.list_project_plans()
+            plan_names = await self.state.list_project_plans()
             if not plan_names:
                 return MCPResponse(id='list', status=LoopStatus.INITIALIZED, message='No project plans found')
 
@@ -86,7 +86,7 @@ class ProjectPlanTools:
             plan_summaries = []
             for project_name in recent_names:
                 try:
-                    plan = self.state.get_project_plan(project_name)
+                    plan = await self.state.get_project_plan(project_name)
                     summary = f'Project: {project_name}, Status: {plan.project_status.value}'
                     plan_summaries.append(summary)
                 except Exception:
@@ -98,12 +98,12 @@ class ProjectPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error listing project plans: {str(e)}')
 
-    def delete_project_plan(self, project_name: str) -> MCPResponse:
+    async def delete_project_plan(self, project_name: str) -> MCPResponse:
         try:
             if not project_name:
                 raise ToolError('Project name cannot be empty')
 
-            self.state.delete_project_plan(project_name)
+            await self.state.delete_project_plan(project_name)
             return MCPResponse(
                 id=project_name, status=LoopStatus.COMPLETED, message=f'Deleted project plan: {project_name}'
             )
@@ -135,7 +135,7 @@ def register_project_plan_tools(mcp: FastMCP) -> None:
 
         try:
             project_plan = ProjectPlan.parse_markdown(project_plan_markdown)
-            result = project_plan_tools.create_project_plan(project_name, project_plan)
+            result = await project_plan_tools.create_project_plan(project_name, project_plan)
 
             await ctx.info(f'Created project plan: {result.id}')
             return result
@@ -161,7 +161,7 @@ def register_project_plan_tools(mcp: FastMCP) -> None:
 
         try:
             project_plan = ProjectPlan.parse_markdown(project_plan_markdown)
-            result = project_plan_tools.store_project_plan(project_name, project_plan)
+            result = await project_plan_tools.store_project_plan(project_name, project_plan)
 
             await ctx.info(f'Stored project plan: {result.id}')
             return result
@@ -183,7 +183,7 @@ def register_project_plan_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Generating markdown for project plan: {project_name}')
         try:
-            result = project_plan_tools.get_project_plan_markdown(project_name)
+            result = await project_plan_tools.get_project_plan_markdown(project_name)
             await ctx.info(f'Generated markdown for project plan: {project_name}')
             return result
         except Exception as e:
@@ -204,7 +204,7 @@ def register_project_plan_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Listing up to {count} project plans')
         try:
-            result = project_plan_tools.list_project_plans(count)
+            result = await project_plan_tools.list_project_plans(count)
             await ctx.info('Retrieved project plan list')
             return result
         except Exception as e:
@@ -225,7 +225,7 @@ def register_project_plan_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Deleting project plan: {project_name}')
         try:
-            result = project_plan_tools.delete_project_plan(project_name)
+            result = await project_plan_tools.delete_project_plan(project_name)
             await ctx.info(f'Deleted project plan: {project_name}')
             return result
         except Exception as e:
