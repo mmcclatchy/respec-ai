@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from src.cli.config.claude_config import (
     ClaudeConfigError,
     get_mcp_server_config,
+    load_claude_config,
     register_mcp_server,
 )
 from src.cli.config.package_info import get_package_version
@@ -34,6 +35,30 @@ def run(args: Namespace) -> int:
         Exit code (0 for success, 1 for failure)
     """
     try:
+        config = load_claude_config()
+        mcp_servers = config.get('mcpServers', {})
+
+        old_entry_exists = 'respec-ai' in mcp_servers
+        new_entry_exists = 'RespecAI' in mcp_servers
+
+        if old_entry_exists and new_entry_exists:
+            print_error('Found duplicate MCP server entries')
+            print_warning('Old entry: respec-ai')
+            print_warning('New entry: RespecAI')
+            print_info('Clean up duplicate entries first:')
+            print_info('  respec-ai unregister-mcp --all')
+            print_info('Then register again:')
+            print_info('  respec-ai register-mcp')
+            return 1
+
+        if old_entry_exists and not args.force:
+            print_warning('Found old MCP server entry: respec-ai')
+            print_info('Upgrading to new entry name: RespecAI')
+            print_info('Removing old entry first...')
+            print_info('Run: respec-ai unregister-mcp --all')
+            print_info('Then: respec-ai register-mcp')
+            return 1
+
         existing_config = get_mcp_server_config()
 
         if existing_config and not args.force:

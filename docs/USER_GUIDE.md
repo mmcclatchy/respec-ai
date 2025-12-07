@@ -39,7 +39,7 @@ See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and
   - [respec-ai platform](#respec-ai-platform)
   - [respec-ai status](#respec-ai-status)
   - [respec-ai validate](#respec-ai-validate)
-  - [respec-ai upgrade](#respec-ai-upgrade)
+  - [respec-ai regenerate](#respec-ai-regenerate)
   - [respec-ai register-mcp](#respec-ai-register-mcp)
 - [Platform Selection](#platform-selection)
 - [Available Commands](#available-commands)
@@ -554,13 +554,13 @@ MCP Registered       ✗ Not registered in Claude Code
 
 ---
 
-### `respec-ai upgrade`
+### `respec-ai regenerate`
 
-Update templates to the latest version.
+Regenerate agent and command templates to match the current package version.
 
 **Usage:**
 ```bash
-respec-ai upgrade [--force]
+respec-ai regenerate [--force]
 ```
 
 **Options:**
@@ -568,11 +568,11 @@ respec-ai upgrade [--force]
 
 **Example:**
 ```bash
-# Standard upgrade
-respec-ai upgrade
+# Regenerate templates
+respec-ai regenerate
 
 # Force regeneration
-respec-ai upgrade --force
+respec-ai regenerate --force
 ```
 
 **Output:**
@@ -1118,9 +1118,9 @@ When a new version of RespecAI is released:
 # Update the package
 uv add respec-ai --upgrade
 
-# Update your project templates
+# Regenerate your project templates
 cd /path/to/your/project
-respec-ai upgrade
+respec-ai regenerate
 ```
 
 This preserves your platform choice while updating templates to the latest version.

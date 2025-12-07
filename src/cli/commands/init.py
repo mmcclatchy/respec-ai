@@ -1,4 +1,5 @@
 import json
+import shutil
 import sys
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
@@ -37,6 +38,11 @@ def add_arguments(parser: ArgumentParser) -> None:
         action='store_true',
         help='Skip automatic MCP server registration',
     )
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Overwrite existing configuration if present',
+    )
 
 
 def run(args: Namespace) -> int:
@@ -57,11 +63,18 @@ def run(args: Namespace) -> int:
         config_path = reRESPEC_AI_dir / 'config.json'
 
         if config_path.exists():
-            print_error('RespecAI is already initialized in this project')
-            print_warning(f'Config found at: {config_path}')
-            print_warning('Use respec-ai platform to change platforms')
-            print_warning('Use respec-ai upgrade to update templates')
-            return 1
+            if not args.force:
+                print_error('RespecAI is already initialized in this project')
+                print_warning(f'Config found at: {config_path}')
+                print_warning('Use --force to reinitialize completely')
+                print_warning('Use respec-ai rebuild to rebuild configuration')
+                print_warning('Use respec-ai platform to change platforms')
+                print_warning('Use respec-ai regenerate to update templates only')
+                return 1
+            else:
+                print_warning('Force flag detected - reinitializing project')
+                if reRESPEC_AI_dir.exists():
+                    shutil.rmtree(reRESPEC_AI_dir)
 
         platform_type = PlatformType(platform)
         orchestrator = PlatformOrchestrator.create_with_default_config()

@@ -6,8 +6,12 @@ Provides commands for:
 - Platform switching (platform)
 - Status checking (status)
 - Validation (validate)
-- Template upgrades (upgrade)
+- Template regeneration (regenerate)
+- Project rebuild (rebuild)
+- Package updates (update)
 - MCP registration (register-mcp)
+- MCP unregistration (unregister-mcp)
+- Cleanup (cleanup)
 - Docker container management (docker)
 """
 
@@ -21,9 +25,12 @@ from src.cli.commands import init
 from src.cli.commands import platform
 from src.cli.commands import status
 from src.cli.commands import validate
-from src.cli.commands import upgrade
+from src.cli.commands import regenerate
+from src.cli.commands import rebuild
 from src.cli.commands import update
 from src.cli.commands import register_mcp
+from src.cli.commands import unregister_mcp
+from src.cli.commands import cleanup
 from src.cli.commands import docker
 
 
@@ -78,12 +85,19 @@ def main() -> int:
 
     validate.add_arguments(validate_parser)
 
-    upgrade_parser = subparsers.add_parser(
-        'upgrade',
-        help='Update templates to latest version',
+    regenerate_parser = subparsers.add_parser(
+        'regenerate',
+        help='Regenerate agent and command templates',
     )
 
-    upgrade.add_arguments(upgrade_parser)
+    regenerate.add_arguments(regenerate_parser)
+
+    rebuild_parser = subparsers.add_parser(
+        'rebuild',
+        help='Rebuild project configuration with current package version',
+    )
+
+    rebuild.add_arguments(rebuild_parser)
 
     update_parser = subparsers.add_parser(
         'update',
@@ -98,6 +112,20 @@ def main() -> int:
     )
 
     register_mcp.add_arguments(register_mcp_parser)
+
+    unregister_mcp_parser = subparsers.add_parser(
+        'unregister-mcp',
+        help='Unregister RespecAI MCP server from Claude Code',
+    )
+
+    unregister_mcp.add_arguments(unregister_mcp_parser)
+
+    cleanup_parser = subparsers.add_parser(
+        'cleanup',
+        help='Clean up all RespecAI installations and configurations',
+    )
+
+    cleanup.add_arguments(cleanup_parser)
 
     docker_parser = subparsers.add_parser(
         'docker',
@@ -117,12 +145,18 @@ def main() -> int:
             return status.run(args)
         case 'validate':
             return validate.run(args)
-        case 'upgrade':
-            return upgrade.run(args)
+        case 'regenerate':
+            return regenerate.run(args)
+        case 'rebuild':
+            return rebuild.run(args)
         case 'update':
             return update.run(args)
         case 'register-mcp':
             return register_mcp.run(args)
+        case 'unregister-mcp':
+            return unregister_mcp.run(args)
+        case 'cleanup':
+            return cleanup.run(args)
         case 'docker':
             return docker.run(args)
         case _:
