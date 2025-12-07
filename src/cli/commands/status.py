@@ -77,7 +77,7 @@ def run(args: Namespace) -> int:
 
         if version != package_version:
             print_warning(f'Config version ({version}) != package version ({package_version})')
-            print_warning('Run: respec-ai upgrade')
+            print_warning('Run: respec-ai regenerate')
             console.print()
 
         return 0

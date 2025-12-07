@@ -15,6 +15,9 @@ class DockerManagerError(Exception):
 class DockerManager:
     IMAGE_NAME = 'respec-ai-server'
     CONTAINER_NAME_PREFIX = 'respec-ai'
+    DB_CONTAINER_NAME = 'respec-ai-db-prod'
+    DB_NETWORK_NAME = 'respec-prod-network'
+    DB_VOLUME_NAME = 'respec_prod_data'
     REGISTRIES = [
         'ghcr.io/mmcclatchy/respec-ai-server',
     ]
@@ -334,3 +337,101 @@ class DockerManager:
 
         except DockerException as e:
             raise DockerManagerError(f'Failed to cleanup old versions: {e}') from e
+
+    def cleanup_dangling_images(self) -> tuple[int, int]:
+        try:
+            result = self.client.images.prune(filters={'dangling': True})
+            images_removed = len(result.get('ImagesDeleted', []) or [])
+            space_reclaimed = result.get('SpaceReclaimed', 0)
+            return (images_removed, space_reclaimed)
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to cleanup dangling images: {e}') from e
+
+    def get_database_container(self) -> Container | None:
+        try:
+            return self.client.containers.get(self.DB_CONTAINER_NAME)
+        except NotFound:
+            return None
+
+    def stop_database_container(self, force: bool = False, timeout: int = 10) -> None:
+        container = self.get_database_container()
+        if not container:
+            raise DockerManagerError(f'Database container {self.DB_CONTAINER_NAME} not found')
+
+        try:
+            if force:
+                container.kill()
+            else:
+                container.stop(timeout=timeout)
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to stop database container: {e}') from e
+
+    def remove_database_container(self, force: bool = False) -> None:
+        container = self.get_database_container()
+        if not container:
+            return
+
+        try:
+            container.remove(force=force)
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to remove database container: {e}') from e
+
+    def remove_image(self, version: str | None = None) -> None:
+        image_tag = self.get_image_tag(version)
+        try:
+            self.client.images.remove(image_tag, force=True)
+        except ImageNotFound:
+            pass
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to remove image: {e}') from e
+
+    def remove_network(self) -> None:
+        try:
+            network = self.client.networks.get(self.DB_NETWORK_NAME)
+            network.remove()
+        except NotFound:
+            pass
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to remove network: {e}') from e
+
+    def remove_volume(self) -> None:
+        try:
+            volume = self.client.volumes.get(self.DB_VOLUME_NAME)
+            volume.remove()
+        except NotFound:
+            pass
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to remove volume: {e}') from e
+
+    def list_prod_containers(self) -> list[dict[str, Any]]:
+        containers = []
+
+        server = self.get_container()
+        if server:
+            image_name = 'unknown'
+            if server.image and hasattr(server.image, 'tags') and server.image.tags:
+                image_name = server.image.tags[0]
+            containers.append(
+                {
+                    'name': server.name,
+                    'running': server.status == 'running',
+                    'image': image_name,
+                    'created': server.attrs['Created'][:19].replace('T', ' '),
+                }
+            )
+
+        db = self.get_database_container()
+        if db:
+            image_name = 'unknown'
+            if db.image and hasattr(db.image, 'tags') and db.image.tags:
+                image_name = db.image.tags[0]
+            containers.append(
+                {
+                    'name': db.name,
+                    'running': db.status == 'running',
+                    'image': image_name,
+                    'created': db.attrs['Created'][:19].replace('T', ' '),
+                }
+            )
+
+        return containers

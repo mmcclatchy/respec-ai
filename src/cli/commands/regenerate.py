@@ -12,11 +12,6 @@ from src.platform.platform_selector import PlatformType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
-    """Add command-specific arguments.
-
-    Args:
-        parser: Argument parser for this command
-    """
     parser.add_argument(
         '--force',
         action='store_true',
@@ -25,14 +20,6 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def run(args: Namespace) -> int:
-    """Update templates to latest version.
-
-    Args:
-        args: Command arguments
-
-    Returns:
-        Exit code (0 for success, 1 for failure)
-    """
     try:
         project_path = Path.cwd().resolve()
         config_path = project_path / '.respec-ai' / 'config.json'
@@ -98,12 +85,12 @@ def run(args: Namespace) -> int:
         return 1
 
     except Exception as e:
-        print_error(f'Upgrade failed: {e}')
+        print_error(f'Regenerate failed: {e}')
         return 1
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Update templates to latest version')
+    parser = ArgumentParser(description='Regenerate agent and command templates')
     add_arguments(parser)
     args = parser.parse_args()
     sys.exit(run(args))

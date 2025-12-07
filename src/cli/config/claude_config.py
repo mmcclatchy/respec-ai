@@ -191,9 +191,7 @@ def register_mcp_server(
                 container_name,
                 'uv',
                 'run',
-                'python',
-                '-m',
-                'src.mcp.server',
+                'respec-server',
             ],
             capture_output=True,
             text=True,
@@ -241,6 +239,46 @@ def unregister_mcp_server(
         raise ClaudeConfigError(
             'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
         ) from e
+
+
+def unregister_all_respec_servers(config_path: Path = CLAUDE_CONFIG_PATH) -> int:
+    """Remove all respec-ai MCP server entries (handles old and new names).
+
+    This function removes all variations of respec-ai MCP server names that may
+    exist from different versions, including 'respec-ai', 'RespecAI', and 'respec_ai'.
+
+    Args:
+        config_path: Path to config file (defaults to ~/.claude/config.json)
+
+    Returns:
+        Number of MCP server entries successfully removed
+
+    Raises:
+        ClaudeConfigError: If Claude CLI is not available
+    """
+    removed_count = 0
+    server_names = ['respec-ai', 'RespecAI', 'respec_ai']
+
+    for name in server_names:
+        try:
+            result = subprocess.run(
+                ['claude', 'mcp', 'remove', name],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            if result.returncode == 0:
+                removed_count += 1
+
+        except FileNotFoundError as e:
+            raise ClaudeConfigError(
+                'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
+            ) from e
+        except Exception:
+            continue
+
+    return removed_count
 
 
 def get_mcp_server_config(config_path: Path = CLAUDE_CONFIG_PATH) -> dict | None:

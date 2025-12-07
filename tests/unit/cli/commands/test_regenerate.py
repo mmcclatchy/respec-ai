@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
-from src.cli.commands import upgrade
+from src.cli.commands import regenerate
 
 
-class TestUpgradeCommand:
-    def test_successful_upgrade(
+class TestRegenerateCommand:
+    def test_successful_regenerate(
         self,
         mocker: MockerFixture,
         tmp_path: Path,
@@ -21,12 +21,12 @@ class TestUpgradeCommand:
         config_data = {'platform': 'linear', 'version': '0.1.0'}
         (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
 
-        mocker.patch('src.cli.commands.upgrade.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.upgrade.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.upgrade.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.regenerate.generate_templates', return_value=([Path('file1.md')], 5, 12))
 
         args = Namespace(force=False)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 0
 
@@ -37,7 +37,7 @@ class TestUpgradeCommand:
         monkeypatch.chdir(tmp_path)
 
         args = Namespace(force=False)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 1
 
@@ -54,10 +54,10 @@ class TestUpgradeCommand:
         config_data = {'platform': 'linear', 'version': '0.2.0'}
         (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
 
-        mocker.patch('src.cli.commands.upgrade.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
 
         args = Namespace(force=False)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 0
 
@@ -74,14 +74,14 @@ class TestUpgradeCommand:
         config_data = {'platform': 'linear', 'version': '0.2.0'}
         (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
 
-        mocker.patch('src.cli.commands.upgrade.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.upgrade.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.PlatformOrchestrator')
         mock_generate = mocker.patch(
-            'src.cli.commands.upgrade.generate_templates', return_value=([Path('file1.md')], 5, 12)
+            'src.cli.commands.regenerate.generate_templates', return_value=([Path('file1.md')], 5, 12)
         )
 
         args = Namespace(force=True)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 0
         mock_generate.assert_called_once()
@@ -99,10 +99,10 @@ class TestUpgradeCommand:
         config_data = {'version': '0.1.0'}
         (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
 
-        mocker.patch('src.cli.commands.upgrade.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
 
         args = Namespace(force=False)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 1
 
@@ -114,7 +114,7 @@ class TestUpgradeCommand:
         (reRESPEC_AI_dir / 'config.json').write_text('{ invalid json }')
 
         args = Namespace(force=False)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 1
 
@@ -131,12 +131,12 @@ class TestUpgradeCommand:
         config_data = {'platform': 'github', 'version': '0.1.0', 'project_name': 'test'}
         (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
 
-        mocker.patch('src.cli.commands.upgrade.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.upgrade.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.upgrade.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.regenerate.generate_templates', return_value=([Path('file1.md')], 5, 12))
 
         args = Namespace(force=False)
-        result = upgrade.run(args)
+        result = regenerate.run(args)
 
         assert result == 0
 

@@ -294,8 +294,8 @@ respec-ai platform linear
 respec-ai platform github
 respec-ai platform markdown
 
-# Test upgrade
-respec-ai upgrade
+# Test regenerate
+respec-ai regenerate
 
 # Test MCP registration
 respec-ai register-mcp --force
