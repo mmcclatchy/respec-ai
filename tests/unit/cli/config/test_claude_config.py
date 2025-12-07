@@ -117,9 +117,8 @@ class TestRegisterMcpServer:
         call_args = mock_run.call_args[0][0]
         assert call_args[0:3] == ['claude', 'mcp', 'add']
         assert MCP_SERVER_NAME in call_args
-        assert '--' in call_args
-        assert 'docker' in call_args
-        assert 'respec-ai-0.3.0' in call_args
+        assert 'respec-ai' in call_args
+        assert 'mcp-server' in call_args
 
     def test_already_registered_without_force(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mocker.patch('src.cli.config.claude_config.get_package_version', return_value='0.3.0')
