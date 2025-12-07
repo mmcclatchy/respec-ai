@@ -15,9 +15,9 @@ class BuildPlanTools:
         self.state = state
         self._build_plans: dict[str, BuildPlan] = {}  # loop_id -> BuildPlan
 
-    def store_build_plan(self, loop_id: str, plan: BuildPlan) -> MCPResponse:
+    async def store_build_plan(self, loop_id: str, plan: BuildPlan) -> MCPResponse:
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
             if plan is None:
                 raise ValueError('BuildPlan cannot be None')
 
@@ -36,9 +36,9 @@ class BuildPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error storing build plan: {str(e)}')
 
-    def get_build_plan_data(self, loop_id: str) -> BuildPlan:
+    async def get_build_plan_data(self, loop_id: str) -> BuildPlan:
         try:
-            self.state.get_loop(loop_id)
+            await self.state.get_loop(loop_id)
 
             if loop_id not in self._build_plans:
                 raise ResourceError('No build plan stored for this loop')
@@ -51,10 +51,10 @@ class BuildPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error retrieving build plan: {str(e)}')
 
-    def get_build_plan_markdown(self, loop_id: str) -> MCPResponse:
+    async def get_build_plan_markdown(self, loop_id: str) -> MCPResponse:
         try:
-            loop_state = self.state.get_loop(loop_id)
-            build_plan = self.get_build_plan_data(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
+            build_plan = await self.get_build_plan_data(loop_id)
 
             markdown = build_plan.build_markdown()
             return MCPResponse(id=loop_id, status=loop_state.status, message=markdown)
@@ -63,7 +63,7 @@ class BuildPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error generating markdown: {str(e)}')
 
-    def list_build_plans(self, count: int = 10) -> MCPResponse:
+    async def list_build_plans(self, count: int = 10) -> MCPResponse:
         try:
             if not self._build_plans:
                 return MCPResponse(id='list', status=LoopStatus.INITIALIZED, message='No build plans found')
@@ -81,9 +81,9 @@ class BuildPlanTools:
         except Exception as e:
             raise ToolError(f'Unexpected error listing build plans: {str(e)}')
 
-    def delete_build_plan(self, loop_id: str) -> MCPResponse:
+    async def delete_build_plan(self, loop_id: str) -> MCPResponse:
         try:
-            self.state.get_loop(loop_id)
+            await self.state.get_loop(loop_id)
 
             if loop_id in self._build_plans:
                 plan_name = self._build_plans[loop_id].project_name
@@ -117,7 +117,7 @@ def register_build_plan_tools(mcp: FastMCP) -> None:
 
         try:
             build_plan = BuildPlan.parse_markdown(plan_markdown)
-            result = build_plan_tools.store_build_plan(loop_id, build_plan)
+            result = await build_plan_tools.store_build_plan(loop_id, build_plan)
 
             await ctx.info(f'Stored build plan: {result.id}')
             return result
@@ -139,7 +139,7 @@ def register_build_plan_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Generating markdown for build plan: {loop_id}')
         try:
-            result = build_plan_tools.get_build_plan_markdown(loop_id)
+            result = await build_plan_tools.get_build_plan_markdown(loop_id)
             await ctx.info(f'Generated markdown for build plan: {loop_id}')
             return result
         except Exception as e:
@@ -160,7 +160,7 @@ def register_build_plan_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Listing up to {count} build plans')
         try:
-            result = build_plan_tools.list_build_plans(count)
+            result = await build_plan_tools.list_build_plans(count)
             await ctx.info('Retrieved build plan list')
             return result
         except Exception as e:
@@ -181,7 +181,7 @@ def register_build_plan_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Deleting build plan: {loop_id}')
         try:
-            result = build_plan_tools.delete_build_plan(loop_id)
+            result = await build_plan_tools.delete_build_plan(loop_id)
             await ctx.info(f'Deleted build plan: {loop_id}')
             return result
         except Exception as e:

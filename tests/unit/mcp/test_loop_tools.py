@@ -14,101 +14,110 @@ def project_name() -> str:
 
 
 class TestLoopToolsMCP:
-    def test_decide_loop_next_action_complete_decision(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_decide_loop_next_action_complete_decision(self, project_name: str) -> None:
         # Initialize a build_code loop (threshold 95%)
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'build_code')
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'build_code')
         loop_id = init_result.id
 
         # High score should complete
-        result = loop_tools.decide_loop_next_action(loop_id, 96)
+        result = await loop_tools.decide_loop_next_action(loop_id, 96)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.COMPLETED
 
-    def test_decide_loop_next_action_refine_decision(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_decide_loop_next_action_refine_decision(self, project_name: str) -> None:
         # Initialize a spec loop (threshold 85%)
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         # Score below threshold should refine
-        result = loop_tools.decide_loop_next_action(loop_id, 70)
+        result = await loop_tools.decide_loop_next_action(loop_id, 70)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.REFINE
 
-    def test_decide_loop_next_action_user_input_decision(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_decide_loop_next_action_user_input_decision(self, project_name: str) -> None:
         # Initialize a plan loop
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'plan')
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
         loop_id = init_result.id
 
         # Add multiple low improvement scores to trigger stagnation
-        loop_tools.decide_loop_next_action(loop_id, 60)
-        loop_tools.decide_loop_next_action(loop_id, 61)
-        loop_tools.decide_loop_next_action(loop_id, 62)
+        await loop_tools.decide_loop_next_action(loop_id, 60)
+        await loop_tools.decide_loop_next_action(loop_id, 61)
+        await loop_tools.decide_loop_next_action(loop_id, 62)
 
         # Should detect stagnation and request user input
-        result = loop_tools.decide_loop_next_action(loop_id, 63)
+        result = await loop_tools.decide_loop_next_action(loop_id, 63)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.USER_INPUT
 
-    def test_decide_loop_next_action_invalid_loop_id(self) -> None:
+    @pytest.mark.asyncio
+    async def test_decide_loop_next_action_invalid_loop_id(self) -> None:
         with pytest.raises(LoopStateError):
-            loop_tools.decide_loop_next_action('nonexistent-loop-id', 80)
+            await loop_tools.decide_loop_next_action('nonexistent-loop-id', 80)
 
-    def test_decide_loop_next_action_score_validation(self, project_name: str) -> None:
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'plan')
+    @pytest.mark.asyncio
+    async def test_decide_loop_next_action_score_validation(self, project_name: str) -> None:
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
         loop_id = init_result.id
 
         # Test valid score ranges
-        result = loop_tools.decide_loop_next_action(loop_id, 0)
+        result = await loop_tools.decide_loop_next_action(loop_id, 0)
         assert isinstance(result, MCPResponse)
 
-        result = loop_tools.decide_loop_next_action(loop_id, 100)
+        result = await loop_tools.decide_loop_next_action(loop_id, 100)
         assert isinstance(result, MCPResponse)
 
         # Test invalid score ranges
         with pytest.raises(LoopValidationError):
-            loop_tools.decide_loop_next_action(loop_id, -1)
+            await loop_tools.decide_loop_next_action(loop_id, -1)
 
         with pytest.raises(LoopValidationError):
-            loop_tools.decide_loop_next_action(loop_id, 101)
+            await loop_tools.decide_loop_next_action(loop_id, 101)
 
-    def test_decide_loop_next_action_checkpoint_frequency(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_decide_loop_next_action_checkpoint_frequency(self, project_name: str) -> None:
         # Initialize a plan loop to test checkpoint frequency
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'plan')
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
         loop_id = init_result.id
 
         # Add scores until we hit checkpoint frequency (5 for plan loops)
         for score in [60, 61, 62, 63, 64]:
-            result = loop_tools.decide_loop_next_action(loop_id, score)
+            result = await loop_tools.decide_loop_next_action(loop_id, score)
 
         # Should request user input at checkpoint frequency
         assert result.status == LoopStatus.USER_INPUT
 
-    def test_initialize_refinement_loop_integration(self, project_name: str) -> None:
-        result = loop_tools.initialize_refinement_loop(project_name, 'build_plan')
+    @pytest.mark.asyncio
+    async def test_initialize_refinement_loop_integration(self, project_name: str) -> None:
+        result = await loop_tools.initialize_refinement_loop(project_name, 'build_plan')
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.INITIALIZED
         assert len(result.id) > 0
 
-    def test_get_loop_status_integration(self, project_name: str) -> None:
-        init_result = loop_tools.initialize_refinement_loop(project_name, 'spec')
+    @pytest.mark.asyncio
+    async def test_get_loop_status_integration(self, project_name: str) -> None:
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
-        status = loop_tools.get_loop_status(loop_id)
+        status = await loop_tools.get_loop_status(loop_id)
 
         assert isinstance(status, MCPResponse)
         assert status.id == loop_id
         assert status.status == LoopStatus.INITIALIZED
 
-    def test_list_active_loops_integration(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_list_active_loops_integration(self, project_name: str) -> None:
         # Create multiple loops
-        loop1 = loop_tools.initialize_refinement_loop(project_name, 'plan')
-        loop2 = loop_tools.initialize_refinement_loop(project_name, 'spec')
+        loop1 = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        loop2 = await loop_tools.initialize_refinement_loop(project_name, 'spec')
 
-        active_loops = loop_tools.list_active_loops(project_name)
+        active_loops = await loop_tools.list_active_loops(project_name)
 
         assert isinstance(active_loops, list)
         assert len(active_loops) >= 2
@@ -128,33 +137,37 @@ class TestLoopFeedbackIntegration:
         return LoopTools(state_manager)
 
     @pytest.fixture
-    def sample_loop(self, state_manager: InMemoryStateManager, project_name: str) -> LoopState:
+    async def sample_loop(self, state_manager: InMemoryStateManager, project_name: str) -> LoopState:
         loop_state = LoopState(loop_type=LoopType.SPEC)
-        state_manager.add_loop(loop_state, project_name)
+        await state_manager.add_loop(loop_state, project_name)
         return loop_state
 
-    def test_get_loop_feedback_summary_no_feedback(self, loop_tools_instance: LoopTools, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_get_loop_feedback_summary_no_feedback(
+        self, loop_tools_instance: LoopTools, project_name: str
+    ) -> None:
         # Initialize a loop
-        init_result = loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         # Get feedback summary for loop with no feedback
-        result = loop_tools_instance.get_loop_feedback_summary(loop_id)
+        result = await loop_tools_instance.get_loop_feedback_summary(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.id == loop_id
         assert 'No feedback available' in result.message
         assert 'ready for first assessment' in result.message
 
-    def test_get_loop_feedback_summary_with_feedback(
+    @pytest.mark.asyncio
+    async def test_get_loop_feedback_summary_with_feedback(
         self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, project_name: str
     ) -> None:
         # Initialize a loop
-        init_result = loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         # Add some feedback to the loop
-        loop_state = state_manager.get_loop(loop_id)
+        loop_state = await state_manager.get_loop(loop_id)
 
         feedback1 = CriticFeedback(
             loop_id=loop_id,
@@ -181,7 +194,7 @@ class TestLoopFeedbackIntegration:
         loop_state.add_feedback(feedback2)
 
         # Get feedback summary
-        result = loop_tools_instance.get_loop_feedback_summary(loop_id)
+        result = await loop_tools_instance.get_loop_feedback_summary(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.id == loop_id
@@ -191,30 +204,32 @@ class TestLoopFeedbackIntegration:
         assert 'Initial assessment' in result.message
         assert 'Improved specification' in result.message
 
-    def test_get_loop_improvement_analysis_insufficient_feedback(
+    @pytest.mark.asyncio
+    async def test_get_loop_improvement_analysis_insufficient_feedback(
         self, loop_tools_instance: LoopTools, project_name: str
     ) -> None:
         # Initialize a loop
-        init_result = loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         # Try to get improvement analysis with no feedback
-        result = loop_tools_instance.get_loop_improvement_analysis(loop_id)
+        result = await loop_tools_instance.get_loop_improvement_analysis(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.id == loop_id
         assert 'Insufficient feedback history' in result.message
         assert 'need at least 2 assessments' in result.message
 
-    def test_get_loop_improvement_analysis_with_history(
+    @pytest.mark.asyncio
+    async def test_get_loop_improvement_analysis_with_history(
         self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, project_name: str
     ) -> None:
         # Initialize a loop
-        init_result = loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         # Add feedback with improvement
-        loop_state = state_manager.get_loop(loop_id)
+        loop_state = await state_manager.get_loop(loop_id)
 
         feedback1 = CriticFeedback(
             loop_id=loop_id,
@@ -253,7 +268,7 @@ class TestLoopFeedbackIntegration:
         loop_state.add_feedback(feedback3)
 
         # Get improvement analysis
-        result = loop_tools_instance.get_loop_improvement_analysis(loop_id)
+        result = await loop_tools_instance.get_loop_improvement_analysis(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.id == loop_id
@@ -262,15 +277,16 @@ class TestLoopFeedbackIntegration:
         assert 'last change: +10 points' in result.message
         assert 'No recurring issues' in result.message  # No issues appear twice
 
-    def test_get_loop_improvement_analysis_with_recurring_issues(
+    @pytest.mark.asyncio
+    async def test_get_loop_improvement_analysis_with_recurring_issues(
         self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, project_name: str
     ) -> None:
         # Initialize a loop
-        init_result = loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
         # Add feedback with recurring issues
-        loop_state = state_manager.get_loop(loop_id)
+        loop_state = await state_manager.get_loop(loop_id)
 
         feedback1 = CriticFeedback(
             loop_id=loop_id,
@@ -297,17 +313,18 @@ class TestLoopFeedbackIntegration:
         loop_state.add_feedback(feedback2)
 
         # Get improvement analysis
-        result = loop_tools_instance.get_loop_improvement_analysis(loop_id)
+        result = await loop_tools_instance.get_loop_improvement_analysis(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.id == loop_id
         assert 'improving trend' in result.message
         assert 'Recurring issues: Missing security' in result.message
 
-    def test_feedback_integration_nonexistent_loop(self, loop_tools_instance: LoopTools) -> None:
+    @pytest.mark.asyncio
+    async def test_feedback_integration_nonexistent_loop(self, loop_tools_instance: LoopTools) -> None:
         # Test error handling for nonexistent loop
         with pytest.raises(LoopStateError):
-            loop_tools_instance.get_loop_feedback_summary('nonexistent-loop')
+            await loop_tools_instance.get_loop_feedback_summary('nonexistent-loop')
 
         with pytest.raises(LoopStateError):
-            loop_tools_instance.get_loop_improvement_analysis('nonexistent-loop')
+            await loop_tools_instance.get_loop_improvement_analysis('nonexistent-loop')

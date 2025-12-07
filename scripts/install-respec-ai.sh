@@ -204,6 +204,16 @@ elif [ "$STATE_MANAGER" = "database" ]; then
     print_info "Waiting for services to be ready..."
     sleep 5
 
+    # Run database migrations
+    print_info "Running database migrations..."
+    if docker compose -f docker-compose.dev.yml exec -T db psql -U respec -d respec_dev -f /docker-entrypoint-initdb.d/001_initial_schema.sql 2>/dev/null; then
+        print_success "Schema migration applied"
+        docker compose -f docker-compose.dev.yml exec -T db psql -U respec -d respec_dev -f /docker-entrypoint-initdb.d/002_add_indexes.sql 2>/dev/null
+        print_success "Index migration applied"
+    else
+        print_info "Migrations already applied (skipping)"
+    fi
+
     STATE_MANAGER_MODE="database"
     MCP_COMMAND="docker"
     MCP_ARGS='["compose", "-f", "'"$RESPEC_AI_PATH/docker-compose.dev.yml"'", "exec", "-T", "mcp-server", "respec-server"]'

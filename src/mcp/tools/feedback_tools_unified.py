@@ -29,7 +29,7 @@ class UnifiedFeedbackTools:
         # Analysis storage for plan-analyst workflow
         self._analysis_storage: dict[str, str] = {}  # loop_id -> analysis
 
-    def store_critic_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
+    async def store_critic_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
         """Store structured critic feedback from automated assessment.
 
         Args:
@@ -45,7 +45,7 @@ class UnifiedFeedbackTools:
             raise ToolError('Feedback markdown cannot be empty')
 
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
@@ -61,7 +61,7 @@ class UnifiedFeedbackTools:
             message=f'Stored critic feedback for loop {loop_id} (Score: {feedback.overall_score})',
         )
 
-    def store_user_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
+    async def store_user_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
         """Store user-provided feedback during stagnation or user_input status.
 
         Args:
@@ -77,7 +77,7 @@ class UnifiedFeedbackTools:
             raise ToolError('User feedback cannot be empty')
 
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
@@ -96,7 +96,7 @@ class UnifiedFeedbackTools:
             message=f'Stored user feedback for loop {loop_id}',
         )
 
-    def get_feedback(self, loop_id: str, count: int = 2) -> MCPResponse:
+    async def get_feedback(self, loop_id: str, count: int = 2) -> MCPResponse:
         """Get recent feedback (critic + user) for a loop in chronological order.
 
         Returns combined feedback showing recent iteration progression and user guidance.
@@ -117,7 +117,7 @@ class UnifiedFeedbackTools:
             raise ToolError('Count must be a positive integer')
 
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
@@ -172,7 +172,7 @@ class UnifiedFeedbackTools:
         message = '\n'.join(feedback_parts)
         return MCPResponse(id=loop_id, status=loop_state.status, message=message)
 
-    def store_current_analysis(self, loop_id: str, analysis: str) -> MCPResponse:
+    async def store_current_analysis(self, loop_id: str, analysis: str) -> MCPResponse:
         """Store current analysis (used by plan-analyst workflow).
 
         Args:
@@ -188,7 +188,7 @@ class UnifiedFeedbackTools:
             raise ToolError('Analysis cannot be empty')
 
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
@@ -196,7 +196,7 @@ class UnifiedFeedbackTools:
         self._analysis_storage[storage_key] = analysis
         return MCPResponse(id=loop_id, status=loop_state.status, message=f'Stored analysis for loop {loop_id}')
 
-    def get_previous_analysis(self, loop_id: str) -> MCPResponse:
+    async def get_previous_analysis(self, loop_id: str) -> MCPResponse:
         """Get previous analysis (used by plan-analyst workflow).
 
         Args:
@@ -209,7 +209,7 @@ class UnifiedFeedbackTools:
             raise ToolError('Loop ID cannot be empty')
 
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
@@ -262,7 +262,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Storing critic feedback for loop {loop_id}')
         try:
-            result = feedback_tools.store_critic_feedback(loop_id, feedback_markdown)
+            result = await feedback_tools.store_critic_feedback(loop_id, feedback_markdown)
             await ctx.info(f'Stored critic feedback for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -289,7 +289,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Storing user feedback for loop {loop_id}')
         try:
-            result = feedback_tools.store_user_feedback(loop_id, feedback_markdown)
+            result = await feedback_tools.store_user_feedback(loop_id, feedback_markdown)
             await ctx.info(f'Stored user feedback for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -317,7 +317,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Retrieving {count} recent feedback(s) for loop {loop_id}')
         try:
-            result = feedback_tools.get_feedback(loop_id, count)
+            result = await feedback_tools.get_feedback(loop_id, count)
             await ctx.info(f'Retrieved {count} feedback(s) for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -331,7 +331,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
     async def store_current_analysis(loop_id: str, analysis: str, ctx: Context) -> MCPResponse:
         await ctx.info(f'Storing analysis for loop {loop_id}')
         try:
-            result = feedback_tools.store_current_analysis(loop_id, analysis)
+            result = await feedback_tools.store_current_analysis(loop_id, analysis)
             await ctx.info(f'Stored analysis for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -345,7 +345,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
     async def get_previous_analysis(loop_id: str, ctx: Context) -> MCPResponse:
         await ctx.info(f'Retrieving previous analysis for loop {loop_id}')
         try:
-            result = feedback_tools.get_previous_analysis(loop_id)
+            result = await feedback_tools.get_previous_analysis(loop_id)
             await ctx.info(f'Retrieved analysis for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:

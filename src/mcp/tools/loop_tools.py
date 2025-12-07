@@ -10,11 +10,11 @@ class LoopTools:
     def __init__(self, state: StateManager) -> None:
         self.state = state
 
-    def initialize_refinement_loop(self, project_name: str, loop_type: str) -> MCPResponse:
+    async def initialize_refinement_loop(self, project_name: str, loop_type: str) -> MCPResponse:
         try:
             loop_type_enum = LoopType(loop_type)
             loop_state = LoopState(loop_type=loop_type_enum)
-            self.state.add_loop(loop_state, project_name)
+            await self.state.add_loop(loop_state, project_name)
             return loop_state.mcp_response
         except ValueError:
             valid_types = {'plan', 'spec', 'build_plan', 'build_code'}
@@ -26,21 +26,21 @@ class LoopTools:
         except Exception as e:
             raise LoopStateError('new', 'initialization', f'Unexpected error: {str(e)}')
 
-    def get_loop_status(self, loop_id: str) -> MCPResponse:
+    async def get_loop_status(self, loop_id: str) -> MCPResponse:
         try:
-            return self.state.get_loop_status(loop_id)
+            return await self.state.get_loop_status(loop_id)
         except LoopNotFoundError:
             raise LoopStateError(loop_id, 'status_retrieval', 'Loop does not exist')
         except Exception as e:
             raise LoopStateError(loop_id, 'status_retrieval', f'Unexpected error: {str(e)}')
 
-    def list_active_loops(self, project_name: str) -> list[MCPResponse]:
+    async def list_active_loops(self, project_name: str) -> list[MCPResponse]:
         try:
-            return self.state.list_active_loops(project_name)
+            return await self.state.list_active_loops(project_name)
         except Exception as e:
             raise LoopStateError('all', 'list_retrieval', f'Failed to retrieve loop list: {str(e)}')
 
-    def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
+    async def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
         """MCP tool to decide the next action for a refinement loop.
 
         This is the main MCP tool interface that external agents will call
@@ -50,7 +50,7 @@ class LoopTools:
         try:
             if not (0 <= current_score <= 100):
                 raise LoopValidationError('score', 'Must be between 0 and 100')
-            return self.state.decide_loop_next_action(loop_id, current_score)
+            return await self.state.decide_loop_next_action(loop_id, current_score)
         except LoopNotFoundError:
             raise LoopStateError(loop_id, 'decision', 'Loop does not exist')
         except LoopValidationError:
@@ -58,23 +58,23 @@ class LoopTools:
         except Exception as e:
             raise LoopStateError(loop_id, 'decision', f'Unexpected error: {str(e)}')
 
-    def get_previous_objective_feedback(self, loop_id: str) -> MCPResponse:
+    async def get_previous_objective_feedback(self, loop_id: str) -> MCPResponse:
         try:
-            return self.state.get_objective_feedback(loop_id)
+            return await self.state.get_objective_feedback(loop_id)
         except LoopNotFoundError:
             raise LoopStateError(loop_id, 'feedback_retrieval', 'Loop does not exist')
         except Exception as e:
             raise LoopStateError(loop_id, 'feedback_retrieval', f'Unexpected error: {str(e)}')
 
-    def store_current_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
+    async def store_current_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
         try:
-            return self.state.store_objective_feedback(loop_id, feedback)
+            return await self.state.store_objective_feedback(loop_id, feedback)
         except LoopNotFoundError:
             raise LoopStateError(loop_id, 'feedback_storage', 'Loop does not exist')
         except Exception as e:
             raise LoopStateError(loop_id, 'feedback_storage', f'Unexpected error: {str(e)}')
 
-    def get_loop_feedback_summary(self, loop_id: str) -> MCPResponse:
+    async def get_loop_feedback_summary(self, loop_id: str) -> MCPResponse:
         """Get structured feedback summary for loop decision making.
 
         Provides feedback metrics and trends to support intelligent
@@ -82,7 +82,7 @@ class LoopTools:
         feedback count, and recent assessment summaries.
         """
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
             recent_feedback = loop_state.get_recent_feedback(3)
 
             if not recent_feedback:
@@ -112,7 +112,7 @@ class LoopTools:
         except Exception as e:
             raise LoopStateError(loop_id, 'feedback_summary', f'Unexpected error: {str(e)}')
 
-    def get_loop_improvement_analysis(self, loop_id: str) -> MCPResponse:
+    async def get_loop_improvement_analysis(self, loop_id: str) -> MCPResponse:
         """Analyze improvement patterns from structured feedback.
 
         Examines feedback history to identify improvement trends,
@@ -120,7 +120,7 @@ class LoopTools:
         intelligent refinement strategy decisions.
         """
         try:
-            loop_state = self.state.get_loop(loop_id)
+            loop_state = await self.state.get_loop(loop_id)
             feedback_history = loop_state.feedback_history
 
             if len(feedback_history) < 2:
@@ -200,7 +200,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains loop_id and status ('completed', 'refine', 'user_input')
         """
         await ctx.info(f'Processing decision for loop {loop_id} with score {current_score}')
-        result = loop_tools.decide_loop_next_action(loop_id, current_score)
+        result = await loop_tools.decide_loop_next_action(loop_id, current_score)
         await ctx.info(f'Decision result for loop {loop_id}: {result.status}')
         return result
 
@@ -220,7 +220,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains loop_id and status ('initialized')
         """
         await ctx.info(f'Initializing new {loop_type} loop for {project_name}')
-        result = loop_tools.initialize_refinement_loop(project_name, loop_type)
+        result = await loop_tools.initialize_refinement_loop(project_name, loop_type)
         await ctx.info(f'Created {loop_type} loop with ID: {result.id}')
         return result
 
@@ -238,7 +238,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Complete loop state with all metadata and history
         """
         await ctx.info(f'Retrieving status for loop {loop_id}')
-        result = loop_tools.get_loop_status(loop_id)
+        result = await loop_tools.get_loop_status(loop_id)
         await ctx.info(f'Retrieved status for loop {loop_id}: {result.status}')
         return result
 
@@ -256,7 +256,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - list[MCPResponse]: List of active loops with their current status
         """
         await ctx.info(f'Retrieving list of active loops for {project_name}')
-        result = loop_tools.list_active_loops(project_name)
+        result = await loop_tools.list_active_loops(project_name)
         await ctx.info(f'Found {len(result)} active loops')
         return result
 
@@ -274,7 +274,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains previous feedback data with dimension scores and recommendations
         """
         await ctx.info(f'Retrieving previous objective feedback for loop {loop_id}')
-        result = loop_tools.get_previous_objective_feedback(loop_id)
+        result = await loop_tools.get_previous_objective_feedback(loop_id)
         await ctx.info(f'Retrieved objective feedback for loop {loop_id}')
         return result
 
@@ -293,7 +293,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Confirmation of successful storage
         """
         await ctx.info(f'Storing objective feedback for loop {loop_id}')
-        result = loop_tools.store_current_objective_feedback(loop_id, feedback)
+        result = await loop_tools.store_current_objective_feedback(loop_id, feedback)
         await ctx.info(f'Stored objective feedback for loop {loop_id}')
         return result
 
@@ -312,7 +312,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains feedback summary with metrics and trends
         """
         await ctx.info(f'Retrieving feedback summary for loop {loop_id}')
-        result = loop_tools.get_loop_feedback_summary(loop_id)
+        result = await loop_tools.get_loop_feedback_summary(loop_id)
         await ctx.info(f'Retrieved feedback summary for loop {loop_id}')
         return result
 
@@ -331,7 +331,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains improvement analysis with trends and patterns
         """
         await ctx.info(f'Retrieving improvement analysis for loop {loop_id}')
-        result = loop_tools.get_loop_improvement_analysis(loop_id)
+        result = await loop_tools.get_loop_improvement_analysis(loop_id)
         await ctx.info(f'Retrieved improvement analysis for loop {loop_id}')
         return result
 

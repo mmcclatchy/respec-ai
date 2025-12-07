@@ -13,5 +13,5 @@ COPY src/ ./src/
 RUN uv sync --no-dev
 
 # Container runs in daemon mode, waiting for docker exec commands
-# Keeps container alive and maintains DB connections (for future DatabaseStateManager)
+# Keeps container alive and maintains DB connections (for future PostgresStateManager)
 CMD ["tail", "-f", "/dev/null"]

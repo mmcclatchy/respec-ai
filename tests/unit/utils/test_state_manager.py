@@ -25,7 +25,8 @@ class TestQueue:
         assert queue.maxlen == 3
         assert len(queue._deque) == 0
 
-    def test_queue_append_within_limit(self) -> None:
+    @pytest.mark.asyncio
+    async def test_queue_append_within_limit(self) -> None:
         queue = Queue[str](maxlen=3)
 
         result1 = queue.append('item1')
@@ -37,7 +38,8 @@ class TestQueue:
         assert result3 is None
         assert len(queue._deque) == 3
 
-    def test_queue_append_beyond_limit_drops_oldest(self) -> None:
+    @pytest.mark.asyncio
+    async def test_queue_append_beyond_limit_drops_oldest(self) -> None:
         queue = Queue[str](maxlen=2)
 
         queue.append('first')
@@ -57,7 +59,10 @@ class TestQueue:
             (5, ['x', 'y'], []),
         ],
     )
-    def test_queue_drop_behavior_patterns(self, maxlen: int, items: list[str], expected_dropped: list[str]) -> None:
+    @pytest.mark.asyncio
+    async def test_queue_drop_behavior_patterns(
+        self, maxlen: int, items: list[str], expected_dropped: list[str]
+    ) -> None:
         queue = Queue[str](maxlen=maxlen)
         dropped_items = []
 
@@ -118,33 +123,37 @@ class TestInMemoryStateManager:
 
 
 class TestRoadmapOperations(TestInMemoryStateManager):
-    def test_store_roadmap_returns_project_name(
+    @pytest.mark.asyncio
+    async def test_store_roadmap_returns_project_name(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'test-project'
 
-        result = state_manager.store_roadmap(project_name, sample_roadmap)
+        result = await state_manager.store_roadmap(project_name, sample_roadmap)
 
         assert result == project_name
 
-    def test_store_roadmap_makes_retrievable(
+    @pytest.mark.asyncio
+    async def test_store_roadmap_makes_retrievable(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'test-project'
 
-        state_manager.store_roadmap(project_name, sample_roadmap)
-        retrieved_roadmap = state_manager.get_roadmap(project_name)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
+        retrieved_roadmap = await state_manager.get_roadmap(project_name)
 
         assert retrieved_roadmap == sample_roadmap
         assert retrieved_roadmap.project_name == 'Test Roadmap'
 
-    def test_get_roadmap_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_get_roadmap_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
         with pytest.raises(RoadmapNotFoundError) as exc_info:
-            state_manager.get_roadmap('non-existent-project')
+            await state_manager.get_roadmap('non-existent-project')
 
         assert 'non-existent-project' in str(exc_info.value)
 
-    def test_store_roadmap_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_store_roadmap_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
         project_name = 'same-project'
         original_roadmap = Roadmap(
             project_name='Original',
@@ -187,10 +196,10 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-        state_manager.store_roadmap(project_name, original_roadmap)
-        state_manager.store_roadmap(project_name, updated_roadmap)
+        await state_manager.store_roadmap(project_name, original_roadmap)
+        await state_manager.store_roadmap(project_name, updated_roadmap)
 
-        retrieved = state_manager.get_roadmap(project_name)
+        retrieved = await state_manager.get_roadmap(project_name)
         assert retrieved.project_name == 'Updated'
 
     @pytest.mark.parametrize(
@@ -201,7 +210,8 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             ('123', 'Numeric Project'),
         ],
     )
-    def test_roadmap_storage_with_various_ids(
+    @pytest.mark.asyncio
+    async def test_roadmap_storage_with_various_ids(
         self, state_manager: InMemoryStateManager, project_name: str, roadmap_name: str
     ) -> None:
         roadmap = Roadmap(
@@ -225,80 +235,87 @@ class TestRoadmapOperations(TestInMemoryStateManager):
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-        stored_id = state_manager.store_roadmap(project_name, roadmap)
-        retrieved = state_manager.get_roadmap(project_name)
+        stored_id = await state_manager.store_roadmap(project_name, roadmap)
+        retrieved = await state_manager.get_roadmap(project_name)
 
         assert stored_id == project_name
         assert retrieved.project_name == roadmap_name
 
 
 class TestSpecOperations(TestInMemoryStateManager):
-    def test_store_spec_initializes_project_storage(
+    @pytest.mark.asyncio
+    async def test_store_spec_initializes_project_storage(
         self, state_manager: InMemoryStateManager, sample_spec: TechnicalSpec
     ) -> None:
-        result = state_manager.store_spec('new-project', sample_spec)
+        result = await state_manager.store_spec('new-project', sample_spec)
         assert result == sample_spec.phase_name
 
         # Verify spec was stored
-        retrieved = state_manager.get_spec('new-project', sample_spec.phase_name)
+        retrieved = await state_manager.get_spec('new-project', sample_spec.phase_name)
         assert retrieved.phase_name == sample_spec.phase_name
 
-    def test_store_spec_returns_spec_name(
+    @pytest.mark.asyncio
+    async def test_store_spec_returns_spec_name(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
         project_name = 'test-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        result = state_manager.store_spec(project_name, sample_spec)
+        result = await state_manager.store_spec(project_name, sample_spec)
 
         assert result == sample_spec.phase_name
 
-    def test_store_spec_makes_retrievable(
+    @pytest.mark.asyncio
+    async def test_store_spec_makes_retrievable(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
         project_name = 'test-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        state_manager.store_spec(project_name, sample_spec)
-        retrieved_spec = state_manager.get_spec(project_name, sample_spec.phase_name)
+        await state_manager.store_spec(project_name, sample_spec)
+        retrieved_spec = await state_manager.get_spec(project_name, sample_spec.phase_name)
 
         assert retrieved_spec == sample_spec
         assert retrieved_spec.objectives == 'Test objectives'
 
-    def test_get_spec_raises_error_when_spec_not_found_in_project(
+    @pytest.mark.asyncio
+    async def test_get_spec_raises_error_when_spec_not_found_in_project(
         self, state_manager: InMemoryStateManager, sample_spec: TechnicalSpec
     ) -> None:
         # Store a spec first
-        state_manager.store_spec('test-project', sample_spec)
+        await state_manager.store_spec('test-project', sample_spec)
 
         # Try to get non-existent spec
         with pytest.raises(SpecNotFoundError, match='Spec not found'):
-            state_manager.get_spec('test-project', 'nonexistent-spec')
+            await state_manager.get_spec('test-project', 'nonexistent-spec')
 
-    def test_get_spec_raises_error_when_spec_not_found(
+    @pytest.mark.asyncio
+    async def test_get_spec_raises_error_when_spec_not_found(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'test-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
         with pytest.raises(SpecNotFoundError):
-            state_manager.get_spec(project_name, 'non-existent-spec')
+            await state_manager.get_spec(project_name, 'non-existent-spec')
 
-    def test_list_specs_returns_empty_for_empty_roadmap(
+    @pytest.mark.asyncio
+    async def test_list_specs_returns_empty_for_empty_roadmap(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'empty-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec_names = state_manager.list_specs(project_name)
+        spec_names = await state_manager.list_specs(project_name)
 
         assert spec_names == []
 
-    def test_list_specs_returns_all_spec_names(
+    @pytest.mark.asyncio
+    async def test_list_specs_returns_all_spec_names(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'multi-spec-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
         spec1 = TechnicalSpec(
             phase_name='spec-1',
@@ -317,55 +334,62 @@ class TestSpecOperations(TestInMemoryStateManager):
             spec_status=SpecStatus.DRAFT,
         )
 
-        state_manager.store_spec(project_name, spec1)
-        state_manager.store_spec(project_name, spec2)
+        await state_manager.store_spec(project_name, spec1)
+        await state_manager.store_spec(project_name, spec2)
 
-        spec_names = state_manager.list_specs(project_name)
+        spec_names = await state_manager.list_specs(project_name)
 
         assert len(spec_names) == 2
         assert 'spec-1' in spec_names
         assert 'spec-2' in spec_names
 
-    def test_list_specs_returns_empty_for_project_without_specs(self, state_manager: InMemoryStateManager) -> None:
-        result = state_manager.list_specs('project-without-specs')
+    @pytest.mark.asyncio
+    async def test_list_specs_returns_empty_for_project_without_specs(
+        self, state_manager: InMemoryStateManager
+    ) -> None:
+        result = await state_manager.list_specs('project-without-specs')
         assert result == []
 
-    def test_delete_spec_returns_true_when_spec_exists(
+    @pytest.mark.asyncio
+    async def test_delete_spec_returns_true_when_spec_exists(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
         project_name = 'test-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
-        state_manager.store_spec(project_name, sample_spec)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_spec(project_name, sample_spec)
 
-        result = state_manager.delete_spec(project_name, sample_spec.phase_name)
+        result = await state_manager.delete_spec(project_name, sample_spec.phase_name)
 
         assert result is True
 
-    def test_delete_spec_removes_spec_from_roadmap(
+    @pytest.mark.asyncio
+    async def test_delete_spec_removes_spec_from_roadmap(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
     ) -> None:
         project_name = 'test-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
-        state_manager.store_spec(project_name, sample_spec)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_spec(project_name, sample_spec)
 
-        state_manager.delete_spec(project_name, sample_spec.phase_name)
+        await state_manager.delete_spec(project_name, sample_spec.phase_name)
 
         # Should raise SpecNotFoundError now
         with pytest.raises(SpecNotFoundError):
-            state_manager.get_spec(project_name, sample_spec.phase_name)
+            await state_manager.get_spec(project_name, sample_spec.phase_name)
 
-    def test_delete_spec_returns_false_when_spec_not_found(
+    @pytest.mark.asyncio
+    async def test_delete_spec_returns_false_when_spec_not_found(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'test-project'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        result = state_manager.delete_spec(project_name, 'non-existent-spec')
+        result = await state_manager.delete_spec(project_name, 'non-existent-spec')
 
         assert result is False
 
-    def test_delete_spec_returns_false_for_nonexistent_project(self, state_manager: InMemoryStateManager) -> None:
-        result = state_manager.delete_spec('nonexistent-project', 'nonexistent-spec')
+    @pytest.mark.asyncio
+    async def test_delete_spec_returns_false_for_nonexistent_project(self, state_manager: InMemoryStateManager) -> None:
+        result = await state_manager.delete_spec('nonexistent-project', 'nonexistent-spec')
         assert result is False
 
     @pytest.mark.parametrize(
@@ -376,11 +400,12 @@ class TestSpecOperations(TestInMemoryStateManager):
             ['alpha', 'beta', 'gamma', 'delta'],
         ],
     )
-    def test_spec_operations_with_multiple_specs(
+    @pytest.mark.asyncio
+    async def test_spec_operations_with_multiple_specs(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, spec_names: list[str]
     ) -> None:
         project_name = 'multi-spec-test'
-        state_manager.store_roadmap(project_name, sample_roadmap)
+        await state_manager.store_roadmap(project_name, sample_roadmap)
 
         # Store all specs
         for spec_name in spec_names:
@@ -392,10 +417,10 @@ class TestSpecOperations(TestInMemoryStateManager):
                 deliverables=f'Del {spec_name}',
                 spec_status=SpecStatus.DRAFT,
             )
-            state_manager.store_spec(project_name, spec)
+            await state_manager.store_spec(project_name, spec)
 
         # List should return all names
-        listed_names = state_manager.list_specs(project_name)
+        listed_names = await state_manager.list_specs(project_name)
         assert len(listed_names) == len(spec_names)
         for name in spec_names:
             assert name in listed_names
@@ -403,11 +428,11 @@ class TestSpecOperations(TestInMemoryStateManager):
         # Delete half the specs
         to_delete = spec_names[: len(spec_names) // 2] if len(spec_names) > 1 else []
         for name in to_delete:
-            result = state_manager.delete_spec(project_name, name)
+            result = await state_manager.delete_spec(project_name, name)
             assert result is True
 
         # List should return remaining specs
-        remaining_names = state_manager.list_specs(project_name)
+        remaining_names = await state_manager.list_specs(project_name)
         expected_remaining = [name for name in spec_names if name not in to_delete]
         assert len(remaining_names) == len(expected_remaining)
         for name in expected_remaining:
@@ -415,30 +440,34 @@ class TestSpecOperations(TestInMemoryStateManager):
 
 
 class TestLoopOperations(TestInMemoryStateManager):
-    def test_add_loop_stores_loop_state(
+    @pytest.mark.asyncio
+    async def test_add_loop_stores_loop_state(
         self, state_manager: InMemoryStateManager, project_name: str, sample_loop: LoopState
     ) -> None:
-        state_manager.add_loop(sample_loop, project_name)
+        await state_manager.add_loop(sample_loop, project_name)
 
-        retrieved_loop = state_manager.get_loop(sample_loop.id)
+        retrieved_loop = await state_manager.get_loop(sample_loop.id)
         assert retrieved_loop == sample_loop
 
-    def test_add_loop_raises_error_for_duplicate_id(
+    @pytest.mark.asyncio
+    async def test_add_loop_raises_error_for_duplicate_id(
         self, state_manager: InMemoryStateManager, project_name: str, sample_loop: LoopState
     ) -> None:
-        state_manager.add_loop(sample_loop, project_name)
+        await state_manager.add_loop(sample_loop, project_name)
 
         duplicate_loop = LoopState(loop_type=LoopType.PLAN)
         duplicate_loop.id = sample_loop.id  # Force same ID
 
         with pytest.raises(LoopAlreadyExistsError):
-            state_manager.add_loop(duplicate_loop, project_name)
+            await state_manager.add_loop(duplicate_loop, project_name)
 
-    def test_get_loop_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_get_loop_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
         with pytest.raises(LoopNotFoundError):
-            state_manager.get_loop('non-existent-loop-id')
+            await state_manager.get_loop('non-existent-loop-id')
 
-    def test_loop_history_management_respects_max_size(
+    @pytest.mark.asyncio
+    async def test_loop_history_management_respects_max_size(
         self, state_manager: InMemoryStateManager, project_name: str
     ) -> None:
         # State manager initialized with max_history_size=3
@@ -450,20 +479,21 @@ class TestLoopOperations(TestInMemoryStateManager):
         ]
 
         for loop in loops:
-            state_manager.add_loop(loop, project_name)
+            await state_manager.add_loop(loop, project_name)
 
         # First loop should have been dropped from active loops
         with pytest.raises(LoopNotFoundError):
-            state_manager.get_loop(loops[0].id)
+            await state_manager.get_loop(loops[0].id)
 
         # Last 3 should still exist
         for loop in loops[1:]:
-            retrieved = state_manager.get_loop(loop.id)
+            retrieved = await state_manager.get_loop(loop.id)
             assert retrieved == loop
 
 
 class TestProjectPlanOperations(TestInMemoryStateManager):
-    def test_store_project_plan_returns_project_name(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_store_project_plan_returns_project_name(self, state_manager: InMemoryStateManager) -> None:
         project_name = 'test-project'
         project_plan = ProjectPlan(
             project_name=project_name,
@@ -499,11 +529,12 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             project_status=ProjectStatus.DRAFT,
         )
 
-        result = state_manager.store_project_plan(project_name, project_plan)
+        result = await state_manager.store_project_plan(project_name, project_plan)
 
         assert result == project_name
 
-    def test_store_project_plan_makes_retrievable(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_store_project_plan_makes_retrievable(self, state_manager: InMemoryStateManager) -> None:
         project_name = 'test-project'
         project_plan = ProjectPlan(
             project_name=project_name,
@@ -539,21 +570,23 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             project_status=ProjectStatus.DRAFT,
         )
 
-        state_manager.store_project_plan(project_name, project_plan)
-        retrieved_plan = state_manager.get_project_plan(project_name)
+        await state_manager.store_project_plan(project_name, project_plan)
+        retrieved_plan = await state_manager.get_project_plan(project_name)
 
         assert retrieved_plan == project_plan
         assert retrieved_plan.project_name == project_name
         assert retrieved_plan.project_vision == 'Test vision'
 
-    def test_get_project_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_get_project_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
         with pytest.raises(ProjectPlanNotFoundError) as exc_info:
-            state_manager.get_project_plan('non-existent-project')
+            await state_manager.get_project_plan('non-existent-project')
 
         assert 'non-existent-project' in str(exc_info.value)
         assert 'Project plan not found' in str(exc_info.value)
 
-    def test_store_project_plan_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_store_project_plan_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
         project_name = 'same-project'
         original_plan = ProjectPlan(
             project_name='Original Plan',
@@ -622,21 +655,23 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             project_status=ProjectStatus.ACTIVE,
         )
 
-        state_manager.store_project_plan(project_name, original_plan)
-        state_manager.store_project_plan(project_name, updated_plan)
-        retrieved_plan = state_manager.get_project_plan(project_name)
+        await state_manager.store_project_plan(project_name, original_plan)
+        await state_manager.store_project_plan(project_name, updated_plan)
+        retrieved_plan = await state_manager.get_project_plan(project_name)
 
         assert retrieved_plan == updated_plan
         assert retrieved_plan.project_name == 'Updated Plan'
         assert retrieved_plan.project_vision == 'Updated vision'
         assert retrieved_plan.project_status == ProjectStatus.ACTIVE
 
-    def test_list_project_plans_returns_empty_for_no_plans(self, state_manager: InMemoryStateManager) -> None:
-        result = state_manager.list_project_plans()
+    @pytest.mark.asyncio
+    async def test_list_project_plans_returns_empty_for_no_plans(self, state_manager: InMemoryStateManager) -> None:
+        result = await state_manager.list_project_plans()
 
         assert result == []
 
-    def test_list_project_plans_returns_all_plan_names(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_list_project_plans_returns_all_plan_names(self, state_manager: InMemoryStateManager) -> None:
         plan1 = ProjectPlan(
             project_name='Plan 1',
             project_vision='Vision 1',
@@ -704,15 +739,16 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             project_status=ProjectStatus.ACTIVE,
         )
 
-        state_manager.store_project_plan('project-1', plan1)
-        state_manager.store_project_plan('project-2', plan2)
-        result = state_manager.list_project_plans()
+        await state_manager.store_project_plan('project-1', plan1)
+        await state_manager.store_project_plan('project-2', plan2)
+        result = await state_manager.list_project_plans()
 
         assert len(result) == 2
         assert 'project-1' in result
         assert 'project-2' in result
 
-    def test_delete_project_plan_returns_true_when_plan_exists(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_delete_project_plan_returns_true_when_plan_exists(self, state_manager: InMemoryStateManager) -> None:
         project_name = 'test-project'
         project_plan = ProjectPlan(
             project_name=project_name,
@@ -748,12 +784,13 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             project_status=ProjectStatus.DRAFT,
         )
 
-        state_manager.store_project_plan(project_name, project_plan)
-        result = state_manager.delete_project_plan(project_name)
+        await state_manager.store_project_plan(project_name, project_plan)
+        result = await state_manager.delete_project_plan(project_name)
 
         assert result is True
 
-    def test_delete_project_plan_removes_plan(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_delete_project_plan_removes_plan(self, state_manager: InMemoryStateManager) -> None:
         project_name = 'test-project'
         project_plan = ProjectPlan(
             project_name=project_name,
@@ -789,15 +826,16 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             project_status=ProjectStatus.DRAFT,
         )
 
-        state_manager.store_project_plan(project_name, project_plan)
-        state_manager.delete_project_plan(project_name)
+        await state_manager.store_project_plan(project_name, project_plan)
+        await state_manager.delete_project_plan(project_name)
 
         with pytest.raises(ProjectPlanNotFoundError):
-            state_manager.get_project_plan(project_name)
+            await state_manager.get_project_plan(project_name)
 
-    def test_delete_project_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_delete_project_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
         with pytest.raises(ProjectPlanNotFoundError) as exc_info:
-            state_manager.delete_project_plan('non-existent-project')
+            await state_manager.delete_project_plan('non-existent-project')
 
         assert 'non-existent-project' in str(exc_info.value)
         assert 'Project plan not found' in str(exc_info.value)
@@ -810,7 +848,8 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
             ['A', 'B', 'C', 'D', 'E'],
         ],
     )
-    def test_project_plan_operations_with_multiple_plans(
+    @pytest.mark.asyncio
+    async def test_project_plan_operations_with_multiple_plans(
         self, state_manager: InMemoryStateManager, project_names: list[str]
     ) -> None:
         # Store multiple plans
@@ -848,23 +887,24 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
                 documentation_standards=f'Docs {i}',
                 project_status=ProjectStatus.DRAFT,
             )
-            state_manager.store_project_plan(project_name, plan)
+            await state_manager.store_project_plan(project_name, plan)
 
         # Verify all plans are stored
-        all_plans = state_manager.list_project_plans()
+        all_plans = await state_manager.list_project_plans()
         assert len(all_plans) == len(project_names)
         for project_name in project_names:
             assert project_name in all_plans
 
         # Verify each plan can be retrieved
         for i, project_name in enumerate(project_names):
-            plan = state_manager.get_project_plan(project_name)
+            plan = await state_manager.get_project_plan(project_name)
             assert plan.project_name == f'Plan {i}'
             assert plan.project_vision == f'Vision {i}'
 
 
 class TestCrossOperationIntegration(TestInMemoryStateManager):
-    def test_multiple_projects_independent_state(self, state_manager: InMemoryStateManager) -> None:
+    @pytest.mark.asyncio
+    async def test_multiple_projects_independent_state(self, state_manager: InMemoryStateManager) -> None:
         # Create two projects with different roadmaps and specs
         project1_roadmap = Roadmap(
             project_name='Project 1 Roadmap',
@@ -907,8 +947,8 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-        state_manager.store_roadmap('project-1', project1_roadmap)
-        state_manager.store_roadmap('project-2', project2_roadmap)
+        await state_manager.store_roadmap('project-1', project1_roadmap)
+        await state_manager.store_roadmap('project-2', project2_roadmap)
 
         spec1 = TechnicalSpec(
             phase_name='p1-spec',
@@ -927,33 +967,35 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             spec_status=SpecStatus.DRAFT,
         )
 
-        state_manager.store_spec('project-1', spec1)
-        state_manager.store_spec('project-2', spec2)
+        await state_manager.store_spec('project-1', spec1)
+        await state_manager.store_spec('project-2', spec2)
 
         # Each project should only see its own specs
-        p1_specs = state_manager.list_specs('project-1')
-        p2_specs = state_manager.list_specs('project-2')
+        p1_specs = await state_manager.list_specs('project-1')
+        p2_specs = await state_manager.list_specs('project-2')
 
         assert 'p1-spec' in p1_specs
         assert 'p1-spec' not in p2_specs
         assert 'p2-spec' in p2_specs
         assert 'p2-spec' not in p1_specs
 
-    def test_loops_and_roadmaps_coexist_independently(
+    @pytest.mark.asyncio
+    async def test_loops_and_roadmaps_coexist_independently(
         self, state_manager: InMemoryStateManager, project_name: str, sample_roadmap: Roadmap, sample_loop: LoopState
     ) -> None:
         # Add both loop and roadmap data
-        state_manager.add_loop(sample_loop, project_name)
-        state_manager.store_roadmap('test-project', sample_roadmap)
+        await state_manager.add_loop(sample_loop, project_name)
+        await state_manager.store_roadmap('test-project', sample_roadmap)
 
         # Both should be retrievable independently
-        retrieved_loop = state_manager.get_loop(sample_loop.id)
-        retrieved_roadmap = state_manager.get_roadmap('test-project')
+        retrieved_loop = await state_manager.get_loop(sample_loop.id)
+        retrieved_roadmap = await state_manager.get_roadmap('test-project')
 
         assert retrieved_loop == sample_loop
         assert retrieved_roadmap == sample_roadmap
 
-    def test_state_manager_initialization_parameters(self, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_state_manager_initialization_parameters(self, project_name: str) -> None:
         # Test with custom max_history_size
         custom_state_manager = InMemoryStateManager(max_history_size=5)
 
@@ -961,13 +1003,13 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         loops = [LoopState(loop_type=LoopType.PLAN) for _ in range(6)]
 
         for loop in loops:
-            custom_state_manager.add_loop(loop, project_name)
+            await custom_state_manager.add_loop(loop, project_name)
 
         # First loop should be dropped (6 > 5)
         with pytest.raises(LoopNotFoundError):
-            custom_state_manager.get_loop(loops[0].id)
+            await custom_state_manager.get_loop(loops[0].id)
 
         # Last 5 should exist
         for loop in loops[1:]:
-            retrieved = custom_state_manager.get_loop(loop.id)
+            retrieved = await custom_state_manager.get_loop(loop.id)
             assert retrieved == loop

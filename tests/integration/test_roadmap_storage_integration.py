@@ -170,18 +170,19 @@ draft
 
 
 class TestRoadmapStorageIntegration:
-    def test_store_and_retrieve_roadmap_with_specs(
+    @pytest.mark.asyncio
+    async def test_store_and_retrieve_roadmap_with_specs(
         self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_specs: str
     ) -> None:
         # Store roadmap
-        result = roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_specs)
+        result = await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_specs)
 
         assert 'Created roadmap' in result
         assert project_name in result
         assert '3 specs' in result
 
         # Retrieve roadmap
-        retrieved_markdown = roadmap_tools.get_roadmap(project_name)
+        retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
 
         assert isinstance(retrieved_markdown, str)
         assert '# Project Roadmap: RAG Best Practices POC' in retrieved_markdown
@@ -197,25 +198,26 @@ class TestRoadmapStorageIntegration:
         assert 'Create embedding generation and storage pipeline' in retrieved_markdown
         assert 'Implement vector similarity search' in retrieved_markdown
 
-    def test_round_trip_preserves_all_content(
+    @pytest.mark.asyncio
+    async def test_round_trip_preserves_all_content(
         self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_specs: str
     ) -> None:
         # Store original
-        roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_specs)
+        await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_specs)
 
         # Retrieve
-        retrieved_markdown = roadmap_tools.get_roadmap(project_name)
+        retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
 
         # Parse retrieved markdown like create_roadmap does
         spec_blocks = retrieved_markdown.split('# Technical Specification:')
         assert len(spec_blocks) == 4  # Roadmap metadata + 3 specs
 
         # Store retrieved markdown again (simulating agent workflow)
-        result = roadmap_tools.create_roadmap(project_name, retrieved_markdown)
+        result = await roadmap_tools.create_roadmap(project_name, retrieved_markdown)
         assert 'Created roadmap' in result
 
         # Retrieve again
-        second_retrieval = roadmap_tools.get_roadmap(project_name)
+        second_retrieval = await roadmap_tools.get_roadmap(project_name)
 
         # Verify content still matches
         assert '# Project Roadmap: RAG Best Practices POC' in second_retrieval
@@ -223,7 +225,10 @@ class TestRoadmapStorageIntegration:
         assert '# Technical Specification: phase-2-embedding-pipeline' in second_retrieval
         assert '# Technical Specification: phase-3-query-system' in second_retrieval
 
-    def test_create_roadmap_with_invalid_title_format(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_create_roadmap_with_invalid_title_format(
+        self, roadmap_tools: RoadmapTools, project_name: str
+    ) -> None:
         invalid_markdown = """# Implementation Roadmap: My Project
 
 ## Project Details
@@ -293,17 +298,19 @@ draft
 
         # Should fail with clear error about title format
         with pytest.raises(Exception) as exc_info:
-            roadmap_tools.create_roadmap(project_name, invalid_markdown)
+            await roadmap_tools.create_roadmap(project_name, invalid_markdown)
 
         assert 'title' in str(exc_info.value).lower() or 'roadmap' in str(exc_info.value).lower()
 
-    def test_retrieve_nonexistent_roadmap(self, roadmap_tools: RoadmapTools) -> None:
+    @pytest.mark.asyncio
+    async def test_retrieve_nonexistent_roadmap(self, roadmap_tools: RoadmapTools) -> None:
         with pytest.raises(Exception) as exc_info:
-            roadmap_tools.get_roadmap('nonexistent-project')
+            await roadmap_tools.get_roadmap('nonexistent-project')
 
         assert 'not found' in str(exc_info.value).lower()
 
-    def test_store_roadmap_without_specs(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
+    @pytest.mark.asyncio
+    async def test_store_roadmap_without_specs(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
         minimal_roadmap = """# Project Roadmap: Minimal Project
 
 ## Project Details
@@ -371,10 +378,10 @@ draft
 0
 """
 
-        result = roadmap_tools.create_roadmap(project_name, minimal_roadmap)
+        result = await roadmap_tools.create_roadmap(project_name, minimal_roadmap)
         assert 'Created roadmap' in result
         assert '0 specs' in result
 
-        retrieved = roadmap_tools.get_roadmap(project_name)
+        retrieved = await roadmap_tools.get_roadmap(project_name)
         assert '# Project Roadmap: Minimal Project' in retrieved
         assert '# Technical Specification:' not in retrieved

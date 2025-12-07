@@ -73,5 +73,23 @@ class MCPSettings(BaseSettings):
         return v.lower()
 
 
+class DatabaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        extra='forbid',
+        env_prefix='DATABASE_',
+    )
+
+    url: str = Field(
+        default='postgresql://respec:respec@localhost:5433/respec_dev',
+        description='PostgreSQL connection URL',
+    )
+    pool_min_size: int = Field(default=5, ge=1, le=50)
+    pool_max_size: int = Field(default=20, ge=1, le=100)
+    pool_timeout: float = Field(default=30.0, ge=1.0, le=120.0)
+    command_timeout: float = Field(default=60.0, ge=1.0, le=300.0)
+    max_inactive_connection_lifetime: float = Field(default=300.0, ge=60.0)
+
+
 loop_config = LoopConfig()
 mcp_settings = MCPSettings()
+database_settings = DatabaseSettings()

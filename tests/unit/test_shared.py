@@ -27,13 +27,13 @@ def test_create_memory_state_manager_case_insensitive(monkeypatch: MonkeyPatch) 
 
 def test_create_database_state_manager_raises(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('STATE_MANAGER', 'database')
-    with pytest.raises(NotImplementedError, match='not yet implemented'):
+    with pytest.raises(RuntimeError, match='requires async initialization'):
         create_state_manager()
 
 
 def test_create_database_state_manager_case_insensitive_raises(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv('STATE_MANAGER', 'DATABASE')
-    with pytest.raises(NotImplementedError, match='not yet implemented'):
+    with pytest.raises(RuntimeError, match='requires async initialization'):
         create_state_manager()
 
 

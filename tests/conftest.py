@@ -1,12 +1,19 @@
+import asyncio
 import logging
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
 import pytest
 from pytest_mock import MockerFixture
+
 from src.mcp.tools.loop_tools import LoopTools
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.utils.setting_configs import LoopConfig
-from src.utils.state_manager import InMemoryStateManager
+from src.utils.state_manager import InMemoryStateManager, PostgresStateManager
+
+
+import os
+import asyncpg
+from src.utils.database_pool import db_pool
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -15,6 +22,7 @@ def pytest_configure(config: pytest.Config) -> None:
     logging.getLogger('asyncio').setLevel(logging.WARNING)
     logging.getLogger('mcp').setLevel(logging.WARNING)
     logging.basicConfig(level=logging.WARNING)
+    config.addinivalue_line('markers', 'database: mark test as requiring PostgreSQL database')
 
 
 # No longer need to mock the entire MCP server module since we removed fake markdown tools
@@ -79,3 +87,50 @@ def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, Non
     mocker.patch('src.utils.setting_configs.loop_config', test_config)
     mocker.patch('src.utils.enums.loop_config', test_config)
     yield test_config
+
+
+@pytest.fixture(scope='session')
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(scope='session')
+def check_database_available() -> bool:
+    async def check_db() -> bool:
+        try:
+            conn = await asyncpg.connect(
+                dsn=os.getenv('DATABASE_URL', 'postgresql://respec:respec@localhost:5433/respec_dev'),
+                timeout=2.0,
+            )
+            await conn.close()
+            return True
+        except Exception:
+            return False
+
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    try:
+        result = loop.run_until_complete(check_db())
+    finally:
+        loop.close()
+
+    return result
+
+
+@pytest.fixture(scope='function')
+async def db_state_manager(check_database_available: bool) -> AsyncGenerator[PostgresStateManager, None]:
+    if not check_database_available:
+        pytest.skip('PostgreSQL database not available. Start with: docker-compose -f docker-compose.dev.yml up -d')
+
+    manager = PostgresStateManager(max_history_size=3)
+    await manager.initialize()
+
+    yield manager
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+        )
+
+    await manager.close()
