@@ -13,6 +13,52 @@ RespecAI is a **meta MCP server** that generates platform-specific workflow auto
 - **Strategic to implementation** - Plan → Roadmap → Spec → Build
 - **Type-safe integration** - Platform-specific tools properly configured
 
+## Installation Paths
+
+RespecAI has **two distinct installation paths** that are completely separate:
+
+### Path 1: End Users (Recommended)
+
+**Who**: Users installing respec-ai for Claude Code MCP server functionality
+
+**How**: Install via PyPI or Homebrew, use CLI commands
+
+**Docker**: Uses production containers (`respec-ai-server`, `respec-ai-db-prod`)
+
+```bash
+# Install
+pip install respec-ai  # or: brew install respec-ai
+
+# Register MCP server
+respec-ai register-mcp
+
+# Manage containers
+respec-ai docker start
+respec-ai status
+```
+
+### Path 2: Developers (Contributors)
+
+**Who**: Contributors working on the respec-ai codebase itself
+
+**How**: Clone repository, use development scripts
+
+**Docker**: Uses development containers (`respec-ai-dev`, `respec-ai-db-dev`)
+
+```bash
+# Clone repository
+git clone https://github.com/mmcclatchy/respec-ai.git
+cd respec-ai
+
+# Install development environment
+./scripts/install-respec-ai.sh
+
+# Use docker-compose directly
+docker compose -f docker-compose.dev.yml up -d
+```
+
+**Important**: These paths use different Docker images, containers, and networks with zero crossover. See [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md) for details.
+
 ## Quick Start
 
 RespecAI installation has two parts:
