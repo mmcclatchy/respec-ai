@@ -1,4 +1,6 @@
-# respec-ai
+# `respec-ai`
+
+---
 
 > **⚠️ Active Development:** `respec-ai` is under active development.
 > - Currently functional workflows:
@@ -7,11 +9,15 @@
 >   - `/respec-spec`.
 > - The `/respec-build` workflow is not yet functional.
 
-**Specification-driven AI development workflows for Claude Code**
+---
+
+**Agentic-Critic Refinement Loop Platform for Claude Code**
 
 Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing specs helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
-respec-ai is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Spec, Build. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
+`respec-ai` is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Spec, Build. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
+
+---
 
 ## Quick Start
 
@@ -33,7 +39,7 @@ claude
 /respec-plan my-first-project
 ```
 
-That's it! respec-ai will guide you through strategic planning, technical specs, and implementation.
+That's it! `respec-ai` will guide you through strategic planning, technical specs, and implementation.
 
 **[Full Installation Guide →](docs/CLI_GUIDE.md#installation)**
 
@@ -63,7 +69,9 @@ That's it! respec-ai will guide you through strategic planning, technical specs,
 
 ## Workflow Overview
 
-respec-ai provides a complete development pipeline with hierarchical validation at each stage:
+**See [Workflow Guide →](docs/WORKFLOWS.md) for detailed workflow documentation.**
+
+`respec-ai` provides a complete development pipeline with hierarchical validation at each stage:
 
 ```text
 1. Strategic Planning
@@ -91,9 +99,13 @@ respec-ai provides a complete development pipeline with hierarchical validation 
    → Code review with build-reviewer (validates against spec)
 ```
 
-Each stage iterates through refinement loops until quality threshold met or user approves. Hierarchical validation ensures every line of code traces back to business objectives.
+Each stage iterates through refinement loops until quality threshold met or user approves. Hierarchical validation ensures every code change traces back to business objectives.
 
-**[Workflow Guide →](docs/WORKFLOWS.md)**
+```text
+Producer Agent → LLM Generation → Critic Agent → Score → MCP Decision
+     ↑                                                     ↓
+     └────── Refinement Loop ←─── "refine" ←───────────────┴────→ "complete" ──→ Proceed
+```
 
 ## Documentation
 
@@ -118,8 +130,11 @@ Each stage iterates through refinement loops until quality threshold met or user
 - ✅ Comprehensive test suite
 
 ### In Progress
-- 🚧 Multi-project file-based persistence (v1.1)
-- 🚧 End-to-end workflow validation
+- 🚧 Build/Code Workflow
+
+### Planned Features
+- 🚧 Add specialized coding and critic subagents (frontend, backend, database, etc.)
+- 🚧 Add support for Cursor and OpenCode
 - 🚧 Advanced analytics and reporting
 
 ## Requirements
@@ -129,19 +144,6 @@ Each stage iterates through refinement loops until quality threshold met or user
 - **Docker/Docker Desktop** - For containerized deployments
 - **uv** - Package and version manager
 - **Platform MCP Server** - Linear or GitHub (optional, for external platforms)
-
-## Contributing
-
-respec-ai is an open-source project with enterprise-grade architecture. Contributions welcome!
-
-**Areas for Contribution:**
-- Additional platform integrations (Jira, GitLab, Azure DevOps)
-- Advanced analytics and reporting features
-- Cross-platform migration tools
-- Documentation improvements
-- Bug fixes and optimizations
-
-**[Development Guide →](docs/CLI_GUIDE.md#local-development-setup)**
 
 ## License
 
