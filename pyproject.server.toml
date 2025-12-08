@@ -40,7 +40,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/mmcclatchy/respec-ai"
-Documentation = "https://github.com/mmcclatchy/respec-ai/blob/main/docs/USER_GUIDE.md"
+Documentation = "https://github.com/mmcclatchy/respec-ai/blob/main/docs/CLI_GUIDE.md"
 Repository = "https://github.com/mmcclatchy/respec-ai"
 Issues = "https://github.com/mmcclatchy/respec-ai/issues"
 

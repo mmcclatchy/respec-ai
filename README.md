@@ -1,6 +1,11 @@
 # respec-ai
 
-> **⚠️ Active Development:** respec-ai is under active development. Currently functional workflows: `/respec-plan`, `/respec-roadmap`, `/respec-spec`. The `/respec-build` workflow is not yet functional.
+> **⚠️ Active Development:** `respec-ai` is under active development.
+> - Currently functional workflows:
+>   - `/respec-plan`
+>   - `/respec-roadmap`
+>   - `/respec-spec`.
+> - The `/respec-build` workflow is not yet functional.
 
 **Specification-driven AI development workflows for Claude Code**
 
@@ -30,7 +35,7 @@ claude
 
 That's it! respec-ai will guide you through strategic planning, technical specs, and implementation.
 
-**[Full Installation Guide →](docs/USER_GUIDE.md#installation)**
+**[Full Installation Guide →](docs/CLI_GUIDE.md#installation)**
 
 ## Key Features
 
@@ -54,7 +59,7 @@ That's it! respec-ai will guide you through strategic planning, technical specs,
 | **GitHub** | Open source projects | Full API | ❌ |
 | **Markdown** | Solo developers | Local files | ❌ |
 
-**[Platform Comparison Guide →](docs/USER_GUIDE.md#platform-selection)**
+**[Platform Comparison Guide →](docs/CLI_GUIDE.md#platform-selection)**
 
 ## Workflow Overview
 
@@ -88,11 +93,12 @@ respec-ai provides a complete development pipeline with hierarchical validation 
 
 Each stage iterates through refinement loops until quality threshold met or user approves. Hierarchical validation ensures every line of code traces back to business objectives.
 
-**[Workflow Guide →](docs/USER_GUIDE.md#available-workflows)**
+**[Workflow Guide →](docs/WORKFLOWS.md)**
 
 ## Documentation
 
-- **[User Guide](docs/USER_GUIDE.md)** - Installation, CLI reference, workflows, troubleshooting
+- **[CLI Guide](docs/CLI_GUIDE.md)** - Installation, setup, CLI reference, configuration, troubleshooting
+- **[Workflows Guide](docs/WORKFLOWS.md)** - Detailed workflow documentation, examples, best practices, technical details
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - System design, platform orchestrator, MCP tools, document models
 
 ## Project Status
@@ -135,7 +141,7 @@ respec-ai is an open-source project with enterprise-grade architecture. Contribu
 - Documentation improvements
 - Bug fixes and optimizations
 
-**[Development Guide →](docs/USER_GUIDE.md#local-development-setup)**
+**[Development Guide →](docs/CLI_GUIDE.md#local-development-setup)**
 
 ## License
 
@@ -143,6 +149,5 @@ MIT License
 
 ## Support
 
+- [**CLI_GUIDE.md**](docs/CLI_GUIDE.md)
 - **Issues:** [GitHub Issues](https://github.com/mmcclatchy/respec-ai/issues)
-- **Documentation:** [docs/](docs/) directory
-- **User Guide:** [docs/USER_GUIDE.md](docs/USER_GUIDE.md)

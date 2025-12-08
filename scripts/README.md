@@ -37,7 +37,7 @@ respec-ai --help
 ```
 
 For full documentation, see:
-- [User Guide](../docs/USER_GUIDE.md)
+- [CLI Guide](../docs/CLI_GUIDE.md)
 - [Docker Deployment Guide](../docs/DOCKER_DEPLOYMENT.md)
 
 ## For Developers
@@ -127,5 +127,5 @@ If you're adding new development scripts:
 ## Support
 
 - **For development setup issues**: Open issue on GitHub
-- **For end user CLI issues**: See [User Guide](../docs/USER_GUIDE.md)
+- **For end user CLI issues**: See [CLI Guide](../docs/CLI_GUIDE.md)
 - **For Docker deployment questions**: See [Docker Deployment Guide](../docs/DOCKER_DEPLOYMENT.md)
