@@ -19,6 +19,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         parser: Argument parser for this command
     """
     parser.add_argument(
+        '-f',
         '--force',
         action='store_true',
         help='Re-register even if already registered',

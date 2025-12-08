@@ -4,6 +4,8 @@ from pathlib import Path
 
 
 CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
+CLAUDE_SETTINGS_PATH = Path.home() / '.claude' / 'settings.json'
+CLAUDE_SETTINGS_LOCAL_PATH = Path.home() / '.claude' / 'settings.local.json'
 MCP_SERVER_NAME = 'RespecAI'
 
 
@@ -283,3 +285,44 @@ def get_mcp_server_config(config_path: Path = CLAUDE_CONFIG_PATH) -> dict | None
         return config.get('mcpServers', {}).get(MCP_SERVER_NAME)
     except ClaudeConfigError:
         return None
+
+
+def add_mcp_permissions() -> bool:
+    """Add RespecAI MCP permissions to Claude settings.
+
+    Checks both settings.json and settings.local.json (prefers local).
+    Adds wildcard permission for all RespecAI MCP tools.
+
+    Returns:
+        True if permissions were added, False if already present or if settings don't exist
+
+    Raises:
+        ClaudeConfigError: If settings file is corrupted or update fails
+    """
+    settings_path = CLAUDE_SETTINGS_LOCAL_PATH if CLAUDE_SETTINGS_LOCAL_PATH.exists() else CLAUDE_SETTINGS_PATH
+
+    if not settings_path.exists():
+        return False
+
+    try:
+        settings = json.loads(settings_path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as e:
+        raise ClaudeConfigError(f'Settings file is corrupted: {e}') from e
+
+    if 'permissions' not in settings:
+        settings['permissions'] = {}
+    if 'allow' not in settings['permissions']:
+        settings['permissions']['allow'] = []
+
+    permission_pattern = f'mcp__{MCP_SERVER_NAME.lower()}__*'
+
+    if permission_pattern in settings['permissions']['allow']:
+        return False
+
+    settings['permissions']['allow'].append(permission_pattern)
+
+    try:
+        settings_path.write_text(json.dumps(settings, indent=4), encoding='utf-8')
+        return True
+    except Exception as e:
+        raise ClaudeConfigError(f'Failed to update settings: {e}') from e

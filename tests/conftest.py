@@ -16,6 +16,9 @@ import asyncpg
 from src.utils.database_pool import db_pool
 
 
+logger = logging.getLogger(__name__)
+
+
 def pytest_configure(config: pytest.Config) -> None:
     logging.getLogger('state_manager').setLevel(logging.WARNING)
     logging.getLogger('mcp.server.lowlevel.server').setLevel(logging.WARNING)
@@ -99,14 +102,18 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 @pytest.fixture(scope='session')
 def check_database_available() -> bool:
     async def check_db() -> bool:
+        db_url = (
+            'postgresql://respec:respec@localhost:5433/respec_test'
+            if os.getenv('TESTING', '').lower() == 'true'
+            else 'postgresql://respec:respec@localhost:5433/respec_dev'
+        )
+
         try:
-            conn = await asyncpg.connect(
-                dsn=os.getenv('DATABASE_URL', 'postgresql://respec:respec@localhost:5433/respec_dev'),
-                timeout=2.0,
-            )
+            conn = await asyncpg.connect(dsn=db_url, timeout=2.0)
             await conn.close()
             return True
-        except Exception:
+        except Exception as e:
+            logger.warning(f'PostgreSQL not available: {e}')
             return False
 
     loop = asyncio.get_event_loop_policy().new_event_loop()
@@ -128,9 +135,14 @@ async def db_state_manager(check_database_available: bool) -> AsyncGenerator[Pos
 
     yield manager
 
-    async with db_pool.acquire() as conn:
-        await conn.execute(
-            'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, technical_specs, project_plans, loop_to_spec_mappings CASCADE'
-        )
-
-    await manager.close()
+    if db_pool._pool is not None:
+        try:
+            async with db_pool._pool.acquire() as conn:
+                await conn.execute(
+                    'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
+                    'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+                )
+        except Exception:
+            pass
+        finally:
+            await db_pool.close()

@@ -42,38 +42,69 @@ async def inmemory_manager() -> StateManager:
 
 
 @pytest.fixture
-async def postgres_manager() -> AsyncGenerator[StateManager, None]:
+async def postgres_manager(check_database_available: bool) -> AsyncGenerator[StateManager, None]:
+    if not check_database_available:
+        pytest.skip(
+            'PostgreSQL test database not available. '
+            'Start with: docker-compose -f docker-compose.dev.yml up -d\n'
+            'Or run with: pytest -k "not postgres" to skip database tests'
+        )
+
     manager = PostgresStateManager(max_history_size=10)
     await manager.initialize()
 
     yield manager
 
-    # Cleanup: truncate all tables
-
-    async with db_pool.acquire() as conn:
-        await conn.execute(
-            'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-            'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
-        )
-
-    await manager.close()
+    if db_pool._pool is not None:
+        try:
+            async with db_pool._pool.acquire() as conn:
+                await conn.execute(
+                    'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
+                    'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+                )
+        except Exception:
+            pass
+        finally:
+            await db_pool.close()
 
 
 @pytest.fixture(params=['inmemory', 'postgres'])
 async def state_manager(
     request: pytest.FixtureRequest,
+    check_database_available: bool,
     inmemory_manager: StateManager,
-    postgres_manager: StateManager,
-) -> StateManager:
+) -> AsyncGenerator[StateManager, None]:
     """Parameterized fixture providing both StateManager implementations.
 
     Tests using this fixture will run twice - once with InMemoryStateManager
     and once with PostgresStateManager.
     """
     if request.param == 'inmemory':
-        return inmemory_manager
+        yield inmemory_manager
     else:
-        return postgres_manager
+        if not check_database_available:
+            pytest.skip(
+                'PostgreSQL test database not available. '
+                'Start with: docker-compose -f docker-compose.dev.yml up -d\n'
+                'Or run with: pytest -k "not postgres" to skip database tests'
+            )
+
+        manager = PostgresStateManager(max_history_size=10)
+        await manager.initialize()
+
+        yield manager
+
+        if db_pool._pool is not None:
+            try:
+                async with db_pool._pool.acquire() as conn:
+                    await conn.execute(
+                        'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
+                        'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+                    )
+            except Exception:
+                pass
+            finally:
+                await db_pool.close()
 
 
 @pytest.fixture

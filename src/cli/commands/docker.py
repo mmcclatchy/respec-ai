@@ -27,6 +27,7 @@ def add_arguments(parser: ArgumentParser) -> None:
 
     logs_parser = subparsers.add_parser('logs', help='Show container logs')
     logs_parser.add_argument(
+        '-n',
         '--lines',
         type=int,
         default=100,
@@ -37,13 +38,14 @@ def add_arguments(parser: ArgumentParser) -> None:
 
     cleanup_parser = subparsers.add_parser('cleanup', help='Remove old versions or dangling images')
     cleanup_parser.add_argument(
+        '-d',
         '--dangling',
         action='store_true',
         help='Remove dangling (untagged) images instead of old versions',
     )
 
     remove_parser = subparsers.add_parser('remove', help='Remove prod containers, image, and network')
-    remove_parser.add_argument('--force', action='store_true', help='Force stop containers if hanging')
+    remove_parser.add_argument('-f', '--force', action='store_true', help='Force stop containers if hanging')
     remove_parser.add_argument(
         '--volumes',
         action='store_true',

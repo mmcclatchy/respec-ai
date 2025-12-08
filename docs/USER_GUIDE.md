@@ -1,124 +1,100 @@
 # RespecAI User Guide
 
-Complete guide to using RespecAI for AI-driven specification-based development.
+**TL;DR:** RespecAI is a meta MCP server that generates platform-specific workflow tools for AI-driven specification-based development. Creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or Markdown files).
 
-## What is RespecAI?
+## Quick Start
 
-RespecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
+**Get started in 3 commands:**
 
-### Key Benefits
+```bash
+# 1. Install RespecAI
+uv tool install respec-ai
 
-- **Platform flexibility** - Work with Linear issues, GitHub issues, or local Markdown files
-- **Automated setup** - Generate complete workflow tools with a single command
-- **Type-safe integration** - Platform-specific tools properly configured for your environment
-- **Refinement loops** - Quality-driven development with critic agents and iterative improvement
+# 2. Initialize in your project
+cd /path/to/your/project
+respec-ai init -p markdown
 
-### Current Status
+# 3. Restart Claude Code and start planning
+claude
+/respec-plan my-first-project
+```
 
-**MVP Complete** - RespecAI is ready for real-world usage:
-- ✅ MCP server fully functional
-- ✅ Multi-project architecture implemented (Phase 1)
-- ✅ All 29+ tools operational
-- ✅ 391 tests passing
-- ✅ Installation and setup validated
+That's it! RespecAI will guide you through creating strategic plans, technical specs, and implementations.
 
-See [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for implementation status and [MULTI_PROJECT_DESIGN.md](MULTI_PROJECT_DESIGN.md) for architecture details.
+---
 
 ## Table of Contents
 
-- [What is RespecAI?](#what-is-respecai)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation Overview](#installation-overview)
-  - [Part 1: RespecAI Package Installation](#part-1-respecai-package-installation-one-time)
-  - [Part 2: Project Setup](#part-2-project-setup-per-project)
-  - [Quick Start: Your First RespecAI Workflow](#quick-start-your-first-respecai-workflow)
-- [Multi-Project Support](#multi-project-support)
+- [Installation](#installation)
+  - [Option A: uv Tool (Recommended)](#option-a-uv-tool-recommended---all-platforms)
+  - [Option B: Homebrew (macOS and Linux)](#option-b-homebrew-macos-and-linux)
+- [MCP Server Setup](#mcp-server-setup)
+- [Project Initialization](#project-initialization)
+- [Your First Workflow](#your-first-workflow)
 - [CLI Reference](#cli-reference)
-  - [respec-ai init](#respec-ai-init)
-  - [respec-ai platform](#respec-ai-platform)
-  - [respec-ai status](#respec-ai-status)
-  - [respec-ai validate](#respec-ai-validate)
-  - [respec-ai regenerate](#respec-ai-regenerate)
-  - [respec-ai register-mcp](#respec-ai-register-mcp)
+- [Available Workflows](#available-workflows)
 - [Platform Selection](#platform-selection)
-- [Available Commands](#available-commands)
-  - [/respec-plan](#respec-plan)
-  - [/respec-roadmap](#respec-roadmap)
-  - [/respec-spec](#respec-spec)
-  - [/respec-build](#respec-build)
-- [Workflow Examples](#workflow-examples)
-- [Quality & Refinement Loops](#quality--refinement-loops)
-- [Platform-Specific Workflows](#platform-specific-workflows)
 - [Configuration](#configuration)
+- [Multi-Project Support](#multi-project-support)
 - [Troubleshooting](#troubleshooting)
-  - [RespecAI MCP Server Not Available](#respecai-mcp-server-not-available)
-  - [Commands Not Found](#commands-not-found)
-  - [Homebrew Installation Issues](#homebrew-installation-issues)
 - [Best Practices](#best-practices)
 - [Advanced Usage](#advanced-usage)
 - [Local Development Setup](#local-development-setup)
-  - [Prerequisites](#prerequisites-1)
-  - [Quick Setup (Recommended)](#quick-setup-recommended)
-  - [Alternative: Manual Configuration](#alternative-manual-configuration)
-  - [Choosing a State Manager](#choosing-a-state-manager)
-  - [Development Workflows](#development-workflows)
-  - [Troubleshooting Local Development](#troubleshooting-local-development)
 - [Getting Help](#getting-help)
-- [Next Steps](#next-steps)
 
-## Getting Started
+---
+
+## Installation
 
 ### Prerequisites
 
 **Required for all users:**
 - **Claude Code CLI** installed and configured
 - **Git** for repository access
+- **Python 3.11+** for RespecAI
+- **Docker or Docker Desktop** (required for MCP server functionality)
 
-**For RespecAI installation (choose one method):**
-
-**Option A: Homebrew (macOS only):**
-- **macOS** operating system
-- **Homebrew** package manager
-- **Docker Desktop** (required for MCP server functionality)
-
-**Option B: uv Tool (all platforms):**
-- **uv** (Python version and package manager) - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
-- **Python 3.11+**
-- **Unix-like operating system** (Linux, macOS, or Windows Subsystem for Linux)
-- **Docker** (Linux) or **Docker Desktop** (macOS, Windows, WSL)
+**For package installation:**
+- **uv** (recommended) - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
+- **OR Homebrew** (macOS and Linux)
 
 **For platform integrations (optional):**
 - **Linear MCP Server** - If using Linear platform
 - **GitHub MCP Server** - If using GitHub platform
 - **Markdown platform** - No additional requirements (uses local files)
 
-### Installation Overview
+---
 
-RespecAI installation has two parts:
+### Option A: uv Tool (Recommended - All Platforms)
 
-1. **RespecAI Package Installation** (one-time) - Install the respec-ai package from PyPI
-2. **Project Initialization** (per-project) - Initialize RespecAI in your projects
-
-Both parts can be completed with a single command.
-
-### Part 1: RespecAI Package Installation (One-Time)
-
-This installs the RespecAI package and makes the CLI available globally.
-
-Choose the installation method that best fits your platform:
-
-#### Option A: Homebrew Installation (macOS - Recommended)
-
-⚠️ **Development Version**: Currently installing from TestPyPI for testing. Production release coming soon.
-
-**Prerequisites:**
-- macOS with Homebrew installed
-- Docker Desktop (required for MCP server functionality)
+**Best for:** Linux, macOS, Windows (WSL), or anyone preferring uv
 
 **Installation:**
+
 ```bash
-# Add the development tap
+# Install RespecAI
+uv tool install respec-ai
+
+# Verify installation
+respec-ai --version
+```
+
+**What gets installed:**
+- ✅ respec-ai CLI tool in isolated environment
+- ✅ All Python dependencies automatically
+- ✅ Cross-platform compatibility
+- ✅ Docker-based MCP server (registers automatically)
+
+---
+
+### Option B: Homebrew (macOS and Linux)
+
+**Best for:** macOS or Linux users who prefer Homebrew
+
+**Installation:**
+
+```bash
+# Add the RespecAI tap
 brew tap mmcclatchy/respec-ai
 
 # Install respec-ai
@@ -128,66 +104,34 @@ brew install respec-ai
 respec-ai --version
 ```
 
-**Expected output:**
-```text
-respec-ai 0.5.15
-```
-
 **What gets installed:**
 - ✅ respec-ai CLI tool
 - ✅ All Python dependencies (pydantic, rich, docker, etc.)
 - ✅ Isolated virtualenv (no conflicts with system Python)
+- ✅ Docker-based MCP server (registers automatically)
 
-**Note:** The MCP server will be automatically registered in Step 2 or can be registered manually.
+**Note:** You may see a harmless dylib linkage warning during installation - this can be safely ignored.
 
-#### Option B: uv Tool Installation (All Platforms)
+---
 
-**Prerequisites:**
-- uv installed ([Install uv](https://docs.astral.sh/uv/getting-started/installation/))
-- Python 3.11+
-- Docker or Docker Desktop
+## MCP Server Setup
 
-**For development/testing (TestPyPI):**
+The MCP server is automatically registered during project initialization. You can also register it manually.
+
+### Automatic Registration (Recommended)
+
+The MCP server registers automatically when you run `respec-ai init` in your first project. Skip to [Project Initialization](#project-initialization).
+
+### Manual Registration
+
+If you prefer to register the MCP server separately:
+
 ```bash
-# Install from TestPyPI
-uv tool install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ respec-ai
-
-# Verify installation
-respec-ai --version
-```
-
-**For production (PyPI):**
-```bash
-# Install from PyPI (when available)
-uv tool install respec-ai
-
-# Verify installation
-respec-ai --version
-```
-
-**Expected output:**
-```text
-respec-ai 0.5.15
-```
-
-**What gets installed:**
-- ✅ respec-ai CLI tool in isolated environment
-- ✅ All Python dependencies automatically
-- ✅ Cross-platform compatibility
-
-#### Step 2: Register MCP Server (Automatic or Manual)
-
-The MCP server can be registered automatically during project initialization (recommended) or manually. **This step works the same regardless of which installation method you used** (Homebrew or uv tool).
-
-**Option A: Automatic Registration (Recommended)**
-
-The MCP server will be automatically registered when you run `respec-ai init` in your first project.
-
-**Option B: Manual Registration**
-
-If you prefer to register the MCP server separately (or if automatic registration was skipped):
-```bash
+# Register the MCP server
 respec-ai register-mcp
+
+# Or force re-registration if needed
+respec-ai register-mcp --force
 ```
 
 **Expected output:**
@@ -197,20 +141,27 @@ Package path: /path/to/installed/respec-ai
 Restart Claude Code to activate the MCP server
 ```
 
-#### Step 3: Verify Installation
+**What this does:**
+- ✅ Registers RespecAI MCP server with Claude Code
+- ✅ Configures Docker-based server execution
+- ✅ Automatically adds MCP tool permissions to Claude settings
+- ✅ Creates necessary configuration in `~/.claude/config.json`
 
-**Restart Claude Code** to load the MCP server, then verify:
+### Verify MCP Server
+
+**Restart Claude Code** to load the MCP server:
 
 ```bash
 claude
 ```
 
-In Claude Code, run:
+In Claude Code, verify the server is available:
+
 ```text
 /mcp list
 ```
 
-**Expected output should include:**
+**Expected output:**
 ```text
 Available MCP Servers:
   RespecAI
@@ -225,31 +176,36 @@ Available MCP Servers:
 - Tool count shows 29+ tools
 - No error messages
 
-**If RespecAI doesn't appear**, see [Troubleshooting](#respecai-mcp-server-not-available) below.
+**If RespecAI doesn't appear**, see [Troubleshooting: MCP Server Not Available](#respecai-mcp-server-not-available).
 
 ---
 
-### Part 2: Project Setup (Per-Project)
+## Project Initialization
 
-Initialize RespecAI in any project with a single command.
+Initialize RespecAI in any project directory.
 
-#### Initialize Your Project
+### Initialize Your Project
 
 **Step 1: Navigate to your project**
+
 ```bash
 cd /path/to/your/project
 ```
 
 **Step 2: Initialize RespecAI**
+
 ```bash
 # Choose your platform: linear, github, or markdown
-respec-ai init --platform linear
+respec-ai init -p markdown
 
-# Optional: specify project name (defaults to directory name)
-respec-ai init --platform github --project-name my-project
+# Optional: specify project name (short flags)
+respec-ai init -p linear -n my-project
 
-# Optional: skip automatic MCP registration
-respec-ai init --platform markdown --skip-mcp-registration
+# Optional: skip automatic MCP registration (long flag)
+respec-ai init -p github --skip-mcp-registration
+
+# Optional: force overwrite existing configuration (short flag)
+respec-ai init -p markdown -f
 ```
 
 **What this creates:**
@@ -262,7 +218,7 @@ respec-ai init --platform markdown --skip-mcp-registration
 ✅ RespecAI setup complete!
 
 Setting              Value
-Platform             linear
+Platform             markdown
 Files Created        17
 Location             /path/to/project
 MCP Server           ✓ Registered as RespecAI
@@ -277,12 +233,13 @@ Available Commands (restart Claude Code to activate):
 ```
 
 **Step 3: Restart Claude Code**
+
 ```bash
 # Exit and restart Claude Code to load new commands
 claude
 ```
 
-#### Verify Project Setup
+### Verify Project Setup
 
 Check that everything was created correctly:
 
@@ -296,9 +253,9 @@ respec-ai status
 Project Configuration
 Setting              Value
 Project Path         /path/to/project
-Platform             linear
-Config Version       0.2.0
-Package Version      0.2.0
+Platform             markdown
+Config Version       0.6.3
+Package Version      0.6.3
 MCP Server           RespecAI (✓ Registered)
 
 Generated Files
@@ -314,102 +271,55 @@ Agents              12
 - [ ] Commands autocomplete with `/respec-` in Claude Code
 - [ ] RespecAI MCP server shows in `/mcp list`
 
-**If verification fails**, see [Troubleshooting](#commands-not-found) below.
+**If verification fails**, see [Troubleshooting](#troubleshooting).
 
 ---
 
-### Quick Start: Your First RespecAI Workflow
+## Your First Workflow
 
-Now that setup is complete, try creating your first plan:
+Now that setup is complete, try creating your first strategic plan:
 
 ```bash
-# In your project directory
+# Start Claude Code in your project
+cd /path/to/your/project
 claude
 ```
 
+**Example workflow:**
+
 ```text
 # Start with strategic planning
-/respec-plan
+/respec-plan my-first-project
 
-# Or if you want to create a multi-phase roadmap
-/respec-roadmap my-project-name
+# Claude will guide you through conversational discovery:
+# - What problem are you solving?
+# - Who are the users?
+# - What are the key features?
+# - What are the constraints?
+
+# After planning, create a phased roadmap (for larger projects)
+/respec-roadmap my-first-project
+
+# Create detailed technical specifications
+/respec-spec phase-1-auth
+
+# Implement the specification
+/respec-build phase-1-auth
 ```
 
-Follow the interactive prompts to create your first strategic plan. See [Available Commands](#available-commands) below for detailed workflow documentation.
+Each command will guide you through the workflow with quality checks and refinement loops.
 
----
-
-## Multi-Project Support
-
-**Status**: ✅ MVP Complete (Phase 1)
-
-### Current Implementation
-
-RespecAI supports running multiple projects with explicit project context. Each project maintains its own:
-
-- ✅ Platform configuration (`.respec-ai/config/platform.json`)
-- ✅ Command templates (`.claude/commands/*.md`)
-- ✅ Agent templates (`.claude/agents/*.md`)
-- ✅ Explicit project context via `project_path` parameter
-- ✅ Linear/GitHub issues (naturally isolated by workspace/repository)
-
-**What This Means:**
-- All 36+ MCP tools now accept explicit `project_path` parameter
-- Multiple projects can use the same RespecAI MCP server
-- Each project's workflows operate independently when project_path is specified
-- No cross-project interference at the tool level
-
-### Current Architecture
-
-**What Works Now (Phase 1 Complete):**
-- ✅ Tool-level multi-project support (explicit `project_path`)
-- ✅ Different projects can use different platforms
-- ✅ Simultaneous project usage (with proper project_path specification)
-- ✅ All 404 tests passing with multi-project scenarios
-
-**Current Limitations (Acceptable for MVP):**
-- ⏸️ **In-memory state**: Plans, specs, and loop state stored in memory
-  - State does not persist across MCP server restarts
-  - Acceptable for single-user development workflows
-- ⏸️ **Global configuration**: Platform config stored at `~/.respec-ai/projects/`
-  - Works fine for solo development
-  - Per-project config deferred until team collaboration features needed
-
-### Recommended Usage (MVP)
-
-**For single user / solo development**: Works perfectly with no limitations.
-
-**For multiple projects**:
-- ✅ Set up each project independently with `/init-respec-ai`
-- ✅ Different projects can use different platforms
-- ✅ Commands work correctly when project context is clear
-- ⏸️ State resets on MCP server restart (acceptable for MVP)
-
-### Future Enhancements (Post-MVP)
-
-**Database Persistence** (planned, not file-based):
-- Persistent state storage across server restarts
-- Database-backed state management
-- Enhanced multi-user support
-
-**Per-Project Configuration** (when team collaboration needed):
-- Move config from `~/.respec-ai/projects/` to `.respec-ai/config/`
-- Repository-portable configuration
-- Better team workflow support
-
-**See [MULTI_PROJECT_DESIGN.md](MULTI_PROJECT_DESIGN.md) and [SETUP_IMPROVEMENTS.md](SETUP_IMPROVEMENTS.md) for:**
-- Complete architecture details
-- Phase 1 implementation (completed)
-- Future enhancement roadmap
-- Technical implementation notes
+**See [Available Workflows](#available-workflows) for detailed documentation on each command.**
 
 ---
 
 ## CLI Reference
 
-RespecAI provides a rich CLI for managing your workflow setup.
+RespecAI provides comprehensive CLI commands for managing your workflow setup.
 
-### `respec-ai init`
+### Core Commands
+
+#### `respec-ai init`
 
 Initialize RespecAI in the current project.
 
@@ -422,22 +332,65 @@ respec-ai init --platform <platform> [OPTIONS]
 - `--platform` (required) - Platform type: `linear`, `github`, or `markdown`
 - `--project-name` (optional) - Project name (defaults to directory name)
 - `--skip-mcp-registration` (optional) - Skip automatic MCP server registration
+- `--force` (optional) - Overwrite existing configuration
 
 **Examples:**
 ```bash
 # Initialize with Linear platform
-respec-ai init --platform linear
+respec-ai init -p linear
 
-# Initialize with custom project name
-respec-ai init --platform github --project-name my-app
+# Initialize with custom project name (short flags)
+respec-ai init -p github -n my-app
 
-# Initialize without MCP registration
+# Initialize without MCP registration (long flags)
 respec-ai init --platform markdown --skip-mcp-registration
+
+# Force overwrite existing installation (short flag)
+respec-ai init -p linear -f
 ```
 
 ---
 
-### `respec-ai platform`
+#### `respec-ai rebuild`
+
+Rebuild project configuration and templates (useful after RespecAI updates).
+
+**Usage:**
+```bash
+respec-ai rebuild [OPTIONS]
+```
+
+**Options:**
+- `--skip-mcp-registration` (optional) - Skip MCP server re-registration
+
+**Example:**
+```bash
+# Rebuild configuration and re-register MCP server
+respec-ai rebuild
+
+# Rebuild without MCP re-registration
+respec-ai rebuild --skip-mcp-registration
+```
+
+**Output:**
+```text
+Project rebuilt successfully
+Platform: markdown
+Project: my-project
+Version: 0.6.3
+Regenerated 5 commands and 12 agents
+
+⚠ Restart Claude Code to activate the updated MCP server
+```
+
+**When to use:**
+- After updating RespecAI package
+- When templates are out of sync with package version
+- To refresh MCP server registration
+
+---
+
+#### `respec-ai platform`
 
 Change platform and regenerate all templates.
 
@@ -463,11 +416,11 @@ Regenerated 5 commands and 12 agents
 ⚠ Restart Claude Code to activate the updated templates
 ```
 
-**Note:** Existing work (plans, specs) won't automatically migrate. You'll need to manually recreate them in the new platform.
+**Note:** Existing work (plans, specs) won't automatically migrate between platforms.
 
 ---
 
-### `respec-ai status`
+#### `respec-ai status`
 
 Show project configuration and status.
 
@@ -481,9 +434,9 @@ respec-ai status
 Project Configuration
 Setting              Value
 Project Path         /path/to/project
-Platform             linear
-Config Version       0.2.0
-Package Version      0.2.0
+Platform             markdown
+Config Version       0.6.3
+Package Version      0.6.3
 MCP Server           RespecAI (✓ Registered)
 
 Generated Files
@@ -494,7 +447,7 @@ Agents              12
 
 ---
 
-### `respec-ai validate`
+#### `respec-ai validate`
 
 Validate project setup with comprehensive diagnostics.
 
@@ -524,37 +477,16 @@ Validation Results
 Check                Status
 Project Initialized  ✓ Config file exists
 Config Valid         ✓ Config is valid JSON
-Platform Valid       ✓ Platform: linear
-Version Current      ✓ Version: 0.2.0
+Platform Valid       ✓ Platform: markdown
+Version Current      ✓ Version: 0.6.3
 Commands Directory   ✓ 5 commands found
 Agents Directory     ✓ 12 agents found
 MCP Registered       ✓ RespecAI server registered
 ```
 
-**Output (with failures):**
-```text
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Some validation checks failed                ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-Project: /path/to/project
-
-Validation Results
-Check                Status
-Project Initialized  ✗ Not initialized
-Config Valid         ✗ Config missing
-Platform Valid       ✗ Config missing
-Version Current      ✗ Config missing
-Commands Directory   ✗ Directory missing
-Agents Directory     ✗ Directory missing
-MCP Registered       ✗ Not registered in Claude Code
-
-⚠ Run respec-ai init to fix missing files
-```
-
 ---
 
-### `respec-ai regenerate`
+#### `respec-ai regenerate`
 
 Regenerate agent and command templates to match the current package version.
 
@@ -571,13 +503,13 @@ respec-ai regenerate [--force]
 # Regenerate templates
 respec-ai regenerate
 
-# Force regeneration
-respec-ai regenerate --force
+# Force regeneration (short flag)
+respec-ai regenerate -f
 ```
 
 **Output:**
 ```text
-Templates updated: 0.1.0 → 0.2.0
+Templates updated: 0.5.0 → 0.6.3
 Regenerated 5 commands and 12 agents
 
 ⚠ Restart Claude Code to activate the updated templates
@@ -585,25 +517,29 @@ Regenerated 5 commands and 12 agents
 
 ---
 
-### `respec-ai register-mcp`
+#### `respec-ai register-mcp`
 
 Manually register the RespecAI MCP server in Claude Code.
 
 **Usage:**
 ```bash
-respec-ai register-mcp [--force]
+respec-ai register-mcp [--force] [--restore-backup]
 ```
 
 **Options:**
 - `--force` (optional) - Re-register even if already registered
+- `--restore-backup` (optional) - Restore Claude config from backup
 
 **Example:**
 ```bash
 # Initial registration
 respec-ai register-mcp
 
-# Force re-registration
-respec-ai register-mcp --force
+# Force re-registration (short flag)
+respec-ai register-mcp -f
+
+# Restore config from backup (long flag)
+respec-ai register-mcp --restore-backup
 ```
 
 **Output:**
@@ -613,6 +549,11 @@ Package path: /path/to/installed/respec-ai
 Restart Claude Code to activate the MCP server
 ```
 
+**What this does:**
+- Registers MCP server using Claude CLI
+- Adds MCP tool permissions to Claude settings
+- Creates configuration in `~/.claude/config.json`
+
 **When to use:**
 - If automatic registration was skipped during `respec-ai init`
 - If MCP server registration was corrupted
@@ -620,18 +561,598 @@ Restart Claude Code to activate the MCP server
 
 ---
 
-### Global Options
+### Docker Commands
 
-**Version:**
+Manage the RespecAI Docker container (MCP server runs in Docker).
+
+#### `respec-ai docker status`
+
+Show Docker container and image status.
+
+**Usage:**
+```bash
+respec-ai docker status
+```
+
+**Output:**
+```text
+RespecAI MCP Server Status
+
+Container Status
+Name                 Running    Image                  Created
+respec-ai-0.6.3      Yes        respec-ai:0.6.3       2025-01-15 10:30
+
+Image Status
+Repository           Tag        Created                Size
+respec-ai            0.6.3      2025-01-15 10:25      450 MB
+respec-ai            latest     2025-01-15 10:25      450 MB
+
+Docker Daemon:       ✓ Running
+Container Running:   ✓ Yes
+```
+
+---
+
+#### `respec-ai docker start`
+
+Start the MCP server container.
+
+**Usage:**
+```bash
+respec-ai docker start
+```
+
+**Output:**
+```text
+✓ Started MCP server container: respec-ai-0.6.3
+```
+
+---
+
+#### `respec-ai docker stop`
+
+Stop the MCP server container.
+
+**Usage:**
+```bash
+respec-ai docker stop [--timeout N]
+```
+
+**Options:**
+- `--timeout N` (optional) - Shutdown timeout in seconds (default: 10)
+
+**Example:**
+```bash
+# Graceful stop (default timeout: 10 seconds)
+respec-ai docker stop
+
+# Custom timeout
+respec-ai docker stop --timeout 30
+```
+
+---
+
+#### `respec-ai docker restart`
+
+Restart the MCP server container.
+
+**Usage:**
+```bash
+respec-ai docker restart
+```
+
+---
+
+#### `respec-ai docker logs`
+
+View MCP server container logs.
+
+**Usage:**
+```bash
+respec-ai docker logs [-n N]
+```
+
+**Options:**
+- `-n`, `--lines N` (optional) - Show last N lines (default: 100)
+
+**Examples:**
+```bash
+# View last 100 lines (default)
+respec-ai docker logs
+
+# Show last 50 lines (short flag)
+respec-ai docker logs -n 50
+
+# Show last 200 lines (long flag)
+respec-ai docker logs --lines 200
+```
+
+---
+
+#### `respec-ai docker pull`
+
+Pull the latest RespecAI Docker image.
+
+**Usage:**
+```bash
+respec-ai docker pull
+```
+
+**Output:**
+```text
+✓ Pulled Docker image: respec-ai:0.6.3
+```
+
+---
+
+#### `respec-ai docker build`
+
+Build RespecAI Docker image locally (for development).
+
+**Usage:**
+```bash
+respec-ai docker build [--no-cache]
+```
+
+**Options:**
+- `--no-cache` (optional) - Build without using Docker cache
+
+**Example:**
+```bash
+# Build with cache
+respec-ai docker build
+
+# Build without cache (clean build)
+respec-ai docker build --no-cache
+```
+
+---
+
+#### `respec-ai docker remove`
+
+Remove the MCP server container.
+
+**Usage:**
+```bash
+respec-ai docker remove [--force]
+```
+
+**Options:**
+- `--force` (optional) - Remove even if container is running
+
+**Example:**
+```bash
+# Remove stopped container
+respec-ai docker remove
+
+# Force remove running container (short flag)
+respec-ai docker remove -f
+```
+
+---
+
+#### `respec-ai docker cleanup`
+
+Clean up old Docker resources.
+
+**Usage:**
+```bash
+respec-ai docker cleanup [--dangling]
+```
+
+**Options:**
+- `--dangling` (optional) - Remove dangling (untagged) images system-wide
+
+**Examples:**
+```bash
+# Remove old RespecAI versions (keeps current version)
+respec-ai docker cleanup
+
+# Remove ALL dangling Docker images (WARNING: affects all Docker projects)
+respec-ai docker cleanup -d
+```
+
+**Output (old versions):**
+```text
+✓ Cleaned up 2 old version(s)
+```
+
+**Output (dangling images):**
+```text
+WARNING: This will remove ALL dangling images system-wide
+Dangling images are untagged images from failed builds/pulls
+This affects all Docker projects, not just respec-ai
+
+Continue? [y/N]: y
+
+✓ Cleaned up 5 dangling images (reclaimed 1.2 GB)
+```
+
+**Note:** `--dangling` flag removes untagged images from ALL Docker projects, not just RespecAI. Use with caution.
+
+---
+
+### Utility Commands
+
+#### `respec-ai mcp-server`
+
+Start RespecAI MCP server directly (used internally by Claude Code).
+
+**Usage:**
+```bash
+respec-ai mcp-server
+```
+
+**Note:** This command is primarily used by Claude Code's MCP server configuration. You typically won't run it manually.
+
+**When to use:**
+- Testing MCP server connection
+- Debugging MCP server issues
+- Verifying MCP server starts correctly
+
+---
+
+#### `respec-ai --version`
+
+Show RespecAI package version.
+
+**Usage:**
 ```bash
 respec-ai --version
 ```
 
-**Help:**
+**Output:**
+```text
+respec-ai 0.6.3
+```
+
+---
+
+#### `respec-ai --help`
+
+Show help for CLI commands.
+
+**Usage:**
 ```bash
+# Show all commands
 respec-ai --help
+
+# Show help for specific command
 respec-ai <command> --help
 ```
+
+**Examples:**
+```bash
+# Show all commands
+respec-ai --help
+
+# Show init command help
+respec-ai init --help
+
+# Show docker command help
+respec-ai docker --help
+```
+
+---
+
+## Available Workflows
+
+RespecAI provides four main workflow commands that work together to guide you from strategic planning to implementation.
+
+### Understanding Commands and Agents
+
+**Commands** (what you invoke with `/respec-*`) are the entry points to workflows. They orchestrate one or more agents to complete tasks.
+
+**Agents** (invoked by commands) are specialized AI assistants with specific tools and responsibilities. You typically don't invoke agents directly.
+
+---
+
+### `/respec-plan`
+
+**Purpose:** Create strategic project plans through interactive discovery
+
+**Workflow:**
+1. Uses conversational discovery to gather requirements
+2. Creates strategic plan document
+3. Evaluates plan quality with plan-critic agent
+4. Refines through iterative improvement loops
+5. Extracts business objectives with plan-analyst agent
+6. Validates extraction with analyst-critic agent
+
+**When to use:**
+- Starting a new project or feature
+- Need to understand business objectives
+- Want structured strategic planning
+- Requirements are unclear and need discovery
+
+**Example:**
+```text
+User: /respec-plan my-auth-system
+
+Claude: I'll help you create a strategic plan. Let me start by understanding your goals.
+
+What problem are you trying to solve with this authentication system?
+
+User: I need users to securely log in and access protected resources
+
+Claude: Great! Let's explore this further. What types of users will use this system?
+[Conversation continues with guided discovery...]
+
+[After conversation]
+Claude: Based on our discussion, I've created a strategic plan with these key objectives:
+- Secure user authentication with JWT tokens
+- Role-based access control
+- Password reset functionality
+- Session management
+
+Quality Score: 85/100 (Excellent)
+
+Would you like me to proceed with extracting business objectives?
+```
+
+---
+
+### `/respec-plan-conversation`
+
+**Purpose:** Interactive conversation for requirements gathering
+
+**Workflow:**
+1. Asks clarifying questions about project goals
+2. Explores business objectives and constraints
+3. Gathers context for strategic planning
+4. Provides input for plan creation
+
+**When to use:**
+- **Do NOT invoke this directly** - it's used internally by `/respec-plan`
+- Automatically run during `/respec-plan` workflow
+
+**Note:** This is a sub-command that `/respec-plan` uses for conversational discovery.
+
+---
+
+### `/respec-roadmap`
+
+**Purpose:** Generate multi-phase implementation roadmaps
+
+**Workflow:**
+1. Analyzes project scope and complexity
+2. Creates phase-based implementation roadmap
+3. Evaluates roadmap with roadmap-critic agent
+4. Generates initial specifications for each phase
+5. Refines through iterative improvement
+
+**When to use:**
+- Starting large, complex projects
+- Need phase-based planning
+- Want to break work into manageable chunks
+- Clear strategic plan exists
+
+**Example:**
+```text
+User: /respec-roadmap my-saas-platform
+
+Claude: I'll create a multi-phase implementation roadmap based on your strategic plan.
+
+[Analyzing project scope...]
+
+I've created a 4-phase roadmap:
+
+Phase 1: User Authentication & Authorization (2-3 weeks)
+- JWT token-based authentication
+- Role-based access control
+- Password reset flow
+
+Phase 2: Core Features (4-6 weeks)
+- Dashboard and analytics
+- User profile management
+- Settings and preferences
+
+Phase 3: Payment Integration (2-3 weeks)
+- Stripe integration
+- Subscription management
+- Billing history
+
+Phase 4: Advanced Features (3-4 weeks)
+- Team collaboration
+- Advanced reporting
+- API access
+
+Quality Score: 88/100 (Excellent)
+
+I've also created initial specifications for each phase.
+Would you like me to refine any phase?
+```
+
+---
+
+### `/respec-spec`
+
+**Purpose:** Convert strategic plans into detailed technical specifications
+
+**Workflow:**
+1. Retrieves existing strategic plan
+2. Creates technical specification using spec-architect agent
+3. Evaluates spec quality with spec-critic agent
+4. Refines through iterative improvement
+5. Creates spec in your platform (Linear issue, GitHub issue, or Markdown file)
+
+**When to use:**
+- After completing strategic planning
+- Need detailed technical specifications
+- Ready to break down implementation approach
+- Want architecture and technology decisions documented
+
+**Example:**
+```text
+User: /respec-spec phase-1-auth
+
+Claude: I'll create a technical specification from your strategic plan.
+
+[Retrieving plan: my-saas-platform...]
+[Generating technical specification...]
+
+Technical Specification: Phase 1 - User Authentication
+
+Architecture:
+- FastAPI backend with JWT token generation
+- PostgreSQL for user storage
+- bcrypt for password hashing
+- Redis for session management
+
+Implementation Approach:
+1. User registration endpoint with validation
+2. Login endpoint with JWT generation
+3. Password reset flow with email tokens
+4. Role-based middleware for route protection
+
+Security Considerations:
+- HTTPS only in production
+- Rate limiting on auth endpoints
+- Password complexity requirements
+- Token expiration and refresh strategy
+
+Quality Score: 92/100 (Excellent)
+
+Creating Linear issue...
+✓ Created: AUTH-123 "Phase 1: User Authentication"
+```
+
+---
+
+### `/respec-build`
+
+**Purpose:** Implement specifications with automated code generation
+
+**Workflow:**
+1. Retrieves technical specification
+2. Creates build plan with build-planner agent
+3. Evaluates plan with build-critic agent
+4. Generates code with build-coder agent
+5. Reviews code with build-reviewer agent
+6. Refines through quality loops
+
+**When to use:**
+- After completing technical specifications
+- Ready to implement features
+- Want automated code generation with quality checks
+- Need TDD-driven implementation
+
+**Example:**
+```text
+User: /respec-build phase-1-auth
+
+Claude: I'll implement the specification with automated code generation.
+
+[Retrieving spec: AUTH-123...]
+[Creating build plan...]
+
+Build Plan Quality Score: 89/100 (Excellent)
+
+Implementation Steps:
+1. Create user model and database schema
+2. Implement registration endpoint
+3. Implement login endpoint with JWT
+4. Create password reset flow
+5. Add role-based middleware
+6. Write comprehensive tests
+
+[Generating code...]
+
+✓ Created: src/models/user.py
+✓ Created: src/api/auth.py
+✓ Created: src/middleware/auth_middleware.py
+✓ Created: tests/test_auth.py
+
+Code Review Quality Score: 94/100 (Excellent)
+
+All tests passing (24 tests)
+Code coverage: 96%
+
+Implementation complete!
+```
+
+---
+
+## Quality & Refinement Loops
+
+RespecAI uses two types of quality loops to ensure high-quality outputs:
+
+### 1. Human-in-the-Loop with Quality Validation
+
+**Used by:** `/respec-plan`
+
+**Process:**
+1. **Conversation:** Interactive Q&A to gather requirements
+2. **Generation:** Creates strategic plan from conversation context
+3. **Quality Check:** plan-critic evaluates and provides score
+4. **Human Review:** User sees quality score and decides next action
+5. **Analysis:** plan-analyst extracts structured business objectives
+6. **Validation:** analyst-critic validates through automated refinement loop
+7. **Completion:** Final validated strategic plan
+
+**This is a hybrid approach** - conversational gathering with automated quality validation and user decision points.
+
+### 2. Automated Refinement Loops (MCP-Driven)
+
+**Used by:** `/respec-roadmap`, `/respec-spec`, `/respec-build`
+
+**Process:**
+1. **Generation:** Generative agent creates content (roadmap, spec, build plan, code)
+2. **Evaluation:** Critic agent scores quality (0-100)
+3. **Decision:** MCP server determines next action:
+   - **High score** → Proceed to next phase
+   - **Improving score** → Refine with feedback
+   - **Stagnation** → Request user input
+
+### Critic Agents
+
+**For Human-in-the-Loop:**
+
+**plan-critic:**
+- Evaluates strategic plans after conversational gathering
+- Provides quality score for user decision-making
+- No automated refinement loop - user decides next action
+
+**analyst-critic:**
+- Validates business objective extraction
+- Uses MCP-driven automated refinement loop
+- Ensures completeness and accuracy of analysis
+
+**For Automated Loops:**
+
+**roadmap-critic:**
+- Evaluates implementation roadmaps
+- Checks phase breakdown and sizing
+- Validates dependencies and ordering
+
+**spec-critic:**
+- Evaluates technical specifications
+- Checks architecture design decisions
+- Validates implementation approach
+
+**build-critic:**
+- Evaluates build plans
+- Checks implementation steps
+- Validates technology choices
+
+**build-reviewer:**
+- Reviews generated code
+- Checks code quality and best practices
+- Validates implementation correctness
+
+### Quality Thresholds
+
+Quality scores determine progression:
+
+- **80-100:** Excellent quality, proceed
+- **60-79:** Good quality, minor refinements
+- **40-59:** Needs improvement, iterate
+- **0-39:** Significant issues, major refinement
+
+**Stagnation detection:**
+- No improvement over successive iterations
+- Max iterations reached (configurable)
+- System requests user input
 
 ---
 
@@ -723,369 +1244,20 @@ RespecAI supports three platforms with different capabilities:
 - You want Git-based version control
 - You don't need external platform integration
 
-## Available Commands
-
-### Understanding Command and Agent Templates
-
-**Commands** (what you invoke with `/respec-*`) use `allowed-tools:` in their frontmatter:
-```yaml
 ---
-allowed-tools: {tools.tools_yaml}
-argument-hint: [param-name]
-description: Command description
----
-```
-
-**Agents** (invoked by commands) use `tools:` with comma-separated list:
-```yaml
----
-name: agent-name
-description: Agent purpose
-model: sonnet
-tools: tool1, tool2, tool3
----
-```
-
-**Important Formatting Rules**:
-- **Tools must be comma-separated on a single line** (not YAML array format with `-` prefix)
-- Commands use variable interpolation `{tools.tools_yaml}` for platform-specific tools
-- Agents list tools explicitly, separated by commas
-
-**Note**: As a user, you don't interact with frontmatter directly. This formatting ensures commands and agents have proper tool access for your platform (Linear/GitHub/Markdown).
-
-### `/respec-plan`
-
-**Purpose:** Create strategic project plans through interactive discovery
-
-**Workflow:**
-1. Uses `/respec-plan-conversation` for natural language requirements gathering
-2. Creates strategic plan document
-3. Evaluates plan quality with plan-critic agent
-4. Refines through iterative improvement loops
-5. Extracts business objectives with plan-analyst agent
-6. Validates extraction with analyst-critic agent
-
-**When to use:**
-- Starting a new project or feature
-- Need to understand business objectives
-- Want structured strategic planning
-
-**Example:**
-```text
-User: /respec-plan
-
-Claude: I'll help you create a strategic plan. Let me start by understanding your goals.
-
-[Interactive conversation begins...]
-```
-
-### `/respec-plan-conversation`
-
-**Purpose:** Interactive conversation for requirements gathering
-
-**Workflow:**
-1. Asks clarifying questions about project goals
-2. Explores business objectives and constraints
-3. Gathers context for strategic planning
-4. Provides input for plan creation
-
-**When to use:**
-- This is not to be used by end-users
-- This command is used as a subcommand of `/respec-plan`
-
-### `/respec-roadmap`
-
-**Purpose:** Generate multi-phase implementation roadmaps
-
-**Workflow:**
-1. Analyzes project scope and complexity
-2. Creates phase-based implementation roadmap
-3. Evaluates roadmap with roadmap-critic agent
-4. Generates initial specifications for each phase
-5. Refines through iterative improvement
-
-**When to use:**
-- Starting large, complex projects
-- Need phase-based planning
-- Want to break work into manageable chunks
-
-**Example:**
-```text
-User: /respec-roadmap [project-name]
-
-Claude: I'll create a multi-phase implementation roadmap.
-[Generates roadmap with phases, milestones, and initial specs]
-```
-
-### `/respec-spec`
-
-**Purpose:** Convert strategic plans into detailed technical specifications
-
-**Workflow:**
-1. Retrieves existing strategic plan
-2. Creates technical specification using spec-architect agent
-3. Evaluates spec quality with spec-critic agent
-4. Refines through iterative improvement
-5. Creates spec in your platform (Linear issue, GitHub issue, or Markdown file)
-
-**When to use:**
-- After completing strategic planning
-- Need detailed technical specifications
-- Ready to break down implementation approach
-
-**Example:**
-```text
-User: /respec-spec [spec-name]
-
-Claude: I'll create a technical specification from your strategic plan.
-[Generates spec with technical details, architecture, and implementation approach]
-```
-
-### `/respec-build`
-
-**Purpose:** Implement specifications with automated code generation
-
-**Workflow:**
-1. Retrieves technical specification
-2. Creates build plan with build-planner agent
-3. Evaluates plan with build-critic agent
-4. Generates code with build-coder agent
-5. Reviews code with build-reviewer agent
-6. Refines through quality loops
-
-**When to use:**
-- After completing technical specifications
-- Ready to implement features
-- Want automated code generation with quality checks
-
-**Example:**
-```text
-User: /respec-build [spec-name]
-
-Claude: I'll implement the specification with automated code generation.
-[Creates build plan, generates code, reviews quality]
-```
-
-## Workflow Examples
-
-### Example 1: New Feature Development
-
-**Scenario:** Adding user authentication to an application
-
-```text
-1. Strategic Planning:
-   User: /respec-plan [project-name]
-   [Interactive conversation about authentication needs]
-   → Creates strategic plan with business objectives
-
-2. Technical Specification:
-   User: /respec-spec [spec-name]
-   → Generates technical spec with architecture details
-   → Creates Linear issue (or GitHub issue, or markdown file)
-
-3. Implementation:
-   User: /respec-build [spec-name]
-   → Creates build plan with implementation steps
-   → Generates authentication code
-   → Reviews code quality
-   → Implements feature
-```
-
-### Example 2: Large Project Roadmap
-
-**Scenario:** Building a complete SaaS application
-
-```text
-1. Strategic Planning:
-   User: /respec-plan [project-name]
-   → Creates strategic plan for entire SaaS application
-   → Defines business objectives and high-level requirements
-
-2. Roadmap Creation:
-   User: /respec-roadmap [project-name]
-   → Breaks down strategic plan into implementation phases:
-     - Phase 1: User authentication
-     - Phase 2: Core features
-     - Phase 3: Payment integration
-     - Phase 4: Analytics dashboard
-   → Creates initial specs for each phase automatically
-
-3. Phase Implementation:
-   For each phase/spec created by roadmap:
-   User: /respec-spec [spec-name] (to elaborate technical details)
-   User: /respec-build [spec-name] (to implement the phase)
-```
-
-### Example 3: Requirements Discovery
-
-**Scenario:** Unclear project requirements
-
-```text
-1. Strategic Planning with Conversational Discovery:
-   User: /respec-plan [project-name]
-   Claude: (runs /respec-plan-conversation internally)
-   Claude: What problem are you trying to solve?
-   User: I want users to collaborate in real-time
-   Claude: What kind of collaboration? Document editing? Chat? Screen sharing?
-   [Conversation continues to clarify requirements]
-   → Claude creates strategic plan based on conversation
-   → Evaluates and refines plan through quality loops
-
-2. Continue with roadmap or spec creation...
-```
-
-## Quality & Refinement Loops
-
-RespecAI uses two types of quality loops:
-
-### 1. Human-in-the-Loop with Quality Validation
-
-**Used by:** `/respec-plan`
-
-**Process:**
-1. **Conversation:** `/respec-plan-conversation` conducts interactive Q&A to gather requirements
-2. **Generation:** Creates strategic plan from conversation context
-3. **Quality Check:** `plan-critic` evaluates the plan and provides quality score
-4. **Human Review:** User sees quality score and decides: continue conversation, refine plan, or accept
-5. **Analysis:** `plan-analyst` extracts structured business objectives
-6. **Validation:** `analyst-critic` validates the extraction through MCP refinement loop
-7. **Completion:** Final validated strategic plan
-
-This is a **hybrid approach** - conversational gathering with automated quality validation and user decision points.
-
-### 2. Automated Refinement Loops (MCP-Driven)
-
-**Used by:** `/respec-roadmap`, `/respec-spec`, `/respec-build`
-
-**Process:**
-1. **Generation:** A generative agent creates content (roadmap, spec, build plan, code)
-2. **Evaluation:** A critic agent scores quality (0-100)
-3. **Decision:** MCP server determines next action:
-   - **High score** → Proceed to next phase
-   - **Improving score** → Refine with feedback
-   - **Stagnation** → Request user input
-
-### Critic Agents
-
-**For Human-in-the-Loop (`/respec-plan`):**
-
-**plan-critic:**
-- Evaluates strategic plans after conversational gathering
-- Provides quality score for user decision-making
-- No automated refinement loop - user decides next action
-
-**analyst-critic:**
-- Validates business objective extraction
-- Uses MCP-driven automated refinement loop
-- Ensures completeness and accuracy of analysis
-
-**For Automated Loops (`/respec-roadmap`, `/respec-spec`, `/respec-build`):**
-
-**roadmap-critic:**
-- Evaluates implementation roadmaps
-- Checks phase breakdown and sizing
-- Validates dependencies and ordering
-
-**spec-critic:**
-- Evaluates technical specifications
-- Checks architecture design decisions
-- Validates implementation approach
-
-**build-critic:**
-- Evaluates build plans
-- Checks implementation steps
-- Validates technology choices
-
-**build-reviewer:**
-- Reviews generated code
-- Checks code quality and best practices
-- Validates implementation correctness
-
-### Quality Thresholds
-
-Quality scores determine progression:
-
-- **80-100:** Excellent quality, proceed
-- **60-79:** Good quality, minor refinements
-- **40-59:** Needs improvement, iterate
-- **0-39:** Significant issues, major refinement
-
-**Stagnation detection:**
-- No improvement over successive iterations
-- Max iterations reached (configurable)
-- System requests user input
-
-## Platform-Specific Workflows
-
-### Linear Workflow
-
-**Plan Storage:**
-```text
-1. /respec-plan creates strategic plan
-2. Stored as Linear project
-3. Issues linked to project
-4. Cycles used for sprint planning
-```
-
-**Spec Creation:**
-```text
-1. /respec-spec creates Linear issue
-2. Issue contains technical specification
-3. Comments added for feedback
-4. Labels applied for categorization
-5. Project assigned for tracking
-```
-
-### GitHub Workflow
-
-**Plan Storage:**
-```text
-1. /respec-plan creates strategic plan
-2. Stored as GitHub project board
-3. Issues linked to project
-4. Milestones for phases
-```
-
-**Spec Creation:**
-```text
-1. /respec-spec creates GitHub issue
-2. Issue contains technical specification
-3. Comments for feedback
-4. Labels for categorization
-5. Milestone for tracking
-```
-
-### Markdown Workflow
-
-**Plan Storage:**
-```text
-1. /respec-plan creates markdown file
-2. Stored in .respec-ai/projects/[project-name]/project_plan.md
-3. Structured sections
-4. Git commit for history
-```
-
-**Spec Creation:**
-```text
-1. /respec-spec creates markdown file
-2. Stored in .respec-ai/projects/[project-name]/respec-specs/
-3. Structured markdown format
-4. Git-friendly version control
-5. Comments as markdown sections
-```
 
 ## Configuration
 
 ### Platform Configuration
 
-Platform selection stored in `.respec-ai/config/platform.json`:
+Platform selection stored in `.respec-ai/config.json`:
 
 ```json
 {
-  "platform": "linear",
-  "created_at": "2025-10-01T12:00:00.000000",
-  "version": "1.0",
-  "bootstrap": true
+  "platform": "markdown",
+  "project_name": "my-project",
+  "created_at": "2025-01-15T12:00:00.000000",
+  "version": "0.6.3"
 }
 ```
 
@@ -1115,15 +1287,73 @@ The command will:
 When a new version of RespecAI is released:
 
 ```bash
-# Update the package
-uv add respec-ai --upgrade
+# Update the package (uv tool)
+uv tool upgrade respec-ai
 
-# Regenerate your project templates
+# OR update via Homebrew
+brew upgrade respec-ai
+
+# Rebuild your project templates
 cd /path/to/your/project
-respec-ai regenerate
+respec-ai rebuild
 ```
 
 This preserves your platform choice while updating templates to the latest version.
+
+---
+
+## Multi-Project Support
+
+**Status**: ✅ Fully Supported
+
+### Current Implementation
+
+RespecAI supports running multiple projects with explicit project context. Each project maintains its own:
+
+- ✅ Platform configuration (`.respec-ai/config.json`)
+- ✅ Command templates (`.claude/commands/*.md`)
+- ✅ Agent templates (`.claude/agents/*.md`)
+- ✅ Explicit project context via `project_path` parameter
+- ✅ Linear/GitHub issues (naturally isolated by workspace/repository)
+
+**What This Means:**
+- All 29+ MCP tools accept explicit `project_path` parameter
+- Multiple projects can use the same RespecAI MCP server
+- Each project's workflows operate independently when project_path is specified
+- No cross-project interference at the tool level
+
+### Current Architecture
+
+**What Works Now:**
+- ✅ Tool-level multi-project support (explicit `project_path`)
+- ✅ Different projects can use different platforms
+- ✅ Simultaneous project usage (with proper project_path specification)
+- ✅ All 391+ tests passing with multi-project scenarios
+
+**Current Limitations:**
+- ⏸️ **In-memory state**: Plans, specs, and loop state stored in memory
+  - State does not persist across MCP server restarts
+  - Acceptable for single-user development workflows
+- ⏸️ **Global configuration**: Platform config stored at project level
+
+### Recommended Usage
+
+**For single user / solo development**: Works perfectly with no limitations.
+
+**For multiple projects**:
+- ✅ Set up each project independently with `respec-ai init`
+- ✅ Different projects can use different platforms
+- ✅ Commands work correctly when project context is clear
+- ⏸️ State resets on MCP server restart (acceptable for current use)
+
+### Future Enhancements
+
+**Database Persistence** (planned):
+- Persistent state storage across server restarts
+- Database-backed state management
+- Enhanced multi-user support
+
+---
 
 ## Troubleshooting
 
@@ -1138,27 +1368,39 @@ This preserves your platform choice while updating templates to the latest versi
    respec-ai --version
    ```
 
-   Should show: `respec-ai 0.2.0` (or current version)
+   Should show: `respec-ai 0.6.3` (or current version)
 
    If command not found:
    ```bash
-   uv add respec-ai
-   # or for TestPyPI:
-   uv add --index https://test.pypi.org/simple/ respec-ai
+   # For uv tool
+   uv tool install respec-ai
+
+   # For Homebrew
+   brew install respec-ai
    ```
 
-2. **Register MCP server**
+2. **Verify Docker is running**
+   ```bash
+   respec-ai docker status
+   ```
+
+   If Docker daemon is not running:
+   - Start Docker Desktop (macOS/Windows)
+   - Start Docker service (Linux): `sudo systemctl start docker`
+
+3. **Register MCP server**
    ```bash
    respec-ai register-mcp
    ```
 
-3. **Verify registration**
+4. **Verify registration**
    ```bash
-   claude mcp list
-   # Should show "RespecAI" in the list
+   cat ~/.claude/config.json | grep -A 10 RespecAI
    ```
 
-4. **Restart Claude Code**
+   Should show RespecAI server configuration.
+
+5. **Restart Claude Code**
    ```bash
    claude
    /mcp list
@@ -1166,36 +1408,60 @@ This preserves your platform choice while updating templates to the latest versi
 
 **If still not working:**
 - Re-register with force: `respec-ai register-mcp --force`
-- Check Python version: `python --version` (must be 3.13+)
-- Check uv installation: `uv --version`
+- Check Docker logs: `respec-ai docker logs`
+- Restart Docker container: `respec-ai docker restart`
+- Check Python version: `python --version` (must be 3.11+)
 
 ---
 
-### Platform MCP Server Not Found
+### Docker Container Not Running
 
-**Problem:** Linear or GitHub MCP server not available (when using those platforms)
+**Problem:** MCP server container is stopped or failing to start
 
 **Symptoms:**
-- `/mcp list` doesn't show "linear-server" or "github"
-- Platform-specific operations fail
-- Error messages about missing Linear/GitHub tools
+- `respec-ai docker status` shows container not running
+- `/mcp list` doesn't show RespecAI
+- Error messages about Docker connectivity
 
 **Solution:**
-```text
-1. Check MCP server status:
-   /mcp list
 
-2. Install required MCP server:
-   - Linear: Follow Linear MCP server setup documentation
-   - GitHub: Follow GitHub MCP server setup documentation
-   - Markdown: No external server required (uses local files)
+1. **Check Docker daemon status**
+   ```bash
+   docker ps
+   ```
 
-3. Verify API access:
-   - Linear: Check Linear API token is configured
-   - GitHub: Check GitHub token is configured
+   If error about Docker daemon not running:
+   - Start Docker Desktop
+   - Or `sudo systemctl start docker` (Linux)
 
-4. Restart Claude Code after MCP server installation
-```
+2. **Start the container**
+   ```bash
+   respec-ai docker start
+   ```
+
+3. **Check container logs for errors**
+   ```bash
+   respec-ai docker logs
+   ```
+
+4. **If container fails to start, rebuild**
+   ```bash
+   # Pull latest image
+   respec-ai docker pull
+
+   # Or build locally
+   respec-ai docker build
+   ```
+
+5. **Verify container is running**
+   ```bash
+   respec-ai docker status
+   ```
+
+**If still failing:**
+- Check available disk space: `df -h`
+- Check Docker logs: `docker logs respec-ai-0.6.3`
+- Remove and recreate: `respec-ai docker remove && respec-ai docker start`
 
 ---
 
@@ -1230,7 +1496,7 @@ This preserves your platform choice while updating templates to the latest versi
 
 3. **If files are missing, re-run initialization**
    ```bash
-   respec-ai init --platform [your-platform]
+   respec-ai init --platform [your-platform] --force
    # Then restart Claude Code
    ```
 
@@ -1239,7 +1505,7 @@ This preserves your platform choice while updating templates to the latest versi
    /mcp list  # Should show "RespecAI"
    ```
 
-   If RespecAI MCP server is missing, see [RespecAI MCP Server Not Available](#respecai-mcp-server-not-available) above.
+   If RespecAI MCP server is missing, see [RespecAI MCP Server Not Available](#respecai-mcp-server-not-available).
 
 5. **Check for file permissions issues**
    ```bash
@@ -1257,11 +1523,6 @@ This preserves your platform choice while updating templates to the latest versi
    claude
    ```
 
-**If commands still don't appear:**
-- Try creating `.claude/commands/` manually: `mkdir -p .claude/commands`
-- Re-run initialization: `respec-ai init --platform [your-platform]`
-- Check Claude Code version is up-to-date
-
 ---
 
 ### Platform Tools Not Working
@@ -1277,7 +1538,7 @@ This preserves your platform choice while updating templates to the latest versi
 
 1. **Verify platform configuration**
    ```bash
-   cat .respec-ai/config/platform.json
+   cat .respec-ai/config.json
    ```
 
    Should show correct platform:
@@ -1285,8 +1546,7 @@ This preserves your platform choice while updating templates to the latest versi
    {
      "platform": "markdown",  // or "linear" or "github"
      "created_at": "...",
-     "version": "1.0",
-     "bootstrap": true
+     "version": "0.6.3"
    }
    ```
 
@@ -1334,12 +1594,6 @@ This preserves your platform choice while updating templates to the latest versi
    chmod -R 755 .respec-ai/
    ```
 
-6. **Re-run initialization if configuration is corrupted**
-   ```bash
-   respec-ai init --platform [platform]
-   # Then restart Claude Code
-   ```
-
 ---
 
 ### Refinement Loop Stuck
@@ -1382,16 +1636,68 @@ This preserves your platform choice while updating templates to the latest versi
    - 40-59: Needs work, iterate more
    - 0-39: Significant issues, major revision needed
 
-5. **System behavior:**
-   - Auto-escalates after max iterations (typically 3-5)
-   - Detects stagnation when scores don't improve
-   - Requests user input when stuck
+---
+
+### MCP Permissions Not Set
+
+**Problem:** RespecAI tools require permission approval every time
+
+**Symptoms:**
+- Claude Code asks for permission to use RespecAI tools repeatedly
+- Tools work but require manual approval each time
+
+**Solution:**
+
+The MCP permissions should be automatically set during `respec-ai init` or `respec-ai register-mcp`. If they weren't:
+
+1. **Run register-mcp again**
+   ```bash
+   respec-ai register-mcp --force
+   ```
+
+   This will add the permissions automatically.
+
+2. **Verify permissions were added**
+   ```bash
+   cat ~/.claude/settings.json | grep -A 5 permissions
+   # OR
+   cat ~/.claude/settings.local.json | grep -A 5 permissions
+   ```
+
+   Should show:
+   ```json
+   {
+     "permissions": {
+       "allow": [
+         "mcp__respecai__*"
+       ]
+     }
+   }
+   ```
+
+3. **Manually add if needed**
+
+   Edit `~/.claude/settings.local.json` (or `~/.claude/settings.json`):
+   ```json
+   {
+     "permissions": {
+       "allow": [
+         "mcp__respecai__*"
+       ]
+     }
+   }
+   ```
+
+4. **Restart Claude Code**
+   ```bash
+   claude
+   ```
 
 ---
 
 ### Package Installation Fails
 
-**Problem:** `uv add respec-ai` fails or errors
+**Problem:** Installation fails or errors
 
 **Symptoms:**
 - Package not found
@@ -1400,151 +1706,53 @@ This preserves your platform choice while updating templates to the latest versi
 
 **Solution:**
 
-1. **For TestPyPI (development):**
+1. **For uv tool installation:**
    ```bash
-   # Ensure you're using the correct index
-   uv add --index https://test.pypi.org/simple/ respec-ai
+   # Ensure uv is up to date
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   uv --version
+
+   # Install RespecAI
+   uv tool install respec-ai
    ```
 
 2. **Check Python version compatibility**
    ```bash
-   python --version  # Must be 3.13+
+   python --version  # Must be 3.11+
    ```
 
-3. **Update uv to latest version**
+3. **Check network connectivity**
    ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv --version
-   ```
-
-4. **Check network connectivity**
-   ```bash
-   curl -I https://test.pypi.org/simple/respec-ai/
+   curl -I https://pypi.org/simple/respec-ai/
    # Should return HTTP 200
    ```
 
-5. **Clear uv cache if needed**
+4. **Clear uv cache if needed**
    ```bash
-   rm -rf ~/.cache/uv
-   uv add respec-ai
+   uv cache clean
+   uv tool install respec-ai
    ```
 
-6. **Alternative: Install from Git (fallback)**
+5. **For Homebrew installation:**
    ```bash
-   uv add git+https://github.com/mmcclatchy/respec-ai.git
-   ```
-
----
-
-### Homebrew Installation Issues
-
-**Problem:** `brew install` fails or Homebrew tap not found
-
-**Symptoms:**
-- Error: "Error: No available formula with the name \"respec-ai\""
-- Tap not showing in `brew tap` list
-- Installation hangs or fails with dependency errors
-
-**Solution:**
-
-1. **Verify tap is added:**
-   ```bash
-   brew tap
-   # Should show: mmcclatchy/respec-ai
-   ```
-
-2. **If tap is missing:**
-   ```bash
-   brew tap mmcclatchy/respec-ai
+   # Update Homebrew
    brew update
+
+   # Ensure tap is added
+   brew tap mmcclatchy/respec-ai
+
+   # Install
    brew install respec-ai
    ```
 
-3. **Check Homebrew is up to date:**
-   ```bash
-   brew update
-   brew --version
-   ```
-
-4. **For dylib errors (can be safely ignored):**
-   - Error about pydantic_core dylib paths is cosmetic
-   - Software will work despite the warning
-   - The error message will mention "Failed to fix install linkage"
-   - This doesn't affect functionality - `respec-ai --version` will still work
-
-5. **Reinstall if needed:**
-   ```bash
-   brew uninstall respec-ai
-   brew update
-   brew install mmcclatchy/respec-ai/respec-ai
-   ```
-
-6. **Verify installation:**
-   ```bash
-   respec-ai --version
-   # Should show current version (e.g., 0.5.15)
-   ```
-
 ---
-
-### Python Version Errors
-
-**Problem:** Python version compatibility issues
-
-**Symptoms:**
-- Error: "Python 3.13+ required"
-- Syntax errors in RespecAI code
-- Import errors for modern Python features
-
-**Solution:**
-
-1. **Check current Python version**
-   ```bash
-   python --version
-   python3 --version
-   python3.13 --version  # Try specific version
-   ```
-
-2. **Install Python 3.13+**
-
-   **macOS (using Homebrew):**
-   ```bash
-   brew install python@3.13
-   ```
-
-   **Linux (using apt):**
-   ```bash
-   sudo apt update
-   sudo apt install python3.13
-   ```
-
-   **Using pyenv:**
-   ```bash
-   pyenv install 3.13
-   pyenv global 3.13
-   ```
-
-3. **Verify uv uses correct Python version**
-   ```bash
-   cd /path/to/respec-ai
-   uv python list
-   uv sync  # Re-sync with correct Python version
-   ```
-
-4. **Specify Python version if needed**
-
-   If multiple Python versions exist, you can specify Python 3.13 when registering:
-   ```bash
-   claude mcp remove respec-ai  # Remove existing registration
-   claude mcp add --transport stdio respec-ai -- uv run --python 3.13 --directory /absolute/path/to/respec-ai respec-server
-   ```
 
 ## Best Practices
 
 ### Strategic Planning
 
 **Do:**
-- Use `/respec-plan` which will automatically guide you through conversational discovery
+- Use `/respec-plan` for conversational discovery
 - Be specific about business objectives when answering questions
 - Include constraints and limitations
 - Provide context about users and use cases
@@ -1553,17 +1761,13 @@ This preserves your platform choice while updating templates to the latest versi
 - Skip strategic planning for large features
 - Mix technical details with business objectives
 - Rush through refinement loops
-- Call `/respec-plan-conversation` directly (it's used internally by `/respec-plan`)
+- Call `/respec-plan-conversation` directly (it's used internally)
 
 ### Roadmap Planning
 
 **Do:**
 - Use `/respec-roadmap` for projects that benefit from phased decomposition
-- Let the roadmap agent choose the phasing strategy that fits your project:
-  - **Feature-based** for most application development (complete capabilities)
-  - **Technical-layer** for infrastructure or platform projects (foundational components)
-  - **Incremental-complexity** when requirements are evolving (MVP → enhancements)
-  - **Risk-based** for innovative projects (tackle unknowns first)
+- Let the roadmap agent choose the phasing strategy that fits your project
 - Ensure each phase delivers something testable and meaningful
 - Consider dependencies between phases
 - Define clear milestones for each phase
@@ -1625,6 +1829,8 @@ This preserves your platform choice while updating templates to the latest versi
 - Use external platforms without MCP servers
 - Ignore platform capabilities
 
+---
+
 ## Advanced Usage
 
 ### Custom Quality Thresholds
@@ -1666,6 +1872,8 @@ For complex projects:
 - Review via pull requests
 - Track changes with Git history
 - Collaborate async
+
+---
 
 ## Local Development Setup
 
@@ -1717,14 +1925,15 @@ cd ~/myproject
 
 **What the script does:**
 - ✅ Configures Claude Code to use your local RespecAI repository
-- ✅ Sets up MCP server with `uv run respec-server`
+- ✅ Sets up MCP server with `uv run python -m src.mcp`
 - ✅ Uses in-memory state manager (default - clean slate on restart)
 - ✅ Generates workflow files in your project
+- ✅ Adds MCP permissions to Claude settings
 - ✅ No Docker required for memory mode
 
 **After running:**
 1. Restart Claude Code to load the local MCP server
-2. Verify with `/mcp list` - should show `respec-ai` with 32 tools
+2. Verify with `/mcp list` - should show `respec-ai` with 29+ tools
 3. Start developing!
 
 ---
@@ -1744,7 +1953,7 @@ cd respec-ai
 uv sync
 
 # Verify installation
-uv run respec-server --help
+uv run python -m src.mcp --help
 ```
 
 #### Step 2: Register MCP Server with Claude Code
@@ -1752,45 +1961,24 @@ uv run respec-server --help
 Use the Claude Code CLI to register your local MCP server:
 
 ```bash
-cd /absolute/path/to/respec-ai
-claude mcp add -s user -t stdio respec-ai -- uv run respec-server
+# Register using Python module syntax
+claude mcp add -s user -t stdio respec-ai -- uv --directory /absolute/path/to/respec-ai run python -m src.mcp
 ```
 
 **Example:**
 ```bash
-cd ~/coding/projects/respec-ai
-claude mcp add -s user -t stdio respec-ai -- uv run respec-server
+claude mcp add -s user -t stdio respec-ai -- uv --directory ~/coding/projects/respec-ai run python -m src.mcp
 ```
 
-**Note:** The `--` separator is required to prevent command arguments from being parsed as options.
+**Important:**
+- Uses `python -m src.mcp` to run the MCP server as a Python module
+- `--directory` flag must point to absolute path (NOT relative path like `~`)
+- Example absolute path: `/Users/yourname/coding/projects/respec-ai`
 
 **Verify registration:**
 ```bash
 claude mcp list
 # Should show "respec-ai" in the list
-```
-
-**Important Configuration Notes:**
-- `"command": "uv"` - Uses uv to run the local server
-- `"args": ["run", "respec-server"]` - Runs the respec-server entry point
-- `"cwd"` - **MUST be an absolute path** to your local respec-ai repository
-  - Example: `/Users/yourname/coding/projects/respec-ai`
-  - Do NOT use relative paths like `~/coding/projects/respec-ai`
-
-**Alternative Configuration (using Python directly):**
-
-If you prefer not to use `uv`, you can run with Python:
-
-```json
-{
-  "mcpServers": {
-    "respec-ai": {
-      "command": "python",
-      "args": ["-m", "src.mcp"],
-      "cwd": "/absolute/path/to/respec-ai"
-    }
-  }
-}
 ```
 
 #### Step 3: Restart Claude Code
@@ -1811,95 +1999,12 @@ In Claude Code, verify the local server is loaded:
 ```text
 Available MCP Servers:
   respec-ai
-    ├─ 32 tools available
+    ├─ 29+ tools available
     ├─ create_project_plan
     ├─ store_project_plan
     ├─ get_project_plan
     └─ [other tools...]
 ```
-
-### Choosing a State Manager
-
-RespecAI supports two state management modes for local development:
-
-#### Memory Mode (Default - Recommended for Development)
-
-**Use for:**
-- ✅ Rapid iteration on workflow logic
-- ✅ Testing changes without data pollution
-- ✅ Clean slate on every restart
-- ✅ Fast startup (no database setup)
-
-**Configuration:**
-
-This is the default mode used in the local development setup above. The state manager is already configured when you set up your local MCP server.
-
-**How it works:**
-- State stored in memory only
-- Restarting Claude Code clears all state
-- No database required
-- Perfect for testing workflow changes
-
-**Example Claude Code Configuration:**
-```json
-{
-  "mcpServers": {
-    "respec-ai": {
-      "command": "uv",
-      "args": ["run", "respec-server"],
-      "cwd": "/absolute/path/to/respec-ai",
-      "env": {
-        "STATE_MANAGER": "memory"
-      }
-    }
-  }
-}
-```
-
-#### Database Mode (Future - Persistent State)
-
-⚠️ **Status:** Stubbed for future implementation
-
-**Will be used for:**
-- Data persistence across restarts
-- Testing multi-session workflows
-- Production-like behavior
-
-**Future Configuration (when available):**
-
-When database support is implemented, you'll be able to use Docker Compose for persistent state:
-
-```bash
-# Start database and MCP server
-cd /path/to/respec-ai
-docker compose -f docker-compose.dev.yml up -d
-
-# Claude Code will connect to the containerized MCP server
-```
-
-**Future Claude Code Configuration:**
-```json
-{
-  "mcpServers": {
-    "respec-ai": {
-      "command": "docker",
-      "args": ["compose", "-f", "/absolute/path/to/respec-ai/docker-compose.dev.yml", "exec", "-T", "mcp-server", "respec-server"],
-      "cwd": "/absolute/path/to/respec-ai",
-      "env": {
-        "STATE_MANAGER": "database"
-      }
-    }
-  }
-}
-```
-
-**Future Implementation Details:**
-- PostgreSQL database with raw SQL + Pydantic models
-- Docker Compose setup with volume-mounted code for live reloading
-- Data survives MCP server restarts
-- Requires Docker Compose
-
-**Note:** Database mode is currently stubbed. Attempting to use it will raise a clear `NotImplementedError` with instructions to use memory mode. Database support coming in a future release.
 
 ---
 
@@ -1941,14 +2046,6 @@ docker compose -f docker-compose.dev.yml up -d
 - **Fast iteration** - Edit, test, restart, verify
 - **Full MCP tool access** - Test with real Claude Code integration
 
-**Adding New MCP Tools:**
-
-1. Create tool in `src/mcp/tools/new_tool.py`
-2. Register in `src/mcp/server.py::register_all_tools()`
-3. Write tests in `tests/unit/mcp/test_new_tool.py`
-4. Run tests: `uv run pytest tests/unit/mcp/`
-5. Restart Claude Code to load new tool
-
 #### Template Refinement
 
 **Quick iteration on agent/command templates:**
@@ -1961,14 +2058,9 @@ Generate and view templates without side effects:
 uv run python scripts/generate_templates.py
 ```
 
-This shows formatted markdown for all document types to stdout. Use this for:
-- Quick verification of template changes
-- Checking tool configurations
-- Validating YAML frontmatter
-
 **Method 2: Test in Isolated Project**
 
-Test full template generation in a real project context:
+Test full template generation:
 
 ```bash
 cd /tmp
@@ -1977,53 +2069,15 @@ cat .claude/agents/plan-analyst.md
 cat .claude/commands/respec-plan.md
 ```
 
-This verifies:
-- Templates generate correctly
-- Platform-specific tools are included
-- File structure is correct
-
 **Method 3: Live Testing in Claude Code**
 
 Test templates with actual workflow execution:
 
-1. Modify template in `src/platform/templates/agents/` or `src/platform/templates/commands/`
-2. Run `respec-ai init` in a test project
+1. Modify template in `src/platform/templates/`
+2. Run `respec-ai init` in test project
 3. Restart Claude Code to load updated templates
 4. Test with `/respec-plan` or other commands
 5. Verify behavior matches expectations
-
-**Typical Template Changes:**
-
-**Updating Agent Instructions:**
-```bash
-# 1. Edit agent template
-vim src/platform/templates/agents/plan_analyst.py
-
-# 2. Test generation
-uv run python scripts/generate_templates.py
-
-# 3. Run unit tests
-uv run pytest tests/unit/templates/ -v
-
-# 4. Test in real project
-cd /tmp/test-project
-respec-ai init --platform markdown
-cat .claude/agents/plan-analyst.md
-```
-
-**Updating Command Configuration:**
-```bash
-# 1. Edit command strategy
-vim src/platform/command_strategies/plan_command.py
-
-# 2. Test generation
-uv run python scripts/generate_templates.py
-
-# 3. Verify in test project
-cd /tmp/test-project
-respec-ai init --platform linear
-cat .claude/commands/respec-plan.md
-```
 
 #### Running Tests
 
@@ -2044,18 +2098,6 @@ uv run pytest tests/integration/ -v
 uv run pytest tests/e2e/ -v
 ```
 
-**Specific Test Files:**
-```bash
-# Test specific MCP tools
-uv run pytest tests/unit/mcp/test_project_plan_tools.py -v
-
-# Test template generation
-uv run pytest tests/unit/templates/test_template_generator.py -v
-
-# Test platform strategies
-uv run pytest tests/integration/test_platform_strategies.py -v
-```
-
 **With Coverage:**
 ```bash
 # Generate HTML coverage report
@@ -2065,29 +2107,20 @@ uv run pytest tests/ --cov=src --cov-report=html
 open htmlcov/index.html
 ```
 
-**Test Markers:**
-```bash
-# Run tests with specific markers
-uv run pytest -m "integration" tests/
-uv run pytest -m "mcp_orchestration" tests/
-```
-
 #### Code Quality
 
 **Pre-commit Hooks (Automatic):**
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+```
 
 Installed hooks run automatically on `git commit`:
 - ✅ Ruff linting with auto-fix
 - ✅ Ruff formatting
 - ✅ Type checking (mypy)
 - ✅ Markdown validation
-- ✅ Docstring enforcement
-- ✅ Import location validation
-
-**Install Pre-commit Hooks:**
-```bash
-pre-commit install
-```
 
 **Manual Quality Checks:**
 
@@ -2102,27 +2135,18 @@ uv run mypy src/
 markdownlint-cli2 '**/*.md'
 ```
 
-**Before Committing:**
-```bash
-# Run all quality checks
-uv run pytest tests/ -v
-uv run ruff check .
-uv run mypy src/
-```
+---
 
 ### Switching Between Local and Production
 
 **Local Development Mode:**
-
-Use your local repository for development:
 
 ```json
 {
   "mcpServers": {
     "respec-ai": {
       "command": "uv",
-      "args": ["run", "respec-server"],
-      "cwd": "/Users/yourname/coding/projects/respec-ai"
+      "args": ["--directory", "/Users/yourname/coding/projects/respec-ai", "run", "python", "-m", "src.mcp"]
     }
   }
 }
@@ -2136,79 +2160,23 @@ Benefits:
 
 **Production Mode:**
 
-Use the installed version from Homebrew or uv tool:
-
-```json
-{
-  "mcpServers": {
-    "respec-ai": {
-      "command": "respec-server"
-    }
-  }
-}
+```bash
+# Switch to production package
+claude mcp remove respec-ai
+respec-ai register-mcp
 ```
 
-Benefits:
-- ✅ Uses stable released version
-- ✅ No local repository required
-- ✅ Consistent with production deployments
+This registers the installed package version instead of local development version.
 
-**Switching Between Modes:**
-
-1. Edit `~/.claude/config.json`
-2. Add or remove the `cwd` parameter
-3. Restart Claude Code
-
-### Project Structure
-
-**Key Directories:**
-
-```text
-respec-ai/
-├── src/
-│   ├── cli/                    # CLI commands and interface
-│   ├── mcp/                    # MCP server and tools
-│   │   ├── server.py          # MCP server creation
-│   │   ├── tools/             # 32 MCP tools across 7 modules
-│   │   └── __main__.py        # Entry point for respec-server
-│   └── platform/
-│       ├── templates/          # Agent and command templates
-│       │   ├── agents/        # 12 agent templates
-│       │   └── commands/      # 5 command templates
-│       ├── template_generator.py
-│       ├── template_coordinator.py
-│       └── command_strategies/
-├── tests/
-│   ├── unit/                  # Unit tests (fast, isolated)
-│   ├── integration/           # Integration tests
-│   ├── e2e/                   # End-to-end tests
-│   └── conftest.py           # Global fixtures
-├── scripts/
-│   ├── generate_templates.py # Template testing script
-│   └── build.sh              # Build and release script
-└── pyproject.toml            # Project configuration
-```
-
-**Important Files:**
-
-- `src/mcp/server.py` - MCP server creation and tool registration
-- `src/mcp/tools/` - All MCP tool implementations
-- `src/platform/templates/` - Agent and command templates
-- `tests/conftest.py` - Test fixtures and configuration
-- `.pre-commit-config.yaml` - Code quality hooks
+---
 
 ### Troubleshooting Local Development
 
 #### MCP Server Not Starting
 
-**Symptoms:**
-- RespecAI doesn't appear in `/mcp list`
-- Error messages in Claude Code output
-- Server fails to initialize
-
 **Solutions:**
 
-1. **Verify `cwd` path is absolute and correct:**
+1. **Verify path is absolute and correct:**
    ```bash
    # Check the path exists
    ls -la /absolute/path/to/respec-ai
@@ -2225,31 +2193,20 @@ respec-ai/
    # Should show: uv X.Y.Z
    ```
 
-3. **Look for errors in Claude Code output:**
-   - Check Claude Code terminal for error messages
-   - Look for Python import errors
-   - Verify all dependencies are installed: `uv sync`
-
-4. **Test server manually:**
+3. **Test server manually:**
    ```bash
    cd /path/to/respec-ai
-   uv run respec-server
+   uv run python -m src.mcp
    # Should start without errors
    ```
 
 #### Changes Not Appearing
 
-**Symptoms:**
-- Modified MCP tools don't reflect in Claude Code
-- Updated templates don't show in generated files
-- Code changes seem to be ignored
-
 **Solutions:**
 
 1. **Restart Claude Code completely:**
    ```bash
-   # Must fully exit and restart, not just reload
-   # Exit Claude Code
+   # Must fully exit and restart
    claude
    ```
 
@@ -2257,102 +2214,26 @@ respec-ai/
    ```bash
    # Check file modification time
    ls -la src/mcp/tools/your_tool.py
-
-   # Verify file contents
-   cat src/mcp/tools/your_tool.py | grep "your change"
    ```
 
 3. **Check for syntax errors:**
    ```bash
-   # Test server starts without errors
+   # Test server starts
    uv run python -m src.mcp
 
-   # Run tests to catch errors
+   # Run tests
    uv run pytest tests/unit/mcp/ -v
    ```
 
-4. **Verify configuration points to correct repository:**
-   ```bash
-   cat ~/.claude/config.json | grep -A 5 respec-ai
-   # Should show correct cwd path
-   ```
-
-#### Tools Not Showing
-
-**Symptoms:**
-- New tools don't appear in `/mcp list`
-- Tool count is lower than expected
-- Specific tools are missing
-
-**Solutions:**
-
-1. **Check tools are registered in `src/mcp/server.py`:**
-   ```python
-   # Verify your tool is registered in register_all_tools()
-   def register_all_tools(server: Server) -> None:
-       # ... other tools ...
-       register_your_tool(server)  # Should be here
-   ```
-
-2. **Verify import statements:**
-   ```python
-   # Check imports at top of server.py
-   from src.mcp.tools.your_tool import register_your_tool
-   ```
-
-3. **Check MCP server logs for errors:**
-   - Look for import errors in Claude Code output
-   - Check for registration errors
-   - Verify tool function signatures match MCP requirements
-
-4. **Test tool registration:**
-   ```bash
-   # Run server and check output
-   uv run respec-server
-   # Look for successful registration messages
-   ```
-
-#### Test Failures
-
-**Symptoms:**
-- Tests fail after making changes
-- New tests don't pass
-- Unexpected test errors
-
-**Solutions:**
-
-1. **Run specific test with verbose output:**
-   ```bash
-   uv run pytest tests/unit/mcp/test_your_tool.py -v -s
-   # -v for verbose, -s to see print statements
-   ```
-
-2. **Check test fixtures:**
-   ```bash
-   # Verify fixtures in tests/conftest.py
-   cat tests/conftest.py | grep "your_fixture"
-   ```
-
-3. **Run tests in isolation:**
-   ```bash
-   # Run single test method
-   uv run pytest tests/unit/mcp/test_your_tool.py::test_specific_function -v
-   ```
-
-4. **Clear pytest cache:**
-   ```bash
-   rm -rf .pytest_cache
-   find . -type d -name __pycache__ -exec rm -rf {} +
-   uv run pytest tests/ -v
-   ```
+---
 
 ## Getting Help
 
 ### Documentation
 
+- **User Guide:** This document
 - **Architecture:** See `docs/ARCHITECTURE.md` for system design
-- **Analysis:** See `docs/ARCHITECTURE_ANALYSIS.md` for implementation details
-- **Development:** See `docs/ARCHITECTURAL_REALIGNMENT.md` for technical implementation
+- **Multi-Project Design:** See `docs/MULTI_PROJECT_DESIGN.md`
 
 ### Common Questions
 
@@ -2360,22 +2241,40 @@ respec-ai/
 A: Yes, use the Markdown platform for local file-based workflows.
 
 **Q: Can I switch platforms after setup?**
-A: Yes, but you'll need to delete configuration and re-run setup. Existing work won't automatically migrate.
+A: Yes, use `respec-ai platform <new-platform>`. Existing work won't migrate automatically.
 
 **Q: Do I need all the generated agents?**
 A: Yes, agents work together in refinement loops. Removing agents may break workflows.
 
 **Q: Can I customize the templates?**
-A: Templates are generated fresh each time. Customization requires modifying the RespecAI MCP server code.
+A: Templates are regenerated on init/rebuild. Customization requires modifying source code.
 
 **Q: How do I update RespecAI?**
-A: Pull latest changes from repository and re-run installation script. Existing projects won't be affected.
+A: Run `uv tool upgrade respec-ai` or `brew upgrade respec-ai`, then `respec-ai rebuild` in your projects.
 
-## Next Steps
+**Q: Does the MCP server require Docker?**
+A: Yes, the production MCP server runs in Docker. For local development, you can run directly with `uv run python -m src.mcp`.
 
-1. **Install RespecAI** using the installation script
-2. **Restart Claude Code** to load workflow commands
-3. **Start planning** with `/respec-plan`
-4. **Breakdown the plan into specifications** with `/respec-roadmap`
-5. **Design and Refine specifications** with `/respec-spec`
-6. **Implement features** with `/respec-build`
+---
+
+## What is RespecAI?
+
+RespecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven specification-based development.
+
+### Key Benefits
+
+- **Platform flexibility** - Work with Linear issues, GitHub issues, or local Markdown files
+- **Automated setup** - Generate complete workflow tools with a single command
+- **Type-safe integration** - Platform-specific tools properly configured for your environment
+- **Refinement loops** - Quality-driven development with critic agents and iterative improvement
+- **Docker-based MCP server** - Isolated, containerized execution for reliability
+
+### Current Status
+
+**Production Ready** - RespecAI is stable for real-world usage:
+- ✅ MCP server fully functional
+- ✅ Multi-project architecture implemented
+- ✅ All 29+ tools operational
+- ✅ 391+ tests passing
+- ✅ Installation and setup validated
+- ✅ Docker-based deployment
