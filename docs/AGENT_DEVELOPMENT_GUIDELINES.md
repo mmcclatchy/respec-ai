@@ -360,19 +360,19 @@ OUTPUTS: Technical specification in structured format
 In traditional orchestration, the command agent acts as a data intermediary:
 
 ```text
-Command Agent                           Specialized Agent               MCP Server
-     |                                          |                           |
-     |--- retrieve feedback (2k chars) ------→  |                           |
-     |                                          |                           |
-     |--- pass feedback as parameter --------→  |                           |
-     |                                          |                           |
-     |←-- receive brief status ------------------|                           |
-     |                                          |                           |
+Command Agent                            Specialized Agent               MCP Server
+     |                                           |                           |
+     |--- retrieve feedback (2k chars) -------→  |                           |
+     |                                           |                           |
+     |--- pass feedback as parameter ---------→  |                           |
+     |                                           |                           |
+     | ←- receive brief status ------------------|                           |
+     |                                           |                           |
      |--- retrieve feedback again (2k chars) -→  |                           |
      |--- extract score manually -------------→  |                           |
-     |                                          |                           |
+     |                                           |                           |
      |--- retrieve feedback for validation ---→  |                           |
-     |    (2k chars)                            |                           |
+     |    (2k chars)                             |                           |
 
 Total Command Context: ~6,000 chars per iteration × 5 iterations = 30,000+ chars
 ```
@@ -391,19 +391,19 @@ In the optimized pattern, specialized agents retrieve their own data:
 ```text
 Command Agent                           Specialized Agent               MCP Server
      |                                          |                           |
-     |--- invoke with loop_id --------------→   |                           |
-     |                                          |--- retrieve feedback --→   |
+     |--- invoke with loop_id ---------------→  |                           |
+     |                                          |--- retrieve feedback --→  |
      |                                          |    using loop_id          |
      |                                          |← feedback (2k chars) -----|
      |                                          |                           |
-     |                                          |--- retrieve spec -------→  |
-     |                                          |← spec data --------------|
+     |                                          |--- retrieve spec -------→ |
+     |                                          |← spec data ---------------|
      |                                          |                           |
-     |                                          |--- process & store -----→  |
-     |←-- receive brief status ------------------|                           |
+     |                                          |--- process & store -----→ |
+     | ←- receive brief status -----------------|                           |
      |                                          |                           |
-     |--- check MCP decision (50 chars) -----→   |                           |
-     |← decision status (REFINE/COMPLETE) ------|                           |
+     |--- check MCP decision (50 chars) -----→  |                           |
+     | ←- decision status (REFINE/COMPLETE) ----|                           |
 
 Total Command Context: ~50 chars per iteration × 5 iterations = 250 chars
 Agent Context: ~2,000 chars × 4 refinement iterations = 8,000 chars

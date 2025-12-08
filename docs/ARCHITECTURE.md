@@ -16,15 +16,15 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │                 (receives generated tools)                      │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │  .claude/commands/     │  .claude/agents/               │   │
-│   │  • respec-plan.md     │  • plan-analyst.md             │   │
-│   │  • respec-spec.md     │  • spec-architect.md           │   │
-│   │  • respec-build.md    │  • build-planner.md            │   │
-│   │  • respec-roadmap.md  │  • build-coder.md              │   │
+│   │  • respec-plan.md      │  • plan-analyst.md             │   │
+│   │  • respec-spec.md      │  • spec-architect.md           │   │
+│   │  • respec-build.md     │  • build-planner.md            │   │
+│   │  • respec-roadmap.md   │  • build-coder.md              │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
 ┌─────────────────────┴───────────────────────────────────────────┐
-│              respec-ai MCP Server (This Project)                   │
+│              respec-ai MCP Server (This Project)                │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │          Platform Orchestrator (11 files)                │   │
 │  │  • Platform Selection (Linear/GitHub/Markdown)           │   │
