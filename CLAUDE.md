@@ -1,4 +1,4 @@
-# RespecAI MCP Server - Project Standards
+# respec-ai MCP Server - Project Standards
 
 ## Project Rules (Mandatory)
 

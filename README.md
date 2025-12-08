@@ -1,19 +1,19 @@
-# RespecAI
+# respec-ai
 
-> **⚠️ Active Development:** RespecAI is under active development. Currently functional workflows: `/respec-plan`, `/respec-roadmap`, `/respec-spec`. The `/respec-build` workflow is not yet functional.
+> **⚠️ Active Development:** respec-ai is under active development. Currently functional workflows: `/respec-plan`, `/respec-roadmap`, `/respec-spec`. The `/respec-build` workflow is not yet functional.
 
 **Specification-driven AI development workflows for Claude Code**
 
 Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing specs helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
-RespecAI is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Spec, Build. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
+respec-ai is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Spec, Build. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
 
 ## Quick Start
 
 Get up and running in 3 steps:
 
 ```bash
-# 1. Install RespecAI
+# 1. Install respec-ai
 uv tool install respec-ai  # Preferred (much faster)
 # OR
 brew tap mmcclatchy/respec-ai
@@ -28,7 +28,7 @@ claude
 /respec-plan my-first-project
 ```
 
-That's it! RespecAI will guide you through strategic planning, technical specs, and implementation.
+That's it! respec-ai will guide you through strategic planning, technical specs, and implementation.
 
 **[Full Installation Guide →](docs/USER_GUIDE.md#installation)**
 
@@ -58,7 +58,7 @@ That's it! RespecAI will guide you through strategic planning, technical specs, 
 
 ## Workflow Overview
 
-RespecAI provides a complete development pipeline with hierarchical validation at each stage:
+respec-ai provides a complete development pipeline with hierarchical validation at each stage:
 
 ```text
 1. Strategic Planning
@@ -126,7 +126,7 @@ Each stage iterates through refinement loops until quality threshold met or user
 
 ## Contributing
 
-RespecAI is an open-source project with enterprise-grade architecture. Contributions welcome!
+respec-ai is an open-source project with enterprise-grade architecture. Contributions welcome!
 
 **Areas for Contribution:**
 - Additional platform integrations (Jira, GitLab, Azure DevOps)

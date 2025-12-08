@@ -27,7 +27,7 @@ class TestIdeConstants:
         assert IDE_AGENTS_DIR == '.claude/agents'
 
     def test_mcp_server_name(self) -> None:
-        assert MCP_SERVER_NAME == 'RespecAI'
+        assert MCP_SERVER_NAME == 'respec-ai'
 
 
 class TestGetCommandsDir:
@@ -61,4 +61,4 @@ class TestGetIdeConfigPath:
 class TestGetMcpServerName:
     def test_returns_server_name(self) -> None:
         result = get_mcp_server_name()
-        assert result == 'RespecAI'
+        assert result == 'respec-ai'

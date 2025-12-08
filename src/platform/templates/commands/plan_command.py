@@ -68,7 +68,7 @@ Read .respec-ai/config.json
 PROJECT_NAME = config["project_name"]
 ```
 
-**Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during RespecAI installation.
+**Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during respec-ai installation.
 
 ## Step 0a: Load Existing Project Plan from Platform
 
@@ -80,7 +80,7 @@ Load existing project plan from platform (if exists):
 
 ## Context Variables
 
-All RespecAI MCP tools require project context:
+All respec-ai MCP tools require project context:
 - **PROJECT_NAME**: From config - used as identifier for all MCP storage operations
 
 Example usage: `mcp__respec-ai__initialize_refinement_loop(loop_type='plan')`

@@ -39,7 +39,7 @@ def run(args: Namespace) -> int:
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Start RespecAI MCP server')
+    parser = ArgumentParser(description='Start respec-ai MCP server')
     add_arguments(parser)
     args = parser.parse_args()
     sys.exit(run(args))

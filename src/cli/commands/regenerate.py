@@ -4,11 +4,12 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
+
 from src.cli.config.package_info import get_package_version
-from src.platform.template_generator import generate_templates
 from src.cli.ui.console import console, print_error, print_info, print_success, print_warning
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
+from src.platform.template_generator import generate_templates
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -26,7 +27,7 @@ def run(args: Namespace) -> int:
         config_path = project_path / '.respec-ai' / 'config.json'
 
         if not config_path.exists():
-            print_error('RespecAI is not initialized in this project')
+            print_error('respec-ai is not initialized in this project')
             print_warning('Run: respec-ai init --platform [linear|github|markdown]')
             return 1
 

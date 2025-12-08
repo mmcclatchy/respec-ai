@@ -1,7 +1,7 @@
 [project]
 name = "respec-ai"
 version = "0.6.3"
-description = "RespecAI CLI - Lightweight manager for Docker-based specification-driven development workflow"
+description = "respec-ai CLI - Lightweight manager for Docker-based specification-driven development workflow"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

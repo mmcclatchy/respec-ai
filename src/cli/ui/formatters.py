@@ -2,6 +2,7 @@ from pathlib import Path
 
 from rich.panel import Panel
 from rich.table import Table
+
 from src.cli.ui.console import console
 
 
@@ -34,7 +35,7 @@ def format_project_config_table(
     table.add_row('Package Version', package_version)
 
     mcp_status = '[green]✓ Registered[/green]' if mcp_registered else '[red]✗ Not Registered[/red]'
-    table.add_row('MCP Server', f'RespecAI ({mcp_status})')
+    table.add_row('MCP Server', f'respec-ai ({mcp_status})')
 
     return table
 
@@ -118,7 +119,7 @@ def print_setup_complete(
         mcp_registered: Whether MCP was registered
     """
     console.print()
-    console.print('[bold green]✅ RespecAI setup complete![/bold green]')
+    console.print('[bold green]✅ respec-ai setup complete![/bold green]')
     console.print()
 
     table = Table(show_header=False, box=None)
@@ -130,7 +131,7 @@ def print_setup_complete(
     table.add_row('Location', str(project_path))
 
     if mcp_registered:
-        table.add_row('MCP Server', '[green]✓ Registered as RespecAI[/green]')
+        table.add_row('MCP Server', '[green]✓ Registered as respec-ai[/green]')
     else:
         table.add_row('MCP Server', '[yellow]⚠ Skipped[/yellow]')
 
@@ -152,7 +153,7 @@ def print_setup_complete(
     console.print('  • [cyan]/respec-build[/cyan] - Execute implementation')
     console.print()
     console.print(
-        '[bold yellow]🚀 Ready to begin![/bold yellow] Restart Claude Code to use the RespecAI commands.',
+        '[bold yellow]🚀 Ready to begin![/bold yellow] Restart Claude Code to use the respec-ai commands.',
     )
     console.print()
 

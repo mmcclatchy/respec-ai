@@ -581,7 +581,7 @@ async def get_user_feedback(
 All agent templates follow the established pattern from `roadmap.py`:
 
 **Two Categories of Tools**:
-1. **MCP RespecAI Tools**: Explicitly defined in frontmatter (always the same regardless of platform)
+1. **MCP respec-ai Tools**: Explicitly defined in frontmatter (always the same regardless of platform)
    - Example: `mcp__respec-ai__get_spec_markdown`, `mcp__respec-ai__store_build_plan`
    - These are hardcoded in the agent frontmatter
 
@@ -607,7 +607,7 @@ tools:
 
 **When to Use**:
 - Use `AgentTools` parameter **only if** agent needs platform-specific operations (creating issues, updating tasks, etc.)
-- Agents that only use MCP RespecAI tools + built-in tools (Read, Write, Bash) don't need tools parameter
+- Agents that only use MCP respec-ai tools + built-in tools (Read, Write, Bash) don't need tools parameter
 - build_coder needs platform tools (updating task status), build_planner does not
 
 ---

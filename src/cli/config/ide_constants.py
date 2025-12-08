@@ -11,7 +11,7 @@ IDE_NAME = 'claude-code'
 IDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
 IDE_COMMANDS_DIR = '.claude/commands'
 IDE_AGENTS_DIR = '.claude/agents'
-MCP_SERVER_NAME = 'RespecAI'
+MCP_SERVER_NAME = 'respec-ai'
 
 
 def get_commands_dir(project_path: Path) -> Path:
@@ -51,6 +51,6 @@ def get_mcp_server_name() -> str:
     """Get MCP server name for IDE registration.
 
     Returns:
-        MCP server name (e.g., 'RespecAI')
+        MCP server name (e.g., 'respec-ai')
     """
     return MCP_SERVER_NAME

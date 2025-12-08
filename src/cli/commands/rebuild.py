@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
+
 from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import PackageInfoError, get_package_version
@@ -28,7 +29,7 @@ def run(args: Namespace) -> int:
         config_path = project_path / '.respec-ai' / 'config.json'
 
         if not config_path.exists():
-            print_error('RespecAI is not initialized in this project')
+            print_error('respec-ai is not initialized in this project')
             print_warning('Run: respec-ai init --platform [linear|github|markdown]')
             return 1
 
@@ -138,7 +139,7 @@ def run(args: Namespace) -> int:
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Rebuild RespecAI project configuration')
+    parser = ArgumentParser(description='Rebuild respec-ai project configuration')
     add_arguments(parser)
     args = parser.parse_args()
     sys.exit(run(args))

@@ -18,21 +18,21 @@ Provides commands for:
 import sys
 from argparse import ArgumentParser
 
+from src.cli.commands import (
+    cleanup,
+    docker,
+    init,
+    mcp_server,
+    platform,
+    rebuild,
+    regenerate,
+    register_mcp,
+    status,
+    unregister_mcp,
+    update,
+    validate,
+)
 from src.cli.config.package_info import get_package_version
-
-
-from src.cli.commands import init
-from src.cli.commands import platform
-from src.cli.commands import status
-from src.cli.commands import validate
-from src.cli.commands import regenerate
-from src.cli.commands import rebuild
-from src.cli.commands import update
-from src.cli.commands import register_mcp
-from src.cli.commands import unregister_mcp
-from src.cli.commands import cleanup
-from src.cli.commands import docker
-from src.cli.commands import mcp_server
 
 
 def main() -> int:
@@ -60,7 +60,7 @@ def main() -> int:
 
     init_parser = subparsers.add_parser(
         'init',
-        help='Initialize RespecAI in current project',
+        help='Initialize respec-ai in current project',
     )
 
     init.add_arguments(init_parser)
@@ -109,21 +109,21 @@ def main() -> int:
 
     register_mcp_parser = subparsers.add_parser(
         'register-mcp',
-        help='Register RespecAI MCP server in Claude Code',
+        help='Register respec-ai MCP server in Claude Code',
     )
 
     register_mcp.add_arguments(register_mcp_parser)
 
     unregister_mcp_parser = subparsers.add_parser(
         'unregister-mcp',
-        help='Unregister RespecAI MCP server from Claude Code',
+        help='Unregister respec-ai MCP server from Claude Code',
     )
 
     unregister_mcp.add_arguments(unregister_mcp_parser)
 
     cleanup_parser = subparsers.add_parser(
         'cleanup',
-        help='Clean up all RespecAI installations and configurations',
+        help='Clean up all respec-ai installations and configurations',
     )
 
     cleanup.add_arguments(cleanup_parser)
@@ -137,7 +137,7 @@ def main() -> int:
 
     mcp_server_parser = subparsers.add_parser(
         'mcp-server',
-        help='Start RespecAI MCP server (used by Claude Code)',
+        help='Start respec-ai MCP server (used by Claude Code)',
     )
 
     mcp_server.add_arguments(mcp_server_parser)

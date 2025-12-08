@@ -44,7 +44,7 @@ def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
     Workflow: Transform strategic plans into sparse TechnicalSpecs (iteration=0, one per phase)
 
     Dual Tool Architecture:
-    - MCP RespecAI Tools: Explicitly defined (mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_spec, mcp__respec-ai__list_specs)
+    - MCP respec-ai Tools: Explicitly defined (mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_spec, mcp__respec-ai__list_specs)
     - Platform Tools: External spec creation injected via tools parameter
 
     Args:

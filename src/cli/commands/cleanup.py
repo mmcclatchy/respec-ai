@@ -17,7 +17,7 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 def run(args: Namespace) -> int:
     try:
-        console.print('[yellow]Cleaning up RespecAI installations...[/yellow]')
+        console.print('[yellow]Cleaning up respec-ai installations...[/yellow]')
         console.print()
 
         removed_mcp = 0

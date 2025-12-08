@@ -19,7 +19,7 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def run(args: Namespace) -> int:
-    """Validate RespecAI project configuration and setup.
+    """Validate respec-ai project configuration and setup.
 
     Args:
         args: Command arguments
@@ -84,7 +84,7 @@ def run(args: Namespace) -> int:
 
     mcp_registered = is_mcp_server_registered()
     if mcp_registered:
-        checks['MCP Registered'] = (True, 'RespecAI server registered')
+        checks['MCP Registered'] = (True, 'respec-ai server registered')
     else:
         checks['MCP Registered'] = (False, 'Not registered in Claude Code')
 
@@ -103,7 +103,7 @@ def run(args: Namespace) -> int:
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Validate RespecAI project setup')
+    parser = ArgumentParser(description='Validate respec-ai project setup')
     add_arguments(parser)
     args = parser.parse_args()
     sys.exit(run(args))

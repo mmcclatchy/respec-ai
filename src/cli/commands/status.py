@@ -20,7 +20,7 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def run(args: Namespace) -> int:
-    """Show RespecAI project status and configuration.
+    """Show respec-ai project status and configuration.
 
     Args:
         args: Command arguments
@@ -33,7 +33,7 @@ def run(args: Namespace) -> int:
         config_path = project_path / '.respec-ai' / 'config.json'
 
         if not config_path.exists():
-            print_error('RespecAI is not initialized in this project')
+            print_error('respec-ai is not initialized in this project')
             print_warning('Run: respec-ai init --platform [linear|github|markdown]')
             return 1
 
@@ -93,7 +93,7 @@ def run(args: Namespace) -> int:
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Show RespecAI project status')
+    parser = ArgumentParser(description='Show respec-ai project status')
     add_arguments(parser)
     args = parser.parse_args()
     sys.exit(run(args))
