@@ -101,7 +101,6 @@ class TestIsMcpServerRegistered:
 
 class TestRegisterMcpServer:
     def test_new_registration(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        mocker.patch('src.cli.config.claude_config.get_package_version', return_value='0.3.0')
         config_file = tmp_path / 'config.json'
         config_file.write_text('{}', encoding='utf-8')
 
@@ -121,7 +120,6 @@ class TestRegisterMcpServer:
         assert 'mcp-server' in call_args
 
     def test_already_registered_without_force(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        mocker.patch('src.cli.config.claude_config.get_package_version', return_value='0.3.0')
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'docker'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
@@ -130,7 +128,6 @@ class TestRegisterMcpServer:
         assert result is False
 
     def test_force_reregister(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        mocker.patch('src.cli.config.claude_config.get_package_version', return_value='0.3.0')
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'old'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')

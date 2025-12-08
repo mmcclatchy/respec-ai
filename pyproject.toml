@@ -84,7 +84,7 @@ log_cli_level = "WARNING"
 log_level = "WARNING"
 log_file = "logs/pytest.log"
 log_file_level = "WARNING"
-env = ["MCP_LOG_LEVEL=WARNING", "MCP_LOG_FILE=", "FSDD_MCP_LOG_LEVEL=WARNING"]
+env = ["MCP_LOG_LEVEL=WARNING", "MCP_LOG_FILE=", "FSDD_MCP_LOG_LEVEL=WARNING", "TESTING=true"]
 filterwarnings = [
     # Suppress coroutine warnings in MCP server tests - these are expected due to async mocking
     "ignore:coroutine.*was never awaited:RuntimeWarning:.*test_mcp_server.*",

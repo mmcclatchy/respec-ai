@@ -1,175 +1,50 @@
-# RespecAI Workflow System
+# RespecAI
 
-AI-powered specification-driven development workflow for Claude Code.
+> **⚠️ Active Development:** RespecAI is under active development. Currently functional workflows: `/respec-plan`, `/respec-roadmap`, `/respec-spec`. The `/respec-build` workflow is not yet functional.
 
-## What is RespecAI?
+**Specification-driven AI development workflows for Claude Code**
 
-RespecAI is a **meta MCP server** that generates platform-specific workflow automation tools for AI-driven development. It creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or local Markdown files).
+Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing specs helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
-### Key Features
-
-- **Platform abstraction** - Work with Linear, GitHub, or Markdown seamlessly
-- **Quality-driven workflows** - Automated refinement loops with critic agents
-- **Strategic to implementation** - Plan → Roadmap → Spec → Build
-- **Type-safe integration** - Platform-specific tools properly configured
-
-## Installation Paths
-
-RespecAI has **two distinct installation paths** that are completely separate:
-
-### Path 1: End Users (Recommended)
-
-**Who**: Users installing respec-ai for Claude Code MCP server functionality
-
-**How**: Install via PyPI or Homebrew, use CLI commands
-
-**Docker**: Uses production containers (`respec-ai-server`, `respec-ai-db-prod`)
-
-```bash
-# Install
-pip install respec-ai  # or: brew install respec-ai
-
-# Register MCP server
-respec-ai register-mcp
-
-# Manage containers
-respec-ai docker start
-respec-ai status
-```
-
-### Path 2: Developers (Contributors)
-
-**Who**: Contributors working on the respec-ai codebase itself
-
-**How**: Clone repository, use development scripts
-
-**Docker**: Uses development containers (`respec-ai-dev`, `respec-ai-db-dev`)
-
-```bash
-# Clone repository
-git clone https://github.com/mmcclatchy/respec-ai.git
-cd respec-ai
-
-# Install development environment
-./scripts/install-respec-ai.sh
-
-# Use docker-compose directly
-docker compose -f docker-compose.dev.yml up -d
-```
-
-**Important**: These paths use different Docker images, containers, and networks with zero crossover. See [Docker Deployment Guide](docs/DOCKER_DEPLOYMENT.md) for details.
+RespecAI is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Spec, Build. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
 
 ## Quick Start
 
-RespecAI installation has two parts:
-1. **One-time MCP server setup** (configure RespecAI globally)
-2. **Per-project setup** (generate workflow files for each project)
-
-### 1. MCP Server Setup (One-Time)
-
-Configure RespecAI as an MCP server in Claude Code.
-
-#### Option A: Homebrew Installation (macOS - Recommended)
-
-⚠️ **Development Version**: Currently installing from TestPyPI for testing. Production release coming soon.
+Get up and running in 3 steps:
 
 ```bash
-# Add the development tap
+# 1. Install RespecAI
+uv tool install respec-ai  # Preferred (much faster)
+# OR
 brew tap mmcclatchy/respec-ai
-
-# Install respec-ai
 brew install respec-ai
 
-# Register MCP server with Claude Code
-respec-ai register-mcp
-```
+# 2. Initialize in your project
+cd /path/to/your/project
+respec-ai init -p markdown
 
-Homebrew installation handles dependencies automatically and provides easy updates via `brew upgrade respec-ai`.
-
-#### Option B: Manual Installation (All Platforms)
-
-**Step 1: Clone RespecAI repository**
-```bash
-# Clone to a permanent location
-cd ~/coding/projects  # or your preferred location
-git clone git@github.com:mmcclatchy/respec-ai.git
-cd respec-ai
-uv sync  # Install dependencies
-```
-
-**Step 2: Add to Claude Code configuration**
-
-Edit `~/.claude/config.json` and add:
-
-```json
-{
-  "mcpServers": {
-    "respec-ai": {
-      "command": "uv",
-      "args": ["run", "respec-server"],
-      "cwd": "/absolute/path/to/respec-ai"
-    }
-  }
-}
-```
-
-> **Important**: Replace `/absolute/path/to/respec-ai` with your actual path from Step 1. Use absolute paths, not `~` or relative paths.
-
-**Step 3: Verify setup**
-
-```bash
+# 3. Restart Claude Code and start planning
 claude
+/respec-plan my-first-project
 ```
 
-Then in Claude Code:
-```text
-/mcp list
-```
+That's it! RespecAI will guide you through strategic planning, technical specs, and implementation.
 
-Expected output should include "respec-ai" with 32 tools available.
+**[Full Installation Guide →](docs/USER_GUIDE.md#installation)**
 
-### 2. Project Setup (Per-Project)
+## Key Features
 
-Once the MCP server is configured, set up any project:
+- **Platform Abstraction** - Work with Linear, GitHub, or Markdown files through a unified interface. Switch platforms without changing workflows.
 
-**Local installation:**
-```bash
-cd /path/to/your/project
-~/coding/projects/respec-ai/scripts/install-respec-ai.sh -n myproject -p linear
-# Choose platform: linear, github, or markdown
-claude  # Restart to load commands
-```
+- **Critic Refinement Loops** - Automated quality gates at each stage (0-100 thresholds) that serve triple duty: quality gatekeepers enforcing standards, alignment validators checking against parent documents, and improvement guides providing specific recommendations.
 
-Then in Claude Code:
-```text
-/respec-plan  # Start your first workflow
-```
+- **Hierarchical Validation** - Each level validates against the level above (code → spec → roadmap → plan) to prevent alignment drift. Every line of code traces back to business objectives through systematic validation.
 
-**Remote installation (public repos only):**
+- **Strategic to Implementation Pipeline** - Complete workflow from business objectives (`/respec-plan`) through phased roadmaps (`/respec-roadmap`), technical design (`/respec-spec`), to code generation (`/respec-build`).
 
-> **⚠️ Important**: Remote installation only works for **public repositories**. For private repos, use local installation above.
+- **Docker-Based MCP Server** - Containerized deployment with 38 MCP tools across 7 modules. Optional PostgreSQL persistence for multi-project workflows.
 
-```bash
-cd /path/to/your/project
-curl -fsSL https://raw.githubusercontent.com/mmcclatchy/respec-ai/main/scripts/install-respec-ai.sh | bash -s -- -n myproject -p linear --respec-path ~/coding/projects/respec-ai
-claude  # Restart to load commands
-```
-
-Then in Claude Code:
-```text
-/respec-plan  # Start your first workflow
-```
-
-### 3. Start Using
-
-```text
-/respec-plan          # Create strategic plan
-/respec-roadmap       # Break down into phases
-/respec-spec          # Design specifications
-/respec-build         # Implement features
-```
-
-**For complete installation instructions**, see [User Guide](docs/USER_GUIDE.md)
+- **Type-Safe Architecture** - Enterprise-grade platform orchestrator with strategy pattern, Pydantic models, and comprehensive validation (595 tests passing).
 
 ## Platform Options
 
@@ -179,137 +54,95 @@ Then in Claude Code:
 | **GitHub** | Open source projects | Full API | ❌ |
 | **Markdown** | Solo developers | Local files | ❌ |
 
-## Documentation
-
-### Getting Started
-- **[User Guide](docs/USER_GUIDE.md)** - Complete usage documentation
-  - Installation methods
-  - Platform selection guide
-  - Command reference
-  - Workflow examples
-  - Best practices
-  - Troubleshooting
-
-### Architecture & Development
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and implementation
-  - Platform orchestrator (11-file system)
-  - Template engine and strategy pattern
-  - MCP tools (32 tools across 8 modules)
-  - Document models and parsing
-  - Deployment architecture
-
-- **[Architecture Analysis](docs/ARCHITECTURE_ANALYSIS.md)** - Technical deep dive
-  - Implementation quality assessment
-  - Component analysis
-  - Design pattern evaluation
-  - Type safety framework
-  - Testing and validation
-  - Extensibility guide
-
-- **[Architectural Realignment](docs/ARCHITECTURAL_REALIGNMENT.md)** - Development history
-  - Implementation sessions
-  - Technical decisions
-  - Refactoring achievements
-  - Production readiness status
-
-## Requirements
-
-### For All Users
-- **Claude Code CLI** installed and configured
-- **Platform MCP Server** (Linear or GitHub) if using external platforms
-
-### For Local Installation
-- **uv** (Python version and package manager)
-- **Python 3.13+**
-- **Unix-like OS** (Linux, macOS, Windows Subsystem for Linux)
-
-### For Containerized Deployments
-- **Docker** (Linux)
-- **Docker Desktop** (macOS, Windows, Windows Subsystem for Linux)
+**[Platform Comparison Guide →](docs/USER_GUIDE.md#platform-selection)**
 
 ## Workflow Overview
+
+RespecAI provides a complete development pipeline with hierarchical validation at each stage:
 
 ```text
 1. Strategic Planning
    /respec-plan
    → Conversational requirements gathering
-   → Creates strategic plan with business objectives
+   → Business objectives extraction
    → Quality validation with plan-critic
 
 2. Phase Breakdown
    /respec-roadmap
-   → Breaks plan into implementation phases
-   → Creates initial specs for each phase
-   → Quality refinement with roadmap-critic
+   → Multi-phase implementation roadmap
+   → Initial specs for each phase
+   → Refinement with roadmap-critic (validates against plan)
 
 3. Technical Design
    /respec-spec [spec-name]
    → Detailed technical specifications
-   → Architecture and implementation approach
-   → Quality refinement with spec-critic
+   → Architecture and technology decisions
+   → Quality loops with spec-critic (validates against roadmap)
 
 4. Implementation
    /respec-build [spec-name]
    → Implementation planning
-   → Code generation
-   → Quality review with build-critic and build-reviewer
+   → TDD-driven code generation
+   → Code review with build-reviewer (validates against spec)
 ```
 
-## Available Commands
+Each stage iterates through refinement loops until quality threshold met or user approves. Hierarchical validation ensures every line of code traces back to business objectives.
 
-- **`/respec-plan [project-name]`** - Create strategic project plans
-- **`/respec-roadmap [project-name]`** - Generate multi-phase implementation roadmaps
-- **`/respec-spec [spec-name]`** - Convert plans to detailed specifications
-- **`/respec-build [spec-name]`** - Implement specifications with code
-- **`/respec-plan-conversation`** - Convert conversations into structured plans
+**[Workflow Guide →](docs/USER_GUIDE.md#available-workflows)**
 
-## Contributing
+## Documentation
 
-This is a production-ready system with enterprise-grade architecture. Contributions are welcome!
-
-### Areas for Contribution
-- Additional platform integrations (Jira, GitLab, Azure DevOps)
-- Advanced analytics and reporting
-- Cross-platform spec migration tools
-- Documentation improvements
-- Bug fixes and optimizations
-
-## License
-
-[Add License Information]
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/mmcclatchy/respec-ai/issues)
-- **Documentation**: See [docs/](docs/) directory
-- **User Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- **[User Guide](docs/USER_GUIDE.md)** - Installation, CLI reference, workflows, troubleshooting
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design, platform orchestrator, MCP tools, document models
 
 ## Project Status
 
-🚧 **In Development** - Core platform system complete (516 tests passing), agent templates and end-to-end workflows still in progress
+**Version:** 0.6.3 (Beta)
+**Test Coverage:** 595 passing tests
+**MCP Tools:** 38 tools across 7 modules
+**Maturity:** Production-ready core, beta workflows
 
 ### Completed
 - ✅ Platform orchestrator (11-file system)
-- ✅ MCP tools (32 tools across 8 modules)
+- ✅ MCP server with 38 tools
 - ✅ Document models with markdown parsing
 - ✅ Template generation system
-- ✅ Installation and setup workflows
-- ✅ Unit and integration tests
-- ✅ Global MCP server architecture (single instance for all projects)
+- ✅ Docker deployment (dev and production)
+- ✅ CLI with 13 commands
+- ✅ Comprehensive test suite
 
 ### In Progress
-- 🚧 Agent template completion (some agents not yet implemented)
-- 🚧 End-to-end workflow testing
-- 🚧 Platform integration validation
-- 🚧 User acceptance testing
-- 🚧 **Multi-project isolation** (v1.1) - File-based state persistence and complete project isolation
+- 🚧 Multi-project file-based persistence (v1.1)
+- 🚧 End-to-end workflow validation
+- 🚧 Advanced analytics and reporting
 
-### Multi-Project Support
+## Requirements
 
-**Current Status**: Works with limitations (see [Multi-Project Support in User Guide](docs/USER_GUIDE.md#multi-project-support))
+- **Claude Code CLI** - For MCP server integration
+- **Python 3.11+** - Runtime environment
+- **Docker/Docker Desktop** - For containerized deployments
+- **uv** - Package and version manager
+- **Platform MCP Server** - Linear or GitHub (optional, for external platforms)
 
-- ✅ Multiple projects can use same MCP server
-- ✅ Per-project configuration and commands
-- ⚠️ State isolation in development (v1.1)
+## Contributing
 
-**Planned (v1.1)**: Complete multi-project isolation with file-based state persistence. See [MULTI_PROJECT_DESIGN.md](docs/MULTI_PROJECT_DESIGN.md) for architecture details.
+RespecAI is an open-source project with enterprise-grade architecture. Contributions welcome!
+
+**Areas for Contribution:**
+- Additional platform integrations (Jira, GitLab, Azure DevOps)
+- Advanced analytics and reporting features
+- Cross-platform migration tools
+- Documentation improvements
+- Bug fixes and optimizations
+
+**[Development Guide →](docs/USER_GUIDE.md#local-development-setup)**
+
+## License
+
+MIT License
+
+## Support
+
+- **Issues:** [GitHub Issues](https://github.com/mmcclatchy/respec-ai/issues)
+- **Documentation:** [docs/](docs/) directory
+- **User Guide:** [docs/USER_GUIDE.md](docs/USER_GUIDE.md)

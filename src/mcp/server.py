@@ -120,7 +120,18 @@ def create_mcp_server() -> FastMCP:
     error_logger = logging.getLogger('mcp_errors')
 
     def handle_error(error: Exception, context: MiddlewareContext) -> None:
-        error_logger.error(f'MCP Error: {type(error).__name__} in {context.method}: {error}')
+        error_logger.error('=' * 60)
+        error_logger.error('MCP REQUEST ERROR')
+        error_logger.error(f'Method: {context.method}')
+        error_logger.error(f'Error Type: {type(error).__name__}')
+        error_logger.error(f'Error Message: {error}')
+        if mcp_settings.debug:
+            error_logger.error('=' * 60)
+            error_logger.exception('Full traceback:')
+        else:
+            error_logger.error('=' * 60)
+            error_logger.error('(Enable DEBUG mode for full traceback)')
+        error_logger.error('=' * 60)
 
     mcp.add_middleware(
         ErrorHandlingMiddleware(
@@ -144,8 +155,36 @@ def create_mcp_server() -> FastMCP:
 
 
 def run_local_server() -> None:
-    server = create_mcp_server()
-    server.run(transport='stdio')
+    logger = logging.getLogger(__name__)
+
+    logger.info('=' * 60)
+    logger.info('RespecAI MCP Server Starting')
+    logger.info(f'Server Name: {mcp_settings.server_name}')
+    logger.info(f'Working Directory: {Path.cwd()}')
+    logger.info(f'Log Level: {mcp_settings.log_level}')
+    logger.info(f'Debug Mode: {mcp_settings.debug}')
+    logger.info('=' * 60)
+
+    try:
+        server = create_mcp_server()
+        logger.info('MCP Server initialized successfully')
+        logger.info('Waiting for client connection...')
+
+        server.run(transport='stdio')
+
+    except KeyboardInterrupt:
+        logger.info('MCP Server shutdown requested')
+        sys.exit(0)
+    except Exception as e:
+        logger.error('=' * 60)
+        logger.error('FATAL ERROR: MCP Server failed')
+        logger.error(f'Error Type: {type(e).__name__}')
+        logger.error(f'Error Message: {e}')
+        logger.error(f'Working Directory: {Path.cwd()}')
+        logger.error('=' * 60)
+        if mcp_settings.debug:
+            logger.exception('Full traceback:')
+        sys.exit(1)
 
 
 async def health_check(server: FastMCP) -> HealthStatus:

@@ -13,6 +13,7 @@ from src.platform.platform_selector import PlatformType
 
 def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
+        '-f',
         '--force',
         action='store_true',
         help='Regenerate templates even if version is current',

@@ -4,7 +4,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from src.cli.config.claude_config import ClaudeConfigError, register_mcp_server
+from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
@@ -94,6 +94,7 @@ def run(args: Namespace) -> int:
                             progress.update(task, description='Re-registering MCP server...')
                             try:
                                 mcp_registered = register_mcp_server(force=True)
+                                add_mcp_permissions()
                             except (ClaudeConfigError, PackageInfoError) as e:
                                 print_warning(f'MCP registration failed: {e}')
                                 print_warning('Run respec-ai register-mcp to register manually')

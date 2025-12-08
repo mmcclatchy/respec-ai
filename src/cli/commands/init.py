@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from src.cli.config.claude_config import ClaudeConfigError, register_mcp_server
+from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.platform.template_generator import generate_templates
@@ -24,12 +24,14 @@ def add_arguments(parser: ArgumentParser) -> None:
         parser: Argument parser for this command
     """
     parser.add_argument(
+        '-p',
         '--platform',
         required=True,
         choices=['linear', 'github', 'markdown'],
         help='Platform type for workflow integration',
     )
     parser.add_argument(
+        '-n',
         '--project-name',
         help='Project name (defaults to directory name)',
     )
@@ -39,6 +41,7 @@ def add_arguments(parser: ArgumentParser) -> None:
         help='Skip automatic MCP server registration',
     )
     parser.add_argument(
+        '-f',
         '--force',
         action='store_true',
         help='Overwrite existing configuration if present',
@@ -132,6 +135,7 @@ def run(args: Namespace) -> int:
                             progress.update(task, description='Registering MCP server...')
                             try:
                                 mcp_registered = register_mcp_server()
+                                add_mcp_permissions()
                             except (ClaudeConfigError, PackageInfoError) as e:
                                 print_warning(f'MCP registration failed: {e}')
                                 print_warning('Run respec-ai register-mcp to register manually')

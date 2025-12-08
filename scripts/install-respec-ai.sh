@@ -225,7 +225,7 @@ echo ""
 
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
 print_info "Generating RespecAI workflow files..."
-if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration; then
+if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration --force; then
     echo ""
 
     # Register local MCP server in Claude Code
@@ -234,11 +234,10 @@ if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_
     # Remove existing registration if present
     claude mcp remove respec-ai 2>/dev/null || true
 
-    # Register MCP server using Claude CLI
-    cd "$RESPEC_AI_PATH"
+    # Register MCP server using Claude CLI with explicit directory path
     if [ "$STATE_MANAGER" = "memory" ]; then
-        if claude mcp add -s user -t stdio respec-ai -- uv run respec-server; then
-            print_success "✓ Registered local MCP server (state: $STATE_MANAGER_MODE, cwd: $RESPEC_AI_PATH)"
+        if claude mcp add -s user -t stdio respec-ai -- uv --directory "$RESPEC_AI_PATH" run python -m src.mcp; then
+            print_success "✓ Registered local MCP server (state: $STATE_MANAGER_MODE, path: $RESPEC_AI_PATH)"
         else
             print_error "✗ Failed to register MCP server"
             exit 1
@@ -253,7 +252,13 @@ if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_
         fi
     fi
 
-    cd "$TARGET_DIR"
+    # Add MCP permissions to Claude settings
+    print_info "Adding MCP permissions to Claude settings..."
+    if uv run --directory "$RESPEC_AI_PATH" python -c "from src.cli.config.claude_config import add_mcp_permissions; add_mcp_permissions()"; then
+        print_success "✓ MCP permissions added"
+    else
+        print_warning "⚠ Failed to add MCP permissions (you may need to add manually)"
+    fi
 
     if [ $? -eq 0 ]; then
         echo ""
@@ -285,8 +290,7 @@ if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_
         echo "  Run this command:"
         echo ""
         if [ "$STATE_MANAGER" = "memory" ]; then
-            echo "  cd $RESPEC_AI_PATH"
-            echo "  claude mcp add -s user -t stdio respec-ai -- uv run respec-server"
+            echo "  claude mcp add -s user -t stdio respec-ai -- uv --directory $RESPEC_AI_PATH run python -m src.mcp"
         else
             echo "  claude mcp add -s user -t stdio respec-ai -- docker compose -f $RESPEC_AI_PATH/docker-compose.dev.yml exec -T mcp-server respec-server"
         fi

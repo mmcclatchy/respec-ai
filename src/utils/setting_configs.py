@@ -1,3 +1,4 @@
+import os
 from enum import StrEnum
 
 from pydantic import Field, field_validator
@@ -80,7 +81,11 @@ class DatabaseSettings(BaseSettings):
     )
 
     url: str = Field(
-        default='postgresql://respec:respec@localhost:5433/respec_dev',
+        default_factory=lambda: (
+            'postgresql://respec:respec@localhost:5433/respec_test'
+            if os.getenv('TESTING', '').lower() == 'true'
+            else 'postgresql://respec:respec@localhost:5433/respec_dev'
+        ),
         description='PostgreSQL connection URL',
     )
     pool_min_size: int = Field(default=5, ge=1, le=50)
