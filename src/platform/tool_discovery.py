@@ -2,8 +2,8 @@
 
 import inspect
 import re
-from typing import Any
 from types import ModuleType
+from typing import Any
 
 from fastmcp import FastMCP
 

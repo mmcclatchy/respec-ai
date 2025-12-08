@@ -60,7 +60,7 @@ def validate_reRESPEC_AI_tools_at_startup() -> dict[str, Any]:
         return validation_result
 
     except Exception as e:
-        logger.error(f'Failed to validate RespecAI tools: {e}')
+        logger.error(f'Failed to validate respec-ai tools: {e}')
         return {'success': False, 'error': str(e), 'issues': [f'Validation failed with error: {e}']}
 
 

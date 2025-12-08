@@ -158,7 +158,7 @@ def run_local_server() -> None:
     logger = logging.getLogger(__name__)
 
     logger.info('=' * 60)
-    logger.info('RespecAI MCP Server Starting')
+    logger.info('respec-ai MCP Server Starting')
     logger.info(f'Server Name: {mcp_settings.server_name}')
     logger.info(f'Working Directory: {Path.cwd()}')
     logger.info(f'Log Level: {mcp_settings.log_level}')

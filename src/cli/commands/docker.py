@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_success, print_warning
 
@@ -293,7 +294,7 @@ def _run_remove(manager: DockerManager, args: Namespace) -> int:
 def _run_list(manager: DockerManager, args: Namespace) -> int:
     containers = manager.list_prod_containers()
 
-    table = Table(title='RespecAI Prod Containers')
+    table = Table(title='respec-ai Prod Containers')
     table.add_column('Name', style='cyan')
     table.add_column('Status', style='green')
     table.add_column('Image', style='blue')
@@ -343,7 +344,7 @@ def _run_exec(manager: DockerManager, args: Namespace) -> int:
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Manage RespecAI Docker containers')
+    parser = ArgumentParser(description='Manage respec-ai Docker containers')
     add_arguments(parser)
     args = parser.parse_args()
     sys.exit(run(args))

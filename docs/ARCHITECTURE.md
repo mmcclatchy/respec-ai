@@ -1,10 +1,10 @@
 # Architecture Guide
 
-Production-ready architectural overview of the RespecAI Workflow MCP Server system.
+Production-ready architectural overview of the respec-ai Workflow MCP Server system.
 
 ## Overview
 
-RespecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It provides a sophisticated platform abstraction layer that enables Claude Code to work seamlessly with Linear, GitHub, or local Markdown files through dynamically generated commands and agents.
+respec-ai is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It provides a sophisticated platform abstraction layer that enables Claude Code to work seamlessly with Linear, GitHub, or local Markdown files through dynamically generated commands and agents.
 
 ## System Architecture
 
@@ -24,7 +24,7 @@ RespecAI is a **meta MCP server** that generates platform-specific workflow tool
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
 ┌─────────────────────┴───────────────────────────────────────────┐
-│              RespecAI MCP Server (This Project)                   │
+│              respec-ai MCP Server (This Project)                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │          Platform Orchestrator (11 files)                │   │
 │  │  • Platform Selection (Linear/GitHub/Markdown)           │   │
@@ -540,7 +540,7 @@ project/
 
 ### Implementation Quality Comparison
 
-| Aspect | Industry Standard | RespecAI Implementation |
+| Aspect | Industry Standard | respec-ai Implementation |
 |--------|------------------|----------------------|
 | Type Safety | Runtime string validation | Compile-time enum validation |
 | Platform Extension | Code changes required | Data-driven configuration |

@@ -1,7 +1,7 @@
 [project]
 name = "respec-ai-server"
 version = "0.3.0"
-description = "RespecAI MCP Server - Containerized specification-driven development workflow server"
+description = "respec-ai MCP Server - Containerized specification-driven development workflow server"
 requires-python = ">=3.13"
 license = { text = "MIT" }
 

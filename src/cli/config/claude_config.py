@@ -6,7 +6,7 @@ from pathlib import Path
 CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
 CLAUDE_SETTINGS_PATH = Path.home() / '.claude' / 'settings.json'
 CLAUDE_SETTINGS_LOCAL_PATH = Path.home() / '.claude' / 'settings.local.json'
-MCP_SERVER_NAME = 'RespecAI'
+MCP_SERVER_NAME = 'respec-ai'
 
 
 class ClaudeConfigError(Exception):
@@ -124,7 +124,7 @@ def save_claude_config(
 
 
 def is_mcp_server_registered(config_path: Path = CLAUDE_CONFIG_PATH) -> bool:
-    """Check if RespecAI MCP server is registered.
+    """Check if respec-ai MCP server is registered.
 
     Args:
         config_path: Path to config file (defaults to ~/.claude/config.json)
@@ -144,7 +144,7 @@ def register_mcp_server(
     force: bool = False,
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
-    """Register RespecAI MCP server in Claude Code config using Claude CLI.
+    """Register respec-ai MCP server in Claude Code config using Claude CLI.
 
     Args:
         force: Overwrite existing registration
@@ -199,7 +199,7 @@ def register_mcp_server(
 def unregister_mcp_server(
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
-    """Remove RespecAI MCP server from Claude Code config using Claude CLI.
+    """Remove respec-ai MCP server from Claude Code config using Claude CLI.
 
     Args:
         config_path: Path to config file (defaults to ~/.claude/config.json)
@@ -235,7 +235,7 @@ def unregister_all_respec_servers(config_path: Path = CLAUDE_CONFIG_PATH) -> int
     """Remove all respec-ai MCP server entries (handles old and new names).
 
     This function removes all variations of respec-ai MCP server names that may
-    exist from different versions, including 'respec-ai', 'RespecAI', and 'respec_ai'.
+    exist from different versions, including 'respec-ai', 'respec-ai', and 'respec_ai'.
 
     Args:
         config_path: Path to config file (defaults to ~/.claude/config.json)
@@ -247,7 +247,7 @@ def unregister_all_respec_servers(config_path: Path = CLAUDE_CONFIG_PATH) -> int
         ClaudeConfigError: If Claude CLI is not available
     """
     removed_count = 0
-    server_names = ['respec-ai', 'RespecAI', 'respec_ai']
+    server_names = ['respec-ai', 'respec-ai', 'respec_ai']
 
     for name in server_names:
         try:
@@ -272,7 +272,7 @@ def unregister_all_respec_servers(config_path: Path = CLAUDE_CONFIG_PATH) -> int
 
 
 def get_mcp_server_config(config_path: Path = CLAUDE_CONFIG_PATH) -> dict | None:
-    """Get RespecAI MCP server configuration.
+    """Get respec-ai MCP server configuration.
 
     Args:
         config_path: Path to config file (defaults to ~/.claude/config.json)
@@ -288,10 +288,10 @@ def get_mcp_server_config(config_path: Path = CLAUDE_CONFIG_PATH) -> dict | None
 
 
 def add_mcp_permissions() -> bool:
-    """Add RespecAI MCP permissions to Claude settings.
+    """Add respec-ai MCP permissions to Claude settings.
 
     Checks both settings.json and settings.local.json (prefers local).
-    Adds wildcard permission for all RespecAI MCP tools.
+    Adds wildcard permission for all respec-ai MCP tools.
 
     Returns:
         True if permissions were added, False if already present or if settings don't exist

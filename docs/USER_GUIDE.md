@@ -1,13 +1,13 @@
-# RespecAI User Guide
+# respec-ai User Guide
 
-**TL;DR:** RespecAI is a meta MCP server that generates platform-specific workflow tools for AI-driven specification-based development. Creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or Markdown files).
+**TL;DR:** respec-ai is a meta MCP server that generates platform-specific workflow tools for AI-driven specification-based development. Creates custom Claude Code commands and agents tailored to your project management platform (Linear, GitHub, or Markdown files).
 
 ## Quick Start
 
 **Get started in 3 commands:**
 
 ```bash
-# 1. Install RespecAI
+# 1. Install respec-ai
 uv tool install respec-ai
 
 # 2. Initialize in your project
@@ -19,7 +19,7 @@ claude
 /respec-plan my-first-project
 ```
 
-That's it! RespecAI will guide you through creating strategic plans, technical specs, and implementations.
+That's it! respec-ai will guide you through creating strategic plans, technical specs, and implementations.
 
 ---
 
@@ -51,7 +51,7 @@ That's it! RespecAI will guide you through creating strategic plans, technical s
 **Required for all users:**
 - **Claude Code CLI** installed and configured
 - **Git** for repository access
-- **Python 3.11+** for RespecAI
+- **Python 3.11+** for respec-ai
 - **Docker or Docker Desktop** (required for MCP server functionality)
 
 **For package installation:**
@@ -72,7 +72,7 @@ That's it! RespecAI will guide you through creating strategic plans, technical s
 **Installation:**
 
 ```bash
-# Install RespecAI
+# Install respec-ai
 uv tool install respec-ai
 
 # Verify installation
@@ -94,7 +94,7 @@ respec-ai --version
 **Installation:**
 
 ```bash
-# Add the RespecAI tap
+# Add the respec-ai tap
 brew tap mmcclatchy/respec-ai
 
 # Install respec-ai
@@ -136,13 +136,13 @@ respec-ai register-mcp --force
 
 **Expected output:**
 ```text
-RespecAI MCP server registered successfully
+respec-ai MCP server registered successfully
 Package path: /path/to/installed/respec-ai
 Restart Claude Code to activate the MCP server
 ```
 
 **What this does:**
-- ✅ Registers RespecAI MCP server with Claude Code
+- ✅ Registers respec-ai MCP server with Claude Code
 - ✅ Configures Docker-based server execution
 - ✅ Automatically adds MCP tool permissions to Claude settings
 - ✅ Creates necessary configuration in `~/.claude/config.json`
@@ -164,7 +164,7 @@ In Claude Code, verify the server is available:
 **Expected output:**
 ```text
 Available MCP Servers:
-  RespecAI
+  respec-ai
     ├─ 29+ tools available
     ├─ create_project_plan
     ├─ store_project_plan
@@ -172,17 +172,17 @@ Available MCP Servers:
 ```
 
 **✓ Success criteria:**
-- RespecAI appears in the MCP server list
+- respec-ai appears in the MCP server list
 - Tool count shows 29+ tools
 - No error messages
 
-**If RespecAI doesn't appear**, see [Troubleshooting: MCP Server Not Available](#respecai-mcp-server-not-available).
+**If respec-ai doesn't appear**, see [Troubleshooting: MCP Server Not Available](#respec-ai-mcp-server-not-available).
 
 ---
 
 ## Project Initialization
 
-Initialize RespecAI in any project directory.
+Initialize respec-ai in any project directory.
 
 ### Initialize Your Project
 
@@ -192,7 +192,7 @@ Initialize RespecAI in any project directory.
 cd /path/to/your/project
 ```
 
-**Step 2: Initialize RespecAI**
+**Step 2: Initialize respec-ai**
 
 ```bash
 # Choose your platform: linear, github, or markdown
@@ -209,19 +209,19 @@ respec-ai init -p markdown -f
 ```
 
 **What this creates:**
-- `.claude/commands/` - 5 RespecAI workflow commands
-- `.claude/agents/` - 12 RespecAI workflow agents
+- `.claude/commands/` - 5 respec-ai workflow commands
+- `.claude/agents/` - 12 respec-ai workflow agents
 - `.respec-ai/config.json` - Platform configuration
 
 **Expected output:**
 ```text
-✅ RespecAI setup complete!
+✅ respec-ai setup complete!
 
 Setting              Value
 Platform             markdown
 Files Created        17
 Location             /path/to/project
-MCP Server           ✓ Registered as RespecAI
+MCP Server           ✓ Registered as respec-ai
 
 Available Commands (restart Claude Code to activate):
   • /respec-plan - Create strategic plans
@@ -229,7 +229,7 @@ Available Commands (restart Claude Code to activate):
   • /respec-spec - Transform plans into specs
   • /respec-build - Execute implementation
 
-🚀 Ready to begin! Restart Claude Code to use the RespecAI commands.
+🚀 Ready to begin! Restart Claude Code to use the respec-ai commands.
 ```
 
 **Step 3: Restart Claude Code**
@@ -256,7 +256,7 @@ Project Path         /path/to/project
 Platform             markdown
 Config Version       0.6.3
 Package Version      0.6.3
-MCP Server           RespecAI (✓ Registered)
+MCP Server           respec-ai (✓ Registered)
 
 Generated Files
 Category            Count
@@ -269,7 +269,7 @@ Agents              12
 - [ ] All 12 agents exist in `.claude/agents/`
 - [ ] Platform configuration shows correct platform
 - [ ] Commands autocomplete with `/respec-` in Claude Code
-- [ ] RespecAI MCP server shows in `/mcp list`
+- [ ] respec-ai MCP server shows in `/mcp list`
 
 **If verification fails**, see [Troubleshooting](#troubleshooting).
 
@@ -315,13 +315,13 @@ Each command will guide you through the workflow with quality checks and refinem
 
 ## CLI Reference
 
-RespecAI provides comprehensive CLI commands for managing your workflow setup.
+respec-ai provides comprehensive CLI commands for managing your workflow setup.
 
 ### Core Commands
 
 #### `respec-ai init`
 
-Initialize RespecAI in the current project.
+Initialize respec-ai in the current project.
 
 **Usage:**
 ```bash
@@ -353,7 +353,7 @@ respec-ai init -p linear -f
 
 #### `respec-ai rebuild`
 
-Rebuild project configuration and templates (useful after RespecAI updates).
+Rebuild project configuration and templates (useful after respec-ai updates).
 
 **Usage:**
 ```bash
@@ -384,7 +384,7 @@ Regenerated 5 commands and 12 agents
 ```
 
 **When to use:**
-- After updating RespecAI package
+- After updating respec-ai package
 - When templates are out of sync with package version
 - To refresh MCP server registration
 
@@ -437,7 +437,7 @@ Project Path         /path/to/project
 Platform             markdown
 Config Version       0.6.3
 Package Version      0.6.3
-MCP Server           RespecAI (✓ Registered)
+MCP Server           respec-ai (✓ Registered)
 
 Generated Files
 Category            Count
@@ -463,7 +463,7 @@ respec-ai validate
 - Version current (config matches package version)
 - Commands directory (expected 5 files)
 - Agents directory (expected 12 files)
-- MCP registered (RespecAI server in Claude Code)
+- MCP registered (respec-ai server in Claude Code)
 
 **Output (all passing):**
 ```text
@@ -481,7 +481,7 @@ Platform Valid       ✓ Platform: markdown
 Version Current      ✓ Version: 0.6.3
 Commands Directory   ✓ 5 commands found
 Agents Directory     ✓ 12 agents found
-MCP Registered       ✓ RespecAI server registered
+MCP Registered       ✓ respec-ai server registered
 ```
 
 ---
@@ -519,7 +519,7 @@ Regenerated 5 commands and 12 agents
 
 #### `respec-ai register-mcp`
 
-Manually register the RespecAI MCP server in Claude Code.
+Manually register the respec-ai MCP server in Claude Code.
 
 **Usage:**
 ```bash
@@ -544,7 +544,7 @@ respec-ai register-mcp --restore-backup
 
 **Output:**
 ```text
-RespecAI MCP server registered successfully
+respec-ai MCP server registered successfully
 Package path: /path/to/installed/respec-ai
 Restart Claude Code to activate the MCP server
 ```
@@ -563,7 +563,7 @@ Restart Claude Code to activate the MCP server
 
 ### Docker Commands
 
-Manage the RespecAI Docker container (MCP server runs in Docker).
+Manage the respec-ai Docker container (MCP server runs in Docker).
 
 #### `respec-ai docker status`
 
@@ -576,7 +576,7 @@ respec-ai docker status
 
 **Output:**
 ```text
-RespecAI MCP Server Status
+respec-ai MCP Server Status
 
 Container Status
 Name                 Running    Image                  Created
@@ -671,7 +671,7 @@ respec-ai docker logs --lines 200
 
 #### `respec-ai docker pull`
 
-Pull the latest RespecAI Docker image.
+Pull the latest respec-ai Docker image.
 
 **Usage:**
 ```bash
@@ -687,7 +687,7 @@ respec-ai docker pull
 
 #### `respec-ai docker build`
 
-Build RespecAI Docker image locally (for development).
+Build respec-ai Docker image locally (for development).
 
 **Usage:**
 ```bash
@@ -745,7 +745,7 @@ respec-ai docker cleanup [--dangling]
 
 **Examples:**
 ```bash
-# Remove old RespecAI versions (keeps current version)
+# Remove old respec-ai versions (keeps current version)
 respec-ai docker cleanup
 
 # Remove ALL dangling Docker images (WARNING: affects all Docker projects)
@@ -768,7 +768,7 @@ Continue? [y/N]: y
 ✓ Cleaned up 5 dangling images (reclaimed 1.2 GB)
 ```
 
-**Note:** `--dangling` flag removes untagged images from ALL Docker projects, not just RespecAI. Use with caution.
+**Note:** `--dangling` flag removes untagged images from ALL Docker projects, not just respec-ai. Use with caution.
 
 ---
 
@@ -776,7 +776,7 @@ Continue? [y/N]: y
 
 #### `respec-ai mcp-server`
 
-Start RespecAI MCP server directly (used internally by Claude Code).
+Start respec-ai MCP server directly (used internally by Claude Code).
 
 **Usage:**
 ```bash
@@ -794,7 +794,7 @@ respec-ai mcp-server
 
 #### `respec-ai --version`
 
-Show RespecAI package version.
+Show respec-ai package version.
 
 **Usage:**
 ```bash
@@ -837,7 +837,7 @@ respec-ai docker --help
 
 ## Available Workflows
 
-RespecAI provides four main workflow commands that work together to guide you from strategic planning to implementation.
+respec-ai provides four main workflow commands that work together to guide you from strategic planning to implementation.
 
 ### Understanding Commands and Agents
 
@@ -1075,7 +1075,7 @@ Implementation complete!
 
 ## Quality & Refinement Loops
 
-RespecAI uses two types of quality loops to ensure high-quality outputs:
+respec-ai uses two types of quality loops to ensure high-quality outputs:
 
 ### 1. Human-in-the-Loop with Quality Validation
 
@@ -1160,7 +1160,7 @@ Quality scores determine progression:
 
 ### Choosing Your Platform
 
-RespecAI supports three platforms with different capabilities:
+respec-ai supports three platforms with different capabilities:
 
 #### Linear Platform
 
@@ -1282,9 +1282,9 @@ The command will:
 
 ---
 
-### Upgrading RespecAI
+### Upgrading respec-ai
 
-When a new version of RespecAI is released:
+When a new version of respec-ai is released:
 
 ```bash
 # Update the package (uv tool)
@@ -1308,7 +1308,7 @@ This preserves your platform choice while updating templates to the latest versi
 
 ### Current Implementation
 
-RespecAI supports running multiple projects with explicit project context. Each project maintains its own:
+respec-ai supports running multiple projects with explicit project context. Each project maintains its own:
 
 - ✅ Platform configuration (`.respec-ai/config.json`)
 - ✅ Command templates (`.claude/commands/*.md`)
@@ -1318,7 +1318,7 @@ RespecAI supports running multiple projects with explicit project context. Each 
 
 **What This Means:**
 - All 29+ MCP tools accept explicit `project_path` parameter
-- Multiple projects can use the same RespecAI MCP server
+- Multiple projects can use the same respec-ai MCP server
 - Each project's workflows operate independently when project_path is specified
 - No cross-project interference at the tool level
 
@@ -1357,13 +1357,13 @@ RespecAI supports running multiple projects with explicit project context. Each 
 
 ## Troubleshooting
 
-### RespecAI MCP Server Not Available
+### respec-ai MCP Server Not Available
 
-**Problem:** RespecAI doesn't appear in `/mcp list` output
+**Problem:** respec-ai doesn't appear in `/mcp list` output
 
 **Solution:**
 
-1. **Verify RespecAI package is installed**
+1. **Verify respec-ai package is installed**
    ```bash
    respec-ai --version
    ```
@@ -1395,10 +1395,10 @@ RespecAI supports running multiple projects with explicit project context. Each 
 
 4. **Verify registration**
    ```bash
-   cat ~/.claude/config.json | grep -A 10 RespecAI
+   cat ~/.claude/config.json | grep -A 10 respec-ai
    ```
 
-   Should show RespecAI server configuration.
+   Should show respec-ai server configuration.
 
 5. **Restart Claude Code**
    ```bash
@@ -1420,7 +1420,7 @@ RespecAI supports running multiple projects with explicit project context. Each 
 
 **Symptoms:**
 - `respec-ai docker status` shows container not running
-- `/mcp list` doesn't show RespecAI
+- `/mcp list` doesn't show respec-ai
 - Error messages about Docker connectivity
 
 **Solution:**
@@ -1467,7 +1467,7 @@ RespecAI supports running multiple projects with explicit project context. Each 
 
 ### Commands Not Found
 
-**Problem:** RespecAI commands don't appear or autocomplete
+**Problem:** respec-ai commands don't appear or autocomplete
 
 **Symptoms:**
 - Typing `/respec-` doesn't autocomplete
@@ -1500,12 +1500,12 @@ RespecAI supports running multiple projects with explicit project context. Each 
    # Then restart Claude Code
    ```
 
-4. **Verify RespecAI MCP server is available**
+4. **Verify respec-ai MCP server is available**
    ```text
-   /mcp list  # Should show "RespecAI"
+   /mcp list  # Should show "respec-ai"
    ```
 
-   If RespecAI MCP server is missing, see [RespecAI MCP Server Not Available](#respecai-mcp-server-not-available).
+   If respec-ai MCP server is missing, see [respec-ai MCP Server Not Available](#respec-ai-mcp-server-not-available).
 
 5. **Check for file permissions issues**
    ```bash
@@ -1640,10 +1640,10 @@ RespecAI supports running multiple projects with explicit project context. Each 
 
 ### MCP Permissions Not Set
 
-**Problem:** RespecAI tools require permission approval every time
+**Problem:** respec-ai tools require permission approval every time
 
 **Symptoms:**
-- Claude Code asks for permission to use RespecAI tools repeatedly
+- Claude Code asks for permission to use respec-ai tools repeatedly
 - Tools work but require manual approval each time
 
 **Solution:**
@@ -1712,7 +1712,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
    curl -LsSf https://astral.sh/uv/install.sh | sh
    uv --version
 
-   # Install RespecAI
+   # Install respec-ai
    uv tool install respec-ai
    ```
 
@@ -1815,7 +1815,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 **Don't:**
 - Skip validation after setup
 - Ignore validation warnings
-- Mix different RespecAI versions across projects
+- Mix different respec-ai versions across projects
 
 ### Platform Selection
 
@@ -1879,7 +1879,7 @@ For complex projects:
 
 ### Overview
 
-For developers who want to contribute to RespecAI or test changes locally before deploying.
+For developers who want to contribute to respec-ai or test changes locally before deploying.
 
 This section covers:
 - Setting up the local development environment
@@ -1924,7 +1924,7 @@ cd ~/myproject
 ```
 
 **What the script does:**
-- ✅ Configures Claude Code to use your local RespecAI repository
+- ✅ Configures Claude Code to use your local respec-ai repository
 - ✅ Sets up MCP server with `uv run python -m src.mcp`
 - ✅ Uses in-memory state manager (default - clean slate on restart)
 - ✅ Generates workflow files in your project
@@ -2237,7 +2237,7 @@ This registers the installed package version instead of local development versio
 
 ### Common Questions
 
-**Q: Can I use RespecAI without an external platform?**
+**Q: Can I use respec-ai without an external platform?**
 A: Yes, use the Markdown platform for local file-based workflows.
 
 **Q: Can I switch platforms after setup?**
@@ -2249,7 +2249,7 @@ A: Yes, agents work together in refinement loops. Removing agents may break work
 **Q: Can I customize the templates?**
 A: Templates are regenerated on init/rebuild. Customization requires modifying source code.
 
-**Q: How do I update RespecAI?**
+**Q: How do I update respec-ai?**
 A: Run `uv tool upgrade respec-ai` or `brew upgrade respec-ai`, then `respec-ai rebuild` in your projects.
 
 **Q: Does the MCP server require Docker?**
@@ -2257,9 +2257,9 @@ A: Yes, the production MCP server runs in Docker. For local development, you can
 
 ---
 
-## What is RespecAI?
+## What is respec-ai?
 
-RespecAI is a **meta MCP server** that generates platform-specific workflow tools for AI-driven specification-based development.
+respec-ai is a **meta MCP server** that generates platform-specific workflow tools for AI-driven specification-based development.
 
 ### Key Benefits
 
@@ -2271,7 +2271,7 @@ RespecAI is a **meta MCP server** that generates platform-specific workflow tool
 
 ### Current Status
 
-**Production Ready** - RespecAI is stable for real-world usage:
+**Production Ready** - respec-ai is stable for real-world usage:
 - ✅ MCP server fully functional
 - ✅ Multi-project architecture implemented
 - ✅ All 29+ tools operational

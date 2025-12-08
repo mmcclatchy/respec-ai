@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build script for RespecAI - Builds both CLI package and Docker image
+# Build script for respec-ai - Builds both CLI package and Docker image
 
 # Colors for output
 RED='\033[0;31m'
@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 # Get version from pyproject.toml (single source of truth)
 VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
-echo -e "${GREEN}Building RespecAI v${VERSION}${NC}"
+echo -e "${GREEN}Building respec-ai v${VERSION}${NC}"
 echo ""
 
 # Step 1: Sync version to server package

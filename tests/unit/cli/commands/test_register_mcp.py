@@ -1,6 +1,7 @@
 from argparse import Namespace
 
 from pytest_mock import MockerFixture
+
 from src.cli.commands import register_mcp
 from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.docker.manager import DockerManagerError
@@ -42,7 +43,7 @@ class TestRegisterMcpCommand:
     def test_already_registered_without_force(self, mocker: MockerFixture) -> None:
         mocker.patch(
             'src.cli.commands.register_mcp.load_claude_config',
-            return_value={'mcpServers': {'RespecAI': {'command': 'docker'}}},
+            return_value={'mcpServers': {'respec-ai': {'command': 'docker'}}},
         )
         mocker.patch(
             'src.cli.commands.register_mcp.get_mcp_server_config',

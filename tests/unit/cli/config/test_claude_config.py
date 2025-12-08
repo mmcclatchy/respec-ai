@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 from pytest_mock import MockerFixture
+
 from src.cli.config.claude_config import (
     MCP_SERVER_NAME,
     ClaudeConfigError,
@@ -20,7 +21,7 @@ from src.cli.config.claude_config import (
 class TestLoadClaudeConfig:
     def test_load_existing_config(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
-        config_data = {'mcpServers': {'RespecAI': {'command': 'uv'}}}
+        config_data = {'mcpServers': {'respec-ai': {'command': 'uv'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
         result = load_claude_config(config_file)
@@ -47,7 +48,7 @@ class TestLoadClaudeConfig:
 class TestSaveClaudeConfig:
     def test_save_valid_config(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
-        config_data = {'mcpServers': {'RespecAI': {'command': 'uv'}}}
+        config_data = {'mcpServers': {'respec-ai': {'command': 'uv'}}}
 
         save_claude_config(config_data, config_file, create_backup=False)
 
@@ -59,7 +60,7 @@ class TestSaveClaudeConfig:
         original_data: dict[str, Any] = {'mcpServers': {}}
         config_file.write_text(json.dumps(original_data), encoding='utf-8')
 
-        new_data = {'mcpServers': {'RespecAI': {'command': 'uv'}}}
+        new_data = {'mcpServers': {'respec-ai': {'command': 'uv'}}}
         save_claude_config(new_data, config_file, create_backup=True)
 
         backup_file = config_file.with_suffix('.json.backup')

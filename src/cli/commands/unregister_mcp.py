@@ -1,10 +1,10 @@
 from argparse import ArgumentParser, Namespace
 
 from src.cli.config.claude_config import (
+    MCP_SERVER_NAME,
     ClaudeConfigError,
     unregister_all_respec_servers,
     unregister_mcp_server,
-    MCP_SERVER_NAME,
 )
 from src.cli.ui.console import console
 
@@ -13,7 +13,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         '--all',
         action='store_true',
-        help='Remove all respec-ai MCP server entries (respec-ai, RespecAI, respec_ai)',
+        help='Remove all respec-ai MCP server entries (respec-ai, respec-ai, respec_ai)',
     )
 
 

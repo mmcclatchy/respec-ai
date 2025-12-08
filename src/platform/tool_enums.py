@@ -1,4 +1,4 @@
-"""Tool enums defining all valid tools across external platforms, built-in Claude Code tools, and RespecAI MCP tools."""
+"""Tool enums defining all valid tools across external platforms, built-in Claude Code tools, and respec-ai MCP tools."""
 
 from enum import Enum
 

@@ -309,7 +309,7 @@ claude
 
 # Check MCP server appears
 /mcp list
-# Should show "RespecAI" with 29+ tools
+# Should show "respec-ai" with 29+ tools
 ```
 
 ### 5. End-to-End Workflow Test

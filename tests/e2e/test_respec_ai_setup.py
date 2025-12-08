@@ -2,7 +2,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 from src.cli.config.package_info import get_package_version
 
 

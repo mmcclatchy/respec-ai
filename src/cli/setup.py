@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for setting up RespecAI in projects.
+"""CLI for setting up respec-ai in projects.
 
 This CLI is called by install-respec-ai.sh to generate platform-specific
 workflow files directly, eliminating the need for the /init-respec-ai command.
@@ -45,7 +45,7 @@ from src.utils.setting_configs import loop_config
 
 
 def setup_project(project_path: str, platform: Literal['linear', 'github', 'markdown'], project_name: str) -> int:
-    """Set up RespecAI workflow files for a project.
+    """Set up respec-ai workflow files for a project.
 
     Args:
         project_path: Absolute path to project directory
@@ -102,7 +102,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         files_written.append(str(config_path.relative_to(project)))
 
-        print('✅ RespecAI setup complete!')
+        print('✅ respec-ai setup complete!')
         print(f'\nPlatform: {platform}')
         print(f'Files Created: {len(files_written)}')
         print(f'Location: {project}')
@@ -113,7 +113,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         print('  • /respec-build - Execute implementation workflows')
         print('  • /respec-roadmap - Create phased roadmaps')
         print('  • /respec-plan-conversation - Convert conversations into plans')
-        print('\n🚀 Ready to begin! Restart Claude Code to use the RespecAI commands.')
+        print('\n🚀 Ready to begin! Restart Claude Code to use the respec-ai commands.')
 
         return 0
 
@@ -170,7 +170,7 @@ def main() -> int:
     print("    Use 'respec-ai init' instead.", file=sys.stderr)
     print('    This command will be removed in v0.3.0\n', file=sys.stderr)
 
-    parser = argparse.ArgumentParser(description='Set up RespecAI workflow files for a project')
+    parser = argparse.ArgumentParser(description='Set up respec-ai workflow files for a project')
     parser.add_argument('--project-path', required=True, help='Absolute path to project directory')
     parser.add_argument('--project-name', required=True, help='Name for this project')
     parser.add_argument(

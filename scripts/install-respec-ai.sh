@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# RespecAI Installation Script
-# Generates RespecAI workflow files in the current directory using respec-ai init
+# respec-ai Installation Script
+# Generates respec-ai workflow files in the current directory using respec-ai init
 
 # Color codes for output
 RED='\033[0;31m'
@@ -36,9 +36,9 @@ detect_execution_mode() {
 # Show usage information
 show_usage() {
     echo ""
-    echo "RespecAI Installation Script"
+    echo "respec-ai Installation Script"
     echo ""
-    echo "Installs RespecAI workflow files to the current directory."
+    echo "Installs respec-ai workflow files to the current directory."
     echo ""
     echo "Usage:"
     echo "  Local install:   cd ~/myproject && ~/path/to/respec-ai/scripts/install-respec-ai.sh -n myproject -p linear"
@@ -48,7 +48,7 @@ show_usage() {
     echo "Arguments:"
     echo "  -n, --project-name   Name for this project (required)"
     echo "  -p, --platform       Platform choice: linear, github, or markdown (required)"
-    echo "  --respec-path       Path to RespecAI installation (required for remote install only)"
+    echo "  --respec-path       Path to respec-ai installation (required for remote install only)"
     echo ""
     echo "Examples:"
     echo "  cd ~/myproject"
@@ -123,12 +123,12 @@ TARGET_DIR="$(pwd)"
 # Detect execution mode
 EXECUTION_MODE=$(detect_execution_mode)
 
-# Determine RespecAI installation path
+# Determine respec-ai installation path
 if [ "$EXECUTION_MODE" = "local" ]; then
     # Local execution: calculate path from script location
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     RESPEC_AI_PATH="$(dirname "$SCRIPT_DIR")"
-    print_info "Detected local RespecAI installation: $RESPEC_AI_PATH"
+    print_info "Detected local respec-ai installation: $RESPEC_AI_PATH"
 else
     # Remote execution: require --respec-path
     if [ -z "$RESPEC_AI_PATH" ]; then
@@ -138,20 +138,20 @@ else
         echo "  curl -fsSL https://raw.githubusercontent.com/mmcclatchy/respec-ai/main/scripts/install-respec-ai.sh | bash -s -- --platform linear --respec-path ~/coding/projects/respec-ai"
         echo ""
         echo "Make sure you have:"
-        echo "  1. Cloned the RespecAI repository"
-        echo "  2. Registered the RespecAI MCP server with Claude Code"
+        echo "  1. Cloned the respec-ai repository"
+        echo "  2. Registered the respec-ai MCP server with Claude Code"
         exit 1
     fi
 fi
 
-# Validate RespecAI installation
+# Validate respec-ai installation
 if [ ! -d "$RESPEC_AI_PATH" ]; then
-    print_error "RespecAI directory does not exist: $RESPEC_AI_PATH"
+    print_error "respec-ai directory does not exist: $RESPEC_AI_PATH"
     exit 1
 fi
 
 if [ ! -f "$RESPEC_AI_PATH/pyproject.toml" ]; then
-    print_error "Invalid RespecAI installation (missing pyproject.toml): $RESPEC_AI_PATH"
+    print_error "Invalid respec-ai installation (missing pyproject.toml): $RESPEC_AI_PATH"
     exit 1
 fi
 
@@ -165,9 +165,9 @@ fi
 # Convert to absolute path
 TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
 
-print_info "RespecAI Installation"
+print_info "respec-ai Installation"
 print_info "Execution mode: $EXECUTION_MODE"
-print_info "RespecAI path: $RESPEC_AI_PATH"
+print_info "respec-ai path: $RESPEC_AI_PATH"
 print_info "Target directory: $TARGET_DIR"
 print_info "Project name: $PROJECT_NAME"
 print_info "Platform: $PLATFORM"
@@ -224,7 +224,7 @@ fi
 echo ""
 
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
-print_info "Generating RespecAI workflow files..."
+print_info "Generating respec-ai workflow files..."
 if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration --force; then
     echo ""
 
@@ -277,7 +277,7 @@ if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_
         echo "Next steps:"
         echo "  1. Restart Claude Code to load the new commands"
         echo "  2. Verify MCP server: /mcp list"
-        echo "  3. Start using RespecAI workflows:"
+        echo "  3. Start using respec-ai workflows:"
         echo "     • /respec-plan - Create strategic plans"
         echo "     • /respec-roadmap - Create phased roadmaps"
         echo "     • /respec-spec - Generate technical specifications"
@@ -301,7 +301,7 @@ else
     echo ""
     echo "Troubleshooting:"
     echo "  1. Verify uv is installed: uv --version"
-    echo "  2. Verify RespecAI dependencies: cd $RESPEC_AI_PATH && uv sync"
+    echo "  2. Verify respec-ai dependencies: cd $RESPEC_AI_PATH && uv sync"
     echo "  3. Check Python is available: python3 --version"
     echo ""
     exit 1
