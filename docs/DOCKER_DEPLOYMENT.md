@@ -332,4 +332,5 @@ respec-ai docker restart
 
 - [Main README](../README.md) - Installation paths
 - [Scripts README](../scripts/README.md) - Dev scripts documentation
-- [User Guide](USER_GUIDE.md) - End user documentation
+- [CLI Guide](CLI_GUIDE.md) - Installation, setup, CLI reference, configuration
+- [Workflows Guide](WORKFLOWS.md) - Detailed workflow documentation and best practices
