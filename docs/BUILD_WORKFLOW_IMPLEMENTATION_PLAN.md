@@ -252,12 +252,13 @@ Each research-synthesizer returns a file path:
 
 #### Step 4.4: MCP Loop Decision
 - **Actor**: MCP Server
-- **Action**: Call `mcp__respec-ai__decide_loop_next_action(planning_loop_id, current_score)`
-- **Implementation**: Already exists (no changes needed)
+- **Action**: Call `mcp__respec-ai__decide_loop_next_action(planning_loop_id)`
+- **Implementation**: MCP Server retrieves latest score from build-critic feedback internally
 - **Returns**: MCPResponse with status:
   - `refine` if score < 80%
   - `complete` if score ≥ 80%
   - `user_input` if stagnation detected (<5 points improvement over 2 iterations)
+- **Note**: No need to retrieve or pass score from command - MCP handles internally
 
 #### Step 4.5: Handle Refinement Decision
 - **Actor**: Main Agent
@@ -401,12 +402,13 @@ Score breakdown (suggested weighting):
 
 #### Step 5.4: MCP Loop Decision (Coding Phase)
 - **Actor**: MCP Server
-- **Action**: Call `mcp__respec-ai__decide_loop_next_action(coding_loop_id, current_score)`
-- **Implementation**: Already exists (no changes needed)
+- **Action**: Call `mcp__respec-ai__decide_loop_next_action(coding_loop_id)`
+- **Implementation**: MCP Server retrieves latest score from build-reviewer feedback internally
 - **Returns**: MCPResponse with status:
   - `refine` if score < 95%
   - `complete` if score ≥ 95%
   - `user_input` if stagnation detected (<5 points improvement over 2 iterations)
+- **Note**: No need to retrieve or pass score from command - MCP handles internally
 
 #### Step 5.5: Handle Refinement Decision
 - **Actor**: Main Agent
@@ -820,7 +822,8 @@ Main Agent collects paths into list.
 2. build_planner agent executes autonomously (retrieve → process → store → exit)
 3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., spec_name=...)
 4. build_critic agent executes autonomously (retrieve → process → store → exit)
-5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(planning_loop_id, current_score)
+5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(planning_loop_id)
+   Note: MCP retrieves latest score from build-critic feedback internally
 6. Main Agent receives MCPResponse with decision and acts:
    - If status="refine": Go to step 1 (repeat loop)
    - If status="complete": Exit planning loop, proceed to coding loop
@@ -835,7 +838,8 @@ Main Agent collects paths into list.
 2. build_coder agent executes autonomously (retrieve → process → store → exit)
 3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
 4. build_reviewer agent executes autonomously (retrieve → process → store → exit)
-5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(coding_loop_id, current_score)
+5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(coding_loop_id)
+   Note: MCP retrieves latest score from build-reviewer feedback internally
 6. Main Agent receives MCPResponse with decision and acts:
    - If status="refine": Go to step 1 (repeat loop)
    - If status="complete": Exit coding loop, proceed to integration phase

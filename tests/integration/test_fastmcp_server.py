@@ -3,6 +3,8 @@ from fastmcp import FastMCP
 
 from src.mcp.server import create_mcp_server, health_check
 from src.mcp.tools.loop_tools import loop_tools
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
 from src.utils.enums import HealthState, LoopStatus
 from src.utils.loop_state import HealthStatus
 from src.utils.setting_configs import mcp_settings
@@ -76,13 +78,29 @@ class TestFastMCPServerIntegration:
         # Test calling tool with invalid loop_id directly through the tool function
         # This avoids using private FastMCP methods
         with pytest.raises(Exception):  # Should raise LoopNotFoundError
-            await loop_tools.decide_loop_next_action('nonexistent-id', 80)
+            await loop_tools.decide_loop_next_action('nonexistent-id')
 
     @pytest.mark.asyncio
     async def test_tool_parameter_validation_through_fastmcp(self, project_name: str) -> None:
         # Test with valid parameters using new API
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
-        result = await loop_tools.decide_loop_next_action(init_result.id, 90)
+
+        # Add feedback with high score
+        state_manager = loop_tools.state
+        loop_state = await state_manager.get_loop(init_result.id)
+        feedback = CriticFeedback(
+            loop_id=init_result.id,
+            critic_agent=CriticAgent.PLAN_CRITIC,
+            iteration=1,
+            overall_score=90,
+            assessment_summary='High quality plan',
+            detailed_feedback='Plan meets all standards',
+            key_issues=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
+
+        result = await loop_tools.decide_loop_next_action(init_result.id)
 
         assert result.status == LoopStatus.COMPLETED
 

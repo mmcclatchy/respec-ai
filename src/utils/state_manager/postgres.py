@@ -168,8 +168,18 @@ class PostgresStateManager(StateManager):
         loop_state = await self.get_loop(loop_id)
         return loop_state.mcp_response
 
-    async def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
+    async def decide_loop_next_action(self, loop_id: str) -> MCPResponse:
         loop_state = await self.get_loop(loop_id)
+
+        # Retrieve latest score from stored critic feedback
+        if not loop_state.feedback_history:
+            raise ValueError(
+                f'No feedback available for loop {loop_id} - cannot make decision without quality assessment'
+            )
+
+        latest_feedback = loop_state.feedback_history[-1]
+        current_score = latest_feedback.overall_score
+
         loop_state.add_score(current_score)
         response = loop_state.decide_next_loop_action()
 

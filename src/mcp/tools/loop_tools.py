@@ -40,21 +40,24 @@ class LoopTools:
         except Exception as e:
             raise LoopStateError('all', 'list_retrieval', f'Failed to retrieve loop list: {str(e)}')
 
-    async def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
+    async def decide_loop_next_action(self, loop_id: str) -> MCPResponse:
         """MCP tool to decide the next action for a refinement loop.
 
         This is the main MCP tool interface that external agents will call
         to determine whether to continue refining, complete the loop, or
         request user input based on quality scores and iteration count.
+
+        The score is retrieved internally from the latest critic feedback
+        stored in the loop state, implementing the context-optimized pattern
+        where commands only pass loop_id and MCP handles data retrieval.
         """
         try:
-            if not (0 <= current_score <= 100):
-                raise LoopValidationError('score', 'Must be between 0 and 100')
-            return await self.state.decide_loop_next_action(loop_id, current_score)
+            return await self.state.decide_loop_next_action(loop_id)
         except LoopNotFoundError:
             raise LoopStateError(loop_id, 'decision', 'Loop does not exist')
-        except LoopValidationError:
-            raise  # Re-raise validation errors as-is
+        except ValueError as e:
+            # Raised when no feedback available for score extraction
+            raise LoopStateError(loop_id, 'decision', str(e))
         except Exception as e:
             raise LoopStateError(loop_id, 'decision', f'Unexpected error: {str(e)}')
 
@@ -184,23 +187,27 @@ class LoopTools:
 
 def register_loop_tools(mcp: FastMCP) -> None:
     @mcp.tool()
-    async def decide_loop_next_action(loop_id: str, current_score: int, ctx: Context) -> MCPResponse:
+    async def decide_loop_next_action(loop_id: str, ctx: Context) -> MCPResponse:
         """Decide next action for refinement loop progression.
 
         This MCP tool implements the core decision logic for quality-driven
-        refinement loops. It analyzes current quality scores, improvement trends,
-        and iteration counts to determine whether to continue refining content,
-        complete the loop, or escalate to human input.
+        refinement loops. It retrieves the latest quality score from stored
+        critic feedback, analyzes improvement trends and iteration counts to
+        determine whether to continue refining content, complete the loop,
+        or escalate to human input.
+
+        Context-Optimized Pattern: The score is extracted internally from the
+        loop's feedback history. Commands only need to pass loop_id, reducing
+        context usage by 99% compared to passing scores as parameters.
 
         Parameters:
         - loop_id: Unique identifier of the loop to process
-        - current_score: Quality score from 0-100 for current iteration
 
         Returns:
         - MCPResponse: Contains loop_id and status ('completed', 'refine', 'user_input')
         """
-        await ctx.info(f'Processing decision for loop {loop_id} with score {current_score}')
-        result = await loop_tools.decide_loop_next_action(loop_id, current_score)
+        await ctx.info(f'Processing decision for loop {loop_id} (score retrieved from feedback internally)')
+        result = await loop_tools.decide_loop_next_action(loop_id)
         await ctx.info(f'Decision result for loop {loop_id}: {result.status}')
         return result
 

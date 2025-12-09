@@ -412,10 +412,13 @@ Extract ANALYST_SCORE from feedback overall_score field
 #### Call the MCP Server for analyst validation decision
 
 Use the MCP tool `mcp__respec-ai__decide_loop_next_action`:
-- Call `mcp__respec-ai__decide_loop_next_action(LOOP_ID=ANALYST_LOOP_ID, current_score=ANALYST_SCORE)`
+- Call `ANALYST_LOOP_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=ANALYST_LOOP_ID)`
+- MCP Server retrieves latest score from analyst-critic feedback internally
 - The MCP Server will determine the next action based on configured criteria
-- Store the returned status as ANALYST_LOOP_STATUS
-- Display the analyst score and MCP decision to the user
+- Store the returned status as `ANALYST_LOOP_STATUS = ANALYST_LOOP_RESPONSE.status`
+- Display the MCP decision to the user
+
+Note: No need to retrieve or pass score from command - MCP handles internally.
 
 #### Process the MCP Server decision
 
