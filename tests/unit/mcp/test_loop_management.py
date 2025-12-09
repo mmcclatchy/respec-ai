@@ -1,5 +1,7 @@
 import pytest
 from src.mcp.tools.loop_tools import loop_tools
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus
 from src.utils.errors import LoopStateError, LoopValidationError
 from src.utils.loop_state import MCPResponse
@@ -77,8 +79,23 @@ class TestLoopManagement:
         init_result = await loop_tools.initialize_refinement_loop(project_path, 'build_code')
         loop_id = init_result.id
 
+        # Add feedback with high score
+        state_manager = loop_tools.state
+        loop_state = await state_manager.get_loop(loop_id)
+        feedback = CriticFeedback(
+            loop_id=loop_id,
+            critic_agent=CriticAgent.BUILD_REVIEWER,
+            iteration=1,
+            overall_score=95,
+            assessment_summary='High quality code',
+            detailed_feedback='Code meets all standards',
+            key_issues=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
+
         # Test decision with high score (should complete)
-        decision_result = await loop_tools.decide_loop_next_action(loop_id, 95)
+        decision_result = await loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(decision_result, MCPResponse)
         assert decision_result.id == loop_id

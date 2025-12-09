@@ -10,10 +10,6 @@ from src.cli.docker.manager import DockerManagerError
 class TestRegisterMcpCommand:
     def test_new_registration_success(self, mocker: MockerFixture) -> None:
         mocker.patch(
-            'src.cli.commands.register_mcp.load_claude_config',
-            return_value={'mcpServers': {}},
-        )
-        mocker.patch(
             'src.cli.commands.register_mcp.get_mcp_server_config',
             return_value=None,
         )
@@ -41,10 +37,6 @@ class TestRegisterMcpCommand:
         mock_docker_manager.ensure_running.assert_not_called()
 
     def test_already_registered_without_force(self, mocker: MockerFixture) -> None:
-        mocker.patch(
-            'src.cli.commands.register_mcp.load_claude_config',
-            return_value={'mcpServers': {'respec-ai': {'command': 'docker'}}},
-        )
         mocker.patch(
             'src.cli.commands.register_mcp.get_mcp_server_config',
             return_value={'command': 'docker'},
@@ -116,10 +108,6 @@ class TestRegisterMcpCommand:
         assert result == 1
 
     def test_container_not_running_starts_successfully(self, mocker: MockerFixture) -> None:
-        mocker.patch(
-            'src.cli.commands.register_mcp.load_claude_config',
-            return_value={'mcpServers': {}},
-        )
         mocker.patch(
             'src.cli.commands.register_mcp.get_mcp_server_config',
             return_value=None,

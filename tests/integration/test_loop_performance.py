@@ -2,6 +2,8 @@ import time
 
 import pytest
 from src.mcp.tools.loop_tools import loop_tools
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus
 from src.utils.loop_state import MCPResponse
 
@@ -9,6 +11,23 @@ from src.utils.loop_state import MCPResponse
 @pytest.fixture
 def project_name() -> str:
     return 'test-project'
+
+
+async def add_feedback_and_decide(loop_id: str, score: int, iteration: int, agent: CriticAgent) -> MCPResponse:
+    state_manager = loop_tools.state
+    loop_state = await state_manager.get_loop(loop_id)
+    feedback = CriticFeedback(
+        loop_id=loop_id,
+        critic_agent=agent,
+        iteration=iteration,
+        overall_score=score,
+        assessment_summary=f'Assessment {iteration}',
+        detailed_feedback=f'Details for iteration {iteration}',
+        key_issues=[],
+        recommendations=[],
+    )
+    loop_state.add_feedback(feedback)
+    return await loop_tools.decide_loop_next_action(loop_id)
 
 
 class TestLoopPerformance:
@@ -21,7 +40,7 @@ class TestLoopPerformance:
         # Simulate 50 iterations with varying scores
         for i in range(50):
             score = 60 + (i % 10)  # Scores between 60-69 to avoid completion
-            result = await loop_tools.decide_loop_next_action(loop_id, score)
+            result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.PLAN_CRITIC)
             assert isinstance(result, MCPResponse)
 
         end_time = time.perf_counter()
@@ -63,7 +82,7 @@ class TestLoopPerformance:
         # Run 100 score decisions on same loop
         for i in range(100):
             score = 70 + (i % 5)  # Scores 70-74 to stay below threshold
-            result = await loop_tools.decide_loop_next_action(loop_id, score)
+            result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.SPEC_CRITIC)
             assert result.status in [LoopStatus.REFINE, LoopStatus.USER_INPUT]
 
         # Verify memory doesn't grow unbounded
@@ -90,7 +109,7 @@ class TestLoopPerformance:
         for iteration in range(5):
             for i, loop in enumerate(loops):
                 score = 60 + (iteration * 2) + (i % 3)
-                result = await loop_tools.decide_loop_next_action(loop.id, score)
+                result = await add_feedback_and_decide(loop.id, score, iteration + 1, CriticAgent.PLAN_CRITIC)
                 assert isinstance(result, MCPResponse)
 
         end_time = time.perf_counter()
@@ -107,9 +126,11 @@ class TestLoopPerformance:
 
         # Create stagnation pattern repeatedly
         stagnation_scores = [70, 71, 70, 71, 70]
+        iteration = 1
         for _ in range(10):
             for score in stagnation_scores:
-                result = await loop_tools.decide_loop_next_action(loop_id, score)
+                result = await add_feedback_and_decide(loop_id, score, iteration, CriticAgent.BUILD_CRITIC)
+                iteration += 1
                 if result.status == LoopStatus.USER_INPUT:
                     break
 
@@ -127,7 +148,7 @@ class TestLoopPerformance:
         for i in range(200):
             score = 70 + (i % 10)  # Vary scores to avoid early completion
             try:
-                result = await loop_tools.decide_loop_next_action(loop_id, score)
+                result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.SPEC_CRITIC)
                 # Break if loop completes or requests user input
                 if result.status in [LoopStatus.COMPLETED, LoopStatus.USER_INPUT]:
                     break
@@ -187,7 +208,7 @@ class TestLoopPerformance:
             start = time.perf_counter()
 
             # Perform standardized operation
-            result = await loop_tools.decide_loop_next_action(loop_id, 70 + (i % 5))
+            result = await add_feedback_and_decide(loop_id, 70 + (i % 5), i + 1, CriticAgent.PLAN_CRITIC)
             await loop_tools.get_loop_status(loop_id)
 
             end = time.perf_counter()

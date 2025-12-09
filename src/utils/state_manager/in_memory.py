@@ -107,10 +107,23 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_loop_status', 'EXIT')
         return response
 
-    async def decide_loop_next_action(self, loop_id: str, current_score: int) -> MCPResponse:
+    async def decide_loop_next_action(self, loop_id: str) -> MCPResponse:
         self._log_state_snapshot('decide_loop_next_action', 'ENTRY')
-        logger.info(f'decide_loop_next_action: loop_id={loop_id}, current_score={current_score}')
+        logger.info(f'decide_loop_next_action: loop_id={loop_id} (retrieving score from feedback internally)')
         loop_state = await self.get_loop(loop_id)
+
+        # Retrieve latest score from stored critic feedback
+        if not loop_state.feedback_history:
+            raise ValueError(
+                f'No feedback available for loop {loop_id} - cannot make decision without quality assessment'
+            )
+
+        latest_feedback = loop_state.feedback_history[-1]
+        current_score = latest_feedback.overall_score
+        logger.info(
+            f'decide_loop_next_action: extracted score {current_score} from latest feedback (iteration {latest_feedback.iteration})'
+        )
+
         loop_state.add_score(current_score)
         response = loop_state.decide_next_loop_action()
         logger.info(f'decide_loop_next_action: decision={response.status}, message={response.message[:100]}')

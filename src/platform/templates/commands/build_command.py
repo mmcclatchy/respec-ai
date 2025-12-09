@@ -219,15 +219,13 @@ Expected: CriticFeedback with Overall Score stored in MCP
 
 #### MCP Planning Decision
 ```text
-PLANNING_DECISION = mcp__respec-ai__decide_loop_next_action(
-    loop_id=PLANNING_LOOP_ID,
-    current_score=PLAN_QUALITY_SCORE
-)
+PLANNING_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=PLANNING_LOOP_ID)
+PLANNING_DECISION = PLANNING_DECISION_RESPONSE.status
 
-Returns:
-- "refine" if score < 80%
-- "complete" if score >= 80%
-- "user_input" if stagnation detected (<5 points improvement over 2 iterations)
+Note: MCP Server retrieves latest score from build-critic feedback internally.
+No need to retrieve or pass score from command.
+
+Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```
 
 ### 7. Planning Decision Handling
@@ -390,15 +388,13 @@ Expected: CriticFeedback with Overall Score and test results stored in MCP
 
 #### MCP Coding Decision
 ```text
-CODING_DECISION = mcp__respec-ai__decide_loop_next_action(
-    loop_id=CODING_LOOP_ID,
-    current_score=CODE_QUALITY_SCORE
-)
+CODING_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=CODING_LOOP_ID)
+CODING_DECISION = CODING_DECISION_RESPONSE.status
 
-Returns:
-- "refine" if score < 95%
-- "complete" if score >= 95%
-- "user_input" if stagnation detected (<5 points improvement over 2 iterations)
+Note: MCP Server retrieves latest score from build-reviewer feedback internally.
+No need to retrieve or pass score from command.
+
+Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```
 
 ### 9. Coding Decision Handling

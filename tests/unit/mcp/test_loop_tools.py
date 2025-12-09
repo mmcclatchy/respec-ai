@@ -3,7 +3,7 @@ from src.mcp.tools.loop_tools import LoopTools, loop_tools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus, LoopType
-from src.utils.errors import LoopStateError, LoopValidationError
+from src.utils.errors import LoopStateError
 from src.utils.loop_state import LoopState, MCPResponse
 from src.utils.state_manager import InMemoryStateManager
 
@@ -20,8 +20,23 @@ class TestLoopToolsMCP:
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'build_code')
         loop_id = init_result.id
 
+        # Add feedback with high score
+        state_manager = loop_tools.state
+        loop_state = await state_manager.get_loop(loop_id)
+        feedback = CriticFeedback(
+            loop_id=loop_id,
+            critic_agent=CriticAgent.BUILD_REVIEWER,
+            iteration=1,
+            overall_score=96,
+            assessment_summary='High quality code',
+            detailed_feedback='Code meets all standards',
+            key_issues=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
+
         # High score should complete
-        result = await loop_tools.decide_loop_next_action(loop_id, 96)
+        result = await loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.COMPLETED
@@ -32,8 +47,23 @@ class TestLoopToolsMCP:
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'spec')
         loop_id = init_result.id
 
+        # Add feedback with score below threshold
+        state_manager = loop_tools.state
+        loop_state = await state_manager.get_loop(loop_id)
+        feedback = CriticFeedback(
+            loop_id=loop_id,
+            critic_agent=CriticAgent.SPEC_CRITIC,
+            iteration=1,
+            overall_score=70,
+            assessment_summary='Needs improvement',
+            detailed_feedback='Specification requires refinement',
+            key_issues=['Missing details'],
+            recommendations=['Add more details'],
+        )
+        loop_state.add_feedback(feedback)
+
         # Score below threshold should refine
-        result = await loop_tools.decide_loop_next_action(loop_id, 70)
+        result = await loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.REFINE
@@ -44,13 +74,39 @@ class TestLoopToolsMCP:
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
         loop_id = init_result.id
 
+        state_manager = loop_tools.state
+        loop_state = await state_manager.get_loop(loop_id)
+
         # Add multiple low improvement scores to trigger stagnation
-        await loop_tools.decide_loop_next_action(loop_id, 60)
-        await loop_tools.decide_loop_next_action(loop_id, 61)
-        await loop_tools.decide_loop_next_action(loop_id, 62)
+        for i, score in enumerate([60, 61, 62], start=1):
+            feedback = CriticFeedback(
+                loop_id=loop_id,
+                critic_agent=CriticAgent.PLAN_CRITIC,
+                iteration=i,
+                overall_score=score,
+                assessment_summary=f'Assessment {i}',
+                detailed_feedback=f'Details for iteration {i}',
+                key_issues=[],
+                recommendations=[],
+            )
+            loop_state.add_feedback(feedback)
+            await loop_tools.decide_loop_next_action(loop_id)
+
+        # Add fourth score to trigger stagnation
+        feedback = CriticFeedback(
+            loop_id=loop_id,
+            critic_agent=CriticAgent.PLAN_CRITIC,
+            iteration=4,
+            overall_score=63,
+            assessment_summary='Assessment 4',
+            detailed_feedback='Details for iteration 4',
+            key_issues=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
 
         # Should detect stagnation and request user input
-        result = await loop_tools.decide_loop_next_action(loop_id, 63)
+        result = await loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.USER_INPUT
@@ -58,26 +114,19 @@ class TestLoopToolsMCP:
     @pytest.mark.asyncio
     async def test_decide_loop_next_action_invalid_loop_id(self) -> None:
         with pytest.raises(LoopStateError):
-            await loop_tools.decide_loop_next_action('nonexistent-loop-id', 80)
+            await loop_tools.decide_loop_next_action('nonexistent-loop-id')
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_score_validation(self, project_name: str) -> None:
+    async def test_decide_loop_next_action_no_feedback_error(self, project_name: str) -> None:
+        # Test that decide_loop_next_action requires feedback to be present
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
         loop_id = init_result.id
 
-        # Test valid score ranges
-        result = await loop_tools.decide_loop_next_action(loop_id, 0)
-        assert isinstance(result, MCPResponse)
+        # Should raise error when no feedback available
+        with pytest.raises(LoopStateError) as exc_info:
+            await loop_tools.decide_loop_next_action(loop_id)
 
-        result = await loop_tools.decide_loop_next_action(loop_id, 100)
-        assert isinstance(result, MCPResponse)
-
-        # Test invalid score ranges
-        with pytest.raises(LoopValidationError):
-            await loop_tools.decide_loop_next_action(loop_id, -1)
-
-        with pytest.raises(LoopValidationError):
-            await loop_tools.decide_loop_next_action(loop_id, 101)
+        assert 'No feedback available' in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_decide_loop_next_action_checkpoint_frequency(self, project_name: str) -> None:
@@ -85,9 +134,23 @@ class TestLoopToolsMCP:
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
         loop_id = init_result.id
 
+        state_manager = loop_tools.state
+        loop_state = await state_manager.get_loop(loop_id)
+
         # Add scores until we hit checkpoint frequency (5 for plan loops)
-        for score in [60, 61, 62, 63, 64]:
-            result = await loop_tools.decide_loop_next_action(loop_id, score)
+        for i, score in enumerate([60, 61, 62, 63, 64], start=1):
+            feedback = CriticFeedback(
+                loop_id=loop_id,
+                critic_agent=CriticAgent.PLAN_CRITIC,
+                iteration=i,
+                overall_score=score,
+                assessment_summary=f'Assessment {i}',
+                detailed_feedback=f'Details for iteration {i}',
+                key_issues=[],
+                recommendations=[],
+            )
+            loop_state.add_feedback(feedback)
+            result = await loop_tools.decide_loop_next_action(loop_id)
 
         # Should request user input at checkpoint frequency
         assert result.status == LoopStatus.USER_INPUT

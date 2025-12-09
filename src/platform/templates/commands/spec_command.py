@@ -83,7 +83,7 @@ Main Agent (via /respec-spec)
     ├── 2. Technical Design Loop
     │   ├── Task: spec-architect (architecture + research identification)
     │   ├── Task: spec-critic (FSDD quality assessment → score)
-    │   └── MCP: decide_loop_next_action(loop_id, score)
+    │   └── MCP: decide_loop_next_action(loop_id)
     │
     ├── 3. Handle Loop Decision
     │   ├── IF "refine" → Pass feedback to spec-architect
