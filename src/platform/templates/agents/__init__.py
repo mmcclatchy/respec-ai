@@ -1,5 +1,5 @@
 from .analyst_critic import generate_analyst_critic_template
-from .create_spec import generate_create_spec_template
+from .create_phase import generate_create_phase_template
 from .phase_architect import generate_phase_architect_template
 from .phase_critic import generate_phase_critic_template
 from .plan_analyst import generate_plan_analyst_template
@@ -14,7 +14,7 @@ from .task_reviewer import generate_task_reviewer_template
 __all__ = [
     'generate_roadmap_template',
     'generate_roadmap_critic_template',
-    'generate_create_spec_template',
+    'generate_create_phase_template',
     'generate_plan_analyst_template',
     'generate_plan_critic_template',
     'generate_phase_architect_template',

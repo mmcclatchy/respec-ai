@@ -1,6 +1,6 @@
 def generate_task_reviewer_template() -> str:
     return """---
-name: build-reviewer
+name: respec-task-reviewer
 description: Assess code quality against Phase and Phase
 model: sonnet
 tools: mcp__respec-ai__get_document, mcp__respec-ai__get_spec_markdown, mcp__respec-ai__get_feedback, mcp__respec-ai__store_critic_feedback, Read, Glob, Bash

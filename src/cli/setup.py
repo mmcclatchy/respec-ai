@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Literal
 
 from src.platform.models import (
-    CreateSpecAgentTools,
+    CreatePhaseAgentTools,
     PhaseArchitectAgentTools,
     PhaseCriticAgentTools,
     PlanRoadmapAgentTools,
@@ -22,12 +22,12 @@ from src.platform.models import (
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_helpers import (
-    create_spec_architect_agent_tools,
-    create_spec_critic_agent_tools,
+    create_phase_architect_agent_tools,
+    create_phase_critic_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
-    generate_create_spec_template,
+    generate_create_phase_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
     generate_plan_analyst_template,
@@ -72,8 +72,8 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
 
         command_templates = [
             CommandTemplate.PLAN,
-            CommandTemplate.SPEC,
-            CommandTemplate.BUILD,
+            CommandTemplate.PHASE,
+            CommandTemplate.CODE,
             CommandTemplate.ROADMAP,
             CommandTemplate.PLAN_CONVERSATION,
         ]
@@ -127,10 +127,10 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
 def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: PlatformType) -> list[tuple[str, str]]:
     tool_registry = ToolRegistry()
 
-    spec_tools = CreateSpecAgentTools(
-        create_spec_tool=tool_registry.get_tool_for_platform(AbstractOperation.CREATE_SPEC_TOOL.value, platform_type),
-        get_spec_tool=tool_registry.get_tool_for_platform(AbstractOperation.GET_SPEC_TOOL.value, platform_type),
-        update_spec_tool=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type),
+    phase_tools = CreatePhaseAgentTools(
+        create_phase_tool=tool_registry.get_tool_for_platform(AbstractOperation.CREATE_SPEC_TOOL.value, platform_type),
+        get_phase_tool=tool_registry.get_tool_for_platform(AbstractOperation.GET_SPEC_TOOL.value, platform_type),
+        update_phase_tool=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type),
     )
 
     roadmap_tools = PlanRoadmapAgentTools(
@@ -143,9 +143,9 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         update_task_status=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type)
     )
 
-    phase_architect_tools = PhaseArchitectAgentTools(tools_yaml=create_spec_architect_agent_tools())
+    phase_architect_tools = PhaseArchitectAgentTools(tools_yaml=create_phase_architect_agent_tools())
     phase_critic_tools = PhaseCriticAgentTools(
-        tools_yaml=create_spec_critic_agent_tools(), phase_length_soft_cap=loop_config.phase_length_soft_cap
+        tools_yaml=create_phase_critic_agent_tools(), phase_length_soft_cap=loop_config.phase_length_soft_cap
     )
 
     return [
@@ -154,7 +154,7 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         ('respec-analyst-critic', generate_analyst_critic_template()),
         ('respec-roadmap', generate_roadmap_template(roadmap_tools)),
         ('respec-roadmap-critic', generate_roadmap_critic_template()),
-        ('respec-create-spec', generate_create_spec_template(spec_tools)),
+        ('respec-create-phase', generate_create_phase_template(phase_tools)),
         ('respec-spec-architect', generate_phase_architect_template(phase_architect_tools)),
         ('respec-spec-critic', generate_phase_critic_template(phase_critic_tools)),
         ('respec-build-planner', generate_task_critic_template()),

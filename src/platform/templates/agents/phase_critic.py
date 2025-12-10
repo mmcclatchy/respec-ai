@@ -3,7 +3,7 @@ from src.platform.models import PhaseCriticAgentTools
 
 def generate_phase_critic_template(tools: PhaseCriticAgentTools) -> str:
     return f"""---
-name: respec-spec-critic
+name: respec-phase-critic
 description: Evaluate technical specifications against FSDD quality criteria
 model: sonnet
 tools: {tools.tools_yaml}

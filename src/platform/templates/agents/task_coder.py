@@ -3,7 +3,7 @@ from src.platform.models import TaskCoderAgentTools
 
 def generate_task_coder_template(tools: TaskCoderAgentTools) -> str:
     return f"""---
-name: build-coder
+name: respec-task-coder
 description: Implement code using strict TDD methodology with test-first discipline
 model: sonnet
 tools: mcp__respec-ai__get_document, mcp__respec-ai__get_spec_markdown, mcp__respec-ai__get_feedback, Write, Edit, Read, Glob, Bash, TodoWrite, {tools.update_task_status}

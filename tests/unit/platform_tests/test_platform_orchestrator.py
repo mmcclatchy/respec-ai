@@ -58,7 +58,7 @@ class TestPlatformOrchestrator:
         self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)
 
         request = TemplateGenerationRequest(
-            project_path=Path(self.test_project_path), command_name=CommandTemplate.SPEC
+            project_path=Path(self.test_project_path), command_name=CommandTemplate.PHASE
         )
         template = self.orchestrator.generate_command_template(request)
 
@@ -69,7 +69,7 @@ class TestPlatformOrchestrator:
 
     def test_generate_command_template_no_config(self) -> None:
         request = TemplateGenerationRequest(
-            project_path=Path(self.test_project_path), command_name=CommandTemplate.SPEC
+            project_path=Path(self.test_project_path), command_name=CommandTemplate.PHASE
         )
         with pytest.raises(ValueError, match='No configuration found for project'):
             self.orchestrator.generate_command_template(request)
@@ -137,8 +137,8 @@ class TestPlatformOrchestrator:
         commands = self.orchestrator.get_available_commands()
 
         assert 'respec-plan' in commands
-        assert 'respec-spec' in commands
-        assert 'respec-build' in commands
+        assert 'respec-phase' in commands
+        assert 'respec-code' in commands
         assert 'respec-roadmap' in commands
         assert 'respec-plan-conversation' in commands
 

@@ -1,6 +1,6 @@
 def generate_task_critic_template() -> str:
     return """---
-name: build-critic
+name: respec-task-critic
 description: Assess Phase quality against FSDD criteria
 model: sonnet
 tools: mcp__respec-ai__get_document, mcp__respec-ai__get_document, mcp__respec-ai__get_feedback, mcp__respec-ai__store_critic_feedback

@@ -51,11 +51,11 @@ class TemplateToolBuilder:
         return ', '.join(tool_strings)
 
 
-def create_spec_command_tools(platform_tools: list[str]) -> str:
+def create_phase_command_tools(platform_tools: list[str]) -> str:
     builder = (
         TemplateToolBuilder()
-        .add_task_agent('respec-spec-architect')
-        .add_task_agent('respec-spec-critic')
+        .add_task_agent('respec-phase-architect')
+        .add_task_agent('respec-phase-critic')
         .add_bash_script('~/.claude/scripts/research-advisor-archive-scan.sh:*')
         .add_reRESPEC_AI_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
         .add_reRESPEC_AI_tool(RespecAITool.DECIDE_LOOP_NEXT_ACTION)
@@ -98,13 +98,13 @@ def create_plan_command_tools(platform_tools: list[str]) -> str:
     return builder.render_comma_separated_tools()
 
 
-def create_build_command_tools(platform_tools: list[str]) -> str:
+def create_code_command_tools(platform_tools: list[str]) -> str:
     builder = (
         TemplateToolBuilder()
-        .add_task_agent('respec-build-planner')
-        .add_task_agent('respec-build-critic')
-        .add_task_agent('respec-build-coder')
-        .add_task_agent('respec-build-reviewer')
+        .add_task_agent('respec-phase-planner')
+        .add_task_agent('respec-task-critic')
+        .add_task_agent('respec-task-coder')
+        .add_task_agent('respec-task-reviewer')
         .add_task_agent('respec-research-synthesizer')
         .add_bash_script('~/.claude/scripts/detect-packages.sh:*')
         .add_reRESPEC_AI_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
@@ -136,7 +136,7 @@ def create_roadmap_tools(platform_tools: list[str]) -> str:
     return builder.render_comma_separated_tools()
 
 
-def create_spec_architect_agent_tools() -> str:
+def create_phase_architect_agent_tools() -> str:
     builder = (
         TemplateToolBuilder()
         .add_reRESPEC_AI_tool(RespecAITool.GET_SPEC_MARKDOWN)
@@ -151,7 +151,7 @@ def create_spec_architect_agent_tools() -> str:
     return builder.render_comma_separated_tools()
 
 
-def create_spec_critic_agent_tools() -> str:
+def create_phase_critic_agent_tools() -> str:
     builder = (
         TemplateToolBuilder()
         .add_reRESPEC_AI_tool(RespecAITool.GET_SPEC_MARKDOWN)

@@ -145,8 +145,8 @@ class AbstractOperation(Enum):
 
 class CommandTemplate(Enum):
     PLAN = 'respec-plan'
-    SPEC = 'respec-spec'
-    BUILD = 'respec-build'
+    PHASE = 'respec-phase'
+    CODE = 'respec-code'
     ROADMAP = 'respec-roadmap'
     PLAN_CONVERSATION = 'respec-plan-conversation'
 
