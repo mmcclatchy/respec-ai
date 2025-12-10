@@ -8,7 +8,7 @@ argument-hint: [project-name] [spec-name]
 description: Transform technical specifications into production-ready code through parallel research, implementation planning, and TDD development
 ---
 
-# /respec-build Command: Implementation Orchestration
+# /respec-code Command: Implementation Orchestration
 
 ## Overview
 Orchestrate the complete implementation workflow, transforming technical specifications into production-ready code through parallel research synthesis, implementation planning, and TDD-driven code development with comprehensive quality validation.
@@ -25,13 +25,13 @@ PROJECT_NAME = [first argument from command - the project name]
 SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
 
 # Step 1.2: Search file system for matching spec files
-SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-specs/{{SPEC_NAME_PARTIAL}}*.md"
+SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{SPEC_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 
 # Step 1.3: Handle multiple matches
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the spec name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-specs/"
+  SUGGEST: "Verify the spec name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
@@ -78,10 +78,10 @@ Load spec from file system, store in MCP:
 SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
 
 # Step 2.2: Store in MCP using canonical spec name
-mcp__respec-ai__store_spec(
-  project_name=PROJECT_NAME,
-  spec_name=SPEC_NAME,
-  spec_markdown=SPEC_MARKDOWN
+mcp__respec-ai__store_document(
+  doc_type="phase",
+  path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}",
+  content=SPEC_MARKDOWN
 )
 
 Display to user: "✓ Loaded existing spec: {{SPEC_NAME}}"
@@ -94,40 +94,18 @@ Display to user: "✓ Loaded existing spec: {{SPEC_NAME}}"
 
 **Note**: Build plans are not stored in external platforms - they only exist in MCP during the build workflow.
 
-### 3. Verify Canonical Spec Name
-
-Verify spec is correctly stored in MCP with canonical name:
-
-```text
-# Call resolve_spec_name for validation only
-RESOLVE_RESULT = mcp__respec-ai__resolve_spec_name(
-  project_name=PROJECT_NAME,
-  partial_name=SPEC_NAME
-)
-
-IF RESOLVE_RESULT['count'] != 1:
-  ERROR: "Spec storage validation failed - expected 1 match for '{{SPEC_NAME}}', got {{RESOLVE_RESULT['count']}}"
-  DIAGNOSTIC: Check that Step 2 (Load and Store) completed successfully
-  EXIT: Workflow terminated
-
-# Validation passed - canonical name matches MCP storage
-Display to user: "✓ Using specification: {{SPEC_NAME}}"
-```
-
-**Important**:
-- resolve_spec_name is now used for VALIDATION only, not resolution
-- Confirms storage succeeded with correct canonical name from Step 1
-- Fails loudly if mismatch between file system and MCP
-
 ### 4. Specification Retrieval and Validation
-Retrieve and validate completed Phase from /respec-spec command:
+Retrieve and validate completed Phase from /respec-phase command:
 
 #### Retrieve Phase
 ```text
-TECHNICAL_SPEC = mcp__respec-ai__get_spec_markdown(PROJECT_NAME, SPEC_NAME)
+TECHNICAL_SPEC = mcp__respec-ai__get_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}"
+)
 IF TECHNICAL_SPEC not found:
   ERROR: "No technical specification found: [SPEC_NAME]"
-  SUGGEST: "Run '/respec-spec [PROJECT_NAME] [SPEC_NAME]' to create technical specification first"
+  SUGGEST: "Run '/respec-phase [PROJECT_NAME] [SPEC_NAME]' to create technical specification first"
   EXIT: Graceful failure with guidance
 
 SPEC_OBJECTIVES = [Extract from Phase Objectives section]
@@ -169,7 +147,10 @@ Set up and execute MCP-managed planning quality refinement:
 
 #### Initialize Planning Loop
 ```text
-PLANNING_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(loop_type='phase')
+PLANNING_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(
+    project_name=PROJECT_NAME,
+    loop_type='task'
+)
 
 State to maintain:
 - planning_loop_id: For Phase storage and retrieval
@@ -199,7 +180,7 @@ Expected: Phase stored in MCP with planning_loop_id
 
 #### Planning Quality Assessment
 ```text
-Invoke build-critic agent with:
+Invoke task-critic agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - project_name: {{PROJECT_NAME}}
 - spec_name: {{SPEC_NAME}}
@@ -222,7 +203,7 @@ Expected: CriticFeedback with Overall Score stored in MCP
 PLANNING_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=PLANNING_LOOP_ID)
 PLANNING_DECISION = PLANNING_DECISION_RESPONSE.status
 
-Note: MCP Server retrieves latest score from build-critic feedback internally.
+Note: MCP Server retrieves latest score from task-critic feedback internally.
 No need to retrieve or pass score from command.
 
 Decision options: "COMPLETE", "REFINE", "USER_INPUT"
@@ -234,7 +215,7 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 #### If PLANNING_DECISION == "refine"
 Re-invoke build-planner agent (same parameters).
-Re-invoke build-critic agent.
+Re-invoke task-critic agent.
 Call MCP decision again.
 
 #### If PLANNING_DECISION == "complete"
@@ -246,7 +227,7 @@ Present PLAN_QUALITY_SCORE, Key Issues, and Recommendations to user.
 Request technical guidance (approach preferences, strategies, accept/proceed).
 Store user feedback: mcp__respec-ai__store_user_feedback(PLANNING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
 Re-invoke build-planner agent.
-Re-invoke build-critic agent.
+Re-invoke task-critic agent.
 Call MCP decision again.
 
 ### 7.5. Process Architectural Override Proposals
@@ -257,8 +238,9 @@ After planning decision is "complete", check for architectural override proposal
 
 ```text
 # Retrieve Phase to check for override proposals
-PHASE_MARKDOWN = mcp__respec-ai__get_phase_markdown(
-    planning_loop_id=PLANNING_LOOP_ID
+PHASE_MARKDOWN = mcp__respec-ai__get_document(
+    doc_type="task",
+    loop_id=PLANNING_LOOP_ID
 )
 
 # Check if Phase contains "Architectural Override Proposals" section
@@ -276,17 +258,17 @@ IF PHASE_MARKDOWN contains "## Architectural Override Proposals" section:
     {{OVERRIDE_PROPOSALS}}
 
     This requires updating Phase. Choose action:
-    1. Approve proposal → Re-run /respec-spec to update architecture
+    1. Approve proposal → Re-run /respec-phase to update architecture
     2. Reject proposal → Continue with current spec as-is
-    3. Modify proposal → Adjust and re-run /respec-spec
+    3. Modify proposal → Adjust and re-run /respec-phase
 
     Build workflow paused until Phase updated.
 
     To approve and update:
-      /respec-spec {{PROJECT_NAME}} {{SPEC_NAME}} \"[your instructions based on proposal]\"
+      /respec-phase {{PROJECT_NAME}} {{SPEC_NAME}} \"[your instructions based on proposal]\"
 
     To reject and proceed with current spec:
-      Re-run /respec-build {{PROJECT_NAME}} {{SPEC_NAME}} --ignore-overrides"
+      Re-run /respec-code {{PROJECT_NAME}} {{SPEC_NAME}} --ignore-overrides"
 
     EXIT: Workflow suspended pending user decision
   ELSE:
@@ -300,7 +282,7 @@ ELSE:
 
 **Important Notes**:
 - Build-planner is a subagent with NO user interaction capability
-- Architectural changes MUST route through /respec-spec workflow
+- Architectural changes MUST route through /respec-phase workflow
 - Phase must remain consistent across refinement loop passes
 - Any changes to architecture, technology stack, or design decisions require spec update
 - If user rejects override, build-planner proceeds with original spec constraints
@@ -317,7 +299,7 @@ ELSE:
 - Trade-off: [Why original spec concern no longer applies]
 - Impact: [Which spec sections would need updating]
 
-**Next Action Required**: User must approve/reject via /respec-spec
+**Next Action Required**: User must approve/reject via /respec-phase
 ```
 
 ### 8. Coding Loop Initialization and Refinement
@@ -325,7 +307,10 @@ Set up and execute MCP-managed code quality refinement:
 
 #### Initialize Coding Loop
 ```text
-CODING_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(loop_type='task')
+CODING_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(
+    project_name=PROJECT_NAME,
+    loop_type='task'
+)
 
 State to maintain (CRITICAL - TWO loop IDs):
 - planning_loop_id: For retrieving Phase
@@ -334,7 +319,7 @@ State to maintain (CRITICAL - TWO loop IDs):
 
 #### Code Implementation Cycle
 ```text
-Invoke build-coder agent with:
+Invoke task-coder agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
 - project_name: {{PROJECT_NAME}}
@@ -364,7 +349,7 @@ Expected: Code implementation committed, platform status updated
 
 #### Code Quality Assessment
 ```text
-Invoke build-reviewer agent with:
+Invoke task-reviewer agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
 - project_name: {{PROJECT_NAME}}
@@ -391,7 +376,7 @@ Expected: CriticFeedback with Overall Score and test results stored in MCP
 CODING_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=CODING_LOOP_ID)
 CODING_DECISION = CODING_DECISION_RESPONSE.status
 
-Note: MCP Server retrieves latest score from build-reviewer feedback internally.
+Note: MCP Server retrieves latest score from task-reviewer feedback internally.
 No need to retrieve or pass score from command.
 
 Decision options: "COMPLETE", "REFINE", "USER_INPUT"
@@ -402,8 +387,8 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 **Follow CODING_DECISION exactly. Do not override based on score assessment.**
 
 #### If CODING_DECISION == "refine"
-Re-invoke build-coder agent (same parameters).
-Re-invoke build-reviewer agent.
+Re-invoke task-coder agent (same parameters).
+Re-invoke task-reviewer agent.
 Call MCP decision again.
 
 #### If CODING_DECISION == "complete"
@@ -414,8 +399,8 @@ Retrieve Phase and feedback (count=2).
 Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
 Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
 Store user feedback: mcp__respec-ai__store_user_feedback(CODING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
-Re-invoke build-coder agent.
-Re-invoke build-reviewer agent.
+Re-invoke task-coder agent.
+Re-invoke task-reviewer agent.
 Call MCP decision again.
 
 ### 10. Integration & Documentation
@@ -424,7 +409,7 @@ Complete implementation workflow and update specification:
 #### Generate Implementation Summary
 ```text
 Retrieve final state:
-- Phase: mcp__respec-ai__get_phase_markdown(PLANNING_LOOP_ID)
+- Phase: mcp__respec-ai__get_document(doc_type="task", loop_id=PLANNING_LOOP_ID)
 - Final Feedback: mcp__respec-ai__get_feedback(CODING_LOOP_ID, count=1)
 
 Generate IMPLEMENTATION_SUMMARY including:
@@ -438,7 +423,11 @@ Generate IMPLEMENTATION_SUMMARY including:
 
 #### Update Phase
 ```text
-Update specification status and implementation details using mcp__respec-ai__store_spec:
+Update specification status and implementation details using mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}",
+    content=updated_spec_markdown
+):
 
 Status: "IMPLEMENTED"
 Implementation Summary: {{IMPLEMENTATION_SUMMARY}}
@@ -469,7 +458,7 @@ Implementation artifacts:
 - Phase: Available via planning_loop_id={{PLANNING_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
-- Spec Status: Updated via mcp__respec-ai__store_spec
+- Spec Status: Updated via mcp__respec-ai__store_document
 
 Ready for deployment."
 ```
@@ -495,8 +484,8 @@ Ready for deployment."
 ## Quality Gates
 
 ### Quality Assessment
-- **Phase Evaluation**: Assessed by build-critic agent
-- **Code Quality Evaluation**: Assessed by build-reviewer agent
+- **Phase Evaluation**: Assessed by task-critic agent
+- **Code Quality Evaluation**: Assessed by task-reviewer agent
 - **Loop Decisions**: Made by MCP Server based on configuration
 - **Thresholds and Limits**: Managed by MCP Server
 
@@ -526,7 +515,7 @@ Note: Loop decisions determined by MCP Server based on scoring and configuration
 #### Phase Not Available
 ```text
 Display: "No technical specification found: [SPEC_NAME]"
-Suggest: "/respec-spec [PROJECT_NAME] [SPEC_NAME] to create technical specification"
+Suggest: "/respec-phase [PROJECT_NAME] [SPEC_NAME] to create technical specification"
 Exit gracefully with guidance
 ```
 
@@ -546,7 +535,7 @@ IF build-planner fails:
   Create minimal Phase from Phase
   Note limitations and suggest manual review
 
-IF build-critic fails:
+IF task-critic fails:
   Continue without quality assessment
   Use single-pass Phase
   Warn user that quality not validated
@@ -555,13 +544,13 @@ IF build-critic fails:
 
 #### Coding Loop Failures
 ```text
-IF build-coder fails:
+IF task-coder fails:
   Preserve git commits for rollback
   Report failure with TodoList state
   Provide diagnostic information
   Suggest manual intervention
 
-IF build-reviewer fails:
+IF task-reviewer fails:
   Run static analysis manually (Bash: pytest, mypy, ruff)
   Report test results without quality score
   Continue with manual quality assessment
@@ -589,9 +578,9 @@ The command maintains orchestration focus by:
 
 All specialized work delegated to appropriate agents:
 - **build-planner**: Phase generation with research integration (MCP access)
-- **build-critic**: Phase quality assessment (80% threshold)
-- **build-coder**: TDD code implementation with platform integration (MCP access + platform tools)
-- **build-reviewer**: Code quality assessment (95% threshold)
+- **task-critic**: Phase quality assessment (80% threshold)
+- **task-coder**: TDD code implementation with platform integration (MCP access + platform tools)
+- **task-reviewer**: Code quality assessment (95% threshold)
 - **research-synthesizer**: Parallel research brief generation
 - **MCP Server**: Decision logic, threshold management, state storage
 
@@ -604,12 +593,12 @@ All specialized work delegated to appropriate agents:
 - Agents receive both IDs and use appropriately
 
 ### Coding Standards Integration
-- build-coder reads .respec-ai/coding-standards.md on initialization
+- task-coder reads .respec-ai/coding-standards.md on initialization
 - User-customizable coding standards applied to all generated code
 - Fallback to Phase Code Standards if file doesn't exist
 
 ### TDD Enforcement
-- Strict test-first discipline enforced by build-coder agent
+- Strict test-first discipline enforced by task-coder agent
 - Tests must fail before implementation proceeds
 - Tests must pass before considering feature complete
 - Commit after each iteration for rollback capability

@@ -3,7 +3,7 @@ def generate_analyst_critic_template() -> str:
 name: respec-analyst-critic
 description: Validate business objective extraction quality and semantic accuracy
 model: sonnet
-tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__get_previous_analysis, mcp__respec-ai__get_previous_objective_feedback, mcp__respec-ai__store_current_objective_feedback
+tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__get_previous_analysis, mcp__respec-ai__store_current_analysis
 ---
 
 You are a business objective validation specialist focused on evaluating the semantic accuracy and completeness of extracted business objectives.
@@ -17,7 +17,7 @@ INPUTS: Loop ID for data retrieval
 SETUP: Data Retrieval and Previous Feedback Check
 1. Use mcp__respec-ai__get_previous_analysis(loop_id) to retrieve the business objectives analysis from plan-analyst
 2. Use mcp__respec-ai__get_project_plan_markdown(loop_id) to retrieve the original strategic plan for reference
-3. Check previous feedback using mcp__respec-ai__get_previous_objective_feedback(loop_id) if loop_id provided
+3. Check previous feedback using mcp__respec-ai__get_previous_analysis(loop_id) if loop_id provided
 4. If data retrieval fails, request Main Agent provide data directly
 5. Proceed with validation using retrieved analysis and source plan
 
@@ -26,7 +26,7 @@ TASKS:
 2. Assess completeness of objective capture and categorization
 3. Evaluate quality of success metrics quantification
 4. Score extraction quality using objective validation framework
-5. Store current feedback using mcp__respec-ai__store_current_objective_feedback(loop_id, feedback) if loop_id provided
+5. Store current feedback using mcp__respec-ai__store_current_analysis(loop_id, feedback) if loop_id provided
 
 ## OBJECTIVE VALIDATION FRAMEWORK
 
@@ -244,7 +244,7 @@ Utilize MCP tools for refinement tracking:
 - Enable comparison with previous feedback for progress assessment
 
 ### State Management Integration
-- mcp__respec-ai__get_previous_objective_feedback(loop_id): Retrieve prior validation feedback
-- mcp__respec-ai__store_current_objective_feedback(loop_id, feedback): Persist current assessment
+- mcp__respec-ai__get_previous_analysis(loop_id): Retrieve prior validation feedback
+- mcp__respec-ai__store_current_analysis(loop_id, feedback): Persist current assessment
 - Support refinement continuity across conversation context resets
 - Enable iterative improvement tracking and progress validation"""

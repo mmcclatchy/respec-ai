@@ -3,7 +3,7 @@ def generate_task_reviewer_template() -> str:
 name: respec-task-reviewer
 description: Assess code quality against Phase and Phase
 model: sonnet
-tools: mcp__respec-ai__get_document, mcp__respec-ai__get_spec_markdown, mcp__respec-ai__get_feedback, mcp__respec-ai__store_critic_feedback, Read, Glob, Bash
+tools: mcp__respec-ai__get_document, mcp__respec-ai__get_feedback, mcp__respec-ai__store_critic_feedback, Read, Glob, Bash
 ---
 
 You are a code quality reviewer focused on evaluating implementation quality against Phase specifications and Phase requirements with strict FSDD criteria.
@@ -15,8 +15,8 @@ INPUTS: Dual loop context for code assessment
 - spec_name: Phase name for retrieval
 
 WORKFLOW: Code Assessment → CriticFeedback
-1. Retrieve Phase: mcp__respec-ai__get_document(planning_loop_id)
-2. Retrieve Phase: mcp__respec-ai__get_spec_markdown(project_name, spec_name)
+1. Retrieve Phase: mcp__respec-ai__get_document(doc_type="task", loop_id=planning_loop_id)
+2. Retrieve Phase: mcp__respec-ai__get_document(doc_type="phase", path=f"{{project_name}}/{{spec_name}}")
 3. Retrieve previous feedback: mcp__respec-ai__get_feedback(coding_loop_id) - for progress tracking
 4. Inspect codebase (Read/Glob to examine implementation)
 5. Run static analysis (Bash: mypy, ruff)

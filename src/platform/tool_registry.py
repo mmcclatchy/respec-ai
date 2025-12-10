@@ -19,7 +19,7 @@ class ToolRegistry:
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-specs/*.md'
+                    tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'
                 ),
             ),
             PlatformToolMapping(
@@ -27,7 +27,7 @@ class ToolRegistry:
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_GET_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_GET_ISSUE),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.READ, parameters='.respec-ai/projects/*/respec-specs/*.md'
+                    tool=BuiltInTool.READ, parameters='.respec-ai/projects/*/respec-phases/*.md'
                 ),
             ),
             PlatformToolMapping(
@@ -35,7 +35,7 @@ class ToolRegistry:
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_UPDATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_ISSUE),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/respec-specs/*.md'
+                    tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/respec-phases/*.md'
                 ),
             ),
             PlatformToolMapping(
@@ -43,7 +43,7 @@ class ToolRegistry:
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_COMMENT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_COMMENT),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/respec-specs/*.md'
+                    tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/respec-phases/*.md'
                 ),
             ),
             # Project Management Tools
@@ -80,7 +80,7 @@ class ToolRegistry:
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_LIST_ISSUES),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_LIST_FILES),
                 markdown_tool=ToolReference(
-                    tool=BuiltInTool.GLOB, parameters='.respec-ai/projects/*/respec-specs/*.md'
+                    tool=BuiltInTool.GLOB, parameters='.respec-ai/projects/*/respec-phases/*.md'
                 ),
             ),
         ]

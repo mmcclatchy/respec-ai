@@ -22,7 +22,7 @@ These guidelines focus on the four core agent concerns: inputs, tools, imperativ
 **Implementation Pattern** (based on actual agent templates):
 ```markdown
 ---
-name: respec-spec-architect
+name: respec-phase-architect
 description: Design technical architecture from strategic plans
 model: sonnet
 tools: Read, Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*), Grep, Glob
@@ -117,7 +117,7 @@ OUTPUTS: Strategic plan document containing:
 **Pattern Example - Critic Agent**:
 ```markdown
 ---
-name: respec-spec-critic
+name: respec-phase-critic
 description: Evaluate technical specifications against quality criteria
 tools:
   - mcp__respec-ai__get_technical_spec_markdown
@@ -249,7 +249,7 @@ tools: Read, Edit, Write, Bash
 **Spec Creation Agents** (with platform integration):
 ```markdown
 tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
-# Use for: create-spec agents with dual storage (MCP + platform)
+# Use for: create-phase agents with dual storage (MCP + platform)
 ```
 
 ### Platform Tool Usage Pattern
@@ -266,7 +266,7 @@ tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_sp
 - Shows actual usage pattern with named parameter placeholders
 - Accessed via `{tools.create_spec_tool_interpolated}` computed field from AgentTools model
 
-**Example from create-spec agent:**
+**Example from create-phase agent:**
 
 Frontmatter:
 ```yaml
@@ -297,7 +297,7 @@ tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_f
 ---
 
 ---
-name: respec-create-spec
+name: respec-create-phase
 tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
 ---
 ```
@@ -305,7 +305,7 @@ tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_sp
 **❌ Incorrect Tool Over-Allocation**:
 ```markdown
 ---
-name: respec-spec-critic  # Quality evaluation agent
+name: respec-phase-critic  # Quality evaluation agent
 tools: Read, Edit, Write, Bash  # ❌ Can modify files during evaluation
 ---
 ```
@@ -478,7 +478,7 @@ When designing commands that orchestrate MCP-driven refinement loops:
 
 ```markdown
 STEP 5: Invoke Specialized Agent
-CALL respec-spec-architect
+CALL respec-phase-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
@@ -510,7 +510,7 @@ STEP 5a: Retrieve Feedback for Agent
 CRITIC_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=2)  # ❌ Unnecessary
 
 STEP 5b: Invoke Agent with Feedback
-CALL respec-spec-architect
+CALL respec-phase-architect
 Input:
   - previous_feedback: CRITIC_FEEDBACK  # ❌ Don't pass large documents
 
@@ -524,14 +524,14 @@ This section demonstrates the context optimization pattern using real examples f
 
 #### Command Implementation (spec_command.py)
 
-**Step 5: Invoke spec-architect**
+**Step 5: Invoke phase-architect**
 
-The command invokes the spec-architect agent with only the `loop_id` and essential context parameters. No feedback is passed as a parameter - the agent retrieves it directly from MCP.
+The command invokes the phase-architect agent with only the `loop_id` and essential context parameters. No feedback is passed as a parameter - the agent retrieves it directly from MCP.
 
 ```markdown
 STEP 5: Spec Refinement
 
-Invoke: respec-spec-architect
+Invoke: respec-phase-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
@@ -566,14 +566,14 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 **Step 7: Handle Decisions**
 
-The command only retrieves feedback when USER_INPUT is required - for display to the user. In all other cases, feedback remains in MCP and is accessed directly by the spec-architect agent.
+The command only retrieves feedback when USER_INPUT is required - for display to the user. In all other cases, feedback remains in MCP and is accessed directly by the phase-architect agent.
 
 ```markdown
 STEP 7: Execute Decision
 
 #### If LOOP_DECISION == "REFINE"
-Display: "⟳ Refining specification - spec-architect will address critic feedback"
-Return to Step 5 (spec-architect will retrieve feedback from MCP itself)
+Display: "⟳ Refining specification - phase-architect will address critic feedback"
+Return to Step 5 (phase-architect will retrieve feedback from MCP itself)
 
 #### If LOOP_DECISION == "USER_INPUT"
 Display: "⚠ Quality improvements needed - user input required"
@@ -596,7 +596,7 @@ Store user input and return to Step 5
 
 **STEP 0: Retrieve Feedback**
 
-The spec-architect agent checks the iteration number to determine if previous feedback exists, then retrieves it directly from MCP using the `loop_id`. This eliminates the need for the command to pass feedback as a parameter.
+The phase-architect agent checks the iteration number to determine if previous feedback exists, then retrieves it directly from MCP using the `loop_id`. This eliminates the need for the command to pass feedback as a parameter.
 
 ```markdown
 STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
@@ -698,13 +698,13 @@ This optimization pattern applies to **MCP-driven refinement loop workflows** on
 
 **spec Workflow:** ✅ Uses this pattern
 - Command: `spec_command.py`
-- Agents: `spec-architect` ↔ `spec-critic`
+- Agents: `phase-architect` ↔ `phase-critic`
 - Pattern: Architect retrieves feedback from MCP using loop_id
 - Loop Driver: MCP Server (decide_loop_next_action)
 
 **build Workflow:** ✅ Should use this pattern
 - Command: `build_command.py`
-- Agents: `taskner` ↔ `build-critic` (planned)
+- Agents: `taskner` ↔ `task-critic` (planned)
 - Pattern: Planner retrieves feedback from MCP using loop_id
 - Loop Driver: MCP Server (decide_loop_next_action)
 
@@ -1098,7 +1098,7 @@ QUALITY CRITERIA:
 **Example - Spec Critic**:
 ```markdown
 ---
-name: respec-spec-critic
+name: respec-phase-critic
 description: Evaluate technical specifications against quality criteria
 tools: mcp__respec-ai__get_technical_spec_markdown, mcp__respec-ai__store_critic_feedback
 ---
@@ -1193,7 +1193,7 @@ QUALITY CRITERIA:
 **Example - Build Coder**:
 ```markdown
 ---
-name: respec-build-coder
+name: respec-task-coder
 description: Implement code based on implementation plans and specifications
 tools: Read, Edit, Write, Bash
 ---
@@ -1331,7 +1331,7 @@ Test Case: Edge Case Handling
 **Violation Examples**:
 ```markdown
 # ❌ WRONG: References other agents
-"After the spec-critic validates the specification quality..."
+"After the phase-critic validates the specification quality..."
 "Coordinate with plan-generator for requirements clarity..."
 "This output will be used by taskner agent..."
 
@@ -1388,7 +1388,7 @@ Test Case: Edge Case Handling
 ```markdown
 # ❌ WRONG: Critics with modification tools
 ---
-name: respec-spec-critic
+name: respec-phase-critic
 tools:
   - Read
   - Edit
@@ -1410,7 +1410,7 @@ tools:
 ```markdown
 # ✅ CORRECT: Critics with MCP retrieval and storage only
 ---
-name: respec-spec-critic
+name: respec-phase-critic
 tools: mcp__respec-ai__get_technical_spec_markdown, mcp__respec-ai__store_critic_feedback
 ---
 

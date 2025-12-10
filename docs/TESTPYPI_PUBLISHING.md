@@ -318,7 +318,7 @@ claude
 # In Claude Code, test complete workflow:
 /respec-plan test-feature
 /respec-roadmap test-project
-/respec-spec test-spec
+/respec-phase test-spec
 ```
 
 **Verification Checklist:**

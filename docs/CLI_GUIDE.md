@@ -206,8 +206,8 @@ MCP Server           ✓ Registered as respec-ai
 Available Commands (restart Claude Code to activate):
   • /respec-plan - Create strategic plans
   • /respec-roadmap - Create phased roadmaps
-  • /respec-spec - Transform plans into specs
-  • /respec-build - Execute implementation
+  • /respec-phase - Transform plans into specs
+  • /respec-code - Execute implementation
 
 🚀 Ready to begin! Restart Claude Code to use the respec-ai commands.
 ```
@@ -281,10 +281,10 @@ claude
 /respec-roadmap my-first-project
 
 # Create detailed technical specifications
-/respec-spec phase-1-auth
+/respec-phase phase-1-auth
 
 # Implement the specification
-/respec-build phase-1-auth
+/respec-code phase-1-auth
 ```
 
 Each command will guide you through the workflow with quality checks and refinement loops.
@@ -881,7 +881,7 @@ respec-ai supports three platforms with different capabilities:
 - None (uses built-in Claude Code tools)
 
 **Workflow:**
-- Specs stored as markdown files in `.respec-ai/projects/[project-name]/respec-specs/`
+- Specs stored as markdown files in `.respec-ai/projects/[project-name]/respec-phases/`
 - Plans stored as markdown files
 - Git-friendly version control
 
@@ -1143,8 +1143,8 @@ respec-ai supports running multiple projects with explicit project context. Each
    Should show 5 files:
    - respec-plan.md
    - respec-roadmap.md
-   - respec-spec.md
-   - respec-build.md
+   - respec-phase.md
+   - respec-code.md
    - respec-plan-conversation.md
 
 2. **Check you're in the correct directory**

@@ -78,21 +78,21 @@ argument-hint: [optional: technical-focus-area]
 description: Transform strategic plans into detailed technical specifications
 ---
 
-# /respec-spec Command: Technical Specification Creation
+# /respec-phase Command: Technical Specification Creation
 
 ## Step 1: Initialize Technical Design Process
 mcp__respec-ai__initialize_refinement_loop:
   loop_type: "phase"
 
 ## Step 2: Launch Architecture Development
-Invoke the spec-architect agent with this input:
+Invoke the phase-architect agent with this input:
 Strategic Plan Summary: ${{STRATEGIC_PLAN_SUMMARY}}
 Expected Output Format:
 - Technical specification in markdown format
 - Research Requirements section
 
 ## Step 3: Quality Assessment Loop
-Invoke the spec-critic agent with this input:
+Invoke the phase-critic agent with this input:
 ${{CURRENT_SPECIFICATION}}
 Expected Output Format:
 - Overall Quality Score: [0-100 numerical value]
@@ -156,7 +156,7 @@ def generate_spec_command_template(platform: str = 'linear'):  # Default values
 3. Evaluate against FSDD framework (12-point quality assessment)"
 
 # ❌ WRONG: Mixed coordination with implementation
-"The spec-critic evaluates against 12 technical completeness criteria"
+"The phase-critic evaluates against 12 technical completeness criteria"
 ```
 
 **✅ Correct Pattern**:
@@ -170,13 +170,13 @@ def generate_spec_command_template(
 ) -> str:
     return f"""---
 allowed-tools:
-  - Task(spec-architect)
-  - Task(spec-critic) 
+  - Task(phase-architect)
+  - Task(phase-critic) 
   - {create_spec_tool}
 ---
 
 # Agent Invocation Pattern
-Invoke the spec-architect agent with this input:
+Invoke the phase-architect agent with this input:
 ${{STRATEGIC_PLAN_SUMMARY}}
 
 Expected Output Format:
@@ -623,11 +623,11 @@ Before creating a new command template, validate these architectural requirement
 3. **Mixed Orchestration and Implementation**
    ```text
    # ❌ WRONG
-   "The spec-critic evaluates against 12 technical completeness criteria, 
+   "The phase-critic evaluates against 12 technical completeness criteria, 
    providing objective scoring for architecture and design decisions"
    
    # ✅ CORRECT
-   "Quality evaluation performed by spec-critic agent using established 
+   "Quality evaluation performed by phase-critic agent using established 
    framework with 85% threshold for completion"
    ```
 

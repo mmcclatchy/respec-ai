@@ -17,9 +17,9 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │  .claude/commands/     │  .claude/agents/               │   │
 │   │  • respec-plan.md      │  • plan-analyst.md             │   │
-│   │  • respec-spec.md      │  • spec-architect.md           │   │
-│   │  • respec-build.md     │  • taskner.md            │   │
-│   │  • respec-roadmap.md   │  • build-coder.md              │   │
+│   │  • respec-phase.md      │  • phase-architect.md           │   │
+│   │  • respec-code.md     │  • task-coder.md            │   │
+│   │  • respec-roadmap.md   │  • task-coder.md              │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
@@ -143,10 +143,10 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 # Markdown Platform
 {
-    'create_spec_tool': 'Write(.respec-ai/projects/*/respec-specs/*.md)',
-    'get_spec_tool': 'Read(.respec-ai/projects/*/respec-specs/*.md)',
-    'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
-    'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+    'create_spec_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
+    'get_spec_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
+    'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+    'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
     'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)'
 }
 ```
@@ -162,13 +162,13 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Manages refinement loops
    - Stores completed plans
 
-2. **respec-spec** - Technical specification generation
+2. **respec-phase** - Technical specification generation
    - Creates detailed technical specs from plans
    - Integrates with platform spec systems
    - Manages spec refinement cycles
 
-3. **respec-build** - Implementation orchestration
-   - Coordinates taskner, build-coder, build-reviewer
+3. **respec-code** - Implementation orchestration
+   - Coordinates taskner, task-coder, task-reviewer
    - Executes implementation workflows
    - Validates code quality
 
@@ -189,20 +189,20 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 **Generative Agents (Content Creation):**
 - **plan-analyst** - Business objectives analysis
 - **roadmap** - Implementation roadmap generation
-- **spec-architect** - Technical specification design
+- **phase-architect** - Technical specification design
 - **taskner** - Implementation planning
-- **build-coder** - Code implementation
+- **task-coder** - Code implementation
 
 **Critic Agents (Quality Assessment):**
 - **plan-critic** - Strategic plan evaluation
 - **analyst-critic** - Analysis quality assessment
 - **roadmap-critic** - Roadmap completeness validation
-- **spec-critic** - Technical specification review
-- **build-critic** - Implementation plan evaluation
-- **build-reviewer** - Code quality review
+- **phase-critic** - Technical specification review
+- **task-critic** - Implementation plan evaluation
+- **task-reviewer** - Code quality review
 
 **Specialized Agents:**
-- **create-spec** - External platform spec creation
+- **create-phase** - External platform spec creation
 
 ### Frontmatter Formatting Standards
 
@@ -424,8 +424,8 @@ project/
 ├── .claude/
 │   ├── commands/
 │   │   ├── respec-plan.md        # Generated (platform-specific)
-│   │   ├── respec-spec.md        # Generated (platform-specific)
-│   │   ├── respec-build.md       # Generated (platform-specific)
+│   │   ├── respec-phase.md        # Generated (platform-specific)
+│   │   ├── respec-code.md       # Generated (platform-specific)
 │   │   ├── respec-roadmap.md     # Generated (static)
 │   │   └── respec-plan-conversation.md  # Generated (static)
 │   └── agents/
@@ -434,18 +434,18 @@ project/
 │       ├── respec-analyst-critic.md      # Generated (static)
 │       ├── respec-roadmap.md             # Generated (static)
 │       ├── respec-roadmap-critic.md      # Generated (static)
-│       ├── respec-create-spec.md         # Generated (platform-specific)
-│       ├── respec-taskner.md       # Generated (static)
-│       ├── respec-build-critic.md        # Generated (static)
-│       ├── respec-build-coder.md         # Generated (platform-specific)
-│       └── respec-build-reviewer.md      # Generated (static)
+│       ├── respec-create-phase.md         # Generated (platform-specific)
+│       ├── respec-task-coder.md       # Generated (static)
+│       ├── respec-task-critic.md        # Generated (static)
+│       ├── respec-task-coder.md         # Generated (platform-specific)
+│       └── respec-task-reviewer.md      # Generated (static)
 └── .respec-ai/
     ├── config.json                # Platform configuration
     └── projects/                  # Markdown platform only
         └── [project-name]/
             ├── project_plan.md
             ├── project_completion.md
-            └── respec-specs/     # Specifications
+            └── respec-phases/     # Specifications
 ```
 
 ## Quality Assurance

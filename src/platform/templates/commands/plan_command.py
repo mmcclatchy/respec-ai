@@ -83,7 +83,7 @@ Load existing project plan from platform (if exists):
 All respec-ai MCP tools require project context:
 - **PROJECT_NAME**: From config - used as identifier for all MCP storage operations
 
-Example usage: `mcp__respec-ai__initialize_refinement_loop(loop_type='plan')`
+Example usage: `mcp__respec-ai__initialize_refinement_loop(project_name=PROJECT_NAME, loop_type='plan')`
 
 ## State Management
 #### Track only essential orchestration state
@@ -366,7 +366,7 @@ Present options to user:
 #### Initialize the MCP refinement loop for analyst validation
 
 Use the MCP tool `mcp__respec-ai__initialize_refinement_loop`:
-- Call `mcp__respec-ai__initialize_refinement_loop(loop_type='analyst')`
+- Call `mcp__respec-ai__initialize_refinement_loop(project_name=PROJECT_NAME, loop_type='analyst')`
 - Store the returned loop ID as `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
 - Retrieve the strategic plan from MCP using `mcp__respec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)`
 - Store it in the analyst loop using `mcp__respec-ai__store_project_plan(project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
@@ -399,11 +399,11 @@ Input: ANALYST_LOOP_ID
 1. **Agent retrieves business objectives analysis** from MCP using get_previous_analysis(ANALYST_LOOP_ID)
 2. **Agent retrieves original strategic plan** from MCP using get_project_plan_markdown(ANALYST_LOOP_ID)
 3. **Agent validates extraction quality** against validation framework
-4. **Agent stores feedback** using store_current_objective_feedback(ANALYST_LOOP_ID, feedback)
+4. **Agent stores analysis feedback** using store_current_analysis(ANALYST_LOOP_ID, analysis)
 
 #### Extract analyst score for MCP decision
 ```text
-Retrieve feedback using: mcp__respec-ai__get_previous_objective_feedback(ANALYST_LOOP_ID)
+Retrieve feedback using: mcp__respec-ai__get_previous_analysis(ANALYST_LOOP_ID)
 Extract ANALYST_SCORE from feedback overall_score field
 ```
 

@@ -149,8 +149,8 @@ def print_setup_complete(
     )
     console.print('  • [cyan]/respec-plan[/cyan] - Create strategic plans')
     console.print('  • [cyan]/respec-roadmap[/cyan] - Create phased roadmaps')
-    console.print('  • [cyan]/respec-spec[/cyan] - Transform plans into specs')
-    console.print('  • [cyan]/respec-build[/cyan] - Execute implementation')
+    console.print('  • [cyan]/respec-phase[/cyan] - Transform plans into specs')
+    console.print('  • [cyan]/respec-code[/cyan] - Execute implementation')
     console.print()
     console.print(
         '[bold yellow]🚀 Ready to begin![/bold yellow] Restart Claude Code to use the respec-ai commands.',

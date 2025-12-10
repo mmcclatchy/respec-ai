@@ -239,7 +239,7 @@ Use this exact format (generated from Phase model):
 - **Completeness**: All strategic plan requirements addressed
 
 ### Implementation Readiness
-- **Spec Preparation**: Sufficient context for targeted /respec-spec command execution
+- **Spec Preparation**: Sufficient context for targeted /respec-phase command execution
 - **Research Identification**: Knowledge gaps and investigation needs documented
 - **Integration Planning**: Touch-points and dependencies clearly mapped
 - **Risk Awareness**: Challenges and mitigation strategies identified
@@ -346,6 +346,6 @@ Before submitting refined roadmap, verify:
 - Provide specific deliverables with measurable outcomes
 - Define clear exclusions to prevent scope creep
 - Establish phase completion criteria and success metrics
-- Prepare actionable context for downstream /respec-spec command execution
+- Prepare actionable context for downstream /respec-phase command execution
 
 Always provide comprehensive roadmap with complete phase breakdown, dependency analysis, and implementation readiness context for technical specification development."""

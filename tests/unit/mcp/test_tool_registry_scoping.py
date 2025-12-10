@@ -20,15 +20,15 @@ class TestToolRegistryScoping:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
         expected_tool_patterns = {
-            'create_spec_tool': 'Write(.respec-ai/projects/*/respec-specs/*.md)',
-            'get_spec_tool': 'Read(.respec-ai/projects/*/respec-specs/*.md)',
-            'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
-            'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+            'create_spec_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
+            'get_spec_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
+            'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+            'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
             'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)',
             'create_project_completion_external': 'Write(.respec-ai/projects/*/project_completion.md)',
             'get_project_plan_tool': 'Read(.respec-ai/projects/*/project_plan.md)',
             'update_project_plan_tool': 'Edit(.respec-ai/projects/*/project_plan.md)',
-            'list_project_specs_tool': 'Glob(.respec-ai/projects/*/respec-specs/*.md)',
+            'list_project_specs_tool': 'Glob(.respec-ai/projects/*/respec-phases/*.md)',
         }
 
         for abstract_tool, expected_pattern in expected_tool_patterns.items():
@@ -75,7 +75,7 @@ class TestToolRegistryScoping:
 
         for tool_name in spec_tools:
             tool_path = markdown_tools[tool_name]
-            assert '/respec-specs/' in tool_path, f'Spec tool {tool_name} not scoped to specs directory: {tool_path}'
+            assert '/respec-phases/' in tool_path, f'Spec tool {tool_name} not scoped to specs directory: {tool_path}'
             assert '.md' in tool_path, f'Spec tool {tool_name} should target .md files: {tool_path}'
 
     def test_project_tools_are_scoped_to_project_files(self, tool_registry: ToolRegistry) -> None:
@@ -91,7 +91,7 @@ class TestToolRegistryScoping:
         for tool_name, expected_file in project_file_tools.items():
             tool_path = markdown_tools[tool_name]
             assert expected_file in tool_path, f'Project tool {tool_name} should target {expected_file}: {tool_path}'
-            assert '/respec-specs/' not in tool_path, (
+            assert '/respec-phases/' not in tool_path, (
                 f'Project tool {tool_name} should not target specs directory: {tool_path}'
             )
 
@@ -100,7 +100,7 @@ class TestToolRegistryScoping:
 
         list_tool = markdown_tools['list_project_specs_tool']
         assert list_tool.startswith('Glob('), f'List tool should use Glob: {list_tool}'
-        assert 'specs/*.md' in list_tool, f'List tool should target spec files: {list_tool}'
+        assert 'phases/*.md' in list_tool, f'List tool should target phase files: {list_tool}'
 
     def test_different_platforms_have_different_tools(self, tool_registry: ToolRegistry) -> None:
         linear_tools = tool_registry.get_all_tools_for_platform(PlatformType.LINEAR)

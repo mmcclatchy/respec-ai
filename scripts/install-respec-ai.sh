@@ -225,7 +225,7 @@ echo ""
 
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
 print_info "Generating respec-ai workflow files..."
-if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration --force; then
+if uv run --project "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration --force; then
     echo ""
 
     # Register local MCP server in Claude Code
@@ -280,8 +280,8 @@ if uv run --directory "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_
         echo "  3. Start using respec-ai workflows:"
         echo "     • /respec-plan - Create strategic plans"
         echo "     • /respec-roadmap - Create phased roadmaps"
-        echo "     • /respec-spec - Generate technical specifications"
-        echo "     • /respec-build - Execute implementation"
+        echo "     • /respec-phase - Generate technical specifications"
+        echo "     • /respec-code - Execute implementation"
         echo ""
     else
         print_warning "Workflow files created but MCP registration failed"

@@ -195,7 +195,7 @@ mcp__respec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown
     @computed_field
     def sync_spec_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """SPEC_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-specs/{SPEC_NAME}.md)
+            return """SPEC_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{SPEC_NAME}.md)
 mcp__respec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
             return """SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
@@ -299,7 +299,7 @@ class CodeCommandTools(BaseModel):
     def sync_spec_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """TRY:
-  SPEC_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-specs/{SPEC_NAME}.md)
+  SPEC_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{SPEC_NAME}.md)
   mcp__respec-ai__store_spec(
     project_name=PROJECT_NAME,
     spec_name=SPEC_NAME,
@@ -433,7 +433,7 @@ Display: "⚠️ Sync not configured for this platform"
     def sync_all_specs_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """SPECS_LOADED = 0
-SPEC_FILES = Glob(.respec-ai/projects/{PROJECT_NAME}/respec-specs/*.md)
+SPEC_FILES = Glob(.respec-ai/projects/{PROJECT_NAME}/respec-phases/*.md)
 FOR each spec_file in SPEC_FILES:
   SPEC_NAME = [extract filename without .md extension]
   SPEC_MARKDOWN = Read(spec_file)
@@ -509,21 +509,21 @@ class CreatePhaseAgentTools(BaseModel):
     def create_phase_tool_interpolated(self) -> str:
         if '*' not in self.create_phase_tool:
             return self.create_phase_tool
-        # Markdown: Write(.respec-ai/projects/*/respec-specs/*.md)
+        # Markdown: Write(.respec-ai/projects/*/respec-phases/*.md)
         return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
     def get_phase_tool_interpolated(self) -> str:
         if '*' not in self.get_phase_tool:
             return self.get_phase_tool
-        # Markdown: Read(.respec-ai/projects/*/respec-specs/*.md)
+        # Markdown: Read(.respec-ai/projects/*/respec-phases/*.md)
         return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
     def update_phase_tool_interpolated(self) -> str:
         if '*' not in self.update_phase_tool:
             return self.update_phase_tool
-        # Markdown: Edit(.respec-ai/projects/*/respec-specs/*.md)
+        # Markdown: Edit(.respec-ai/projects/*/respec-phases/*.md)
         return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 

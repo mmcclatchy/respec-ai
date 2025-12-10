@@ -32,15 +32,15 @@ class TestMarkdownPlatformScoping:
 
         # Verify all expected scoped tools are present
         expected_tools = {
-            'create_spec_tool': 'Write(.respec-ai/projects/*/respec-specs/*.md)',
-            'get_spec_tool': 'Read(.respec-ai/projects/*/respec-specs/*.md)',
-            'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
-            'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-specs/*.md)',
+            'create_spec_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
+            'get_spec_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
+            'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+            'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
             'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)',
             'create_project_completion_external': 'Write(.respec-ai/projects/*/project_completion.md)',
             'get_project_plan_tool': 'Read(.respec-ai/projects/*/project_plan.md)',
             'update_project_plan_tool': 'Edit(.respec-ai/projects/*/project_plan.md)',
-            'list_project_specs_tool': 'Glob(.respec-ai/projects/*/respec-specs/*.md)',
+            'list_project_specs_tool': 'Glob(.respec-ai/projects/*/respec-phases/*.md)',
         }
 
         for abstract_tool, expected_concrete in expected_tools.items():
@@ -76,7 +76,7 @@ class TestMarkdownPlatformScoping:
                 assert isinstance(template, str)
                 assert len(template) > 0
                 # Templates should reference the scoped tool names
-                if command_str in ['respec-spec', 'respec-build']:
+                if command_str in ['respec-phase', 'respec-code']:
                     assert any(tool in template for tool in ['Write(', 'Read(', 'Edit(', 'Glob('])
             except ValueError as e:
                 # Some commands may not be supported by Markdown platform
@@ -94,14 +94,14 @@ class TestMarkdownPlatformScoping:
         # Verify we have the correct scoped tools available
         assert 'create_spec_tool' in tools
         assert 'create_project_external' in tools
-        assert tools['create_spec_tool'] == 'Write(.respec-ai/projects/*/respec-specs/*.md)'
+        assert tools['create_spec_tool'] == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
         assert tools['create_project_external'] == 'Write(.respec-ai/projects/*/project_plan.md)'
 
         # Test that the scoped path patterns are properly defined
         # (The actual file operations would happen through the MCP client using these tools)
         assert '.respec-ai/projects/' in tools['create_spec_tool']
         assert '.respec-ai/projects/' in tools['get_spec_tool']
-        assert 'specs/*.md' in tools['create_spec_tool']
+        assert 'phases/*.md' in tools['create_spec_tool']
         assert 'project_plan.md' in tools['create_project_external']
 
     def test_security_boundaries_in_integration(self, orchestrator: PlatformOrchestrator) -> None:
@@ -172,7 +172,7 @@ class TestMarkdownPlatformScoping:
         # Should include all scoped tools (9 total)
         assert len(info['platform_tools']) == 9
         assert 'create_spec_tool' in info['platform_tools']
-        assert info['platform_tools']['create_spec_tool'] == 'Write(.respec-ai/projects/*/respec-specs/*.md)'
+        assert info['platform_tools']['create_spec_tool'] == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
 
         # Project should be valid
         assert info['config_valid'] is True

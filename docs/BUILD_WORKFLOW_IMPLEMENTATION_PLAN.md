@@ -1,4 +1,4 @@
-# /respec-build Workflow Implementation Plan
+# /respec-code Workflow Implementation Plan
 
 **Status**: Planning Complete - Ready for Implementation
 **Date**: 2025-10-22
@@ -6,14 +6,14 @@
 
 ## Overview
 
-This document outlines the complete implementation plan for the `/respec-build` command workflow. The workflow implements a dual-loop refinement system (planning loop + coding loop) that takes a Phase and produces production-ready code following TDD methodology.
+This document outlines the complete implementation plan for the `/respec-code` command workflow. The workflow implements a dual-loop refinement system (planning loop + coding loop) that takes a Phase and produces production-ready code following TDD methodology.
 
 ## Workflow Architecture
 
 ### High-Level Flow
 
 ```text
-User: /respec-build [spec_name]
+User: /respec-code [spec_name]
   ↓
 Main Agent (build_command.py)
   ├→ Retrieve Phase
@@ -55,7 +55,7 @@ Exit
 
 #### Step 1.1: User Command Submission
 - **Actor**: User
-- **Action**: Execute `/respec-build [spec_name]`
+- **Action**: Execute `/respec-code [spec_name]`
 - **Implementation**: No changes needed (command parsing handled by platform)
 
 #### Step 1.2: Main Agent Initialization
@@ -253,7 +253,7 @@ Each research-synthesizer returns a file path:
 #### Step 4.4: MCP Loop Decision
 - **Actor**: MCP Server
 - **Action**: Call `mcp__respec-ai__decide_loop_next_action(planning_loop_id)`
-- **Implementation**: MCP Server retrieves latest score from build-critic feedback internally
+- **Implementation**: MCP Server retrieves latest score from task-critic feedback internally
 - **Returns**: MCPResponse with status:
   - `refine` if score < 80%
   - `complete` if score ≥ 80%
@@ -403,7 +403,7 @@ Score breakdown (suggested weighting):
 #### Step 5.4: MCP Loop Decision (Coding Phase)
 - **Actor**: MCP Server
 - **Action**: Call `mcp__respec-ai__decide_loop_next_action(coding_loop_id)`
-- **Implementation**: MCP Server retrieves latest score from build-reviewer feedback internally
+- **Implementation**: MCP Server retrieves latest score from task-reviewer feedback internally
 - **Returns**: MCPResponse with status:
   - `refine` if score < 95%
   - `complete` if score ≥ 95%
@@ -823,7 +823,7 @@ Main Agent collects paths into list.
 3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., spec_name=...)
 4. build_critic agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(planning_loop_id)
-   Note: MCP retrieves latest score from build-critic feedback internally
+   Note: MCP retrieves latest score from task-critic feedback internally
 6. Main Agent receives MCPResponse with decision and acts:
    - If status="refine": Go to step 1 (repeat loop)
    - If status="complete": Exit planning loop, proceed to coding loop
@@ -839,7 +839,7 @@ Main Agent collects paths into list.
 3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
 4. build_reviewer agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(coding_loop_id)
-   Note: MCP retrieves latest score from build-reviewer feedback internally
+   Note: MCP retrieves latest score from task-reviewer feedback internally
 6. Main Agent receives MCPResponse with decision and acts:
    - If status="refine": Go to step 1 (repeat loop)
    - If status="complete": Exit coding loop, proceed to integration phase
@@ -990,7 +990,7 @@ When MCP returns status="user_input" (stagnation detected):
 - Platform updates (Linear, GitHub, Markdown)
 
 ### End-to-End Tests
-- Complete /respec-build workflow from command to completion
+- Complete /respec-code workflow from command to completion
 - User input scenarios (planning stagnation, coding stagnation)
 - Multiple research items (parallel execution)
 - All three platforms (Linear, GitHub, Markdown)
@@ -1000,7 +1000,7 @@ When MCP returns status="user_input" (stagnation detected):
 ## Success Criteria
 
 ### Workflow Execution
-- ✅ User can invoke `/respec-build [spec_name]`
+- ✅ User can invoke `/respec-code [spec_name]`
 - ✅ Research synthesis executes in parallel
 - ✅ Planning loop refines to 80% quality
 - ✅ Coding loop refines to 95% quality
@@ -1069,7 +1069,7 @@ When MCP returns status="user_input" (stagnation detected):
 - [src/models/spec.py](src/models/spec.py) - Phase model
 - [src/mcp/tools/phase_tools.py](src/mcp/tools/phase_tools.py) - Task MCP tools
 - [src/platform/templates/commands/build_command.py](src/platform/templates/commands/build_command.py) - Main command
-- [docs/commands/respec-build.md](docs/commands/respec-build.md) - Command specification
+- [docs/commands/respec-code.md](docs/commands/respec-code.md) - Command specification
 - [docs/WORKFLOW_REFACTORING_LESSONS.md](docs/WORKFLOW_REFACTORING_LESSONS.md) - Design patterns
 
 ### Files to Create

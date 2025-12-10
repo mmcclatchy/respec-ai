@@ -108,8 +108,8 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         print('\n⚠️  IMPORTANT: Restart Claude Code to activate the new commands!')
         print('\nAvailable Commands (after restart):')
         print('  • /respec-plan - Create strategic plans')
-        print('  • /respec-spec - Transform plans into technical specifications')
-        print('  • /respec-build - Execute implementation workflows')
+        print('  • /respec-phase - Transform plans into technical specifications')
+        print('  • /respec-code - Execute implementation workflows')
         print('  • /respec-roadmap - Create phased roadmaps')
         print('  • /respec-plan-conversation - Convert conversations into plans')
         print('\n🚀 Ready to begin! Restart Claude Code to use the respec-ai commands.')
@@ -155,12 +155,12 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         ('respec-roadmap', generate_roadmap_template(roadmap_tools)),
         ('respec-roadmap-critic', generate_roadmap_critic_template()),
         ('respec-create-phase', generate_create_phase_template(phase_tools)),
-        ('respec-spec-architect', generate_phase_architect_template(phase_architect_tools)),
-        ('respec-spec-critic', generate_phase_critic_template(phase_critic_tools)),
-        ('respec-build-planner', generate_task_critic_template()),
-        ('respec-build-critic', generate_task_critic_template()),
-        ('respec-build-coder', generate_task_coder_template(task_coder_tools)),
-        ('respec-build-reviewer', generate_task_reviewer_template()),
+        ('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
+        ('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
+        ('respec-code-planner', generate_task_critic_template()),
+        ('respec-task-critic', generate_task_critic_template()),
+        ('respec-task-coder', generate_task_coder_template(task_coder_tools)),
+        ('respec-task-reviewer', generate_task_reviewer_template()),
     ]
 
 

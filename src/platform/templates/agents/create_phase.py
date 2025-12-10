@@ -13,7 +13,7 @@ def generate_create_phase_template(tools: CreatePhaseAgentTools) -> str:
 name: respec-create-phase
 description: Extract sparse Phases from roadmap and save to platform
 model: sonnet
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, mcp__respec-ai__get_spec, mcp__respec-ai__update_spec, {tools.create_phase_tool}, {tools.get_phase_tool}, {tools.update_phase_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_document, mcp__respec-ai__get_document, mcp__respec-ai__update_document, {tools.create_phase_tool}, {tools.get_phase_tool}, {tools.update_phase_tool}
 ---
 
 ═══════════════════════════════════════════════
@@ -27,7 +27,7 @@ When instructions say "CALL tool_name", you execute the tool:
   ❌ WRONG: <mcp__respec-ai__get_roadmap><project_name>rag-poc</project_name>
 
 Platform tools vary by configured platform:
-  - Markdown: Write/Read/Edit for .respec-ai/projects/{{project_name}}/respec-specs/{{lowercase-kebab-spec-name}}.md
+  - Markdown: Write/Read/Edit for .respec-ai/projects/{{project_name}}/respec-phases/{{lowercase-kebab-spec-name}}.md
   - Linear: mcp__linear-server__create_issue, get_issue, update_issue
   - GitHub: mcp__github__create_issue, get_issue, update_issue
 
@@ -74,10 +74,10 @@ From roadmap markdown, extract the Phase matching SPEC_NAME
 → If not found: STOP and report error
 
 STEP 3: Store in MCP (REQUIRED)
-CALL mcp__respec-ai__store_spec(
-  project_name=PROJECT_NAME,
-  spec_name=SPEC_NAME,
-  spec_markdown=extracted_spec_markdown
+CALL mcp__respec-ai__store_document(
+  doc_type="phase",
+  path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}",
+  content=extracted_spec_markdown
 )
 → Verify: MCP storage successful
 → If failed: STOP and report error
@@ -93,7 +93,7 @@ Save spec to configured platform using platform-specific tool.
 CALL {tools.create_phase_tool_interpolated}
 
 Platform-specific examples:
-  - Markdown: Write(.respec-ai/projects/PROJECT_NAME/respec-specs/lowercase-kebab-spec-name.md, extracted_spec_markdown)
+  - Markdown: Write(.respec-ai/projects/PROJECT_NAME/respec-phases/lowercase-kebab-spec-name.md, extracted_spec_markdown)
   - Linear: mcp__linear-server__create_issue(title=SPEC_NAME, description=extracted_spec_markdown, ...)
   - GitHub: mcp__github__create_issue(title=SPEC_NAME, body=extracted_spec_markdown, ...)
 
@@ -116,9 +116,9 @@ Generate creation confirmation ONLY if both storage operations succeeded:
 Spec Created Successfully:
 - **Project**: [project_name]
 - **Spec Name**: [spec_name from Phase]
-- **MCP Storage**: ✅ Stored using mcp__respec-ai__store_spec(project_name, spec_name, spec_markdown)
+- **MCP Storage**: ✅ Stored using mcp__respec-ai__store_document(doc_type="phase", path=f"{{project_name}}/{{spec_name}}", content=spec_markdown)
 - **Platform Storage**: ✅ Saved using {tools.create_phase_tool_interpolated}
-- **Status**: Ready for /respec-spec workflow
+- **Status**: Ready for /respec-phase workflow
 
 If MCP storage fails, report failure and stop.
 If platform storage fails, report partial success with MCP storage complete but platform save failed.
@@ -236,7 +236,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 - Verify all critical phase information extracted successfully
 - Validate Phase structure completeness and accuracy
 - Confirm alignment between phase context and specification
-- Ensure specification provides adequate guidance for /respec-spec command execution
+- Ensure specification provides adequate guidance for /respec-phase command execution
 
 #### Specification Readiness Assessment
 - Check that Phase contains actionable technical guidance

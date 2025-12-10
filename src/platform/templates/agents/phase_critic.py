@@ -15,7 +15,7 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__respec-ai__get_document(project_name=None, spec_name=None, loop_id=loop_id)
+  ✅ CORRECT: spec = mcp__respec-ai__get_document(doc_type="phase", path=None, loop_id=loop_id)
   ❌ WRONG: <mcp__respec-ai__get_document><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
@@ -32,16 +32,16 @@ TASKS:
 
 STEP 1: Validate loop_id Parameter
 IF loop_id is None or loop_id == "":
-    ERROR: "spec-critic requires valid loop_id parameter"
+    ERROR: "phase-critic requires valid loop_id parameter"
     DIAGNOSTIC: "loop_id={{loop_id}}, project_name={{project_name}}, spec_name={{spec_name}}"
-    HELP: "The spec-critic agent MUST receive loop_id from the calling command"
+    HELP: "The phase-critic agent MUST receive loop_id from the calling command"
     EXIT: Agent terminated
 → Verify: loop_id is valid (non-empty string)
 
 STEP 2: Retrieve Specification via loop_id
 CALL mcp__respec-ai__get_document(
-  project_name=None,
-  spec_name=None,
+  doc_type="phase",
+  path=None,
   loop_id=loop_id
 )
 → Verify: Specification markdown received

@@ -1,6 +1,6 @@
 # respec-ai Workflows Guide
 
-> **⚠️ Workflow Status:** Currently functional: `/respec-plan`, `/respec-roadmap`, `/respec-spec`. The `/respec-build` workflow is not yet functional.
+> **⚠️ Workflow Status:** Currently functional: `/respec-plan`, `/respec-roadmap`, `/respec-phase`. The `/respec-code` workflow is not yet functional.
 
 ---
 
@@ -12,8 +12,8 @@
 - [Workflows](#workflows)
   - [/respec-plan](#respec-plan)
   - [/respec-roadmap](#respec-roadmap)
-  - [/respec-spec](#respec-spec)
-  - [/respec-build](#respec-build-not-yet-functional)
+  - [/respec-phase](#respec-phase)
+  - [/respec-code](#respec-code-not-yet-functional)
 - [Workflow Patterns](#workflow-patterns)
 - [Best Practices](#best-practices)
 
@@ -72,19 +72,19 @@ respec-ai follows a standard enterprise workflow with automated quality gates at
 
    ▼ Validates: Roadmap aligns with strategic plan
 
-3. Technical Design (/respec-spec)
+3. Technical Design (/respec-phase)
    │
    ├─ Detailed technical specifications
    ├─ Architecture and technology decisions
-   └─ Quality loops with spec-critic (validates against roadmap)
+   └─ Quality loops with phase-critic (validates against roadmap)
 
    ▼ Validates: Spec aligns with roadmap phase
 
-4. Implementation (/respec-build) [NOT YET FUNCTIONAL]
+4. Implementation (/respec-code) [NOT YET FUNCTIONAL]
    │
    ├─ Implementation planning
    ├─ TDD-driven code generation
-   └─ Code review with build-reviewer (validates against spec)
+   └─ Code review with task-reviewer (validates against spec)
 
    ▼ Validates: Code aligns with spec
 ```
@@ -208,7 +208,7 @@ Would you like me to refine any phase?
 
 ---
 
-#### `/respec-spec`
+#### `/respec-phase`
 
 **What it does:** Convert strategic plans into detailed technical specifications
 
@@ -220,15 +220,15 @@ Would you like me to refine any phase?
 
 **How it works:**
 1. **Plan retrieval** - Retrieves existing strategic plan or roadmap phase
-2. **Spec generation** - spec-architect creates technical specification
-3. **Quality evaluation** - spec-critic validates against parent document (plan or roadmap)
+2. **Spec generation** - phase-architect creates technical specification
+3. **Quality evaluation** - phase-critic validates against parent document (plan or roadmap)
 4. **Platform creation** - Creates spec in your platform (Linear issue, GitHub issue, or Markdown file)
 5. **Refinement** - Iterates until quality threshold met
 
 **Example walkthrough:**
 
 ```text
-User: /respec-spec phase-1-auth
+User: /respec-phase phase-1-auth
 
 Claude: I'll create a technical specification from your strategic plan.
 
@@ -269,7 +269,7 @@ Creating Linear issue...
 
 ---
 
-#### `/respec-build` [NOT YET FUNCTIONAL]
+#### `/respec-code` [NOT YET FUNCTIONAL]
 
 **Status:** ⚠️ Under active development
 
@@ -278,9 +278,9 @@ Creating Linear issue...
 **Planned workflow:**
 1. **Spec retrieval** - Retrieves technical specification
 2. **Build planning** - taskner creates implementation plan
-3. **Plan evaluation** - build-critic validates plan quality
-4. **Code generation** - build-coder generates code with TDD approach
-5. **Code review** - build-reviewer validates against spec
+3. **Plan evaluation** - task-critic validates plan quality
+4. **Code generation** - task-coder generates code with TDD approach
+5. **Code review** - task-reviewer validates against spec
 6. **Refinement** - Quality loops until tests pass and code meets standards
 
 **When to use (future):**
@@ -310,7 +310,7 @@ respec-ai init -p markdown
 
 **Workflow:**
 1. `/respec-plan my-project` - Create strategic plan
-2. `/respec-spec feature-name` - Create technical specs
+2. `/respec-phase feature-name` - Create technical specs
 3. Implement features manually using specs as guide
 
 **Benefits:**
@@ -332,7 +332,7 @@ respec-ai init -p linear
 **Workflow:**
 1. `/respec-plan team-project` - Create strategic plan
 2. `/respec-roadmap team-project` - Create phased roadmap
-3. `/respec-spec phase-1-feature` - Create specs as Linear issues
+3. `/respec-phase phase-1-feature` - Create specs as Linear issues
 4. Team implements features tracked in Linear
 
 **Benefits:**
@@ -354,7 +354,7 @@ respec-ai init -p github
 
 **Workflow:**
 1. `/respec-plan oss-project` - Create strategic plan
-2. `/respec-spec feature-request` - Create specs as GitHub issues
+2. `/respec-phase feature-request` - Create specs as GitHub issues
 3. Contributors implement features from issue specs
 
 **Benefits:**
@@ -472,7 +472,7 @@ respec-ai uses two types of quality loops to ensure high-quality outputs:
 
 #### 2. Automated Refinement Loops (MCP-Driven)
 
-**Used by:** `/respec-roadmap`, `/respec-spec`, `/respec-build`
+**Used by:** `/respec-roadmap`, `/respec-phase`, `/respec-code`
 
 **Process:**
 1. **Generation:** Generative agent creates content (roadmap, spec, build plan, code)
@@ -520,21 +520,21 @@ respec-ai uses two types of quality loops to ensure high-quality outputs:
 - Ensures roadmap aligns with strategic plan
 - Validates: Phase logic, dependencies, deliverables, timeline
 
-**spec-critic:**
+**phase-critic:**
 - Evaluates technical specifications
 - Checks architecture design decisions
 - Validates implementation approach
 - Ensures spec aligns with roadmap phase or plan
 - Validates: Architecture, technology choices, security, implementation detail
 
-**build-critic:**
+**task-critic:**
 - Evaluates build plans
 - Checks implementation steps
 - Validates technology choices
 - Ensures plan aligns with technical spec
 - Validates: Implementation approach, testing strategy, code structure
 
-**build-reviewer:**
+**task-reviewer:**
 - Reviews generated code
 - Checks code quality and best practices
 - Validates implementation correctness
@@ -563,8 +563,8 @@ Different workflows have different thresholds:
 |----------|------------------|---------------------|
 | `/respec-plan` | 90 | 5 points |
 | `/respec-roadmap` | 90 | 10 points |
-| `/respec-spec` | 90 | 5 points |
-| `/respec-build` | 95 | 5 points |
+| `/respec-phase` | 90 | 5 points |
+| `/respec-code` | 95 | 5 points |
 
 **Threshold:** Minimum score to proceed to next phase
 **Improvement Required:** Points that must improve between iterations to avoid stagnation
@@ -618,17 +618,17 @@ The respec-ai MCP server provides 38 tools across 7 modules that power the workf
 **Generative Agents:**
 - `plan-analyst` - Extracts business objectives from strategic plans
 - `roadmap` - Generates multi-phase roadmaps from plans
-- `spec-architect` - Creates technical specifications from plans/roadmaps
+- `phase-architect` - Creates technical specifications from plans/roadmaps
 - `taskner` - Creates implementation plans from specs
-- `build-coder` - Generates code from build plans
+- `task-coder` - Generates code from build plans
 
 **Critic Agents:**
 - `plan-critic` - Validates strategic plans
 - `analyst-critic` - Validates objective extraction
 - `roadmap-critic` - Validates roadmaps against plans
-- `spec-critic` - Validates specs against roadmaps/plans
-- `build-critic` - Validates build plans against specs
-- `build-reviewer` - Validates code against build plans/specs
+- `phase-critic` - Validates specs against roadmaps/plans
+- `task-critic` - Validates build plans against specs
+- `task-reviewer` - Validates code against build plans/specs
 
 **Command Templates:**
 Each `/respec-*` command is a template that orchestrates:
@@ -662,7 +662,7 @@ update_spec → Linear: update_issue | GitHub: update_issue | Markdown: Edit
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │                    User Invokes Command                      │
-│                    (e.g., /respec-spec)                      │
+│                    (e.g., /respec-phase)                      │
 └────────────────────────┬─────────────────────────────────────┘
                          │
                          ▼
@@ -675,7 +675,7 @@ update_spec → Linear: update_issue | GitHub: update_issue | Markdown: Edit
                          │
                          ▼
 ┌──────────────────────────────────────────────────────────────┐
-│               Generative Agent (e.g., spec-architect)        │
+│               Generative Agent (e.g., phase-architect)        │
 │  • Retrieves parent document via MCP tools                   │
 │  • Generates technical specification                         │
 │  • Returns content to command                                │
@@ -683,7 +683,7 @@ update_spec → Linear: update_issue | GitHub: update_issue | Markdown: Edit
                          │
                          ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                Critic Agent (e.g., spec-critic)              │
+│                Critic Agent (e.g., phase-critic)              │
 │  • Evaluates content against parent document target          │
 │  • Provides quality score (0-100)                            │
 │  • Provides specific feedback for improvement                │
