@@ -500,31 +500,31 @@ class PhaseCriticAgentTools(BaseModel):
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for spec length in characters')
 
 
-class CreateSpecAgentTools(BaseModel):
-    create_spec_tool: str = Field(..., description='Platform-specific tool for creating external specs')
-    get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
+class CreatePhaseAgentTools(BaseModel):
+    create_phase_tool: str = Field(..., description='Platform-specific tool for creating external specs')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
+    update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
 
     @computed_field
-    def create_spec_tool_interpolated(self) -> str:
-        if '*' not in self.create_spec_tool:
-            return self.create_spec_tool
+    def create_phase_tool_interpolated(self) -> str:
+        if '*' not in self.create_phase_tool:
+            return self.create_phase_tool
         # Markdown: Write(.respec-ai/projects/*/respec-specs/*.md)
-        return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+        return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
-    def get_spec_tool_interpolated(self) -> str:
-        if '*' not in self.get_spec_tool:
-            return self.get_spec_tool
+    def get_phase_tool_interpolated(self) -> str:
+        if '*' not in self.get_phase_tool:
+            return self.get_phase_tool
         # Markdown: Read(.respec-ai/projects/*/respec-specs/*.md)
-        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
     @computed_field
-    def update_spec_tool_interpolated(self) -> str:
-        if '*' not in self.update_spec_tool:
-            return self.update_spec_tool
+    def update_phase_tool_interpolated(self) -> str:
+        if '*' not in self.update_phase_tool:
+            return self.update_phase_tool
         # Markdown: Edit(.respec-ai/projects/*/respec-specs/*.md)
-        return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+        return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 
 class TaskCoderAgentTools(BaseModel):

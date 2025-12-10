@@ -1,8 +1,8 @@
 """Tests for agent template generation functions."""
 
-from src.platform.models import CreateSpecAgentTools, PlanRoadmapAgentTools
+from src.platform.models import CreatePhaseAgentTools, PlanRoadmapAgentTools
 from src.platform.templates.agents import (
-    generate_create_spec_template,
+    generate_create_phase_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
 )
@@ -105,29 +105,29 @@ class TestRoadmapCriticTemplate:
             assert term not in template, f'Template should not contain threshold reference: {term}'
 
 
-class TestCreateSpecTemplate:
+class TestCreatePhaseTemplate:
     def test_template_structure(self) -> None:
-        tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
-        template = generate_create_spec_template(tools)
+        template = generate_create_phase_template(tools)
 
         # Check YAML frontmatter
         assert '---' in template
-        assert 'name: respec-create-spec' in template
+        assert 'name: respec-create-phase' in template
         assert 'description:' in template
         assert 'model: sonnet' in template
         assert 'tools:' in template
 
     def test_template_includes_mcp_tools(self) -> None:
-        tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
-        template = generate_create_spec_template(tools)
+        template = generate_create_phase_template(tools)
 
         # Should include MCP tools
         mcp_tools = ['get_roadmap', 'add_spec', 'store_spec']
@@ -135,12 +135,12 @@ class TestCreateSpecTemplate:
         assert has_mcp_tool, 'Template should include MCP tools for roadmap operations'
 
     def test_template_supports_parallel_execution(self) -> None:
-        tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
-        template = generate_create_spec_template(tools)
+        template = generate_create_phase_template(tools)
 
         # Should mention individual spec creation (not multiple)
         assert 'Project name' in template
@@ -148,12 +148,12 @@ class TestCreateSpecTemplate:
         assert 'Phase Context' in template
 
     def test_template_includes_initialspec_creation(self) -> None:
-        tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
-        template = generate_create_spec_template(tools)
+        template = generate_create_phase_template(tools)
 
         # Should reference Phase
         assert 'Phase' in template
@@ -162,16 +162,16 @@ class TestCreateSpecTemplate:
 class TestTemplateConsistency:
     def test_all_templates_use_sonnet(self) -> None:
         plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
-        spec_tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        phase_tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
 
         templates = [
             generate_roadmap_template(plan_tools),
             generate_roadmap_critic_template(),
-            generate_create_spec_template(spec_tools),
+            generate_create_phase_template(phase_tools),
         ]
 
         for template in templates:
@@ -179,16 +179,16 @@ class TestTemplateConsistency:
 
     def test_all_templates_have_required_sections(self) -> None:
         plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
-        spec_tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        phase_tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
 
         templates = [
             generate_roadmap_template(plan_tools),
             generate_roadmap_critic_template(),
-            generate_create_spec_template(spec_tools),
+            generate_create_phase_template(phase_tools),
         ]
 
         required_sections = ['name:', 'description:', 'INPUTS:', 'TASKS:']
@@ -199,16 +199,16 @@ class TestTemplateConsistency:
 
     def test_no_template_contains_behavioral_descriptions(self) -> None:
         plan_tools = PlanRoadmapAgentTools(create_spec_external='mcp__respec-ai__add_spec')
-        spec_tools = CreateSpecAgentTools(
-            create_spec_tool='mcp__respec-ai__add_spec',
-            get_spec_tool='mcp__respec-ai__get_spec',
-            update_spec_tool='mcp__respec-ai__update_spec',
+        phase_tools = CreatePhaseAgentTools(
+            create_phase_tool='mcp__respec-ai__add_spec',
+            get_phase_tool='mcp__respec-ai__get_spec',
+            update_phase_tool='mcp__respec-ai__update_spec',
         )
 
         templates = [
             generate_roadmap_template(plan_tools),
             generate_roadmap_critic_template(),
-            generate_create_spec_template(spec_tools),
+            generate_create_phase_template(phase_tools),
         ]
 
         # Anti-patterns to avoid

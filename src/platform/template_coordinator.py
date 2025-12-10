@@ -20,8 +20,8 @@ class TemplateCoordinator:
 
         self._strategies: dict[CommandTemplate, CommandStrategy[Any]] = {
             CommandTemplate.PLAN: PlanCommandStrategy(self.tool_registry),
-            CommandTemplate.SPEC: PhaseCommandStrategy(self.tool_registry),
-            CommandTemplate.BUILD: CodeCommandStrategy(self.tool_registry),
+            CommandTemplate.PHASE: PhaseCommandStrategy(self.tool_registry),
+            CommandTemplate.CODE: CodeCommandStrategy(self.tool_registry),
             CommandTemplate.ROADMAP: PlanRoadmapCommandStrategy(self.tool_registry),
             CommandTemplate.PLAN_CONVERSATION: PlanConversationCommandStrategy(self.tool_registry),
         }

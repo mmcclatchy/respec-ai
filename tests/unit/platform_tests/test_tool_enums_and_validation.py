@@ -8,7 +8,7 @@ from src.platform.startup_validation import (
     validate_external_platform_tools,
     validate_tool_registry,
 )
-from src.platform.template_helpers import TemplateToolBuilder, create_spec_command_tools
+from src.platform.template_helpers import TemplateToolBuilder, create_phase_command_tools
 from src.platform.tool_enums import (
     AbstractOperation,
     BuiltInTool,
@@ -211,7 +211,7 @@ class TestTemplateHelpers:
         assert '- Task(spec-architect)' in yaml_output
         assert '- mcp__respec-ai__initialize_refinement_loop' in yaml_output
 
-    def test_create_spec_command_tools(self) -> None:
+    def test_create_phase_command_tools(self) -> None:
         # Simulate what TemplateCoordinator does for LINEAR platform
         platform_tools = [
             'mcp__linear-server__create_issue',
@@ -219,9 +219,9 @@ class TestTemplateHelpers:
             'mcp__linear-server__update_issue',
         ]
 
-        yaml_output = create_spec_command_tools(platform_tools)
+        yaml_output = create_phase_command_tools(platform_tools)
 
-        assert 'Task(respec-spec-architect)' in yaml_output
+        assert 'Task(respec-phase-architect)' in yaml_output
         assert 'mcp__respec-ai__initialize_refinement_loop' in yaml_output
         assert 'mcp__linear-server__create_issue' in yaml_output
 

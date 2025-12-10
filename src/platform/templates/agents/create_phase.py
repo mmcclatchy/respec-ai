@@ -1,19 +1,19 @@
-from src.platform.models import CreateSpecAgentTools
+from src.platform.models import CreatePhaseAgentTools
 
 
-def generate_create_spec_template(tools: CreateSpecAgentTools) -> str:
-    """Generate create-spec agent template for extracting sparse Phases from roadmap.
+def generate_create_phase_template(tools: CreatePhaseAgentTools) -> str:
+    """Generate create-phase agent template for extracting sparse Phases from roadmap.
 
     Extracts existing Phase objects (iteration=0) from roadmap and saves to platform.
 
     Args:
-        tools: CreateSpecAgentTools containing platform-specific tool names
+        tools: CreatePhaseAgentTools containing platform-specific tool names
     """
     return f"""---
-name: respec-create-spec
+name: respec-create-phase
 description: Extract sparse Phases from roadmap and save to platform
 model: sonnet
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, mcp__respec-ai__get_spec, mcp__respec-ai__update_spec, {tools.create_spec_tool}, {tools.get_spec_tool}, {tools.update_spec_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, mcp__respec-ai__get_spec, mcp__respec-ai__update_spec, {tools.create_phase_tool}, {tools.get_phase_tool}, {tools.update_phase_tool}
 ---
 
 ═══════════════════════════════════════════════
@@ -23,7 +23,7 @@ You have access to MCP tools AND platform-specific tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
   ✅ CORRECT: roadmap = mcp__respec-ai__get_roadmap(project_name="rag-poc")
-  ✅ CORRECT: {tools.create_spec_tool_interpolated}
+  ✅ CORRECT: {tools.create_phase_tool_interpolated}
   ❌ WRONG: <mcp__respec-ai__get_roadmap><project_name>rag-poc</project_name>
 
 Platform tools vary by configured platform:
@@ -90,7 +90,7 @@ Save spec to configured platform using platform-specific tool.
   - Convert all uppercase to lowercase
   - Example: "Phase 1 - Neo4j Setup" → "phase-1-neo4j-setup"
 
-CALL {tools.create_spec_tool_interpolated}
+CALL {tools.create_phase_tool_interpolated}
 
 Platform-specific examples:
   - Markdown: Write(.respec-ai/projects/PROJECT_NAME/respec-specs/lowercase-kebab-spec-name.md, extracted_spec_markdown)
@@ -117,7 +117,7 @@ Spec Created Successfully:
 - **Project**: [project_name]
 - **Spec Name**: [spec_name from Phase]
 - **MCP Storage**: ✅ Stored using mcp__respec-ai__store_spec(project_name, spec_name, spec_markdown)
-- **Platform Storage**: ✅ Saved using {tools.create_spec_tool_interpolated}
+- **Platform Storage**: ✅ Saved using {tools.create_phase_tool_interpolated}
 - **Status**: Ready for /respec-spec workflow
 
 If MCP storage fails, report failure and stop.
@@ -163,7 +163,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 
 ### Individual Spec Focus
 - Process single phase per agent invocation
-- Operate independently of other create-spec agent instances
+- Operate independently of other create-phase agent instances
 - Use project_name and spec_name for targeted phase processing
 - Store results independently without cross-phase dependencies
 

@@ -3,7 +3,7 @@ from collections.abc import Callable
 from src.platform.command_strategies.base import CommandStrategy
 from src.platform.models import PhaseCommandTools
 from src.platform.platform_selector import PlatformType
-from src.platform.template_helpers import create_spec_command_tools
+from src.platform.template_helpers import create_phase_command_tools
 from src.platform.templates.commands import generate_phase_command_template
 from src.platform.tool_enums import AbstractOperation
 
@@ -22,7 +22,7 @@ class PhaseCommandStrategy(CommandStrategy[PhaseCommandTools]):
         update_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform)
 
         platform_tools = [create_spec_tool, get_spec_tool, update_spec_tool]
-        tools_yaml = create_spec_command_tools(platform_tools)
+        tools_yaml = create_phase_command_tools(platform_tools)
 
         return PhaseCommandTools(
             tools_yaml=tools_yaml,

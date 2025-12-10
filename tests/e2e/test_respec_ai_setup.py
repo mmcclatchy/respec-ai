@@ -29,10 +29,10 @@ class TestRespecAISetupEndToEnd:
 
         assert result.returncode == 0
         assert (project_path / '.claude' / 'commands' / 'respec-plan.md').exists()
-        assert (project_path / '.claude' / 'commands' / 'respec-spec.md').exists()
-        assert (project_path / '.claude' / 'commands' / 'respec-build.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'respec-phase.md').exists()
+        assert (project_path / '.claude' / 'commands' / 'respec-code.md').exists()
         assert (project_path / '.claude' / 'commands' / 'respec-roadmap.md').exists()
-        assert (project_path / '.claude' / 'agents' / 'respec-create-spec.md').exists()
+        assert (project_path / '.claude' / 'agents' / 'respec-create-phase.md').exists()
         assert (project_path / '.respec-ai' / 'config.json').exists()
 
         config_data = json.loads((project_path / '.respec-ai' / 'config.json').read_text())
@@ -121,7 +121,7 @@ class TestRespecAISetupEndToEnd:
 
             assert result.returncode == 0
 
-            spec_command_path = platform_project / '.claude' / 'commands' / 'respec-spec.md'
+            spec_command_path = platform_project / '.claude' / 'commands' / 'respec-phase.md'
             spec_command_content = spec_command_path.read_text()
 
             if platform == 'linear':
@@ -155,7 +155,7 @@ class TestRespecAISetupEndToEnd:
 
             assert result.returncode == 0
 
-            create_spec_agent_path = project_path / '.claude' / 'agents' / 'respec-create-spec.md'
+            create_spec_agent_path = project_path / '.claude' / 'agents' / 'respec-create-phase.md'
             create_spec_agent_content = create_spec_agent_path.read_text()
 
             if platform == 'linear':

@@ -3,7 +3,7 @@ from collections.abc import Callable
 from src.platform.command_strategies.base import CommandStrategy
 from src.platform.models import CodeCommandTools
 from src.platform.platform_selector import PlatformType
-from src.platform.template_helpers import create_build_command_tools
+from src.platform.template_helpers import create_code_command_tools
 from src.platform.templates.commands import generate_code_command_template
 from src.platform.tool_enums import AbstractOperation
 
@@ -19,7 +19,7 @@ class CodeCommandStrategy(CommandStrategy[CodeCommandTools]):
         )
 
         platform_tools = [get_spec_tool, comment_spec_tool]
-        tools_yaml = create_build_command_tools(platform_tools)
+        tools_yaml = create_code_command_tools(platform_tools)
 
         return CodeCommandTools(
             tools_yaml=tools_yaml,

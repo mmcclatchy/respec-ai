@@ -40,7 +40,7 @@ technical_spec_template = Phase(
 
 def generate_phase_architect_template(tools: PhaseArchitectAgentTools) -> str:
     return f"""---
-name: respec-spec-architect
+name: respec-phase-architect
 description: Design technical architecture from strategic plans
 model: sonnet
 tools: {tools.tools_yaml}
