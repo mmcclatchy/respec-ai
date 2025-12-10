@@ -61,20 +61,20 @@ class TestLoopPerformance:
         # Create multiple loops to test configuration access
         loops = []
         for _ in range(20):
-            for loop_type in ['plan', 'spec', 'build_plan', 'build_code']:
+            for loop_type in ['plan', 'phase', 'task']:
                 loop = await loop_tools.initialize_refinement_loop(project_name, loop_type)
                 loops.append(loop)
 
         end_time = time.perf_counter()
         execution_time = end_time - start_time
 
-        # Performance requirement: creating 80 loops should take under 0.5 seconds
+        # Performance requirement: creating 60 loops should take under 0.5 seconds
         assert execution_time < 0.5, f'Configuration loading test took {execution_time:.3f}s, expected < 0.5s'
-        assert len(loops) == 80
+        assert len(loops) == 60
 
     @pytest.mark.asyncio
     async def test_memory_usage_patterns_during_long_loops(self, project_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'spec')).id
+        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'phase')).id
 
         # Track loop operations without completion
         initial_active_loops = len(await loop_tools.list_active_loops(project_name))
@@ -120,7 +120,7 @@ class TestLoopPerformance:
 
     @pytest.mark.asyncio
     async def test_stagnation_detection_performance(self, project_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'build_plan')).id
+        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'task')).id
 
         start_time = time.perf_counter()
 
@@ -142,7 +142,7 @@ class TestLoopPerformance:
 
     @pytest.mark.asyncio
     async def test_score_history_memory_efficiency(self, project_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'spec')).id
+        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'phase')).id
 
         # Add many scores to test memory usage
         for i in range(200):
@@ -167,7 +167,7 @@ class TestLoopPerformance:
         # Create many loops
         created_loops = []
         for i in range(50):
-            loop_type = ['plan', 'spec', 'build_plan', 'build_code'][i % 4]
+            loop_type = ['plan', 'phase', 'task'][i % 3]
             loop = await loop_tools.initialize_refinement_loop(project_name, loop_type)
             created_loops.append(loop)
 

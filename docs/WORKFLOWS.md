@@ -277,7 +277,7 @@ Creating Linear issue...
 
 **Planned workflow:**
 1. **Spec retrieval** - Retrieves technical specification
-2. **Build planning** - build-planner creates implementation plan
+2. **Build planning** - taskner creates implementation plan
 3. **Plan evaluation** - build-critic validates plan quality
 4. **Code generation** - build-coder generates code with TDD approach
 5. **Code review** - build-reviewer validates against spec
@@ -619,7 +619,7 @@ The respec-ai MCP server provides 38 tools across 7 modules that power the workf
 - `plan-analyst` - Extracts business objectives from strategic plans
 - `roadmap` - Generates multi-phase roadmaps from plans
 - `spec-architect` - Creates technical specifications from plans/roadmaps
-- `build-planner` - Creates implementation plans from specs
+- `taskner` - Creates implementation plans from specs
 - `build-coder` - Generates code from build plans
 
 **Critic Agents:**

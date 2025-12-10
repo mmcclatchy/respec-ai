@@ -68,23 +68,20 @@ def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, Non
         plan_threshold=90,
         analyst_threshold=90,
         roadmap_threshold=90,
-        spec_threshold=90,
-        build_plan_threshold=90,
-        build_code_threshold=95,
+        phase_threshold=90,
+        task_threshold=95,
         # Improvement thresholds for stagnation detection
         plan_improvement_threshold=5,
         analyst_improvement_threshold=10,
         roadmap_improvement_threshold=10,
-        spec_improvement_threshold=5,
-        build_plan_improvement_threshold=5,
-        build_code_improvement_threshold=5,
+        phase_improvement_threshold=5,
+        task_improvement_threshold=5,
         # Checkpoint frequencies for user input triggers
         plan_checkpoint_frequency=5,
         analyst_checkpoint_frequency=3,
         roadmap_checkpoint_frequency=5,
-        spec_checkpoint_frequency=5,
-        build_plan_checkpoint_frequency=5,
-        build_code_checkpoint_frequency=5,
+        phase_checkpoint_frequency=5,
+        task_checkpoint_frequency=5,
     )
 
     mocker.patch('src.utils.setting_configs.loop_config', test_config)
@@ -140,7 +137,7 @@ async def db_state_manager(check_database_available: bool) -> AsyncGenerator[Pos
             async with db_pool._pool.acquire() as conn:
                 await conn.execute(
                     'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                    'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+                    'technical_specs, project_plans, loop_to_spec_mappings, tasks, loop_to_task_mappings CASCADE'
                 )
         except Exception:
             pass

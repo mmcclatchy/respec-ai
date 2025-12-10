@@ -60,18 +60,17 @@ class TestProductionMCPServer:
             'initialize_refinement_loop',
             'get_loop_status',
             'list_active_loops',
-            'get_previous_objective_feedback',
-            'store_current_objective_feedback',
+            'get_loop_feedback_summary',
         ]
         expected_unified_tools = [
             'create_roadmap',
             'get_roadmap',
-            'store_spec',
-            'get_spec_markdown',
-            'link_loop_to_spec',
-            'unlink_loop',
-            'list_specs',
-            'delete_spec',
+            'store_document',
+            'get_document',
+            'list_documents',
+            'update_document',
+            'delete_document',
+            'link_loop_to_document',
         ]
         expected_tools = expected_loop_tools + expected_unified_tools
 
@@ -255,7 +254,7 @@ class TestProductionMCPServer:
             'initialize_refinement_loop',
             'create_roadmap',
             'get_roadmap',
-            'store_spec',
+            'store_document',
         }
 
         for tool_set in tool_names_sets:
@@ -299,18 +298,17 @@ class TestProductionMCPServer:
             'initialize_refinement_loop',
             'get_loop_status',
             'list_active_loops',
-            'get_previous_objective_feedback',
-            'store_current_objective_feedback',
+            'get_loop_feedback_summary',
         ]
         expected_unified_tools = [
             'create_roadmap',
             'get_roadmap',
-            'store_spec',
-            'get_spec_markdown',
-            'link_loop_to_spec',
-            'unlink_loop',
-            'list_specs',
-            'delete_spec',
+            'store_document',
+            'get_document',
+            'list_documents',
+            'update_document',
+            'delete_document',
+            'link_loop_to_document',
         ]
         expected_tools = expected_loop_tools + expected_unified_tools
 

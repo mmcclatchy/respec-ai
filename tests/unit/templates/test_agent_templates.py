@@ -155,8 +155,8 @@ class TestCreateSpecTemplate:
         )
         template = generate_create_spec_template(tools)
 
-        # Should reference TechnicalSpec
-        assert 'TechnicalSpec' in template
+        # Should reference Phase
+        assert 'Phase' in template
 
 
 class TestTemplateConsistency:

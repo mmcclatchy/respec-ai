@@ -1,11 +1,11 @@
 import pytest
 from src.models.enums import SpecStatus
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 
 
 @pytest.fixture
 def complete_spec_markdown() -> str:
-    return """# Technical Specification: test-phase
+    return """# Phase: test-phase
 
 ## Overview
 
@@ -63,7 +63,7 @@ in-development
 
 @pytest.fixture
 def minimal_spec_markdown() -> str:
-    return """# Technical Specification: minimal-spec
+    return """# Phase: minimal-spec
 
 ## Overview
 
@@ -74,7 +74,7 @@ Basic functionality
 
 @pytest.fixture
 def round_trip_spec_markdown() -> str:
-    return """# Technical Specification: round-trip-test
+    return """# Phase: round-trip-test
 
 ## Overview
 **Objectives**: `Test round trip parsing`
@@ -124,9 +124,9 @@ approved
 """
 
 
-class TestTechnicalSpecParsing:
+class TestPhaseParsing:
     def test_parse_markdown_extracts_all_fields(self, complete_spec_markdown: str) -> None:
-        spec = TechnicalSpec.parse_markdown(complete_spec_markdown)
+        spec = Phase.parse_markdown(complete_spec_markdown)
 
         assert spec.phase_name == 'test-phase'
         assert spec.objectives == 'Implement user authentication system'
@@ -145,7 +145,7 @@ class TestTechnicalSpecParsing:
         assert spec.spec_status == SpecStatus.IN_DEVELOPMENT
 
     def test_parse_markdown_handles_missing_sections(self, minimal_spec_markdown: str) -> None:
-        spec = TechnicalSpec.parse_markdown(minimal_spec_markdown)
+        spec = Phase.parse_markdown(minimal_spec_markdown)
 
         assert spec.phase_name == 'minimal-spec'
         assert spec.objectives == 'Basic functionality'
@@ -155,13 +155,13 @@ class TestTechnicalSpecParsing:
     def test_parse_markdown_invalid_format_raises_error(self) -> None:
         invalid_markdown = 'This is not a valid specification'
 
-        with pytest.raises(ValueError, match='Invalid technical spec format'):
-            TechnicalSpec.parse_markdown(invalid_markdown)
+        with pytest.raises(ValueError, match='Invalid phase format'):
+            Phase.parse_markdown(invalid_markdown)
 
 
-class TestTechnicalSpecMarkdownBuilding:
+class TestPhaseMarkdownBuilding:
     def test_build_markdown_creates_valid_template_format(self) -> None:
-        spec = TechnicalSpec(
+        spec = Phase(
             phase_name='test-spec',
             objectives='Test objectives',
             scope='Test scope',
@@ -181,7 +181,7 @@ class TestTechnicalSpecMarkdownBuilding:
 
         markdown = spec.build_markdown()
 
-        assert '# Technical Specification: test-spec' in markdown
+        assert '# Phase: test-spec' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown
         assert '### Dependencies\nTest deps' in markdown
@@ -194,11 +194,11 @@ class TestTechnicalSpecMarkdownBuilding:
         assert '### Testing Strategy\nTDD approach' in markdown
 
     def test_round_trip_parsing_maintains_data_integrity(self, round_trip_spec_markdown: str) -> None:
-        spec = TechnicalSpec.parse_markdown(round_trip_spec_markdown)
+        spec = Phase.parse_markdown(round_trip_spec_markdown)
 
         rebuilt_markdown = spec.build_markdown()
 
-        parsed_spec = TechnicalSpec.parse_markdown(rebuilt_markdown)
+        parsed_spec = Phase.parse_markdown(rebuilt_markdown)
 
         assert spec.phase_name == parsed_spec.phase_name
         assert spec.objectives == parsed_spec.objectives
@@ -211,11 +211,11 @@ class TestTechnicalSpecMarkdownBuilding:
         assert spec.integration_context == parsed_spec.integration_context
 
     def test_round_trip_data_integrity_validation(self, round_trip_spec_markdown: str) -> None:
-        original_spec = TechnicalSpec.parse_markdown(round_trip_spec_markdown)
+        original_spec = Phase.parse_markdown(round_trip_spec_markdown)
 
         rebuilt_markdown = original_spec.build_markdown()
 
-        reparsed_spec = TechnicalSpec.parse_markdown(rebuilt_markdown)
+        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
 
         # Verify data integrity is preserved through round-trip
         assert original_spec.phase_name == reparsed_spec.phase_name

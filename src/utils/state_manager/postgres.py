@@ -4,7 +4,8 @@ from asyncpg import Connection
 
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
+from src.models.task import Task
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
@@ -44,7 +45,7 @@ class PostgresStateManager(StateManager):
         await db_pool.close()
         self._initialized = False
 
-    def _row_to_spec(self, row: dict) -> TechnicalSpec:
+    def _row_to_spec(self, row: dict) -> Phase:
         additional_sections_data = None
         if row['additional_sections']:
             additional_sections_data = (
@@ -53,7 +54,7 @@ class PostgresStateManager(StateManager):
                 else row['additional_sections']
             )
 
-        return TechnicalSpec(
+        return Phase(
             id=str(row['id']),
             phase_name=row['phase_name'],
             objectives=row['objectives'],
@@ -69,10 +70,29 @@ class PostgresStateManager(StateManager):
             research_requirements=row['research_requirements'],
             success_criteria=row['success_criteria'],
             integration_context=row['integration_context'],
+            task_breakdown=row['task_breakdown'],
             additional_sections=additional_sections_data,
             iteration=row['iteration'],
             version=row['version'],
             spec_status=SpecStatus(row['spec_status']),
+        )
+
+    def _row_to_task(self, row: dict) -> 'Task':
+        return Task(
+            id=str(row['id']),
+            name=row['name'],
+            phase_path=row['phase_path'],
+            description=row['description'],
+            acceptance_criteria=row['acceptance_criteria'],
+            mode=row['mode'],
+            sequence=row['sequence'],
+            dependencies=list(row['dependencies']) if row['dependencies'] else [],
+            estimated_complexity=row['estimated_complexity'],
+            implementation_notes=row['implementation_notes'],
+            test_strategy=row['test_strategy'],
+            status=row['status'],
+            iteration=row['iteration'],
+            version=row['version'],
         )
 
     async def _enforce_loop_history_limit(self, conn: Connection) -> None:
@@ -298,7 +318,7 @@ class PostgresStateManager(StateManager):
                 roadmap_status=RoadmapStatus(row['roadmap_status']),
             )
 
-    async def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]:
+    async def get_roadmap_specs(self, project_name: str) -> list[Phase]:
         await self.get_roadmap(project_name)
 
         async with db_pool.acquire() as conn:
@@ -308,7 +328,7 @@ class PostgresStateManager(StateManager):
 
         return [self._row_to_spec(row) for row in rows]
 
-    async def store_spec(self, project_name: str, spec: TechnicalSpec) -> str:
+    async def store_spec(self, project_name: str, spec: Phase) -> str:
         normalized_name = normalize_spec_name(spec.phase_name)
 
         async with db_pool.acquire() as conn:
@@ -330,14 +350,15 @@ class PostgresStateManager(StateManager):
                     id, project_name, spec_name, phase_name, objectives, scope, dependencies, deliverables,
                     architecture, technology_stack, functional_requirements, non_functional_requirements,
                     development_plan, testing_strategy, research_requirements, success_criteria,
-                    integration_context, additional_sections, iteration, version, spec_status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+                    integration_context, task_breakdown, additional_sections, iteration, version, spec_status
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
                 ON CONFLICT (project_name, spec_name) DO UPDATE SET
                     id = $1, phase_name = $4, architecture = $9, technology_stack = $10,
                     functional_requirements = $11, non_functional_requirements = $12,
                     development_plan = $13, testing_strategy = $14, research_requirements = $15,
-                    success_criteria = $16, integration_context = $17, additional_sections = $18,
-                    iteration = $19, version = $20, spec_status = $21, updated_at = CURRENT_TIMESTAMP
+                    success_criteria = $16, integration_context = $17, task_breakdown = $18,
+                    additional_sections = $19, iteration = $20, version = $21, spec_status = $22,
+                    updated_at = CURRENT_TIMESTAMP
                 """,
                 spec.id,
                 project_name,
@@ -356,6 +377,7 @@ class PostgresStateManager(StateManager):
                 spec.research_requirements,
                 spec.success_criteria,
                 spec.integration_context,
+                spec.task_breakdown,
                 additional_sections_json,
                 spec.iteration,
                 spec.version,
@@ -364,14 +386,14 @@ class PostgresStateManager(StateManager):
 
         return spec.phase_name
 
-    async def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
+    async def update_spec(self, project_name: str, spec_name: str, updated_spec: Phase) -> str:
         existing_spec = await self.get_spec(project_name, spec_name)
         existing_data = existing_spec.model_dump()
         new_data = updated_spec.model_dump()
 
         frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
 
-        final_spec = TechnicalSpec(
+        final_spec = Phase(
             **{
                 **new_data,
                 **frozen_fields,
@@ -384,7 +406,7 @@ class PostgresStateManager(StateManager):
 
         return f'Updated spec "{spec_name}" to iteration {final_spec.iteration}, version {final_spec.version}'
 
-    async def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec:
+    async def get_spec(self, project_name: str, spec_name: str) -> Phase:
         normalized_name = normalize_spec_name(spec_name)
 
         async with db_pool.acquire() as conn:
@@ -448,7 +470,7 @@ class PostgresStateManager(StateManager):
                 normalized_name,
             )
 
-    async def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec:
+    async def get_spec_by_loop(self, loop_id: str) -> Phase:
         async with db_pool.acquire() as conn:
             mapping = await conn.fetchrow(
                 'SELECT project_name, spec_name FROM loop_to_spec_mappings WHERE loop_id = $1', loop_id
@@ -459,7 +481,7 @@ class PostgresStateManager(StateManager):
 
             return await self.get_spec(mapping['project_name'], mapping['spec_name'])
 
-    async def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None:
+    async def update_spec_by_loop(self, loop_id: str, spec: Phase) -> None:
         async with db_pool.acquire() as conn:
             mapping = await conn.fetchrow('SELECT project_name FROM loop_to_spec_mappings WHERE loop_id = $1', loop_id)
 
@@ -599,3 +621,184 @@ class PostgresStateManager(StateManager):
             await conn.execute('DELETE FROM project_plans WHERE project_name = $1', project_name)
 
         return True
+
+    async def store_phase(self, project_name: str, phase: Phase) -> str:
+        return await self.store_spec(project_name, phase)
+
+    async def get_phase(self, project_name: str, phase_name: str) -> Phase:
+        spec = await self.get_spec(project_name, phase_name)
+        if spec is None:
+            raise ValueError(f'Phase not found: {phase_name} in project {project_name}')
+        return spec
+
+    async def get_phase_by_loop(self, loop_id: str) -> Phase:
+        spec = await self.get_spec_by_loop(loop_id)
+        if spec is None:
+            raise ValueError(f'No phase linked to loop: {loop_id}')
+        return spec
+
+    async def update_phase(self, project_name: str, phase_name: str, updated_phase: Phase) -> str:
+        return await self.update_spec(project_name, phase_name, updated_phase)
+
+    async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None:
+        await self.update_spec_by_loop(loop_id, phase)
+
+    async def list_phases(self, project_name: str) -> list[str]:
+        return await self.list_specs(project_name)
+
+    async def delete_phase(self, project_name: str, phase_name: str) -> bool:
+        return await self.delete_spec(project_name, phase_name)
+
+    async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None:
+        await self.link_loop_to_spec(loop_id, project_name, phase_name)
+
+    async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
+        return await self.resolve_spec_name(project_name, partial_name)
+
+    async def store_task(self, phase_path: str, task: 'Task') -> str:
+        async with db_pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                'SELECT name FROM tasks WHERE phase_path = $1 AND LOWER(name) = LOWER($2)',
+                phase_path,
+                task.name,
+            )
+
+            if existing:
+                await conn.execute(
+                    """
+                    UPDATE tasks SET
+                        id = $1, name = $2, description = $3, acceptance_criteria = $4, mode = $5,
+                        sequence = $6, dependencies = $7, estimated_complexity = $8,
+                        implementation_notes = $9, test_strategy = $10, status = $11,
+                        iteration = $12, version = $13, updated_at = CURRENT_TIMESTAMP
+                    WHERE phase_path = $14 AND LOWER(name) = LOWER($2)
+                    """,
+                    task.id,
+                    task.name,
+                    task.description,
+                    task.acceptance_criteria,
+                    task.mode,
+                    task.sequence,
+                    task.dependencies,
+                    task.estimated_complexity,
+                    task.implementation_notes,
+                    task.test_strategy,
+                    task.status,
+                    task.iteration,
+                    task.version,
+                    phase_path,
+                )
+            else:
+                await conn.execute(
+                    """
+                    INSERT INTO tasks (
+                        id, name, phase_path, description, acceptance_criteria, mode,
+                        sequence, dependencies, estimated_complexity, implementation_notes,
+                        test_strategy, status, iteration, version
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                    """,
+                    task.id,
+                    task.name,
+                    phase_path,
+                    task.description,
+                    task.acceptance_criteria,
+                    task.mode,
+                    task.sequence,
+                    task.dependencies,
+                    task.estimated_complexity,
+                    task.implementation_notes,
+                    task.test_strategy,
+                    task.status,
+                    task.iteration,
+                    task.version,
+                )
+
+        return task.name
+
+    async def get_task(self, phase_path: str, task_name: str) -> 'Task':
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT * FROM tasks WHERE phase_path = $1 AND LOWER(name) = LOWER($2)',
+                phase_path,
+                task_name,
+            )
+
+            if not row:
+                raise ValueError(f'Task not found: {task_name} in phase {phase_path}')
+
+            return self._row_to_task(row)
+
+    async def get_task_by_loop(self, loop_id: str) -> 'Task':
+        async with db_pool.acquire() as conn:
+            mapping = await conn.fetchrow(
+                'SELECT phase_path, task_name FROM loop_to_task_mappings WHERE loop_id = $1',
+                loop_id,
+            )
+
+            if not mapping:
+                raise LoopNotFoundError(f'Loop not linked to any task: {loop_id}')
+
+            return await self.get_task(mapping['phase_path'], mapping['task_name'])
+
+    async def update_task_by_loop(self, loop_id: str, task: 'Task') -> None:
+        async with db_pool.acquire() as conn:
+            mapping = await conn.fetchrow(
+                'SELECT phase_path, task_name FROM loop_to_task_mappings WHERE loop_id = $1',
+                loop_id,
+            )
+
+            if not mapping:
+                raise LoopNotFoundError(f'Loop not linked to any task: {loop_id}')
+
+            await self.store_task(mapping['phase_path'], task)
+
+    async def list_tasks(self, phase_path: str) -> list[str]:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT name FROM tasks WHERE phase_path = $1', phase_path)
+
+        return [row['name'] for row in rows]
+
+    async def delete_task(self, phase_path: str, task_name: str) -> bool:
+        async with db_pool.acquire() as conn:
+            result = await conn.execute(
+                'DELETE FROM tasks WHERE phase_path = $1 AND LOWER(name) = LOWER($2)',
+                phase_path,
+                task_name,
+            )
+
+        return result != 'DELETE 0'
+
+    async def link_loop_to_task(self, loop_id: str, phase_path: str, task_name: str) -> None:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO loop_to_task_mappings (loop_id, phase_path, task_name)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (loop_id) DO UPDATE SET
+                    phase_path = $2, task_name = $3
+                """,
+                loop_id,
+                phase_path,
+                task_name,
+            )
+
+    async def store_document(self, doc_type: str, path: str, content: str) -> str:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')
+
+    async def get_document(self, doc_type: str, path: str) -> str:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')
+
+    async def get_document_by_loop(self, loop_id: str) -> tuple[str, str]:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')
+
+    async def update_document(self, doc_type: str, path: str, content: str) -> str:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')
+
+    async def list_documents(self, doc_type: str, parent_path: str | None = None) -> list[str]:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')
+
+    async def delete_document(self, doc_type: str, path: str) -> bool:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')
+
+    async def link_loop_to_document(self, loop_id: str, doc_type: str, path: str) -> None:
+        raise NotImplementedError('PostgreSQL Document storage not yet implemented. Use InMemoryStateManager instead.')

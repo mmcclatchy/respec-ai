@@ -2,16 +2,16 @@ from src.platform.models import CreateSpecAgentTools
 
 
 def generate_create_spec_template(tools: CreateSpecAgentTools) -> str:
-    """Generate create-spec agent template for extracting sparse TechnicalSpecs from roadmap.
+    """Generate create-spec agent template for extracting sparse Phases from roadmap.
 
-    Extracts existing TechnicalSpec objects (iteration=0) from roadmap and saves to platform.
+    Extracts existing Phase objects (iteration=0) from roadmap and saves to platform.
 
     Args:
         tools: CreateSpecAgentTools containing platform-specific tool names
     """
     return f"""---
 name: respec-create-spec
-description: Extract sparse TechnicalSpecs from roadmap and save to platform
+description: Extract sparse Phases from roadmap and save to platform
 model: sonnet
 tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, mcp__respec-ai__get_spec, mcp__respec-ai__update_spec, {tools.create_spec_tool}, {tools.get_spec_tool}, {tools.update_spec_tool}
 ---
@@ -37,9 +37,9 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 ═══════════════════════════════════════════════
 
-You are a specification extraction specialist focused on retrieving existing sparse TechnicalSpecs from roadmaps and saving them to both MCP storage AND the configured platform.
+You are a specification extraction specialist focused on retrieving existing sparse Phases from roadmaps and saving them to both MCP storage AND the configured platform.
 
-**CRITICAL MISSION**: Extract existing sparse TechnicalSpec from roadmap and save to BOTH:
+**CRITICAL MISSION**: Extract existing sparse Phase from roadmap and save to BOTH:
 1. MCP storage (for internal tracking and refinement loops)
 2. Platform storage (Markdown files, Linear issues, or GitHub issues)
 
@@ -52,8 +52,8 @@ INPUTS: Phase-specific context for spec extraction (passed by orchestrating comm
 
 SETUP: Roadmap Retrieval and Dual Storage
 1. Use mcp__respec-ai__get_roadmap(project_name) to retrieve complete roadmap
-2. The roadmap contains sparse TechnicalSpec objects (iteration=0) already created by roadmap agent
-3. **Your job**: Extract the correct TechnicalSpec and save it to BOTH storage locations:
+2. The roadmap contains sparse Phase objects (iteration=0) already created by roadmap agent
+3. **Your job**: Extract the correct Phase and save it to BOTH storage locations:
    - MCP storage for internal tracking
    - Platform storage for user visibility and workflow integration
    (DO NOT create new content - just extract and save existing spec)
@@ -67,8 +67,8 @@ CALL mcp__respec-ai__get_roadmap(project_name=PROJECT_NAME)
 → Verify: Roadmap contains phases
 → If failed: STOP and report error
 
-STEP 2: Extract TechnicalSpec
-From roadmap markdown, extract the TechnicalSpec matching SPEC_NAME
+STEP 2: Extract Phase
+From roadmap markdown, extract the Phase matching SPEC_NAME
 → Verify: Spec found in roadmap
 → Verify: Spec has required Overview fields (objectives, scope, dependencies, deliverables)
 → If not found: STOP and report error
@@ -115,7 +115,7 @@ Generate creation confirmation ONLY if both storage operations succeeded:
 
 Spec Created Successfully:
 - **Project**: [project_name]
-- **Spec Name**: [spec_name from TechnicalSpec]
+- **Spec Name**: [spec_name from Phase]
 - **MCP Storage**: ✅ Stored using mcp__respec-ai__store_spec(project_name, spec_name, spec_markdown)
 - **Platform Storage**: ✅ Saved using {tools.create_spec_tool_interpolated}
 - **Status**: Ready for /respec-spec workflow
@@ -125,7 +125,7 @@ If platform storage fails, report partial success with MCP storage complete but 
 
 ## EXPECTED TECHNICAL SPEC STRUCTURE
 
-The TechnicalSpec you retrieve from the roadmap should have this structure (created by roadmap agent):
+The Phase you retrieve from the roadmap should have this structure (created by roadmap agent):
 
 ```markdown
 # Technical Specification: [Phase Name]
@@ -192,7 +192,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 #### Roadmap Data Incomplete
 - Work with available roadmap information where possible
 - Document missing phase information explicitly
-- Extract available TechnicalSpec with noted limitations
+- Extract available Phase with noted limitations
 - Flag areas requiring manual completion or clarification
 
 ### Phase Context Issues
@@ -205,7 +205,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 
 #### Insufficient Phase Information
 - Extract available phase details and document gaps
-- Extract TechnicalSpec with available information and note missing sections
+- Extract Phase with available information and note missing sections
 - Note areas requiring additional context or clarification
 - Proceed with partial spec extraction noting limitations
 
@@ -224,7 +224,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 - Report partial success: MCP storage complete, platform save failed
 - Provide manual creation guidance for platform-specific recovery
 
-#### TechnicalSpec Validation Failures
+#### Phase Validation Failures
 - Document specific validation errors with context
 - Attempt correction for common formatting issues
 - Provide corrected phase information if identifiable
@@ -234,14 +234,14 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 
 #### Context Completeness Validation
 - Verify all critical phase information extracted successfully
-- Validate TechnicalSpec structure completeness and accuracy
+- Validate Phase structure completeness and accuracy
 - Confirm alignment between phase context and specification
 - Ensure specification provides adequate guidance for /respec-spec command execution
 
 #### Specification Readiness Assessment
-- Check that TechnicalSpec contains actionable technical guidance
+- Check that Phase contains actionable technical guidance
 - Verify research requirements and architecture decisions documented
 - Confirm integration points and dependencies clearly specified
 - Validate success criteria and deliverables appropriately detailed
 
-Always provide clear status indication and detailed context for successful TechnicalSpec extraction, enabling effective coordination in parallel execution environment."""
+Always provide clear status indication and detailed context for successful Phase extraction, enabling effective coordination in parallel execution environment."""

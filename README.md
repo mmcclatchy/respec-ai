@@ -4,10 +4,10 @@
 
 > **⚠️ Active Development:** `respec-ai` is under active development.
 > - Currently functional workflows:
->   - `/respec-plan`
->   - `/respec-roadmap`
->   - `/respec-spec`.
-> - The `/respec-build` workflow is not yet functional.
+>   - `/respec-plan` - Strategic planning
+>   - `/respec-roadmap` - Multi-phase breakdown
+>   - `/respec-phase` - Technical specifications
+> - The `/respec-code` workflow is under development.
 
 ---
 
@@ -15,7 +15,7 @@
 
 Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing specs helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
-`respec-ai` is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Spec, Build. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
+`respec-ai` is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Phase, Task. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
 
 ---
 

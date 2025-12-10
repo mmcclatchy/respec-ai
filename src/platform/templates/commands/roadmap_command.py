@@ -187,10 +187,10 @@ Store user input and return to Step 3a
 
 #### If LOOP_DECISION == "complete"
 Proceed to Step 5.
-Note: Roadmap contains sparse TechnicalSpec objects (iteration=0) with 4 Overview fields only.
+Note: Roadmap contains sparse Phase objects (iteration=0) with 4 Overview fields only.
 
 ### 5. Spec Extraction Planning
-Plan extraction of sparse TechnicalSpecs from roadmap before parallel processing:
+Plan extraction of sparse Phases from roadmap before parallel processing:
 
 #### Retrieve Final Roadmap
 ```text
@@ -219,9 +219,9 @@ SPEC_EXTRACTION_PLAN = Generate plan for extracting specs from roadmap:
 ```
 
 ### 6. Parallel Spec Extraction
-Extract sparse TechnicalSpecs from roadmap and save to MCP storage:
+Extract sparse Phases from roadmap and save to MCP storage:
 
-**CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse TechnicalSpec objects (iteration=0) embedded in the roadmap markdown. The create-spec agents DO NOT generate new specs - they extract existing specs from the roadmap and save them to MCP.
+**CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse Phase objects (iteration=0) embedded in the roadmap markdown. The create-spec agents DO NOT generate new specs - they extract existing specs from the roadmap and save them to MCP.
 
 #### Launch Parallel Spec Extraction Agents
 ```text
@@ -271,7 +271,7 @@ For each phase in ROADMAP_PHASES:
       project_name=PROJECT_NAME,
       spec_name=EXPECTED_SPEC_NAME
     )
-    CONFIRM: Spec contains valid TechnicalSpec markdown
+    CONFIRM: Spec contains valid Phase markdown
   ELSE:
     STATUS = "❌ FAILED"
     LOG: Spec not found in MCP storage despite agent completion

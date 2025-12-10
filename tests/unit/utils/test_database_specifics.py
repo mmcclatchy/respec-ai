@@ -2,7 +2,7 @@ import pytest
 
 from src.models.enums import SpecStatus
 from src.models.feedback import CriticFeedback
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 from src.utils.enums import LoopType
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import PostgresStateManager
@@ -17,7 +17,7 @@ from asyncpg.exceptions import CheckViolationError
 class TestDatabaseCascadeDeletes:
     @pytest.mark.asyncio
     async def test_cascade_delete_on_loop_history(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.SPEC)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
         async with db_pool.acquire() as conn:
@@ -33,7 +33,7 @@ class TestDatabaseCascadeDeletes:
 
     @pytest.mark.asyncio
     async def test_cascade_delete_on_objective_feedback(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.SPEC)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
         await db_state_manager.store_objective_feedback(loop.id, 'Test feedback')
 
@@ -50,10 +50,10 @@ class TestDatabaseCascadeDeletes:
 
     @pytest.mark.asyncio
     async def test_cascade_delete_on_loop_to_spec_mappings(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.SPEC)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
-        spec = TechnicalSpec(
+        spec = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
@@ -79,7 +79,7 @@ class TestDatabaseCascadeDeletes:
 class TestDatabaseJSONBSerialization:
     @pytest.mark.asyncio
     async def test_critic_feedback_jsonb_roundtrip(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.SPEC)
+        loop = LoopState(loop_type=LoopType.PHASE)
         feedback1 = CriticFeedback(
             loop_id=loop.id,
             critic_agent=CriticAgent.SPEC_CRITIC,
@@ -116,7 +116,7 @@ class TestDatabaseJSONBSerialization:
 
     @pytest.mark.asyncio
     async def test_spec_additional_sections_jsonb_roundtrip(self, db_state_manager: PostgresStateManager) -> None:
-        spec = TechnicalSpec(
+        spec = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
@@ -137,7 +137,7 @@ class TestDatabaseJSONBSerialization:
 class TestDatabaseConstraints:
     @pytest.mark.asyncio
     async def test_unique_constraint_on_project_spec_name(self, db_state_manager: PostgresStateManager) -> None:
-        spec = TechnicalSpec(
+        spec = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
@@ -170,7 +170,7 @@ class TestDatabaseConstraints:
 
     @pytest.mark.asyncio
     async def test_check_constraint_on_loop_score(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.SPEC)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
         async with db_pool.acquire() as conn:
@@ -179,7 +179,7 @@ class TestDatabaseConstraints:
 
     @pytest.mark.asyncio
     async def test_check_constraint_on_loop_iteration(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.SPEC)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
         async with db_pool.acquire() as conn:
@@ -190,7 +190,7 @@ class TestDatabaseConstraints:
 class TestDatabaseTransactions:
     @pytest.mark.asyncio
     async def test_transaction_rollback_on_error(self, db_state_manager: PostgresStateManager) -> None:
-        spec = TechnicalSpec(
+        spec = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',

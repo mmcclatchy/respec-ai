@@ -3,7 +3,7 @@ import pytest
 from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -46,8 +46,8 @@ def sample_roadmap() -> Roadmap:
 
 
 @pytest.fixture
-def sample_spec() -> TechnicalSpec:
-    return TechnicalSpec(
+def sample_spec() -> Phase:
+    return Phase(
         phase_name='Sample Spec',
         objectives='Test objectives',
         scope='Test scope',
@@ -59,7 +59,7 @@ def sample_spec() -> TechnicalSpec:
 
 @pytest.fixture
 def sample_loop() -> LoopState:
-    return LoopState(loop_type=LoopType.SPEC)
+    return LoopState(loop_type=LoopType.PHASE)
 
 
 class TestDatabaseRoadmapOperations:
@@ -185,7 +185,7 @@ class TestDatabaseRoadmapOperations:
 class TestDatabaseSpecOperations:
     @pytest.mark.asyncio
     async def test_store_spec_initializes_project_storage(
-        self, db_state_manager: PostgresStateManager, sample_spec: TechnicalSpec
+        self, db_state_manager: PostgresStateManager, sample_spec: Phase
     ) -> None:
         result = await db_state_manager.store_spec('new-project', sample_spec)
         assert result == sample_spec.phase_name
@@ -195,7 +195,7 @@ class TestDatabaseSpecOperations:
 
     @pytest.mark.asyncio
     async def test_store_spec_returns_spec_name(
-        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
@@ -206,7 +206,7 @@ class TestDatabaseSpecOperations:
 
     @pytest.mark.asyncio
     async def test_store_spec_makes_retrievable(
-        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
@@ -219,7 +219,7 @@ class TestDatabaseSpecOperations:
 
     @pytest.mark.asyncio
     async def test_get_spec_raises_error_when_spec_not_found_in_project(
-        self, db_state_manager: PostgresStateManager, sample_spec: TechnicalSpec
+        self, db_state_manager: PostgresStateManager, sample_spec: Phase
     ) -> None:
         await db_state_manager.store_spec('test-project', sample_spec)
 
@@ -254,7 +254,7 @@ class TestDatabaseSpecOperations:
         project_name = 'multi-spec-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec1 = TechnicalSpec(
+        spec1 = Phase(
             phase_name='spec-1',
             objectives='Obj 1',
             scope='Scope 1',
@@ -262,7 +262,7 @@ class TestDatabaseSpecOperations:
             deliverables='Del 1',
             spec_status=SpecStatus.DRAFT,
         )
-        spec2 = TechnicalSpec(
+        spec2 = Phase(
             phase_name='spec-2',
             objectives='Obj 2',
             scope='Scope 2',
@@ -289,7 +289,7 @@ class TestDatabaseSpecOperations:
 
     @pytest.mark.asyncio
     async def test_delete_spec_returns_true_when_spec_exists(
-        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
@@ -301,7 +301,7 @@ class TestDatabaseSpecOperations:
 
     @pytest.mark.asyncio
     async def test_delete_spec_removes_spec_from_roadmap(
-        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
@@ -364,9 +364,9 @@ class TestDatabaseLoopOperations:
     ) -> None:
         loops = [
             LoopState(loop_type=LoopType.PLAN),
-            LoopState(loop_type=LoopType.SPEC),
-            LoopState(loop_type=LoopType.BUILD_PLAN),
-            LoopState(loop_type=LoopType.BUILD_CODE),
+            LoopState(loop_type=LoopType.PHASE),
+            LoopState(loop_type=LoopType.TASK),
+            LoopState(loop_type=LoopType.ANALYST),
         ]
 
         for loop in loops:

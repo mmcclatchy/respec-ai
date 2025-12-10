@@ -1,7 +1,7 @@
-from src.platform.models import SpecCriticAgentTools
+from src.platform.models import PhaseCriticAgentTools
 
 
-def generate_spec_critic_template(tools: SpecCriticAgentTools) -> str:
+def generate_phase_critic_template(tools: PhaseCriticAgentTools) -> str:
     return f"""---
 name: respec-spec-critic
 description: Evaluate technical specifications against FSDD quality criteria
@@ -15,8 +15,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__respec-ai__get_spec_markdown(project_name=None, spec_name=None, loop_id=loop_id)
-  ❌ WRONG: <mcp__respec-ai__get_spec_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: spec = mcp__respec-ai__get_document(project_name=None, spec_name=None, loop_id=loop_id)
+  ❌ WRONG: <mcp__respec-ai__get_document><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -39,7 +39,7 @@ IF loop_id is None or loop_id == "":
 → Verify: loop_id is valid (non-empty string)
 
 STEP 2: Retrieve Specification via loop_id
-CALL mcp__respec-ai__get_spec_markdown(
+CALL mcp__respec-ai__get_document(
   project_name=None,
   spec_name=None,
   loop_id=loop_id
@@ -58,10 +58,10 @@ CHAR_LENGTH = SPEC_RESPONSE.char_length  # Provided by MCP server
 ESTIMATED_TOKENS = CHAR_LENGTH / 4  # Approximate token count (~4 chars per token)
 
 # Length thresholds (based on character count)
-SOFT_CAP = {tools.spec_length_soft_cap}      # ~10k tokens - ideal max (configurable via LOOP_SPEC_LENGTH_SOFT_CAP)
-WARNING = {tools.spec_length_soft_cap + 10000}       # SOFT_CAP + 10k - getting long
-CONCERNING = {tools.spec_length_soft_cap + 20000}    # SOFT_CAP + 20k - too long
-CRITICAL = {tools.spec_length_soft_cap + 40000}      # SOFT_CAP + 40k - way too long
+SOFT_CAP = {tools.phase_length_soft_cap}      # ~10k tokens - ideal max (configurable via LOOP_PHASE_LENGTH_SOFT_CAP)
+WARNING = {tools.phase_length_soft_cap + 10000}       # SOFT_CAP + 10k - getting long
+CONCERNING = {tools.phase_length_soft_cap + 20000}    # SOFT_CAP + 20k - too long
+CRITICAL = {tools.phase_length_soft_cap + 40000}      # SOFT_CAP + 40k - way too long
 
 # Determine penalty tier
 IF CHAR_LENGTH <= SOFT_CAP:
@@ -321,7 +321,7 @@ These sections vary by project type. Identify all sections beyond core sections,
 
 ### Over-Detailing Penalty (up to -10 points)
 
-Assess spec for implementation details that belong in BuildPlan:
+Assess spec for implementation details that belong in Phase:
 - **Time estimates for tasks**: -2 points (e.g., "Step 1: Schema setup (30 minutes)")
 - **Specific file names/paths**: -2 points (e.g., "Create `src/neo4j_client.py`")
 - **Complete code implementations**: -3 points (vs interface signatures which are OK)
@@ -333,7 +333,7 @@ Assess spec for implementation details that belong in BuildPlan:
 **Application**:
 - Penalty applies to overall score calculation
 - Document which implementation details found
-- Recommend moving details to BuildPlan phase
+- Recommend moving details to Phase phase
 
 ### Domain-Specific Section Relevance Penalty
 
@@ -514,7 +514,7 @@ The feedback markdown must include overall_score for MCP database auto-populatio
 [IF ROOT_CAUSE == "VERBOSITY":]
   Content is verbose and can be condensed significantly.
   **Action Required**: Reduce wordiness, focus on essential technical details only.
-  Target: <{tools.spec_length_soft_cap} characters (~10k tokens)
+  Target: <{tools.phase_length_soft_cap} characters (~10k tokens)
 
 [IF ROOT_CAUSE == "MIXED":]
   Both scope and verbosity issues detected.
@@ -536,7 +536,7 @@ The feedback markdown must include overall_score for MCP database auto-populatio
 **Specific Examples**:
 - [List specific instances of over-detailing found in spec]
 
-**Recommendation**: Move implementation details to BuildPlan phase
+**Recommendation**: Move implementation details to Phase phase
 
 #### Irrelevant Section Penalty (X points)
 **Sections Assessed for Relevance**:

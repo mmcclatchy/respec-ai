@@ -1,9 +1,9 @@
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 
 
 class TestAdditionalSections:
     def test_additional_sections_captured_from_markdown(self) -> None:
-        markdown = """# Technical Specification: test-spec
+        markdown = """# Phase: test-spec
 
 ## Overview
 
@@ -60,7 +60,7 @@ Unit tests with pytest
 draft
 """
 
-        spec = TechnicalSpec.parse_markdown(markdown)
+        spec = Phase.parse_markdown(markdown)
 
         assert spec.phase_name == 'test-spec'
         assert spec.objectives == 'Build a web service'
@@ -78,7 +78,7 @@ draft
         assert 'JWT tokens' in spec.additional_sections['Security Architecture']
 
     def test_additional_sections_in_build_markdown_output(self) -> None:
-        markdown = """# Technical Specification: test-spec
+        markdown = """# Phase: test-spec
 
 ## Overview
 
@@ -128,7 +128,7 @@ Integration tests with Click testing utilities
 in-review
 """
 
-        spec = TechnicalSpec.parse_markdown(markdown)
+        spec = Phase.parse_markdown(markdown)
         rebuilt_markdown = spec.build_markdown()
 
         assert 'CLI Commands' in rebuilt_markdown
@@ -136,7 +136,7 @@ in-review
         assert 'init: Initialize project' in rebuilt_markdown
         assert 'Config file format: YAML' in rebuilt_markdown
 
-        reparsed_spec = TechnicalSpec.parse_markdown(rebuilt_markdown)
+        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
 
         assert reparsed_spec.phase_name == 'test-spec'
         assert reparsed_spec.additional_sections is not None
@@ -144,7 +144,7 @@ in-review
         assert 'Configuration' in reparsed_spec.additional_sections
 
     def test_spec_without_additional_sections(self) -> None:
-        markdown = """# Technical Specification: minimal-spec
+        markdown = """# Phase: minimal-spec
 
 ## Overview
 
@@ -182,7 +182,7 @@ Basic unit tests
 draft
 """
 
-        spec = TechnicalSpec.parse_markdown(markdown)
+        spec = Phase.parse_markdown(markdown)
 
         assert spec.phase_name == 'minimal-spec'
         assert spec.additional_sections is None
@@ -192,7 +192,7 @@ draft
         assert '## Metadata' in rebuilt_markdown
 
     def test_round_trip_with_complex_additional_sections(self) -> None:
-        markdown = """# Technical Specification: complex-spec
+        markdown = """# Phase: complex-spec
 
 ## Overview
 
@@ -345,7 +345,7 @@ GET /api/posts/:id
 approved
 """
 
-        spec = TechnicalSpec.parse_markdown(markdown)
+        spec = Phase.parse_markdown(markdown)
 
         assert spec.phase_name == 'complex-spec'
         assert spec.iteration == 2
@@ -361,7 +361,7 @@ approved
 
         rebuilt_markdown = spec.build_markdown()
 
-        reparsed_spec = TechnicalSpec.parse_markdown(rebuilt_markdown)
+        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
 
         assert reparsed_spec.phase_name == 'complex-spec'
         assert reparsed_spec.iteration == 2

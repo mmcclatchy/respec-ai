@@ -14,26 +14,23 @@ class LoopConfig(BaseSettings):
     plan_threshold: int = Field(default=90, ge=1, le=100)
     analyst_threshold: int = Field(default=90, ge=1, le=100)
     roadmap_threshold: int = Field(default=90, ge=1, le=100)
-    spec_threshold: int = Field(default=90, ge=1, le=100)
-    build_plan_threshold: int = Field(default=90, ge=1, le=100)
-    build_code_threshold: int = Field(default=95, ge=1, le=100)
+    phase_threshold: int = Field(default=90, ge=1, le=100)
+    task_threshold: int = Field(default=95, ge=1, le=100)
 
     plan_improvement_threshold: int = Field(default=5, ge=1, le=100)
     analyst_improvement_threshold: int = Field(default=10, ge=1, le=100)
     roadmap_improvement_threshold: int = Field(default=10, ge=1, le=100)
-    spec_improvement_threshold: int = Field(default=5, ge=1, le=100)
-    build_plan_improvement_threshold: int = Field(default=5, ge=1, le=100)
-    build_code_improvement_threshold: int = Field(default=5, ge=1, le=100)
+    phase_improvement_threshold: int = Field(default=5, ge=1, le=100)
+    task_improvement_threshold: int = Field(default=5, ge=1, le=100)
 
     plan_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
     analyst_checkpoint_frequency: int = Field(default=3, ge=1, le=20)
     roadmap_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
-    spec_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
-    build_plan_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
-    build_code_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
+    phase_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
+    task_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
 
-    spec_length_soft_cap: int = Field(
-        default=40_000, ge=30_000, le=60_000, description='Soft cap for spec length in characters (~10k tokens)'
+    phase_length_soft_cap: int = Field(
+        default=40_000, ge=30_000, le=60_000, description='Soft cap for phase length in characters (~10k tokens)'
     )
 
 

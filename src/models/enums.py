@@ -67,3 +67,9 @@ class CriticAgent(str, Enum):
     SPEC_CRITIC = 'spec-critic'
     BUILD_CRITIC = 'build-critic'
     BUILD_REVIEWER = 'build-reviewer'
+
+
+class DocumentType(str, Enum):
+    PHASE = 'phase'
+    TASK = 'task'
+    COMPLETION_REPORT = 'completion_report'

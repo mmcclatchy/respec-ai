@@ -1,11 +1,11 @@
 import pytest
 from src.models.enums import SpecStatus
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 
 
 @pytest.fixture
 def markdownit_native_spec_markdown() -> str:
-    return """# Technical Specification: user-authentication-system
+    return """# Phase: user-authentication-system
 <!-- ID: abc12345 -->
 
 ## Overview
@@ -63,7 +63,7 @@ in-development"""
 
 class TestMarkdownItNativeParsing:
     def test_parse_markdownit_native_format_extracts_all_fields(self, markdownit_native_spec_markdown: str) -> None:
-        spec = TechnicalSpec.parse_markdown(markdownit_native_spec_markdown)
+        spec = Phase.parse_markdown(markdownit_native_spec_markdown)
 
         assert spec.phase_name == 'user-authentication-system'
         assert spec.objectives == 'Implement secure user login and registration'
@@ -82,7 +82,7 @@ class TestMarkdownItNativeParsing:
         assert spec.spec_status == SpecStatus.IN_DEVELOPMENT
 
     def test_build_markdown_creates_markdownit_native_format(self) -> None:
-        spec = TechnicalSpec(
+        spec = Phase(
             phase_name='test-spec',
             objectives='Test objectives',
             scope='Test scope',
@@ -103,7 +103,7 @@ class TestMarkdownItNativeParsing:
         markdown = spec.build_markdown()
 
         # Should use new list format
-        assert '# Technical Specification: test-spec' in markdown
+        assert '# Phase: test-spec' in markdown
         assert '## Overview' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown
@@ -125,11 +125,11 @@ class TestMarkdownItNativeParsing:
         assert '### Status\napproved' in markdown
 
     def test_round_trip_parsing_maintains_data_integrity(self, markdownit_native_spec_markdown: str) -> None:
-        original_spec = TechnicalSpec.parse_markdown(markdownit_native_spec_markdown)
+        original_spec = Phase.parse_markdown(markdownit_native_spec_markdown)
 
         rebuilt_markdown = original_spec.build_markdown()
 
-        reparsed_spec = TechnicalSpec.parse_markdown(rebuilt_markdown)
+        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
 
         assert original_spec.phase_name == reparsed_spec.phase_name
         assert original_spec.objectives == reparsed_spec.objectives
@@ -151,8 +151,8 @@ class TestMarkdownItNativeParsing:
 class TestRecursiveTraversalUtilities:
     def test_find_nodes_by_type_utility_exists(self) -> None:
         # This will fail until we implement the utility
-        assert hasattr(TechnicalSpec, '_find_nodes_by_type')
+        assert hasattr(Phase, '_find_nodes_by_type')
 
     def test_extract_text_content_utility_exists(self) -> None:
         # This will fail until we implement the utility
-        assert hasattr(TechnicalSpec, '_extract_text_content')
+        assert hasattr(Phase, '_extract_text_content')

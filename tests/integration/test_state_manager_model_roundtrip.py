@@ -14,20 +14,19 @@ These tests verify:
 from typing import AsyncGenerator, Callable
 
 import pytest
-from src.models.build_plan import BuildPlan
-from src.models.enums import BuildStatus, ProjectStatus, RoadmapStatus, SpecStatus
+from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
 from src.utils.enums import LoopType
 from src.models.plan_completion_report import PlanCompletionReport
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
+from src.models.task import Task
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, StateManager
 from src.utils.state_manager.postgres import PostgresStateManager
 
 
 from src.utils.database_pool import db_pool
-from src.mcp.tools.build_plan_tools import BuildPlanTools
 from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
 
 
@@ -135,9 +134,9 @@ def sample_roadmap(markdown_builder: Callable) -> Roadmap:
 
 
 @pytest.fixture
-def sample_spec(markdown_builder: Callable) -> TechnicalSpec:
+def sample_spec(markdown_builder: Callable) -> Phase:
     markdown = markdown_builder(
-        TechnicalSpec,
+        Phase,
         phase_name='user-authentication-service',
         objectives='Implement secure OAuth2 authentication with MFA support',
         scope='User registration, login, logout, password reset, MFA enrollment',
@@ -156,7 +155,7 @@ def sample_spec(markdown_builder: Callable) -> TechnicalSpec:
         iteration=2,
         version=1,
     )
-    return TechnicalSpec.parse_markdown(markdown)
+    return Phase.parse_markdown(markdown)
 
 
 @pytest.fixture
@@ -196,29 +195,24 @@ def sample_project_plan(markdown_builder: Callable) -> ProjectPlan:
 
 
 @pytest.fixture
-def sample_build_plan(markdown_builder: Callable) -> BuildPlan:
+def sample_task(markdown_builder: Callable) -> Task:
     markdown = markdown_builder(
-        BuildPlan,
-        project_name='Microservices Platform',
-        project_goal='Build scalable event-driven microservices platform',
-        total_duration='9 months',
-        team_size='7 backend engineers',
-        primary_language='Python 3.11+',
-        framework='FastAPI with async/await',
-        database='PostgreSQL 16 with TimescaleDB',
-        development_environment='Docker Compose for local, Kubernetes for staging',
-        database_schema='Event sourcing with CQRS pattern',
-        api_architecture='RESTful + GraphQL + gRPC for inter-service',
-        frontend_architecture='React with TypeScript and React Query',
-        core_features='Event processing, Real-time updates, Analytics dashboard',
-        integration_points='Stripe payments, SendGrid email, Datadog monitoring',
-        testing_strategy='Pytest with 90% coverage, Contract testing with Pact',
-        code_standards='Black formatter, Ruff linter, MyPy strict mode',
-        performance_requirements='10k req/s throughput, <50ms p99 latency',
-        security_implementation='mTLS between services, RBAC, Secret rotation',
-        build_status=BuildStatus.IN_PROGRESS,
+        Task,
+        name='Implement User Authentication',
+        phase_path='microservices-platform/phase-1-foundation',
+        description='Implement OAuth2 authentication with JWT tokens',
+        acceptance_criteria='Users can register, login, and access protected endpoints',
+        mode='api',
+        sequence=1,
+        dependencies=[],
+        estimated_complexity='medium',
+        implementation_notes='Use FastAPI OAuth2PasswordBearer with JWT',
+        test_strategy='Unit tests for auth logic, integration tests for endpoints',
+        status='in_progress',
+        iteration=0,
+        version=1,
     )
-    return BuildPlan.parse_markdown(markdown)
+    return Task.parse_markdown(markdown)
 
 
 @pytest.fixture
@@ -285,15 +279,15 @@ async def test_roadmap_multiple_updates_preserve_latest(
 
 
 # ============================================================================
-# TechnicalSpec Round-Trip Tests
+# Phase Round-Trip Tests
 # ============================================================================
 
 
 @pytest.mark.asyncio
 async def test_spec_store_retrieve_preserves_all_fields(
-    state_manager: StateManager, project_name: str, sample_spec: TechnicalSpec
+    state_manager: StateManager, project_name: str, sample_spec: Phase
 ) -> None:
-    """Verify storing and retrieving TechnicalSpec preserves all field values."""
+    """Verify storing and retrieving Phase preserves all field values."""
     # Store spec
     spec_name = await state_manager.store_spec(project_name, sample_spec)
 
@@ -304,12 +298,12 @@ async def test_spec_store_retrieve_preserves_all_fields(
     original_data = sample_spec.model_dump(exclude={'id'})
     retrieved_data = retrieved.model_dump(exclude={'id'})
 
-    assert original_data == retrieved_data, 'TechnicalSpec round-trip changed field values'
+    assert original_data == retrieved_data, 'Phase round-trip changed field values'
 
 
 @pytest.mark.asyncio
 async def test_spec_frozen_fields_preserved_on_update(
-    state_manager: StateManager, project_name: str, sample_spec: TechnicalSpec
+    state_manager: StateManager, project_name: str, sample_spec: Phase
 ) -> None:
     """Verify frozen fields (objectives, scope, dependencies, deliverables) are preserved."""
     # Store original spec
@@ -336,7 +330,7 @@ async def test_spec_frozen_fields_preserved_on_update(
 
 @pytest.mark.asyncio
 async def test_spec_iteration_and_version_auto_increment(
-    state_manager: StateManager, project_name: str, sample_spec: TechnicalSpec
+    state_manager: StateManager, project_name: str, sample_spec: Phase
 ) -> None:
     """Verify iteration and version auto-increment on duplicate spec names."""
     # Store spec twice with same name
@@ -404,32 +398,24 @@ async def test_project_plan_update_overwrites_completely(
 
 
 # ============================================================================
-# BuildPlan Round-Trip Tests
+# Task Round-Trip Tests
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_build_plan_store_retrieve_preserves_all_fields(
-    state_manager: StateManager, sample_build_plan: BuildPlan
-) -> None:
-    """Verify storing and retrieving BuildPlan preserves all field values."""
-    # Create loop for build plan
-    loop = LoopState(loop_type=LoopType.BUILD_PLAN)
-    await state_manager.add_loop(loop, 'test-project')
+async def test_task_store_retrieve_preserves_all_fields(state_manager: StateManager, sample_task: Task) -> None:
+    # Store task using phase_path
+    phase_path = sample_task.phase_path
+    await state_manager.store_task(phase_path, sample_task)
 
-    # Store build plan (build plans use loop_id as key)
-
-    tools = BuildPlanTools(state_manager)
-    await tools.store_build_plan(loop.id, sample_build_plan)
-
-    # Retrieve build plan
-    retrieved = await tools.get_build_plan_data(loop.id)
+    # Retrieve task
+    retrieved = await state_manager.get_task(phase_path, sample_task.name)
 
     # Compare all fields
-    original_data = sample_build_plan.model_dump()
+    original_data = sample_task.model_dump()
     retrieved_data = retrieved.model_dump()
 
-    assert original_data == retrieved_data, 'BuildPlan round-trip changed field values'
+    assert original_data == retrieved_data, 'Task round-trip changed field values'
 
 
 # ============================================================================
@@ -496,14 +482,14 @@ async def test_both_implementations_produce_identical_results(
 
 @pytest.mark.asyncio
 async def test_loop_spec_mapping_preserves_spec_data(
-    state_manager: StateManager, project_name: str, sample_spec: TechnicalSpec
+    state_manager: StateManager, project_name: str, sample_spec: Phase
 ) -> None:
     """Verify loop-to-spec mapping preserves spec data through refinement cycle."""
     # Store spec
     spec_name = await state_manager.store_spec(project_name, sample_spec)
 
     # Create loop and link to spec
-    loop = LoopState(loop_type=LoopType.SPEC)
+    loop = LoopState(loop_type=LoopType.PHASE)
     await state_manager.add_loop(loop, project_name)
     await state_manager.link_loop_to_spec(loop.id, project_name, spec_name)
 
@@ -519,7 +505,7 @@ async def test_loop_spec_mapping_preserves_spec_data(
 
 @pytest.mark.asyncio
 async def test_update_spec_by_loop_preserves_frozen_fields(
-    state_manager: StateManager, project_name: str, sample_spec: TechnicalSpec
+    state_manager: StateManager, project_name: str, sample_spec: Phase
 ) -> None:
     """Verify updating spec via loop also preserves frozen fields.
 
@@ -529,7 +515,7 @@ async def test_update_spec_by_loop_preserves_frozen_fields(
     # Store spec and link to loop
     spec_name = await state_manager.store_spec(project_name, sample_spec)
 
-    loop = LoopState(loop_type=LoopType.SPEC)
+    loop = LoopState(loop_type=LoopType.PHASE)
     await state_manager.add_loop(loop, project_name)
     await state_manager.link_loop_to_spec(loop.id, project_name, spec_name)
 

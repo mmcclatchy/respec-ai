@@ -153,7 +153,7 @@ class PlatformToolMapping(PlatformModel):
         return tool_ref.render() if tool_ref else None
 
 
-class SpecCommandTools(BaseModel):
+class PhaseCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     create_spec_tool: str = Field(..., description='Platform-specific tool for creating specs')
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
@@ -277,7 +277,7 @@ Display: "⚠️ Sync not configured for this platform - continuing without sync
 """
 
 
-class BuildCommandTools(BaseModel):
+class CodeCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     comment_spec_tool: str = Field(..., description='Platform-specific tool for commenting on specs')
@@ -491,13 +491,13 @@ class PlanRoadmapAgentTools(BaseModel):
         return self.create_spec_external.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 
-class SpecArchitectAgentTools(BaseModel):
+class PhaseArchitectAgentTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
 
 
-class SpecCriticAgentTools(BaseModel):
+class PhaseCriticAgentTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    spec_length_soft_cap: int = Field(default=40000, description='Soft cap for spec length in characters')
+    phase_length_soft_cap: int = Field(default=40000, description='Soft cap for spec length in characters')
 
 
 class CreateSpecAgentTools(BaseModel):
@@ -527,7 +527,7 @@ class CreateSpecAgentTools(BaseModel):
         return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
 
 
-class BuildCoderAgentTools(BaseModel):
+class TaskCoderAgentTools(BaseModel):
     update_task_status: str = Field(..., description='Platform-specific tool for updating task/issue status')
 
     @computed_field

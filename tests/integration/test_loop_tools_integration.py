@@ -36,13 +36,13 @@ class TestLoopToolsIntegration:
         self, project_name: str, stable_loop_config: LoopConfig
     ) -> None:
         # Initialize loop
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'spec')
+        init_result = await loop_tools.initialize_refinement_loop(project_name, 'phase')
         loop_id = init_result.id
 
         assert init_result.status == LoopStatus.INITIALIZED
 
         # Simulate progressive score improvement
-        threshold = stable_loop_config.spec_threshold
+        threshold = stable_loop_config.phase_threshold
         scores = [70, 75, 80, 85, threshold]
         for i, score in enumerate(scores[:-1], start=1):
             result = await add_feedback_and_decide(loop_id, score, i, CriticAgent.SPEC_CRITIC)
@@ -71,7 +71,7 @@ class TestLoopToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_stagnation_detection_in_full_context(self, project_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'build_plan')).id
+        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'task')).id
 
         # Create stagnation pattern
         stagnant_scores = [70, 71, 70, 71, 70]
@@ -89,9 +89,9 @@ class TestLoopToolsIntegration:
         self, project_name: str, stable_loop_config: LoopConfig
     ) -> None:
         # Test different loop types use correct thresholds
-        build_code_loop = await loop_tools.initialize_refinement_loop(project_name, 'build_code')
+        build_code_loop = await loop_tools.initialize_refinement_loop(project_name, 'task')
 
-        threshold = stable_loop_config.build_code_threshold
+        threshold = stable_loop_config.task_threshold
         # Score just below build_code threshold should refine
         result = await add_feedback_and_decide(build_code_loop.id, threshold - 1, 1, CriticAgent.BUILD_REVIEWER)
         assert result.status == LoopStatus.REFINE
@@ -124,11 +124,10 @@ class TestLoopToolsIntegration:
     @pytest.mark.asyncio
     async def test_concurrent_loop_management(self, project_name: str) -> None:
         # Create multiple loops
-        loop_types = ['plan', 'spec', 'build_plan', 'build_code']
+        loop_types = ['plan', 'phase', 'task']
         agents = [
             CriticAgent.PLAN_CRITIC,
             CriticAgent.SPEC_CRITIC,
-            CriticAgent.BUILD_CRITIC,
             CriticAgent.BUILD_REVIEWER,
         ]
         loops = []
@@ -167,7 +166,7 @@ class TestLoopToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_cross_loop_independence(self, project_name: str, stable_loop_config: LoopConfig) -> None:
-        loop1 = await loop_tools.initialize_refinement_loop(project_name, 'spec')
+        loop1 = await loop_tools.initialize_refinement_loop(project_name, 'phase')
         loop2 = await loop_tools.initialize_refinement_loop(project_name, 'plan')
 
         # Advance loop1 significantly
@@ -179,7 +178,7 @@ class TestLoopToolsIntegration:
         assert status2.status == LoopStatus.INITIALIZED
 
         # Loop1 should be ready to complete (meets spec threshold)
-        threshold = stable_loop_config.spec_threshold
+        threshold = stable_loop_config.phase_threshold
         result1 = await add_feedback_and_decide(loop1.id, threshold, 5, CriticAgent.SPEC_CRITIC)
         assert result1.status == LoopStatus.COMPLETED
 
@@ -189,7 +188,7 @@ class TestLoopToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_score_history_preservation(self, project_name: str, stable_loop_config: LoopConfig) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'spec')).id
+        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'phase')).id
 
         scores = [70, 75, 80, 85]
         for i, score in enumerate(scores, start=1):
@@ -201,6 +200,6 @@ class TestLoopToolsIntegration:
         # Score history validation would depend on internal state access
         # For now, verify the loop continues to work correctly
 
-        threshold = stable_loop_config.spec_threshold
+        threshold = stable_loop_config.phase_threshold
         result = await add_feedback_and_decide(loop_id, threshold, 5, CriticAgent.SPEC_CRITIC)
         assert result.status == LoopStatus.COMPLETED

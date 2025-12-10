@@ -8,14 +8,12 @@ from typing import Any
 from fastmcp import FastMCP
 
 from src.mcp.tools import (
-    build_plan_tools,
     feedback_tools_unified,
     loop_tools,
     plan_completion_report_tools,
     project_plan_tools,
     register_all_tools,
     roadmap_tools,
-    spec_tools,
 )
 
 from .tool_enums import RespecAITool
@@ -51,8 +49,6 @@ def discover_tool_registration_functions() -> dict[str, list[str]]:
         project_plan_tools,
         plan_completion_report_tools,
         roadmap_tools,
-        spec_tools,
-        build_plan_tools,
     ]
 
     discovered_tools: dict[str, list[str]] = {}

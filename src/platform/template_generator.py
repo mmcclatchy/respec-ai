@@ -2,11 +2,11 @@ from pathlib import Path
 
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.platform.models import (
-    BuildCoderAgentTools,
+    TaskCoderAgentTools,
     CreateSpecAgentTools,
     PlanRoadmapAgentTools,
-    SpecArchitectAgentTools,
-    SpecCriticAgentTools,
+    PhaseArchitectAgentTools,
+    PhaseCriticAgentTools,
 )
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
@@ -16,17 +16,16 @@ from src.platform.template_helpers import (
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
-    generate_build_coder_template,
-    generate_build_critic_template,
-    generate_build_planner_template,
-    generate_build_reviewer_template,
     generate_create_spec_template,
+    generate_phase_architect_template,
+    generate_phase_critic_template,
     generate_plan_analyst_template,
     generate_plan_critic_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
-    generate_spec_architect_template,
-    generate_spec_critic_template,
+    generate_task_coder_template,
+    generate_task_critic_template,
+    generate_task_reviewer_template,
 )
 from src.platform.tool_enums import AbstractOperation, CommandTemplate
 from src.platform.tool_registry import ToolRegistry
@@ -101,13 +100,13 @@ def _get_agent_generators(
         )
     )
 
-    build_coder_tools = BuildCoderAgentTools(
+    build_coder_tools = TaskCoderAgentTools(
         update_task_status=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type)
     )
 
-    spec_architect_tools = SpecArchitectAgentTools(tools_yaml=create_spec_architect_agent_tools())
-    spec_critic_tools = SpecCriticAgentTools(
-        tools_yaml=create_spec_critic_agent_tools(), spec_length_soft_cap=loop_config.spec_length_soft_cap
+    spec_architect_tools = PhaseArchitectAgentTools(tools_yaml=create_spec_architect_agent_tools())
+    spec_critic_tools = PhaseCriticAgentTools(
+        tools_yaml=create_spec_critic_agent_tools(), phase_length_soft_cap=loop_config.phase_length_soft_cap
     )
 
     return [
@@ -117,10 +116,9 @@ def _get_agent_generators(
         ('respec-roadmap', generate_roadmap_template(roadmap_tools)),
         ('respec-roadmap-critic', generate_roadmap_critic_template()),
         ('respec-create-spec', generate_create_spec_template(spec_tools)),
-        ('respec-spec-architect', generate_spec_architect_template(spec_architect_tools)),
-        ('respec-spec-critic', generate_spec_critic_template(spec_critic_tools)),
-        ('respec-build-planner', generate_build_planner_template()),
-        ('respec-build-critic', generate_build_critic_template()),
-        ('respec-build-coder', generate_build_coder_template(build_coder_tools)),
-        ('respec-build-reviewer', generate_build_reviewer_template()),
+        ('respec-phase-architect', generate_phase_architect_template(spec_architect_tools)),
+        ('respec-phase-critic', generate_phase_critic_template(spec_critic_tools)),
+        ('respec-task-critic', generate_task_critic_template()),
+        ('respec-task-coder', generate_task_coder_template(build_coder_tools)),
+        ('respec-task-reviewer', generate_task_reviewer_template()),
     ]

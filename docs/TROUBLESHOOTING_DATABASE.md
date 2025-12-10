@@ -196,7 +196,7 @@ await conn.execute(
 # Validate data before insertion
 assert 0 <= score <= 100, "Score must be between 0 and 100"
 assert iteration >= 1, "Iteration must be >= 1"
-assert loop_type in ['plan', 'roadmap', 'spec', 'build_plan', 'build_code', 'analyst']
+assert loop_type in ['plan', 'roadmap', 'phase', 'task', 'analyst']
 ```
 
 #### Error: "asyncpg.exceptions.PostgresSyntaxError"

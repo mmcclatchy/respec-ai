@@ -2,7 +2,7 @@ import pytest
 from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -107,8 +107,8 @@ class TestInMemoryStateManager:
         )
 
     @pytest.fixture
-    def sample_spec(self) -> TechnicalSpec:
-        return TechnicalSpec(
+    def sample_spec(self) -> Phase:
+        return Phase(
             phase_name='Sample Spec',
             objectives='Test objectives',
             scope='Test scope',
@@ -119,7 +119,7 @@ class TestInMemoryStateManager:
 
     @pytest.fixture
     def sample_loop(self) -> LoopState:
-        return LoopState(loop_type=LoopType.SPEC)
+        return LoopState(loop_type=LoopType.PHASE)
 
 
 class TestRoadmapOperations(TestInMemoryStateManager):
@@ -245,7 +245,7 @@ class TestRoadmapOperations(TestInMemoryStateManager):
 class TestSpecOperations(TestInMemoryStateManager):
     @pytest.mark.asyncio
     async def test_store_spec_initializes_project_storage(
-        self, state_manager: InMemoryStateManager, sample_spec: TechnicalSpec
+        self, state_manager: InMemoryStateManager, sample_spec: Phase
     ) -> None:
         result = await state_manager.store_spec('new-project', sample_spec)
         assert result == sample_spec.phase_name
@@ -256,7 +256,7 @@ class TestSpecOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_store_spec_returns_spec_name(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
@@ -267,7 +267,7 @@ class TestSpecOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_store_spec_makes_retrievable(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
@@ -280,7 +280,7 @@ class TestSpecOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_get_spec_raises_error_when_spec_not_found_in_project(
-        self, state_manager: InMemoryStateManager, sample_spec: TechnicalSpec
+        self, state_manager: InMemoryStateManager, sample_spec: Phase
     ) -> None:
         # Store a spec first
         await state_manager.store_spec('test-project', sample_spec)
@@ -317,7 +317,7 @@ class TestSpecOperations(TestInMemoryStateManager):
         project_name = 'multi-spec-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec1 = TechnicalSpec(
+        spec1 = Phase(
             phase_name='spec-1',
             objectives='Obj 1',
             scope='Scope 1',
@@ -325,7 +325,7 @@ class TestSpecOperations(TestInMemoryStateManager):
             deliverables='Del 1',
             spec_status=SpecStatus.DRAFT,
         )
-        spec2 = TechnicalSpec(
+        spec2 = Phase(
             phase_name='spec-2',
             objectives='Obj 2',
             scope='Scope 2',
@@ -352,7 +352,7 @@ class TestSpecOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_delete_spec_returns_true_when_spec_exists(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
@@ -364,7 +364,7 @@ class TestSpecOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_delete_spec_removes_spec_from_roadmap(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: TechnicalSpec
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
@@ -409,7 +409,7 @@ class TestSpecOperations(TestInMemoryStateManager):
 
         # Store all specs
         for spec_name in spec_names:
-            spec = TechnicalSpec(
+            spec = Phase(
                 phase_name=spec_name,
                 objectives=f'Obj {spec_name}',
                 scope=f'Scope {spec_name}',
@@ -473,9 +473,9 @@ class TestLoopOperations(TestInMemoryStateManager):
         # State manager initialized with max_history_size=3
         loops = [
             LoopState(loop_type=LoopType.PLAN),
-            LoopState(loop_type=LoopType.SPEC),
-            LoopState(loop_type=LoopType.BUILD_PLAN),
-            LoopState(loop_type=LoopType.BUILD_CODE),  # This should cause first to be dropped
+            LoopState(loop_type=LoopType.PHASE),
+            LoopState(loop_type=LoopType.TASK),
+            LoopState(loop_type=LoopType.ANALYST),  # This should cause first to be dropped
         ]
 
         for loop in loops:
@@ -950,7 +950,7 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         await state_manager.store_roadmap('project-1', project1_roadmap)
         await state_manager.store_roadmap('project-2', project2_roadmap)
 
-        spec1 = TechnicalSpec(
+        spec1 = Phase(
             phase_name='p1-spec',
             objectives='P1 Obj',
             scope='P1 Scope',
@@ -958,7 +958,7 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             deliverables='P1 Del',
             spec_status=SpecStatus.DRAFT,
         )
-        spec2 = TechnicalSpec(
+        spec2 = Phase(
             phase_name='p2-spec',
             objectives='P2 Obj',
             scope='P2 Scope',

@@ -86,7 +86,7 @@ draft
 ### Spec Count
 3
 
-# Technical Specification: phase-1-neo4j-setup
+# Phase: phase-1-neo4j-setup
 
 ## Overview
 
@@ -113,7 +113,7 @@ Working Neo4j instance with vector support
 ### Status
 draft
 
-# Technical Specification: phase-2-embedding-pipeline
+# Phase: phase-2-embedding-pipeline
 
 ## Overview
 
@@ -140,7 +140,7 @@ Working embedding storage system
 ### Status
 draft
 
-# Technical Specification: phase-3-query-system
+# Phase: phase-3-query-system
 
 ## Overview
 
@@ -188,12 +188,12 @@ class TestRoadmapStorageIntegration:
         assert '# Project Roadmap: RAG Best Practices POC' in retrieved_markdown
         assert 'Create a proof-of-concept intelligent knowledge management system' in retrieved_markdown
 
-        # Verify full TechnicalSpec content is present
-        assert '# Technical Specification: phase-1-neo4j-setup' in retrieved_markdown
-        assert '# Technical Specification: phase-2-embedding-pipeline' in retrieved_markdown
-        assert '# Technical Specification: phase-3-query-system' in retrieved_markdown
+        # Verify full Phase content is present
+        assert '# Phase: phase-1-neo4j-setup' in retrieved_markdown
+        assert '# Phase: phase-2-embedding-pipeline' in retrieved_markdown
+        assert '# Phase: phase-3-query-system' in retrieved_markdown
 
-        # Verify TechnicalSpec details are preserved
+        # Verify Phase details are preserved
         assert 'Set up Neo4j database with vector extensions' in retrieved_markdown
         assert 'Create embedding generation and storage pipeline' in retrieved_markdown
         assert 'Implement vector similarity search' in retrieved_markdown
@@ -209,7 +209,7 @@ class TestRoadmapStorageIntegration:
         retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
 
         # Parse retrieved markdown like create_roadmap does
-        spec_blocks = retrieved_markdown.split('# Technical Specification:')
+        spec_blocks = retrieved_markdown.split('# Phase:')
         assert len(spec_blocks) == 4  # Roadmap metadata + 3 specs
 
         # Store retrieved markdown again (simulating agent workflow)
@@ -221,9 +221,9 @@ class TestRoadmapStorageIntegration:
 
         # Verify content still matches
         assert '# Project Roadmap: RAG Best Practices POC' in second_retrieval
-        assert '# Technical Specification: phase-1-neo4j-setup' in second_retrieval
-        assert '# Technical Specification: phase-2-embedding-pipeline' in second_retrieval
-        assert '# Technical Specification: phase-3-query-system' in second_retrieval
+        assert '# Phase: phase-1-neo4j-setup' in second_retrieval
+        assert '# Phase: phase-2-embedding-pipeline' in second_retrieval
+        assert '# Phase: phase-3-query-system' in second_retrieval
 
     @pytest.mark.asyncio
     async def test_create_roadmap_with_invalid_title_format(
@@ -384,4 +384,4 @@ draft
 
         retrieved = await roadmap_tools.get_roadmap(project_name)
         assert '# Project Roadmap: Minimal Project' in retrieved
-        assert '# Technical Specification:' not in retrieved
+        assert '# Phase:' not in retrieved

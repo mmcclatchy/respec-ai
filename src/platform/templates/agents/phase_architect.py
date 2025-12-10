@@ -1,10 +1,10 @@
 from src.models.enums import SpecStatus
-from src.models.spec import TechnicalSpec
-from src.platform.models import SpecArchitectAgentTools
+from src.models.phase import Phase
+from src.platform.models import PhaseArchitectAgentTools
 
 
 # Generate template instance from model
-technical_spec_template = TechnicalSpec(
+technical_spec_template = Phase(
     phase_name='[spec-name-in-kebab-case]',
     objectives='[Clear, measurable goals with business value]',
     scope="[Boundaries, what's included/excluded, constraints]",
@@ -38,7 +38,7 @@ technical_spec_template = TechnicalSpec(
 ).build_markdown()
 
 
-def generate_spec_architect_template(tools: SpecArchitectAgentTools) -> str:
+def generate_phase_architect_template(tools: PhaseArchitectAgentTools) -> str:
     return f"""---
 name: respec-spec-architect
 description: Design technical architecture from strategic plans
@@ -52,8 +52,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__respec-ai__get_spec_markdown(loop_id="...")
-  ❌ WRONG: <mcp__respec-ai__get_spec_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: spec = mcp__respec-ai__get_document(doc_type="phase", loop_id="...")
+  ❌ WRONG: <mcp__respec-ai__get_document><doc_type>phase</doc_type>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -87,9 +87,9 @@ ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Current Specification
-CALL mcp__respec-ai__get_spec_markdown(
-  project_name=None,
-  spec_name=None,
+CALL mcp__respec-ai__get_document(
+  doc_type="phase",
+  path=None,
   loop_id=loop_id
 )
 → Verify: Specification markdown received
@@ -109,10 +109,10 @@ Develop comprehensive technical specification based on strategic plan summary
 → Follow OUTPUT FORMAT below
 
 STEP 4: Store Complete Specification
-CALL mcp__respec-ai__update_spec(
-  project_name=project_name,
-  spec_name=spec_name,
-  updated_markdown=generated_specification
+CALL mcp__respec-ai__update_document(
+  doc_type="phase",
+  path=f"{{project_name}}/{{spec_name}}",
+  content=generated_specification
 )
 → Verify: Specification stored successfully
 → Expected error: Storage failure (retry once, then report to command)
@@ -275,7 +275,7 @@ Choose sections based on project needs. Examples:
 
 ### REQUIRED MARKDOWN STRUCTURE
 
-**CRITICAL**: The TechnicalSpec parser expects EXACT H2 > H3 nesting. Follow this structure precisely.
+**CRITICAL**: The Phase parser expects EXACT H2 > H3 nesting. Follow this structure precisely.
 
 #### Mandatory Structure for All Specs
 
