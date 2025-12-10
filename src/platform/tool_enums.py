@@ -110,10 +110,10 @@ class RespecAITool(Enum):
     UNLINK_LOOP = 'mcp__respec-ai__unlink_loop'
 
     # Build Plan Tools
-    STORE_BUILD_PLAN = 'mcp__respec-ai__store_build_plan'
-    GET_BUILD_PLAN_MARKDOWN = 'mcp__respec-ai__get_build_plan_markdown'
-    LIST_BUILD_PLANS = 'mcp__respec-ai__list_build_plans'
-    DELETE_BUILD_PLAN = 'mcp__respec-ai__delete_build_plan'
+    STORE_PHASE = 'mcp__respec-ai__store_phase'
+    GET_PHASE_MARKDOWN = 'mcp__respec-ai__get_phase_markdown'
+    LIST_PHASES = 'mcp__respec-ai__list_phases'
+    DELETE_PHASE = 'mcp__respec-ai__delete_phase'
 
     # Plan Completion Report Tools
     CREATE_PLAN_COMPLETION_REPORT = 'mcp__respec-ai__create_plan_completion_report'

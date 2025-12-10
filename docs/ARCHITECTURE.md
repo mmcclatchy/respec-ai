@@ -18,7 +18,7 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │   │  .claude/commands/     │  .claude/agents/               │   │
 │   │  • respec-plan.md      │  • plan-analyst.md             │   │
 │   │  • respec-spec.md      │  • spec-architect.md           │   │
-│   │  • respec-build.md     │  • build-planner.md            │   │
+│   │  • respec-build.md     │  • taskner.md            │   │
 │   │  • respec-roadmap.md   │  • build-coder.md              │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────┬───────────────────────────────────────────┘
@@ -168,7 +168,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Manages spec refinement cycles
 
 3. **respec-build** - Implementation orchestration
-   - Coordinates build-planner, build-coder, build-reviewer
+   - Coordinates taskner, build-coder, build-reviewer
    - Executes implementation workflows
    - Validates code quality
 
@@ -190,7 +190,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **plan-analyst** - Business objectives analysis
 - **roadmap** - Implementation roadmap generation
 - **spec-architect** - Technical specification design
-- **build-planner** - Implementation planning
+- **taskner** - Implementation planning
 - **build-coder** - Code implementation
 
 **Critic Agents (Quality Assessment):**
@@ -326,8 +326,8 @@ mcp__respec-ai__save_plan
 mcp__respec-ai__get_plan
 mcp__respec-ai__save_spec
 mcp__respec-ai__get_spec
-mcp__respec-ai__save_build_plan
-mcp__respec-ai__get_build_plan
+mcp__respec-ai__save_phase
+mcp__respec-ai__get_phase
 mcp__respec-ai__save_roadmap
 mcp__respec-ai__get_roadmap
 ```
@@ -372,9 +372,9 @@ class MCPModel(BaseModel, ABC):
 
 1. **ProjectPlan** (31 fields) - Strategic planning
 2. **FeatureRequirements** (19 fields) - Technical translation
-3. **BuildPlan** (18 fields) - Implementation planning
+3. **Task** (18 fields) - Implementation planning
 4. **Roadmap** (20 fields) - Phase management
-5. **TechnicalSpec** (17 fields) - Technical design
+5. **Phase** (17 fields) - Technical design
 6. **PlanCompletionReport** (12 fields) - Completion docs
 7. **CriticFeedback** (9 fields) - Quality feedback
 8. **InitialSpec** (7 fields) - Initial scaffolding
@@ -435,7 +435,7 @@ project/
 │       ├── respec-roadmap.md             # Generated (static)
 │       ├── respec-roadmap-critic.md      # Generated (static)
 │       ├── respec-create-spec.md         # Generated (platform-specific)
-│       ├── respec-build-planner.md       # Generated (static)
+│       ├── respec-taskner.md       # Generated (static)
 │       ├── respec-build-critic.md        # Generated (static)
 │       ├── respec-build-coder.md         # Generated (platform-specific)
 │       └── respec-build-reviewer.md      # Generated (static)

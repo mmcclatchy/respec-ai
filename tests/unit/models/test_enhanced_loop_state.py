@@ -6,13 +6,13 @@ from src.utils.loop_state import LoopState
 
 class TestEnhancedLoopState:
     def test_loop_state_has_feedback_history_field(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.SPEC)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
 
         assert hasattr(loop_state, 'feedback_history')
         assert loop_state.feedback_history == []
 
     def test_add_feedback_stores_feedback_and_updates_score(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.SPEC)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
 
         feedback = CriticFeedback(
             loop_id=loop_state.id,
@@ -32,7 +32,7 @@ class TestEnhancedLoopState:
         assert loop_state.current_score == 80
 
     def test_get_recent_feedback_returns_limited_feedback(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.SPEC)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
 
         # Add 7 feedback items
         for i in range(7):
@@ -61,13 +61,13 @@ class TestEnhancedLoopState:
         assert recent_feedback_3[0].iteration == 5  # 3rd from end
 
     def test_get_recent_feedback_with_empty_history_returns_empty_list(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.SPEC)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
 
         recent_feedback = loop_state.get_recent_feedback()
         assert recent_feedback == []
 
     def test_updated_at_field_is_automatically_managed(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.SPEC)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
 
         assert hasattr(loop_state, 'updated_at')
         initial_updated_at = loop_state.updated_at
@@ -88,7 +88,7 @@ class TestEnhancedLoopState:
         assert loop_state.updated_at > initial_updated_at
 
     def test_existing_loop_state_functionality_remains_intact(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.SPEC)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
 
         # Test existing functionality still works
         assert loop_state.is_first_iteration()

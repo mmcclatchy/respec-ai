@@ -1,7 +1,7 @@
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 from src.shared import state_manager
 from src.utils.state_manager import StateManager
 
@@ -17,7 +17,7 @@ class RoadmapTools:
             raise ToolError('Roadmap data cannot be empty')
 
         try:
-            spec_blocks = roadmap_data.split('# Technical Specification:')
+            spec_blocks = roadmap_data.split('# Phase:')
             roadmap_metadata = spec_blocks[0]
 
             roadmap = Roadmap.parse_markdown(roadmap_metadata)
@@ -26,8 +26,8 @@ class RoadmapTools:
             # Parse and store each spec individually
             specs = []
             for i, spec_block in enumerate(spec_blocks[1:], 1):
-                spec_markdown = f'# Technical Specification:{spec_block}'
-                spec = TechnicalSpec.parse_markdown(spec_markdown)
+                spec_markdown = f'# Phase:{spec_block}'
+                spec = Phase.parse_markdown(spec_markdown)
                 specs.append(spec)
                 await self.state.store_spec(project_name, spec)
 
@@ -56,7 +56,7 @@ def register_roadmap_tools(mcp: FastMCP) -> None:
 
         Parameters:
         - project_name: Name for this project
-        - roadmap_data: Complete roadmap markdown content including all TechnicalSpec sections
+        - roadmap_data: Complete roadmap markdown content including all Phase sections
 
         Returns:
         - str: Confirmation message

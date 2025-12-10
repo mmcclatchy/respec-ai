@@ -7,8 +7,7 @@ of each model and outputting their markdown representation. This ensures
 templates stay synchronized with model definitions.
 """
 
-from src.models.build_plan import BuildPlan
-from src.models.enums import BuildStatus, CriticAgent, ProjectStatus, RequirementsStatus, RoadmapStatus
+from src.models.enums import CriticAgent, ProjectStatus, RequirementsStatus, RoadmapStatus
 from src.models.feature_requirements import FeatureRequirements
 from src.models.feedback import CriticFeedback
 from src.models.project_plan import ProjectPlan
@@ -37,30 +36,6 @@ def generate_roadmap_template() -> str:
         roadmap_status=RoadmapStatus.DRAFT,
     )
     return roadmap.build_markdown()
-
-
-def generate_build_plan_template() -> str:
-    build_plan = BuildPlan(
-        project_name='[Project Name]',
-        project_goal='[Main project goal and objectives]',
-        total_duration='[Expected build duration]',
-        team_size='[Development team size]',
-        primary_language='[Primary programming language]',
-        framework='[Main framework or technology stack]',
-        database='[Database technology]',
-        development_environment='[Development environment setup]',
-        database_schema='[Database schema description]',
-        api_architecture='[API architecture approach]',
-        frontend_architecture='[Frontend architecture approach]',
-        core_features='[Core feature list]',
-        integration_points='[Key integration points]',
-        testing_strategy='[Testing approach and strategy]',
-        code_standards='[Code standards and conventions]',
-        performance_requirements='[Performance requirements]',
-        security_implementation='[Security implementation approach]',
-        build_status=BuildStatus.PLANNING,
-    )
-    return build_plan.build_markdown()
 
 
 def generate_feature_requirements_template() -> str:
@@ -142,7 +117,6 @@ def generate_critic_feedback_template() -> str:
 def main() -> None:
     templates = {
         'roadmap_template.md': generate_roadmap_template(),
-        'build_plan_template.md': generate_build_plan_template(),
         'feature_requirements_template.md': generate_feature_requirements_template(),
         'project_plan_template.md': generate_project_plan_template(),
         'critic_feedback_template.md': generate_critic_feedback_template(),

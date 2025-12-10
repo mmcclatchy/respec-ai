@@ -334,7 +334,7 @@ OUTPUTS: Technical specification in structured format
 ```markdown
 # ❌ WRONG: References external workflow knowledge
 "After the plan-critic validates the plan quality..."
-"This specification will be used by the build-planner agent..."  
+"This specification will be used by the taskner agent..."  
 "Ensure compatibility with the Linear platform storage..."
 "Consider the 85% quality threshold for progression..."
 ```
@@ -704,7 +704,7 @@ This optimization pattern applies to **MCP-driven refinement loop workflows** on
 
 **build Workflow:** ✅ Should use this pattern
 - Command: `build_command.py`
-- Agents: `build-planner` ↔ `build-critic` (planned)
+- Agents: `taskner` ↔ `build-critic` (planned)
 - Pattern: Planner retrieves feedback from MCP using loop_id
 - Loop Driver: MCP Server (decide_loop_next_action)
 
@@ -1333,7 +1333,7 @@ Test Case: Edge Case Handling
 # ❌ WRONG: References other agents
 "After the spec-critic validates the specification quality..."
 "Coordinate with plan-generator for requirements clarity..."
-"This output will be used by build-planner agent..."
+"This output will be used by taskner agent..."
 
 # ❌ WRONG: References workflow orchestration  
 "As part of the refinement loop process..."

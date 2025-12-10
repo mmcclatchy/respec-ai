@@ -82,7 +82,7 @@ description: Transform strategic plans into detailed technical specifications
 
 ## Step 1: Initialize Technical Design Process
 mcp__respec-ai__initialize_refinement_loop:
-  loop_type: "spec"
+  loop_type: "phase"
 
 ## Step 2: Launch Architecture Development
 Invoke the spec-architect agent with this input:

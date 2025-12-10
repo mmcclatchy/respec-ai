@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from .base import MCPModel
 from .enums import RoadmapStatus
-from .spec import TechnicalSpec
+from .phase import Phase
 
 
 class Roadmap(MCPModel):
@@ -49,7 +49,7 @@ class Roadmap(MCPModel):
     performance_targets: str = 'Performance Targets not specified'
     roadmap_status: RoadmapStatus = RoadmapStatus.DRAFT
 
-    def build_markdown(self, specs: list[TechnicalSpec] | None = None) -> str:
+    def build_markdown(self, specs: list[Phase] | None = None) -> str:
         spec_count = len(specs) if specs else 0
         roadmap_metadata = f"""{self.TITLE_PATTERN}: {self.project_name}
 
@@ -117,7 +117,7 @@ class Roadmap(MCPModel):
 ### Spec Count
 {spec_count}
 """
-        # Append full TechnicalSpec markdown for round-trip consistency
+        # Append full Phase markdown for round-trip consistency
         if specs:
             specs_markdown = '\n\n'.join(spec.build_markdown() for spec in specs)
             return roadmap_metadata + '\n' + specs_markdown

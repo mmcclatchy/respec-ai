@@ -1,5 +1,5 @@
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 from src.platform.models import PlanRoadmapAgentTools
 
 
@@ -25,8 +25,8 @@ roadmap_example = Roadmap(
 ).build_markdown()
 roadmap_example = '\n    '.join(roadmap_example.split('\n'))
 
-# Create sparse TechnicalSpec example (iteration=0 with only 4 Overview fields)
-sparse_spec_example = TechnicalSpec(
+# Create sparse Phase example (iteration=0 with only 4 Overview fields)
+sparse_spec_example = Phase(
     phase_name='[Phase Name]',
     objectives='[What this phase aims to achieve]',
     scope='[What IS and is NOT included]',
@@ -41,7 +41,7 @@ sparse_spec_example = '\n    '.join(sparse_spec_example.split('\n'))
 def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
     """Generate roadmap agent template for phase breakdown and sparse spec creation.
 
-    Workflow: Transform strategic plans into sparse TechnicalSpecs (iteration=0, one per phase)
+    Workflow: Transform strategic plans into sparse Phases (iteration=0, one per phase)
 
     Dual Tool Architecture:
     - MCP respec-ai Tools: Explicitly defined (mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_spec, mcp__respec-ai__list_specs)
@@ -94,7 +94,7 @@ Break strategic plan into appropriately-sized implementation phases (2-4 weeks e
 STEP 3: Generate Roadmap Markdown
 Create comprehensive roadmap following OUTPUT FORMAT below
 → Include roadmap metadata
-→ Include sparse TechnicalSpec for EVERY phase
+→ Include sparse Phase for EVERY phase
 
 STEP 4: Return to Orchestrator
 Output complete roadmap markdown
@@ -147,7 +147,7 @@ Break requirements into sprint-sized phases (2-4 weeks each)
 STEP 4: Generate Roadmap
 Create comprehensive roadmap markdown following OUTPUT FORMAT below
 → Include all roadmap metadata fields
-→ Include sparse TechnicalSpec for EVERY phase
+→ Include sparse Phase for EVERY phase
 → NEVER truncate phases or use "[Remaining phases omitted...]"
 
 STEP 5: Return Complete Roadmap
@@ -204,10 +204,10 @@ Extract requirements into appropriately sized phases:
 - **MUST start with exact header**: `# Project Roadmap: [Project Name]`
   - NOT "Implementation Roadmap", NOT "Project Implementation Roadmap"
   - Exact format required for parser: `# Project Roadmap: ` followed by project name
-- Output roadmap metadata followed by sparse TechnicalSpecs (one per phase)
+- Output roadmap metadata followed by sparse Phases (one per phase)
 - **NEVER truncate phases** - output a sparse spec for EVERY phase you define
 - **NEVER use** "[Remaining phases omitted...]" text
-- Each TechnicalSpec has ONLY 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
+- Each Phase has ONLY 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
 - Do NOT add System Design, Implementation, or Additional Details sections
 
 ### Part 1: Roadmap Metadata
@@ -218,16 +218,16 @@ Use this exact format (generated from Roadmap model):
     {roadmap_example}
     ```
 
-### Part 2: Sparse TechnicalSpec for Each Phase
+### Part 2: Sparse Phase for Each Phase
 
-After the roadmap metadata, output one sparse TechnicalSpec for EACH phase.
-Use this exact format (generated from TechnicalSpec model):
+After the roadmap metadata, output one sparse Phase for EACH phase.
+Use this exact format (generated from Phase model):
 
     ```markdown
     {sparse_spec_example}
     ```
 
-**CRITICAL**: Repeat the TechnicalSpec format for every phase - never truncate or abbreviate
+**CRITICAL**: Repeat the Phase format for every phase - never truncate or abbreviate
 
 ## QUALITY CRITERIA
 

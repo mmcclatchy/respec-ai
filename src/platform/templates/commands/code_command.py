@@ -1,7 +1,7 @@
 from src.platform.models import CodeCommandTools
 
 
-def generate_build_command_template(tools: CodeCommandTools) -> str:
+def generate_code_command_template(tools: CodeCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [project-name] [spec-name]

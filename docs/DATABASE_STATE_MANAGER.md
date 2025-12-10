@@ -94,7 +94,7 @@ Stores active refinement loops with JSONB feedback history.
 |--------|------|-------------|
 | id | VARCHAR(8) | Unique loop identifier (primary key) |
 | project_name | VARCHAR(255) | Associated project |
-| loop_type | VARCHAR(50) | Loop category (plan, spec, build_plan, etc.) |
+| loop_type | VARCHAR(50) | Loop category (plan, roadmap, phase, task, analyst) |
 | status | VARCHAR(50) | Current status (initialized, in_progress, completed, user_input, refine) |
 | current_score | INTEGER | Latest quality score (0-100) |
 | score_history | INTEGER[] | Historical scores array |

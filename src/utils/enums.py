@@ -6,9 +6,8 @@ from src.utils.setting_configs import loop_config
 class LoopType(Enum):
     PLAN = 'plan'
     ROADMAP = 'roadmap'
-    SPEC = 'spec'
-    BUILD_PLAN = 'build_plan'
-    BUILD_CODE = 'build_code'
+    PHASE = 'phase'
+    TASK = 'task'
     ANALYST = 'analyst'
 
     @property

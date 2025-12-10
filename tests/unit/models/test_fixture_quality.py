@@ -9,20 +9,20 @@ from typing import Callable, Type
 
 import pytest
 from src.models.base import MCPModel
-from src.models.build_plan import BuildPlan
 from src.models.feature_requirements import FeatureRequirements
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
+from src.models.task import Task
 
 
 @pytest.mark.parametrize(
     'model_class',
     [
         Roadmap,
-        TechnicalSpec,
+        Phase,
         ProjectPlan,
-        BuildPlan,
+        Task,
         FeatureRequirements,
     ],
 )
@@ -45,9 +45,9 @@ def test_markdown_builder_creates_valid_markdown(markdown_builder: Callable, mod
     'model_class',
     [
         Roadmap,
-        TechnicalSpec,
+        Phase,
         ProjectPlan,
-        BuildPlan,
+        Task,
         FeatureRequirements,
     ],
 )
@@ -68,9 +68,9 @@ def test_markdown_builder_output_differs_from_build_markdown(markdown_builder: C
     This test prevents circular validation by ensuring the builder constructs
     markdown manually from metadata, not by calling model.build_markdown().
     """
-    builder_markdown = markdown_builder(TechnicalSpec)
+    builder_markdown = markdown_builder(Phase)
 
-    instance = TechnicalSpec.parse_markdown(builder_markdown)
+    instance = Phase.parse_markdown(builder_markdown)
     model_markdown = instance.build_markdown()
 
     assert builder_markdown != model_markdown, (
@@ -79,16 +79,16 @@ def test_markdown_builder_output_differs_from_build_markdown(markdown_builder: C
 
 
 def test_markdown_builder_includes_all_header_mapped_fields(markdown_builder: Callable) -> None:
-    markdown = markdown_builder(TechnicalSpec)
+    markdown = markdown_builder(Phase)
 
-    for field_name, (h2, h3) in TechnicalSpec.HEADER_FIELD_MAPPING.items():
+    for field_name, (h2, h3) in Phase.HEADER_FIELD_MAPPING.items():
         if h3:
             assert f'## {h2}' in markdown, f"Missing H2 header '{h2}' for field '{field_name}'"
             assert f'### {h3}' in markdown, f"Missing H3 header '{h3}' for field '{field_name}'"
 
 
 def test_markdown_builder_generates_realistic_content(markdown_builder: Callable) -> None:
-    markdown = markdown_builder(TechnicalSpec)
+    markdown = markdown_builder(Phase)
 
     assert 'foo' not in markdown.lower()
     assert 'bar' not in markdown.lower()

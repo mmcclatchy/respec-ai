@@ -54,9 +54,8 @@ class TestLoopType:
     def test_loop_type_values(self) -> None:
         assert LoopType.PLAN.value == 'plan'
         assert LoopType.ROADMAP.value == 'roadmap'
-        assert LoopType.SPEC.value == 'spec'
-        assert LoopType.BUILD_PLAN.value == 'build_plan'
-        assert LoopType.BUILD_CODE.value == 'build_code'
+        assert LoopType.PHASE.value == 'phase'
+        assert LoopType.TASK.value == 'task'
         assert LoopType.ANALYST.value == 'analyst'
 
     @pytest.mark.parametrize(
@@ -64,9 +63,8 @@ class TestLoopType:
         [
             (LoopType.PLAN, 'plan'),
             (LoopType.ROADMAP, 'roadmap'),
-            (LoopType.SPEC, 'spec'),
-            (LoopType.BUILD_PLAN, 'build_plan'),
-            (LoopType.BUILD_CODE, 'build_code'),
+            (LoopType.PHASE, 'phase'),
+            (LoopType.TASK, 'task'),
             (LoopType.ANALYST, 'analyst'),
         ],
     )
@@ -82,9 +80,8 @@ class TestLoopType:
         [
             (LoopType.PLAN, 'plan'),
             (LoopType.ROADMAP, 'roadmap'),
-            (LoopType.SPEC, 'spec'),
-            (LoopType.BUILD_PLAN, 'build_plan'),
-            (LoopType.BUILD_CODE, 'build_code'),
+            (LoopType.PHASE, 'phase'),
+            (LoopType.TASK, 'task'),
             (LoopType.ANALYST, 'analyst'),
         ],
     )
@@ -100,9 +97,8 @@ class TestLoopType:
         [
             (LoopType.PLAN, 'plan'),
             (LoopType.ROADMAP, 'roadmap'),
-            (LoopType.SPEC, 'spec'),
-            (LoopType.BUILD_PLAN, 'build_plan'),
-            (LoopType.BUILD_CODE, 'build_code'),
+            (LoopType.PHASE, 'phase'),
+            (LoopType.TASK, 'task'),
             (LoopType.ANALYST, 'analyst'),
         ],
     )
@@ -114,8 +110,8 @@ class TestLoopType:
         assert 1 <= loop_type.checkpoint_frequency <= 20
 
     def test_loop_type_property_integration(self) -> None:
-        # Test build_code has highest threshold (95%)
-        assert LoopType.BUILD_CODE.threshold == 95
+        # Test task has highest threshold (95%)
+        assert LoopType.TASK.threshold == 95
 
         # Test analyst has highest improvement threshold (10%)
         assert LoopType.ANALYST.improvement_threshold == 10
@@ -127,8 +123,9 @@ class TestLoopType:
 
     def test_loop_type_enum_creation_from_string(self) -> None:
         assert LoopType('plan') == LoopType.PLAN
-        assert LoopType('spec') == LoopType.SPEC
-        assert LoopType('build_code') == LoopType.BUILD_CODE
+        assert LoopType('phase') == LoopType.PHASE
+        assert LoopType('task') == LoopType.TASK
+        assert LoopType('analyst') == LoopType.ANALYST
 
         with pytest.raises(ValueError):
             LoopType('invalid_loop_type')

@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document outlines the complete implementation plan for the `/respec-build` command workflow. The workflow implements a dual-loop refinement system (planning loop + coding loop) that takes a TechnicalSpec and produces production-ready code following TDD methodology.
+This document outlines the complete implementation plan for the `/respec-build` command workflow. The workflow implements a dual-loop refinement system (planning loop + coding loop) that takes a Phase and produces production-ready code following TDD methodology.
 
 ## Workflow Architecture
 
@@ -16,13 +16,13 @@ This document outlines the complete implementation plan for the `/respec-build` 
 User: /respec-build [spec_name]
   ↓
 Main Agent (build_command.py)
-  ├→ Retrieve TechnicalSpec
+  ├→ Retrieve Phase
   ├→ Launch Parallel Research (research-synthesizer agents)
-  ├→ Planning Loop (build_planner ↔ build_critic)
+  ├→ Planning Loop (phasener ↔ build_critic)
   │   └→ MCP decides: refine/complete/user_input
   ├→ Coding Loop (build_coder ↔ build_reviewer)
   │   └→ MCP decides: refine/complete/user_input
-  └→ Update TechnicalSpec + Platform Integration
+  └→ Update Phase + Platform Integration
 ```
 
 ### Agent Workflow Pattern
@@ -71,7 +71,7 @@ Exit
 
 ### PHASE 2: Specification Retrieval
 
-#### Step 2.1: Retrieve TechnicalSpec
+#### Step 2.1: Retrieve Phase
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
 - **Action**: Call `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
@@ -82,9 +82,9 @@ Exit
 #### Step 2.2: Parse Specification Content
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Parse TechnicalSpec markdown into structured object
+- **Action**: Parse Phase markdown into structured object
 - **Implementation Needed**:
-  - Call `TechnicalSpec.parse_markdown(spec_markdown)`
+  - Call `Phase.parse_markdown(spec_markdown)`
   - Validate required fields are present (architecture, tech_stack, research_requirements)
 
 ---
@@ -94,13 +94,13 @@ Exit
 #### Step 3.1: Extract Research Requirements
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Extract research items from TechnicalSpec `research_requirements` field
+- **Action**: Extract research items from Phase `research_requirements` field
 - **Implementation Needed**:
   - Parse `research_requirements` markdown section
   - Extract individual research queries (likely bulleted list or numbered list)
   - Create list of research queries for parallel execution
 
-**Example TechnicalSpec Research Requirements Section**:
+**Example Phase Research Requirements Section**:
 ```markdown
 ### Research Requirements
 
@@ -112,8 +112,8 @@ Exit
 **Parsing Logic Needed**:
 
 ```text
-Extract research items from TechnicalSpec markdown:
-  1. Get research_requirements field from parsed TechnicalSpec
+Extract research items from Phase markdown:
+  1. Get research_requirements field from parsed Phase
   2. Parse markdown to extract list items (bulleted or numbered)
   3. Result: list of research query strings
      Example: ["FastAPI async best practices...", "PostgreSQL schema design...", ...]
@@ -148,62 +148,62 @@ Each research-synthesizer returns a file path:
 - **Action**: Collect file paths from research-synthesizer agents
 - **Implementation Needed**:
   - Aggregate file paths into list
-  - Store list for passing to build_planner agent
-  - No synthesis needed (build_planner will read documents directly)
+  - Store list for passing to phasener agent
+  - No synthesis needed (phasener will read documents directly)
 
 ---
 
-### PHASE 4: Planning Loop (build_planner ↔ build_critic Refinement)
+### PHASE 4: Planning Loop (phasener ↔ build_critic Refinement)
 
 #### Step 4.1: Initialize Planning Refinement Loop
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Call `mcp__respec-ai__initialize_refinement_loop(loop_type='build_plan')`
+- **Action**: Call `mcp__respec-ai__initialize_refinement_loop(loop_type='phase')`
 - **Implementation Needed**:
   - Store returned `planning_loop_id` in Main Agent state
   - This ID will be passed to all planning agents
 
-#### Step 4.2: Invoke build_planner Agent (Iteration 1)
-- **Actor**: build_planner agent
-- **File**: `src/platform/templates/agents/build_planner.py` (**NEEDS CREATION**)
-- **Action**: Create BuildPlan from TechnicalSpec + research briefs
+#### Step 4.2: Invoke phasener Agent (Iteration 1)
+- **Actor**: phasener agent
+- **File**: `src/platform/templates/agents/phasener.py` (**NEEDS CREATION**)
+- **Action**: Create Task from Phase + research briefs
 
 **Agent Workflow**:
-1. Retrieve TechnicalSpec via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
-2. Retrieve BuildPlan via `mcp__respec-ai__get_build_plan_markdown(planning_loop_id)` (empty if first iteration)
+1. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+2. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)` (empty if first iteration)
 3. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(planning_loop_id)` (none if first iteration)
 4. Read research briefs from file paths (provided as agent parameter)
-5. Generate BuildPlan markdown matching [BuildPlan structure](src/models/build_plan.py)
-6. Store BuildPlan via `mcp__respec-ai__store_build_plan(planning_loop_id, plan_markdown)`
+5. Generate Task markdown matching [Task structure](src/models/phase.py)
+6. Store Task via `mcp__respec-ai__store_phase(planning_loop_id, plan_markdown)`
 7. Exit
 
 **Agent Inputs** (passed by Main Agent):
 - `planning_loop_id` (for MCP retrieval/storage)
 - `research_file_paths` (list of paths to research documents)
-- `project_name` (for TechnicalSpec retrieval)
-- `spec_name` (for TechnicalSpec retrieval)
+- `project_name` (for Phase retrieval)
+- `spec_name` (for Phase retrieval)
 
 **Tools Needed** (in agent frontmatter):
 - `mcp__respec-ai__get_spec_markdown`
-- `mcp__respec-ai__get_build_plan_markdown`
+- `mcp__respec-ai__get_phase_markdown`
 - `mcp__respec-ai__get_critic_feedback`
-- `mcp__respec-ai__store_build_plan`
+- `mcp__respec-ai__store_phase`
 - `Read` (for reading research briefs)
 
 **Instructions Focus**:
 - Reference research documents when making planning decisions (don't synthesize)
-- Follow BuildPlan structure exactly
+- Follow Task structure exactly
 - On refinement iterations: incorporate critic feedback into plan improvements
 
 #### Step 4.3: Invoke build_critic Agent (Iteration 1)
 - **Actor**: build_critic agent
 - **File**: `src/platform/templates/agents/build_critic.py` (**NEEDS CREATION**)
-- **Action**: Assess BuildPlan quality against FSDD criteria
+- **Action**: Assess Task quality against FSDD criteria
 
 **Agent Workflow**:
-1. Retrieve BuildPlan via `mcp__respec-ai__get_build_plan_markdown(planning_loop_id)`
+1. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)`
 2. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(planning_loop_id)` (to track progress)
-3. Retrieve TechnicalSpec via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+3. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
 4. Critique plan against FSDD criteria
 5. Determine score (0-100, threshold: 80%)
 6. Generate CriticFeedback markdown (score, assessment, issues, recommendations)
@@ -216,14 +216,14 @@ Each research-synthesizer returns a file path:
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__respec-ai__get_build_plan_markdown`
+- `mcp__respec-ai__get_phase_markdown`
 - `mcp__respec-ai__get_critic_feedback`
 - `mcp__respec-ai__get_spec_markdown`
 - `mcp__respec-ai__store_critic_feedback`
 
 **FSDD Criteria for Assessment** (80% threshold):
-- Plan completeness (all BuildPlan sections populated)
-- Alignment with TechnicalSpec (matches objectives, scope, architecture)
+- Plan completeness (all Task sections populated)
+- Alignment with Phase (matches objectives, scope, architecture)
 - Test strategy clarity (TDD approach defined)
 - Implementation sequence logic (dependencies respec-aited)
 - Technology stack appropriateness (matches spec requirements)
@@ -266,7 +266,7 @@ Each research-synthesizer returns a file path:
 - **Implementation Needed**:
 
 **If status = "refine"**:
-- Re-invoke build_planner agent (same parameters)
+- Re-invoke phasener agent (same parameters)
 - Agent will retrieve previous critic feedback and incorporate into plan
 - Re-invoke build_critic agent
 - Call MCP decision again
@@ -276,7 +276,7 @@ Each research-synthesizer returns a file path:
 - Proceed to Phase 5 (Coding Loop)
 
 **If status = "user_input"**:
-- Save BuildPlan to platform (Linear/GitHub/Markdown)
+- Save Task to platform (Linear/GitHub/Markdown)
 - Retrieve critic feedback from MCP
 - Present to user:
   - Current state recap
@@ -285,9 +285,9 @@ Each research-synthesizer returns a file path:
   - Recommendation
 - Collect user feedback
 - Store user feedback via `mcp__respec-ai__store_user_feedback(planning_loop_id, feedback_markdown)` (**NEW TOOL NEEDED**)
-- Re-invoke build_planner with user feedback available
+- Re-invoke phasener with user feedback available
 
-**Maximum Iterations**: 5 (per `FSDD_LOOP_BUILD_PLAN_MAX_ITERATIONS`)
+**Maximum Iterations**: 5 (per `FSDD_LOOP_PHASE_MAX_ITERATIONS`)
 
 ---
 
@@ -296,7 +296,7 @@ Each research-synthesizer returns a file path:
 #### Step 5.1: Initialize Coding Refinement Loop
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Call `mcp__respec-ai__initialize_refinement_loop(loop_type='build_code')`
+- **Action**: Call `mcp__respec-ai__initialize_refinement_loop(loop_type='task')`
 - **Implementation Needed**:
   - Store returned `coding_loop_id` in Main Agent state
   - Main Agent now maintains TWO loop IDs: `planning_loop_id` + `coding_loop_id`
@@ -307,9 +307,9 @@ Each research-synthesizer returns a file path:
 - **Action**: Implement code following TDD methodology (tests first, then implementation)
 
 **Agent Workflow**:
-1. Read coding standards from `.respec-ai/coding-standards.md` (if exists, otherwise use BuildPlan Code Standards)
-2. Retrieve BuildPlan via `mcp__respec-ai__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-3. Retrieve TechnicalSpec via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+1. Read coding standards from `.respec-ai/coding-standards.md` (if exists, otherwise use Task Code Standards)
+2. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
+3. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
 4. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(coding_loop_id)` (if any)
 5. Retrieve user feedback via `mcp__respec-ai__get_user_feedback(coding_loop_id)` (if any)
 6. Check current state of implementation (file system inspection via Read/Glob)
@@ -325,12 +325,12 @@ Each research-synthesizer returns a file path:
 
 **Agent Inputs** (passed by Main Agent):
 - `coding_loop_id` (for storing critic feedback)
-- `planning_loop_id` (for retrieving BuildPlan - **CRITICAL**)
+- `planning_loop_id` (for retrieving Task - **CRITICAL**)
 - `project_name`
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__respec-ai__get_build_plan_markdown`
+- `mcp__respec-ai__get_phase_markdown`
 - `mcp__respec-ai__get_spec_markdown`
 - `mcp__respec-ai__get_critic_feedback`
 - `mcp__respec-ai__get_user_feedback` (**NEW TOOL NEEDED**)
@@ -353,11 +353,11 @@ Each research-synthesizer returns a file path:
 #### Step 5.3: Invoke build_reviewer Agent (Iteration 1)
 - **Actor**: build_reviewer agent
 - **File**: `src/platform/templates/agents/build_reviewer.py` (**NEEDS CREATION**)
-- **Action**: Review code quality, test coverage, alignment with BuildPlan/TechnicalSpec
+- **Action**: Review code quality, test coverage, alignment with Task/Phase
 
 **Agent Workflow**:
-1. Retrieve BuildPlan via `mcp__respec-ai__get_build_plan_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-2. Retrieve TechnicalSpec via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+1. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
+2. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
 3. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(coding_loop_id)` (to track progress)
 4. Inspect codebase (file system inspection via Read/Glob)
 5. Run static analysis (Bash: mypy, ruff)
@@ -367,8 +367,8 @@ Each research-synthesizer returns a file path:
    - Type checking clean (mypy)
    - Linting clean (ruff)
    - Test coverage adequate
-   - Code matches BuildPlan structure
-   - Code implements TechnicalSpec requirements
+   - Code matches Task structure
+   - Code implements Phase requirements
    - No regressions from previous iteration
 8. Determine score (0-100, threshold: 95%)
 9. Generate CriticFeedback markdown (score, assessment, issues, recommendations)
@@ -377,12 +377,12 @@ Each research-synthesizer returns a file path:
 
 **Agent Inputs** (passed by Main Agent):
 - `coding_loop_id`
-- `planning_loop_id` (**CRITICAL** - for BuildPlan access)
+- `planning_loop_id` (**CRITICAL** - for Task access)
 - `project_name`
 - `spec_name`
 
 **Tools Needed** (in agent frontmatter):
-- `mcp__respec-ai__get_build_plan_markdown`
+- `mcp__respec-ai__get_phase_markdown`
 - `mcp__respec-ai__get_spec_markdown`
 - `mcp__respec-ai__get_critic_feedback`
 - `Read`, `Glob`
@@ -395,8 +395,8 @@ Score breakdown (suggested weighting):
 - Type checking clean: 15 points (mypy with no errors)
 - Linting clean: 10 points (ruff with no errors)
 - Test coverage: 15 points (≥80% coverage)
-- BuildPlan alignment: 15 points (file structure matches)
-- TechnicalSpec alignment: 15 points (implements requirements)
+- Task alignment: 15 points (file structure matches)
+- Phase alignment: 15 points (implements requirements)
 
 **Minimum 95% = 95/100 points**
 
@@ -427,7 +427,7 @@ Score breakdown (suggested weighting):
 
 **If status = "user_input"**:
 - Save current code state to platform (commit if not already committed)
-- Retrieve BuildPlan from MCP (for context)
+- Retrieve Task from MCP (for context)
 - Retrieve critic feedback from MCP
 - Present to user:
   - Current implementation state recap
@@ -446,15 +446,15 @@ Score breakdown (suggested weighting):
 
 ### PHASE 6: Integration & Documentation
 
-#### Step 6.1: Update TechnicalSpec Status
+#### Step 6.1: Update Phase Status
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Update TechnicalSpec with implementation completion status
+- **Action**: Update Phase with implementation completion status
 - **Implementation Needed**:
-  - Retrieve TechnicalSpec via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+  - Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
   - Update `spec_status` field to `IMPLEMENTED`
   - Optionally add metadata fields:
-    - `build_planning_score`: final planning loop score
+    - `phasening_score`: final planning loop score
     - `build_coding_score`: final coding loop score
   - Store updated spec via `mcp__respec-ai__store_spec(project_name, spec_name, updated_markdown)`
 
@@ -497,7 +497,7 @@ Platform tools are pre-configured in command frontmatter. Use consistent logic a
 - **Implementation Needed**:
 
 Aggregate data:
-- BuildPlan (file structure, test strategy)
+- Task (file structure, test strategy)
 - Final scores (planning, coding)
 - Iteration counts
 - Files created/modified (from git log or file system inspection)
@@ -516,7 +516,7 @@ Generate simple markdown summary (no need to over-complicate).
 #### Step 6.5: Cleanup Loop State
 - **Implementation**: Defer to later (implementation details)
 - Options to consider later:
-  - Delete BuildPlan from memory
+  - Delete Task from memory
   - Archive loop state
   - Preserve for historical analysis
 
@@ -584,7 +584,7 @@ All agent templates follow the established pattern from `roadmap.py`:
 
 **Two Categories of Tools**:
 1. **MCP respec-ai Tools**: Explicitly defined in frontmatter (always the same regardless of platform)
-   - Example: `mcp__respec-ai__get_spec_markdown`, `mcp__respec-ai__store_build_plan`
+   - Example: `mcp__respec-ai__get_spec_markdown`, `mcp__respec-ai__store_phase`
    - These are hardcoded in the agent frontmatter
 
 2. **Platform-Specific Tools**: Injected via function parameter (varies by platform: Linear/GitHub/Markdown)
@@ -610,34 +610,34 @@ tools:
 **When to Use**:
 - Use `AgentTools` parameter **only if** agent needs platform-specific operations (creating issues, updating tasks, etc.)
 - Agents that only use MCP respec-ai tools + built-in tools (Read, Write, Bash) don't need tools parameter
-- build_coder needs platform tools (updating task status), build_planner does not
+- build_coder needs platform tools (updating task status), phasener does not
 
 ---
 
-### Agent 1: build_planner.py
+### Agent 1: phasener.py
 
-**Location**: `src/platform/templates/agents/build_planner.py`
+**Location**: `src/platform/templates/agents/phasener.py`
 
 **Frontmatter Tools**:
 ```yaml
 tools:
   - mcp__respec-ai__get_spec_markdown
-  - mcp__respec-ai__get_build_plan_markdown
+  - mcp__respec-ai__get_phase_markdown
   - mcp__respec-ai__get_critic_feedback
   - mcp__respec-ai__get_user_feedback
-  - mcp__respec-ai__store_build_plan
+  - mcp__respec-ai__store_phase
   - Read
 ```
 
 **Agent Instructions Focus**:
-- Retrieve TechnicalSpec, BuildPlan (if exists), previous feedback
+- Retrieve Phase, Task (if exists), previous feedback
 - Read research briefs from provided file paths
 - Reference research when making planning decisions (don't synthesize)
-- Generate BuildPlan following exact structure from BuildPlan model
+- Generate Task following exact structure from Task model
 - On refinement: incorporate critic feedback and user feedback
-- Store BuildPlan to MCP
+- Store Task to MCP
 
-**BuildPlan Sections to Populate** (from build_plan.py):
+**Task Sections to Populate** (from phase.py):
 - Project Overview (Goal, Duration, Team Size)
 - Technology Stack (Primary Language, Framework, Database)
 - Architecture (Development Environment, Database Schema, API Architecture, Frontend Architecture)
@@ -654,7 +654,7 @@ tools:
 **Frontmatter Tools**:
 ```yaml
 tools:
-  - mcp__respec-ai__get_build_plan_markdown
+  - mcp__respec-ai__get_phase_markdown
   - mcp__respec-ai__get_spec_markdown
   - mcp__respec-ai__get_critic_feedback
   - mcp__respec-ai__store_critic_feedback
@@ -662,7 +662,7 @@ tools:
 ```
 
 **Agent Instructions Focus**:
-- Retrieve BuildPlan, TechnicalSpec, previous feedback
+- Retrieve Task, Phase, previous feedback
 - Assess plan against FSDD criteria (80% threshold)
 - Track progress from previous feedback
 - Generate structured CriticFeedback with score
@@ -670,7 +670,7 @@ tools:
 
 **FSDD Assessment Criteria**:
 - Plan completeness (all sections populated)
-- Alignment with TechnicalSpec
+- Alignment with Phase
 - Test strategy clarity (TDD approach)
 - Implementation sequence logic
 - Technology stack appropriateness
@@ -702,7 +702,7 @@ def generate_build_coder_template(tools: BuildCoderAgentTools) -> str:
 **Frontmatter Tools** (dual architecture - MCP + Platform):
 ```yaml
 tools:
-  - mcp__respec-ai__get_build_plan_markdown
+  - mcp__respec-ai__get_phase_markdown
   - mcp__respec-ai__get_spec_markdown
   - mcp__respec-ai__get_critic_feedback
   - mcp__respec-ai__get_user_feedback
@@ -718,7 +718,7 @@ tools:
 **Note**: Platform-specific tools injected via `tools` parameter, rendered dynamically based on platform (Linear/GitHub/Markdown)
 
 **Agent Instructions Focus**:
-- Retrieve BuildPlan (via planning_loop_id), TechnicalSpec, feedback
+- Retrieve Task (via planning_loop_id), Phase, feedback
 - Check current implementation state
 - Create TodoList of actions (using TodoWrite)
 - Follow TDD methodology strictly:
@@ -748,7 +748,7 @@ tools:
 **Frontmatter Tools**:
 ```yaml
 tools:
-  - mcp__respec-ai__get_build_plan_markdown
+  - mcp__respec-ai__get_phase_markdown
   - mcp__respec-ai__get_spec_markdown
   - mcp__respec-ai__get_critic_feedback
   - mcp__respec-ai__store_critic_feedback
@@ -758,7 +758,7 @@ tools:
 ```
 
 **Agent Instructions Focus**:
-- Retrieve BuildPlan (via planning_loop_id), TechnicalSpec, previous feedback
+- Retrieve Task (via planning_loop_id), Phase, previous feedback
 - Inspect codebase (file system)
 - Run static analysis (mypy, ruff)
 - Run tests with coverage (pytest --cov)
@@ -772,8 +772,8 @@ tools:
 - Type checking clean: 15 points
 - Linting clean: 10 points
 - Test coverage ≥80%: 15 points
-- BuildPlan alignment: 15 points
-- TechnicalSpec alignment: 15 points
+- Task alignment: 15 points
+- Phase alignment: 15 points
 
 **CriticFeedback Structure**: Same as build_critic
 
@@ -802,7 +802,7 @@ Main Agent maintains minimal state (just identifiers):
 Main Agent sends **single message** containing multiple Task calls:
 
 ```text
-For 3 research items in TechnicalSpec:
+For 3 research items in Phase:
   Message contains:
     - Task(subagent_type=research-synthesizer, query="FastAPI async best practices...")
     - Task(subagent_type=research-synthesizer, query="PostgreSQL schema design...")
@@ -818,8 +818,8 @@ Main Agent collects paths into list.
 **Planning Loop Flow:**
 
 ```text
-1. Main Agent invokes: Task(subagent_type=build_planner, loop_id=planning_loop_id, research_paths=..., project_name=..., spec_name=...)
-2. build_planner agent executes autonomously (retrieve → process → store → exit)
+1. Main Agent invokes: Task(subagent_type=phasener, loop_id=planning_loop_id, research_paths=..., project_name=..., spec_name=...)
+2. phasener agent executes autonomously (retrieve → process → store → exit)
 3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., spec_name=...)
 4. build_critic agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(planning_loop_id)
@@ -853,7 +853,7 @@ When MCP returns status="user_input" (stagnation detected):
 
 ```text
 1. Main Agent saves current state to platform:
-   - Planning loop: Save BuildPlan via platform tools (Linear/GitHub/Markdown)
+   - Planning loop: Save Task via platform tools (Linear/GitHub/Markdown)
    - Coding loop: Ensure latest code committed (should already be done by build_coder)
 
 2. Main Agent retrieves critic feedback via mcp__respec-ai__get_critic_feedback(loop_id)
@@ -884,20 +884,20 @@ When MCP returns status="user_input" (stagnation detected):
    - `get_user_feedback(loop_id)`
    - Register in tool_discovery.py
 
-2. ✅ **Create build_planner.py agent**
-   - Tools: get_spec, get_build_plan, get_critic_feedback, get_user_feedback, store_build_plan, Read
+2. ✅ **Create phasener.py agent**
+   - Tools: get_spec, get_phase, get_critic_feedback, get_user_feedback, store_phase, Read
    - Instructions: TDD planning, research reference, feedback incorporation
 
 3. ✅ **Create build_critic.py agent**
-   - Tools: get_build_plan, get_spec, get_critic_feedback, store_critic_feedback
+   - Tools: get_phase, get_spec, get_critic_feedback, store_critic_feedback
    - Instructions: FSDD assessment, 80% threshold, progress tracking
 
 4. ✅ **Create build_coder.py agent**
-   - Tools: get_build_plan, get_spec, get_critic_feedback, get_user_feedback, Write, Edit, Read, Glob, Bash, TodoWrite, platform tools
+   - Tools: get_phase, get_spec, get_critic_feedback, get_user_feedback, Write, Edit, Read, Glob, Bash, TodoWrite, platform tools
    - Instructions: TDD enforcement, TodoList usage, commit strategy
 
 5. ✅ **Create build_reviewer.py agent**
-   - Tools: get_build_plan, get_spec, get_critic_feedback, store_critic_feedback, Read, Glob, Bash
+   - Tools: get_phase, get_spec, get_critic_feedback, store_critic_feedback, Read, Glob, Bash
    - Instructions: 95% threshold criteria, regression detection
 
 6. ✅ **Update build_command.py**
@@ -906,12 +906,12 @@ When MCP returns status="user_input" (stagnation detected):
    - Coding loop orchestration
    - User input handling
    - Platform integration updates
-   - TechnicalSpec status update
+   - Phase status update
 
 ### Priority 2: High Impact
 
 1. ✅ **Research requirements extraction logic**
-   - Parse TechnicalSpec `research_requirements` field
+   - Parse Phase `research_requirements` field
    - Extract list items (bulleted or numbered)
    - Create research queries
 
@@ -935,7 +935,7 @@ When MCP returns status="user_input" (stagnation detected):
     - Track stagnation frequency
     - Consider adjustment if needed (90%?)
 
-2. **BuildPlan structure review**
+2. **Task structure review**
     - Validate against actual implementation needs
     - Update if gaps identified
 
@@ -947,8 +947,8 @@ When MCP returns status="user_input" (stagnation detected):
 
 ## Architectural Decisions (RESOLVED)
 
-### 1. BuildPlan Linking Strategy ✅
-**Decision**: Pass `planning_loop_id` to build_coder and build_reviewer agents. They retrieve BuildPlan using this ID from MCP.
+### 1. Task Linking Strategy ✅
+**Decision**: Pass `planning_loop_id` to build_coder and build_reviewer agents. They retrieve Task using this ID from MCP.
 
 ### 2. Feedback Passing Mechanism ✅
 **Decision**: Agents retrieve all feedback from MCP autonomously using loop_id. Main Agent doesn't pass feedback content (only IDs).
@@ -960,13 +960,13 @@ When MCP returns status="user_input" (stagnation detected):
 **Decision**: Commit after each coding iteration for rollback capability and state tracking. Format: `build iteration [N]: [summary]`
 
 ### 5. Research Extraction ✅
-**Decision**: Extract research items from TechnicalSpec `research_requirements` field. Parse markdown list into individual queries.
+**Decision**: Extract research items from Phase `research_requirements` field. Parse markdown list into individual queries.
 
 ### 6. Parallel Research Execution ✅
 **Decision**: Single message with multiple Task calls (one per research item). Research-synthesizer agents run concurrently.
 
 ### 7. Metadata Capture ✅
-**Decision**: Update `spec_status` to IMPLEMENTED. Optionally add `build_planning_score` and `build_coding_score` fields. Do NOT increment `iteration` field.
+**Decision**: Update `spec_status` to IMPLEMENTED. Optionally add `phasening_score` and `build_coding_score` fields. Do NOT increment `iteration` field.
 
 ### 8. Main Agent Role ✅
 **Decision**: Pure orchestrator. Receives MCP decisions and acts on them. No thinking, just routing. Maintains minimal state (loop IDs only).
@@ -984,7 +984,7 @@ When MCP returns status="user_input" (stagnation detected):
 - Platform integration update logic
 
 ### Integration Tests
-- Planning loop (build_planner ↔ build_critic)
+- Planning loop (phasener ↔ build_critic)
 - Coding loop (build_coder ↔ build_reviewer)
 - User feedback handling flow
 - Platform updates (Linear, GitHub, Markdown)
@@ -1006,7 +1006,7 @@ When MCP returns status="user_input" (stagnation detected):
 - ✅ Coding loop refines to 95% quality
 - ✅ User input handling works for stagnation
 - ✅ Platform integration updates correctly
-- ✅ TechnicalSpec status updated to IMPLEMENTED
+- ✅ Phase status updated to IMPLEMENTED
 
 ### Code Quality
 - ✅ All tests passing (444+ tests)
@@ -1050,7 +1050,7 @@ When MCP returns status="user_input" (stagnation detected):
 ## Next Steps
 
 1. Create user_feedback_tools.py (Priority 1.1)
-2. Create build_planner.py agent (Priority 1.2)
+2. Create phasener.py agent (Priority 1.2)
 3. Create build_critic.py agent (Priority 1.3)
 4. Create build_coder.py agent (Priority 1.4)
 5. Create build_reviewer.py agent (Priority 1.5)
@@ -1065,9 +1065,9 @@ When MCP returns status="user_input" (stagnation detected):
 ## Appendix: File Locations
 
 ### Existing Files (Reference)
-- [src/models/build_plan.py](src/models/build_plan.py) - BuildPlan model
-- [src/models/spec.py](src/models/spec.py) - TechnicalSpec model
-- [src/mcp/tools/build_plan_tools.py](src/mcp/tools/build_plan_tools.py) - BuildPlan MCP tools
+- [src/models/phase.py](src/models/phase.py) - Task model
+- [src/models/spec.py](src/models/spec.py) - Phase model
+- [src/mcp/tools/phase_tools.py](src/mcp/tools/phase_tools.py) - Task MCP tools
 - [src/platform/templates/commands/build_command.py](src/platform/templates/commands/build_command.py) - Main command
 - [docs/commands/respec-build.md](docs/commands/respec-build.md) - Command specification
 - [docs/WORKFLOW_REFACTORING_LESSONS.md](docs/WORKFLOW_REFACTORING_LESSONS.md) - Design patterns
@@ -1076,7 +1076,7 @@ When MCP returns status="user_input" (stagnation detected):
 - `src/mcp/tools/user_feedback_tools.py` - User feedback storage
 
 **Agent Templates** (with dual tool architecture):
-- `src/platform/templates/agents/build_planner.py` - Planning agent (function: `generate_build_planner_template()`)
+- `src/platform/templates/agents/phasener.py` - Planning agent (function: `generate_phasener_template()`)
 - `src/platform/templates/agents/build_critic.py` - Plan critique agent (function: `generate_build_critic_template()`)
 - `src/platform/templates/agents/build_coder.py` - TDD implementation agent (function: `generate_build_coder_template(tools: BuildCoderAgentTools)`)
 - `src/platform/templates/agents/build_reviewer.py` - Code review agent (function: `generate_build_reviewer_template()`)

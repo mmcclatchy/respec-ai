@@ -14,7 +14,7 @@ The `.respec-ai/coding-standards.md` file allows users to customize coding stand
 
 ## Usage by build-coder Agent
 
-The `build-coder` agent reads this file at the start of each coding iteration and applies all rules to generated code. If the file doesn't exist, the agent falls back to BuildPlan Code Standards section or general Python best practices.
+The `build-coder` agent reads this file at the start of each coding iteration and applies all rules to generated code. If the file doesn't exist, the agent falls back to Task Code Standards section or general Python best practices.
 
 ## Template Structure
 

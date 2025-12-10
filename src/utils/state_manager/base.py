@@ -3,9 +3,10 @@ import re
 from abc import ABC, abstractmethod
 from typing import TypeVar
 
+from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.task import Task
 from src.utils.loop_state import LoopState, MCPResponse
 
 
@@ -76,14 +77,14 @@ class StateManager(ABC):
     async def get_roadmap(self, project_name: str) -> Roadmap: ...
 
     @abstractmethod
-    async def get_roadmap_specs(self, project_name: str) -> list[TechnicalSpec]: ...
+    async def get_roadmap_specs(self, project_name: str) -> list[Phase]: ...
 
-    # Unified Spec Management (replaces InitialSpec + TechnicalSpec separation)
+    # Unified Spec Management (replaces InitialSpec + Phase separation)
     @abstractmethod
-    async def store_spec(self, project_name: str, spec: TechnicalSpec) -> str: ...
+    async def store_spec(self, project_name: str, spec: Phase) -> str: ...
 
     @abstractmethod
-    async def update_spec(self, project_name: str, spec_name: str, updated_spec: TechnicalSpec) -> str:
+    async def update_spec(self, project_name: str, spec_name: str, updated_spec: Phase) -> str:
         """
         MUST not mutate the following fields:
             - objectives
@@ -94,7 +95,7 @@ class StateManager(ABC):
         ...
 
     @abstractmethod
-    async def get_spec(self, project_name: str, spec_name: str) -> TechnicalSpec: ...
+    async def get_spec(self, project_name: str, spec_name: str) -> Phase: ...
 
     @abstractmethod
     async def list_specs(self, project_name: str) -> list[str]: ...
@@ -110,13 +111,71 @@ class StateManager(ABC):
     async def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None: ...
 
     @abstractmethod
-    async def get_spec_by_loop(self, loop_id: str) -> TechnicalSpec: ...
+    async def get_spec_by_loop(self, loop_id: str) -> Phase: ...
 
     @abstractmethod
-    async def update_spec_by_loop(self, loop_id: str, spec: TechnicalSpec) -> None: ...
+    async def update_spec_by_loop(self, loop_id: str, spec: Phase) -> None: ...
 
     @abstractmethod
     async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None: ...
+
+    # Phase Management (new naming)
+    @abstractmethod
+    async def store_phase(self, project_name: str, phase: Phase) -> str: ...
+
+    @abstractmethod
+    async def update_phase(self, project_name: str, phase_name: str, updated_phase: Phase) -> str:
+        """
+        MUST not mutate the following fields:
+            - objectives
+            - scope
+            - dependencies
+            - deliverables
+        """
+        ...
+
+    @abstractmethod
+    async def get_phase(self, project_name: str, phase_name: str) -> Phase: ...
+
+    @abstractmethod
+    async def list_phases(self, project_name: str) -> list[str]: ...
+
+    @abstractmethod
+    async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
+
+    @abstractmethod
+    async def delete_phase(self, project_name: str, phase_name: str) -> bool: ...
+
+    @abstractmethod
+    async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None: ...
+
+    @abstractmethod
+    async def get_phase_by_loop(self, loop_id: str) -> Phase: ...
+
+    @abstractmethod
+    async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None: ...
+
+    # Task Management
+    @abstractmethod
+    async def store_task(self, phase_path: str, task: Task) -> str: ...
+
+    @abstractmethod
+    async def get_task(self, phase_path: str, task_name: str) -> Task: ...
+
+    @abstractmethod
+    async def list_tasks(self, phase_path: str) -> list[str]: ...
+
+    @abstractmethod
+    async def delete_task(self, phase_path: str, task_name: str) -> bool: ...
+
+    @abstractmethod
+    async def link_loop_to_task(self, loop_id: str, phase_path: str, task_name: str) -> None: ...
+
+    @abstractmethod
+    async def get_task_by_loop(self, loop_id: str) -> Task: ...
+
+    @abstractmethod
+    async def update_task_by_loop(self, loop_id: str, task: Task) -> None: ...
 
     # Project Plan Management
     @abstractmethod
@@ -130,3 +189,32 @@ class StateManager(ABC):
 
     @abstractmethod
     async def delete_project_plan(self, project_name: str) -> bool: ...
+
+    # Generic Document Management (for Phase, Task, CompletionReport)
+    @abstractmethod
+    async def store_document(self, doc_type: str, path: str, content: str) -> str: ...
+
+    @abstractmethod
+    async def get_document(self, doc_type: str, path: str) -> str: ...
+
+    @abstractmethod
+    async def get_document_by_loop(self, loop_id: str) -> tuple[str, str]:
+        """
+        Get document by loop_id.
+
+        Returns:
+            Tuple of (doc_type, content_markdown)
+        """
+        ...
+
+    @abstractmethod
+    async def list_documents(self, doc_type: str, parent_path: str | None = None) -> list[str]: ...
+
+    @abstractmethod
+    async def update_document(self, doc_type: str, path: str, content: str) -> str: ...
+
+    @abstractmethod
+    async def delete_document(self, doc_type: str, path: str) -> bool: ...
+
+    @abstractmethod
+    async def link_loop_to_document(self, loop_id: str, doc_type: str, path: str) -> None: ...

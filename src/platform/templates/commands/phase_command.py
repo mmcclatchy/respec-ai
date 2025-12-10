@@ -1,10 +1,10 @@
 from src.models.enums import SpecStatus
-from src.models.spec import TechnicalSpec
-from src.platform.models import SpecCommandTools
+from src.models.phase import Phase
+from src.platform.models import PhaseCommandTools
 
 
 # Create template instance with instructional placeholders
-technical_spec_template = TechnicalSpec(
+technical_spec_template = Phase(
     phase_name='[spec-name-in-kebab-case]',
     objectives='[Clear, measurable goals with business value]',
     scope="[Boundaries, what's included/excluded, constraints]",
@@ -38,7 +38,7 @@ technical_spec_template = TechnicalSpec(
 ).build_markdown()
 
 
-def generate_spec_command_template(tools: SpecCommandTools) -> str:
+def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [spec-name] [optional: instructions]
@@ -217,7 +217,7 @@ Initialize MCP refinement loop and retrieve strategic plan:
 ```text
 # Initialize MCP refinement loop
 mcp__respec-ai__initialize_refinement_loop:
-  loop_type: "spec"
+  loop_type: "phase"
 
 # Retrieve strategic plan using PLAN_NAME argument
 STRATEGIC_PLAN_MARKDOWN = mcp__respec-ai__get_project_plan_markdown(project_name=PLAN_NAME)

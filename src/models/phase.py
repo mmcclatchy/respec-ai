@@ -7,9 +7,9 @@ from .base import MCPModel
 from .enums import SpecStatus
 
 
-class TechnicalSpec(MCPModel):
+class Phase(MCPModel):
     # Class configuration for MCPModel
-    TITLE_PATTERN: ClassVar[str] = '# Technical Specification'
+    TITLE_PATTERN: ClassVar[str] = '# Phase'
     TITLE_FIELD: ClassVar[str] = 'phase_name'
     HEADER_FIELD_MAPPING: ClassVar[dict[str, tuple[str, ...]]] = {
         'objectives': ('Overview', 'Objectives'),
@@ -22,6 +22,7 @@ class TechnicalSpec(MCPModel):
         'non_functional_requirements': ('Implementation', 'Non-Functional Requirements'),
         'development_plan': ('Implementation', 'Development Plan'),
         'testing_strategy': ('Implementation', 'Testing Strategy'),
+        'task_breakdown': ('Implementation', 'Task Breakdown'),
         'research_requirements': ('Additional Details', 'Research Requirements'),
         'success_criteria': ('Additional Details', 'Success Criteria'),
         'integration_context': ('Additional Details', 'Integration Context'),
@@ -40,13 +41,14 @@ class TechnicalSpec(MCPModel):
     dependencies: str = Field(default='Dependencies not specified', frozen=True)
     deliverables: str = Field(default='Deliverables not specified', frozen=True)
 
-    # Optional fields (added by spec-architect in iteration 1+)
+    # Optional fields (added by phase-architect in iteration 1+)
     architecture: str | None = None
     technology_stack: str | None = None
     functional_requirements: str | None = None
     non_functional_requirements: str | None = None
     development_plan: str | None = None
     testing_strategy: str | None = None
+    task_breakdown: str | None = None
     research_requirements: str | None = None
     success_criteria: str | None = None
     integration_context: str | None = None
@@ -81,6 +83,7 @@ class TechnicalSpec(MCPModel):
             or self.non_functional_requirements
             or self.development_plan
             or self.testing_strategy
+            or self.task_breakdown
         ):
             sections.append('\n## Implementation')
             if self.functional_requirements:
@@ -91,6 +94,8 @@ class TechnicalSpec(MCPModel):
                 sections.append(f'\n### Development Plan\n{self.development_plan}')
             if self.testing_strategy:
                 sections.append(f'\n### Testing Strategy\n{self.testing_strategy}')
+            if self.task_breakdown:
+                sections.append(f'\n### Task Breakdown\n{self.task_breakdown}')
 
         if self.research_requirements or self.success_criteria or self.integration_context:
             sections.append('\n## Additional Details')

@@ -29,7 +29,7 @@ class TestLoopManagement:
 
     @pytest.mark.asyncio
     async def test_get_loop_status_existing_loop(self, project_path: str) -> None:
-        init_result = await loop_tools.initialize_refinement_loop(project_path, 'build_plan')
+        init_result = await loop_tools.initialize_refinement_loop(project_path, 'task')
         loop_id = init_result.id
 
         status_result = await loop_tools.get_loop_status(loop_id)
@@ -51,7 +51,7 @@ class TestLoopManagement:
     @pytest.mark.asyncio
     async def test_list_active_loops_with_loops(self, project_path: str) -> None:
         init1 = await loop_tools.initialize_refinement_loop(project_path, 'plan')
-        init2 = await loop_tools.initialize_refinement_loop(project_path, 'spec')
+        init2 = await loop_tools.initialize_refinement_loop(project_path, 'phase')
 
         result = await loop_tools.list_active_loops(project_path)
 
@@ -65,7 +65,7 @@ class TestLoopManagement:
     @pytest.mark.asyncio
     async def test_concurrent_loop_management(self, project_path: str) -> None:
         loop1 = await loop_tools.initialize_refinement_loop(project_path, 'plan')
-        loop2 = await loop_tools.initialize_refinement_loop(project_path, 'spec')
+        loop2 = await loop_tools.initialize_refinement_loop(project_path, 'phase')
 
         status1 = await loop_tools.get_loop_status(loop1.id)
         status2 = await loop_tools.get_loop_status(loop2.id)
@@ -76,7 +76,7 @@ class TestLoopManagement:
 
     @pytest.mark.asyncio
     async def test_decide_loop_next_action_functionality(self, project_path: str) -> None:
-        init_result = await loop_tools.initialize_refinement_loop(project_path, 'build_code')
+        init_result = await loop_tools.initialize_refinement_loop(project_path, 'task')
         loop_id = init_result.id
 
         # Add feedback with high score

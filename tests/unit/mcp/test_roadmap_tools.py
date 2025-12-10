@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.models.enums import RoadmapStatus
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 from src.utils.state_manager import StateManager
 
 
@@ -65,7 +65,7 @@ class TestRoadmapTools:
 
     @pytest.fixture
     def valid_spec_markdown(self) -> str:
-        return """# Technical Specification: User Authentication
+        return """# Phase: User Authentication
 
 ## Overview
 
@@ -180,21 +180,21 @@ class TestGetRoadmap(TestRoadmapTools):
         self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
         mock_specs = [
-            TechnicalSpec(
+            Phase(
                 phase_name='spec1',
                 objectives='Test objectives 1',
                 scope='Test scope 1',
                 dependencies='Test deps 1',
                 deliverables='Test deliverables 1',
             ),
-            TechnicalSpec(
+            Phase(
                 phase_name='spec2',
                 objectives='Test objectives 2',
                 scope='Test scope 2',
                 dependencies='Test deps 2',
                 deliverables='Test deliverables 2',
             ),
-            TechnicalSpec(
+            Phase(
                 phase_name='spec3',
                 objectives='Test objectives 3',
                 scope='Test scope 3',
@@ -230,10 +230,10 @@ class TestGetRoadmap(TestRoadmapTools):
 
         assert isinstance(result, str)
         assert 'Test Roadmap' in result
-        # Check for full TechnicalSpec content (not summary list)
-        assert '# Technical Specification: spec1' in result
-        assert '# Technical Specification: spec2' in result
-        assert '# Technical Specification: spec3' in result
+        # Check for full Phase content (not summary list)
+        assert '# Phase: spec1' in result
+        assert '# Phase: spec2' in result
+        assert '# Phase: spec3' in result
 
     @pytest.mark.asyncio
     async def test_get_roadmap_raises_error_when_not_found(
@@ -274,8 +274,8 @@ class TestGetRoadmap(TestRoadmapTools):
         result = await roadmap_tools.get_roadmap('empty-project')
 
         assert isinstance(result, str)
-        # For empty specs list, no TechnicalSpec sections should be present
-        assert '# Technical Specification:' not in result
+        # For empty specs list, no Phase sections should be present
+        assert '# Phase:' not in result
         # Metadata should still be present
         assert '## Metadata' in result
         assert '### Spec Count\n0' in result

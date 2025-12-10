@@ -1,16 +1,16 @@
-"""Format preservation tests for TechnicalSpec model.
+"""Format preservation tests for Phase model.
 
 These tests verify that complex markdown formatting (bullet lists, code blocks,
 nested lists, etc.) is preserved through parse → build → parse cycles.
 """
 
 import pytest
-from src.models.spec import TechnicalSpec
+from src.models.phase import Phase
 
 
 @pytest.fixture
 def spec_with_bullet_lists() -> str:
-    return """# Technical Specification: authentication-system
+    return """# Phase: authentication-system
 
 ## Overview
 
@@ -107,7 +107,7 @@ draft
 
 @pytest.fixture
 def spec_with_mixed_content() -> str:
-    return """# Technical Specification: data-pipeline
+    return """# Phase: data-pipeline
 
 ## Overview
 
@@ -185,14 +185,14 @@ in-development
 def test_bullet_list_content_preserved_in_dependencies(spec_with_bullet_lists: str) -> None:
     original_markdown = spec_with_bullet_lists
 
-    spec = TechnicalSpec.parse_markdown(original_markdown)
+    spec = Phase.parse_markdown(original_markdown)
 
     assert 'PostgreSQL database for user storage' in spec.dependencies
     assert 'Redis for session management' in spec.dependencies
     assert 'JWT library for token generation' in spec.dependencies
 
     rebuilt_markdown = spec.build_markdown()
-    reparsed_spec = TechnicalSpec.parse_markdown(rebuilt_markdown)
+    reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
 
     assert spec.dependencies == reparsed_spec.dependencies, 'Dependencies content changed during round-trip'
 
@@ -200,9 +200,9 @@ def test_bullet_list_content_preserved_in_dependencies(spec_with_bullet_lists: s
 def test_bullet_list_content_preserved_in_deliverables(spec_with_bullet_lists: str) -> None:
     original_markdown = spec_with_bullet_lists
 
-    spec = TechnicalSpec.parse_markdown(original_markdown)
+    spec = Phase.parse_markdown(original_markdown)
     rebuilt = spec.build_markdown()
-    reparsed = TechnicalSpec.parse_markdown(rebuilt)
+    reparsed = Phase.parse_markdown(rebuilt)
 
     assert 'Working authentication API' in spec.deliverables
     assert 'User registration endpoint' in spec.deliverables
@@ -214,9 +214,9 @@ def test_bullet_list_content_preserved_in_deliverables(spec_with_bullet_lists: s
 def test_bullet_list_content_preserved_in_architecture(spec_with_bullet_lists: str) -> None:
     original_markdown = spec_with_bullet_lists
 
-    spec = TechnicalSpec.parse_markdown(original_markdown)
+    spec = Phase.parse_markdown(original_markdown)
     rebuilt = spec.build_markdown()
-    reparsed = TechnicalSpec.parse_markdown(rebuilt)
+    reparsed = Phase.parse_markdown(rebuilt)
 
     assert isinstance(spec.architecture, str)
     assert 'Auth service handles login/logout' in spec.architecture
@@ -229,9 +229,9 @@ def test_bullet_list_content_preserved_in_architecture(spec_with_bullet_lists: s
 def test_mixed_content_format_preserved(spec_with_mixed_content: str) -> None:
     original_markdown = spec_with_mixed_content
 
-    spec = TechnicalSpec.parse_markdown(original_markdown)
+    spec = Phase.parse_markdown(original_markdown)
     rebuilt = spec.build_markdown()
-    reparsed = TechnicalSpec.parse_markdown(rebuilt)
+    reparsed = Phase.parse_markdown(rebuilt)
 
     assert 'scalable data processing pipeline' in spec.objectives
     assert 'real-time and batch processing' in spec.objectives
@@ -245,7 +245,7 @@ def test_mixed_content_format_preserved(spec_with_mixed_content: str) -> None:
 
 
 def test_plain_text_content_still_works() -> None:
-    markdown = """# Technical Specification: simple-spec
+    markdown = """# Phase: simple-spec
 
 ## Overview
 
@@ -267,9 +267,9 @@ Single deliverable
 draft
 """
 
-    spec = TechnicalSpec.parse_markdown(markdown)
+    spec = Phase.parse_markdown(markdown)
     rebuilt = spec.build_markdown()
-    reparsed = TechnicalSpec.parse_markdown(rebuilt)
+    reparsed = Phase.parse_markdown(rebuilt)
 
     assert spec.objectives == 'Basic functionality without lists'
     assert spec.objectives == reparsed.objectives
@@ -278,16 +278,16 @@ draft
 def test_character_for_character_round_trip(spec_with_bullet_lists: str) -> None:
     original_markdown = spec_with_bullet_lists
 
-    first_parse = TechnicalSpec.parse_markdown(original_markdown)
+    first_parse = Phase.parse_markdown(original_markdown)
     first_build = first_parse.build_markdown()
-    second_parse = TechnicalSpec.parse_markdown(first_build)
+    second_parse = Phase.parse_markdown(first_build)
     second_build = second_parse.build_markdown()
 
     assert first_build == second_build, 'Markdown changed between first and second round-trip'
 
 
 def test_ordered_lists_preserved() -> None:
-    markdown_with_ordered_lists = """# Technical Specification: ordered-implementation
+    markdown_with_ordered_lists = """# Phase: ordered-implementation
 
 ## Overview
 
@@ -330,9 +330,9 @@ Testing phases
 draft
 """
 
-    spec = TechnicalSpec.parse_markdown(markdown_with_ordered_lists)
+    spec = Phase.parse_markdown(markdown_with_ordered_lists)
     rebuilt = spec.build_markdown()
-    reparsed = TechnicalSpec.parse_markdown(rebuilt)
+    reparsed = Phase.parse_markdown(rebuilt)
 
     assert isinstance(spec.functional_requirements, str)
     assert isinstance(spec.development_plan, str)
@@ -351,7 +351,7 @@ draft
 
 
 def test_code_blocks_preserved() -> None:
-    markdown_with_code_blocks = """# Technical Specification: api-implementation
+    markdown_with_code_blocks = """# Phase: api-implementation
 
 ## Overview
 
@@ -413,9 +413,9 @@ describe('Authentication API', () => {
 draft
 """
 
-    spec = TechnicalSpec.parse_markdown(markdown_with_code_blocks)
+    spec = Phase.parse_markdown(markdown_with_code_blocks)
     rebuilt = spec.build_markdown()
-    reparsed = TechnicalSpec.parse_markdown(rebuilt)
+    reparsed = Phase.parse_markdown(rebuilt)
 
     assert isinstance(spec.functional_requirements, str)
     assert isinstance(spec.non_functional_requirements, str)

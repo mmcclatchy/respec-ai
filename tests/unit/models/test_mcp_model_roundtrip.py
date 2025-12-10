@@ -11,13 +11,14 @@ maintenance burden. When model structure changes, fixtures auto-adapt.
 from typing import Callable, Type
 
 import pytest
+
 from src.models.base import MCPModel
-from src.models.build_plan import BuildPlan
 from src.models.enums import BuildStatus, ProjectStatus, RequirementsStatus, RoadmapStatus, SpecStatus
 from src.models.feature_requirements import FeatureRequirements
+from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.spec import TechnicalSpec
+from src.models.task import Task
 
 
 @pytest.fixture
@@ -49,7 +50,7 @@ def sample_roadmap_markdown(markdown_builder: Callable) -> str:
 @pytest.fixture
 def sample_spec_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
-        TechnicalSpec,
+        Phase,
         phase_name='test-phase',
         objectives='Implement authentication',
         scope='Login and logout',
@@ -104,9 +105,9 @@ def sample_project_plan_markdown(markdown_builder: Callable) -> str:
 
 
 @pytest.fixture
-def sample_build_plan_markdown(markdown_builder: Callable) -> str:
+def sample_phase_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
-        BuildPlan,
+        Task,
         project_name='Test Platform',
         project_goal='Build scalable platform',
         total_duration='6 months',
@@ -158,9 +159,9 @@ def sample_feature_requirements_markdown(markdown_builder: Callable) -> str:
     'model_class,fixture_name',
     [
         (Roadmap, 'sample_roadmap_markdown'),
-        (TechnicalSpec, 'sample_spec_markdown'),
+        (Phase, 'sample_spec_markdown'),
         (ProjectPlan, 'sample_project_plan_markdown'),
-        (BuildPlan, 'sample_build_plan_markdown'),
+        (Task, 'sample_phase_markdown'),
         (FeatureRequirements, 'sample_feature_requirements_markdown'),
     ],
 )

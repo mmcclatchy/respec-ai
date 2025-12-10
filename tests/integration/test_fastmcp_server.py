@@ -25,27 +25,26 @@ class TestFastMCPServerIntegration:
     async def test_mcp_tool_registration(self) -> None:
         server = create_mcp_server()
 
-        # Check that all MCP tools are registered (loop + roadmap tools)
+        # Check that all MCP tools are registered (loop + document tools)
         tools = await server.get_tools()
         expected_loop_tools = [
             'decide_loop_next_action',
             'initialize_refinement_loop',
             'get_loop_status',
             'list_active_loops',
-            'get_previous_objective_feedback',
-            'store_current_objective_feedback',
+            'get_loop_feedback_summary',
         ]
-        expected_unified_tools = [
+        expected_document_tools = [
             'create_roadmap',
             'get_roadmap',
-            'store_spec',
-            'get_spec_markdown',
-            'link_loop_to_spec',
-            'unlink_loop',
-            'list_specs',
-            'delete_spec',
+            'store_document',
+            'get_document',
+            'update_document',
+            'delete_document',
+            'link_loop_to_document',
+            'list_documents',
         ]
-        expected_tools = expected_loop_tools + expected_unified_tools
+        expected_tools = expected_loop_tools + expected_document_tools
 
         for tool_name in expected_tools:
             assert tool_name in tools
