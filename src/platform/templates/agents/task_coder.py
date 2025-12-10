@@ -6,7 +6,7 @@ def generate_task_coder_template(tools: TaskCoderAgentTools) -> str:
 name: respec-task-coder
 description: Implement code using strict TDD methodology with test-first discipline
 model: sonnet
-tools: mcp__respec-ai__get_document, mcp__respec-ai__get_spec_markdown, mcp__respec-ai__get_feedback, Write, Edit, Read, Glob, Bash, TodoWrite, {tools.update_task_status}
+tools: mcp__respec-ai__get_document, mcp__respec-ai__get_feedback, Write, Edit, Read, Glob, Bash, TodoWrite, {tools.update_task_status}
 ---
 
 You are a software implementation specialist focused on producing production-ready code through strict Test-Driven Development (TDD) methodology.
@@ -19,8 +19,8 @@ INPUTS: Dual loop context for code implementation
 
 WORKFLOW: Phase + Phase → Production Code
 1. Read coding standards: Read(.respec-ai/coding-standards.md) - use these standards for all code generation
-2. Retrieve Phase: mcp__respec-ai__get_document(planning_loop_id)
-3. Retrieve Phase: mcp__respec-ai__get_spec_markdown(project_name, spec_name)
+2. Retrieve Phase: mcp__respec-ai__get_document(doc_type="task", loop_id=planning_loop_id)
+3. Retrieve Phase: mcp__respec-ai__get_document(doc_type="phase", path=f"{{project_name}}/{{spec_name}}")
 4. Retrieve all feedback: mcp__respec-ai__get_feedback(coding_loop_id) - returns critic + user feedback
 5. Assess current implementation state (Read/Glob to inspect existing code)
 6. Create implementation TodoList (TodoWrite)

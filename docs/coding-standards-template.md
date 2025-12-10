@@ -4,7 +4,7 @@ This file serves as a reference template for `.respec-ai/coding-standards.md` in
 
 ## Purpose
 
-The `.respec-ai/coding-standards.md` file allows users to customize coding standards that the `build-coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
+The `.respec-ai/coding-standards.md` file allows users to customize coding standards that the `task-coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
 
 ## Location
 
@@ -12,9 +12,9 @@ The `.respec-ai/coding-standards.md` file allows users to customize coding stand
 {user-project-workspace}/.respec-ai/coding-standards.md
 ```
 
-## Usage by build-coder Agent
+## Usage by task-coder Agent
 
-The `build-coder` agent reads this file at the start of each coding iteration and applies all rules to generated code. If the file doesn't exist, the agent falls back to Task Code Standards section or general Python best practices.
+The `task-coder` agent reads this file at the start of each coding iteration and applies all rules to generated code. If the file doesn't exist, the agent falls back to Task Code Standards section or general Python best practices.
 
 ## Template Structure
 
@@ -233,4 +233,4 @@ To customize this template for your project:
 4. Remove sections that don't apply to your project
 5. Add examples relevant to your codebase
 
-The `build-coder` agent will read this file and apply all rules to generated code.
+The `task-coder` agent will read this file and apply all rules to generated code.

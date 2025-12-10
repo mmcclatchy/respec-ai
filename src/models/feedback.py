@@ -100,9 +100,14 @@ class CriticFeedback(MCPModel):
             'ROADMAP-CRITIC': CriticAgent.ROADMAP_CRITIC,
             'SPEC': CriticAgent.SPEC_CRITIC,
             'SPEC-CRITIC': CriticAgent.SPEC_CRITIC,
+            'PHASE': CriticAgent.SPEC_CRITIC,
+            'PHASE-CRITIC': CriticAgent.SPEC_CRITIC,
             'BUILD': CriticAgent.BUILD_CRITIC,
             'BUILD-CRITIC': CriticAgent.BUILD_CRITIC,
+            'TASK': CriticAgent.BUILD_CRITIC,
+            'TASK-CRITIC': CriticAgent.BUILD_CRITIC,
             'BUILD-REVIEWER': CriticAgent.BUILD_REVIEWER,
+            'TASK-REVIEWER': CriticAgent.BUILD_REVIEWER,
             'REVIEWER': CriticAgent.BUILD_REVIEWER,
         }
 

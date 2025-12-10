@@ -251,7 +251,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """Store critic feedback from automated assessment agents.
 
         Parses structured markdown into CriticFeedback model and stores in LoopState.
-        Used by all critic agents (build-critic, plan-critic, analyst-critic, etc.).
+        Used by all critic agents (task-critic, plan-critic, analyst-critic, etc.).
 
         Parameters:
         - loop_id: Loop identifier

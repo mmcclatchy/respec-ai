@@ -306,8 +306,8 @@ Present verified results only:
 
 **Readiness Assessment**:
 IF ACTUAL_COUNT == EXPECTED_COUNT:
-  ✅ All phases ready for /respec-spec execution
-  Next: Execute /respec-spec on individual phases
+  ✅ All phases ready for /respec-phase execution
+  Next: Execute /respec-phase on individual phases
 ELSE:
   ⚠️ Partial completion - manual intervention required
   Missing: [list specific phase names without MCP storage]
@@ -394,5 +394,5 @@ All specialized work delegated to appropriate agents:
 - Coordinates prerequisite ordering and dependencies
 - Manages MCP storage for spec tracking
 
-Ready for technical specification development through /respec-spec command execution on individual phases with validated input.
+Ready for technical specification development through /respec-phase command execution on individual phases with validated input.
 """

@@ -79,7 +79,7 @@ Evaluate each dimension systematically:
 - Review parallel work opportunities
 
 **3. Implementation Readiness**
-- Evaluate spec context sufficiency for /respec-spec command execution
+- Evaluate spec context sufficiency for /respec-phase command execution
 - Check technical focus area clarity and actionability
 - Verify research needs identification and prioritization
 - Assess architecture guidance adequacy
@@ -150,7 +150,7 @@ Review of phase sequencing logic, prerequisite relationships, and integration pl
 [Specific analysis of phase ordering, prerequisite relationships, and any dependency conflicts or integration concerns]
 
 ### Implementation Readiness
-Evaluation of technical focus areas, spec context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /respec-spec execution.
+Evaluation of technical focus areas, spec context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /respec-phase execution.
 
 [Assessment of whether each phase provides sufficient context for technical specification, including evaluation of research needs and architecture guidance]
 

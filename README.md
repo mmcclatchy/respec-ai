@@ -51,7 +51,7 @@ That's it! `respec-ai` will guide you through strategic planning, technical spec
 
 - **Hierarchical Validation** - Each level validates against the level above (code → spec → roadmap → plan) to prevent alignment drift. Every line of code traces back to business objectives through systematic validation.
 
-- **Strategic to Implementation Pipeline** - Complete workflow from business objectives (`/respec-plan`) through phased roadmaps (`/respec-roadmap`), technical design (`/respec-spec`), to code generation (`/respec-build`).
+- **Strategic to Implementation Pipeline** - Complete workflow from business objectives (`/respec-plan`) through phased roadmaps (`/respec-roadmap`), technical design (`/respec-phase`), to code generation (`/respec-code`).
 
 - **Docker-Based MCP Server** - Containerized deployment with 38 MCP tools across 7 modules. Optional PostgreSQL persistence for multi-project workflows.
 
@@ -87,16 +87,16 @@ That's it! `respec-ai` will guide you through strategic planning, technical spec
    → Refinement with roadmap-critic (validates against plan)
 
 3. Technical Design
-   /respec-spec [spec-name]
+   /respec-phase [phase-name]
    → Detailed technical specifications
    → Architecture and technology decisions
-   → Quality loops with spec-critic (validates against roadmap)
+   → Quality loops with phase-critic (validates against roadmap)
 
 4. Implementation
-   /respec-build [spec-name]
+   /respec-code [phase-name]
    → Implementation planning
    → TDD-driven code generation
-   → Code review with build-reviewer (validates against spec)
+   → Code review with task-reviewer (validates against phase)
 ```
 
 Each stage iterates through refinement loops until quality threshold met or user approves. Hierarchical validation ensures every code change traces back to business objectives.
