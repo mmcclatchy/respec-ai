@@ -1,4 +1,5 @@
 import pytest
+
 from src.platform.platform_selector import PlatformType
 from src.platform.tool_registry import ToolRegistry
 
@@ -20,15 +21,15 @@ class TestToolRegistryScoping:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
         expected_tool_patterns = {
-            'create_spec_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
-            'get_spec_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
-            'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
-            'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+            'create_phase_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
+            'get_phase_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
+            'update_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+            'comment_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
             'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)',
             'create_project_completion_external': 'Write(.respec-ai/projects/*/project_completion.md)',
             'get_project_plan_tool': 'Read(.respec-ai/projects/*/project_plan.md)',
             'update_project_plan_tool': 'Edit(.respec-ai/projects/*/project_plan.md)',
-            'list_project_specs_tool': 'Glob(.respec-ai/projects/*/respec-phases/*.md)',
+            'list_project_phases_tool': 'Glob(.respec-ai/projects/*/respec-phases/*.md)',
         }
 
         for abstract_tool, expected_pattern in expected_tool_patterns.items():
@@ -53,15 +54,15 @@ class TestToolRegistryScoping:
 
         # Tools that should use wildcards for project names
         wildcard_tools = [
-            'create_spec_tool',
-            'get_spec_tool',
-            'update_spec_tool',
-            'comment_spec_tool',
+            'create_phase_tool',
+            'get_phase_tool',
+            'update_phase_tool',
+            'comment_phase_tool',
             'create_project_external',
             'create_project_completion_external',
             'get_project_plan_tool',
             'update_project_plan_tool',
-            'list_project_specs_tool',
+            'list_project_phases_tool',
         ]
 
         for tool_name in wildcard_tools:
@@ -71,7 +72,7 @@ class TestToolRegistryScoping:
     def test_spec_tools_are_scoped_to_specs_directory(self, tool_registry: ToolRegistry) -> None:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
-        spec_tools = ['create_spec_tool', 'get_spec_tool', 'update_spec_tool', 'comment_spec_tool']
+        spec_tools = ['create_phase_tool', 'get_phase_tool', 'update_phase_tool', 'comment_phase_tool']
 
         for tool_name in spec_tools:
             tool_path = markdown_tools[tool_name]
@@ -98,7 +99,7 @@ class TestToolRegistryScoping:
     def test_list_tool_uses_glob_pattern(self, tool_registry: ToolRegistry) -> None:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
-        list_tool = markdown_tools['list_project_specs_tool']
+        list_tool = markdown_tools['list_project_phases_tool']
         assert list_tool.startswith('Glob('), f'List tool should use Glob: {list_tool}'
         assert 'phases/*.md' in list_tool, f'List tool should target phase files: {list_tool}'
 
@@ -108,7 +109,7 @@ class TestToolRegistryScoping:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
         # Same abstract operation should map to different concrete tools
-        operation = 'create_spec_tool'
+        operation = 'create_phase_tool'
 
         assert linear_tools[operation] != markdown_tools[operation]
         assert github_tools[operation] != markdown_tools[operation]

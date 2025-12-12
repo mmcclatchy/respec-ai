@@ -1,8 +1,51 @@
+from textwrap import indent
 from typing import Any
+
+from src.models.conversation_context import ConversationContext
+
+
+conversation_context_template = ConversationContext(
+    problem_statement='[Clear description of the problem or opportunity being addressed]',
+    desired_outcome='[What success looks like - the end state being pursued]',
+    success_metrics='[How success will be measured - specific, quantifiable criteria]',
+    business_drivers='[Key business motivations, market pressures, or strategic imperatives]',
+    stakeholder_needs='[Primary stakeholders and their specific needs or requirements]',
+    organizational_constraints='[Organizational limitations, policies, or considerations]',
+    functional_requirements=[
+        '[Specific capability or feature requirement]',
+        '[Specific capability or feature requirement]',
+    ],
+    user_experience_requirements=[
+        '[User-facing requirement or expectation]',
+        '[User-facing requirement or expectation]',
+    ],
+    integration_requirements=[
+        '[System integration or interoperability requirement]',
+        '[System integration or interoperability requirement]',
+    ],
+    performance_requirements=['[Performance target or constraint]', '[Performance target or constraint]'],
+    security_requirements=['[Security requirement or compliance need]', '[Security requirement or compliance need]'],
+    technical_constraints=['[Technical limitation or requirement]', '[Technical limitation or requirement]'],
+    timeline_constraints=['[Time-related constraint or deadline]', '[Time-related constraint or deadline]'],
+    resource_constraints=['[Budget, staffing, or resource limitation]', '[Budget, staffing, or resource limitation]'],
+    business_constraints=['[Business policy or operational constraint]', '[Business policy or operational constraint]'],
+    must_have_features=[
+        '[Critical requirement that must be delivered]',
+        '[Critical requirement that must be delivered]',
+    ],
+    nice_to_have_features=[
+        "[Desirable feature that adds value but isn't critical]",
+        "[Desirable feature that adds value but isn't critical]",
+    ],
+    total_stages_completed=3,
+    key_insights=['[Main discoveries or understandings from the conversation]'],
+    areas_of_emphasis=['[Topics or aspects the user focused on most]'],
+    user_engagement_level='high|medium|low',
+).build_markdown()
 
 
 def generate_plan_conversation_command_template(_tools: Any = None) -> str:
-    return """---
+    return f"""---
 allowed-tools: []
 argument-hint: [optional-context]
 description: Conduct conversational requirements gathering
@@ -12,13 +55,13 @@ description: Conduct conversational requirements gathering
 
 ## Command Integration
 
-#### Purpose
+### Purpose
 This command conducts structured conversation with the user to gather comprehensive project requirements. It operates as a sub-command called by `/respec-plan` and returns structured context for strategic plan generation.
 
-#### Variable Management
+### Variable Management
 Store all conversation results in the variable `CONVERSATION_CONTEXT` for handoff back to the calling command.
 
-#### Completion Protocol
+### Completion Protocol
 This command completes when all three stages have been executed and comprehensive context has been gathered in structured format.
 
 ## Stage 1: Vision and Context Discovery
@@ -80,14 +123,14 @@ Refine understanding with specific validation:
 
 ## Conversation Completion Criteria
 
-#### Ready to Complete When
+### Ready to Complete When
 - All three stages have been conducted with meaningful user engagement
 - User has provided sufficient detail in each major area (vision, requirements, constraints, priorities)
 - Key questions have been answered and understanding has been validated
 - User expresses satisfaction that their needs have been captured
 - No critical information gaps remain that would prevent strategic plan creation
 
-#### Completion Checklist
+### Completion Checklist
 - [ ] Vision and desired outcomes clearly articulated
 - [ ] Key requirements and constraints identified
 - [ ] Priorities and trade-offs discussed
@@ -96,49 +139,14 @@ Refine understanding with specific validation:
 
 ## Context Structure and Handoff Protocol
 
-#### Final Step
-After completing all conversation stages and meeting completion criteria, structure all gathered information in the `CONVERSATION_CONTEXT` variable using this format:
+### Final Step
+After completing all conversation stages and meeting completion criteria, structure all gathered information in the `CONVERSATION_CONTEXT` variable using this markdown format:
 
-```json
-{
-  "vision": {
-    "problem_statement": "...",
-    "desired_outcome": "...",
-    "success_metrics": "..."
-  },
-  "business_context": {
-    "business_drivers": "...",
-    "stakeholder_needs": "...",
-    "organizational_constraints": "..."
-  },
-  "requirements": {
-    "functional": [...],
-    "user_experience": [...],
-    "integration": [...],
-    "performance": [...],
-    "security": [...],
-    "technical_constraints": [...]
-  },
-  "constraints": {
-    "timeline": [...],
-    "resource": [...],
-    "business": [...],
-    "technical": [...]
-  },
-  "priorities": {
-    "must_have": [...],
-    "nice_to_have": [...]
-  },
-  "conversation_summary": {
-    "total_stages_completed": 3,
-    "key_insights": [...],
-    "areas_of_emphasis": [...],
-    "user_engagement_level": "high|medium|low"
-  }
-}
+```markdown
+{indent(conversation_context_template, '    ')}
 ```
 
-#### Handoff Protocol
+### Handoff Protocol
 Once `CONVERSATION_CONTEXT` is populated:
 
 **If called from /respec-plan**: The calling command will automatically proceed with strategic plan generation using this structured context.
@@ -150,7 +158,7 @@ Once `CONVERSATION_CONTEXT` is populated:
 
 I've gathered comprehensive context for your project plan.
 
-#### Next Steps
+### Next Steps
 The /respec-plan command is designed to call this command internally. To use this workflow:
 
 ```bash
@@ -165,14 +173,13 @@ The /respec-plan command will:
 5. Guide you through refinement or acceptance
 
 **Note**: Run /respec-plan directly for the full workflow.
-```
 
 ## Error Handling and Recovery
 
 ### Conversation Stalls
 #### If user becomes unresponsive or provides minimal answers
 - Rephrase questions using simpler language or concrete examples
-- Offer multiple-choice options to jumpstart engagement
+- Offer multiple-choice options to jump-start engagement
 - Break complex questions into smaller, more manageable parts
 - Example: "I notice you're hesitating. Would it help if I gave you some examples of what I mean?"
 
@@ -205,4 +212,5 @@ The /respec-plan command will:
 - Example: "We've made good progress on X and Y. Let's focus on Z to wrap up the key pieces."
 
 #### Error Escalation
-If conversation cannot be completed due to persistent issues, populate `CONVERSATION_CONTEXT` with available information and include detailed notes in `conversation_summary` about the challenges encountered."""
+If conversation cannot be completed due to persistent issues, populate `CONVERSATION_CONTEXT` with available information and include detailed notes in `conversation_summary` about the challenges encountered.
+"""

@@ -1,5 +1,6 @@
 import pytest
 from fastmcp.exceptions import ToolError
+
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopError,
@@ -144,9 +145,9 @@ class TestRoadmapValidationError:
         assert isinstance(error, Exception)
 
     def test_roadmap_validation_error_message_format(self) -> None:
-        error = RoadmapValidationError('spec_name', 'Must be unique')
+        error = RoadmapValidationError('phase_name', 'Must be unique')
 
-        expected_message = 'Invalid spec_name: Must be unique'
+        expected_message = 'Invalid phase_name: Must be unique'
         assert str(error) == expected_message
 
     def test_roadmap_validation_error_field_access(self) -> None:

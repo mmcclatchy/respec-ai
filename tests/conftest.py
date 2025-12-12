@@ -100,9 +100,9 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 def check_database_available() -> bool:
     async def check_db() -> bool:
         db_url = (
-            'postgresql://respec:respec@localhost:5433/respec_test'
+            'postgresql://respec:respec_dev@localhost:5433/respec_test'
             if os.getenv('TESTING', '').lower() == 'true'
-            else 'postgresql://respec:respec@localhost:5433/respec_dev'
+            else 'postgresql://respec:respec_dev@localhost:5433/respec_dev'
         )
 
         try:

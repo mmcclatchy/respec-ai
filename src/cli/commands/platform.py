@@ -3,9 +3,11 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.cli.ui.console import console, print_error, print_success, print_warning
+from src.mcp.tools import register_all_tools
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
@@ -61,7 +63,12 @@ def run(args: Namespace) -> int:
         ) as progress:
             task = progress.add_task('Regenerating templates...', total=None)
 
-            files_written, commands_count, agents_count = generate_templates(orchestrator, project_path, platform_type)
+            mcp = FastMCP('template-generator')
+            register_all_tools(mcp)
+
+            files_written, commands_count, agents_count = generate_templates(
+                orchestrator, project_path, platform_type, mcp=mcp
+            )
 
             progress.update(task, description='Updating configuration...')
 

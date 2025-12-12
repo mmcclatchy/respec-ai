@@ -99,7 +99,7 @@ Expected Output Format:
 - Priority Improvements: [List of suggestions]
 
 ## Step 5: Specification Storage
-Use {tools.create_spec_tool} to store the technical specification:
+Use {tools.create_phase_tool} to store the technical specification:
 Title: Technical Specification: [Project Name]
 Content: [Complete specification with research requirements]
 """
@@ -108,9 +108,9 @@ Content: [Complete specification with research requirements]
 **Tool Dataclass Structure**:
 The `SpecCommandTools` dataclass contains:
 - `tools_yaml`: Complete YAML-formatted tools list for frontmatter
-- `create_spec_tool`: Platform-specific creation tool name
-- `get_spec_tool`: Platform-specific retrieval tool name
-- `update_spec_tool`: Platform-specific update tool name
+- `create_phase_tool`: Platform-specific creation tool name
+- `get_phase_tool`: Platform-specific retrieval tool name
+- `update_phase_tool`: Platform-specific update tool name
 
 **Platform Abstraction**:
 Platform mapping and tool selection happens in platform service layer, not in template functions. Templates receive pre-configured dataclass instances.
@@ -164,15 +164,15 @@ def generate_spec_command_template(platform: str = 'linear'):  # Default values
 ```python
 # ✅ CORRECT: Pure template with tool injection
 def generate_spec_command_template(
-    create_spec_tool: str,
-    get_spec_tool: str,
-    update_spec_tool: str,
+    create_phase_tool: str,
+    get_phase_tool: str,
+    update_phase_tool: str,
 ) -> str:
     return f"""---
 allowed-tools:
   - Task(phase-architect)
   - Task(phase-critic) 
-  - {create_spec_tool}
+  - {create_phase_tool}
 ---
 
 # Agent Invocation Pattern
@@ -543,7 +543,7 @@ Before creating a new command template, validate these architectural requirement
    description: [platform-agnostic purpose]
    ```
 
-   **Note**: The `{tools.tools_yaml}` placeholder is replaced with complete formatted tools list at generation time from the `SpecCommandTools` dataclass. Individual tools are injected as `{tools.create_spec_tool}` within template content.
+   **Note**: The `{tools.tools_yaml}` placeholder is replaced with complete formatted tools list at generation time from the `SpecCommandTools` dataclass. Individual tools are injected as `{tools.create_phase_tool}` within template content.
 
 2. **Orchestration Steps**
    - Sequential workflow with clear handoffs
@@ -617,7 +617,7 @@ Before creating a new command template, validate these architectural requirement
        return "Use Linear issue creation"
        
    # ✅ CORRECT
-   return f"Use {create_spec_tool} to store specification"
+   return f"Use {create_phase_tool} to store specification"
    ```
 
 3. **Mixed Orchestration and Implementation**

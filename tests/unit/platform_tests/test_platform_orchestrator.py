@@ -14,7 +14,7 @@ from src.platform.models import (
 )
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
-from src.platform.tool_enums import CommandTemplate
+from src.platform.tool_enums import RespecAICommand
 
 
 class TestPlatformOrchestrator:
@@ -58,7 +58,7 @@ class TestPlatformOrchestrator:
         self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)
 
         request = TemplateGenerationRequest(
-            project_path=Path(self.test_project_path), command_name=CommandTemplate.PHASE
+            project_path=Path(self.test_project_path), command_name=RespecAICommand.PHASE
         )
         template = self.orchestrator.generate_command_template(request)
 
@@ -69,7 +69,7 @@ class TestPlatformOrchestrator:
 
     def test_generate_command_template_no_config(self) -> None:
         request = TemplateGenerationRequest(
-            project_path=Path(self.test_project_path), command_name=CommandTemplate.PHASE
+            project_path=Path(self.test_project_path), command_name=RespecAICommand.PHASE
         )
         with pytest.raises(ValueError, match='No configuration found for project'):
             self.orchestrator.generate_command_template(request)
@@ -80,9 +80,9 @@ class TestPlatformOrchestrator:
 
         tools = self.orchestrator.get_platform_tools(self.test_project_path)
 
-        assert 'create_spec_tool' in tools
-        assert tools['create_spec_tool'] == 'mcp__github__create_issue'
-        assert tools['get_spec_tool'] == 'mcp__github__get_issue'
+        assert 'create_phase_tool' in tools
+        assert tools['create_phase_tool'] == 'mcp__github__create_issue'
+        assert tools['get_phase_tool'] == 'mcp__github__get_issue'
 
     def test_change_project_platform(self) -> None:
         # Set up project with Linear

@@ -32,7 +32,7 @@ def validate_reRESPEC_AI_tools_at_startup() -> dict[str, Any]:
             registered_tools = set(temp_mcp._tools.keys())
 
         # Get enum tool names
-        enum_tools = {tool.value for tool in RespecAITool}
+        enum_tools = {tool for tool in RespecAITool}
 
         # Find mismatches
         missing_from_enum = registered_tools - enum_tools
@@ -68,8 +68,8 @@ def validate_external_platform_tools() -> dict[str, Any]:
     validation_result: dict[str, Any] = {'success': True, 'issues': []}
 
     # Check that all Linear tools start with correct prefix
-    linear_tools = [tool for tool in ExternalPlatformTool if tool.value.startswith('mcp__linear-server__')]
-    github_tools = [tool for tool in ExternalPlatformTool if tool.value.startswith('mcp__github__')]
+    linear_tools = [tool for tool in ExternalPlatformTool if tool.startswith('mcp__linear-server__')]
+    github_tools = [tool for tool in ExternalPlatformTool if tool.startswith('mcp__github__')]
 
     # Basic validation
     if not linear_tools:
@@ -82,9 +82,9 @@ def validate_external_platform_tools() -> dict[str, Any]:
 
     # Check for naming consistency
     for tool in ExternalPlatformTool:
-        if not (tool.value.startswith('mcp__linear-server__') or tool.value.startswith('mcp__github__')):
+        if not (tool.startswith('mcp__linear-server__') or tool.startswith('mcp__github__')):
             validation_result['success'] = False
-            validation_result['issues'].append(f'External platform tool has invalid prefix: {tool.value}')
+            validation_result['issues'].append(f'External platform tool has invalid prefix: {tool}')
 
     validation_result['linear_tools_count'] = len(linear_tools)
     validation_result['github_tools_count'] = len(github_tools)

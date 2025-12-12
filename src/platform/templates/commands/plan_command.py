@@ -1,3 +1,5 @@
+from textwrap import indent
+
 from src.models.plan_completion_report import PlanCompletionReport
 from src.models.project_plan import ProjectPlan
 from src.platform.models import PlanCommandTools
@@ -70,7 +72,7 @@ PROJECT_NAME = config["project_name"]
 
 **Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during respec-ai installation.
 
-## Step 0a: Load Existing Project Plan from Platform
+## Step 0.1: Load Existing Project Plan from Platform
 
 Load existing project plan from platform (if exists):
 
@@ -83,38 +85,42 @@ Load existing project plan from platform (if exists):
 All respec-ai MCP tools require project context:
 - **PROJECT_NAME**: From config - used as identifier for all MCP storage operations
 
-Example usage: `mcp__respec-ai__initialize_refinement_loop(project_name=PROJECT_NAME, loop_type='plan')`
+Example usage: `{tools.initialize_analyst_loop}`
 
 ## State Management
-#### Track only essential orchestration state
+
+### Track only essential orchestration state
 
 - **PROJECT_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
-- **CONVERSATION_CONTEXT**: JSON object returned from /respec-plan-conversation - conversation results from Step 2
+- **CONVERSATION_CONTEXT**: Markdown document returned from /respec-plan-conversation - conversation results from Step 2
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
 - **USER_DECISION**: String from user choice - values: "continue_conversation", "refine_plan", "accept_plan"
-- **ANALYST_LOOP_ID**: String returned from MCP `mcp__respec-ai__initialize_refinement_loop(loop_type='analyst')` - required for MCP loop management during analyst validation (Steps 6-9)
+- **ANALYST_LOOP_ID**: String returned from MCP `{tools.initialize_analyst_loop}` - required for MCP loop management during analyst validation (Steps 6-9)
 - **ANALYST_SCORE**: Integer from analyst-critic feedback retrieval - needed for MCP loop decisions
 
-#### Data Storage Pattern
+### Data Storage Pattern
+
 Human-driven phase (Steps 1-5):
 - Uses variables for orchestration state (CONVERSATION_CONTEXT, CURRENT_PLAN, CRITIC_FEEDBACK)
-- Stores plan in MCP using PROJECT_NAME: `mcp__respec-ai__store_project_plan(project_name, plan_markdown)`
+- Stores plan in MCP using PROJECT_NAME: `{tools.store_plan}`
 - Writes plan to external file/platform using platform-specific tools
 - Plan-critic returns feedback to Main Agent (not stored in MCP during human phase)
 
 Automated analyst phase (Steps 6-9):
 - Initializes MCP refinement loop with ANALYST_LOOP_ID
-- Stores plan copy in analyst loop: `mcp__respec-ai__store_project_plan(ANALYST_LOOP_ID, plan_markdown)`
+- Stores plan copy in analyst loop: `{tools.store_plan_in_loop}`
 - Analyst agents use ANALYST_LOOP_ID for all MCP operations
 - MCP Server manages loop state and decisions
 
+{tools.mcp_tools_reference}
+
 ## Step 1: Initialize Conversation Context
 
-#### Set up the conversational planning workflow
+### Set up the conversational planning workflow
 
-#### Set initial context
+### Set initial context
 - Extract PROJECT_NAME from first argument in `$ARGUMENTS`
 - Use remaining arguments as initial conversation context
 - If no conversation context provided, start with: "I need help creating a strategic plan for my project"
@@ -123,7 +129,7 @@ Automated analyst phase (Steps 6-9):
 
 ## Step 2: Conversational Requirements Gathering
 
-#### Use the /respec-plan-conversation command to conduct conversational discovery.
+### Use the /respec-plan-conversation command to conduct conversational discovery
 
 Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PROJECT_NAME) as the initial conversation context:
 
@@ -133,55 +139,92 @@ Invoke the plan-conversation command with initial context. Pass the remaining ar
 
 The plan-conversation command will conduct the three-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
 
-Expected structured format from plan-conversation:
-```json
-{{'vision': {{'problem_statement': "...",
-    "desired_outcome": "...",
-    "success_metrics": "..."
-  }},
-  "business_context": {{'business_drivers': "...",
-    "stakeholder_needs": "...",
-    "organizational_constraints": "..."
-  }},
-  "requirements": {{'functional': [...],
-    "user_experience": [...],
-    "integration": [...],
-    "performance": [...],
-    "security": [...],
-    "technical_constraints": [...]
-  }},
-  "constraints": {{'timeline': [...],
-    "resource": [...],
-    "business": [...],
-    "technical": [...]
-  }},
-  "priorities": {{'must_have': [...],
-    "nice_to_have": [...]
-  }}
-}}
+Expected structured format from plan-conversation (markdown document):
+```markdown
+## Vision and Objectives
+### Problem Statement
+[Description of problem or opportunity]
+
+### Desired Outcome
+[What success looks like]
+
+### Success Metrics
+[How success will be measured]
+
+## Business Context
+### Business Drivers
+[Key business motivations]
+
+### Stakeholder Needs
+[Primary stakeholders and needs]
+
+### Organizational Constraints
+[Organizational limitations]
+
+## Requirements
+### Functional Requirements
+- [Specific capabilities]
+
+### User Experience Requirements
+- [User-facing requirements]
+
+### Integration Requirements
+- [System integrations]
+
+### Performance Requirements
+- [Performance targets]
+
+### Security Requirements
+- [Security needs]
+
+### Technical Constraints
+- [Technical limitations]
+
+## Constraints
+### Timeline Constraints
+- [Time-related constraints]
+
+### Resource Constraints
+- [Resource limitations]
+
+### Business Constraints
+- [Business policies]
+
+## Priorities
+### Must-Have Features
+- [Critical requirements]
+
+### Nice-to-Have Features
+- [Desirable features]
+
+## Conversation Summary
+- **Total Stages Completed**: 3
+- **Key Insights**: [Main discoveries]
+- **Areas of Emphasis**: [Topics focused on]
+- **User Engagement Level**: [High/Medium/Low]
 ```
 
 ## Step 3: Create Strategic Plan Document
 
-#### Transform conversation context into a strategic plan document
+### Transform conversation context into a strategic plan document
 
 Use the CONVERSATION_CONTEXT variable returned from Step 2 to create the strategic plan:
 
-#### Create strategic plan using template
-```markdown
-{project_plan_template}
-```
+### Create strategic plan using template
+   ```markdown
+{indent(project_plan_template, '   ')}
+   ```
 
 Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
 4. **Store in variable** as CURRENT_PLAN for next steps
-5. **Store in MCP** using: `mcp__respec-ai__store_project_plan(project_name=PROJECT_NAME, project_plan_markdown=CURRENT_PLAN)`
+5. **Store in MCP** using: `{tools.store_plan}`
 
-## Step 3b: Write Plan to External File/Platform
+## Step 3.2: Write Plan to External File/Platform
 
-#### Make the plan visible to the user BEFORE requesting acceptance
+### Make the plan visible to the user BEFORE requesting acceptance
 
 Write the strategic plan to the user's platform using the platform-specific tool:
 ```text
@@ -204,12 +247,12 @@ Invoke: respec-plan-critic
 Input: PROJECT_NAME
 ```
 
-#### Plan-critic workflow
-1. **Agent retrieves strategic plan** from MCP using `mcp__respec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)`
+### Plan-critic workflow
+1. **Agent retrieves strategic plan** from MCP using `{tools.get_plan}`
 2. **Agent evaluates plan** against FSDD framework
 3. **Agent returns feedback markdown** to Main Agent (human-driven workflow)
 
-#### Extract quality score from returned feedback
+### Extract quality score from returned feedback
 Store the returned feedback markdown as CRITIC_FEEDBACK variable.
 
 Parse the QUALITY_SCORE from the markdown:
@@ -220,7 +263,7 @@ Store as QUALITY_SCORE variable
 
 ## Step 5: Present Quality Assessment and User Decision
 
-#### Present the quality assessment to the user
+### Present the quality assessment to the user
 
 Display the quality feedback from CRITIC_FEEDBACK variable:
 
@@ -234,7 +277,7 @@ Present options to user:
    ## Strategic Plan Quality Assessment
 
    #### Plan Location
-   [Display path to the plan file created in Step 3b]
+   [Display path to the plan file created in Step 3.2]
 
    #### Plan Overview
    - Quality Score: [QUALITY_SCORE from CRITIC_FEEDBACK]%
@@ -259,24 +302,26 @@ Present options to user:
    #### Please choose your preferred option (1, 2, or 3)
    ```
 
-#### Wait for user response and process decision
+### Wait for user response and process decision
 
-#### If user chooses "1" (Continue conversation)
-- Set USER_DECISION = "continue_conversation"
-- CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
-- Return to Step 2 to add more details via /respec-plan-conversation
+```text
+IF user chooses "1" (Continue conversation):
+  Set USER_DECISION = "continue_conversation"
+  CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
+  Return to Step 2 to add more details via /respec-plan-conversation
 
-#### If user chooses "2" (Refine plan)
-- Set USER_DECISION = "refine_plan"
-- CRITIC_FEEDBACK now available for refinement guidance
-- Return to Step 3 to generate improved strategic plan incorporating feedback
-- Step 3b will update the external plan file
+ELIF user chooses "2" (Refine plan):
+  Set USER_DECISION = "refine_plan"
+  CRITIC_FEEDBACK now available for refinement guidance
+  Return to Step 3 to generate improved strategic plan incorporating feedback
+  Step 3.2 will update the external plan file
 
-#### If user chooses "3" (Accept plan)
-- Set USER_DECISION = "accept_plan"
-- Strategic plan already stored in MCP from Step 3
-- Plan file already written in Step 3b
-- Proceed to Step 6 for automated objective extraction
+ELIF user chooses "3" (Accept plan):
+  Set USER_DECISION = "accept_plan"
+  Strategic plan already stored in MCP from Step 3
+  Plan file already written in Step 3.2
+  Proceed to Step 6 for automated objective extraction
+```
 
 ## Error Recovery and Resilience
 
@@ -316,7 +361,7 @@ Present options to user:
 
 ### MCP Tool Failures
 
-**mcp__respec-ai__initialize_refinement_loop failures (analyst phase only):**
+**initialize_analyst_loop failures (analyst phase only):**
 1. **Loop Creation Error**: If ANALYST_LOOP_ID generation fails:
    - Generate local tracking ID (timestamp-based) for analyst phase
    - Continue without MCP loop management for analyst validation
@@ -326,7 +371,7 @@ Present options to user:
    - Fall back to local analyst loop management
    - Display warning: "MCP analyst loop management unavailable - using local fallback"
 
-**mcp__respec-ai__decide_loop_next_action failures:**
+**decide_loop_action failures:**
 1. **Decision Service Error**: If decision cannot be retrieved:
    - Apply basic fallback decision logic based on previous iteration patterns
    - Continue with fallback decision
@@ -335,7 +380,7 @@ Present options to user:
 ### Context Management Edge Cases
 
 #### Context Window Exhaustion
-1. **Warning Threshold (80% capacity)**: 
+1. **Warning Threshold (80% capacity)**:
    - Trigger progressive summarization of CONVERSATION_CONTEXT
    - Preserve most recent 20% and highest-priority 30% of content
    - Continue with condensed context
@@ -363,13 +408,15 @@ Present options to user:
 
 ## Step 6: Initialize Analyst Validation Loop
 
-#### Initialize the MCP refinement loop for analyst validation
+### Initialize the MCP refinement loop for analyst validation
 
-Use the MCP tool `mcp__respec-ai__initialize_refinement_loop`:
-- Call `mcp__respec-ai__initialize_refinement_loop(project_name=PROJECT_NAME, loop_type='analyst')`
+{tools.initialize_refinement_loop_inline_doc}
+
+Use the MCP tool `{tools.initialize_analyst_loop}`:
+- Call `{tools.initialize_analyst_loop}`
 - Store the returned loop ID as `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
-- Retrieve the strategic plan from MCP using `mcp__respec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)`
-- Store it in the analyst loop using `mcp__respec-ai__store_project_plan(project_name=ANALYST_LOOP_ID, project_plan_markdown=plan_from_previous_step)`
+- Retrieve the strategic plan from MCP using `{tools.get_plan}`
+- Store it in the analyst loop using `{tools.store_plan_in_loop}`
 
 ## Step 7: Extract Objectives
 
@@ -380,7 +427,7 @@ Invoke: plan-analyst
 Input: ANALYST_LOOP_ID
 ```
 
-#### Plan-analyst workflow
+### Plan-analyst workflow
 1. **Agent retrieves strategic plan** from MCP using get_project_plan_markdown(ANALYST_LOOP_ID)
 2. **Agent checks for previous analysis** using get_previous_analysis(ANALYST_LOOP_ID)
 3. **Agent extracts structured objectives** from strategic plan
@@ -395,24 +442,24 @@ Invoke: analyst-critic
 Input: ANALYST_LOOP_ID
 ```
 
-#### Analyst-critic workflow
+### Analyst-critic workflow
 1. **Agent retrieves business objectives analysis** from MCP using get_previous_analysis(ANALYST_LOOP_ID)
 2. **Agent retrieves original strategic plan** from MCP using get_project_plan_markdown(ANALYST_LOOP_ID)
 3. **Agent validates extraction quality** against validation framework
 4. **Agent stores analysis feedback** using store_current_analysis(ANALYST_LOOP_ID, analysis)
 
-#### Extract analyst score for MCP decision
+### Extract analyst score for MCP decision
 ```text
-Retrieve feedback using: mcp__respec-ai__get_previous_analysis(ANALYST_LOOP_ID)
+Retrieve feedback using: {tools.get_previous_analysis}
 Extract ANALYST_SCORE from feedback overall_score field
 ```
 
 ## Step 9: Analyst Validation Loop
 
-#### Call the MCP Server for analyst validation decision
+### Call the MCP Server for analyst validation decision
 
-Use the MCP tool `mcp__respec-ai__decide_loop_next_action`:
-- Call `ANALYST_LOOP_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=ANALYST_LOOP_ID)`
+Use the MCP tool `{tools.decide_loop_action}`:
+- Call `ANALYST_LOOP_RESPONSE = {tools.decide_loop_action}`
 - MCP Server retrieves latest score from analyst-critic feedback internally
 - The MCP Server will determine the next action based on configured criteria
 - Store the returned status as `ANALYST_LOOP_STATUS = ANALYST_LOOP_RESPONSE.status`
@@ -435,7 +482,7 @@ Note: No need to retrieve or pass score from command - MCP handles internally.
 #### If status is "completed"
 - Final objectives and feedback already stored in MCP by agent
 - Generate completion report using data from MCP storage
-- Store completion report: `mcp__respec-ai__store_plan_completion_report(PROJECT_NAME, completion_report_markdown)`
+- Store completion report: `{tools.store_completion_report})`
 - Display completion message with final analyst score
 - Present final output using the stored completion report
 - Create external project using {tools.create_project_tool_interpolated}

@@ -1,8 +1,9 @@
 import pytest
-from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
+
+from src.models.enums import ProjectStatus, RoadmapStatus, PhaseStatus
+from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.phase import Phase
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -114,7 +115,7 @@ class TestInMemoryStateManager:
             scope='Test scope',
             dependencies='Test dependencies',
             deliverables='Test deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
     @pytest.fixture
@@ -255,7 +256,7 @@ class TestSpecOperations(TestInMemoryStateManager):
         assert retrieved.phase_name == sample_spec.phase_name
 
     @pytest.mark.asyncio
-    async def test_store_spec_returns_spec_name(
+    async def test_store_spec_returns_phase_name(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
@@ -306,12 +307,12 @@ class TestSpecOperations(TestInMemoryStateManager):
         project_name = 'empty-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec_names = await state_manager.list_specs(project_name)
+        phase_names = await state_manager.list_specs(project_name)
 
-        assert spec_names == []
+        assert phase_names == []
 
     @pytest.mark.asyncio
-    async def test_list_specs_returns_all_spec_names(
+    async def test_list_specs_returns_all_phase_names(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'multi-spec-project'
@@ -323,7 +324,7 @@ class TestSpecOperations(TestInMemoryStateManager):
             scope='Scope 1',
             dependencies='Dep 1',
             deliverables='Del 1',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
         spec2 = Phase(
             phase_name='spec-2',
@@ -331,17 +332,17 @@ class TestSpecOperations(TestInMemoryStateManager):
             scope='Scope 2',
             dependencies='Dep 2',
             deliverables='Del 2',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         await state_manager.store_spec(project_name, spec1)
         await state_manager.store_spec(project_name, spec2)
 
-        spec_names = await state_manager.list_specs(project_name)
+        phase_names = await state_manager.list_specs(project_name)
 
-        assert len(spec_names) == 2
-        assert 'spec-1' in spec_names
-        assert 'spec-2' in spec_names
+        assert len(phase_names) == 2
+        assert 'spec-1' in phase_names
+        assert 'spec-2' in phase_names
 
     @pytest.mark.asyncio
     async def test_list_specs_returns_empty_for_project_without_specs(
@@ -393,7 +394,7 @@ class TestSpecOperations(TestInMemoryStateManager):
         assert result is False
 
     @pytest.mark.parametrize(
-        'spec_names',
+        'phase_names',
         [
             ['single-spec'],
             ['first-spec', 'second-spec'],
@@ -402,38 +403,38 @@ class TestSpecOperations(TestInMemoryStateManager):
     )
     @pytest.mark.asyncio
     async def test_spec_operations_with_multiple_specs(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, spec_names: list[str]
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, phase_names: list[str]
     ) -> None:
         project_name = 'multi-spec-test'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
         # Store all specs
-        for spec_name in spec_names:
+        for phase_name in phase_names:
             spec = Phase(
-                phase_name=spec_name,
-                objectives=f'Obj {spec_name}',
-                scope=f'Scope {spec_name}',
-                dependencies=f'Dep {spec_name}',
-                deliverables=f'Del {spec_name}',
-                spec_status=SpecStatus.DRAFT,
+                phase_name=phase_name,
+                objectives=f'Obj {phase_name}',
+                scope=f'Scope {phase_name}',
+                dependencies=f'Dep {phase_name}',
+                deliverables=f'Del {phase_name}',
+                phase_status=PhaseStatus.DRAFT,
             )
             await state_manager.store_spec(project_name, spec)
 
         # List should return all names
         listed_names = await state_manager.list_specs(project_name)
-        assert len(listed_names) == len(spec_names)
-        for name in spec_names:
+        assert len(listed_names) == len(phase_names)
+        for name in phase_names:
             assert name in listed_names
 
         # Delete half the specs
-        to_delete = spec_names[: len(spec_names) // 2] if len(spec_names) > 1 else []
+        to_delete = phase_names[: len(phase_names) // 2] if len(phase_names) > 1 else []
         for name in to_delete:
             result = await state_manager.delete_spec(project_name, name)
             assert result is True
 
         # List should return remaining specs
         remaining_names = await state_manager.list_specs(project_name)
-        expected_remaining = [name for name in spec_names if name not in to_delete]
+        expected_remaining = [name for name in phase_names if name not in to_delete]
         assert len(remaining_names) == len(expected_remaining)
         for name in expected_remaining:
             assert name in remaining_names
@@ -956,7 +957,7 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             scope='P1 Scope',
             dependencies='P1 Dep',
             deliverables='P1 Del',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
         spec2 = Phase(
             phase_name='p2-spec',
@@ -964,7 +965,7 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             scope='P2 Scope',
             dependencies='P2 Dep',
             deliverables='P2 Del',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         await state_manager.store_spec('project-1', spec1)

@@ -248,7 +248,7 @@ tools: Read, Edit, Write, Bash
 
 **Spec Creation Agents** (with platform integration):
 ```markdown
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_phase_tool}, {tools.update_phase_tool}
 # Use for: create-phase agents with dual storage (MCP + platform)
 ```
 
@@ -259,18 +259,18 @@ tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_sp
 **1. Permission Form** (in frontmatter `tools:` list):
 - Uses wildcards: `Write(.respec-ai/projects/*/specs/*.md)`
 - Defines what file paths the agent is ALLOWED to access
-- Referenced as `{tools.create_spec_tool}` in frontmatter
+- Referenced as `{tools.create_phase_tool}` in frontmatter
 
 **2. Invocation Form** (in workflow instructions):
-- Uses placeholders: `Write(.respec-ai/projects/{project_name}/specs/{spec_name}.md)`
+- Uses placeholders: `Write(.respec-ai/projects/{project_name}/specs/{phase_name}.md)`
 - Shows actual usage pattern with named parameter placeholders
-- Accessed via `{tools.create_spec_tool_interpolated}` computed field from AgentTools model
+- Accessed via `{tools.create_phase_tool_interpolated}` computed field from AgentTools model
 
 **Example from create-phase agent:**
 
 Frontmatter:
 ```yaml
-tools: mcp__respec-ai__store_spec, {tools.create_spec_tool}
+tools: mcp__respec-ai__store_spec, {tools.create_phase_tool}
 # Markdown permission: Write(.respec-ai/projects/*/specs/*.md)
 # Linear permission: mcp__linear-server__create_issue(*)
 ```
@@ -278,10 +278,10 @@ tools: mcp__respec-ai__store_spec, {tools.create_spec_tool}
 Workflow Instructions:
 ```markdown
 STEP 4: Store to Platform
-CALL {tools.create_spec_tool_interpolated}
+CALL {tools.create_phase_tool_interpolated}
 
-# Markdown actual usage: Write(.respec-ai/projects/{project_name}/specs/{spec_name}.md, spec_markdown)
-# Linear actual usage: mcp__linear-server__create_issue(project={project_name}, title={spec_name}, ...)
+# Markdown actual usage: Write(.respec-ai/projects/{project_name}/specs/{phase_name}.md, spec_markdown)
+# Linear actual usage: mcp__linear-server__create_issue(project={project_name}, title={phase_name}, ...)
 ```
 
 **Why Two Forms?**
@@ -298,7 +298,7 @@ tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_f
 
 ---
 name: respec-create-phase
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_spec_tool}, {tools.update_spec_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_phase_tool}, {tools.update_phase_tool}
 ---
 ```
 
@@ -482,7 +482,7 @@ CALL respec-phase-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
-  - spec_name: SPEC_NAME
+  - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   # NO feedback parameter - architect retrieves from MCP itself
 
@@ -535,7 +535,7 @@ Invoke: respec-phase-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
-  - spec_name: SPEC_NAME
+  - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: USER_INSTRUCTIONS (if provided)
   - archive_scan_results: ARCHIVE_SCAN_RESULTS
@@ -622,7 +622,7 @@ The agent retrieves the current specification from MCP using `loop_id`, ensuring
 STEP 1: Retrieve Current Specification
 CALL mcp__respec-ai__get_spec_markdown(
   project_name=None,
-  spec_name=None,
+  phase_name=None,
   loop_id=loop_id
 )
 → Verify: Specification markdown received

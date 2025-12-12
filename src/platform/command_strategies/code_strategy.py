@@ -10,23 +10,14 @@ from src.platform.tool_enums import AbstractOperation
 
 class CodeCommandStrategy(CommandStrategy[CodeCommandTools]):
     def get_required_operations(self) -> list[str]:
-        return [AbstractOperation.GET_SPEC_TOOL.value, AbstractOperation.COMMENT_SPEC_TOOL.value]
+        return [AbstractOperation.GET_PHASE_TOOL, AbstractOperation.COMMENT_PHASE_TOOL]
 
     def build_tools(self, platform: PlatformType) -> CodeCommandTools:
-        get_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_SPEC_TOOL.value, platform)
-        comment_spec_tool = self.tool_registry.get_tool_for_platform(
-            AbstractOperation.COMMENT_SPEC_TOOL.value, platform
-        )
+        get_phase_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_PHASE_TOOL, platform)
+        comment_phase_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.COMMENT_PHASE_TOOL, platform)
 
-        platform_tools = [get_spec_tool, comment_spec_tool]
-        tools_yaml = create_code_command_tools(platform_tools)
-
-        return CodeCommandTools(
-            tools_yaml=tools_yaml,
-            get_spec_tool=get_spec_tool,
-            comment_spec_tool=comment_spec_tool,
-            platform=platform,
-        )
+        platform_tools = [get_phase_tool, comment_phase_tool]
+        return create_code_command_tools(platform_tools, platform)
 
     def get_template_func(self) -> Callable[[CodeCommandTools], str]:
         return generate_code_command_template

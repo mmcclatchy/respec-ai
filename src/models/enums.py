@@ -27,7 +27,7 @@ class RoadmapStatus(str, Enum):
     BLOCKED = 'blocked'
 
 
-class SpecStatus(str, Enum):
+class PhaseStatus(str, Enum):
     DRAFT = 'draft'
     IN_REVIEW = 'in-review'
     APPROVED = 'approved'

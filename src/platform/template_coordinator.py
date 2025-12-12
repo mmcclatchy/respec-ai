@@ -3,13 +3,13 @@ from typing import Any
 from .command_strategies import (
     CodeCommandStrategy,
     CommandStrategy,
+    PhaseCommandStrategy,
     PlanCommandStrategy,
     PlanConversationCommandStrategy,
     PlanRoadmapCommandStrategy,
-    PhaseCommandStrategy,
 )
 from .platform_selector import PlatformSelector, PlatformType
-from .tool_enums import CommandTemplate
+from .tool_enums import RespecAICommand
 from .tool_registry import ToolRegistry
 
 
@@ -18,18 +18,18 @@ class TemplateCoordinator:
         self.platform_selector = PlatformSelector()
         self.tool_registry = ToolRegistry()
 
-        self._strategies: dict[CommandTemplate, CommandStrategy[Any]] = {
-            CommandTemplate.PLAN: PlanCommandStrategy(self.tool_registry),
-            CommandTemplate.PHASE: PhaseCommandStrategy(self.tool_registry),
-            CommandTemplate.CODE: CodeCommandStrategy(self.tool_registry),
-            CommandTemplate.ROADMAP: PlanRoadmapCommandStrategy(self.tool_registry),
-            CommandTemplate.PLAN_CONVERSATION: PlanConversationCommandStrategy(self.tool_registry),
+        self._strategies: dict[RespecAICommand, CommandStrategy[Any]] = {
+            RespecAICommand.PLAN: PlanCommandStrategy(self.tool_registry),
+            RespecAICommand.PHASE: PhaseCommandStrategy(self.tool_registry),
+            RespecAICommand.CODE: CodeCommandStrategy(self.tool_registry),
+            RespecAICommand.ROADMAP: PlanRoadmapCommandStrategy(self.tool_registry),
+            RespecAICommand.PLAN_CONVERSATION: PlanConversationCommandStrategy(self.tool_registry),
         }
 
-    def generate_command_template(self, command_name: str | CommandTemplate, platform: PlatformType) -> str:
+    def generate_command_template(self, command_name: str | RespecAICommand, platform: PlatformType) -> str:
         if isinstance(command_name, str):
             try:
-                command_name = CommandTemplate(command_name)
+                command_name = RespecAICommand(command_name)
             except ValueError:
                 raise ValueError(f'Unknown command template: {command_name}')
 
@@ -40,9 +40,9 @@ class TemplateCoordinator:
         strategy = self._strategies[command_enum]
         return strategy.generate_template(platform)
 
-    def validate_template_generation(self, command_name: str | CommandTemplate, platform: PlatformType) -> bool:
+    def validate_template_generation(self, command_name: str | RespecAICommand, platform: PlatformType) -> bool:
         if isinstance(command_name, str):
-            command_name = CommandTemplate(command_name)
+            command_name = RespecAICommand(command_name)
 
         command_enum = command_name
         if command_enum not in self._strategies:

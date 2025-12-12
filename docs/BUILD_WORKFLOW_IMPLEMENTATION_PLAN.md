@@ -13,7 +13,7 @@ This document outlines the complete implementation plan for the `/respec-code` c
 ### High-Level Flow
 
 ```text
-User: /respec-code [spec_name]
+User: /respec-code [phase_name]
   ↓
 Main Agent (build_command.py)
   ├→ Retrieve Phase
@@ -55,15 +55,15 @@ Exit
 
 #### Step 1.1: User Command Submission
 - **Actor**: User
-- **Action**: Execute `/respec-code [spec_name]`
+- **Action**: Execute `/respec-code [phase_name]`
 - **Implementation**: No changes needed (command parsing handled by platform)
 
 #### Step 1.2: Main Agent Initialization
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Parse command, validate spec_name, initialize workflow
+- **Action**: Parse command, validate phase_name, initialize workflow
 - **Implementation Needed**:
-  - Parse spec_name from command
+  - Parse phase_name from command
   - Initialize workflow context
   - Platform tools already pre-configured in frontmatter
 
@@ -74,7 +74,7 @@ Exit
 #### Step 2.1: Retrieve Phase
 - **Actor**: Main Agent
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
-- **Action**: Call `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+- **Action**: Call `mcp__respec-ai__get_spec_markdown(project_name, phase_name)`
 - **Implementation Needed**:
   - Add error handling for non-existent spec
   - Validate spec exists before proceeding
@@ -169,7 +169,7 @@ Each research-synthesizer returns a file path:
 - **Action**: Create Task from Phase + research briefs
 
 **Agent Workflow**:
-1. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+1. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, phase_name)`
 2. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)` (empty if first iteration)
 3. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(planning_loop_id)` (none if first iteration)
 4. Read research briefs from file paths (provided as agent parameter)
@@ -181,7 +181,7 @@ Each research-synthesizer returns a file path:
 - `planning_loop_id` (for MCP retrieval/storage)
 - `research_file_paths` (list of paths to research documents)
 - `project_name` (for Phase retrieval)
-- `spec_name` (for Phase retrieval)
+- `phase_name` (for Phase retrieval)
 
 **Tools Needed** (in agent frontmatter):
 - `mcp__respec-ai__get_spec_markdown`
@@ -203,7 +203,7 @@ Each research-synthesizer returns a file path:
 **Agent Workflow**:
 1. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)`
 2. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(planning_loop_id)` (to track progress)
-3. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+3. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, phase_name)`
 4. Critique plan against FSDD criteria
 5. Determine score (0-100, threshold: 80%)
 6. Generate CriticFeedback markdown (score, assessment, issues, recommendations)
@@ -213,7 +213,7 @@ Each research-synthesizer returns a file path:
 **Agent Inputs** (passed by Main Agent):
 - `planning_loop_id`
 - `project_name`
-- `spec_name`
+- `phase_name`
 
 **Tools Needed** (in agent frontmatter):
 - `mcp__respec-ai__get_phase_markdown`
@@ -309,7 +309,7 @@ Each research-synthesizer returns a file path:
 **Agent Workflow**:
 1. Read coding standards from `.respec-ai/coding-standards.md` (if exists, otherwise use Task Code Standards)
 2. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-3. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+3. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, phase_name)`
 4. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(coding_loop_id)` (if any)
 5. Retrieve user feedback via `mcp__respec-ai__get_user_feedback(coding_loop_id)` (if any)
 6. Check current state of implementation (file system inspection via Read/Glob)
@@ -327,7 +327,7 @@ Each research-synthesizer returns a file path:
 - `coding_loop_id` (for storing critic feedback)
 - `planning_loop_id` (for retrieving Task - **CRITICAL**)
 - `project_name`
-- `spec_name`
+- `phase_name`
 
 **Tools Needed** (in agent frontmatter):
 - `mcp__respec-ai__get_phase_markdown`
@@ -357,7 +357,7 @@ Each research-synthesizer returns a file path:
 
 **Agent Workflow**:
 1. Retrieve Task via `mcp__respec-ai__get_phase_markdown(planning_loop_id)` (**NOTE**: uses planning_loop_id!)
-2. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
+2. Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, phase_name)`
 3. Retrieve previous critic feedback via `mcp__respec-ai__get_critic_feedback(coding_loop_id)` (to track progress)
 4. Inspect codebase (file system inspection via Read/Glob)
 5. Run static analysis (Bash: mypy, ruff)
@@ -379,7 +379,7 @@ Each research-synthesizer returns a file path:
 - `coding_loop_id`
 - `planning_loop_id` (**CRITICAL** - for Task access)
 - `project_name`
-- `spec_name`
+- `phase_name`
 
 **Tools Needed** (in agent frontmatter):
 - `mcp__respec-ai__get_phase_markdown`
@@ -451,12 +451,12 @@ Score breakdown (suggested weighting):
 - **File**: [build_command.py](src/platform/templates/commands/build_command.py)
 - **Action**: Update Phase with implementation completion status
 - **Implementation Needed**:
-  - Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, spec_name)`
-  - Update `spec_status` field to `IMPLEMENTED`
+  - Retrieve Phase via `mcp__respec-ai__get_spec_markdown(project_name, phase_name)`
+  - Update `phase_status` field to `IMPLEMENTED`
   - Optionally add metadata fields:
     - `phasening_score`: final planning loop score
     - `build_coding_score`: final coding loop score
-  - Store updated spec via `mcp__respec-ai__store_spec(project_name, spec_name, updated_markdown)`
+  - Store updated spec via `mcp__respec-ai__store_spec(project_name, phase_name, updated_markdown)`
 
 **Note**: Do NOT increment `iteration` field - that tracks spec refinement, not build implementation.
 
@@ -793,7 +793,7 @@ Main Agent maintains minimal state (just identifiers):
 - planning_loop_id (from Phase 4.1 - initialize_refinement_loop)
 - coding_loop_id (from Phase 5.1 - initialize_refinement_loop)
 - project_name (from command context)
-- spec_name (from command parameter)
+- phase_name (from command parameter)
 - research_file_paths (from Phase 3.2 - collected from research-synthesizer agents)
 ```
 
@@ -818,9 +818,9 @@ Main Agent collects paths into list.
 **Planning Loop Flow:**
 
 ```text
-1. Main Agent invokes: Task(subagent_type=phasener, loop_id=planning_loop_id, research_paths=..., project_name=..., spec_name=...)
+1. Main Agent invokes: Task(subagent_type=phasener, loop_id=planning_loop_id, research_paths=..., project_name=..., phase_name=...)
 2. phasener agent executes autonomously (retrieve → process → store → exit)
-3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., spec_name=...)
+3. Main Agent invokes: Task(subagent_type=build_critic, loop_id=planning_loop_id, project_name=..., phase_name=...)
 4. build_critic agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(planning_loop_id)
    Note: MCP retrieves latest score from task-critic feedback internally
@@ -834,9 +834,9 @@ Main Agent collects paths into list.
 **Coding Loop Flow:**
 
 ```text
-1. Main Agent invokes: Task(subagent_type=build_coder, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
+1. Main Agent invokes: Task(subagent_type=build_coder, coding_loop_id=..., planning_loop_id=..., project_name=..., phase_name=...)
 2. build_coder agent executes autonomously (retrieve → process → store → exit)
-3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_name=..., spec_name=...)
+3. Main Agent invokes: Task(subagent_type=build_reviewer, coding_loop_id=..., planning_loop_id=..., project_name=..., phase_name=...)
 4. build_reviewer agent executes autonomously (retrieve → process → store → exit)
 5. Main Agent calls MCP tool: mcp__respec-ai__decide_loop_next_action(coding_loop_id)
    Note: MCP retrieves latest score from task-reviewer feedback internally
@@ -966,13 +966,13 @@ When MCP returns status="user_input" (stagnation detected):
 **Decision**: Single message with multiple Task calls (one per research item). Research-synthesizer agents run concurrently.
 
 ### 7. Metadata Capture ✅
-**Decision**: Update `spec_status` to IMPLEMENTED. Optionally add `phasening_score` and `build_coding_score` fields. Do NOT increment `iteration` field.
+**Decision**: Update `phase_status` to IMPLEMENTED. Optionally add `phasening_score` and `build_coding_score` fields. Do NOT increment `iteration` field.
 
 ### 8. Main Agent Role ✅
 **Decision**: Pure orchestrator. Receives MCP decisions and acts on them. No thinking, just routing. Maintains minimal state (loop IDs only).
 
 ### 9. Agent Autonomy ✅
-**Decision**: All agents retrieve documents from MCP autonomously. Main Agent passes only identifiers (loop IDs, project_name, spec_name), never content.
+**Decision**: All agents retrieve documents from MCP autonomously. Main Agent passes only identifiers (loop IDs, project_name, phase_name), never content.
 
 ---
 
@@ -1000,7 +1000,7 @@ When MCP returns status="user_input" (stagnation detected):
 ## Success Criteria
 
 ### Workflow Execution
-- ✅ User can invoke `/respec-code [spec_name]`
+- ✅ User can invoke `/respec-code [phase_name]`
 - ✅ Research synthesis executes in parallel
 - ✅ Planning loop refines to 80% quality
 - ✅ Coding loop refines to 95% quality

@@ -5,29 +5,33 @@ def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [project-name] [optional: phasing-preferences]
-description: Transform strategic plans into multiple InitialSpecs through quality-driven refinement
+description: Transform strategic plans into multiple Phases through quality-driven refinement
 ---
 
 # /respec-roadmap Command: Implementation Roadmap Orchestration
 
 ## Overview
-Orchestrate the transformation of strategic plans into discrete, implementable phase roadmaps. Bridge strategic planning to technical specification through quality-driven decomposition and refinement.
+Orchestrate the transformation of strategic plans into discrete, implementable phase roadmaps. Bridge strategic planning to Phase creation through quality-driven decomposition and refinement.
+
+{tools.mcp_tools_reference}
 
 ## Workflow Steps
 
-### 0a. Load Existing Documents from Platform
+### 0. Setup and Initialization
 
-Load project plan and all existing specs from platform:
+#### Step 0.1: Load Existing Documents from Platform
+
+Load project plan and all existing phases from platform:
 
 ```text
-# Load Project Plan
+(Load Project Plan)
 {tools.sync_project_plan_instructions}
 
-# Load All Existing Specs
-{tools.sync_all_specs_instructions}
+(Load All Existing Phases)
+{tools.sync_all_phases_instructions}
 ```
 
-### 0. Extract Command Arguments
+#### Step 0.2: Extract Command Arguments
 
 Parse command arguments from user input:
 ```text
@@ -42,7 +46,7 @@ Retrieve and validate completed strategic plan from /respec-plan command:
 
 #### Retrieve Project Plan
 ```text
-STRATEGIC_PLAN = mcp__respec-ai__get_project_plan_markdown(PROJECT_NAME)
+STRATEGIC_PLAN = {tools.get_plan}
 IF STRATEGIC_PLAN not found:
   ERROR: "No strategic plan found for project: [PROJECT_NAME]"
   SUGGEST: "Run '/respec-plan [PROJECT_NAME]' to create strategic plan first"
@@ -54,14 +58,15 @@ Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.
 
 ### 2. Initialize Roadmap Generation Loop
 Set up MCP-managed quality refinement loop:
+{tools.initialize_refinement_loop_inline_doc}
 ```text
-ROADMAP_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(loop_type='roadmap')
+ROADMAP_LOOP_ID = {tools.initialize_loop})
 ```
 
 ### 3. Roadmap Generation Loop
 Coordinate roadmap → roadmap-critic → MCP decision cycle:
 
-#### Step 3a: Invoke Roadmap Agent
+#### Step 3.1: Invoke Roadmap Agent
 ```text
 Invoke: respec-roadmap
 Input:
@@ -78,7 +83,7 @@ Agent will:
 
 **CRITICAL**: Capture the agent's complete output markdown as CURRENT_ROADMAP.
 The agent returns the full roadmap markdown but does NOT store it.
-You MUST store this output in Step 3b using mcp__respec-ai__create_roadmap.
+You MUST store this output in Step 3.2 using {tools.create_roadmap}.
 
 CURRENT_ROADMAP = [complete markdown output from roadmap agent]
 ```
@@ -111,17 +116,15 @@ Choose strategy based on project characteristics. Phases should be:
 - Small enough to maintain focus and clarity
 - Large enough to deliver meaningful functionality
 - Naturally ordered by dependencies
-```
 
+#### Step 3.2: Store Roadmap in MCP (MANDATORY - DO NOT SKIP)
 
-#### Step 3b: Store Roadmap in MCP (MANDATORY - DO NOT SKIP)
-
-**CRITICAL: This step MUST be executed immediately after Step 3a completes.**
+**CRITICAL: This step MUST be executed immediately after Step 3.1 completes.**
 
 The roadmap agent returns markdown but does NOT store it. YOU must store it now.
 
 ```text
-STORE_RESULT = mcp__respec-ai__create_roadmap(
+STORE_RESULT = {tools.create_roadmap}
     project_name=PROJECT_NAME,
     roadmap_data=CURRENT_ROADMAP
 )
@@ -131,7 +134,7 @@ IF STORE_RESULT contains error:
   - Report the specific MCP error message to user
   - DO NOT create roadmap.md files as workaround
   - DO NOT use file-based storage as alternative to MCP
-  - DO NOT proceed to Step 3c
+  - DO NOT proceed to Step 3.3
 
   Example error message:
   "ERROR: MCP roadmap storage failed: [error details]
@@ -141,7 +144,7 @@ IF STORE_RESULT contains error:
   EXIT: Workflow terminated
 ```
 
-#### Step 3c: Invoke Roadmap-Critic Agent
+#### Step 3.3: Invoke Roadmap-Critic Agent
 ```text
 Invoke: respec-roadmap-critic
 Input:
@@ -154,9 +157,9 @@ Roadmap-critic will:
 3. Store feedback in MCP loop using loop_id
 ```
 
-#### Step 3d: Get Loop Decision
+#### Step 3.4: Get Loop Decision
 ```text
-LOOP_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=ROADMAP_LOOP_ID)
+LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 
 Note: No need to retrieve feedback or score - MCP handles internally.
@@ -167,34 +170,36 @@ Decision options: "complete", "refine", "user_input"
 
 **Follow LOOP_DECISION exactly. Do not override based on score assessment.**
 
-#### If LOOP_DECISION == "refine"
-Display: "⟳ Refining roadmap - roadmap-analyst will address critic feedback"
-Return to Step 3a (roadmap-analyst will retrieve feedback from MCP itself)
+```text
+IF LOOP_DECISION == "refine":
+  Display: "⟳ Refining roadmap - roadmap-analyst will address critic feedback"
+  Return to Step 3.1 (roadmap-analyst will retrieve feedback from MCP itself)
 
-#### If LOOP_DECISION == "user_input"
-Display: "⚠ Quality improvements needed - user input required"
+ELIF LOOP_DECISION == "user_input":
+  Display: "⚠ Quality improvements needed - user input required"
 
-# ONLY NOW retrieve feedback for user display
-LATEST_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=ROADMAP_LOOP_ID, count=1)
+  (ONLY NOW retrieve feedback for user display)
+  LATEST_FEEDBACK = {tools.get_feedback})
 
-Display LATEST_FEEDBACK to user with:
-- Current score and iteration
-- Key issues identified by roadmap-critic
-- Recommendations for improvement
+  Display LATEST_FEEDBACK to user with:
+  - Current score and iteration
+  - Key issues identified by roadmap-critic
+  - Recommendations for improvement
 
-Prompt: "Please provide guidance to improve the roadmap:"
-Store user input and return to Step 3a
+  Prompt: "Please provide guidance to improve the roadmap:"
+  Store user input and return to Step 3.1
 
-#### If LOOP_DECISION == "complete"
-Proceed to Step 5.
-Note: Roadmap contains sparse Phase objects (iteration=0) with 4 Overview fields only.
+ELIF LOOP_DECISION == "complete":
+  Proceed to Step 5.
+  Note: Roadmap contains sparse Phase objects (iteration=0) with 4 Overview fields only.
+```
 
-### 5. Spec Extraction Planning
+### 5. Phase Extraction Planning
 Plan extraction of sparse Phases from roadmap before parallel processing:
 
 #### Retrieve Final Roadmap
 ```text
-FINAL_ROADMAP = mcp__respec-ai__get_roadmap(project_name=PROJECT_NAME)
+FINAL_ROADMAP = {tools.get_roadmap})
 Parse FINAL_ROADMAP to extract:
   - ROADMAP_PHASES: List of all phases with names, durations, dependencies
   - PHASE_COUNT: Total number of phases
@@ -205,34 +210,34 @@ Parse FINAL_ROADMAP to extract:
 For each phase in ROADMAP_PHASES:
   - Validate sprint-appropriate scope (2-4 weeks of work per roadmap design)
   - Identify prerequisite dependencies and proper ordering
-  - Determine specific spec responsibilities and technical focus
+  - Determine specific phase responsibilities and technical focus
 ```
 
-#### Create Spec Extraction Plan
+#### Create Phase Extraction Plan
 ```text
-SPEC_EXTRACTION_PLAN = Generate plan for extracting specs from roadmap:
+SPEC_EXTRACTION_PLAN = Generate plan for extracting phases from roadmap:
   - Phase ordering based on dependencies
-  - One spec per phase (PHASE_COUNT total specs to extract and save)
-  - Success criteria: Each extracted spec is sparse (iteration=0) matching roadmap content
+  - One phase per phase (PHASE_COUNT total phases to extract and save)
+  - Success criteria: Each extracted phase is sparse (iteration=0) matching roadmap content
 
-**Remember**: Specs already exist in roadmap - we're just extracting and saving them to MCP.
+**Remember**: Phases already exist in roadmap - we're just extracting and saving them to MCP.
 ```
 
-### 6. Parallel Spec Extraction
+### 6. Parallel Phase Extraction
 Extract sparse Phases from roadmap and save to MCP storage:
 
-**CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse Phase objects (iteration=0) embedded in the roadmap markdown. The create-spec agents DO NOT generate new specs - they extract existing specs from the roadmap and save them to MCP.
+**CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse Phase objects (iteration=0) embedded in the roadmap markdown. The create-phase agents DO NOT generate new phases - they extract existing phases from the roadmap and save them to MCP.
 
-#### Launch Parallel Spec Extraction Agents
+#### Launch Parallel Phase Extraction Agents
 ```text
 IMPORTANT: Launch ALL agents in a SINGLE message using multiple agent invocations for true parallelism.
 
-For each phase in ROADMAP_PHASES, invoke respec-create-spec agent:
+For each phase in ROADMAP_PHASES, invoke respec-create-phase agent:
 
-Invoke: respec-create-spec
+Invoke: respec-create-phase
 Input:
   - project_name: PROJECT_NAME
-  - spec_name: [phase_name from ROADMAP_PHASES]
+  - phase_name: [phase_name from ROADMAP_PHASES]
   - loop_id: ROADMAP_LOOP_ID
 
 Launch all invocations in parallel (one message with multiple agent invocations).
@@ -241,21 +246,21 @@ Launch all invocations in parallel (one message with multiple agent invocations)
 #### Aggregate Results
 ```text
 After all agents complete, collect results:
-- SUCCESSFUL_SPECS: List of specs created successfully
-- FAILED_SPECS: List of specs that failed with error details
+- SUCCESSFUL_SPECS: List of phases created successfully
+- FAILED_SPECS: List of phases that failed with error details
 - TOTAL_SPECS: Should equal PHASE_COUNT
 
-Validate that each planned phase has a corresponding spec result.
+Validate that each planned phase has a corresponding phase result.
 ```
 
-### 6.5. Verify Spec Creation (MANDATORY)
+### 7. Verify Phase Creation (MANDATORY)
 
 **CRITICAL**: Verify actual MCP storage, not agent completion messages.
 
 Verification Sequence:
 ```text
 STEP 1: Query MCP Storage
-STORED_SPECS = mcp__respec-ai__list_specs(project_name=PROJECT_NAME)
+STORED_SPECS = {tools.list_documents})
 
 STEP 2: Compare Results
 EXPECTED_COUNT = PHASE_COUNT (from Step 5)
@@ -263,18 +268,18 @@ ACTUAL_COUNT = length of STORED_SPECS
 
 STEP 3: Detailed Verification
 For each phase in ROADMAP_PHASES:
-  EXPECTED_SPEC_NAME = phase.name
+  EXPECTED_PHASE_NAME = phase.name
 
-  IF EXPECTED_SPEC_NAME in STORED_SPECS:
+  IF EXPECTED_PHASE_NAME in STORED_SPECS:
     STATUS = "✅ SUCCESS"
-    VERIFY_SPEC = mcp__respec-ai__get_spec_markdown(
-      project_name=PROJECT_NAME,
-      spec_name=EXPECTED_SPEC_NAME
+    VERIFY_SPEC = {tools.get_document}
+      doc_type="phase",
+      path=f"{{PROJECT_NAME}}/{{EXPECTED_PHASE_NAME}}"
     )
-    CONFIRM: Spec contains valid Phase markdown
+    CONFIRM: Phase contains valid Phase markdown
   ELSE:
     STATUS = "❌ FAILED"
-    LOG: Spec not found in MCP storage despite agent completion
+    LOG: Phase not found in MCP storage despite agent completion
 
   Record: (phase_name, status, evidence)
 
@@ -283,26 +288,26 @@ Report actual verification results:
   - Total phases: PHASE_COUNT
   - Successfully stored: [count with ✅]
   - Failed storage: [count with ❌]
-  - Evidence: MCP list_specs response
+  - Evidence: MCP list_documents response
 
 DO NOT rely on agent completion messages.
-Only report success for specs verified in MCP storage.
+Only report success for phases verified in MCP storage.
 ```
 
-### 7. Final Integration and Comprehensive Reporting
+### 8. Final Integration and Comprehensive Reporting
 
 Present verified results only:
 
 ```text
 **Roadmap Completed**:
-- Quality Score: [score from Step 3e]
+- Quality Score: [score from Step 3.4]
 - Total Phases: [PHASE_COUNT from Step 5]
 
-**Spec Storage Verification** (from Step 6.5):
-- Specs in MCP Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
-- Verified Specs: [list of ✅ spec names]
-- Missing Specs: [list of ❌ spec names]
-- Evidence: mcp__respec-ai__list_specs output
+**Phase Storage Verification** (from Step 7):
+- Phases in MCP Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
+- Verified Phases: [list of ✅ phase names]
+- Missing Phases: [list of ❌ phase names]
+- Evidence: {tools.list_documents} output
 
 **Readiness Assessment**:
 IF ACTUAL_COUNT == EXPECTED_COUNT:
@@ -311,7 +316,7 @@ IF ACTUAL_COUNT == EXPECTED_COUNT:
 ELSE:
   ⚠️ Partial completion - manual intervention required
   Missing: [list specific phase names without MCP storage]
-  Action: Review Step 6 agent failures and retry failed specs
+  Action: Review Step 6 agent failures and retry failed phases
 
 **Next Steps**:
 [Provide specific guidance based on actual verification results]
@@ -349,20 +354,20 @@ IF loop initialization fails:
   Note quality assessment unavailable
 ```
 
-#### Parallel Spec Creation Failures
+#### Parallel Phase Creation Failures
 ```text
-IF some create-spec agents fail:
-  Continue with successful spec creations
+IF some create-phase agents fail:
+  Continue with successful phase creations
   Categorize failures by type:
-    - Phase context extraction failures: Provide manual spec template
+    - Phase context extraction failures: Provide manual phase template
     - MCP storage failures: Retry storage operation once
-    - Complete agent failures: Log error and continue with remaining specs
+    - Complete agent failures: Log error and continue with remaining phases
   Report detailed completion status:
-    - Total specs planned: X
+    - Total phases planned: X
     - Successfully created: Y
     - Failed with recovery: Z
     - Failed completely: W
-  Provide specific guidance for each failed spec:
+  Provide specific guidance for each failed phase:
     - Manual creation templates for context extraction failures
     - Debugging information for technical issues
 ```
@@ -373,13 +378,13 @@ The command maintains orchestration focus by:
 - **Validating strategic plan completion** before proceeding
 - **Coordinating agent invocations** without defining their behavior
 - **Handling MCP Server responses** without evaluating quality scores
-- **Managing spec planning** before parallel creation
+- **Managing phase planning** before parallel creation
 - **Providing error recovery** without detailed implementation guidance
 
 All specialized work delegated to appropriate agents:
 - **roadmap**: Phase breakdown and roadmap generation (with MCP tool access)
 - **roadmap-critic**: Quality assessment and feedback
-- **create-spec**: Individual InitialSpec extraction and MCP storage
+- **create-phase**: Individual InitialSpec extraction and MCP storage
 - **MCP Server**: Decision logic and threshold management
 
 ## Workflow Enhancements
@@ -389,10 +394,10 @@ All specialized work delegated to appropriate agents:
 - Provides clear error messages for incomplete plans
 - Ensures high-quality input for roadmap planning
 
-### Spec Planning Integration
-- Analyzes sprint-appropriate sizing before spec creation
+### Phase Planning Integration
+- Analyzes sprint-appropriate sizing before phase creation
 - Coordinates prerequisite ordering and dependencies
-- Manages MCP storage for spec tracking
+- Manages MCP storage for phase tracking
 
-Ready for technical specification development through /respec-phase command execution on individual phases with validated input.
+Ready for Phase development through /respec-phase command execution on individual phases with validated input.
 """

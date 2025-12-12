@@ -165,20 +165,20 @@ SELECT * FROM pg_extension WHERE extname = 'pg_trgm';
 
 #### Error: "UniqueViolationError: duplicate key value violates unique constraint"
 
-**Cause**: Attempting to insert duplicate `(project_name, spec_name)` pair.
+**Cause**: Attempting to insert duplicate `(project_name, phase_name)` pair.
 
 **Solution**:
 Use `ON CONFLICT` for upsert operations:
 ```python
 await conn.execute(
     '''
-    INSERT INTO technical_specs (project_name, spec_name, ...)
+    INSERT INTO technical_specs (project_name, phase_name, ...)
     VALUES ($1, $2, ...)
-    ON CONFLICT (project_name, spec_name) DO UPDATE SET
+    ON CONFLICT (project_name, phase_name) DO UPDATE SET
         architecture = $3,
         updated_at = CURRENT_TIMESTAMP
     ''',
-    project_name, spec_name, architecture
+    project_name, phase_name, architecture
 )
 ```
 

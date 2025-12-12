@@ -4,7 +4,7 @@ from uuid import uuid4
 from pydantic import Field
 
 from .base import MCPModel
-from .enums import SpecStatus
+from .enums import PhaseStatus
 
 
 class Phase(MCPModel):
@@ -28,7 +28,7 @@ class Phase(MCPModel):
         'integration_context': ('Additional Details', 'Integration Context'),
         'iteration': ('Metadata', 'Iteration'),
         'version': ('Metadata', 'Version'),
-        'spec_status': ('Metadata', 'Status'),
+        'phase_status': ('Metadata', 'Status'),
     }
 
     # Model fields
@@ -60,7 +60,7 @@ class Phase(MCPModel):
     # State tracking
     iteration: int = 0
     version: int = 1
-    spec_status: SpecStatus = SpecStatus.DRAFT
+    phase_status: PhaseStatus = PhaseStatus.DRAFT
 
     def build_markdown(self) -> str:
         sections = [f'{self.TITLE_PATTERN}: {self.phase_name}']
@@ -114,6 +114,6 @@ class Phase(MCPModel):
         sections.append('\n## Metadata')
         sections.append(f'\n### Iteration\n{self.iteration}')
         sections.append(f'\n### Version\n{self.version}')
-        sections.append(f'\n### Status\n{self.spec_status.value}')
+        sections.append(f'\n### Status\n{self.phase_status.value}')
 
         return '\n'.join(sections) + '\n'

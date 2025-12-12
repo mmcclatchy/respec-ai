@@ -13,6 +13,7 @@ from src.platform.tool_enums import (
     AbstractOperation,
     BuiltInTool,
     ExternalPlatformTool,
+    RespecAIAgent,
     RespecAITool,
 )
 from src.platform.tool_registry import ToolRegistry
@@ -34,8 +35,8 @@ class TestToolEnums:
         assert RespecAITool.DECIDE_LOOP_NEXT_ACTION.value == 'mcp__respec-ai__decide_loop_next_action'
 
     def test_abstract_operation_values(self) -> None:
-        assert AbstractOperation.CREATE_SPEC_TOOL.value == 'create_spec_tool'
-        assert AbstractOperation.GET_SPEC_TOOL.value == 'get_spec_tool'
+        assert AbstractOperation.CREATE_PHASE_TOOL.value == 'create_phase_tool'
+        assert AbstractOperation.GET_PHASE_TOOL.value == 'get_phase_tool'
 
 
 class TestToolReference:
@@ -75,20 +76,20 @@ class TestToolReference:
 class TestPlatformToolMapping:
     def test_platform_tool_mapping_creation(self) -> None:
         mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_SPEC_TOOL,
+            operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
             github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
             markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
         )
 
-        assert mapping.operation == AbstractOperation.CREATE_SPEC_TOOL
+        assert mapping.operation == AbstractOperation.CREATE_PHASE_TOOL
         assert mapping.linear_tool is not None
         assert mapping.github_tool is not None
         assert mapping.markdown_tool is not None
 
     def test_platform_tool_mapping_get_tool(self) -> None:
         mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_SPEC_TOOL,
+            operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
             markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
         )
@@ -102,7 +103,7 @@ class TestPlatformToolMapping:
 
     def test_platform_tool_mapping_render_tool(self) -> None:
         mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_SPEC_TOOL,
+            operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
             markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
         )
@@ -119,7 +120,7 @@ class TestPlatformToolMapping:
     def test_platform_tool_mapping_validation_linear(self) -> None:
         # Should work with Linear tools
         mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_SPEC_TOOL,
+            operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
         )
         assert mapping.linear_tool is not None
@@ -127,14 +128,14 @@ class TestPlatformToolMapping:
         # Should fail with non-Linear external tool for Linear platform
         with pytest.raises(ValueError, match='Linear platform tool must be a Linear server tool'):
             PlatformToolMapping(
-                operation=AbstractOperation.CREATE_SPEC_TOOL,
+                operation=AbstractOperation.CREATE_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
             )
 
     def test_platform_tool_mapping_validation_markdown(self) -> None:
         # Should work with built-in tools
         mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_SPEC_TOOL,
+            operation=AbstractOperation.CREATE_PHASE_TOOL,
             markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
         )
         assert mapping.markdown_tool is not None
@@ -142,7 +143,7 @@ class TestPlatformToolMapping:
         # Should fail with external platform tool for Markdown
         with pytest.raises(ValueError, match='Markdown platform must use built-in tools'):
             PlatformToolMapping(
-                operation=AbstractOperation.CREATE_SPEC_TOOL,
+                operation=AbstractOperation.CREATE_PHASE_TOOL,
                 markdown_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
             )
 
@@ -152,17 +153,17 @@ class TestToolRegistry:
         registry = ToolRegistry()
         operations = registry.get_supported_operations()
         assert len(operations) > 0
-        assert 'create_spec_tool' in operations
+        assert 'create_phase_tool' in operations
 
     def test_tool_registry_get_tool_for_platform(self) -> None:
         registry = ToolRegistry()
 
         # Test Linear platform
-        linear_tool = registry.get_tool_for_platform('create_spec_tool', PlatformType.LINEAR)
+        linear_tool = registry.get_tool_for_platform('create_phase_tool', PlatformType.LINEAR)
         assert linear_tool == 'mcp__linear-server__create_issue'
 
         # Test Markdown platform
-        markdown_tool = registry.get_tool_for_platform('create_spec_tool', PlatformType.MARKDOWN)
+        markdown_tool = registry.get_tool_for_platform('create_phase_tool', PlatformType.MARKDOWN)
         assert markdown_tool == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
 
     def test_tool_registry_get_all_tools_for_platform(self) -> None:
@@ -170,8 +171,8 @@ class TestToolRegistry:
 
         linear_tools = registry.get_all_tools_for_platform(PlatformType.LINEAR)
         assert len(linear_tools) > 0
-        assert 'create_spec_tool' in linear_tools
-        assert linear_tools['create_spec_tool'] == 'mcp__linear-server__create_issue'
+        assert 'create_phase_tool' in linear_tools
+        assert linear_tools['create_phase_tool'] == 'mcp__linear-server__create_issue'
 
     def test_tool_registry_invalid_operation(self) -> None:
         registry = ToolRegistry()
@@ -192,23 +193,23 @@ class TestTemplateHelpers:
     def test_template_tool_builder(self) -> None:
         builder = TemplateToolBuilder()
         tools = (
-            builder.add_task_agent('phase-architect')
+            builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
             .add_reRESPEC_AI_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
             .build()
         )
 
-        assert 'Task(phase-architect)' in tools
+        assert 'Task(respec-phase-architect)' in tools
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools
 
     def test_template_tool_builder_yaml_rendering(self) -> None:
         builder = TemplateToolBuilder()
         yaml_output = (
-            builder.add_task_agent('phase-architect')
+            builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
             .add_reRESPEC_AI_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
             .render_yaml_tools()
         )
 
-        assert '- Task(phase-architect)' in yaml_output
+        assert '- Task(respec-phase-architect)' in yaml_output
         assert '- mcp__respec-ai__initialize_refinement_loop' in yaml_output
 
     def test_create_phase_command_tools(self) -> None:
@@ -219,11 +220,12 @@ class TestTemplateHelpers:
             'mcp__linear-server__update_issue',
         ]
 
-        yaml_output = create_phase_command_tools(platform_tools)
+        tools = create_phase_command_tools(platform_tools, PlatformType.LINEAR)
 
-        assert 'Task(respec-phase-architect)' in yaml_output
-        assert 'mcp__respec-ai__initialize_refinement_loop' in yaml_output
-        assert 'mcp__linear-server__create_issue' in yaml_output
+        assert 'Task(respec-phase-architect)' in tools.tools_yaml
+        assert 'mcp__respec-ai__initialize_refinement_loop' in tools.tools_yaml
+        assert 'mcp__linear-server__create_issue' in tools.tools_yaml
+        assert tools.platform == PlatformType.LINEAR
 
 
 class TestStartupValidation:

@@ -99,7 +99,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - Type-safe configuration structures
 
 **tool_enums.py** - Type-safe tool references
-- CommandTemplate enum for command types
+- RespecAICommand enum for command types
 - RespecAITool enum for internal tools
 - AbstractOperation enum for platform mapping
 
@@ -125,28 +125,28 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 ```python
 # Linear Platform
 {
-    'create_spec_tool': 'mcp__linear-server__create_issue',
-    'get_spec_tool': 'mcp__linear-server__get_issue',
-    'update_spec_tool': 'mcp__linear-server__update_issue',
-    'comment_spec_tool': 'mcp__linear-server__create_comment',
+    'create_phase_tool': 'mcp__linear-server__create_issue',
+    'get_phase_tool': 'mcp__linear-server__get_issue',
+    'update_phase_tool': 'mcp__linear-server__update_issue',
+    'comment_phase_tool': 'mcp__linear-server__create_comment',
     'create_project_external': 'mcp__linear-server__create_project',
     'get_project_plan_tool': 'mcp__linear-server__get_project'
 }
 
 # GitHub Platform
 {
-    'create_spec_tool': 'mcp__github__create_issue',
-    'get_spec_tool': 'mcp__github__get_issue',
-    'update_spec_tool': 'mcp__github__update_issue',
-    'comment_spec_tool': 'mcp__github__create_comment'
+    'create_phase_tool': 'mcp__github__create_issue',
+    'get_phase_tool': 'mcp__github__get_issue',
+    'update_phase_tool': 'mcp__github__update_issue',
+    'comment_phase_tool': 'mcp__github__create_comment'
 }
 
 # Markdown Platform
 {
-    'create_spec_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
-    'get_spec_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
-    'update_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
-    'comment_spec_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+    'create_phase_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
+    'get_phase_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
+    'update_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
+    'comment_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
     'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)'
 }
 ```
@@ -284,10 +284,10 @@ class CommandStrategy[T](ABC):
 ```python
 class SpecCommandTools(BaseModel):
     tools_yaml: str
-    create_spec_tool: str
-    get_spec_tool: str
-    update_spec_tool: str
-    comment_spec_tool: str
+    create_phase_tool: str
+    get_phase_tool: str
+    update_phase_tool: str
+    comment_phase_tool: str
 
 # Template functions use single tools parameter:
 def generate_spec_command_template(tools: SpecCommandTools) -> str
@@ -597,7 +597,7 @@ project/
 ```python
 class NewCommandStrategy(CommandStrategy[NewCommandTools]):
     def get_required_operations(self) -> list[str]:
-        return ['create_spec_tool', 'custom_operation']
+        return ['create_phase_tool', 'custom_operation']
 
     def build_tools(self, platform: PlatformType) -> NewCommandTools:
         # Build tools from registry

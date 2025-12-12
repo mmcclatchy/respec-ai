@@ -1,5 +1,6 @@
 import pytest
-from src.models.enums import SpecStatus
+
+from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 
 
@@ -142,7 +143,7 @@ class TestPhaseParsing:
         assert spec.research_requirements == 'OAuth integration patterns, JWT best practices'
         assert spec.success_criteria == '100% test coverage, security audit passed'
         assert spec.integration_context == 'Connects to user service, notification service'
-        assert spec.spec_status == SpecStatus.IN_DEVELOPMENT
+        assert spec.phase_status == PhaseStatus.IN_DEVELOPMENT
 
     def test_parse_markdown_handles_missing_sections(self, minimal_spec_markdown: str) -> None:
         spec = Phase.parse_markdown(minimal_spec_markdown)
@@ -176,7 +177,7 @@ class TestPhaseMarkdownBuilding:
             research_requirements='Security patterns',
             success_criteria='All tests pass',
             integration_context='API integration',
-            spec_status=SpecStatus.APPROVED,
+            phase_status=PhaseStatus.APPROVED,
         )
 
         markdown = spec.build_markdown()
@@ -232,4 +233,4 @@ class TestPhaseMarkdownBuilding:
         assert original_spec.research_requirements == reparsed_spec.research_requirements
         assert original_spec.success_criteria == reparsed_spec.success_criteria
         assert original_spec.integration_context == reparsed_spec.integration_context
-        assert original_spec.spec_status == reparsed_spec.spec_status
+        assert original_spec.phase_status == reparsed_spec.phase_status

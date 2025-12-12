@@ -5,6 +5,7 @@ from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from pathlib import Path
 
+from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
@@ -13,6 +14,7 @@ from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
+from src.mcp.tools import register_all_tools
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
@@ -96,7 +98,12 @@ def run(args: Namespace) -> int:
 
             progress.update(task, description='Generating templates...')
 
-            files_written, commands_count, agents_count = generate_templates(orchestrator, project_path, platform_type)
+            mcp = FastMCP('template-generator')
+            register_all_tools(mcp)
+
+            files_written, commands_count, agents_count = generate_templates(
+                orchestrator, project_path, platform_type, mcp=mcp
+            )
 
             progress.update(task, description='Creating configuration...')
 

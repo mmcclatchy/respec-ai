@@ -49,10 +49,16 @@ show_usage() {
     echo "  -n, --project-name   Name for this project (required)"
     echo "  -p, --platform       Platform choice: linear, github, or markdown (required)"
     echo "  --respec-path       Path to respec-ai installation (required for remote install only)"
+    echo "  --clean             Remove existing .respec-ai folder before installation (destructive)"
     echo ""
     echo "Examples:"
+    echo "  # Regenerate commands/agents (preserves existing documents)"
     echo "  cd ~/myproject"
     echo "  ~/respec-ai/scripts/install-respec-ai.sh -n myproject -p linear"
+    echo ""
+    echo "  # Clean install (removes existing .respec-ai folder)"
+    echo "  cd ~/myproject"
+    echo "  ~/respec-ai/scripts/install-respec-ai.sh -n myproject -p linear --clean"
     echo ""
 }
 
@@ -62,6 +68,7 @@ parse_arguments() {
     RESPEC_AI_PATH=""
     PROJECT_NAME=""
     STATE_MANAGER="memory"  # Default to memory
+    CLEAN_INSTALL=false     # Default to non-destructive
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -80,6 +87,10 @@ parse_arguments() {
             --respec-path)
                 RESPEC_AI_PATH="$2"
                 shift 2
+                ;;
+            --clean)
+                CLEAN_INSTALL=true
+                shift
                 ;;
             -h|--help)
                 show_usage
@@ -171,6 +182,11 @@ print_info "respec-ai path: $RESPEC_AI_PATH"
 print_info "Target directory: $TARGET_DIR"
 print_info "Project name: $PROJECT_NAME"
 print_info "Platform: $PLATFORM"
+if [ "$CLEAN_INSTALL" = true ]; then
+    print_info "Mode: Clean install (will remove existing .respec-ai folder)"
+else
+    print_info "Mode: Preserve existing documents (only regenerate commands/agents)"
+fi
 echo ""
 
 # Check if target directory exists
@@ -224,8 +240,21 @@ fi
 echo ""
 
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
-print_info "Generating respec-ai workflow files..."
-if uv run --project "$RESPEC_AI_PATH" respec-ai init --project-name "$PROJECT_NAME" --platform "$PLATFORM" --skip-mcp-registration --force; then
+if [ "$CLEAN_INSTALL" = true ]; then
+    print_info "Generating respec-ai workflow files (clean install - will remove existing .respec-ai folder)..."
+    CLI_COMMAND="init --project-name \"$PROJECT_NAME\" --platform \"$PLATFORM\" --skip-mcp-registration --force"
+else
+    # Check if already initialized
+    if [ -f "$TARGET_DIR/.respec-ai/config.json" ]; then
+        print_info "Regenerating commands and agents (preserving existing documents)..."
+        CLI_COMMAND="regenerate"
+    else
+        print_info "Generating respec-ai workflow files (first-time setup)..."
+        CLI_COMMAND="init --project-name \"$PROJECT_NAME\" --platform \"$PLATFORM\" --skip-mcp-registration"
+    fi
+fi
+
+if uv run --project "$RESPEC_AI_PATH" respec-ai $CLI_COMMAND; then
     echo ""
 
     # Register local MCP server in Claude Code

@@ -14,20 +14,19 @@ These tests verify:
 from typing import AsyncGenerator, Callable
 
 import pytest
-from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
-from src.utils.enums import LoopType
+
+from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
+from src.models.enums import PhaseStatus, ProjectStatus, RoadmapStatus
+from src.models.phase import Phase
 from src.models.plan_completion_report import PlanCompletionReport
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.phase import Phase
 from src.models.task import Task
+from src.utils.database_pool import db_pool
+from src.utils.enums import LoopType
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, StateManager
 from src.utils.state_manager.postgres import PostgresStateManager
-
-
-from src.utils.database_pool import db_pool
-from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
 
 
 @pytest.fixture
@@ -151,7 +150,7 @@ def sample_spec(markdown_builder: Callable) -> Phase:
         research_requirements='OWASP authentication best practices, JWT security patterns',
         success_criteria='All authentication flows work, Security audit passes',
         integration_context='Integrates with API gateway and user service',
-        spec_status=SpecStatus.IMPLEMENTATION_READY,
+        phase_status=PhaseStatus.IMPLEMENTATION_READY,
         iteration=2,
         version=1,
     )
@@ -289,10 +288,10 @@ async def test_spec_store_retrieve_preserves_all_fields(
 ) -> None:
     """Verify storing and retrieving Phase preserves all field values."""
     # Store spec
-    spec_name = await state_manager.store_spec(project_name, sample_spec)
+    phase_name = await state_manager.store_spec(project_name, sample_spec)
 
     # Retrieve spec
-    retrieved = await state_manager.get_spec(project_name, spec_name)
+    retrieved = await state_manager.get_spec(project_name, phase_name)
 
     # Compare all fields
     original_data = sample_spec.model_dump(exclude={'id'})
@@ -307,7 +306,7 @@ async def test_spec_frozen_fields_preserved_on_update(
 ) -> None:
     """Verify frozen fields (objectives, scope, dependencies, deliverables) are preserved."""
     # Store original spec
-    spec_name = await state_manager.store_spec(project_name, sample_spec)
+    phase_name = await state_manager.store_spec(project_name, sample_spec)
 
     # Create updated spec with attempted changes to frozen fields
     updated_spec = sample_spec.model_copy(
@@ -318,10 +317,10 @@ async def test_spec_frozen_fields_preserved_on_update(
         }
     )
 
-    await state_manager.update_spec(project_name, spec_name, updated_spec)
+    await state_manager.update_spec(project_name, phase_name, updated_spec)
 
     # Retrieve and verify frozen fields unchanged
-    retrieved = await state_manager.get_spec(project_name, spec_name)
+    retrieved = await state_manager.get_spec(project_name, phase_name)
 
     assert retrieved.objectives == sample_spec.objectives, 'Frozen field "objectives" was modified'
     assert retrieved.scope == sample_spec.scope, 'Frozen field "scope" was modified'
@@ -486,12 +485,12 @@ async def test_loop_spec_mapping_preserves_spec_data(
 ) -> None:
     """Verify loop-to-spec mapping preserves spec data through refinement cycle."""
     # Store spec
-    spec_name = await state_manager.store_spec(project_name, sample_spec)
+    phase_name = await state_manager.store_spec(project_name, sample_spec)
 
     # Create loop and link to spec
     loop = LoopState(loop_type=LoopType.PHASE)
     await state_manager.add_loop(loop, project_name)
-    await state_manager.link_loop_to_spec(loop.id, project_name, spec_name)
+    await state_manager.link_loop_to_spec(loop.id, project_name, phase_name)
 
     # Retrieve spec via loop
     retrieved = await state_manager.get_spec_by_loop(loop.id)
@@ -513,11 +512,11 @@ async def test_update_spec_by_loop_preserves_frozen_fields(
     on conflict/update operations. This matches update_spec behavior.
     """
     # Store spec and link to loop
-    spec_name = await state_manager.store_spec(project_name, sample_spec)
+    phase_name = await state_manager.store_spec(project_name, sample_spec)
 
     loop = LoopState(loop_type=LoopType.PHASE)
     await state_manager.add_loop(loop, project_name)
-    await state_manager.link_loop_to_spec(loop.id, project_name, spec_name)
+    await state_manager.link_loop_to_spec(loop.id, project_name, phase_name)
 
     # Create updated spec with attempted frozen field changes
     updated_spec = sample_spec.model_copy(
