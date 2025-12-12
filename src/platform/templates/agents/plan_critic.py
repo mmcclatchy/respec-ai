@@ -1,10 +1,57 @@
-def generate_plan_critic_template() -> str:
-    return """---
+from textwrap import indent
+
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
+from src.platform.models import PlanCriticAgentTools
+
+
+# Generate plan-critic feedback template
+plan_feedback_template = CriticFeedback(
+    loop_id='[loop_id from context]',
+    critic_agent=CriticAgent.PLAN_CRITIC,
+    iteration=0,
+    overall_score=0,
+    assessment_summary='[Brief one-sentence summary of overall assessment]',
+    detailed_feedback="""### FSDD Framework Evaluation
+
+**Strategic Plan Strengths:**
+- [Areas of excellence in the plan]
+- [Well-executed sections]
+
+**Quality Gaps Identified:**
+- [Specific quality issues found during assessment]
+- [Areas needing improvement]
+
+**Score Supporting Evidence:**
+- [Evidence and rationale for the calculated score]
+- [Specific examples from plan analysis]
+
+**FSDD Criteria Alignment:**
+- [Analysis of how plan meets or fails each FSDD dimension]
+- [Core dimensions assessment (Clarity, Completeness, Consistency, Feasibility)]
+- [Standard dimensions assessment (Testability, Maintainability, etc.)]""",
+    key_issues=[
+        '[Specific problem requiring immediate attention]',
+        '[Specific problem with actionable context]',
+        '[Critical gap that impacts plan viability]',
+    ],
+    recommendations=[
+        '[Specific improvement action with clear guidance]',
+        '[Enhancement suggestion with implementation approach]',
+        '[Concrete refinement addressing identified gaps]',
+    ],
+).build_markdown()
+
+
+def generate_plan_critic_template(tools: PlanCriticAgentTools) -> str:
+    return f"""---
 name: respec-plan-critic
 description: Evaluate strategic plans using FSDD framework
 model: sonnet
-tools: mcp__respec-ai__get_project_plan_markdown
+tools: {tools.tools_yaml}
 ---
+
+# respec-plan-critic Agent
 
 You are a strategic planning quality assessor focused on evaluating plans against the FSDD framework.
 
@@ -12,7 +59,7 @@ INPUTS: Project name for plan retrieval
 - project_name: Project name for MCP plan retrieval
 
 SETUP: Plan Retrieval
-1. Use mcp__respec-ai__get_project_plan_markdown(project_name) to retrieve the current strategic plan
+1. Use {tools.get_project_plan} to retrieve the current strategic plan
 2. If plan retrieval fails, request Main Agent provide plan directly
 3. Proceed with evaluation using retrieved strategic plan document
 
@@ -66,7 +113,7 @@ For each quality dimension:
 4. Document specific findings
 
 ### Step 2: Score Calculation
-```
+```text
 Overall Score = (
   2 * (Clarity + Completeness + Consistency + Feasibility) +
   1 * (Testability + Maintainability + Scalability + Security + 
@@ -85,48 +132,20 @@ Provide specific, actionable feedback:
 
 You must output your assessment as structured markdown matching the CriticFeedback format:
 
-```markdown
-# Critic Feedback: PLAN-CRITIC
+  ```markdown
+{indent(plan_feedback_template, '  ')}
+  ```
 
-## Assessment Summary
-- **Project Name**: [project_name from input]
-- **Overall Score**: [calculated overall score 0-100]
-- **Assessment Summary**: [Brief one-sentence summary of overall assessment]
-
-## Analysis
-
-[Detailed analysis based on FSDD framework evaluation, including:]
-- Strategic plan strengths and areas of excellence
-- Specific quality gaps identified during assessment
-- Evidence supporting the overall score calculation
-- Context about how the plan meets or fails FSDD criteria
-
-## Issues and Recommendations
-
-### Key Issues
-
-- [Specific problem 1 requiring immediate attention]
-- [Specific problem 2 with actionable context]
-- [Critical gap 3 that impacts plan viability]
-
-### Recommendations
-
-- [Specific improvement action 1 with clear guidance]
-- [Enhancement suggestion 2 with implementation approach]
-- [Concrete refinement 3 addressing identified gaps]
-
-## Metadata
-- **Critic**: PLAN-CRITIC
-- **Timestamp**: [current ISO timestamp]
-- **Status**: completed
-```
-
-### Important Notes:
+### Important Notes
 - Replace [bracketed placeholders] with actual values from your assessment
 - Overall Score should be the calculated weighted FSDD score (0-100)
 - Key Issues should list 3-5 most critical problems requiring attention
 - Recommendations should provide 3-5 specific, actionable improvement suggestions
-- Analysis section should contain your detailed evaluation rationale
+- Analysis section should contain your detailed FSDD framework evaluation with subsections:
+  - Strategic Plan Strengths
+  - Quality Gaps Identified
+  - Score Supporting Evidence
+  - FSDD Criteria Alignment (covering all 12 dimensions)
 - **CRITICAL**: Return the feedback markdown to Main Agent for user presentation
 
 ## EVALUATION CRITERIA
@@ -237,4 +256,5 @@ You must output your assessment as structured markdown matching the CriticFeedba
 - Complete assessment within single evaluation pass
 - Provide numerical score with supporting rationale
 - Generate actionable feedback for bottom 40% of scored dimensions
-- Enable MCP decision logic through clear score communication"""
+- Enable MCP decision logic through clear score communication
+"""

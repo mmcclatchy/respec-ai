@@ -1,17 +1,13 @@
 import pytest
+from asyncpg.exceptions import CheckViolationError, UniqueViolationError
 
-from src.models.enums import SpecStatus
+from src.models.enums import CriticAgent, PhaseStatus
 from src.models.feedback import CriticFeedback
 from src.models.phase import Phase
+from src.utils.database_pool import db_pool
 from src.utils.enums import LoopType
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import PostgresStateManager
-
-
-from src.utils.database_pool import db_pool
-from src.models.enums import CriticAgent
-from asyncpg.exceptions import UniqueViolationError
-from asyncpg.exceptions import CheckViolationError
 
 
 class TestDatabaseCascadeDeletes:
@@ -59,7 +55,7 @@ class TestDatabaseCascadeDeletes:
             scope='Scope',
             dependencies='Dependencies',
             deliverables='Deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
         await db_state_manager.store_spec('test-project', spec)
         await db_state_manager.link_loop_to_spec(loop.id, 'test-project', spec.phase_name)
@@ -122,7 +118,7 @@ class TestDatabaseJSONBSerialization:
             scope='Scope',
             dependencies='Dependencies',
             deliverables='Deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
             additional_sections={'custom_field': 'custom value', 'notes': 'note1, note2'},
         )
 
@@ -136,14 +132,14 @@ class TestDatabaseJSONBSerialization:
 
 class TestDatabaseConstraints:
     @pytest.mark.asyncio
-    async def test_unique_constraint_on_project_spec_name(self, db_state_manager: PostgresStateManager) -> None:
+    async def test_unique_constraint_on_project_phase_name(self, db_state_manager: PostgresStateManager) -> None:
         spec = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
             dependencies='Dependencies',
             deliverables='Deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         await db_state_manager.store_spec('test-project', spec)
@@ -153,14 +149,13 @@ class TestDatabaseConstraints:
                 await conn.execute(
                     """
                     INSERT INTO technical_specs (
-                        id, project_name, spec_name, phase_name, objectives, scope,
-                        dependencies, deliverables, spec_status
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        id, project_name, phase_name, objectives, scope,
+                        dependencies, deliverables, phase_status
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,
                     'testid01',
                     'test-project',
                     'test-spec',
-                    'Test Spec',
                     'Objectives',
                     'Scope',
                     'Dependencies',
@@ -196,7 +191,7 @@ class TestDatabaseTransactions:
             scope='Scope',
             dependencies='Dependencies',
             deliverables='Deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         await db_state_manager.store_spec('test-project', spec)
@@ -205,7 +200,7 @@ class TestDatabaseTransactions:
             async with db_pool.acquire() as conn:
                 async with conn.transaction():
                     await conn.execute(
-                        'UPDATE technical_specs SET objectives = $1 WHERE project_name = $2 AND spec_name = $3',
+                        'UPDATE technical_specs SET objectives = $1 WHERE project_name = $2 AND phase_name = $3',
                         'Updated objectives',
                         'test-project',
                         'test-spec',

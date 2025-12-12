@@ -1,11 +1,11 @@
-from src.models.enums import SpecStatus
+from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import PhaseCommandTools
 
 
 # Create template instance with instructional placeholders
-technical_spec_template = Phase(
-    phase_name='[spec-name-in-kebab-case]',
+technical_phase_template = Phase(
+    phase_name='[phase-name-in-kebab-case]',
     objectives='[Clear, measurable goals with business value]',
     scope="[Boundaries, what's included/excluded, constraints]",
     dependencies='[External requirements with versions and justifications]',
@@ -34,41 +34,41 @@ technical_spec_template = Phase(
     },
     iteration=0,
     version=1,
-    spec_status=SpecStatus.DRAFT,
+    phase_status=PhaseStatus.DRAFT,
 ).build_markdown()
 
 
 def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [spec-name] [optional: instructions]
-description: Transform strategic plans into detailed technical specifications
+argument-hint: [plan-name] [phase-name] [optional: instructions]
+description: Transform strategic plans into detailed Phases
 ---
 
-# /respec-phase Command: Technical Specification Creation
+# /respec-phase Command: Phase Creation
 
 ## Overview
-Transform strategic plans into detailed technical specifications through quality-driven refinement. This command orchestrates technical architecture design, research integration, and platform-specific specification storage.
+Transform strategic plans into detailed Phases through quality-driven refinement. This command orchestrates technical architecture design, research integration, and platform-specific Phase storage.
 
 ## Primary Responsibilities
 
 ### 1. Initialize Technical Design Process
 - Retrieve strategic plan from previous `/respec-plan` phase
 - Launch phase-architect agent for technical architecture development
-- Initialize MCP refinement loop for specification phase
+- Initialize MCP refinement loop for Phase creation
 
-### 2. Coordinate Architecture Development  
+### 2. Coordinate Architecture Development
 - Guide phase-architect through technical design decisions
 - Integrate existing documentation from archive scanning
 - Identify external research requirements for knowledge gaps
 
 ### 3. Manage Quality Assessment Loop
-- Pass specifications to phase-critic for FSDD framework evaluation
+- Pass Phases to phase-critic for FSDD framework evaluation
 - Handle MCP Server refinement decisions based on quality scores
-- Iterate until MCP Server determines specification meets quality requirements
+- Iterate until MCP Server determines Phase meets quality requirements
 
-### 4. Specification Storage
-- Store final specification using configured storage tools
+### 4. Phase Storage
+- Store final Phase using configured storage tools
 - Maintain platform-agnostic content structure
 - Include research requirements section for future implementation
 
@@ -90,42 +90,51 @@ Main Agent (via /respec-phase)
     │   ├── IF "complete" → Proceed to storage
     │   └── IF "user_input" → Request technical clarification
     │
-    └── 4. Store Specification
-        └── Platform tool to store technical specification
+    └── 4. Store Phase
+        └── Platform tool to store Phase
 ```
+
+{tools.mcp_tools_reference}
 
 ## Implementation Instructions
 
-### Step 1: Extract Command Arguments and Locate Spec File
+### Step 1: Extract Command Arguments and Locate Phase File
 
-Parse command arguments and locate spec file using partial name:
+Parse command arguments and locate phase file using partial name:
+
+#### Step 1.1: Parse arguments
 
 ```text
-# Step 1.1: Parse arguments
 PLAN_NAME = [first argument from command - the plan name]
-SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
+PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
 
 Read .respec-ai/config.json
 PROJECT_NAME = config["project_name"]
+```
 
-# Step 1.2: Search file system for matching spec files
-SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{SPEC_NAME_PARTIAL}}*.md"
+#### Step 1.2: Search file system for matching phase files
+
+```text
+SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{PHASE_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
+```
 
-# Step 1.3: Handle multiple matches
+#### Step 1.3: Handle multiple matches
+
+```text
 IF count(SPEC_FILE_MATCHES) == 0:
-  ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the spec name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
+  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
+  SUGGEST: "Verify the phase name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
   SPEC_FILE_PATH = SPEC_FILE_MATCHES[0]
 
 ELSE:
-  # Multiple matches - use interactive selection
+  (Multiple matches - use interactive selection)
   Use AskUserQuestion tool to present options:
-    Question: "Multiple spec files match '{{SPEC_NAME_PARTIAL}}'. Which one do you want to use?"
+    Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
     Header: "Select Spec"
     multiSelect: false
     Options: [
@@ -141,63 +150,73 @@ ELSE:
     ]
 
   SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
+```
 
-# Step 1.4: Extract canonical name from file path
-# Extract: ".respec-ai/projects/X/respec-phases/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
-SPEC_NAME = [basename of SPEC_FILE_PATH without .md extension]
+#### Step 1.4: Extract canonical name from file path
 
-Display to user: "✓ Located spec file: {{SPEC_NAME}}"
+Extract: ".respec-ai/projects/X/respec-phases/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
+
+```text
+PHASE_NAME = [basename of SPEC_FILE_PATH without .md extension]
+
+Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 ```
 
 **Important**:
 - PLAN_NAME identifies which strategic plan to use for context
-- SPEC_NAME_PARTIAL is the user input (e.g., "phase-2a")
-- SPEC_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
+- PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
+- PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
 - PROJECT_NAME from config is used for all MCP storage operations
-- OPTIONAL_INSTRUCTIONS provides additional context for spec development
-- All subsequent operations use SPEC_NAME (canonical)
+- OPTIONAL_INSTRUCTIONS provides additional context for phase development
+- All subsequent operations use PHASE_NAME (canonical)
 
 ### Step 2: Load and Store Existing Documents
 
-Load spec and plan from file system, store in MCP:
+Load phase and plan from file system, store in MCP:
+
+#### Step 2.1: Read documents using canonical names
 
 ```text
-# Step 2.1: Read documents using canonical names
 PLAN_MARKDOWN = Read(.respec-ai/projects/{{PLAN_NAME}}/project_plan.md)
-SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
+PHASE_MARKDOWN = Read({{SPEC_FILE_PATH}})
+```
 
-# Step 2.2: Store in MCP using canonical spec name
-mcp__respec-ai__store_project_plan(
+#### Step 2.2: Store in MCP using canonical phase name
+
+```text
+{tools.store_plan}
   project_name=PLAN_NAME,
   project_plan_markdown=PLAN_MARKDOWN
 )
 
-mcp__respec-ai__store_document(
+{tools.store_document_inline_doc}
+{tools.store_document}
   doc_type="phase",
-  path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}",
-  content=SPEC_MARKDOWN
+  path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+  content=PHASE_MARKDOWN
 )
 
-Display to user: "✓ Loaded existing spec: {{SPEC_NAME}}"
+Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
 ```
 
 **Important**:
 - SPEC_FILE_PATH is the full path from Step 1
-- SPEC_NAME is the canonical name extracted from file path
+- PHASE_NAME is the canonical name extracted from file path
 - Both documents are now in MCP storage for refinement loop
 
 ### Step 4: Initialize Refinement Loop
 Initialize MCP refinement loop and retrieve strategic plan:
 
 ```text
-# Initialize MCP refinement loop
-mcp__respec-ai__initialize_refinement_loop(
+(Initialize MCP refinement loop)
+{tools.initialize_refinement_loop_inline_doc}
+{tools.initialize_loop}
   project_name=PROJECT_NAME,
   loop_type="phase"
 )
 
-# Retrieve strategic plan using PLAN_NAME argument
-STRATEGIC_PLAN_MARKDOWN = mcp__respec-ai__get_project_plan_markdown(project_name=PLAN_NAME)
+(Retrieve strategic plan using PLAN_NAME argument)
+STRATEGIC_PLAN_MARKDOWN = {tools.get_plan})
 
 IF STRATEGIC_PLAN_MARKDOWN not found:
   ERROR: "No strategic plan found: [PLAN_NAME]"
@@ -205,36 +224,37 @@ IF STRATEGIC_PLAN_MARKDOWN not found:
   EXIT: Graceful failure with guidance
 ```
 
-### Step 4.2: Link Loop to Specification
+### Step 4.2: Link Loop to Phase
 
-After initializing loop, link it to specification for idempotent retrieval:
+After initializing loop, link it to Phase for idempotent retrieval:
 
 ```text
-# Extract loop_id from initialize_refinement_loop result
+(Extract loop_id from initialize_refinement_loop result)
 LOOP_ID = [loop_id from Step 4.1 MCPResponse]
 
-# Validate loop_id was returned
+(Validate loop_id was returned)
 IF LOOP_ID is None or LOOP_ID == "":
     CRITICAL ERROR: "initialize_refinement_loop did not return valid loop_id"
     DIAGNOSTIC: Show full MCPResponse from Step 4.1
     EXIT: Workflow terminated
 
-# Link loop to spec for agents to retrieve via loop_id only
-mcp__respec-ai__link_loop_to_document(
+(Link loop to phase for agents to retrieve via loop_id only)
+{tools.link_loop_to_document_inline_doc}
+{tools.link_loop}
   loop_id=LOOP_ID,
   doc_type="phase",
-  path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}"
+  path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}"
 )
 
-# Verify the link was created
-LOOP_STATUS = mcp__respec-ai__get_loop_status(loop_id=LOOP_ID)
+(Verify the link was created)
+LOOP_STATUS = {tools.get_loop_status})
 
-IF LOOP_STATUS does not show linked spec:
+IF LOOP_STATUS does not show linked phase:
     CRITICAL ERROR: "Loop linking failed - phase-architect and phase-critic will fail"
     DIAGNOSTIC: Show LOOP_STATUS details
     EXIT: Workflow terminated
 
-Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{SPEC_NAME}}"
+Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{PHASE_NAME}}"
 ```
 
 **Important**:
@@ -246,63 +266,63 @@ Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{SPEC_NAME}}"
 Begin technical design with archive integration:
 
 ```text
-# Execute archive scanning first
+(Execute archive scanning first)
 ARCHIVE_SCAN_RESULTS = Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "technical architecture design patterns database integration API security"
 
-# Populate context variables from Step 4 output
+(Populate context variables from Step 4 output)
 STRATEGIC_PLAN_SUMMARY = [strategic plan content: STRATEGIC_PLAN_MARKDOWN retrieved in Step 4]
 
-# Invoke phase-architect agent
+(Invoke phase-architect agent)
 Invoke: respec-phase-architect
 Input:
   - loop_id: LOOP_ID
   - project_name: PROJECT_NAME
-  - spec_name: SPEC_NAME
+  - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: OPTIONAL_INSTRUCTIONS
   - archive_scan_results: ARCHIVE_SCAN_RESULTS
   # No previous_feedback - architect retrieves feedback directly from MCP using loop_id
 
 Agent will:
-1. Retrieve current spec from MCP using loop_id
+1. Retrieve current phase from MCP using loop_id
 2. Retrieve previous critic feedback from MCP (if iteration > 1)
-3. Refine spec based on strategic plan, feedback, and archive insights
-4. Store updated spec directly in MCP
+3. Refine phase based on strategic plan, feedback, and archive insights
+4. Store updated phase directly in MCP
 5. Return brief status message (no full markdown)
 
 Verify agent completed successfully:
 IF agent returns error status:
-  ERROR: "phase-architect failed to update specification"
+  ERROR: "phase-architect failed to update Phase"
   DIAGNOSTIC: Check agent logs for MCP tool call failures
   EXIT: Workflow terminated
 
-Display to user: "✓ Specification refined by phase-architect"
+Display to user: "✓ Phase refined by phase-architect"
 ```
 
 ### Step 6: Quality Assessment Loop
 
-#### Step 6a: Invoke Spec-Critic Agent
+#### Step 6.1: Invoke Spec-Critic Agent
 
 ```text
 Invoke: respec-phase-critic
 Input:
   - project_name: PROJECT_NAME
   - loop_id: LOOP_ID
-  - spec_name: SPEC_NAME
+  - phase_name: PHASE_NAME
 
 Spec-critic will:
-1. Retrieve spec from MCP using project_name and spec_name
+1. Retrieve phase from MCP using project_name and phase_name
 2. Evaluate against FSDD framework
 3. Store feedback in MCP loop using loop_id
 ```
 
-#### Step 6b: Get Loop Decision
+#### Step 6.2: Get Loop Decision
 
 **MCP Server handles score extraction and loop decision internally.**
 
 ```text
-LOOP_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=LOOP_ID)
-# Returns: {{status: "COMPLETE|REFINE|USER_INPUT", loop_id: "abc123", iteration: N}}
+LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
+(Returns: {{status: "COMPLETE|REFINE|USER_INPUT", loop_id: "abc123", iteration: N}})
 
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 
@@ -314,82 +334,82 @@ and MCP automatically recorded score and computed loop decision.
 
 **Follow LOOP_DECISION exactly. Do not override based on score assessment.**
 
-#### If LOOP_DECISION == "COMPLETE"
-Display to user: "✓ Specification meets quality standards"
-Proceed to Step 8.
+```text
+IF LOOP_DECISION == "COMPLETE":
+  Display to user: "✓ Phase meets quality standards"
+  Proceed to Step 8.
 
-#### If LOOP_DECISION == "REFINE"
-Display to user: "⟳ Refining specification - phase-architect will address critic feedback"
-Return to Step 5 (phase-architect will retrieve feedback from MCP itself)
+ELIF LOOP_DECISION == "REFINE":
+  Display to user: "⟳ Refining Phase - phase-architect will address critic feedback"
+  Return to Step 5 (phase-architect will retrieve feedback from MCP itself)
 
-#### If LOOP_DECISION == "USER_INPUT"
-# Step 6.5: Check for Decomposition Requirement
-# Retrieve latest feedback to check for decomposition indicators
-LATEST_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=1)
+ELIF LOOP_DECISION == "USER_INPUT":
+  (Check for Decomposition Requirement)
+  LATEST_FEEDBACK = {tools.get_feedback})
 
-# Check if decomposition is required based on feedback markers
-IF "DECOMPOSITION_REQUIRED" in LATEST_FEEDBACK or "SCOPE_CREEP" in LATEST_FEEDBACK:
-  Display to user:
+  IF "DECOMPOSITION_REQUIRED" in LATEST_FEEDBACK or "SCOPE_CREEP" in LATEST_FEEDBACK:
+    Display to user:
 
-  ⚠️ DECOMPOSITION REQUIRED ⚠️
+    ⚠️ DECOMPOSITION REQUIRED ⚠️
 
-  The specification is too broad for a single implementation phase.
+    The Phase is too broad for a single implementation phase.
 
-  Current Size: [Extract character count from LATEST_FEEDBACK]
-  Recommended: Break into 3-5 focused phases
+    Current Size: [Extract character count from LATEST_FEEDBACK]
+    Recommended: Break into 3-5 focused phases
 
-  **Next Steps:**
-  1. Run: /respec-roadmap [PROJECT_NAME]
-  2. This will analyze the current spec and create multiple smaller specs
-  3. Each resulting spec will be appropriately scoped
+    **Next Steps:**
+    1. Run: /respec-roadmap [PROJECT_NAME]
+    2. This will analyze the current phase and create multiple smaller phases
+    3. Each resulting phase will be appropriately scoped
 
-  **Alternative** (not recommended):
-  - Manually condense the spec to <40,000 characters
-  - Provide technical clarification via user feedback
-  - Resume refinement loop
+    **Alternative** (not recommended):
+    - Manually condense the phase to <40,000 characters
+    - Provide technical clarification via user feedback
+    - Resume refinement loop
 
-  EXIT: Graceful stop with guidance
+    EXIT: Graceful stop with guidance
 
-ELSE:
-  # Regular USER_INPUT handling (stagnation, checkpoint)
-  Display LATEST_FEEDBACK to user with:
-  - Current score and iteration
-  - Priority improvement areas
-  - Request for technical clarification
+  ELSE:
+    (Regular USER_INPUT handling for stagnation or checkpoint)
+    Display LATEST_FEEDBACK to user with:
+    - Current score and iteration
+    - Priority improvement areas
+    - Request for technical clarification
 
-  Return to Step 5 (phase-architect will incorporate user guidance)
+    Return to Step 5 (phase-architect will incorporate user guidance)
 
-#### If LOOP_DECISION == "MAX_ITERATIONS"
-Display warning: "Maximum iterations reached. Review feedback and decide next steps."
-Display LATEST_FEEDBACK to user
-Proceed to Step 8.
+ELIF LOOP_DECISION == "MAX_ITERATIONS":
+  Display warning: "Maximum iterations reached. Review feedback and decide next steps."
+  Display LATEST_FEEDBACK to user
+  Proceed to Step 8.
+```
 
-### Step 8: Specification Storage
+### Step 8: Phase Storage
 
-#### Step 8.1: Retrieve Final Spec from MCP
-Retrieve the specification from MCP storage (which has immutable fields preserved by update_spec):
+#### Step 8.1: Retrieve Final Phase from MCP
+Retrieve the Phase from MCP storage:
 
 ```text
-FINAL_SPEC_RESPONSE = mcp__respec-ai__get_document(
+FINAL_PHASE_RESPONSE = {tools.get_document}
     doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}"
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}"
 )
 
-FINAL_SPEC_MARKDOWN = FINAL_SPEC_RESPONSE.message
+FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
 ```
 
 #### Step 8.2: Save to External Platform
-Store the technical specification using platform-specific tool:
+Store the phase using platform-specific tool:
 
 ```text
-Use {tools.create_spec_tool_interpolated} to store the technical specification:
+Use {tools.create_phase_tool_interpolated} to store the phase:
 
-Title: Technical Specification: [Project Name]
-Content: [FINAL_SPEC_MARKDOWN]
-Labels: technical-specification, architecture, phase-2
+Title: Phase: [Project Name]
+Content: [FINAL_PHASE_MARKDOWN]
+Labels: phase, architecture, phase-2
 ```
 
-**Important**: Use FINAL_SPEC_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
+**Important**: Use FINAL_PHASE_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
 
 ## Quality Assessment
 
@@ -401,7 +421,7 @@ Labels: technical-specification, architecture, phase-2
 
 ### Loop Decision Types
 - **refine**: Continue refinement with critic feedback
-- **complete**: Specification meets quality requirements
+- **complete**: Phase meets quality requirements
 - **user_input**: Stagnation detected, user guidance needed
 - **max_iterations**: Iteration limit reached
 
@@ -445,10 +465,10 @@ All error scenarios return structured responses:
 IF no strategic plan available:
   ERROR_RESPONSE = {{
     "error_type": "missing_plan",
-    "error_message": "No strategic plan found for technical specification",
+    "error_message": "No strategic plan found for Phase creation",
     "recovery_action": "Prompting user for plan location or /respec-plan execution",
     "user_guidance": "Please provide the strategic plan document path or run /respec-plan command first",
-    "partial_output": "Technical specification template prepared"
+    "partial_output": "Phase template prepared"
   }}
   → Request plan location OR suggest: "Run /respec-plan [project-name] to create strategic plan first"
 ```
@@ -457,10 +477,10 @@ IF no strategic plan available:
 ```text
 IF ~/.claude/scripts/research-advisor-archive-scan.sh fails:
   ERROR_RESPONSE = {{
-    "error_type": "archive_failure", 
+    "error_type": "archive_failure",
     "error_message": "Cannot access best-practices archive for pattern identification",
     "recovery_action": "Continuing with external research only, noting archive unavailable",
-    "user_guidance": "Archive unavailable - all research will be external. Specification will include comprehensive research requirements.",
+    "user_guidance": "Archive unavailable - all research will be external. Phase will include comprehensive research requirements.",
     "partial_output": "Strategic plan analysis completed"
   }}
   → Continue with phase-architect but include note: "Archive unavailable - comprehensive external research required"
@@ -471,9 +491,9 @@ IF ~/.claude/scripts/research-advisor-archive-scan.sh fails:
 IF mcp__respec-ai__* tools unavailable:
   ERROR_RESPONSE = {{
     "error_type": "mcp_error",
-    "error_message": "MCP loop state management unavailable", 
+    "error_message": "MCP loop state management unavailable",
     "recovery_action": "Falling back to direct agent coordination with single iteration",
-    "user_guidance": "Quality loop disabled - single-pass specification generation",
+    "user_guidance": "Quality loop disabled - single-pass Phase generation",
     "partial_output": "Strategic plan processed"
   }}
   → Continue with single phase-architect → phase-critic → storage workflow
@@ -484,10 +504,10 @@ IF mcp__respec-ai__* tools unavailable:
 IF platform storage tool fails:
   ERROR_RESPONSE = {{
     "error_type": "storage_failure",
-    "error_message": "Failed to store specification in configured platform",
-    "recovery_action": "Saving to local Markdown backup at docs/respec-phases/[timestamp]-spec.md",
-    "user_guidance": "Platform storage failed. Specification saved locally. Check platform connectivity and configuration.",
-    "partial_output": "Complete technical specification document"
+    "error_message": "Failed to store Phase in configured platform",
+    "recovery_action": "Saving to local Markdown backup at docs/respec-phases/[timestamp]-phase.md",
+    "user_guidance": "Platform storage failed. Phase saved locally. Check platform connectivity and configuration.",
+    "partial_output": "Complete Phase document"
   }}
   → Use Write tool to save to local file system as fallback
 ```
@@ -497,10 +517,10 @@ IF platform storage tool fails:
 IF LOOP_DECISION == "user_input" (stagnation detected):
   ERROR_RESPONSE = {{
     "error_type": "quality_plateau",
-    "error_message": "Specification quality plateaued at [QUALITY_SCORE]% after [CURRENT_ITERATION] iterations",
-    "recovery_action": "Escalating to user for guidance on technical clarifications", 
+    "error_message": "Phase quality plateaued at [QUALITY_SCORE]% after [CURRENT_ITERATION] iterations",
+    "recovery_action": "Escalating to user for guidance on technical clarifications",
     "user_guidance": "Quality plateau reached. Please provide: 1) Technical clarifications, 2) Alternative approaches, 3) Accept current quality level",
-    "partial_output": "Technical specification at [QUALITY_SCORE]% completeness"
+    "partial_output": "Phase at [QUALITY_SCORE]% completeness"
   }}
 ```
 
@@ -511,9 +531,9 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Verify storage platform connectivity before final storage
 - Monitor quality score trends for early stagnation detection
 
-## Spec Name Normalization Rules
+## Phase Name Normalization Rules
 
-**IMPORTANT:** Spec names are automatically normalized to kebab-case:
+**IMPORTANT:** Phase names are automatically normalized to kebab-case:
 
 **File System → MCP Normalization:**
 - Convert to lowercase: `Phase-1` → `phase-1`
@@ -522,21 +542,21 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Collapse multiple hyphens: `phase--1` → `phase-1`
 - Strip leading/trailing hyphens: `-phase-1-` → `phase-1`
 
-**Critical:** The H1 header in spec markdown MUST match the normalized file name:
+**Critical:** The H1 header in phase markdown MUST match the normalized file name:
 - File: `phase-2a-neo4j-schema-and-llama-index-integration.md`
-- H1 header: `# Technical Specification: phase-2a-neo4j-schema-and-llama-index-integration`
+- H1 header: `# Phase: phase-2a-neo4j-schema-and-llama-index-integration`
 - Mismatch will cause storage/retrieval failures
 
-**Spec-architect agents:** Generate H1 headers in kebab-case to match file names.
+**Phase-architect agents:** Generate H1 headers in kebab-case to match file names.
 
 ## Expected Output Structure
 
-**CRITICAL**: Spec must follow exact H2 > H3 nesting for core sections. Spec name MUST be kebab-case (lowercase, hyphens only).
+**CRITICAL**: Phase must follow exact H2 > H3 nesting for core sections. Phase name MUST be kebab-case (lowercase, hyphens only).
 
 ### Structure Template
 
 ```markdown
-{technical_spec_template}
+{technical_phase_template}
 ```
 
 ### Structure Rules
@@ -573,26 +593,26 @@ Maintain conversation flow while processing complex backend refinement:
 
 ## Implementation Integration Notes
 
-### Specification Tools
+### Phase Tools
 - **Storage Tool**: Platform-specific creation tool
 - **Retrieval Tool**: Platform-specific retrieval tool
 - **Update Tool**: Platform-specific update tool
 - **Content Structure**: Platform-agnostic markdown maintained consistently
-- **Research Section**: Included in specification body for all platforms
+- **Research Section**: Included in Phase body for all platforms
 
 ## Success Metrics
 
 ### Quantitative Targets
-- **Quality Score**: Determined by MCP Server configuration 
+- **Quality Score**: Determined by MCP Server configuration
 - **Iterations to Complete**: ≤3
 - **Archive Hit Rate**: >60% of research needs covered by existing docs
 - **Storage Success**: >99%
 
-### Qualitative Indicators  
+### Qualitative Indicators
 - **Technical Completeness**: All architectural decisions documented
 - **Research Coverage**: All knowledge gaps identified with clear paths
 - **Implementation Ready**: Sufficient detail for development teams
 - **Integration**: Seamless storage and retrieval
 
-The specification is ready for implementation planning. Recommend `/respec-code` command for next phase.
+The Phase is ready for implementation planning. Recommend `/respec-code` command for next phase.
 """

@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Any, Callable, Type
 
 import pytest
+
 from src.models.base import MCPModel
 
 
@@ -170,7 +171,7 @@ def _generate_realistic_content(field_name: str) -> str:
         'priority': 'high',
         'spec_count': '1',
         'roadmap_status': 'draft',
-        'spec_status': 'draft',
+        'phase_status': 'draft',
         'project_status': 'draft',
         'build_status': 'planning',
         'requirements_status': 'draft',

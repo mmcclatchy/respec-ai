@@ -13,9 +13,9 @@ class ToolRegistry:
 
     def _create_validated_mappings(self) -> list[PlatformToolMapping]:
         return [
-            # Spec Management Tools
+            # Phase Management Tools
             PlatformToolMapping(
-                operation=AbstractOperation.CREATE_SPEC_TOOL,
+                operation=AbstractOperation.CREATE_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
                 markdown_tool=ToolReference(
@@ -23,7 +23,7 @@ class ToolRegistry:
                 ),
             ),
             PlatformToolMapping(
-                operation=AbstractOperation.GET_SPEC_TOOL,
+                operation=AbstractOperation.GET_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_GET_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_GET_ISSUE),
                 markdown_tool=ToolReference(
@@ -31,7 +31,7 @@ class ToolRegistry:
                 ),
             ),
             PlatformToolMapping(
-                operation=AbstractOperation.UPDATE_SPEC_TOOL,
+                operation=AbstractOperation.UPDATE_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_UPDATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_ISSUE),
                 markdown_tool=ToolReference(
@@ -39,7 +39,7 @@ class ToolRegistry:
                 ),
             ),
             PlatformToolMapping(
-                operation=AbstractOperation.COMMENT_SPEC_TOOL,
+                operation=AbstractOperation.COMMENT_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_COMMENT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_COMMENT),
                 markdown_tool=ToolReference(
@@ -74,9 +74,9 @@ class ToolRegistry:
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_FILE),
                 markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/project_plan.md'),
             ),
-            # Spec Listing Tools
+            # Phase Listing Tools
             PlatformToolMapping(
-                operation=AbstractOperation.LIST_PROJECT_SPECS_TOOL,
+                operation=AbstractOperation.LIST_PROJECT_PHASES_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_LIST_ISSUES),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_LIST_FILES),
                 markdown_tool=ToolReference(

@@ -13,7 +13,7 @@ from typing import Callable, Type
 import pytest
 
 from src.models.base import MCPModel
-from src.models.enums import BuildStatus, ProjectStatus, RequirementsStatus, RoadmapStatus, SpecStatus
+from src.models.enums import BuildStatus, ProjectStatus, RequirementsStatus, RoadmapStatus, PhaseStatus
 from src.models.feature_requirements import FeatureRequirements
 from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
@@ -65,7 +65,7 @@ def sample_spec_markdown(markdown_builder: Callable) -> str:
         research_requirements='JWT best practices',
         success_criteria='100% test coverage',
         integration_context='Connects to user service',
-        spec_status=SpecStatus.DRAFT,
+        phase_status=PhaseStatus.DRAFT,
     )
 
 

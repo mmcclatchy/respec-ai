@@ -12,18 +12,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from src.platform.models import (
-    CreatePhaseAgentTools,
-    PhaseArchitectAgentTools,
-    PhaseCriticAgentTools,
-    PlanRoadmapAgentTools,
-    TaskCoderAgentTools,
-)
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_helpers import (
+    create_analyst_critic_agent_tools,
+    create_create_phase_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
+    create_plan_analyst_agent_tools,
+    create_plan_critic_agent_tools,
+    create_roadmap_agent_tools,
+    create_roadmap_critic_agent_tools,
+    create_task_coder_agent_tools,
+    create_task_critic_agent_tools,
+    create_task_reviewer_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
@@ -38,7 +40,7 @@ from src.platform.templates.agents import (
     generate_task_critic_template,
     generate_task_reviewer_template,
 )
-from src.platform.tool_enums import AbstractOperation, CommandTemplate
+from src.platform.tool_enums import AbstractOperation, RespecAICommand
 from src.platform.tool_registry import ToolRegistry
 from src.utils.setting_configs import loop_config
 
@@ -71,11 +73,11 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         files_written: list[str] = []
 
         command_templates = [
-            CommandTemplate.PLAN,
-            CommandTemplate.PHASE,
-            CommandTemplate.CODE,
-            CommandTemplate.ROADMAP,
-            CommandTemplate.PLAN_CONVERSATION,
+            RespecAICommand.PLAN,
+            RespecAICommand.PHASE,
+            RespecAICommand.CODE,
+            RespecAICommand.ROADMAP,
+            RespecAICommand.PLAN_CONVERSATION,
         ]
 
         for cmd in command_templates:
@@ -127,40 +129,43 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
 def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: PlatformType) -> list[tuple[str, str]]:
     tool_registry = ToolRegistry()
 
-    phase_tools = CreatePhaseAgentTools(
-        create_phase_tool=tool_registry.get_tool_for_platform(AbstractOperation.CREATE_SPEC_TOOL.value, platform_type),
-        get_phase_tool=tool_registry.get_tool_for_platform(AbstractOperation.GET_SPEC_TOOL.value, platform_type),
-        update_phase_tool=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type),
-    )
+    # Get all platform tools for the platform type
+    platform_tools_dict = tool_registry.get_all_tools_for_platform(platform_type)
 
-    roadmap_tools = PlanRoadmapAgentTools(
-        create_spec_external=tool_registry.get_tool_for_platform(
-            AbstractOperation.CREATE_SPEC_TOOL.value, platform_type
-        )
-    )
+    # Extract specific tools for agents that need platform-specific operations
+    create_phase_platform_tools = [
+        platform_tools_dict[AbstractOperation.CREATE_PHASE_TOOL.value],
+        platform_tools_dict[AbstractOperation.GET_PHASE_TOOL.value],
+        platform_tools_dict[AbstractOperation.UPDATE_PHASE_TOOL.value],
+    ]
 
-    task_coder_tools = TaskCoderAgentTools(
-        update_task_status=tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform_type)
-    )
+    task_coder_platform_tools = [platform_tools_dict[AbstractOperation.UPDATE_PHASE_TOOL.value]]
 
-    phase_architect_tools = PhaseArchitectAgentTools(tools_yaml=create_phase_architect_agent_tools())
-    phase_critic_tools = PhaseCriticAgentTools(
-        tools_yaml=create_phase_critic_agent_tools(), phase_length_soft_cap=loop_config.phase_length_soft_cap
-    )
+    # Create tools using helper functions
+    plan_analyst_tools = create_plan_analyst_agent_tools()
+    plan_critic_tools = create_plan_critic_agent_tools()
+    analyst_critic_tools = create_analyst_critic_agent_tools()
+    roadmap_tools = create_roadmap_agent_tools()
+    roadmap_critic_tools = create_roadmap_critic_agent_tools()
+    create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools)
+    phase_architect_tools = create_phase_architect_agent_tools()
+    phase_critic_tools = create_phase_critic_agent_tools(phase_length_soft_cap=loop_config.phase_length_soft_cap)
+    task_critic_tools = create_task_critic_agent_tools()
+    task_coder_tools = create_task_coder_agent_tools(task_coder_platform_tools)
+    task_reviewer_tools = create_task_reviewer_agent_tools()
 
     return [
-        ('respec-plan-analyst', generate_plan_analyst_template()),
-        ('respec-plan-critic', generate_plan_critic_template()),
-        ('respec-analyst-critic', generate_analyst_critic_template()),
+        ('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
+        ('respec-plan-critic', generate_plan_critic_template(plan_critic_tools)),
+        ('respec-analyst-critic', generate_analyst_critic_template(analyst_critic_tools)),
         ('respec-roadmap', generate_roadmap_template(roadmap_tools)),
-        ('respec-roadmap-critic', generate_roadmap_critic_template()),
-        ('respec-create-phase', generate_create_phase_template(phase_tools)),
+        ('respec-roadmap-critic', generate_roadmap_critic_template(roadmap_critic_tools)),
+        ('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         ('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         ('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
-        ('respec-code-planner', generate_task_critic_template()),
-        ('respec-task-critic', generate_task_critic_template()),
+        ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-task-coder', generate_task_coder_template(task_coder_tools)),
-        ('respec-task-reviewer', generate_task_reviewer_template()),
+        ('respec-task-reviewer', generate_task_reviewer_template(task_reviewer_tools)),
     ]
 
 

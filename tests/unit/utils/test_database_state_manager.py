@@ -1,9 +1,9 @@
 import pytest
 
-from src.models.enums import ProjectStatus, RoadmapStatus, SpecStatus
+from src.models.enums import ProjectStatus, RoadmapStatus, PhaseStatus
+from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
-from src.models.phase import Phase
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -48,12 +48,12 @@ def sample_roadmap() -> Roadmap:
 @pytest.fixture
 def sample_spec() -> Phase:
     return Phase(
-        phase_name='Sample Spec',
+        phase_name='sample-spec',
         objectives='Test objectives',
         scope='Test scope',
         dependencies='Test dependencies',
         deliverables='Test deliverables',
-        spec_status=SpecStatus.DRAFT,
+        phase_status=PhaseStatus.DRAFT,
     )
 
 
@@ -194,7 +194,7 @@ class TestDatabaseSpecOperations:
         assert retrieved.phase_name == sample_spec.phase_name
 
     @pytest.mark.asyncio
-    async def test_store_spec_returns_spec_name(
+    async def test_store_spec_returns_phase_name(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_spec: Phase
     ) -> None:
         project_name = 'test-project'
@@ -243,12 +243,12 @@ class TestDatabaseSpecOperations:
         project_name = 'empty-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec_names = await db_state_manager.list_specs(project_name)
+        phase_names = await db_state_manager.list_specs(project_name)
 
-        assert spec_names == []
+        assert phase_names == []
 
     @pytest.mark.asyncio
-    async def test_list_specs_returns_all_spec_names(
+    async def test_list_specs_returns_all_phase_names(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'multi-spec-project'
@@ -260,7 +260,7 @@ class TestDatabaseSpecOperations:
             scope='Scope 1',
             dependencies='Dep 1',
             deliverables='Del 1',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
         spec2 = Phase(
             phase_name='spec-2',
@@ -268,17 +268,17 @@ class TestDatabaseSpecOperations:
             scope='Scope 2',
             dependencies='Dep 2',
             deliverables='Del 2',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         await db_state_manager.store_spec(project_name, spec1)
         await db_state_manager.store_spec(project_name, spec2)
 
-        spec_names = await db_state_manager.list_specs(project_name)
+        phase_names = await db_state_manager.list_specs(project_name)
 
-        assert len(spec_names) == 2
-        assert 'spec-1' in spec_names
-        assert 'spec-2' in spec_names
+        assert len(phase_names) == 2
+        assert 'spec-1' in phase_names
+        assert 'spec-2' in phase_names
 
     @pytest.mark.asyncio
     async def test_list_specs_returns_empty_for_project_without_specs(

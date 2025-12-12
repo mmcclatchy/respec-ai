@@ -239,7 +239,7 @@ psql -U respec -d respec_dev -c "REINDEX DATABASE respec_dev;"
 
 ### Query Performance
 
-1. **Use Indexes**: Queries should use indexed columns (`project_name`, `spec_status`, etc.)
+1. **Use Indexes**: Queries should use indexed columns (`project_name`, `phase_status`, etc.)
 2. **EXPLAIN ANALYZE**: Investigate slow queries
    ```sql
    EXPLAIN ANALYZE SELECT * FROM technical_specs WHERE project_name = 'my-project';
@@ -357,10 +357,10 @@ All queries use parameterized placeholders (`$1`, `$2`):
 
 ```python
 # Safe (parameterized)
-await conn.execute('SELECT * FROM specs WHERE name = $1', spec_name)
+await conn.execute('SELECT * FROM specs WHERE name = $1', phase_name)
 
 # Unsafe (never do this)
-await conn.execute(f'SELECT * FROM specs WHERE name = {spec_name}')
+await conn.execute(f'SELECT * FROM specs WHERE name = {phase_name}')
 ```
 
 ## Future Enhancements

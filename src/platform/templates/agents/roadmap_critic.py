@@ -1,10 +1,70 @@
-def generate_roadmap_critic_template() -> str:
-    return """---
+from textwrap import indent
+
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
+from src.platform.models import RoadmapCriticAgentTools
+
+
+# Generate roadmap-critic feedback template
+roadmap_feedback_template = CriticFeedback(
+    loop_id='[loop_id from context]',
+    critic_agent=CriticAgent.ROADMAP_CRITIC,
+    iteration=0,
+    overall_score=0,
+    assessment_summary='[Brief one-sentence quality evaluation]',
+    detailed_feedback="""### Phase Scoping Evaluation
+
+Assessment of phase sizing, boundaries, and value delivery potential. Analysis of scope clarity and deliverable specificity across all phases.
+
+[Detailed evaluation of each phase's scope appropriateness, including specific findings about duration estimates, value delivery, and boundary clarity]
+
+### Dependency Validation
+
+Review of phase sequencing logic, prerequisite relationships, and integration planning. Identification of any circular dependencies or blocking issues.
+
+[Specific analysis of phase ordering, prerequisite relationships, and any dependency conflicts or integration concerns]
+
+### Implementation Readiness
+
+Evaluation of technical focus areas, phase context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /respec-phase execution.
+
+[Assessment of whether each phase provides sufficient context for Phase development, including evaluation of research needs and architecture guidance]
+
+### Balance and Feasibility
+
+Analysis of complexity distribution, timeline realism, and resource considerations. Review of risk distribution and mitigation strategy effectiveness.
+
+[Evaluation of whether phases are appropriately sized and balanced, with realistic timelines and adequate risk planning]
+
+### Integration Strategy
+
+Assessment of cross-phase communication, handoff procedures, and overall workflow coherence.
+
+[Analysis of how phases connect, data flow between phases, and overall roadmap coherence]""",
+    key_issues=[
+        '**[Category]**: [Specific roadmap problem with phase or section reference]',
+        '**[Category]**: [Implementation readiness gap with technical focus area citation]',
+        '**[Category]**: [Dependency sequencing issue with suggested resolution approach]',
+        '**[Category]**: [Scope boundary concern with clarification recommendations]',
+    ],
+    recommendations=[
+        '**[Priority Level]**: [Specific improvement action with implementation guidance]',
+        '**[Priority Level]**: [Concrete enhancement addressing identified assessment gaps]',
+        '**[Priority Level]**: [Refinement suggestion for better implementation readiness]',
+        '**[Priority Level]**: [Phase restructuring recommendation if significant issues identified]',
+    ],
+).build_markdown()
+
+
+def generate_roadmap_critic_template(tools: RoadmapCriticAgentTools) -> str:
+    return f"""---
 name: respec-roadmap-critic
 description: Evaluate implementation roadmaps against quality criteria and FSDD framework
 model: sonnet
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_critic_feedback
+tools: {tools.tools_yaml}
 ---
+
+# respec-roadmap-critic Agent
 
 ═══════════════════════════════════════════════
 TOOL INVOCATION
@@ -12,8 +72,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: roadmap = mcp__respec-ai__get_roadmap(project_name="rag-poc")
-  ❌ WRONG: <mcp__respec-ai__get_roadmap><project_name>rag-poc</project_name>
+  ✅ CORRECT: roadmap = {tools.get_roadmap}
+  ❌ WRONG: <{tools.get_roadmap}><project_name>rag-poc</project_name>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
@@ -28,7 +88,7 @@ INPUTS: Project name and Loop ID for operations
 TASKS:
 
 STEP 1: Retrieve Roadmap
-CALL mcp__respec-ai__get_roadmap(project_name=PROJECT_NAME)
+CALL {tools.get_roadmap}
 → Verify: Roadmap markdown received
 → If failed: Request orchestrator provide roadmap directly
 
@@ -51,10 +111,7 @@ Create specific improvement recommendations
 → Reference specific roadmap sections
 
 STEP 5: Store Feedback
-CALL mcp__respec-ai__store_critic_feedback(
-  loop_id=LOOP_ID,
-  feedback_markdown=generated_feedback
-)
+CALL {tools.store_feedback}
 → Verify: Feedback stored successfully
 → Only report completion after verification
 
@@ -79,7 +136,7 @@ Evaluate each dimension systematically:
 - Review parallel work opportunities
 
 **3. Implementation Readiness**
-- Evaluate spec context sufficiency for /respec-phase command execution
+- Evaluate phase context sufficiency for /respec-phase command execution
 - Check technical focus area clarity and actionability
 - Verify research needs identification and prioritization
 - Assess architecture guidance adequacy
@@ -114,7 +171,7 @@ Evaluate each dimension systematically:
 - Critical path identification and risk mitigation
 
 #### Implementation Guidance Criteria
-- Sufficient context for targeted technical specification
+- Sufficient context for targeted Phase development
 - Clear technical direction and architecture guidance
 - Research needs identified with investigation priorities
 - Decision points marked with resolution requirements
@@ -129,61 +186,9 @@ Evaluate each dimension systematically:
 
 Generate assessment in structured CriticFeedback format with consistent heading hierarchy:
 
-# Critic Feedback: ROADMAP-CRITIC
-
-## Assessment Summary
-- **Loop ID**: [loop_id from context]
-- **Iteration**: [current iteration number]
-- **Overall Score**: [calculated score 0-100]
-- **Assessment Summary**: [Brief one-sentence quality evaluation]
-
-## Analysis
-
-### Phase Scoping Evaluation
-Assessment of phase sizing, boundaries, and value delivery potential. Analysis of scope clarity and deliverable specificity across all phases.
-
-[Detailed evaluation of each phase's scope appropriateness, including specific findings about duration estimates, value delivery, and boundary clarity]
-
-### Dependency Validation
-Review of phase sequencing logic, prerequisite relationships, and integration planning. Identification of any circular dependencies or blocking issues.
-
-[Specific analysis of phase ordering, prerequisite relationships, and any dependency conflicts or integration concerns]
-
-### Implementation Readiness
-Evaluation of technical focus areas, spec context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /respec-phase execution.
-
-[Assessment of whether each phase provides sufficient context for technical specification, including evaluation of research needs and architecture guidance]
-
-### Balance and Feasibility
-Analysis of complexity distribution, timeline realism, and resource considerations. Review of risk distribution and mitigation strategy effectiveness.
-
-[Evaluation of whether phases are appropriately sized and balanced, with realistic timelines and adequate risk planning]
-
-### Integration Strategy
-Assessment of cross-phase communication, handoff procedures, and overall workflow coherence.
-
-[Analysis of how phases connect, data flow between phases, and overall roadmap coherence]
-
-## Issues and Recommendations
-
-### Key Issues
-
-1. **[Category]**: [Specific roadmap problem with phase or section reference]
-2. **[Category]**: [Implementation readiness gap with technical focus area citation]
-3. **[Category]**: [Dependency sequencing issue with suggested resolution approach]
-4. **[Category]**: [Scope boundary concern with clarification recommendations]
-
-### Recommendations
-
-1. **[Priority Level]**: [Specific improvement action with implementation guidance]
-2. **[Priority Level]**: [Concrete enhancement addressing identified assessment gaps]
-3. **[Priority Level]**: [Refinement suggestion for better implementation readiness]
-4. **[Priority Level]**: [Phase restructuring recommendation if significant issues identified]
-
-## Metadata
-- **Critic**: ROADMAP-CRITIC
-- **Timestamp**: [current ISO timestamp]
-- **Status**: completed
+  ```markdown
+{indent(roadmap_feedback_template, '  ')}
+  ```
 
 ## SCORING METHODOLOGY
 
@@ -191,9 +196,9 @@ Assessment of cross-phase communication, handoff procedures, and overall workflo
 
 Calculate roadmap quality score using weighted assessment across five dimensions:
 
-**Score = (Phase_Scoping × 25%) + (Dependencies × 20%) + (Implementation_Readiness × 25%) + (Balance_Feasibility × 20%) + (Integration_Strategy × 10%)**
+**Score = (Phase_Scoping x 25%) + (Dependencies x 20%) + (Implementation_Readiness x 25%) + (Balance_Feasibility x 20%) + (Integration_Strategy x 10%)**
 
-### Dimension Scoring (0-100 points each):
+### Dimension Scoring (0-100 points each)
 
 #### Phase Scoping (25% weight)
 - Each phase 2-4 weeks: +20 points per phase (max 100)
@@ -211,7 +216,7 @@ Calculate roadmap quality score using weighted assessment across five dimensions
 - **Deductions**: Circular dependencies (-40), missing prerequisites (-30)
 
 #### Implementation Readiness (25% weight)
-- Sufficient spec context per phase: +20 points per phase (max 80)
+- Sufficient phase context per phase: +20 points per phase (max 80)
 - Research needs documented: +10 points
 - Architecture decisions identified: +10 points
 - **Deductions**: Insufficient context (-20 per phase), missing research needs (-15)
@@ -229,7 +234,7 @@ Calculate roadmap quality score using weighted assessment across five dimensions
 - Handoff procedures clear: +30 points
 - **Deductions**: Missing integration plan (-40)
 
-### Score Interpretation:
+### Score Interpretation
 - **90-100**: Exceptional - Ready for immediate implementation
 - **80-89**: Good - Minor refinements needed
 - **70-79**: Acceptable - Significant improvements required
@@ -262,8 +267,8 @@ Calculate roadmap quality score using weighted assessment across five dimensions
 
 #### Over-Detailed or Under-Detailed Phases
 - Assess appropriateness relative to implementation timeline and complexity
-- Note over-engineering risks or insufficient guidance respec-aitively
-- Suggest optimal detail level for technical specification readiness
+- Note over-engineering risks or insufficient guidance respectively
+- Suggest optimal detail level for Phase readiness
 - Balance agility considerations with implementation guidance needs
 
 #### Unclear Dependencies or Integration
@@ -278,4 +283,5 @@ Calculate roadmap quality score using weighted assessment across five dimensions
 - Note resource constraint considerations and capacity planning needs
 - Provide feasibility guidance for timeline optimization
 
-Always provide objective, evidence-based assessment with specific recommendations for roadmap improvement and implementation readiness enhancement."""
+Always provide objective, evidence-based assessment with specific recommendations for roadmap improvement and implementation readiness enhancement.
+"""

@@ -1,6 +1,8 @@
-from src.models.roadmap import Roadmap
+from textwrap import indent
+
 from src.models.phase import Phase
-from src.platform.models import PlanRoadmapAgentTools
+from src.models.roadmap import Roadmap
+from src.platform.models import RoadmapAgentTools
 
 
 # Create roadmap metadata example using actual model
@@ -23,10 +25,9 @@ roadmap_example = Roadmap(
     quality_gates='[Quality criteria and standards]',
     performance_targets='[Performance benchmarks]',
 ).build_markdown()
-roadmap_example = '\n    '.join(roadmap_example.split('\n'))
 
 # Create sparse Phase example (iteration=0 with only 4 Overview fields)
-sparse_spec_example = Phase(
+sparse_phase_example = Phase(
     phase_name='[Phase Name]',
     objectives='[What this phase aims to achieve]',
     scope='[What IS and is NOT included]',
@@ -35,17 +36,16 @@ sparse_spec_example = Phase(
     iteration=0,
     version=1,
 ).build_markdown()
-sparse_spec_example = '\n    '.join(sparse_spec_example.split('\n'))
 
 
-def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
-    """Generate roadmap agent template for phase breakdown and sparse spec creation.
+def generate_roadmap_template(tools: RoadmapAgentTools) -> str:
+    """Generate roadmap agent template for phase breakdown and sparse phase creation.
 
     Workflow: Transform strategic plans into sparse Phases (iteration=0, one per phase)
 
     Dual Tool Architecture:
-    - MCP respec-ai Tools: Explicitly defined (mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_spec, mcp__respec-ai__list_specs)
-    - Platform Tools: External spec creation injected via tools parameter
+    - MCP respec-ai Tools: Explicitly defined ({tools.get_project_plan}, {tools.get_loop_status}, {tools.get_feedback})
+    - Platform Tools: External phase creation injected via tools parameter
 
     Args:
         tools: PlanRoadmapAgentTools containing platform-specific tool names
@@ -54,8 +54,10 @@ def generate_roadmap_template(tools: PlanRoadmapAgentTools) -> str:
 name: respec-roadmap
 description: Transform strategic plans into phased implementation roadmaps
 model: sonnet
-tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__get_loop_status, mcp__respec-ai__get_feedback
+tools: {tools.tools_yaml}
 ---
+
+# respec-roadmap Agent
 
 ═══════════════════════════════════════════════
 TOOL INVOCATION
@@ -63,8 +65,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: strategic_plan = mcp__respec-ai__get_project_plan_markdown(project_name="rag-poc")
-  ❌ WRONG: <mcp__respec-ai__get_project_plan_markdown><project_name>rag-poc</project_name>
+  ✅ CORRECT: strategic_plan = {tools.get_project_plan}
+  ❌ WRONG: <{tools.get_project_plan}><project_name>rag-poc</project_name>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
@@ -76,12 +78,13 @@ INPUTS: Loop ID and project details
 - loop_id: Refinement loop identifier for this roadmap generation session
 - project_name: Project name for strategic plan retrieval (from .respec-ai/config.json, passed by orchestrating command)
 - phasing_preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
-# NO previous_feedback parameter - agent retrieves from MCP itself
+
+**Note**: No previous_feedback parameter - agent retrieves feedback from MCP itself using loop_id.
 
 WORKFLOW: Strategic Plan → Implementation Roadmap Markdown
 
 STEP 1: Retrieve Strategic Plan
-CALL mcp__respec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)
+CALL {tools.get_project_plan}
 → Verify: Strategic plan markdown received
 → Expected error: "not found" if InMemory state cleared on restart
 → If error: Report to orchestrator and STOP
@@ -102,12 +105,12 @@ Output complete roadmap markdown
 → Orchestrator handles roadmap storage
 → Orchestrator will invoke roadmap-critic for quality assessment
 
-**CRITICAL**: Do NOT create specs. Spec creation happens AFTER roadmap is finalized by parallel create-spec agents.
+**CRITICAL**: Do NOT create phases. Phase creation happens AFTER roadmap is finalized by parallel create-phase agents.
 
 **CRITICAL FILE OPERATION RESTRICTIONS**:
 - NEVER use Read/Write/Edit tools to access roadmap.md or any other files
 - NEVER create or modify files directly on disk
-- ONLY use mcp__respec-ai__get_project_plan_markdown to retrieve input data
+- ONLY use {tools.get_project_plan} to retrieve input data
 - ONLY return markdown output to Main Agent (do not store it yourself)
 - File storage is handled exclusively by Main Agent using MCP tools
 - If you encounter file references, ignore them and use MCP tools instead
@@ -116,12 +119,12 @@ TASKS:
 
 STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
 → Check if this is a refinement by getting loop status
-CALL mcp__respec-ai__get_loop_status(loop_id=loop_id)
+CALL {tools.get_loop_status}
 → Store: LOOP_STATUS
 
 IF LOOP_STATUS.iteration > 1:
   → This is a refinement iteration - retrieve previous critic feedback
-  CALL mcp__respec-ai__get_feedback(loop_id=loop_id, count=1)
+  CALL {tools.get_feedback}
   → Store: PREVIOUS_FEEDBACK
   → Extract key improvement areas from feedback for use in later steps
 ELSE:
@@ -129,7 +132,7 @@ ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Strategic Plan
-CALL mcp__respec-ai__get_project_plan_markdown(project_name=PROJECT_NAME)
+CALL {tools.get_project_plan}
 → Verify strategic plan received
 
 STEP 2: Incorporate Feedback (if refinement iteration)
@@ -198,14 +201,15 @@ Extract requirements into appropriately sized phases:
 - Phase 3: Differentiation Features (competitive advantages)
 - Phase 4: Scale and Performance Optimization
 
-## OUTPUT FORMAT:
+## OUTPUT FORMAT
 
 **CRITICAL REQUIREMENTS**:
-- **MUST start with exact header**: `# Project Roadmap: [Project Name]`
+- **MUST start with exact header**: `# Project Roadmap: {{PROJECT_NAME}}`
+  - Example: `# Project Roadmap: best-practices-graph`
   - NOT "Implementation Roadmap", NOT "Project Implementation Roadmap"
-  - Exact format required for parser: `# Project Roadmap: ` followed by project name
+  - Note: No brackets in actual output - project name appears directly after colon and space
 - Output roadmap metadata followed by sparse Phases (one per phase)
-- **NEVER truncate phases** - output a sparse spec for EVERY phase you define
+- **NEVER truncate phases** - output a sparse phase for EVERY phase you define
 - **NEVER use** "[Remaining phases omitted...]" text
 - Each Phase has ONLY 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
 - Do NOT add System Design, Implementation, or Additional Details sections
@@ -214,18 +218,18 @@ Extract requirements into appropriately sized phases:
 
 Use this exact format (generated from Roadmap model):
 
-    ```markdown
-    {roadmap_example}
-    ```
+  ```markdown
+{indent(roadmap_example, '  ')}
+  ```
 
 ### Part 2: Sparse Phase for Each Phase
 
 After the roadmap metadata, output one sparse Phase for EACH phase.
 Use this exact format (generated from Phase model):
 
-    ```markdown
-    {sparse_spec_example}
-    ```
+  ```markdown
+{indent(sparse_phase_example, '  ')}
+  ```
 
 **CRITICAL**: Repeat the Phase format for every phase - never truncate or abbreviate
 
@@ -269,21 +273,21 @@ Use this exact format (generated from Phase model):
 - Maintain phase coherence while addressing specific improvement areas
 - **VALIDATION REQUIRED**: Document changes made in response to feedback for traceability:
 
-      ```markdown
-      ## Feedback Response Summary
+    ```markdown
+    ## Feedback Response Summary
 
-      ### Issue 1: [Category] - [Issue Description]
-      **Resolution**: [Specific changes made to address this issue]
-      **Location**: [Which roadmap section was modified]
+    ### Issue 1: [Category] - [Issue Description]
+    **Resolution**: [Specific changes made to address this issue]
+    **Location**: [Which roadmap section was modified]
 
-      ### Issue 2: [Category] - [Issue Description]
-      **Resolution**: [Specific changes made to address this issue]
-      **Location**: [Which roadmap section was modified]
+    ### Issue 2: [Category] - [Issue Description]
+    **Resolution**: [Specific changes made to address this issue]
+    **Location**: [Which roadmap section was modified]
 
-      ### Recommendation 1: [Priority] - [Recommendation Description]
-      **Implementation**: [How this recommendation was implemented]
-      **Impact**: [Expected improvement from this change]
-      ```
+    ### Recommendation 1: [Priority] - [Recommendation Description]
+    **Implementation**: [How this recommendation was implemented]
+    **Impact**: [Expected improvement from this change]
+    ```
 
 #### Quality Score Response Strategy
 - **Score 80-89**: Address 1-2 highest-impact recommendations for optimization
@@ -320,7 +324,7 @@ Before submitting refined roadmap, verify:
 - Create high-level phases based on identifiable patterns
 - Note need for detailed refinement in phase descriptions
 - Focus breakdown on clearly specified requirements
-- Document clarification needs in Spec Context sections
+- Document clarification needs in Phase Context sections
 
 #### Unrealistic Timeline Constraints
 - Document timeline concerns in Risk Mitigation section
@@ -348,4 +352,5 @@ Before submitting refined roadmap, verify:
 - Establish phase completion criteria and success metrics
 - Prepare actionable context for downstream /respec-phase command execution
 
-Always provide comprehensive roadmap with complete phase breakdown, dependency analysis, and implementation readiness context for technical specification development."""
+Always provide comprehensive roadmap with complete phase breakdown, dependency analysis, and implementation readiness context for Phase development.
+"""

@@ -1,16 +1,20 @@
 """Pydantic models for platform configuration with fail-fast validation."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
+from fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from .platform_selector import PlatformType
+from .tool_doc_extractor import ToolDocumentationExtractor
+from .tool_doc_generator import ToolDocGenerator
 from .tool_enums import (
     AbstractOperation,
     BuiltInTool,
-    CommandTemplate,
     ExternalPlatformTool,
+    RespecAICommand,
+    RespecAITool,
     ToolEnums,
 )
 
@@ -59,7 +63,7 @@ class ProjectPlatformChangeRequest(PlatformRequest):
 
 
 class TemplateGenerationRequest(PlatformRequest):
-    command_name: CommandTemplate = Field(description='Name of the command template to generate')
+    command_name: RespecAICommand = Field(description='Name of the command template to generate')
 
 
 class ProjectConfig(PlatformRequest):
@@ -74,8 +78,8 @@ class ToolReference(PlatformModel):
 
     def render(self) -> str:
         if self.parameters:
-            return f'{self.tool.value}({self.parameters})'
-        return self.tool.value
+            return f'{self.tool}({self.parameters})'
+        return self.tool
 
     @field_validator('parameters')
     @classmethod
@@ -90,7 +94,7 @@ class ToolReference(PlatformModel):
         # Validate path patterns for file operations
         if tool in [BuiltInTool.READ, BuiltInTool.WRITE, BuiltInTool.EDIT, BuiltInTool.GLOB]:
             if not v.strip():
-                raise ValueError(f'File operation tool {tool.value} requires non-empty path parameter')
+                raise ValueError(f'File operation tool {tool} requires non-empty path parameter')
             # Basic path pattern validation
             if '..' in v:
                 raise ValueError(f'Path parameter cannot contain directory traversal: {v}')
@@ -119,23 +123,23 @@ class PlatformToolMapping(PlatformModel):
     @classmethod
     def validate_linear_tool(cls, v: ToolReference | None) -> ToolReference | None:
         if v and isinstance(v.tool, ExternalPlatformTool):
-            if not v.tool.value.startswith('mcp__linear-server__'):
-                raise ValueError(f'Linear platform tool must be a Linear server tool, got: {v.tool.value}')
+            if not v.tool.startswith('mcp__linear-server__'):
+                raise ValueError(f'Linear platform tool must be a Linear server tool, got: {v.tool}')
         return v
 
     @field_validator('github_tool')
     @classmethod
     def validate_github_tool(cls, v: ToolReference | None) -> ToolReference | None:
         if v and isinstance(v.tool, ExternalPlatformTool):
-            if not v.tool.value.startswith('mcp__github__'):
-                raise ValueError(f'GitHub platform tool must be a GitHub tool, got: {v.tool.value}')
+            if not v.tool.startswith('mcp__github__'):
+                raise ValueError(f'GitHub platform tool must be a GitHub tool, got: {v.tool}')
         return v
 
     @field_validator('markdown_tool')
     @classmethod
     def validate_markdown_tool(cls, v: ToolReference | None) -> ToolReference | None:
         if v and not isinstance(v.tool, BuiltInTool):
-            raise ValueError(f'Markdown platform must use built-in tools, got: {v.tool.value}')
+            raise ValueError(f'Markdown platform must use built-in tools, got: {v.tool}')
         return v
 
     def get_tool_for_platform(self, platform: PlatformType) -> ToolReference | None:
@@ -154,29 +158,58 @@ class PlatformToolMapping(PlatformModel):
 
 
 class PhaseCommandTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.INITIALIZE_REFINEMENT_LOOP,
+        RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_LOOP_STATUS,
+        RespecAITool.STORE_PROJECT_PLAN,
+        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+        RespecAITool.LINK_LOOP_TO_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.GET_DOCUMENT,
+    ]
+
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
-    create_spec_tool: str = Field(..., description='Platform-specific tool for creating specs')
-    get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    create_phase_tool: str = Field(..., description='Platform-specific tool for creating specs')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
+    update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
 
-    @computed_field
-    def create_spec_tool_interpolated(self) -> str:
-        if '*' not in self.create_spec_tool:
-            return self.create_spec_tool
-        return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    # Parameterized MCP tool invocations
+    store_plan: str = Field(..., description='Store strategic plan')
+    store_document: str = Field(..., description='Store phase document')
+    initialize_loop: str = Field(..., description='Initialize refinement loop')
+    get_plan: str = Field(..., description='Retrieve strategic plan')
+    link_loop: str = Field(..., description='Link loop to document')
+    get_loop_status: str = Field(..., description='Get loop status')
+    decide_loop_action: str = Field(..., description='Decide loop action')
+    get_feedback: str = Field(..., description='Get latest feedback')
+    get_document: str = Field(..., description='Get final spec document')
+
+    _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+
+    @classmethod
+    def initialize_tool_docs(cls, mcp: FastMCP) -> None:
+        cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
-    def get_spec_tool_interpolated(self) -> str:
-        if '*' not in self.get_spec_tool:
-            return self.get_spec_tool
-        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def create_phase_tool_interpolated(self) -> str:
+        if '*' not in self.create_phase_tool:
+            return self.create_phase_tool
+        return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
-    def update_spec_tool_interpolated(self) -> str:
-        if '*' not in self.update_spec_tool:
-            return self.update_spec_tool
-        return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def get_phase_tool_interpolated(self) -> str:
+        if '*' not in self.get_phase_tool:
+            return self.get_phase_tool
+        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
+
+    @computed_field
+    def update_phase_tool_interpolated(self) -> str:
+        if '*' not in self.update_phase_tool:
+            return self.update_phase_tool
+        return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def sync_project_plan_instructions(self) -> str:
@@ -193,21 +226,89 @@ mcp__respec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown
             return """# Platform sync not configured"""
 
     @computed_field
-    def sync_spec_instructions(self) -> str:
+    def sync_phase_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """SPEC_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{SPEC_NAME}.md)
-mcp__respec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_MARKDOWN)"""
+            return """PHASE_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{PHASE_NAME}.md)
+mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=PHASE_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
-            return """SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
-mcp__respec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.description)"""
+            return """SPEC_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
+mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=SPEC_RESULT.description)"""
         elif self.platform == PlatformType.GITHUB:
-            return """SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
-mcp__respec-ai__store_spec(project_name=PROJECT_NAME, spec_name=SPEC_NAME, spec_markdown=SPEC_RESULT.body)"""
+            return """SPEC_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
+mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=SPEC_RESULT.body)"""
         else:
             return """# Platform sync not configured"""
 
+    @computed_field
+    def mcp_tools_reference(self) -> str:
+        if not self._tool_extractor:
+            return ''
+
+        tool_names = [
+            'initialize_refinement_loop',
+            'decide_loop_next_action',
+            'store_document',
+            'get_document',
+            'link_loop_to_document',
+            'get_loop_status',
+            'get_feedback',
+            'store_project_plan',
+            'get_project_plan_markdown',
+        ]
+
+        try:
+            tool_docs = [self._tool_extractor.get_tool_documentation(name) for name in tool_names]
+            return ToolDocGenerator.generate_reference_section(tool_docs)
+        except Exception:
+            return ''
+
+    @computed_field
+    def initialize_refinement_loop_inline_doc(self) -> str:
+        if not self._tool_extractor:
+            return ''
+        try:
+            doc = self._tool_extractor.get_tool_documentation('initialize_refinement_loop')
+            return ToolDocGenerator.generate_inline_doc(doc)
+        except Exception:
+            return ''
+
+    @computed_field
+    def store_document_inline_doc(self) -> str:
+        if not self._tool_extractor:
+            return ''
+        try:
+            doc = self._tool_extractor.get_tool_documentation('store_document')
+            return ToolDocGenerator.generate_inline_doc(doc)
+        except Exception:
+            return ''
+
+    @computed_field
+    def link_loop_to_document_inline_doc(self) -> str:
+        if not self._tool_extractor:
+            return ''
+        try:
+            doc = self._tool_extractor.get_tool_documentation('link_loop_to_document')
+            return ToolDocGenerator.generate_inline_doc(doc)
+        except Exception:
+            return ''
+
 
 class PlanCommandTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.INITIALIZE_REFINEMENT_LOOP,
+        RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_PREVIOUS_ANALYSIS,
+        RespecAITool.STORE_CURRENT_ANALYSIS,
+        RespecAITool.STORE_PROJECT_PLAN,
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.CREATE_PLAN_COMPLETION_REPORT,
+        RespecAITool.STORE_PLAN_COMPLETION_REPORT,
+        RespecAITool.GET_PLAN_COMPLETION_REPORT_MARKDOWN,
+        RespecAITool.UPDATE_PLAN_COMPLETION_REPORT,
+    ]
+
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     create_project_external: str = Field(..., description='Platform-specific tool for creating external project')
     create_project_completion_external: str = Field(
@@ -215,6 +316,21 @@ class PlanCommandTools(BaseModel):
     )
     get_project_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
+
+    # Parameterized MCP tool invocations
+    initialize_analyst_loop: str = Field(..., description='Initialize analyst refinement loop')
+    store_plan: str = Field(..., description='Store strategic plan in MCP')
+    store_plan_in_loop: str = Field(..., description='Store plan in analyst loop')
+    get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')
+    decide_loop_action: str = Field(..., description='Decide next loop action')
+    store_completion_report: str = Field(..., description='Store plan completion report')
+
+    _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+
+    @classmethod
+    def initialize_tool_docs(cls, mcp: FastMCP) -> None:
+        cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
     def create_project_tool_interpolated(self) -> str:
@@ -276,62 +392,119 @@ EXCEPT:
 Display: "⚠️ Sync not configured for this platform - continuing without sync"
 """
 
+    @computed_field
+    def mcp_tools_reference(self) -> str:
+        if not self._tool_extractor:
+            return ''
+
+        tool_names = [
+            'initialize_refinement_loop',
+            'decide_loop_next_action',
+            'store_project_plan',
+            'get_project_plan_markdown',
+            'get_previous_analysis',
+            'store_plan_completion_report',
+        ]
+
+        try:
+            tool_docs = [self._tool_extractor.get_tool_documentation(name) for name in tool_names]
+            return ToolDocGenerator.generate_reference_section(tool_docs)
+        except Exception:
+            return ''
+
+    @computed_field
+    def initialize_refinement_loop_inline_doc(self) -> str:
+        if not self._tool_extractor:
+            return ''
+        try:
+            doc = self._tool_extractor.get_tool_documentation('initialize_refinement_loop')
+            return ToolDocGenerator.generate_inline_doc(doc)
+        except Exception:
+            return ''
+
 
 class CodeCommandTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.INITIALIZE_REFINEMENT_LOOP,
+        RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_USER_FEEDBACK,
+        RespecAITool.GET_FEEDBACK,
+    ]
+
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
-    get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    comment_spec_tool: str = Field(..., description='Platform-specific tool for commenting on specs')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
+    comment_phase_tool: str = Field(..., description='Platform-specific tool for commenting on specs')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
 
-    @computed_field
-    def get_spec_tool_interpolated(self) -> str:
-        if '*' not in self.get_spec_tool:
-            return self.get_spec_tool
-        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    # Parameterized MCP tool invocations
+    store_document: str = Field(..., description='Store task build plan')
+    store_phase_document: str = Field(..., description='Store phase specification in MCP')
+    get_phase_document: str = Field(..., description='Get phase specification')
+    initialize_planning_loop: str = Field(..., description='Initialize planning loop')
+    initialize_coding_loop: str = Field(..., description='Initialize coding loop')
+    decide_planning_action: str = Field(..., description='Decide planning loop action')
+    decide_coding_action: str = Field(..., description='Decide coding loop action')
+    store_user_feedback: str = Field(..., description='Store user feedback')
+    get_feedback: str = Field(..., description='Get latest feedback')
+    get_task_document: str = Field(..., description='Get task document')
+
+    _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+
+    @classmethod
+    def initialize_tool_docs(cls, mcp: FastMCP) -> None:
+        cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
-    def comment_spec_tool_interpolated(self) -> str:
-        if '*' not in self.comment_spec_tool:
-            return self.comment_spec_tool
-        return self.comment_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def get_phase_tool_interpolated(self) -> str:
+        if '*' not in self.get_phase_tool:
+            return self.get_phase_tool
+        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
-    def sync_spec_instructions(self) -> str:
+    def comment_phase_tool_interpolated(self) -> str:
+        if '*' not in self.comment_phase_tool:
+            return self.comment_phase_tool
+        return self.comment_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
+
+    @computed_field
+    def sync_phase_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
             return """TRY:
-  SPEC_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{SPEC_NAME}.md)
-  mcp__respec-ai__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
+  PHASE_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{PHASE_NAME}.md)
+  mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+    content=PHASE_MARKDOWN
   )
-  Display: "✓ Loaded spec '{SPEC_NAME}' from platform"
+  Display: "✓ Loaded spec '{PHASE_NAME}' from platform"
 EXCEPT:
   Display: "No existing spec found in platform"
 """
         elif self.platform == PlatformType.LINEAR:
             return """TRY:
-  SPEC_RESULT = mcp__linear-server__get_issue(spec_name=SPEC_NAME)
-  SPEC_MARKDOWN = SPEC_RESULT.description
-  mcp__respec-ai__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
+  SPEC_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
+  PHASE_MARKDOWN = SPEC_RESULT.description
+  mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+    content=PHASE_MARKDOWN
   )
-  Display: "✓ Loaded spec '{SPEC_NAME}' from platform"
+  Display: "✓ Loaded spec '{PHASE_NAME}' from platform"
 EXCEPT:
   Display: "No existing spec found in platform"
 """
         elif self.platform == PlatformType.GITHUB:
             return """TRY:
-  SPEC_RESULT = mcp__github__get_issue(issue_title=SPEC_NAME)
-  SPEC_MARKDOWN = SPEC_RESULT.body
-  mcp__respec-ai__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
+  SPEC_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
+  PHASE_MARKDOWN = SPEC_RESULT.body
+  mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+    content=PHASE_MARKDOWN
   )
-  Display: "✓ Loaded spec '{SPEC_NAME}' from platform"
+  Display: "✓ Loaded spec '{PHASE_NAME}' from platform"
 EXCEPT:
   Display: "No existing spec found in platform"
 """
@@ -340,16 +513,74 @@ EXCEPT:
 Display: "⚠️ Sync not configured for this platform - continuing without sync"
 """
 
+    @computed_field
+    def mcp_tools_reference(self) -> str:
+        if not self._tool_extractor:
+            return ''
+
+        tool_names = [
+            'initialize_refinement_loop',
+            'decide_loop_next_action',
+            'store_document',
+            'get_document',
+            'store_user_feedback',
+            'get_feedback',
+        ]
+
+        try:
+            tool_docs = [self._tool_extractor.get_tool_documentation(name) for name in tool_names]
+            return ToolDocGenerator.generate_reference_section(tool_docs)
+        except Exception:
+            return ''
+
+    @computed_field
+    def initialize_refinement_loop_inline_doc(self) -> str:
+        if not self._tool_extractor:
+            return ''
+        try:
+            doc = self._tool_extractor.get_tool_documentation('initialize_refinement_loop')
+            return ToolDocGenerator.generate_inline_doc(doc)
+        except Exception:
+            return ''
+
 
 class PlanRoadmapCommandTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.INITIALIZE_REFINEMENT_LOOP,
+        RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.CREATE_ROADMAP,
+        RespecAITool.GET_ROADMAP,
+        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.LIST_DOCUMENTS,
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+        RespecAITool.GET_FEEDBACK,
+    ]
+
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_project_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     update_project_plan_tool: str = Field(..., description='Platform-specific tool for updating project plans')
-    create_spec_tool: str = Field(..., description='Platform-specific tool for creating specs')
-    get_spec_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    update_spec_tool: str = Field(..., description='Platform-specific tool for updating specs')
-    list_project_specs_tool: str = Field(..., description='Platform-specific tool for listing project specs')
+    create_phase_tool: str = Field(..., description='Platform-specific tool for creating specs')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
+    update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project specs')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
+
+    # Parameterized MCP tool invocations
+    get_plan: str = Field(..., description='Get strategic plan')
+    initialize_loop: str = Field(..., description='Initialize roadmap loop')
+    create_roadmap: str = Field(..., description='Create roadmap in MCP')
+    decide_loop_action: str = Field(..., description='Decide loop action')
+    get_feedback: str = Field(..., description='Get latest feedback')
+    get_roadmap: str = Field(..., description='Get final roadmap')
+    list_documents: str = Field(..., description='List stored phase documents')
+    get_document: str = Field(..., description='Get phase document')
+
+    _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+
+    @classmethod
+    def initialize_tool_docs(cls, mcp: FastMCP) -> None:
+        cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
     def get_project_plan_tool_interpolated(self) -> str:
@@ -364,28 +595,28 @@ class PlanRoadmapCommandTools(BaseModel):
         return self.update_project_plan_tool.replace('*', '{project_name}')
 
     @computed_field
-    def create_spec_tool_interpolated(self) -> str:
-        if '*' not in self.create_spec_tool:
-            return self.create_spec_tool
-        return self.create_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def create_phase_tool_interpolated(self) -> str:
+        if '*' not in self.create_phase_tool:
+            return self.create_phase_tool
+        return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
-    def get_spec_tool_interpolated(self) -> str:
-        if '*' not in self.get_spec_tool:
-            return self.get_spec_tool
-        return self.get_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def get_phase_tool_interpolated(self) -> str:
+        if '*' not in self.get_phase_tool:
+            return self.get_phase_tool
+        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
-    def update_spec_tool_interpolated(self) -> str:
-        if '*' not in self.update_spec_tool:
-            return self.update_spec_tool
-        return self.update_spec_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def update_phase_tool_interpolated(self) -> str:
+        if '*' not in self.update_phase_tool:
+            return self.update_phase_tool
+        return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
-    def list_project_specs_tool_interpolated(self) -> str:
-        if '*' not in self.list_project_specs_tool:
-            return self.list_project_specs_tool
-        return self.list_project_specs_tool.replace('*', '{project_name}')
+    def list_project_phases_tool_interpolated(self) -> str:
+        if '*' not in self.list_project_phases_tool:
+            return self.list_project_phases_tool
+        return self.list_project_phases_tool.replace('*', '{project_name}')
 
     @computed_field
     def sync_project_plan_instructions(self) -> str:
@@ -430,105 +661,191 @@ Display: "⚠️ Sync not configured for this platform"
 """
 
     @computed_field
-    def sync_all_specs_instructions(self) -> str:
+    def sync_all_phases_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """SPECS_LOADED = 0
-SPEC_FILES = Glob(.respec-ai/projects/{PROJECT_NAME}/respec-phases/*.md)
-FOR each spec_file in SPEC_FILES:
-  SPEC_NAME = [extract filename without .md extension]
-  SPEC_MARKDOWN = Read(spec_file)
-  mcp__respec-ai__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
+            return """PHASES_LOADED = 0
+PHASE_FILES = Glob(.respec-ai/projects/{PROJECT_NAME}/respec-phases/*.md)
+FOR each phase_file in PHASE_FILES:
+  PHASE_NAME = [extract filename without .md extension]
+  PHASE_MARKDOWN = Read(phase_file)
+  mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+    content=PHASE_MARKDOWN
   )
-  SPECS_LOADED = SPECS_LOADED + 1
-Display: "✓ Loaded {SPECS_LOADED} specs from platform"
+  PHASES_LOADED = PHASES_LOADED + 1
+Display: "✓ Loaded {PHASES_LOADED} phases from platform"
 """
         elif self.platform == PlatformType.LINEAR:
-            return """SPECS_LOADED = 0
-SPEC_LIST = mcp__linear-server__list_issues(project_name=PROJECT_NAME, label="technical-specification")
-FOR each spec in SPEC_LIST:
-  SPEC_RESULT = mcp__linear-server__get_issue(issue_id=spec.id)
-  SPEC_MARKDOWN = SPEC_RESULT.description
-  SPEC_NAME = SPEC_RESULT.title
-  mcp__respec-ai__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
+            return """PHASES_LOADED = 0
+PHASE_LIST = mcp__linear-server__list_issues(project_name=PROJECT_NAME, label="phase")
+FOR each phase in PHASE_LIST:
+  PHASE_RESULT = mcp__linear-server__get_issue(issue_id=phase.id)
+  PHASE_MARKDOWN = PHASE_RESULT.description
+  PHASE_NAME = PHASE_RESULT.title
+  mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+    content=PHASE_MARKDOWN
   )
-  SPECS_LOADED = SPECS_LOADED + 1
-Display: "✓ Loaded {SPECS_LOADED} specs from platform"
+  PHASES_LOADED = PHASES_LOADED + 1
+Display: "✓ Loaded {PHASES_LOADED} phases from platform"
 """
         elif self.platform == PlatformType.GITHUB:
-            return """SPECS_LOADED = 0
-SPEC_LIST = mcp__github__list_issues(label="technical-specification")
-FOR each spec in SPEC_LIST:
-  SPEC_RESULT = mcp__github__get_issue(issue_number=spec.number)
-  SPEC_MARKDOWN = SPEC_RESULT.body
-  SPEC_NAME = SPEC_RESULT.title
-  mcp__respec-ai__store_spec(
-    project_name=PROJECT_NAME,
-    spec_name=SPEC_NAME,
-    spec_markdown=SPEC_MARKDOWN
+            return """PHASES_LOADED = 0
+PHASE_LIST = mcp__github__list_issues(label="phase")
+FOR each phase in PHASE_LIST:
+  PHASE_RESULT = mcp__github__get_issue(issue_number=phase.number)
+  PHASE_MARKDOWN = PHASE_RESULT.body
+  PHASE_NAME = PHASE_RESULT.title
+  mcp__respec-ai__store_document(
+    doc_type="phase",
+    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+    content=PHASE_MARKDOWN
   )
-  SPECS_LOADED = SPECS_LOADED + 1
-Display: "✓ Loaded {SPECS_LOADED} specs from platform"
+  PHASES_LOADED = PHASES_LOADED + 1
+Display: "✓ Loaded {PHASES_LOADED} phases from platform"
 """
         else:
             return """# Platform-specific sync not configured
-Display: "⚠️ Spec sync not configured for this platform"
+Display: "⚠️ Phase sync not configured for this platform"
 """
+
+    @computed_field
+    def mcp_tools_reference(self) -> str:
+        if not self._tool_extractor:
+            return ''
+
+        tool_names = [
+            'initialize_refinement_loop',
+            'decide_loop_next_action',
+            'get_feedback',
+            'get_project_plan_markdown',
+            'create_roadmap',
+            'get_roadmap',
+        ]
+
+        try:
+            tool_docs = [self._tool_extractor.get_tool_documentation(name) for name in tool_names]
+            return ToolDocGenerator.generate_reference_section(tool_docs)
+        except Exception:
+            return ''
+
+    @computed_field
+    def initialize_refinement_loop_inline_doc(self) -> str:
+        if not self._tool_extractor:
+            return ''
+        try:
+            doc = self._tool_extractor.get_tool_documentation('initialize_refinement_loop')
+            return ToolDocGenerator.generate_inline_doc(doc)
+        except Exception:
+            return ''
 
 
 class PlanRoadmapAgentTools(BaseModel):
-    create_spec_external: str = Field(..., description='Platform-specific tool for creating external specs')
+    create_phase_external: str = Field(..., description='Platform-specific tool for creating external specs')
 
     @computed_field
-    def create_spec_tool_interpolated(self) -> str:
-        if '*' not in self.create_spec_external:
-            return self.create_spec_external
-        return self.create_spec_external.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+    def create_phase_tool_interpolated(self) -> str:
+        if '*' not in self.create_phase_external:
+            return self.create_phase_external
+        return self.create_phase_external.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
 
 class PhaseArchitectAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.UPDATE_DOCUMENT,
+        RespecAITool.LINK_LOOP_TO_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.BASH, '~/.claude/scripts/research-advisor-archive-scan.sh:*'),
+        (BuiltInTool.GREP, ''),
+        (BuiltInTool.GLOB, ''),
+    ]
+
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_loop_status: str = Field(..., description='Get loop status for iteration check')
+    get_feedback: str = Field(..., description='Retrieve previous critic feedback')
+    get_document: str = Field(..., description='Retrieve current specification')
+    update_document: str = Field(..., description='Store complete specification')
 
 
 class PhaseCriticAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for spec length in characters')
+    get_document: str = Field(..., description='Retrieve specification via loop_id')
+    store_feedback: str = Field(..., description='Store critic feedback')
 
 
 class CreatePhaseAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_ROADMAP,
+        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.UPDATE_DOCUMENT,
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     create_phase_tool: str = Field(..., description='Platform-specific tool for creating external specs')
     get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
     update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    get_roadmap: str = Field(..., description='Retrieve complete roadmap from MCP')
+    store_document: str = Field(..., description='Store spec in MCP storage')
 
     @computed_field
     def create_phase_tool_interpolated(self) -> str:
         if '*' not in self.create_phase_tool:
             return self.create_phase_tool
         # Markdown: Write(.respec-ai/projects/*/respec-phases/*.md)
-        return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+        return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def get_phase_tool_interpolated(self) -> str:
         if '*' not in self.get_phase_tool:
             return self.get_phase_tool
         # Markdown: Read(.respec-ai/projects/*/respec-phases/*.md)
-        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def update_phase_tool_interpolated(self) -> str:
         if '*' not in self.update_phase_tool:
             return self.update_phase_tool
         # Markdown: Edit(.respec-ai/projects/*/respec-phases/*.md)
-        return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{spec_name}', 1)
+        return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
 
 class TaskCoderAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.WRITE, ''),
+        (BuiltInTool.EDIT, ''),
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+        (BuiltInTool.TODO_WRITE, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     update_task_status: str = Field(..., description='Platform-specific tool for updating task/issue status')
+    retrieve_task: str = Field(..., description='Retrieve build plan document')
+    retrieve_phase: str = Field(..., description='Retrieve phase specification')
+    retrieve_feedback: str = Field(..., description='Retrieve all feedback from coding loop')
 
     @computed_field
     def update_task_tool_interpolated(self) -> str:
@@ -536,3 +853,108 @@ class TaskCoderAgentTools(BaseModel):
             return self.update_task_status
         # Unlikely to have wildcards for task status updates, but handle just in case
         return self.update_task_status.replace('*', '{project_name}', 1)
+
+
+class AnalystCriticAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+        RespecAITool.GET_PREVIOUS_ANALYSIS,
+        RespecAITool.STORE_CURRENT_ANALYSIS,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_project_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    get_previous_analysis: str = Field(..., description='Get previous analysis iteration')
+    store_current_analysis: str = Field(..., description='Store current analysis results')
+
+
+class PlanAnalystAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+        RespecAITool.GET_PREVIOUS_ANALYSIS,
+        RespecAITool.STORE_CURRENT_ANALYSIS,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_project_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    get_previous_analysis: str = Field(..., description='Get previous analysis iteration')
+    store_current_analysis: str = Field(..., description='Store current analysis results')
+
+
+class PlanCriticAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_project_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+
+
+class RoadmapAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
+        RespecAITool.GET_LOOP_STATUS,
+        RespecAITool.GET_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_project_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    get_loop_status: str = Field(..., description='Get loop status for iteration check')
+    get_feedback: str = Field(..., description='Retrieve previous critic feedback')
+
+
+class RoadmapCriticAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_ROADMAP,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_roadmap: str = Field(..., description='Retrieve roadmap from MCP')
+    store_feedback: str = Field(..., description='Store critic feedback')
+
+
+class TaskCriticAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Phase document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and spec name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
+    store_feedback: str = Field(..., description='Store critic feedback in planning loop')
+
+
+class TaskReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Phase document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and spec name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
+    store_feedback: str = Field(..., description='Store code review feedback in coding loop')

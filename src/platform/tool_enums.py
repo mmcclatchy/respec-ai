@@ -1,47 +1,54 @@
 """Tool enums defining all valid tools across external platforms, built-in Claude Code tools, and respec-ai MCP tools."""
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ExternalPlatformTool(Enum):
+# Tool prefixes - defined outside classes to avoid being picked up as enum members
+_LINEAR_PREFIX = 'mcp__linear-server__'
+_GITHUB_PREFIX = 'mcp__github__'
+_RESPEC_AI_PREFIX = 'mcp__respec-ai__'
+_RESPEC_AGENT_PREFIX = 'respec-'
+
+
+class ExternalPlatformTool(StrEnum):
     # Linear Server Tools
-    LINEAR_CREATE_ISSUE = 'mcp__linear-server__create_issue'
-    LINEAR_GET_ISSUE = 'mcp__linear-server__get_issue'
-    LINEAR_UPDATE_ISSUE = 'mcp__linear-server__update_issue'
-    LINEAR_CREATE_COMMENT = 'mcp__linear-server__create_comment'
-    LINEAR_CREATE_PROJECT = 'mcp__linear-server__create_project'
-    LINEAR_GET_DOCUMENT = 'mcp__linear-server__get_document'
-    LINEAR_LIST_ISSUES = 'mcp__linear-server__list_issues'
-    LINEAR_LIST_DOCUMENTS = 'mcp__linear-server__list_documents'
-    LINEAR_GET_PROJECT = 'mcp__linear-server__get_project'
-    LINEAR_LIST_PROJECTS = 'mcp__linear-server__list_projects'
-    LINEAR_UPDATE_PROJECT = 'mcp__linear-server__update_project'
-    LINEAR_CREATE_PROJECT_LABEL = 'mcp__linear-server__create_project_label'
-    LINEAR_LIST_PROJECT_LABELS = 'mcp__linear-server__list_project_labels'
-    LINEAR_LIST_TEAMS = 'mcp__linear-server__list_teams'
-    LINEAR_GET_TEAM = 'mcp__linear-server__get_team'
-    LINEAR_LIST_USERS = 'mcp__linear-server__list_users'
-    LINEAR_GET_USER = 'mcp__linear-server__get_user'
-    LINEAR_LIST_CYCLES = 'mcp__linear-server__list_cycles'
-    LINEAR_LIST_ISSUE_STATUSES = 'mcp__linear-server__list_issue_statuses'
-    LINEAR_GET_ISSUE_STATUS = 'mcp__linear-server__get_issue_status'
-    LINEAR_LIST_ISSUE_LABELS = 'mcp__linear-server__list_issue_labels'
-    LINEAR_CREATE_ISSUE_LABEL = 'mcp__linear-server__create_issue_label'
-    LINEAR_LIST_COMMENTS = 'mcp__linear-server__list_comments'
-    LINEAR_SEARCH_DOCUMENTATION = 'mcp__linear-server__search_documentation'
+    LINEAR_CREATE_ISSUE = f'{_LINEAR_PREFIX}create_issue'
+    LINEAR_GET_ISSUE = f'{_LINEAR_PREFIX}get_issue'
+    LINEAR_UPDATE_ISSUE = f'{_LINEAR_PREFIX}update_issue'
+    LINEAR_CREATE_COMMENT = f'{_LINEAR_PREFIX}create_comment'
+    LINEAR_CREATE_PROJECT = f'{_LINEAR_PREFIX}create_project'
+    LINEAR_GET_DOCUMENT = f'{_LINEAR_PREFIX}get_document'
+    LINEAR_LIST_ISSUES = f'{_LINEAR_PREFIX}list_issues'
+    LINEAR_LIST_DOCUMENTS = f'{_LINEAR_PREFIX}list_documents'
+    LINEAR_GET_PROJECT = f'{_LINEAR_PREFIX}get_project'
+    LINEAR_LIST_PROJECTS = f'{_LINEAR_PREFIX}list_projects'
+    LINEAR_UPDATE_PROJECT = f'{_LINEAR_PREFIX}update_project'
+    LINEAR_CREATE_PROJECT_LABEL = f'{_LINEAR_PREFIX}create_project_label'
+    LINEAR_LIST_PROJECT_LABELS = f'{_LINEAR_PREFIX}list_project_labels'
+    LINEAR_LIST_TEAMS = f'{_LINEAR_PREFIX}list_teams'
+    LINEAR_GET_TEAM = f'{_LINEAR_PREFIX}get_team'
+    LINEAR_LIST_USERS = f'{_LINEAR_PREFIX}list_users'
+    LINEAR_GET_USER = f'{_LINEAR_PREFIX}get_user'
+    LINEAR_LIST_CYCLES = f'{_LINEAR_PREFIX}list_cycles'
+    LINEAR_LIST_ISSUE_STATUSES = f'{_LINEAR_PREFIX}list_issue_statuses'
+    LINEAR_GET_ISSUE_STATUS = f'{_LINEAR_PREFIX}get_issue_status'
+    LINEAR_LIST_ISSUE_LABELS = f'{_LINEAR_PREFIX}list_issue_labels'
+    LINEAR_CREATE_ISSUE_LABEL = f'{_LINEAR_PREFIX}create_issue_label'
+    LINEAR_LIST_COMMENTS = f'{_LINEAR_PREFIX}list_comments'
+    LINEAR_SEARCH_DOCUMENTATION = f'{_LINEAR_PREFIX}search_documentation'
 
     # GitHub Tools (placeholder - would be implemented when GitHub platform is added)
-    GITHUB_CREATE_ISSUE = 'mcp__github__create_issue'
-    GITHUB_GET_ISSUE = 'mcp__github__get_issue'
-    GITHUB_UPDATE_ISSUE = 'mcp__github__update_issue'
-    GITHUB_CREATE_COMMENT = 'mcp__github__create_comment'
-    GITHUB_CREATE_PROJECT = 'mcp__github__create_project'
-    GITHUB_GET_FILE = 'mcp__github__get_file'
-    GITHUB_UPDATE_FILE = 'mcp__github__update_file'
-    GITHUB_LIST_FILES = 'mcp__github__list_files'
+    GITHUB_CREATE_ISSUE = f'{_GITHUB_PREFIX}create_issue'
+    GITHUB_GET_ISSUE = f'{_GITHUB_PREFIX}get_issue'
+    GITHUB_UPDATE_ISSUE = f'{_GITHUB_PREFIX}update_issue'
+    GITHUB_CREATE_COMMENT = f'{_GITHUB_PREFIX}create_comment'
+    GITHUB_CREATE_PROJECT = f'{_GITHUB_PREFIX}create_project'
+    GITHUB_GET_FILE = f'{_GITHUB_PREFIX}get_file'
+    GITHUB_UPDATE_FILE = f'{_GITHUB_PREFIX}update_file'
+    GITHUB_LIST_FILES = f'{_GITHUB_PREFIX}list_files'
 
 
-class BuiltInTool(Enum):
+class BuiltInTool(StrEnum):
     # File Operations
     READ = 'Read'
     WRITE = 'Write'
@@ -71,65 +78,57 @@ class BuiltInTool(Enum):
     SLASH_COMMAND = 'SlashCommand'
 
 
-class RespecAITool(Enum):
+class RespecAITool(StrEnum):
     # Loop Management Tools
-    INITIALIZE_REFINEMENT_LOOP = 'mcp__respec-ai__initialize_refinement_loop'
-    DECIDE_LOOP_NEXT_ACTION = 'mcp__respec-ai__decide_loop_next_action'
-    GET_LOOP_STATUS = 'mcp__respec-ai__get_loop_status'
-    LIST_ACTIVE_LOOPS = 'mcp__respec-ai__list_active_loops'
-    GET_LOOP_FEEDBACK_SUMMARY = 'mcp__respec-ai__get_loop_feedback_summary'
-    GET_LOOP_IMPROVEMENT_ANALYSIS = 'mcp__respec-ai__get_loop_improvement_analysis'
-    GET_PREVIOUS_OBJECTIVE_FEEDBACK = 'mcp__respec-ai__get_previous_objective_feedback'
-    STORE_CURRENT_OBJECTIVE_FEEDBACK = 'mcp__respec-ai__store_current_objective_feedback'
+    INITIALIZE_REFINEMENT_LOOP = f'{_RESPEC_AI_PREFIX}initialize_refinement_loop'
+    DECIDE_LOOP_NEXT_ACTION = f'{_RESPEC_AI_PREFIX}decide_loop_next_action'
+    GET_LOOP_STATUS = f'{_RESPEC_AI_PREFIX}get_loop_status'
+    LIST_ACTIVE_LOOPS = f'{_RESPEC_AI_PREFIX}list_active_loops'
+    GET_LOOP_FEEDBACK_SUMMARY = f'{_RESPEC_AI_PREFIX}get_loop_feedback_summary'
+    GET_LOOP_IMPROVEMENT_ANALYSIS = f'{_RESPEC_AI_PREFIX}get_loop_improvement_analysis'
 
     # Feedback Management Tools
-    STORE_CRITIC_FEEDBACK = 'mcp__respec-ai__store_critic_feedback'
-    STORE_USER_FEEDBACK = 'mcp__respec-ai__store_user_feedback'
-    GET_FEEDBACK = 'mcp__respec-ai__get_feedback'
-    STORE_CURRENT_ANALYSIS = 'mcp__respec-ai__store_current_analysis'
-    GET_PREVIOUS_ANALYSIS = 'mcp__respec-ai__get_previous_analysis'
+    STORE_CRITIC_FEEDBACK = f'{_RESPEC_AI_PREFIX}store_critic_feedback'
+    STORE_USER_FEEDBACK = f'{_RESPEC_AI_PREFIX}store_user_feedback'
+    GET_FEEDBACK = f'{_RESPEC_AI_PREFIX}get_feedback'
+    STORE_CURRENT_ANALYSIS = f'{_RESPEC_AI_PREFIX}store_current_analysis'
+    GET_PREVIOUS_ANALYSIS = f'{_RESPEC_AI_PREFIX}get_previous_analysis'
 
     # Project Plan Tools
-    CREATE_PROJECT_PLAN = 'mcp__respec-ai__create_project_plan'
-    STORE_PROJECT_PLAN = 'mcp__respec-ai__store_project_plan'
-    GET_PROJECT_PLAN_MARKDOWN = 'mcp__respec-ai__get_project_plan_markdown'
-    LIST_PROJECT_PLANS = 'mcp__respec-ai__list_project_plans'
-    DELETE_PROJECT_PLAN = 'mcp__respec-ai__delete_project_plan'
+    CREATE_PROJECT_PLAN = f'{_RESPEC_AI_PREFIX}create_project_plan'
+    STORE_PROJECT_PLAN = f'{_RESPEC_AI_PREFIX}store_project_plan'
+    GET_PROJECT_PLAN_MARKDOWN = f'{_RESPEC_AI_PREFIX}get_project_plan_markdown'
+    LIST_PROJECT_PLANS = f'{_RESPEC_AI_PREFIX}list_project_plans'
+    DELETE_PROJECT_PLAN = f'{_RESPEC_AI_PREFIX}delete_project_plan'
 
     # Roadmap Management Tools
-    CREATE_ROADMAP = 'mcp__respec-ai__create_roadmap'
-    GET_ROADMAP = 'mcp__respec-ai__get_roadmap'
+    CREATE_ROADMAP = f'{_RESPEC_AI_PREFIX}create_roadmap'
+    GET_ROADMAP = f'{_RESPEC_AI_PREFIX}get_roadmap'
 
-    # Spec Management Tools
-    GET_SPEC_MARKDOWN = 'mcp__respec-ai__get_spec_markdown'
-    STORE_SPEC = 'mcp__respec-ai__store_spec'
-    UPDATE_SPEC = 'mcp__respec-ai__update_spec'
-    LIST_SPECS = 'mcp__respec-ai__list_specs'
-    DELETE_SPEC = 'mcp__respec-ai__delete_spec'
-    LINK_LOOP_TO_SPEC = 'mcp__respec-ai__link_loop_to_spec'
-    UNLINK_LOOP = 'mcp__respec-ai__unlink_loop'
-
-    # Build Plan Tools
-    STORE_PHASE = 'mcp__respec-ai__store_phase'
-    GET_PHASE_MARKDOWN = 'mcp__respec-ai__get_phase_markdown'
-    LIST_PHASES = 'mcp__respec-ai__list_phases'
-    DELETE_PHASE = 'mcp__respec-ai__delete_phase'
+    # Document Management Tools (Generic)
+    STORE_DOCUMENT = f'{_RESPEC_AI_PREFIX}store_document'
+    GET_DOCUMENT = f'{_RESPEC_AI_PREFIX}get_document'
+    LIST_DOCUMENTS = f'{_RESPEC_AI_PREFIX}list_documents'
+    UPDATE_DOCUMENT = f'{_RESPEC_AI_PREFIX}update_document'
+    DELETE_DOCUMENT = f'{_RESPEC_AI_PREFIX}delete_document'
+    LINK_LOOP_TO_DOCUMENT = f'{_RESPEC_AI_PREFIX}link_loop_to_document'
 
     # Plan Completion Report Tools
-    CREATE_PLAN_COMPLETION_REPORT = 'mcp__respec-ai__create_plan_completion_report'
-    STORE_PLAN_COMPLETION_REPORT = 'mcp__respec-ai__store_plan_completion_report'
-    GET_PLAN_COMPLETION_REPORT_MARKDOWN = 'mcp__respec-ai__get_plan_completion_report_markdown'
-    UPDATE_PLAN_COMPLETION_REPORT = 'mcp__respec-ai__update_plan_completion_report'
-    LIST_PLAN_COMPLETION_REPORTS = 'mcp__respec-ai__list_plan_completion_reports'
-    DELETE_PLAN_COMPLETION_REPORT = 'mcp__respec-ai__delete_plan_completion_report'
+    CREATE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}create_plan_completion_report'
+    STORE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}store_plan_completion_report'
+    GET_PLAN_COMPLETION_REPORT_MARKDOWN = f'{_RESPEC_AI_PREFIX}get_plan_completion_report_markdown'
+    UPDATE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}update_plan_completion_report'
+    LIST_PLAN_COMPLETION_REPORTS = f'{_RESPEC_AI_PREFIX}list_plan_completion_reports'
+    DELETE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}delete_plan_completion_report'
 
 
-class AbstractOperation(Enum):
-    # Spec Management Operations
-    CREATE_SPEC_TOOL = 'create_spec_tool'
-    GET_SPEC_TOOL = 'get_spec_tool'
-    UPDATE_SPEC_TOOL = 'update_spec_tool'
-    COMMENT_SPEC_TOOL = 'comment_spec_tool'
+class AbstractOperation(StrEnum):
+    # Phase Management Operations
+    CREATE_PHASE_TOOL = 'create_phase_tool'
+    GET_PHASE_TOOL = 'get_phase_tool'
+    UPDATE_PHASE_TOOL = 'update_phase_tool'
+    COMMENT_PHASE_TOOL = 'comment_phase_tool'
+    LIST_PROJECT_PHASES_TOOL = 'list_project_phases_tool'
 
     # Project Management Operations
     CREATE_PROJECT_EXTERNAL = 'create_project_external'
@@ -139,11 +138,32 @@ class AbstractOperation(Enum):
     GET_PROJECT_PLAN_TOOL = 'get_project_plan_tool'
     UPDATE_PROJECT_PLAN_TOOL = 'update_project_plan_tool'
 
-    # Spec Listing Operations
-    LIST_PROJECT_SPECS_TOOL = 'list_project_specs_tool'
+
+class RespecAIAgent(StrEnum):
+    # Phase workflow agents
+    PHASE_ARCHITECT = f'{_RESPEC_AGENT_PREFIX}phase-architect'
+    PHASE_CRITIC = f'{_RESPEC_AGENT_PREFIX}phase-critic'
+
+    # Plan workflow agents
+    PLAN_CONVERSATION = f'{_RESPEC_AGENT_PREFIX}plan-conversation'
+    PLAN_CRITIC = f'{_RESPEC_AGENT_PREFIX}plan-critic'
+    PLAN_ANALYST = f'{_RESPEC_AGENT_PREFIX}plan-analyst'
+    ANALYST_CRITIC = f'{_RESPEC_AGENT_PREFIX}analyst-critic'
+
+    # Code workflow agents
+    PHASE_PLANNER = f'{_RESPEC_AGENT_PREFIX}phase-planner'
+    TASK_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-critic'
+    TASK_CODER = f'{_RESPEC_AGENT_PREFIX}task-coder'
+    TASK_REVIEWER = f'{_RESPEC_AGENT_PREFIX}task-reviewer'
+    RESEARCH_SYNTHESIZER = f'{_RESPEC_AGENT_PREFIX}research-synthesizer'
+
+    # Roadmap workflow agents
+    ROADMAP = f'{_RESPEC_AGENT_PREFIX}roadmap'
+    ROADMAP_CRITIC = f'{_RESPEC_AGENT_PREFIX}roadmap-critic'
+    CREATE_PHASE = f'{_RESPEC_AGENT_PREFIX}create-phase'
 
 
-class CommandTemplate(Enum):
+class RespecAICommand(StrEnum):
     PLAN = 'respec-plan'
     PHASE = 'respec-phase'
     CODE = 'respec-code'

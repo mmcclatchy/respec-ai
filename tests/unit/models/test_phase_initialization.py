@@ -1,5 +1,6 @@
 import pytest
-from src.models.enums import SpecStatus
+
+from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 
 
@@ -38,7 +39,7 @@ class TestInitialSpecParsing:
         assert spec.scope == 'Login, logout, password reset functionality'
         assert spec.dependencies == 'Database, encryption library'
         assert spec.deliverables == 'Working authentication system'
-        assert spec.spec_status == SpecStatus.DRAFT
+        assert spec.phase_status == PhaseStatus.DRAFT
 
     def test_initial_spec_generates_8_char_id(self) -> None:
         spec = Phase(
@@ -47,7 +48,7 @@ class TestInitialSpecParsing:
             scope='Test scope',
             dependencies='None',
             deliverables='Test deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         assert len(spec.id) == 8
@@ -60,7 +61,7 @@ class TestInitialSpecParsing:
             scope='Test scope',
             dependencies='Test dependencies',
             deliverables='Test deliverables',
-            spec_status=SpecStatus.DRAFT,
+            phase_status=PhaseStatus.DRAFT,
         )
 
         markdown = spec.build_markdown()
@@ -84,7 +85,7 @@ class TestInitialSpecParsing:
         assert original_spec.scope == reparsed_spec.scope
         assert original_spec.dependencies == reparsed_spec.dependencies
         assert original_spec.deliverables == reparsed_spec.deliverables
-        assert original_spec.spec_status == reparsed_spec.spec_status
+        assert original_spec.phase_status == reparsed_spec.phase_status
 
 
 class TestInitialSpecUtilities:

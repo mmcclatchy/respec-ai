@@ -329,6 +329,16 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def store_current_analysis(loop_id: str, analysis: str, ctx: Context) -> MCPResponse:
+        """Store current analysis for the analyst validation loop.
+
+        Stores business objectives analysis from plan-analyst for review by analyst-critic.
+
+        Parameters:
+        - loop_id (str): Analyst loop ID to store analysis for
+        - analysis (str): Analysis markdown content
+
+        Returns: MCPResponse with confirmation
+        """
         await ctx.info(f'Storing analysis for loop {loop_id}')
         try:
             result = await feedback_tools.store_current_analysis(loop_id, analysis)
@@ -343,6 +353,16 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def get_previous_analysis(loop_id: str, ctx: Context) -> MCPResponse:
+        """Retrieve previous analysis from the analyst validation loop.
+
+        Gets the most recent business objectives analysis stored by plan-analyst
+        for quality validation by analyst-critic.
+
+        Parameters:
+        - loop_id (str): Analyst loop ID to retrieve analysis from
+
+        Returns: MCPResponse containing the analysis markdown
+        """
         await ctx.info(f'Retrieving previous analysis for loop {loop_id}')
         try:
             result = await feedback_tools.get_previous_analysis(loop_id)

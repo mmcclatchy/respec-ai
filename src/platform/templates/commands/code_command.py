@@ -4,43 +4,52 @@ from src.platform.models import CodeCommandTools
 def generate_code_command_template(tools: CodeCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [project-name] [spec-name]
-description: Transform technical specifications into production-ready code through parallel research, implementation planning, and TDD development
+argument-hint: [project-name] [phase-name]
+description: Transform Phases into production-ready code through parallel research, implementation planning, and TDD development
 ---
 
 # /respec-code Command: Implementation Orchestration
 
 ## Overview
-Orchestrate the complete implementation workflow, transforming technical specifications into production-ready code through parallel research synthesis, implementation planning, and TDD-driven code development with comprehensive quality validation.
+Orchestrate the complete implementation workflow, transforming Phases into production-ready code through parallel research synthesis, implementation planning, and TDD-driven code development with comprehensive quality validation.
+
+{tools.mcp_tools_reference}
 
 ## Workflow Steps
 
-### 1. Extract Command Arguments and Locate Spec File
+### 1. Extract Command Arguments and Locate Phase File
 
-Parse command arguments and locate spec file using partial name:
+Parse command arguments and locate phase file using partial name:
+
+#### Step 1.1: Parse arguments
 
 ```text
-# Step 1.1: Parse arguments
 PROJECT_NAME = [first argument from command - the project name]
-SPEC_NAME_PARTIAL = [second argument from command - partial spec name]
+PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
+```
 
-# Step 1.2: Search file system for matching spec files
-SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{SPEC_NAME_PARTIAL}}*.md"
+#### Step 1.2: Search file system for matching phase files
+
+```text
+SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{PHASE_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
+```
 
-# Step 1.3: Handle multiple matches
+#### Step 1.3: Handle multiple matches
+
+```text
 IF count(SPEC_FILE_MATCHES) == 0:
-  ERROR: "No specification files found matching '{{SPEC_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the spec name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
+  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
+  SUGGEST: "Verify the phase name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
   SPEC_FILE_PATH = SPEC_FILE_MATCHES[0]
 
 ELSE:
-  # Multiple matches - use interactive selection
+  (Multiple matches - use interactive selection)
   Use AskUserQuestion tool to present options:
-    Question: "Multiple spec files match '{{SPEC_NAME_PARTIAL}}'. Which one do you want to use?"
+    Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
     Header: "Select Spec"
     multiSelect: false
     Options: [
@@ -56,56 +65,56 @@ ELSE:
     ]
 
   SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
+```
 
-# Step 1.4: Extract canonical name from file path
-SPEC_NAME = [basename of SPEC_FILE_PATH without .md extension]
+#### Step 1.4: Extract canonical name from file path
 
-Display to user: "✓ Located spec file: {{SPEC_NAME}}"
+```text
+PHASE_NAME = [basename of SPEC_FILE_PATH without .md extension]
+
+Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 ```
 
 **Important**:
-- SPEC_NAME_PARTIAL is the user input (e.g., "phase-2a")
-- SPEC_NAME is the canonical name extracted from file path
+- PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
+- PHASE_NAME is the canonical name extracted from file path
 - PROJECT_NAME is used for all MCP storage operations
-- All subsequent operations use SPEC_NAME (canonical)
+- All subsequent operations use PHASE_NAME (canonical)
 
 ### 2. Load and Store Existing Spec
 
-Load spec from file system, store in MCP:
+Load phase from file system, store in MCP:
+
+#### Step 2.1: Read phase using canonical name
 
 ```text
-# Step 2.1: Read spec using canonical name
-SPEC_MARKDOWN = Read({{SPEC_FILE_PATH}})
+PHASE_MARKDOWN = Read({{SPEC_FILE_PATH}})
+```
 
-# Step 2.2: Store in MCP using canonical spec name
-mcp__respec-ai__store_document(
-  doc_type="phase",
-  path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}",
-  content=SPEC_MARKDOWN
-)
+#### Step 2.2: Store in MCP using canonical phase name
 
-Display to user: "✓ Loaded existing spec: {{SPEC_NAME}}"
+```text
+{tools.store_phase_document}
+
+Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
 ```
 
 **Important**:
 - SPEC_FILE_PATH is the full path from Step 1
-- SPEC_NAME is the canonical name extracted from file path
-- Spec is now in MCP storage for build workflow
+- PHASE_NAME is the canonical name extracted from file path
+- Phase is now in MCP storage for build workflow
 
 **Note**: Build plans are not stored in external platforms - they only exist in MCP during the build workflow.
 
-### 4. Specification Retrieval and Validation
+### 4. Phase Retrieval and Validation
 Retrieve and validate completed Phase from /respec-phase command:
 
 #### Retrieve Phase
 ```text
-TECHNICAL_SPEC = mcp__respec-ai__get_document(
-    doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}"
-)
-IF TECHNICAL_SPEC not found:
-  ERROR: "No technical specification found: [SPEC_NAME]"
-  SUGGEST: "Run '/respec-phase [PROJECT_NAME] [SPEC_NAME]' to create technical specification first"
+TECHNICAL_PHASE = {tools.get_phase_document}
+IF TECHNICAL_PHASE not found:
+  ERROR: "No Phase found: [PHASE_NAME]"
+  SUGGEST: "Run '/respec-phase [PROJECT_NAME] [PHASE_NAME]' to create Phase first"
   EXIT: Graceful failure with guidance
 
 SPEC_OBJECTIVES = [Extract from Phase Objectives section]
@@ -146,11 +155,9 @@ Collect: COMPLETE_DOCUMENTATION_PATHS = [All paths from existing docs + research
 Set up and execute MCP-managed planning quality refinement:
 
 #### Initialize Planning Loop
+{tools.initialize_refinement_loop_inline_doc}
 ```text
-PLANNING_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(
-    project_name=PROJECT_NAME,
-    loop_type='task'
-)
+PLANNING_LOOP_ID = {tools.initialize_planning_loop}
 
 State to maintain:
 - planning_loop_id: For Phase storage and retrieval
@@ -158,11 +165,11 @@ State to maintain:
 
 #### Planning Refinement Cycle
 ```text
-Invoke build-planner agent with:
+Invoke task-planner agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - research_file_paths: {{COMPLETE_DOCUMENTATION_PATHS}}
 - project_name: {{PROJECT_NAME}}
-- spec_name: {{SPEC_NAME}}
+- phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
 1. Read .respec-ai/coding-standards.md (if exists)
@@ -183,7 +190,7 @@ Expected: Phase stored in MCP with planning_loop_id
 Invoke task-critic agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - project_name: {{PROJECT_NAME}}
-- spec_name: {{SPEC_NAME}}
+- phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
 1. Retrieve Phase via MCP
@@ -200,7 +207,7 @@ Expected: CriticFeedback with Overall Score stored in MCP
 
 #### MCP Planning Decision
 ```text
-PLANNING_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=PLANNING_LOOP_ID)
+PLANNING_DECISION_RESPONSE = {tools.decide_planning_action}
 PLANNING_DECISION = PLANNING_DECISION_RESPONSE.status
 
 Note: MCP Server retrieves latest score from task-critic feedback internally.
@@ -213,22 +220,24 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 **Follow PLANNING_DECISION exactly. Do not override based on score assessment.**
 
-#### If PLANNING_DECISION == "refine"
-Re-invoke build-planner agent (same parameters).
-Re-invoke task-critic agent.
-Call MCP decision again.
+```text
+IF PLANNING_DECISION == "refine":
+  Re-invoke task-planner agent (same parameters).
+  Re-invoke task-critic agent.
+  Call MCP decision again.
 
-#### If PLANNING_DECISION == "complete"
-Proceed to Step 8.
+ELIF PLANNING_DECISION == "complete":
+  Proceed to Step 8.
 
-#### If PLANNING_DECISION == "user_input"
-Retrieve Phase and feedback (count=2).
-Present PLAN_QUALITY_SCORE, Key Issues, and Recommendations to user.
-Request technical guidance (approach preferences, strategies, accept/proceed).
-Store user feedback: mcp__respec-ai__store_user_feedback(PLANNING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
-Re-invoke build-planner agent.
-Re-invoke task-critic agent.
-Call MCP decision again.
+ELIF PLANNING_DECISION == "user_input":
+  Retrieve Phase and feedback (count=2).
+  Present PLAN_QUALITY_SCORE, Key Issues, and Recommendations to user.
+  Request technical guidance (approach preferences, strategies, accept/proceed).
+  Store user feedback: {tools.store_user_feedback})
+  Re-invoke task-planner agent.
+  Re-invoke task-critic agent.
+  Call MCP decision again.
+```
 
 ### 7.5. Process Architectural Override Proposals
 
@@ -236,21 +245,20 @@ Call MCP decision again.
 
 After planning decision is "complete", check for architectural override proposals:
 
+Retrieve Phase to check for override proposals:
 ```text
-# Retrieve Phase to check for override proposals
-PHASE_MARKDOWN = mcp__respec-ai__get_document(
-    doc_type="task",
-    loop_id=PLANNING_LOOP_ID
-)
+PHASE_MARKDOWN = {tools.get_task_document}
+```
 
-# Check if Phase contains "Architectural Override Proposals" section
+Check if Phase contains "Architectural Override Proposals" section:
+```text
 IF PHASE_MARKDOWN contains "## Architectural Override Proposals" section:
-  # Extract override proposals content
+  (Extract override proposals content)
   OVERRIDE_PROPOSALS = [Extract content from "## Architectural Override Proposals" section]
 
-  # Check if section has actual content (not just header)
+  (Check if section has actual content - not just header)
   IF OVERRIDE_PROPOSALS is not empty AND not just placeholder text:
-    # STOP build workflow - architectural changes require user approval
+    (STOP build workflow - architectural changes require user approval)
 
     Display to user:
     "⚠️ Build-planner has identified potential architecture improvements.
@@ -259,16 +267,16 @@ IF PHASE_MARKDOWN contains "## Architectural Override Proposals" section:
 
     This requires updating Phase. Choose action:
     1. Approve proposal → Re-run /respec-phase to update architecture
-    2. Reject proposal → Continue with current spec as-is
+    2. Reject proposal → Continue with current phase as-is
     3. Modify proposal → Adjust and re-run /respec-phase
 
     Build workflow paused until Phase updated.
 
     To approve and update:
-      /respec-phase {{PROJECT_NAME}} {{SPEC_NAME}} \"[your instructions based on proposal]\"
+      /respec-phase {{PROJECT_NAME}} {{PHASE_NAME}} \"[your instructions based on proposal]\"
 
-    To reject and proceed with current spec:
-      Re-run /respec-code {{PROJECT_NAME}} {{SPEC_NAME}} --ignore-overrides"
+    To reject and proceed with current phase:
+      Re-run /respec-code {{PROJECT_NAME}} {{PHASE_NAME}} --ignore-overrides"
 
     EXIT: Workflow suspended pending user decision
   ELSE:
@@ -284,20 +292,20 @@ ELSE:
 - Build-planner is a subagent with NO user interaction capability
 - Architectural changes MUST route through /respec-phase workflow
 - Phase must remain consistent across refinement loop passes
-- Any changes to architecture, technology stack, or design decisions require spec update
-- If user rejects override, build-planner proceeds with original spec constraints
+- Any changes to architecture, technology stack, or design decisions require phase update
+- If user rejects override, task-planner proceeds with original phase constraints
 
 **Override Proposal Format** (in Phase):
 ```markdown
 ## Architectural Override Proposals
 
-**Current Spec Decision**: [What spec currently specifies]
-**Proposed Change**: [What build-planner recommends instead]
+**Current Phase Decision**: [What phase currently specifies]
+**Proposed Change**: [What task-planner recommends instead]
 
 **Justification**:
 - Research: [Evidence from documentation/research that supports change]
-- Trade-off: [Why original spec concern no longer applies]
-- Impact: [Which spec sections would need updating]
+- Trade-off: [Why original phase concern no longer applies]
+- Impact: [Which phase sections would need updating]
 
 **Next Action Required**: User must approve/reject via /respec-phase
 ```
@@ -307,10 +315,7 @@ Set up and execute MCP-managed code quality refinement:
 
 #### Initialize Coding Loop
 ```text
-CODING_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(
-    project_name=PROJECT_NAME,
-    loop_type='task'
-)
+CODING_LOOP_ID = {tools.initialize_coding_loop}
 
 State to maintain (CRITICAL - TWO loop IDs):
 - planning_loop_id: For retrieving Phase
@@ -323,7 +328,7 @@ Invoke task-coder agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
 - project_name: {{PROJECT_NAME}}
-- spec_name: {{SPEC_NAME}}
+- phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
 1. Read .respec-ai/coding-standards.md (if exists, otherwise use Phase Code Standards)
@@ -353,7 +358,7 @@ Invoke task-reviewer agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
 - project_name: {{PROJECT_NAME}}
-- spec_name: {{SPEC_NAME}}
+- phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
 1. Retrieve Phase via MCP using planning_loop_id
@@ -373,7 +378,7 @@ Expected: CriticFeedback with Overall Score and test results stored in MCP
 
 #### MCP Coding Decision
 ```text
-CODING_DECISION_RESPONSE = mcp__respec-ai__decide_loop_next_action(loop_id=CODING_LOOP_ID)
+CODING_DECISION_RESPONSE = {tools.decide_coding_action}
 CODING_DECISION = CODING_DECISION_RESPONSE.status
 
 Note: MCP Server retrieves latest score from task-reviewer feedback internally.
@@ -386,34 +391,36 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 **Follow CODING_DECISION exactly. Do not override based on score assessment.**
 
-#### If CODING_DECISION == "refine"
-Re-invoke task-coder agent (same parameters).
-Re-invoke task-reviewer agent.
-Call MCP decision again.
+```text
+IF CODING_DECISION == "refine":
+  Re-invoke task-coder agent (same parameters).
+  Re-invoke task-reviewer agent.
+  Call MCP decision again.
 
-#### If CODING_DECISION == "complete"
-Proceed to Step 10.
+ELIF CODING_DECISION == "complete":
+  Proceed to Step 10.
 
-#### If CODING_DECISION == "user_input"
-Retrieve Phase and feedback (count=2).
-Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
-Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
-Store user feedback: mcp__respec-ai__store_user_feedback(CODING_LOOP_ID, USER_FEEDBACK_MARKDOWN)
-Re-invoke task-coder agent.
-Re-invoke task-reviewer agent.
-Call MCP decision again.
+ELIF CODING_DECISION == "user_input":
+  Retrieve Phase and feedback (count=2).
+  Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
+  Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
+  Store user feedback: {tools.store_user_feedback})
+  Re-invoke task-coder agent.
+  Re-invoke task-reviewer agent.
+  Call MCP decision again.
+```
 
 ### 10. Integration & Documentation
-Complete implementation workflow and update specification:
+Complete implementation workflow and update Phase:
 
 #### Generate Implementation Summary
 ```text
 Retrieve final state:
-- Phase: mcp__respec-ai__get_document(doc_type="task", loop_id=PLANNING_LOOP_ID)
-- Final Feedback: mcp__respec-ai__get_feedback(CODING_LOOP_ID, count=1)
+- Phase: {tools.get_task_document})
+- Final Feedback: {tools.get_feedback})
 
 Generate IMPLEMENTATION_SUMMARY including:
-- Build Plan Quality Score: {{PLAN_QUALITY_SCORE}}%
+- Task Plan Quality Score: {{PLAN_QUALITY_SCORE}}%
 - Code Quality Score: {{CODE_QUALITY_SCORE}}%
 - Test Results: {{TEST_RESULTS from CriticFeedback}}
 - Coverage: {{COVERAGE_PERCENTAGE}}%
@@ -423,11 +430,7 @@ Generate IMPLEMENTATION_SUMMARY including:
 
 #### Update Phase
 ```text
-Update specification status and implementation details using mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{SPEC_NAME}}",
-    content=updated_spec_markdown
-):
+Update Phase status and implementation details using {tools.store_phase_document}:
 
 Status: "IMPLEMENTED"
 Implementation Summary: {{IMPLEMENTATION_SUMMARY}}
@@ -440,9 +443,9 @@ Implementation Date: {{CURRENT_DATE}}
 #### Report Completion
 ```text
 Present final summary:
-"✓ Implementation complete for {{SPEC_NAME}}
+"✓ Implementation complete for {{PHASE_NAME}}
 
-Build Planning:
+Task Planning:
 - Quality Score: {{PLAN_QUALITY_SCORE}}%
 - Iterations: {{PLANNING_ITERATION_COUNT}}
 
@@ -458,14 +461,14 @@ Implementation artifacts:
 - Phase: Available via planning_loop_id={{PLANNING_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
-- Spec Status: Updated via mcp__respec-ai__store_document
+- Phase Status: Updated via {tools.store_phase_document}
 
 Ready for deployment."
 ```
 
-## Spec Name Normalization Rules
+## Phase Name Normalization Rules
 
-**IMPORTANT:** Spec names are automatically normalized to kebab-case:
+**IMPORTANT:** Phase names are automatically normalized to kebab-case:
 
 **File System → MCP Normalization:**
 - Convert to lowercase: `Phase-1` → `phase-1`
@@ -474,12 +477,12 @@ Ready for deployment."
 - Collapse multiple hyphens: `phase--1` → `phase-1`
 - Strip leading/trailing hyphens: `-phase-1-` → `phase-1`
 
-**Critical:** The H1 header in spec markdown MUST match the normalized file name:
+**Critical:** The H1 header in phase markdown MUST match the normalized file name:
 - File: `phase-2a-neo4j-schema-and-llama-index-integration.md`
-- H1 header: `# Technical Specification: phase-2a-neo4j-schema-and-llama-index-integration`
+- H1 header: `# Phase: phase-2a-neo4j-schema-and-llama-index-integration`
 - Mismatch will cause storage/retrieval failures
 
-**Build agents:** Use normalized spec names when retrieving specifications via MCP.
+**Build agents:** Use normalized phase names when retrieving Phases via MCP.
 
 ## Quality Gates
 
@@ -495,7 +498,7 @@ Ready for deployment."
 1. Plan Completeness: All sections populated with substantive content
 2. Phase Alignment: Matches objectives, scope, architecture
 3. Test Strategy Clarity: TDD approach and test organization defined
-4. Implementation Sequence Logic: Dependencies respec-aited, phases logical
+4. Implementation Sequence Logic: Dependencies respected, phases logical
 5. Technology Appropriateness: Stack suitable for requirements
 
 **Code Quality Assessment Criteria**:
@@ -514,8 +517,8 @@ Note: Loop decisions determined by MCP Server based on scoring and configuration
 
 #### Phase Not Available
 ```text
-Display: "No technical specification found: [SPEC_NAME]"
-Suggest: "/respec-phase [PROJECT_NAME] [SPEC_NAME] to create technical specification"
+Display: "No Phase found: [PHASE_NAME]"
+Suggest: "/respec-phase [PROJECT_NAME] [PHASE_NAME] to create Phase"
 Exit gracefully with guidance
 ```
 
@@ -530,7 +533,7 @@ IF some research-synthesizer agents fail:
 
 #### Planning Loop Failures
 ```text
-IF build-planner fails:
+IF task-planner fails:
   Retry once with simplified context
   Create minimal Phase from Phase
   Note limitations and suggest manual review
@@ -577,7 +580,7 @@ The command maintains orchestration focus by:
 - **Providing error recovery** without detailed implementation guidance
 
 All specialized work delegated to appropriate agents:
-- **build-planner**: Phase generation with research integration (MCP access)
+- **task-planner**: Phase generation with research integration (MCP access)
 - **task-critic**: Phase quality assessment (80% threshold)
 - **task-coder**: TDD code implementation with platform integration (MCP access + platform tools)
 - **task-reviewer**: Code quality assessment (95% threshold)
@@ -605,8 +608,8 @@ All specialized work delegated to appropriate agents:
 
 ### User Feedback During Stagnation
 - User input requested when quality plateaus (<5 points over 2 iterations)
-- User feedback stored via mcp__respec-ai__store_user_feedback
-- Agents retrieve all feedback (critic + user) via mcp__respec-ai__get_feedback
+- User feedback stored via {tools.store_user_feedback}
+- Agents retrieve all feedback (critic + user) via {tools.get_feedback}
 - User feedback takes priority over critic suggestions when conflicts exist
 
 Ready for production deployment with validated quality scores and comprehensive test coverage.

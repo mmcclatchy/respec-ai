@@ -29,7 +29,7 @@ def discover_registered_reRESPEC_AI_tools() -> set[str]:
 
 def validate_reRESPEC_AI_enum_completeness() -> dict[str, list[str]]:
     registered_tools = discover_registered_reRESPEC_AI_tools()
-    enum_tools = {tool.value for tool in RespecAITool}
+    enum_tools = {str(tool) for tool in RespecAITool}
 
     missing_from_enum = registered_tools - enum_tools
     missing_from_registration = enum_tools - registered_tools
@@ -104,7 +104,7 @@ def validate_tool_enum_against_codebase() -> dict[str, Any]:
 
 def generate_enum_updates_from_discovery() -> str:
     registered_tools = discover_registered_reRESPEC_AI_tools()
-    enum_tools = {tool.value for tool in RespecAITool}
+    enum_tools = {tool for tool in RespecAITool}
 
     missing_tools = registered_tools - enum_tools
 

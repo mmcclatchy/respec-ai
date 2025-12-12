@@ -66,7 +66,6 @@ CREATE TABLE roadmaps (
 CREATE TABLE technical_specs (
     id SERIAL PRIMARY KEY,
     project_name VARCHAR(255) NOT NULL,
-    spec_name VARCHAR(255) NOT NULL,
     phase_name TEXT NOT NULL,
 
     -- Frozen fields (NEVER updated after iteration 0)
@@ -92,13 +91,13 @@ CREATE TABLE technical_specs (
     -- State tracking
     iteration INTEGER NOT NULL DEFAULT 0,
     version INTEGER NOT NULL DEFAULT 1,
-    spec_status VARCHAR(50) NOT NULL DEFAULT 'draft',
+    phase_status VARCHAR(50) NOT NULL DEFAULT 'draft',
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    UNIQUE(project_name, spec_name),
-    CONSTRAINT valid_spec_status CHECK (spec_status IN ('draft', 'in-review', 'approved', 'implementation-ready', 'in-development', 'completed'))
+    UNIQUE(project_name, phase_name),
+    CONSTRAINT valid_phase_status CHECK (phase_status IN ('draft', 'in-review', 'approved', 'implementation-ready', 'in-development', 'completed'))
 );
 
 -- Project Plans (all 31 string fields from ProjectPlan model)
@@ -164,10 +163,10 @@ CREATE TABLE project_plans (
 CREATE TABLE loop_to_spec_mappings (
     loop_id VARCHAR(8) PRIMARY KEY REFERENCES loop_states(id) ON DELETE CASCADE,
     project_name VARCHAR(255) NOT NULL,
-    spec_name VARCHAR(255) NOT NULL,
+    phase_name VARCHAR(255) NOT NULL,
     linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (project_name, spec_name) REFERENCES technical_specs(project_name, spec_name) ON DELETE CASCADE
+    FOREIGN KEY (project_name, phase_name) REFERENCES technical_specs(project_name, phase_name) ON DELETE CASCADE
 );
 
 -- Record migration

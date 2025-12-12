@@ -11,26 +11,18 @@ from src.platform.tool_enums import AbstractOperation
 class PhaseCommandStrategy(CommandStrategy[PhaseCommandTools]):
     def get_required_operations(self) -> list[str]:
         return [
-            AbstractOperation.CREATE_SPEC_TOOL.value,
-            AbstractOperation.GET_SPEC_TOOL.value,
-            AbstractOperation.UPDATE_SPEC_TOOL.value,
+            AbstractOperation.CREATE_PHASE_TOOL,
+            AbstractOperation.GET_PHASE_TOOL,
+            AbstractOperation.UPDATE_PHASE_TOOL,
         ]
 
     def build_tools(self, platform: PlatformType) -> PhaseCommandTools:
-        create_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.CREATE_SPEC_TOOL.value, platform)
-        get_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_SPEC_TOOL.value, platform)
-        update_spec_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_SPEC_TOOL.value, platform)
+        create_phase_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.CREATE_PHASE_TOOL, platform)
+        get_phase_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_PHASE_TOOL, platform)
+        update_phase_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_PHASE_TOOL, platform)
 
-        platform_tools = [create_spec_tool, get_spec_tool, update_spec_tool]
-        tools_yaml = create_phase_command_tools(platform_tools)
-
-        return PhaseCommandTools(
-            tools_yaml=tools_yaml,
-            create_spec_tool=create_spec_tool,
-            get_spec_tool=get_spec_tool,
-            update_spec_tool=update_spec_tool,
-            platform=platform,
-        )
+        platform_tools = [create_phase_tool, get_phase_tool, update_phase_tool]
+        return create_phase_command_tools(platform_tools, platform)
 
     def get_template_func(self) -> Callable[[PhaseCommandTools], str]:
         return generate_phase_command_template

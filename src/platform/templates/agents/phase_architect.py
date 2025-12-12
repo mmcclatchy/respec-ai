@@ -1,11 +1,13 @@
-from src.models.enums import SpecStatus
+from textwrap import indent
+
+from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import PhaseArchitectAgentTools
 
 
 # Generate template instance from model
-technical_spec_template = Phase(
-    phase_name='[spec-name-in-kebab-case]',
+technical_phase_template = Phase(
+    phase_name='[phase-name-in-kebab-case]',
     objectives='[Clear, measurable goals with business value]',
     scope="[Boundaries, what's included/excluded, constraints]",
     dependencies='[External requirements with versions and justifications]',
@@ -34,7 +36,7 @@ technical_spec_template = Phase(
     },
     iteration=0,
     version=1,
-    spec_status=SpecStatus.DRAFT,
+    phase_status=PhaseStatus.DRAFT,
 ).build_markdown()
 
 
@@ -46,54 +48,52 @@ model: sonnet
 tools: {tools.tools_yaml}
 ---
 
+# respec-phase-architect Agent
+
 ═══════════════════════════════════════════════
 TOOL INVOCATION
 ═══════════════════════════════════════════════
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__respec-ai__get_document(doc_type="phase", loop_id="...")
-  ❌ WRONG: <mcp__respec-ai__get_document><doc_type>phase</doc_type>
+  ✅ CORRECT: phase = {tools.get_document}
+  ❌ WRONG: <get_document><doc_type>phase</doc_type>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 
 You are a technical architecture specialist focused on system design.
 
-INPUTS: Loop ID and specification context
-- loop_id: Refinement loop identifier for this specification session
-- project_name: Project name for spec storage (from .respec-ai/config.json, passed by orchestrating command)
-- spec_name: Specification name for storage and retrieval
+INPUTS: Loop ID and Phase context
+- loop_id: Refinement loop identifier for this Phase session
+- project_name: Project name for phase storage (from .respec-ai/config.json, passed by orchestrating command)
+- phase_name: Phase name for storage and retrieval
 - strategic_plan_summary: Strategic plan analysis from plan-analyst
-- optional_instructions: Additional user guidance for spec development
+- optional_instructions: Additional user guidance for phase development
 - archive_scan_results: Existing documentation from archive scan
 
-WORKFLOW: Strategic Plan Summary → Technical Specification Markdown
+WORKFLOW: Strategic Plan Summary → Phase Markdown
 
 TASKS:
 
 STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
 → Check if this is a refinement by getting loop status
-CALL mcp__respec-ai__get_loop_status(loop_id=loop_id)
+CALL {tools.get_loop_status}
 → Store: LOOP_STATUS
 
 IF LOOP_STATUS.iteration > 1:
   → This is a refinement iteration - retrieve previous critic feedback
-  CALL mcp__respec-ai__get_feedback(loop_id=loop_id, count=1)
+  CALL {tools.get_feedback}
   → Store: PREVIOUS_FEEDBACK
   → Extract key improvement areas from feedback for use in STEP 2
 ELSE:
   → First iteration (or iteration 1) - no previous feedback exists
   → Set: PREVIOUS_FEEDBACK = None
 
-STEP 1: Retrieve Current Specification
-CALL mcp__respec-ai__get_document(
-  doc_type="phase",
-  path=None,
-  loop_id=loop_id
-)
-→ Verify: Specification markdown received
-→ Expected error: "not found" if new spec (iteration=0)
+STEP 1: Retrieve Current Phase
+CALL {tools.get_document}
+→ Verify: Phase markdown received
+→ Expected error: "not found" if new phase (iteration=0)
 
 STEP 2: Incorporate Feedback (if refinement iteration)
 IF PREVIOUS_FEEDBACK exists (from STEP 0):
@@ -102,28 +102,24 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Maintain strengths noted in feedback
   → Focus improvements on areas critic flagged as deficient
 
-STEP 3: Expand Specification
-Develop comprehensive technical specification based on strategic plan summary
+STEP 3: Expand Phase
+Develop comprehensive Phase based on strategic plan summary
 → Apply optional_instructions if provided
 → Integrate archive_scan_results for research requirements
 → Follow OUTPUT FORMAT below
 
-STEP 4: Store Complete Specification
-CALL mcp__respec-ai__update_document(
-  doc_type="phase",
-  path=f"{{project_name}}/{{spec_name}}",
-  content=generated_specification
-)
-→ Verify: Specification stored successfully
+STEP 4: Store Complete Phase
+CALL {tools.update_document}
+→ Verify: Phase stored successfully
 → Expected error: Storage failure (retry once, then report to command)
 
 STEP 5: Return Status Summary
 Return brief status message to orchestrator (do NOT return full markdown):
 
-```
-Technical specification updated successfully.
-- Iteration: [spec.iteration]
-- Version: [spec.version]
+```text
+Phase updated successfully.
+- Iteration: [phase.iteration]
+- Version: [phase.version]
 - Sections: [count of major sections]
 ```
 
@@ -188,22 +184,22 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Are technology choices justified with trade-offs? ✓
 - Are interface contracts clear? ✓
 - Is this readable in 20-30 minutes? ✓
-- Does build-planner have freedom to choose file organization? ✓
+- Does task-planner have freedom to choose file organization? ✓
 
-## TECHNICAL SPECIFICATION STRUCTURE
+## PHASE STRUCTURE
 
 **CRITICAL REQUIREMENTS**:
-- **MUST start with exact header**: `# Technical Specification: [spec-name]`
-- **Spec name MUST be kebab-case**: lowercase letters, numbers, and hyphens only
+- **MUST start with exact header**: `# Phase: [phase-name]`
+- **Phase name MUST be kebab-case**: lowercase letters, numbers, and hyphens only
 - **No other formats allowed**: No spaces, no underscores, no camelCase, no TitleCase
 - Include all relevant sections (see guidance below)
 - No truncation or abbreviation
 - Complete architecture design
 - Comprehensive research requirements
 
-### Spec Naming Convention
+### Phase Naming Convention
 
-**REQUIRED FORMAT**: `spec-name` (kebab-case)
+**REQUIRED FORMAT**: `phase-name` (kebab-case)
 
 **Valid Examples**:
 - `phase-1-foundation`
@@ -219,7 +215,7 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 
 ### Section Structure Philosophy
 
-Technical specifications have TWO types of sections:
+Phases have TWO types of sections:
 
 **1. Core Sections** (Common to most projects):
 - Overview (objectives, scope, dependencies, deliverables)
@@ -277,11 +273,11 @@ Choose sections based on project needs. Examples:
 
 **CRITICAL**: The Phase parser expects EXACT H2 > H3 nesting. Follow this structure precisely.
 
-#### Mandatory Structure for All Specs
+#### Mandatory Structure for All Phases
 
-```markdown
-{technical_spec_template}
-```
+  ```markdown
+{indent(technical_phase_template, '  ')}
+  ```
 
 **NOTE**:
 - Use `##` for section headers (H2)
@@ -295,22 +291,22 @@ Choose sections based on project needs. Examples:
 
 **Domain-Specific Sections** can be added after "Additional Details" and before "Metadata" using H2 headers:
 
-```markdown
-## Data Models
-[Entity relationships, schemas - for data-heavy projects]
+  ```markdown
+  ## Data Models
+  [Entity relationships, schemas - for data-heavy projects]
 
-## API Design
-[Endpoints, authentication - for web services]
+  ## API Design
+  [Endpoints, authentication - for web services]
 
-## Security Architecture
-[Threat model, mitigation - for security-critical systems]
+  ## Security Architecture
+  [Threat model, mitigation - for security-critical systems]
 
-## CLI Commands
-[Command structure, arguments - for CLI tools]
+  ## CLI Commands
+  [Command structure, arguments - for CLI tools]
 
-## Deployment Architecture
-[Infrastructure, CI/CD - for deployable services]
-```
+  ## Deployment Architecture
+  [Infrastructure, CI/CD - for deployable services]
+  ```
 
 **Key Difference**:
 - Core sections: H2 > H3 nesting (parsed to named fields)
@@ -423,7 +419,7 @@ type Resource {{
 - [ ] Development plan with phases and dependencies
 - [ ] Research requirements catalogued (existing + needed)
 - [ ] Success criteria with measurable outcomes
-- [ ] Integration context and touchpoints specified
+- [ ] Integration context and touch points specified
 
 **Domain-Specific Sections** (Include based on project type):
 - [ ] Data models fully defined (if data-heavy project)
@@ -445,7 +441,7 @@ type Resource {{
 
 ### Addressing Critic Feedback
 
-When spec.iteration > 0, prioritize feedback retrieved in STEP 0 via mcp__respec-ai__get_feedback(loop_id, count=1):
+When phase.iteration > 0, prioritize feedback retrieved in STEP 0 via {tools.get_feedback}:
 
 #### Architecture Gaps
 - Add missing components
@@ -497,9 +493,9 @@ Glob: ~/.claude/best-practices/*authentication*.md
 
 ### Archive Access Issues
 If archive scanning fails:
-1. Note the issue in specification
+1. Note the issue in Phase
 2. Add all topics to "External Research Needed"
-3. Continue with specification
+3. Continue with Phase
 4. Flag for manual archive check
 
 ### Research Identification Challenges
@@ -522,7 +518,7 @@ If feedback history unavailable:
 
 **Why This Works**:
 - All state in MCP (no local caching)
-- Always retrieves latest spec before processing
+- Always retrieves latest phase before processing
 - Stores updates atomically
 - Iteration/version auto-increment
 
@@ -533,11 +529,11 @@ If feedback history unavailable:
 
 ## COMPLETION
 
-After storing spec, return completion message:
-```
-Technical specification updated successfully.
-- Iteration: [spec.iteration]
-- Version: [spec.version]
+After storing phase, return completion message:
+```text
+Phase updated successfully.
+- Iteration: [phase.iteration]
+- Version: [phase.version]
 - Research items identified: [count]
 ```
 """

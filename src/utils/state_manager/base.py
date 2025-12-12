@@ -17,7 +17,7 @@ T = TypeVar('T')
 FROZEN_SPEC_FIELDS = ('objectives', 'scope', 'dependencies', 'deliverables')
 
 
-def normalize_spec_name(spec_name: str) -> str:
+def normalize_phase_name(phase_name: str) -> str:
     """
     Normalize spec name to lowercase-kebab-case for consistent storage/retrieval.
 
@@ -27,14 +27,14 @@ def normalize_spec_name(spec_name: str) -> str:
         "PHASE_1_FOUNDATION" -> "phase-1-foundation"
 
     Args:
-        spec_name: Original spec name from user or markdown title
+        phase_name: Original spec name from user or markdown title
 
     Returns:
         Normalized kebab-case spec name
     """
 
     # Convert to lowercase
-    normalized = spec_name.lower()
+    normalized = phase_name.lower()
     # Replace spaces and underscores with hyphens
     normalized = re.sub(r'[\s_]+', '-', normalized)
     # Remove any characters that aren't alphanumeric or hyphens
@@ -84,7 +84,7 @@ class StateManager(ABC):
     async def store_spec(self, project_name: str, spec: Phase) -> str: ...
 
     @abstractmethod
-    async def update_spec(self, project_name: str, spec_name: str, updated_spec: Phase) -> str:
+    async def update_spec(self, project_name: str, phase_name: str, updated_spec: Phase) -> str:
         """
         MUST not mutate the following fields:
             - objectives
@@ -95,20 +95,17 @@ class StateManager(ABC):
         ...
 
     @abstractmethod
-    async def get_spec(self, project_name: str, spec_name: str) -> Phase: ...
+    async def get_spec(self, project_name: str, phase_name: str) -> Phase: ...
 
     @abstractmethod
     async def list_specs(self, project_name: str) -> list[str]: ...
 
     @abstractmethod
-    async def resolve_spec_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
-
-    @abstractmethod
-    async def delete_spec(self, project_name: str, spec_name: str) -> bool: ...
+    async def delete_spec(self, project_name: str, phase_name: str) -> bool: ...
 
     # Loop-to-Spec Mapping (for temporary refinement sessions)
     @abstractmethod
-    async def link_loop_to_spec(self, loop_id: str, project_name: str, spec_name: str) -> None: ...
+    async def link_loop_to_spec(self, loop_id: str, project_name: str, phase_name: str) -> None: ...
 
     @abstractmethod
     async def get_spec_by_loop(self, loop_id: str) -> Phase: ...
