@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
+
 from src.cli.commands import platform
 
 
@@ -16,10 +17,10 @@ class TestPlatformCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
         config_data = {'platform': 'linear', 'version': '0.2.0'}
-        (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
+        (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         mocker.patch('src.cli.commands.platform.PlatformOrchestrator')
         mocker.patch('src.cli.commands.platform.generate_templates', return_value=([Path('file1.md')], 5, 12))
@@ -29,7 +30,7 @@ class TestPlatformCommand:
 
         assert result == 0
 
-        config = json.loads((reRESPEC_AI_dir / 'config.json').read_text())
+        config = json.loads((respec_ai_dir / 'config.json').read_text())
         assert config['platform'] == 'github'
 
     def test_not_initialized(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -48,10 +49,10 @@ class TestPlatformCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
         config_data = {'platform': 'linear', 'version': '0.2.0'}
-        (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
+        (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         mocker.patch('src.cli.commands.platform.PlatformOrchestrator')
         mock_generate = mocker.patch('src.cli.commands.platform.generate_templates')
@@ -65,9 +66,9 @@ class TestPlatformCommand:
     def test_corrupted_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
-        (reRESPEC_AI_dir / 'config.json').write_text('{ invalid json }')
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        (respec_ai_dir / 'config.json').write_text('{ invalid json }')
 
         args = Namespace(platform='github')
         result = platform.run(args)
@@ -82,8 +83,8 @@ class TestPlatformCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
 
         mocker.patch('src.cli.commands.platform.PlatformOrchestrator')
         mocker.patch('src.cli.commands.platform.generate_templates', return_value=([Path('file1.md')], 5, 12))
@@ -94,12 +95,12 @@ class TestPlatformCommand:
             ('markdown', 'linear'),
         ]:
             config_data = {'platform': old_platform, 'version': '0.2.0'}
-            (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
+            (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
             args = Namespace(platform=new_platform)
             result = platform.run(args)
 
             assert result == 0
 
-            config = json.loads((reRESPEC_AI_dir / 'config.json').read_text())
+            config = json.loads((respec_ai_dir / 'config.json').read_text())
             assert config['platform'] == new_platform

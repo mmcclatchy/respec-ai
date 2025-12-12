@@ -120,7 +120,7 @@ OUTPUTS: Strategic plan document containing:
 name: respec-phase-critic
 description: Evaluate technical specifications against quality criteria
 tools:
-  - mcp__respec-ai__get_technical_spec_markdown
+  - mcp__respec-ai__get_phase_markdown
   - mcp__respec-ai__store_critic_feedback
 ---
 
@@ -128,11 +128,11 @@ You are a technical specification quality specialist.
 
 INPUTS: Loop ID for specification retrieval and feedback storage
 - Loop ID provided by Main Agent for MCP operations
-- Use mcp__respec-ai__get_technical_spec_markdown(loop_id) to retrieve specification
+- Use mcp__respec-ai__get_phase_markdown(loop_id) to retrieve specification
 - Evaluate complete technical specification from MCP storage
 
 TASKS:
-1. Retrieve specification using mcp__respec-ai__get_technical_spec_markdown(loop_id)
+1. Retrieve specification using mcp__respec-ai__get_phase_markdown(loop_id)
 2. Evaluate specification against FSDD quality framework
 3. Assess technical completeness and clarity
 4. Identify gaps and improvement opportunities
@@ -248,7 +248,7 @@ tools: Read, Edit, Write, Bash
 
 **Spec Creation Agents** (with platform integration):
 ```markdown
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_phase_tool}, {tools.update_phase_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_phase, {tools.create_phase_tool}, {tools.update_phase_tool}
 # Use for: create-phase agents with dual storage (MCP + platform)
 ```
 
@@ -257,12 +257,12 @@ tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_ph
 **Important**: When agents use platform-specific tools (like `Write`, `Read`, `Edit` for Markdown or Linear/GitHub API tools), there are two forms:
 
 **1. Permission Form** (in frontmatter `tools:` list):
-- Uses wildcards: `Write(.respec-ai/projects/*/specs/*.md)`
+- Uses wildcards: `Write(.respec-ai/plans/*/phases/*.md)`
 - Defines what file paths the agent is ALLOWED to access
 - Referenced as `{tools.create_phase_tool}` in frontmatter
 
 **2. Invocation Form** (in workflow instructions):
-- Uses placeholders: `Write(.respec-ai/projects/{project_name}/specs/{phase_name}.md)`
+- Uses placeholders: `Write(.respec-ai/plans/{project_name}/phases/{phase_name}.md)`
 - Shows actual usage pattern with named parameter placeholders
 - Accessed via `{tools.create_phase_tool_interpolated}` computed field from AgentTools model
 
@@ -270,8 +270,8 @@ tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_ph
 
 Frontmatter:
 ```yaml
-tools: mcp__respec-ai__store_spec, {tools.create_phase_tool}
-# Markdown permission: Write(.respec-ai/projects/*/specs/*.md)
+tools: mcp__respec-ai__store_phase, {tools.create_phase_tool}
+# Markdown permission: Write(.respec-ai/plans/*/phases/*.md)
 # Linear permission: mcp__linear-server__create_issue(*)
 ```
 
@@ -280,7 +280,7 @@ Workflow Instructions:
 STEP 4: Store to Platform
 CALL {tools.create_phase_tool_interpolated}
 
-# Markdown actual usage: Write(.respec-ai/projects/{project_name}/specs/{phase_name}.md, spec_markdown)
+# Markdown actual usage: Write(.respec-ai/plans/{project_name}/phases/{phase_name}.md, phase_markdown)
 # Linear actual usage: mcp__linear-server__create_issue(project={project_name}, title={phase_name}, ...)
 ```
 
@@ -298,7 +298,7 @@ tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_f
 
 ---
 name: respec-create-phase
-tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_spec, {tools.create_phase_tool}, {tools.update_phase_tool}
+tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_phase, {tools.create_phase_tool}, {tools.update_phase_tool}
 ---
 ```
 
@@ -396,8 +396,8 @@ Command Agent                           Specialized Agent               MCP Serv
      |                                          |    using loop_id          |
      |                                          |← feedback (2k chars) -----|
      |                                          |                           |
-     |                                          |--- retrieve spec -------→ |
-     |                                          |← spec data ---------------|
+     |                                          |--- retrieve phase -------→ |
+     |                                          |← phase data ---------------|
      |                                          |                           |
      |                                          |--- process & store -----→ |
      | ←- receive brief status -----------------|                           |
@@ -451,7 +451,7 @@ ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Current Specification
-CALL mcp__respec-ai__get_spec_markdown(loop_id=loop_id)
+CALL mcp__respec-ai__get_phase_markdown(loop_id=loop_id)
 → Store: CURRENT_SPEC
 
 STEP 2: Process Using Retrieved Data
@@ -464,10 +464,10 @@ Use PREVIOUS_FEEDBACK and CURRENT_SPEC to generate improvements
 INPUTS:
 - loop_id: Loop identifier
 - previous_feedback: Critic feedback from last iteration  # ❌ Don't pass as parameter
-- current_spec: Specification to improve                  # ❌ Don't pass as parameter
+- current_phase: Specification to improve                  # ❌ Don't pass as parameter
 
 TASKS:
-Use provided feedback and spec to generate improvements  # ❌ Agent is not self-sufficient
+Use provided feedback and phase to generate improvements  # ❌ Agent is not self-sufficient
 ```
 
 #### Command Design Pattern
@@ -518,9 +518,9 @@ STEP 6: Retrieve Feedback Again for Validation
 STORED_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=1)  # ❌ Duplicate retrieval
 ```
 
-### Example: spec Workflow Implementation
+### Example: phase Workflow Implementation
 
-This section demonstrates the context optimization pattern using real examples from the spec workflow implementation.
+This section demonstrates the context optimization pattern using real examples from the phase workflow implementation.
 
 #### Command Implementation (spec_command.py)
 
@@ -529,7 +529,7 @@ This section demonstrates the context optimization pattern using real examples f
 The command invokes the phase-architect agent with only the `loop_id` and essential context parameters. No feedback is passed as a parameter - the agent retrieves it directly from MCP.
 
 ```markdown
-STEP 5: Spec Refinement
+STEP 5: Phase Refinement
 
 Invoke: respec-phase-architect
 Input:
@@ -541,10 +541,10 @@ Input:
   - archive_scan_results: ARCHIVE_SCAN_RESULTS
 
 Agent will:
-1. Retrieve current spec from MCP using loop_id
+1. Retrieve current phase from MCP using loop_id
 2. Retrieve previous critic feedback from MCP (if iteration > 1)
-3. Refine spec based on strategic plan, feedback, and archive insights
-4. Store updated spec to MCP
+3. Refine phase based on strategic plan, feedback, and archive insights
+4. Store updated phase to MCP
 
 No feedback passed as parameter - architect retrieves directly from MCP.
 ```
@@ -620,13 +620,13 @@ The agent retrieves the current specification from MCP using `loop_id`, ensuring
 
 ```markdown
 STEP 1: Retrieve Current Specification
-CALL mcp__respec-ai__get_spec_markdown(
+CALL mcp__respec-ai__get_phase_markdown(
   project_name=None,
   phase_name=None,
   loop_id=loop_id
 )
 → Verify: Specification markdown received
-→ Expected error: "not found" if new spec (iteration=0)
+→ Expected error: "not found" if new phase (iteration=0)
 ```
 
 **STEP 2: Use Retrieved Data**
@@ -697,7 +697,7 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
 This optimization pattern applies to **MCP-driven refinement loop workflows** only:
 
 **spec Workflow:** ✅ Uses this pattern
-- Command: `spec_command.py`
+- Command: `phase_command.py`
 - Agents: `phase-architect` ↔ `phase-critic`
 - Pattern: Architect retrieves feedback from MCP using loop_id
 - Loop Driver: MCP Server (decide_loop_next_action)
@@ -776,12 +776,12 @@ When implementing agents using this pattern:
 
 ### Reference Implementation and Template Safety
 
-#### Spec Workflow as Reference Pattern
+#### Phase Workflow as Reference Pattern
 
-The spec workflow demonstrates the correct context-optimized MCP-driven refinement loop pattern:
-- **Command**: src/platform/templates/commands/spec_command.py
-- **Architect Agent**: src/platform/templates/agents/spec_architect.py
-- **Critic Agent**: src/platform/templates/agents/spec_critic.py
+The phase workflow demonstrates the correct context-optimized MCP-driven refinement loop pattern:
+- **Command**: src/platform/templates/commands/phase_command.py
+- **Architect Agent**: src/platform/templates/agents/phase_architect.py
+- **Critic Agent**: src/platform/templates/agents/phase_critic.py
 
 Use these files as the reference implementation when creating new MCP-driven workflows.
 
@@ -790,7 +790,7 @@ Use these files as the reference implementation when creating new MCP-driven wor
 Commands are Python f-strings (return f"""..."""). This creates a critical distinction between template generation time and command execution time.
 
 **Template Generation Time** (Python scope):
-- Function executes: `generate_spec_command_template(tools: SpecCommandTools)`
+- Function executes: `generate_phase_command_template(tools: SpecCommandTools)`
 - Python evaluates f-string and processes all {variable} expressions
 - Available variables: tools, and any Python variables in function scope
 - Output: Markdown template string stored in .claude/commands/
@@ -846,7 +846,7 @@ If a variable in curly braces is:
 - Defined in Python code above the f-string → ✅ Safe
 - Defined in pseudocode/markdown instructions → ❌ Unsafe - remove braces
 
-**Reference**: See spec_command.py lines 348-383 for correct USER_INPUT handling without f-string interpolation.
+**Reference**: See phase_command.py lines 348-383 for correct USER_INPUT handling without f-string interpolation.
 
 ## Agent Documentation Structure
 
@@ -1095,12 +1095,12 @@ QUALITY CRITERIA:
 - Strength recognition: Positive elements clearly identified
 ```
 
-**Example - Spec Critic**:
+**Example - Phase Critic**:
 ```markdown
 ---
 name: respec-phase-critic
 description: Evaluate technical specifications against quality criteria
-tools: mcp__respec-ai__get_technical_spec_markdown, mcp__respec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_phase_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 ═══════════════════════════════════════════════
@@ -1109,8 +1109,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: spec = mcp__respec-ai__get_technical_spec_markdown(loop_id="...")
-  ❌ WRONG: <mcp__respec-ai__get_technical_spec_markdown><loop_id>...</loop_id>
+  ✅ CORRECT: phase = mcp__respec-ai__get_phase_markdown(loop_id="...")
+  ❌ WRONG: <mcp__respec-ai__get_phase_markdown><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
@@ -1119,11 +1119,11 @@ You are a technical specification quality specialist.
 
 INPUTS: Loop ID for specification retrieval and feedback storage
 - Loop ID provided by Main Agent for MCP operations
-- Use mcp__respec-ai__get_technical_spec_markdown(loop_id) to retrieve specification
+- Use mcp__respec-ai__get_phase_markdown(loop_id) to retrieve specification
 - Complete technical specification retrieved from MCP storage
 
 TASKS:
-1. Retrieve specification using mcp__respec-ai__get_technical_spec_markdown(loop_id)
+1. Retrieve specification using mcp__respec-ai__get_phase_markdown(loop_id)
 2. Evaluate specification against FSDD quality framework (12-point criteria)
 3. Assess technical completeness, clarity, and implementability
 4. Identify gaps, inconsistencies, and improvement opportunities
@@ -1411,7 +1411,7 @@ tools:
 # ✅ CORRECT: Critics with MCP retrieval and storage only
 ---
 name: respec-phase-critic
-tools: mcp__respec-ai__get_technical_spec_markdown, mcp__respec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_phase_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 # ✅ CORRECT: Generators with input-only access

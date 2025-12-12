@@ -30,7 +30,7 @@ class TestToolEnums:
         assert BuiltInTool.EDIT.value == 'Edit'
         assert BuiltInTool.TASK.value == 'Task'
 
-    def test_reRESPEC_AI_tool_values(self) -> None:
+    def test_respec_ai_tool_values(self) -> None:
         assert RespecAITool.INITIALIZE_REFINEMENT_LOOP.value == 'mcp__respec-ai__initialize_refinement_loop'
         assert RespecAITool.DECIDE_LOOP_NEXT_ACTION.value == 'mcp__respec-ai__decide_loop_next_action'
 
@@ -45,12 +45,12 @@ class TestToolReference:
         assert tool_ref.render() == 'Read'
 
     def test_tool_reference_render_with_parameters(self) -> None:
-        tool_ref = ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/projects/*/respec-phases/*.md')
-        assert tool_ref.render() == 'Read(.respec-ai/projects/*/respec-phases/*.md)'
+        tool_ref = ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/plans/*/phases/*.md')
+        assert tool_ref.render() == 'Read(.respec-ai/plans/*/phases/*.md)'
 
     def test_tool_reference_validation_file_operations(self) -> None:
         # Should work with valid path
-        ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/projects/*/respec-phases/*.md')
+        ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/plans/*/phases/*.md')
 
         # Should fail with directory traversal
         with pytest.raises(ValueError, match='directory traversal'):
@@ -68,7 +68,7 @@ class TestToolReference:
         tool_ref = ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE)
         assert tool_ref.render() == 'mcp__linear-server__create_issue'
 
-    def test_tool_reference_reRESPEC_AI_tools(self) -> None:
+    def test_tool_reference_respec_ai_tools(self) -> None:
         tool_ref = ToolReference(tool=RespecAITool.INITIALIZE_REFINEMENT_LOOP)
         assert tool_ref.render() == 'mcp__respec-ai__initialize_refinement_loop'
 
@@ -79,7 +79,7 @@ class TestPlatformToolMapping:
             operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
             github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
         )
 
         assert mapping.operation == AbstractOperation.CREATE_PHASE_TOOL
@@ -91,7 +91,7 @@ class TestPlatformToolMapping:
         mapping = PlatformToolMapping(
             operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
         )
 
         linear_tool = mapping.get_tool_for_platform(PlatformType.LINEAR)
@@ -105,14 +105,14 @@ class TestPlatformToolMapping:
         mapping = PlatformToolMapping(
             operation=AbstractOperation.CREATE_PHASE_TOOL,
             linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
         )
 
         linear_rendered = mapping.render_tool_for_platform(PlatformType.LINEAR)
         assert linear_rendered == 'mcp__linear-server__create_issue'
 
         markdown_rendered = mapping.render_tool_for_platform(PlatformType.MARKDOWN)
-        assert markdown_rendered == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
+        assert markdown_rendered == 'Write(.respec-ai/plans/*/phases/*.md)'
 
         github_rendered = mapping.render_tool_for_platform(PlatformType.GITHUB)
         assert github_rendered is None
@@ -136,7 +136,7 @@ class TestPlatformToolMapping:
         # Should work with built-in tools
         mapping = PlatformToolMapping(
             operation=AbstractOperation.CREATE_PHASE_TOOL,
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'),
+            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
         )
         assert mapping.markdown_tool is not None
 
@@ -164,7 +164,7 @@ class TestToolRegistry:
 
         # Test Markdown platform
         markdown_tool = registry.get_tool_for_platform('create_phase_tool', PlatformType.MARKDOWN)
-        assert markdown_tool == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
+        assert markdown_tool == 'Write(.respec-ai/plans/*/phases/*.md)'
 
     def test_tool_registry_get_all_tools_for_platform(self) -> None:
         registry = ToolRegistry()
@@ -194,7 +194,7 @@ class TestTemplateHelpers:
         builder = TemplateToolBuilder()
         tools = (
             builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
-            .add_reRESPEC_AI_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
+            .add_respec_ai_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
             .build()
         )
 
@@ -205,7 +205,7 @@ class TestTemplateHelpers:
         builder = TemplateToolBuilder()
         yaml_output = (
             builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
-            .add_reRESPEC_AI_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
+            .add_respec_ai_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
             .render_yaml_tools()
         )
 

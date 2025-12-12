@@ -129,7 +129,7 @@ class TestRoadmapErrors:
         assert isinstance(error, Exception)
         assert str(error) == 'Roadmap not found'
 
-    def test_spec_not_found_error_inheritance(self) -> None:
+    def test_phase_not_found_error_inheritance(self) -> None:
         error = SpecNotFoundError('Spec not found')
 
         assert isinstance(error, RoadmapError)
@@ -161,7 +161,7 @@ class TestRoadmapValidationError:
         [
             ('project_name', 'Too long', 'Invalid project_name: Too long'),
             ('roadmap_name', 'Contains invalid chars', 'Invalid roadmap_name: Contains invalid chars'),
-            ('spec_content', 'Empty content', 'Invalid spec_content: Empty content'),
+            ('phase_content', 'Empty content', 'Invalid phase_content: Empty content'),
         ],
     )
     def test_roadmap_validation_error_message_consistency(self, field: str, message: str, expected_format: str) -> None:

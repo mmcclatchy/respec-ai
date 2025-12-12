@@ -178,7 +178,7 @@ uv build
 
 # Expected output:
 # Building sdist: respec-0.2.0.tar.gz
-# Building wheel: reRESPEC_AI-0.2.0-py3-none-any.whl
+# Building wheel: respec_ai-0.2.0-py3-none-any.whl
 ```
 
 **Verify build artifacts:**
@@ -186,7 +186,7 @@ uv build
 ls -lh dist/
 # Should show:
 # respec-0.2.0.tar.gz       (source distribution)
-# reRESPEC_AI-0.2.0-py3-none-any.whl  (wheel)
+# respec_ai-0.2.0-py3-none-any.whl  (wheel)
 ```
 
 ### 4. Clean Build (If Needed)
@@ -223,7 +223,7 @@ uv publish --repository testpypi
 **Expected output:**
 ```text
 Uploading respec-0.2.0.tar.gz
-Uploading reRESPEC_AI-0.2.0-py3-none-any.whl
+Uploading respec_ai-0.2.0-py3-none-any.whl
 ✓ Successfully uploaded respec-ai 0.2.0 to TestPyPI
 ```
 
@@ -318,7 +318,7 @@ claude
 # In Claude Code, test complete workflow:
 /respec-plan test-feature
 /respec-roadmap test-project
-/respec-phase test-spec
+/respec-phase test-phase
 ```
 
 **Verification Checklist:**
@@ -382,7 +382,7 @@ uv publish --repository pypi
 **Expected output:**
 ```text
 Uploading respec-0.2.0.tar.gz
-Uploading reRESPEC_AI-0.2.0-py3-none-any.whl
+Uploading respec_ai-0.2.0-py3-none-any.whl
 ✓ Successfully uploaded respec-ai 0.2.0 to PyPI
 ```
 
@@ -406,7 +406,7 @@ respec-ai --version
 3. Select tag: `v0.2.0`
 4. Title: `v0.2.0`
 5. Description: Copy from CHANGELOG.md
-6. Attach build artifacts (optional): `dist/respec-0.2.0.tar.gz`, `dist/reRESPEC_AI-0.2.0-py3-none-any.whl`
+6. Attach build artifacts (optional): `dist/respec-0.2.0.tar.gz`, `dist/respec_ai-0.2.0-py3-none-any.whl`
 7. Click "Publish release"
 
 ---

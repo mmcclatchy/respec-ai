@@ -29,7 +29,7 @@ When instructions say "CALL tool_name", you execute the tool:
   ❌ WRONG: <get_roadmap><project_name>rag-poc</project_name>
 
 Platform tools vary by configured platform:
-- Markdown: Write/Read/Edit for .respec-ai/projects/{{project_name}}/respec-phases/{{lowercase-kebab-phase-name}}.md
+- Markdown: Write/Read/Edit for .respec-ai/plans/{{project_name}}/phases/{{lowercase-kebab-phase-name}}.md
 - Linear: mcp__linear-server__create_issue, get_issue, update_issue
 - GitHub: mcp__github__create_issue, get_issue, update_issue
 
@@ -91,7 +91,7 @@ Save phase to configured platform using platform-specific tool.
 CALL {tools.create_phase_tool_interpolated}
 
 Platform-specific examples:
-- Markdown: Write(.respec-ai/projects/PROJECT_NAME/respec-phases/lowercase-kebab-phase-name.md, extracted_phase_markdown)
+- Markdown: Write(.respec-ai/plans/PROJECT_NAME/phases/lowercase-kebab-phase-name.md, extracted_phase_markdown)
 - Linear: mcp__linear-server__create_issue(title=PHASE_NAME, description=extracted_phase_markdown, ...)
 - GitHub: mcp__github__create_issue(title=PHASE_NAME, body=extracted_phase_markdown, ...)
 

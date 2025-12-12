@@ -18,7 +18,7 @@ class StartupValidationError(Exception):
     pass
 
 
-def validate_reRESPEC_AI_tools_at_startup() -> dict[str, Any]:
+def validate_respec_ai_tools_at_startup() -> dict[str, Any]:
     # Create a temporary MCP server to discover registered tools
     temp_mcp = FastMCP('validation')
 
@@ -133,7 +133,7 @@ def run_all_startup_validations() -> dict[str, Any]:
     results: dict[str, Any] = {
         'overall_success': True,
         'validations': {
-            'reRESPEC_AI_tools': validate_reRESPEC_AI_tools_at_startup(),
+            'respec_ai_tools': validate_respec_ai_tools_at_startup(),
             'external_platform_tools': validate_external_platform_tools(),
             'tool_registry': validate_tool_registry(),
         },

@@ -232,7 +232,7 @@ Write the strategic plan to the user's platform using the platform-specific tool
 ```
 
 This creates:
-- **Markdown platform**: `.respec-ai/projects/PROJECT_NAME/project_plan.md`
+- **Markdown platform**: `.respec-ai/plans/PROJECT_NAME/project_plan.md`
 - **Linear platform**: Linear project with plan details
 - **GitHub platform**: GitHub project with plan details
 

@@ -33,7 +33,7 @@ class TemplateToolBuilder:
         self.tools.append(ToolReference(tool=BuiltInTool.BASH, parameters=script_path))
         return self
 
-    def add_reRESPEC_AI_tool(self, tool: RespecAITool) -> 'TemplateToolBuilder':
+    def add_respec_ai_tool(self, tool: RespecAITool) -> 'TemplateToolBuilder':
         self.tools.append(ToolReference(tool=tool))
         return self
 
@@ -77,7 +77,7 @@ def create_phase_command_tools(platform_tools: list[str], platform_type: 'Platfo
     builder.add_bash_script('~/.claude/scripts/research-advisor-archive-scan.sh:*')
 
     for tool in PhaseCommandTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools(platform_tools)
 
@@ -129,7 +129,7 @@ def create_plan_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_task_agent(RespecAIAgent.ANALYST_CRITIC)
 
     for tool in PlanCommandTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools(platform_tools)
 
@@ -178,7 +178,7 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools(platform_tools)
 
@@ -233,7 +233,7 @@ def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType
     builder.add_task_agent(RespecAIAgent.CREATE_PHASE)
 
     for tool in PlanRoadmapCommandTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools(platform_tools)
 
@@ -275,7 +275,7 @@ def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PhaseArchitectAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in PhaseArchitectAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -302,7 +302,7 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
     builder = TemplateToolBuilder()
 
     for tool in PhaseCriticAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in PhaseCriticAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -323,7 +323,7 @@ def create_analyst_critic_agent_tools() -> AnalystCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in AnalystCriticAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in AnalystCriticAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -346,7 +346,7 @@ def create_plan_analyst_agent_tools() -> PlanAnalystAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PlanAnalystAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in PlanAnalystAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -369,7 +369,7 @@ def create_plan_critic_agent_tools() -> PlanCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PlanCriticAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in PlanCriticAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -386,7 +386,7 @@ def create_roadmap_agent_tools() -> RoadmapAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in RoadmapAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in RoadmapAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -407,7 +407,7 @@ def create_roadmap_critic_agent_tools() -> RoadmapCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in RoadmapCriticAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in RoadmapCriticAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -425,7 +425,7 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in TaskCriticAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in TaskCriticAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -451,7 +451,7 @@ def create_task_reviewer_agent_tools() -> TaskReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in TaskReviewerAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in TaskReviewerAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -477,7 +477,7 @@ def create_task_coder_agent_tools(platform_tools: list[str]) -> TaskCoderAgentTo
     builder = TemplateToolBuilder()
 
     for tool in TaskCoderAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in TaskCoderAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
@@ -503,7 +503,7 @@ def create_create_phase_agent_tools(platform_tools: list[str]) -> CreatePhaseAge
     builder = TemplateToolBuilder()
 
     for tool in CreatePhaseAgentTools.respec_ai_tools:
-        builder.add_reRESPEC_AI_tool(tool)
+        builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools(platform_tools)
 

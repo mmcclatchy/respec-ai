@@ -7,13 +7,13 @@ from pathlib import Path
 
 # List of legacy tools that should NOT appear
 LEGACY_TOOLS = [
-    'store_spec',
-    'get_spec',
-    'get_spec_markdown',
-    'update_spec',
-    'list_specs',
-    'delete_spec',
-    'link_loop_to_spec',
+    'store_phase',
+    'get_phase',
+    'get_phase_markdown',
+    'update_phase',
+    'list_phases',
+    'delete_phase',
+    'link_loop_to_phase',
     'resolve_phase_name',
     'store_build_plan',
     'get_build_plan',
@@ -95,9 +95,9 @@ def validate_codebase() -> bool:
             print(f'  {v}')
         print()
         print('These tools no longer exist. Use the document tools instead:')
-        print("  - store_spec → store_document(doc_type='phase', ...)")
-        print("  - get_spec → get_document(doc_type='phase', ...)")
-        print("  - update_spec → update_document(doc_type='phase', ...)")
+        print("  - store_phase → store_document(doc_type='phase', ...)")
+        print("  - get_phase → get_document(doc_type='phase', ...)")
+        print("  - update_phase → update_document(doc_type='phase', ...)")
         return False
     else:
         print('✅ No legacy tool references found')

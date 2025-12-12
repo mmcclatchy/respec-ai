@@ -1,6 +1,7 @@
 import time
 
 import pytest
+
 from src.mcp.tools.loop_tools import loop_tools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
@@ -82,7 +83,7 @@ class TestLoopPerformance:
         # Run 100 score decisions on same loop
         for i in range(100):
             score = 70 + (i % 5)  # Scores 70-74 to stay below threshold
-            result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.SPEC_CRITIC)
+            result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.PHASE_CRITIC)
             assert result.status in [LoopStatus.REFINE, LoopStatus.USER_INPUT]
 
         # Verify memory doesn't grow unbounded
@@ -129,7 +130,7 @@ class TestLoopPerformance:
         iteration = 1
         for _ in range(10):
             for score in stagnation_scores:
-                result = await add_feedback_and_decide(loop_id, score, iteration, CriticAgent.BUILD_CRITIC)
+                result = await add_feedback_and_decide(loop_id, score, iteration, CriticAgent.TASK_CRITIC)
                 iteration += 1
                 if result.status == LoopStatus.USER_INPUT:
                     break
@@ -148,7 +149,7 @@ class TestLoopPerformance:
         for i in range(200):
             score = 70 + (i % 10)  # Vary scores to avoid early completion
             try:
-                result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.SPEC_CRITIC)
+                result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.PHASE_CRITIC)
                 # Break if loop completes or requests user input
                 if result.status in [LoopStatus.COMPLETED, LoopStatus.USER_INPUT]:
                     break

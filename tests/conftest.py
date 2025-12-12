@@ -1,19 +1,17 @@
 import asyncio
 import logging
+import os
 from typing import AsyncGenerator, Generator
 
+import asyncpg
 import pytest
 from pytest_mock import MockerFixture
 
 from src.mcp.tools.loop_tools import LoopTools
 from src.mcp.tools.roadmap_tools import RoadmapTools
+from src.utils.database_pool import db_pool
 from src.utils.setting_configs import LoopConfig
 from src.utils.state_manager import InMemoryStateManager, PostgresStateManager
-
-
-import os
-import asyncpg
-from src.utils.database_pool import db_pool
 
 
 logger = logging.getLogger(__name__)
@@ -137,7 +135,7 @@ async def db_state_manager(check_database_available: bool) -> AsyncGenerator[Pos
             async with db_pool._pool.acquire() as conn:
                 await conn.execute(
                     'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                    'technical_specs, project_plans, loop_to_spec_mappings, tasks, loop_to_task_mappings CASCADE'
+                    'phases, project_plans, loop_to_phase_mappings, tasks, loop_to_task_mappings CASCADE'
                 )
         except Exception:
             pass

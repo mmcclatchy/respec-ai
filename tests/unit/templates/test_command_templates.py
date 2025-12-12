@@ -55,7 +55,7 @@ class TestPlanRoadmapRespecAICommand:
         for term in threshold_terms:
             assert term not in template, f'Template should not reference thresholds: {term}'
 
-    def test_template_includes_parallel_spec_creation(self) -> None:
+    def test_template_includes_parallel_phase_creation(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(RespecAICommand.ROADMAP, PlatformType.LINEAR)
 

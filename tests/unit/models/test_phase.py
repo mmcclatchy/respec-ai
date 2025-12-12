@@ -5,7 +5,7 @@ from src.models.phase import Phase
 
 
 @pytest.fixture
-def complete_spec_markdown() -> str:
+def complete_phase_markdown() -> str:
     return """# Phase: test-phase
 
 ## Overview
@@ -63,8 +63,8 @@ in-development
 
 
 @pytest.fixture
-def minimal_spec_markdown() -> str:
-    return """# Phase: minimal-spec
+def minimal_phase_markdown() -> str:
+    return """# Phase: minimal-phase
 
 ## Overview
 
@@ -74,7 +74,7 @@ Basic functionality
 
 
 @pytest.fixture
-def round_trip_spec_markdown() -> str:
+def round_trip_phase_markdown() -> str:
     return """# Phase: round-trip-test
 
 ## Overview
@@ -126,32 +126,32 @@ approved
 
 
 class TestPhaseParsing:
-    def test_parse_markdown_extracts_all_fields(self, complete_spec_markdown: str) -> None:
-        spec = Phase.parse_markdown(complete_spec_markdown)
+    def test_parse_markdown_extracts_all_fields(self, complete_phase_markdown: str) -> None:
+        phase = Phase.parse_markdown(complete_phase_markdown)
 
-        assert spec.phase_name == 'test-phase'
-        assert spec.objectives == 'Implement user authentication system'
-        assert spec.scope == 'Login, logout, password reset functionality'
-        assert spec.dependencies == 'User database, JWT library'
-        assert spec.deliverables == 'Authentication service, login UI, password reset flow'
-        assert spec.architecture == 'Microservice architecture with JWT tokens'
-        assert spec.technology_stack == 'Python FastAPI, PostgreSQL, JWT'
-        assert spec.functional_requirements == 'User login with email/password, secure password storage'
-        assert spec.non_functional_requirements == 'Response time < 200ms, 99.9% uptime'
-        assert spec.development_plan == 'Phase 1: Backend service, Phase 2: Frontend integration'
-        assert spec.testing_strategy == 'Unit tests, integration tests, security testing'
-        assert spec.research_requirements == 'OAuth integration patterns, JWT best practices'
-        assert spec.success_criteria == '100% test coverage, security audit passed'
-        assert spec.integration_context == 'Connects to user service, notification service'
-        assert spec.phase_status == PhaseStatus.IN_DEVELOPMENT
+        assert phase.phase_name == 'test-phase'
+        assert phase.objectives == 'Implement user authentication system'
+        assert phase.scope == 'Login, logout, password reset functionality'
+        assert phase.dependencies == 'User database, JWT library'
+        assert phase.deliverables == 'Authentication service, login UI, password reset flow'
+        assert phase.architecture == 'Microservice architecture with JWT tokens'
+        assert phase.technology_stack == 'Python FastAPI, PostgreSQL, JWT'
+        assert phase.functional_requirements == 'User login with email/password, secure password storage'
+        assert phase.non_functional_requirements == 'Response time < 200ms, 99.9% uptime'
+        assert phase.development_plan == 'Phase 1: Backend service, Phase 2: Frontend integration'
+        assert phase.testing_strategy == 'Unit tests, integration tests, security testing'
+        assert phase.research_requirements == 'OAuth integration patterns, JWT best practices'
+        assert phase.success_criteria == '100% test coverage, security audit passed'
+        assert phase.integration_context == 'Connects to user service, notification service'
+        assert phase.phase_status == PhaseStatus.IN_DEVELOPMENT
 
-    def test_parse_markdown_handles_missing_sections(self, minimal_spec_markdown: str) -> None:
-        spec = Phase.parse_markdown(minimal_spec_markdown)
+    def test_parse_markdown_handles_missing_sections(self, minimal_phase_markdown: str) -> None:
+        phase = Phase.parse_markdown(minimal_phase_markdown)
 
-        assert spec.phase_name == 'minimal-spec'
-        assert spec.objectives == 'Basic functionality'
-        assert spec.scope != ''
-        assert spec.technology_stack != ''
+        assert phase.phase_name == 'minimal-phase'
+        assert phase.objectives == 'Basic functionality'
+        assert phase.scope != ''
+        assert phase.technology_stack != ''
 
     def test_parse_markdown_invalid_format_raises_error(self) -> None:
         invalid_markdown = 'This is not a valid specification'
@@ -162,8 +162,8 @@ class TestPhaseParsing:
 
 class TestPhaseMarkdownBuilding:
     def test_build_markdown_creates_valid_template_format(self) -> None:
-        spec = Phase(
-            phase_name='test-spec',
+        phase = Phase(
+            phase_name='test-phase',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='Test deps',
@@ -180,9 +180,9 @@ class TestPhaseMarkdownBuilding:
             phase_status=PhaseStatus.APPROVED,
         )
 
-        markdown = spec.build_markdown()
+        markdown = phase.build_markdown()
 
-        assert '# Phase: test-spec' in markdown
+        assert '# Phase: test-phase' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown
         assert '### Dependencies\nTest deps' in markdown
@@ -194,43 +194,43 @@ class TestPhaseMarkdownBuilding:
         assert '### Development Plan\n3-phase approach' in markdown
         assert '### Testing Strategy\nTDD approach' in markdown
 
-    def test_round_trip_parsing_maintains_data_integrity(self, round_trip_spec_markdown: str) -> None:
-        spec = Phase.parse_markdown(round_trip_spec_markdown)
+    def test_round_trip_parsing_maintains_data_integrity(self, round_trip_phase_markdown: str) -> None:
+        phase = Phase.parse_markdown(round_trip_phase_markdown)
 
-        rebuilt_markdown = spec.build_markdown()
+        rebuilt_markdown = phase.build_markdown()
 
-        parsed_spec = Phase.parse_markdown(rebuilt_markdown)
+        parsed_phase = Phase.parse_markdown(rebuilt_markdown)
 
-        assert spec.phase_name == parsed_spec.phase_name
-        assert spec.objectives == parsed_spec.objectives
-        assert spec.scope == parsed_spec.scope
-        assert spec.dependencies == parsed_spec.dependencies
-        assert spec.deliverables == parsed_spec.deliverables
-        assert spec.architecture == parsed_spec.architecture
-        assert spec.research_requirements == parsed_spec.research_requirements
-        assert spec.success_criteria == parsed_spec.success_criteria
-        assert spec.integration_context == parsed_spec.integration_context
+        assert phase.phase_name == parsed_phase.phase_name
+        assert phase.objectives == parsed_phase.objectives
+        assert phase.scope == parsed_phase.scope
+        assert phase.dependencies == parsed_phase.dependencies
+        assert phase.deliverables == parsed_phase.deliverables
+        assert phase.architecture == parsed_phase.architecture
+        assert phase.research_requirements == parsed_phase.research_requirements
+        assert phase.success_criteria == parsed_phase.success_criteria
+        assert phase.integration_context == parsed_phase.integration_context
 
-    def test_round_trip_data_integrity_validation(self, round_trip_spec_markdown: str) -> None:
-        original_spec = Phase.parse_markdown(round_trip_spec_markdown)
+    def test_round_trip_data_integrity_validation(self, round_trip_phase_markdown: str) -> None:
+        original_phase = Phase.parse_markdown(round_trip_phase_markdown)
 
-        rebuilt_markdown = original_spec.build_markdown()
+        rebuilt_markdown = original_phase.build_markdown()
 
-        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
+        reparsed_phase = Phase.parse_markdown(rebuilt_markdown)
 
         # Verify data integrity is preserved through round-trip
-        assert original_spec.phase_name == reparsed_spec.phase_name
-        assert original_spec.objectives == reparsed_spec.objectives
-        assert original_spec.scope == reparsed_spec.scope
-        assert original_spec.dependencies == reparsed_spec.dependencies
-        assert original_spec.deliverables == reparsed_spec.deliverables
-        assert original_spec.architecture == reparsed_spec.architecture
-        assert original_spec.technology_stack == reparsed_spec.technology_stack
-        assert original_spec.functional_requirements == reparsed_spec.functional_requirements
-        assert original_spec.non_functional_requirements == reparsed_spec.non_functional_requirements
-        assert original_spec.development_plan == reparsed_spec.development_plan
-        assert original_spec.testing_strategy == reparsed_spec.testing_strategy
-        assert original_spec.research_requirements == reparsed_spec.research_requirements
-        assert original_spec.success_criteria == reparsed_spec.success_criteria
-        assert original_spec.integration_context == reparsed_spec.integration_context
-        assert original_spec.phase_status == reparsed_spec.phase_status
+        assert original_phase.phase_name == reparsed_phase.phase_name
+        assert original_phase.objectives == reparsed_phase.objectives
+        assert original_phase.scope == reparsed_phase.scope
+        assert original_phase.dependencies == reparsed_phase.dependencies
+        assert original_phase.deliverables == reparsed_phase.deliverables
+        assert original_phase.architecture == reparsed_phase.architecture
+        assert original_phase.technology_stack == reparsed_phase.technology_stack
+        assert original_phase.functional_requirements == reparsed_phase.functional_requirements
+        assert original_phase.non_functional_requirements == reparsed_phase.non_functional_requirements
+        assert original_phase.development_plan == reparsed_phase.development_plan
+        assert original_phase.testing_strategy == reparsed_phase.testing_strategy
+        assert original_phase.research_requirements == reparsed_phase.research_requirements
+        assert original_phase.success_criteria == reparsed_phase.success_criteria
+        assert original_phase.integration_context == reparsed_phase.integration_context
+        assert original_phase.phase_status == reparsed_phase.phase_status

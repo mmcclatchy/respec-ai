@@ -1,9 +1,12 @@
 import asyncpg
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from src.utils.setting_configs import database_settings
+
+if TYPE_CHECKING:
+    from asyncpg.pool import PoolConnectionProxy
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +42,7 @@ class DatabasePool:
         self._pool = None
 
     @asynccontextmanager
-    async def acquire(self) -> AsyncGenerator[asyncpg.Connection, None]:
+    async def acquire(self) -> AsyncGenerator['PoolConnectionProxy[asyncpg.Record]', None]:
         if self._pool is None:
             raise RuntimeError('Database pool not initialized. Call initialize() first.')
 

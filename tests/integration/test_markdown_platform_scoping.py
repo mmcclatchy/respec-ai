@@ -33,15 +33,15 @@ class TestMarkdownPlatformScoping:
 
         # Verify all expected scoped tools are present
         expected_tools = {
-            'create_phase_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
-            'get_phase_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
-            'update_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
-            'comment_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
-            'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)',
-            'create_project_completion_external': 'Write(.respec-ai/projects/*/project_completion.md)',
-            'get_project_plan_tool': 'Read(.respec-ai/projects/*/project_plan.md)',
-            'update_project_plan_tool': 'Edit(.respec-ai/projects/*/project_plan.md)',
-            'list_project_phases_tool': 'Glob(.respec-ai/projects/*/respec-phases/*.md)',
+            'create_phase_tool': 'Write(.respec-ai/plans/*/phases/*.md)',
+            'get_phase_tool': 'Read(.respec-ai/plans/*/phases/*.md)',
+            'update_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
+            'comment_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
+            'create_project_external': 'Write(.respec-ai/plans/*/project_plan.md)',
+            'create_project_completion_external': 'Write(.respec-ai/plans/*/project_completion.md)',
+            'get_project_plan_tool': 'Read(.respec-ai/plans/*/project_plan.md)',
+            'update_project_plan_tool': 'Edit(.respec-ai/plans/*/project_plan.md)',
+            'list_project_phases_tool': 'Glob(.respec-ai/plans/*/phases/*.md)',
         }
 
         for abstract_tool, expected_concrete in expected_tools.items():
@@ -52,8 +52,8 @@ class TestMarkdownPlatformScoping:
         capabilities = orchestrator.get_platform_capabilities(PlatformType.MARKDOWN)
 
         # These should be True because our scoped tools support them
-        assert capabilities['supports_issues'] is True  # Via structured spec files
-        assert capabilities['supports_comments'] is True  # Via spec comment functionality
+        assert capabilities['supports_issues'] is True  # Via structured phase files
+        assert capabilities['supports_comments'] is True  # Via phase comment functionality
         assert capabilities['supports_projects'] is True  # Via project plan files
 
         # These should be False (not supported by Markdown)
@@ -95,13 +95,13 @@ class TestMarkdownPlatformScoping:
         # Verify we have the correct scoped tools available
         assert 'create_phase_tool' in tools
         assert 'create_project_external' in tools
-        assert tools['create_phase_tool'] == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
-        assert tools['create_project_external'] == 'Write(.respec-ai/projects/*/project_plan.md)'
+        assert tools['create_phase_tool'] == 'Write(.respec-ai/plans/*/phases/*.md)'
+        assert tools['create_project_external'] == 'Write(.respec-ai/plans/*/project_plan.md)'
 
         # Test that the scoped path patterns are properly defined
         # (The actual file operations would happen through the MCP client using these tools)
-        assert '.respec-ai/projects/' in tools['create_phase_tool']
-        assert '.respec-ai/projects/' in tools['get_phase_tool']
+        assert '.respec-ai/plans/' in tools['create_phase_tool']
+        assert '.respec-ai/plans/' in tools['get_phase_tool']
         assert 'phases/*.md' in tools['create_phase_tool']
         assert 'project_plan.md' in tools['create_project_external']
 
@@ -115,7 +115,7 @@ class TestMarkdownPlatformScoping:
 
         # Verify that all tools are properly scoped to .respec-ai directories
         for tool_name, tool_path in tools.items():
-            assert '.respec-ai/projects/' in tool_path, f'Tool {tool_name} not properly scoped: {tool_path}'
+            assert '.respec-ai/plans/' in tool_path, f'Tool {tool_name} not properly scoped: {tool_path}'
 
         # Verify no tools allow arbitrary path access
         for tool_name, tool_path in tools.items():
@@ -173,7 +173,7 @@ class TestMarkdownPlatformScoping:
         # Should include all scoped tools (9 total)
         assert len(info['platform_tools']) == 9
         assert 'create_phase_tool' in info['platform_tools']
-        assert info['platform_tools']['create_phase_tool'] == 'Write(.respec-ai/projects/*/respec-phases/*.md)'
+        assert info['platform_tools']['create_phase_tool'] == 'Write(.respec-ai/plans/*/phases/*.md)'
 
         # Project should be valid
         assert info['config_valid'] is True

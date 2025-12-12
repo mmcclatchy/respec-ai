@@ -6,6 +6,7 @@ from typing import Any, ClassVar
 from fastmcp import FastMCP
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
+from .path_constants import PathComponent
 from .platform_selector import PlatformType
 from .tool_doc_extractor import ToolDocumentationExtractor
 from .tool_doc_generator import ToolDocGenerator
@@ -171,9 +172,9 @@ class PhaseCommandTools(BaseModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
-    create_phase_tool: str = Field(..., description='Platform-specific tool for creating specs')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    create_phase_tool: str = Field(..., description='Platform-specific tool for creating phases')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
+    update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
@@ -185,7 +186,7 @@ class PhaseCommandTools(BaseModel):
     get_loop_status: str = Field(..., description='Get loop status')
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
-    get_document: str = Field(..., description='Get final spec document')
+    get_document: str = Field(..., description='Get final phase document')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
 
@@ -214,13 +215,13 @@ class PhaseCommandTools(BaseModel):
     @computed_field
     def sync_project_plan_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """PLAN_MARKDOWN = Read(.respec-ai/projects/{PLAN_NAME}/project_plan.md)
+            return f"""PLAN_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE})
 mcp__respec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
             return """PLAN_RESULT = mcp__linear-server__get_document(project_name=PLAN_NAME)
 mcp__respec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
         elif self.platform == PlatformType.GITHUB:
-            return """PLAN_RESULT = mcp__github__get_file(path=".respec-ai/projects/{PLAN_NAME}/project_plan.md")
+            return f"""PLAN_RESULT = mcp__github__get_file(path="{PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE}")
 mcp__respec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown=PLAN_RESULT.content)"""
         else:
             return """# Platform sync not configured"""
@@ -228,14 +229,14 @@ mcp__respec-ai__store_project_plan(project_name=PLAN_NAME, project_plan_markdown
     @computed_field
     def sync_phase_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """PHASE_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{PHASE_NAME}.md)
+            return f"""PHASE_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PHASES_DIR}/{{PHASE_NAME}}.md)
 mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=PHASE_MARKDOWN)"""
         elif self.platform == PlatformType.LINEAR:
-            return """SPEC_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
-mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=SPEC_RESULT.description)"""
+            return """PHASE_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
+mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=PHASE_RESULT.description)"""
         elif self.platform == PlatformType.GITHUB:
-            return """SPEC_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
-mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=SPEC_RESULT.body)"""
+            return """PHASE_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
+mcp__respec-ai__store_document(doc_type="phase", path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}", content=PHASE_RESULT.body)"""
         else:
             return """# Platform sync not configured"""
 
@@ -353,8 +354,8 @@ class PlanCommandTools(BaseModel):
     @computed_field
     def sync_project_plan_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """TRY:
-  PLAN_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/project_plan.md)
+            return f"""TRY:
+  PLAN_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PROJECT_PLAN_FILE})
   mcp__respec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
@@ -376,8 +377,8 @@ EXCEPT:
   Display: "No existing project plan found - will create new"
 """
         elif self.platform == PlatformType.GITHUB:
-            return """TRY:
-  PLAN_RESULT = mcp__github__get_file(path=".respec-ai/projects/{PROJECT_NAME}/project_plan.md")
+            return f"""TRY:
+  PLAN_RESULT = mcp__github__get_file(path="{PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PROJECT_PLAN_FILE}")
   PLAN_MARKDOWN = PLAN_RESULT.content
   mcp__respec-ai__store_project_plan(
     project_name=PROJECT_NAME,
@@ -434,8 +435,8 @@ class CodeCommandTools(BaseModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    comment_phase_tool: str = Field(..., description='Platform-specific tool for commenting on specs')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
+    comment_phase_tool: str = Field(..., description='Platform-specific tool for commenting on phases')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
@@ -471,42 +472,42 @@ class CodeCommandTools(BaseModel):
     @computed_field
     def sync_phase_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """TRY:
-  PHASE_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/respec-phases/{PHASE_NAME}.md)
+            return f"""TRY:
+  PHASE_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PHASES_DIR}/{{PHASE_NAME}}.md)
   mcp__respec-ai__store_document(
     doc_type="phase",
     path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
     content=PHASE_MARKDOWN
   )
-  Display: "✓ Loaded spec '{PHASE_NAME}' from platform"
+  Display: "✓ Loaded phase '{{PHASE_NAME}}' from platform"
 EXCEPT:
-  Display: "No existing spec found in platform"
+  Display: "No existing phase found in platform"
 """
         elif self.platform == PlatformType.LINEAR:
             return """TRY:
-  SPEC_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
-  PHASE_MARKDOWN = SPEC_RESULT.description
+  PHASE_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
+  PHASE_MARKDOWN = PHASE_RESULT.description
   mcp__respec-ai__store_document(
     doc_type="phase",
     path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
     content=PHASE_MARKDOWN
   )
-  Display: "✓ Loaded spec '{PHASE_NAME}' from platform"
+  Display: "✓ Loaded phase '{PHASE_NAME}' from platform"
 EXCEPT:
-  Display: "No existing spec found in platform"
+  Display: "No existing phase found in platform"
 """
         elif self.platform == PlatformType.GITHUB:
             return """TRY:
-  SPEC_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
-  PHASE_MARKDOWN = SPEC_RESULT.body
+  PHASE_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
+  PHASE_MARKDOWN = PHASE_RESULT.body
   mcp__respec-ai__store_document(
     doc_type="phase",
     path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
     content=PHASE_MARKDOWN
   )
-  Display: "✓ Loaded spec '{PHASE_NAME}' from platform"
+  Display: "✓ Loaded phase '{PHASE_NAME}' from platform"
 EXCEPT:
-  Display: "No existing spec found in platform"
+  Display: "No existing phase found in platform"
 """
         else:
             return """# Platform-specific sync not configured
@@ -560,10 +561,10 @@ class PlanRoadmapCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_project_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     update_project_plan_tool: str = Field(..., description='Platform-specific tool for updating project plans')
-    create_phase_tool: str = Field(..., description='Platform-specific tool for creating specs')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
-    list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project specs')
+    create_phase_tool: str = Field(..., description='Platform-specific tool for creating phases')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
+    update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
+    list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project phases')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
@@ -621,8 +622,8 @@ class PlanRoadmapCommandTools(BaseModel):
     @computed_field
     def sync_project_plan_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """TRY:
-  PLAN_MARKDOWN = Read(.respec-ai/projects/{PROJECT_NAME}/project_plan.md)
+            return f"""TRY:
+  PLAN_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PROJECT_PLAN_FILE})
   mcp__respec-ai__store_project_plan(
     project_name=PROJECT_NAME,
     project_plan_markdown=PLAN_MARKDOWN
@@ -644,8 +645,8 @@ EXCEPT:
   Display: "No existing project plan found"
 """
         elif self.platform == PlatformType.GITHUB:
-            return """TRY:
-  PLAN_RESULT = mcp__github__get_file(path=".respec-ai/projects/{PROJECT_NAME}/project_plan.md")
+            return f"""TRY:
+  PLAN_RESULT = mcp__github__get_file(path="{PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PROJECT_PLAN_FILE}")
   PLAN_MARKDOWN = PLAN_RESULT.content
   mcp__respec-ai__store_project_plan(
     project_name=PROJECT_NAME,
@@ -663,8 +664,8 @@ Display: "⚠️ Sync not configured for this platform"
     @computed_field
     def sync_all_phases_instructions(self) -> str:
         if self.platform == PlatformType.MARKDOWN:
-            return """PHASES_LOADED = 0
-PHASE_FILES = Glob(.respec-ai/projects/{PROJECT_NAME}/respec-phases/*.md)
+            return f"""PHASES_LOADED = 0
+PHASE_FILES = Glob({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PHASES_DIR}/*.md)
 FOR each phase_file in PHASE_FILES:
   PHASE_NAME = [extract filename without .md extension]
   PHASE_MARKDOWN = Read(phase_file)
@@ -674,7 +675,7 @@ FOR each phase_file in PHASE_FILES:
     content=PHASE_MARKDOWN
   )
   PHASES_LOADED = PHASES_LOADED + 1
-Display: "✓ Loaded {PHASES_LOADED} phases from platform"
+Display: "✓ Loaded {{PHASES_LOADED}} phases from platform"
 """
         elif self.platform == PlatformType.LINEAR:
             return """PHASES_LOADED = 0
@@ -743,7 +744,7 @@ Display: "⚠️ Phase sync not configured for this platform"
 
 
 class PlanRoadmapAgentTools(BaseModel):
-    create_phase_external: str = Field(..., description='Platform-specific tool for creating external specs')
+    create_phase_external: str = Field(..., description='Platform-specific tool for creating external phases')
 
     @computed_field
     def create_phase_tool_interpolated(self) -> str:
@@ -784,7 +785,7 @@ class PhaseCriticAgentTools(BaseModel):
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    phase_length_soft_cap: int = Field(default=40000, description='Soft cap for spec length in characters')
+    phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     store_feedback: str = Field(..., description='Store critic feedback')
 
@@ -798,31 +799,31 @@ class CreatePhaseAgentTools(BaseModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    create_phase_tool: str = Field(..., description='Platform-specific tool for creating external specs')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving specs')
-    update_phase_tool: str = Field(..., description='Platform-specific tool for updating specs')
+    create_phase_tool: str = Field(..., description='Platform-specific tool for creating external phases')
+    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
+    update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     get_roadmap: str = Field(..., description='Retrieve complete roadmap from MCP')
-    store_document: str = Field(..., description='Store spec in MCP storage')
+    store_document: str = Field(..., description='Store phase in MCP storage')
 
     @computed_field
     def create_phase_tool_interpolated(self) -> str:
         if '*' not in self.create_phase_tool:
             return self.create_phase_tool
-        # Markdown: Write(.respec-ai/projects/*/respec-phases/*.md)
+        # Markdown: Write using PathComponent pattern
         return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def get_phase_tool_interpolated(self) -> str:
         if '*' not in self.get_phase_tool:
             return self.get_phase_tool
-        # Markdown: Read(.respec-ai/projects/*/respec-phases/*.md)
+        # Markdown: Read using PathComponent pattern
         return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def update_phase_tool_interpolated(self) -> str:
         if '*' not in self.update_phase_tool:
             return self.update_phase_tool
-        # Markdown: Edit(.respec-ai/projects/*/respec-phases/*.md)
+        # Markdown: Edit using PathComponent pattern
         return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
 
@@ -935,7 +936,7 @@ class TaskCriticAgentTools(BaseModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Phase document from planning loop')
-    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and spec name')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_feedback: str = Field(..., description='Store critic feedback in planning loop')
 
@@ -955,6 +956,6 @@ class TaskReviewerAgentTools(BaseModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Phase document from planning loop')
-    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and spec name')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_feedback: str = Field(..., description='Store code review feedback in coding loop')

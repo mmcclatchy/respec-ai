@@ -79,7 +79,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - Support matrix management
 
 **tool_registry.py** - Abstract operation mapping
-- Maps abstract operations (create_spec, update_spec) to platform-specific tools
+- Maps abstract operations (create_phase_tool, update_phase) to platform-specific tools
 - Pydantic-validated tool references
 - Dynamic mapping updates with immutable patterns
 
@@ -143,11 +143,11 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 # Markdown Platform
 {
-    'create_phase_tool': 'Write(.respec-ai/projects/*/respec-phases/*.md)',
-    'get_phase_tool': 'Read(.respec-ai/projects/*/respec-phases/*.md)',
-    'update_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
-    'comment_phase_tool': 'Edit(.respec-ai/projects/*/respec-phases/*.md)',
-    'create_project_external': 'Write(.respec-ai/projects/*/project_plan.md)'
+    'create_phase_tool': 'Write(.respec-ai/plans/*/phases/*.md)',
+    'get_phase_tool': 'Read(.respec-ai/plans/*/phases/*.md)',
+    'update_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
+    'comment_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
+    'create_project_external': 'Write(.respec-ai/plans/*/project_plan.md)'
 }
 ```
 
@@ -163,9 +163,9 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Stores completed plans
 
 2. **respec-phase** - Technical specification generation
-   - Creates detailed technical specs from plans
-   - Integrates with platform spec systems
-   - Manages spec refinement cycles
+   - Creates detailed technical phases from plans
+   - Integrates with platform phase systems
+   - Manages phase refinement cycles
 
 3. **respec-code** - Implementation orchestration
    - Coordinates taskner, task-coder, task-reviewer
@@ -202,7 +202,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **task-reviewer** - Code quality review
 
 **Specialized Agents:**
-- **create-phase** - External platform spec creation
+- **create-phase** - External platform phase creation
 
 ### Frontmatter Formatting Standards
 
@@ -290,7 +290,7 @@ class SpecCommandTools(BaseModel):
     comment_phase_tool: str
 
 # Template functions use single tools parameter:
-def generate_spec_command_template(tools: SpecCommandTools) -> str
+def generate_phase_command_template(tools: SpecCommandTools) -> str
 ```
 
 ## MCP Tools
@@ -324,8 +324,8 @@ mcp__respec-ai__reset_loop_state
 ```text
 mcp__respec-ai__save_plan
 mcp__respec-ai__get_plan
-mcp__respec-ai__save_spec
-mcp__respec-ai__get_spec
+mcp__respec-ai__save_phase
+mcp__respec-ai__get_phase
 mcp__respec-ai__save_phase
 mcp__respec-ai__get_phase
 mcp__respec-ai__save_roadmap
@@ -445,7 +445,7 @@ project/
         └── [project-name]/
             ├── project_plan.md
             ├── project_completion.md
-            └── respec-phases/     # Specifications
+            └── phases/     # Specifications
 ```
 
 ## Quality Assurance
@@ -503,7 +503,7 @@ project/
 **File-based workflow:**
 - Structured markdown files
 - Local file system storage
-- Scoped to `.respec-ai/projects/` directory
+- Scoped to `.respec-ai/plans/` directory
 - Git-friendly version control
 - No external dependencies
 

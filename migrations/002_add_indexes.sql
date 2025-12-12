@@ -11,7 +11,7 @@ CREATE INDEX idx_specs_project ON technical_specs(project_name);
 CREATE INDEX idx_specs_status ON technical_specs(phase_status);
 CREATE INDEX idx_specs_iteration ON technical_specs(iteration DESC);
 
--- Fuzzy spec name search (requires pg_trgm extension)
+-- Fuzzy phase name search (requires pg_trgm extension)
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX idx_specs_name_search ON technical_specs USING gin(phase_name gin_trgm_ops);
 

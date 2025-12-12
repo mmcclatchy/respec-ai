@@ -50,7 +50,7 @@ def create_project_plan(name: str = 'AI-Powered Customer Support System') -> Pro
         acceptance_criteria='All features working, performance targets met',
         reporting_structure='Weekly team updates, monthly stakeholder reports',
         meeting_schedule='Daily standups, weekly planning',
-        documentation_standards='API docs, user guides, technical specs',
+        documentation_standards='API docs, user guides, technical phases',
         project_status=ProjectStatus.DRAFT,
     )
 

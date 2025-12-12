@@ -103,7 +103,7 @@ Stores active refinement loops with JSONB feedback history.
 | updated_at | TIMESTAMP | Last modification timestamp |
 | feedback_history | JSONB | Array of CriticFeedback objects |
 
-#### technical_specs
+#### phases
 Stores technical specifications with frozen core fields.
 
 **Frozen Fields** (immutable after iteration 0):
@@ -140,10 +140,10 @@ Temporary feedback storage linked to loop states.
 
 **CASCADE DELETE**: Automatically removed when parent loop deleted.
 
-#### loop_to_spec_mappings
-Temporary associations between refinement loops and specs.
+#### loop_to_phase_mappings
+Temporary associations between refinement loops and phases.
 
-**CASCADE DELETE**: Cleaned up when loop or spec deleted.
+**CASCADE DELETE**: Cleaned up when loop or phase deleted.
 
 ### Indexes
 
@@ -153,10 +153,10 @@ Temporary associations between refinement loops and specs.
 | `idx_loop_states_status` | B-tree | Filter loops by status |
 | `idx_loop_states_created` | B-tree (DESC) | Chronological ordering |
 | `idx_loop_history_sequence` | B-tree (DESC) | Bounded queue operations |
-| `idx_specs_project` | B-tree | Project-based spec queries |
-| `idx_specs_status` | B-tree | Filter specs by status |
-| `idx_specs_iteration` | B-tree (DESC) | Version tracking |
-| `idx_specs_name_search` | GIN (pg_trgm) | Fuzzy spec name matching |
+| `idx_phases_project` | B-tree | Project-based phase queries |
+| `idx_phases_status` | B-tree | Filter phases by status |
+| `idx_phases_iteration` | B-tree (DESC) | Version tracking |
+| `idx_phases_name_search` | GIN (pg_trgm) | Fuzzy phase name matching |
 | `idx_plans_status` | B-tree | Project plan filtering |
 
 ## Database Operations
@@ -229,7 +229,7 @@ psql -U respec -d respec_dev -c "VACUUM FULL ANALYZE;"
 #### Reindex
 ```bash
 # Reindex specific table
-psql -U respec -d respec_dev -c "REINDEX TABLE technical_specs;"
+psql -U respec -d respec_dev -c "REINDEX TABLE phases;"
 
 # Reindex entire database
 psql -U respec -d respec_dev -c "REINDEX DATABASE respec_dev;"
@@ -242,7 +242,7 @@ psql -U respec -d respec_dev -c "REINDEX DATABASE respec_dev;"
 1. **Use Indexes**: Queries should use indexed columns (`project_name`, `phase_status`, etc.)
 2. **EXPLAIN ANALYZE**: Investigate slow queries
    ```sql
-   EXPLAIN ANALYZE SELECT * FROM technical_specs WHERE project_name = 'my-project';
+   EXPLAIN ANALYZE SELECT * FROM phases WHERE project_name = 'my-project';
    ```
 3. **Connection Pooling**: Reuse connections via `db_pool.acquire()`
 
@@ -311,10 +311,10 @@ All PostgresStateManager methods are async:
 # Correct usage
 manager = PostgresStateManager()
 await manager.initialize()
-spec = await manager.get_spec('project', 'spec-name')
+spec = await manager.get_phase('project', 'spec-name')
 
 # Incorrect (raises error)
-spec = manager.get_spec('project', 'spec-name')  # Missing await
+spec = manager.get_phase('project', 'spec-name')  # Missing await
 ```
 
 ### Connection Lifecycle
@@ -357,10 +357,10 @@ All queries use parameterized placeholders (`$1`, `$2`):
 
 ```python
 # Safe (parameterized)
-await conn.execute('SELECT * FROM specs WHERE name = $1', phase_name)
+await conn.execute('SELECT * FROM phases WHERE name = $1', phase_name)
 
 # Unsafe (never do this)
-await conn.execute(f'SELECT * FROM specs WHERE name = {phase_name}')
+await conn.execute(f'SELECT * FROM phases WHERE name = {phase_name}')
 ```
 
 ## Future Enhancements

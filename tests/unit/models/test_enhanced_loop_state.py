@@ -16,7 +16,7 @@ class TestEnhancedLoopState:
 
         feedback = CriticFeedback(
             loop_id=loop_state.id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=80,
             assessment_summary='Good specification with room for improvement',
@@ -38,7 +38,7 @@ class TestEnhancedLoopState:
         for i in range(7):
             feedback = CriticFeedback(
                 loop_id=loop_state.id,
-                critic_agent=CriticAgent.SPEC_CRITIC,
+                critic_agent=CriticAgent.PHASE_CRITIC,
                 iteration=i + 1,
                 overall_score=70,
                 assessment_summary=f'Assessment {i}',
@@ -74,7 +74,7 @@ class TestEnhancedLoopState:
 
         feedback = CriticFeedback(
             loop_id=loop_state.id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=70,
             assessment_summary='Test assessment',

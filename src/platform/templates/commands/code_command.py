@@ -31,7 +31,7 @@ PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 #### Step 1.2: Search file system for matching phase files
 
 ```text
-SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{PHASE_NAME_PARTIAL}}*.md"
+SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PROJECT_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 ```
 
@@ -40,7 +40,7 @@ SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 ```text
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
+  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PROJECT_NAME}}/phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:

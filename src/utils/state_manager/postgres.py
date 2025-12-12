@@ -1,7 +1,8 @@
 import json
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from asyncpg import Connection
+from asyncpg import Record
 
 from src.models.enums import PhaseStatus, ProjectStatus, RoadmapStatus
 from src.models.feedback import CriticFeedback
@@ -19,8 +20,10 @@ from src.utils.errors import (
     SpecNotFoundError,
 )
 from src.utils.loop_state import LoopState, MCPResponse
-
 from .base import FROZEN_SPEC_FIELDS, StateManager, logger, normalize_phase_name
+
+if TYPE_CHECKING:
+    from asyncpg.pool import PoolConnectionProxy
 
 
 class PostgresStateManager(StateManager):
@@ -41,7 +44,7 @@ class PostgresStateManager(StateManager):
         await db_pool.close()
         self._initialized = False
 
-    def _row_to_spec(self, row: dict) -> Phase:
+    def _row_to_spec(self, row: Record) -> Phase:
         additional_sections_data = None
         if row['additional_sections']:
             additional_sections_data = (
@@ -73,7 +76,7 @@ class PostgresStateManager(StateManager):
             phase_status=PhaseStatus(row['phase_status']),
         )
 
-    def _row_to_task(self, row: dict) -> 'Task':
+    def _row_to_task(self, row: Record) -> 'Task':
         return Task(
             id=str(row['id']),
             name=row['name'],
@@ -91,7 +94,7 @@ class PostgresStateManager(StateManager):
             version=row['version'],
         )
 
-    async def _enforce_loop_history_limit(self, conn: Connection) -> None:
+    async def _enforce_loop_history_limit(self, conn: 'PoolConnectionProxy[Record]') -> None:
         await conn.execute(
             """
             DELETE FROM loop_states
@@ -314,35 +317,33 @@ class PostgresStateManager(StateManager):
                 roadmap_status=RoadmapStatus(row['roadmap_status']),
             )
 
-    async def get_roadmap_specs(self, project_name: str) -> list[Phase]:
+    async def get_roadmap_phases(self, project_name: str) -> list[Phase]:
         await self.get_roadmap(project_name)
 
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                'SELECT * FROM technical_specs WHERE project_name = $1 ORDER BY created_at', project_name
-            )
+            rows = await conn.fetch('SELECT * FROM phases WHERE project_name = $1 ORDER BY created_at', project_name)
 
         return [self._row_to_spec(row) for row in rows]
 
-    async def store_spec(self, project_name: str, spec: Phase) -> str:
-        normalized_name = normalize_phase_name(spec.phase_name)
+    async def store_phase(self, project_name: str, phase: Phase) -> str:
+        normalized_name = normalize_phase_name(phase.phase_name)
 
         async with db_pool.acquire() as conn:
             existing = await conn.fetchrow(
-                'SELECT iteration, version FROM technical_specs WHERE project_name = $1 AND phase_name = $2',
+                'SELECT iteration, version FROM phases WHERE project_name = $1 AND phase_name = $2',
                 project_name,
                 normalized_name,
             )
 
             if existing:
-                spec.iteration = existing['iteration'] + 1
-                spec.version = existing['version'] + 1
+                phase.iteration = existing['iteration'] + 1
+                phase.version = existing['version'] + 1
 
-            additional_sections_json = json.dumps(spec.additional_sections) if spec.additional_sections else None
+            additional_sections_json = json.dumps(phase.additional_sections) if phase.additional_sections else None
 
             await conn.execute(
                 """
-                INSERT INTO technical_specs (
+                INSERT INTO phases (
                     id, project_name, phase_name, objectives, scope, dependencies, deliverables,
                     architecture, technology_stack, functional_requirements, non_functional_requirements,
                     development_plan, testing_strategy, research_requirements, success_criteria,
@@ -356,39 +357,39 @@ class PostgresStateManager(StateManager):
                     additional_sections = $18, iteration = $19, version = $20, phase_status = $21,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                spec.id,
+                phase.id,
                 project_name,
                 normalized_name,
-                spec.objectives,
-                spec.scope,
-                spec.dependencies,
-                spec.deliverables,
-                spec.architecture,
-                spec.technology_stack,
-                spec.functional_requirements,
-                spec.non_functional_requirements,
-                spec.development_plan,
-                spec.testing_strategy,
-                spec.research_requirements,
-                spec.success_criteria,
-                spec.integration_context,
-                spec.task_breakdown,
+                phase.objectives,
+                phase.scope,
+                phase.dependencies,
+                phase.deliverables,
+                phase.architecture,
+                phase.technology_stack,
+                phase.functional_requirements,
+                phase.non_functional_requirements,
+                phase.development_plan,
+                phase.testing_strategy,
+                phase.research_requirements,
+                phase.success_criteria,
+                phase.integration_context,
+                phase.task_breakdown,
                 additional_sections_json,
-                spec.iteration,
-                spec.version,
-                spec.phase_status.value,
+                phase.iteration,
+                phase.version,
+                phase.phase_status.value,
             )
 
-        return spec.phase_name
+        return phase.phase_name
 
-    async def update_spec(self, project_name: str, phase_name: str, updated_spec: Phase) -> str:
-        existing_spec = await self.get_spec(project_name, phase_name)
-        existing_data = existing_spec.model_dump()
-        new_data = updated_spec.model_dump()
+    async def update_phase(self, project_name: str, phase_name: str, updated_phase: Phase) -> str:
+        existing_phase = await self.get_phase(project_name, phase_name)
+        existing_data = existing_phase.model_dump()
+        new_data = updated_phase.model_dump()
 
         frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
 
-        final_spec = Phase(
+        final_phase = Phase(
             **{
                 **new_data,
                 **frozen_fields,
@@ -397,16 +398,16 @@ class PostgresStateManager(StateManager):
             }
         )
 
-        await self.store_spec(project_name, final_spec)
+        await self.store_phase(project_name, final_phase)
 
-        return f'Updated spec "{phase_name}" to iteration {final_spec.iteration}, version {final_spec.version}'
+        return f'Updated phase "{phase_name}" to iteration {final_phase.iteration}, version {final_phase.version}'
 
-    async def get_spec(self, project_name: str, phase_name: str) -> Phase:
+    async def get_phase(self, project_name: str, phase_name: str) -> Phase:
         normalized_name = normalize_phase_name(phase_name)
 
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                'SELECT * FROM technical_specs WHERE project_name = $1 AND phase_name = $2',
+                'SELECT * FROM phases WHERE project_name = $1 AND phase_name = $2',
                 project_name,
                 normalized_name,
             )
@@ -416,46 +417,46 @@ class PostgresStateManager(StateManager):
 
             return self._row_to_spec(row)
 
-    async def list_specs(self, project_name: str) -> list[str]:
+    async def list_phases(self, project_name: str) -> list[str]:
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT phase_name FROM technical_specs WHERE project_name = $1', project_name)
+            rows = await conn.fetch('SELECT phase_name FROM phases WHERE project_name = $1', project_name)
 
         return [row['phase_name'] for row in rows]
 
     async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
-        all_specs = await self.list_specs(project_name)
+        all_phases = await self.list_phases(project_name)
 
-        if not all_specs:
+        if not all_phases:
             return (None, [])
 
         normalized_partial = normalize_phase_name(partial_name)
 
-        if normalized_partial in all_specs:
+        if normalized_partial in all_phases:
             return (normalized_partial, [normalized_partial])
 
-        matches = [spec for spec in all_specs if normalized_partial in spec]
+        matches = [phase for phase in all_phases if normalized_partial in phase]
         canonical = matches[0] if len(matches) == 1 else None
 
         return (canonical, matches)
 
-    async def delete_spec(self, project_name: str, phase_name: str) -> bool:
+    async def delete_phase(self, project_name: str, phase_name: str) -> bool:
         normalized_name = normalize_phase_name(phase_name)
 
         async with db_pool.acquire() as conn:
             result = await conn.execute(
-                'DELETE FROM technical_specs WHERE project_name = $1 AND phase_name = $2', project_name, normalized_name
+                'DELETE FROM phases WHERE project_name = $1 AND phase_name = $2', project_name, normalized_name
             )
 
         deleted_count = int(result.split()[-1])
         return deleted_count > 0
 
-    async def link_loop_to_spec(self, loop_id: str, project_name: str, phase_name: str) -> None:
+    async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None:
         normalized_name = normalize_phase_name(phase_name)
 
         async with db_pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO loop_to_spec_mappings (loop_id, project_name, phase_name)
+                INSERT INTO loop_to_phase_mappings (loop_id, project_name, phase_name)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (loop_id) DO UPDATE SET
                     project_name = $2, phase_name = $3, linked_at = CURRENT_TIMESTAMP
@@ -465,30 +466,30 @@ class PostgresStateManager(StateManager):
                 normalized_name,
             )
 
-    async def get_spec_by_loop(self, loop_id: str) -> Phase:
+    async def get_phase_by_loop(self, loop_id: str) -> Phase:
         async with db_pool.acquire() as conn:
             mapping = await conn.fetchrow(
-                'SELECT project_name, phase_name FROM loop_to_spec_mappings WHERE loop_id = $1', loop_id
+                'SELECT project_name, phase_name FROM loop_to_phase_mappings WHERE loop_id = $1', loop_id
             )
 
             if not mapping:
-                raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
+                raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
 
-            return await self.get_spec(mapping['project_name'], mapping['phase_name'])
+            return await self.get_phase(mapping['project_name'], mapping['phase_name'])
 
-    async def update_spec_by_loop(self, loop_id: str, spec: Phase) -> None:
+    async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None:
         async with db_pool.acquire() as conn:
-            mapping = await conn.fetchrow('SELECT project_name FROM loop_to_spec_mappings WHERE loop_id = $1', loop_id)
+            mapping = await conn.fetchrow('SELECT project_name FROM loop_to_phase_mappings WHERE loop_id = $1', loop_id)
 
             if not mapping:
-                raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
+                raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
 
-            await self.store_spec(mapping['project_name'], spec)
+            await self.store_phase(mapping['project_name'], phase)
 
     async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
         async with db_pool.acquire() as conn:
             mapping = await conn.fetchrow(
-                'DELETE FROM loop_to_spec_mappings WHERE loop_id = $1 RETURNING project_name, phase_name', loop_id
+                'DELETE FROM loop_to_phase_mappings WHERE loop_id = $1 RETURNING project_name, phase_name', loop_id
             )
 
             if not mapping:
@@ -616,36 +617,6 @@ class PostgresStateManager(StateManager):
             await conn.execute('DELETE FROM project_plans WHERE project_name = $1', project_name)
 
         return True
-
-    async def store_phase(self, project_name: str, phase: Phase) -> str:
-        return await self.store_spec(project_name, phase)
-
-    async def get_phase(self, project_name: str, phase_name: str) -> Phase:
-        spec = await self.get_spec(project_name, phase_name)
-        if spec is None:
-            raise ValueError(f'Phase not found: {phase_name} in project {project_name}')
-        return spec
-
-    async def get_phase_by_loop(self, loop_id: str) -> Phase:
-        spec = await self.get_spec_by_loop(loop_id)
-        if spec is None:
-            raise ValueError(f'No phase linked to loop: {loop_id}')
-        return spec
-
-    async def update_phase(self, project_name: str, phase_name: str, updated_phase: Phase) -> str:
-        return await self.update_spec(project_name, phase_name, updated_phase)
-
-    async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None:
-        await self.update_spec_by_loop(loop_id, phase)
-
-    async def list_phases(self, project_name: str) -> list[str]:
-        return await self.list_specs(project_name)
-
-    async def delete_phase(self, project_name: str, phase_name: str) -> bool:
-        return await self.delete_spec(project_name, phase_name)
-
-    async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None:
-        await self.link_loop_to_spec(loop_id, project_name, phase_name)
 
     async def store_task(self, phase_path: str, task: 'Task') -> str:
         async with db_pool.acquire() as conn:

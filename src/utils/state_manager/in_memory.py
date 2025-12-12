@@ -44,11 +44,11 @@ class InMemoryStateManager(StateManager):
         self._roadmaps: dict[str, Roadmap] = {}
         self._project_plans: dict[str, ProjectPlan] = {}  # project_name -> ProjectPlan
 
-        # UNIFIED spec storage (single source of truth)
-        self._specs: dict[str, dict[str, Phase]] = {}  # project_name -> {phase_name -> Phase}
+        # UNIFIED phase storage (single source of truth)
+        self._phases: dict[str, dict[str, Phase]] = {}  # project_name -> {phase_name -> Phase}
 
         # Temporary loop-to-spec mapping (for active refinement sessions)
-        self._loop_to_spec: dict[str, tuple[str, str]] = {}  # loop_id -> (project_name, phase_name)
+        self._loop_to_phase: dict[str, tuple[str, str]] = {}  # loop_id -> (project_name, phase_name)
 
         # Generic document storage (for Phase, Task, CompletionReport with hierarchical paths)
         self._documents: dict[str, str] = {}  # "doc_type/path" -> markdown_content
@@ -70,20 +70,20 @@ class InMemoryStateManager(StateManager):
             f'  active_loops={len(self._active_loops)}\n'
             f'  roadmaps={len(self._roadmaps)}\n'
             f'  project_plans={len(self._project_plans)}\n'
-            f'  projects_with_specs={len(self._specs)}\n'
-            f'  loop_to_spec_mappings={len(self._loop_to_spec)}\n'
+            f'  projects_with_phases={len(self._phases)}\n'
+            f'  loop_to_phase_mappings={len(self._loop_to_phase)}\n'
             f'  objective_feedback={len(self._objective_feedback)}'
         )
 
     def _log_state_snapshot(self, method_name: str, stage: str) -> None:
-        specs_dict = {proj: list(specs.keys()) for proj, specs in self._specs.items()}
+        phases_dict = {proj: list(phases.keys()) for proj, phases in self._phases.items()}
         logger.debug(
             f'{method_name} [{stage}] - State snapshot:\n'
             f'  active_loops={list(self._active_loops.keys())}\n'
             f'  roadmaps={list(self._roadmaps.keys())}\n'
             f'  project_plans={list(self._project_plans.keys())}\n'
-            f'  specs_by_project={specs_dict}\n'
-            f'  loop_to_spec={dict(self._loop_to_spec)}\n'
+            f'  phases_by_project={phases_dict}\n'
+            f'  loop_to_phase={dict(self._loop_to_phase)}\n'
             f'  objective_feedback_loops={list(self._objective_feedback.keys())}'
         )
 
@@ -195,48 +195,48 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_roadmap', 'EXIT')
         return roadmap
 
-    async def get_roadmap_specs(self, project_name: str) -> list[Phase]:
-        self._log_state_snapshot('get_roadmap_specs', 'ENTRY')
-        logger.debug(f'get_roadmap_specs: project_name={project_name}')
+    async def get_roadmap_phases(self, project_name: str) -> list[Phase]:
+        self._log_state_snapshot('get_roadmap_phases', 'ENTRY')
+        logger.debug(f'get_roadmap_phases: project_name={project_name}')
 
         if project_name not in self._roadmaps:
-            logger.error(f'get_roadmap_specs failed: Roadmap not found for project: {project_name}')
+            logger.error(f'get_roadmap_phases failed: Roadmap not found for project: {project_name}')
             raise RoadmapNotFoundError(f'Roadmap not found for project: {project_name}')
 
-        specs = list(self._specs.get(project_name, {}).values())
-        logger.debug(f'get_roadmap_specs: Found {len(specs)} specs for project {project_name}')
-        self._log_state_snapshot('get_roadmap_specs', 'EXIT')
-        return specs
+        phases = list(self._phases.get(project_name, {}).values())
+        logger.debug(f'get_roadmap_phases: Found {len(phases)} phases for project {project_name}')
+        self._log_state_snapshot('get_roadmap_phases', 'EXIT')
+        return phases
 
-    # Unified Spec Management (single source of truth)
-    async def store_spec(self, project_name: str, spec: Phase) -> str:
-        self._log_state_snapshot('store_spec', 'ENTRY')
+    # Unified Phase Management (single source of truth)
+    async def store_phase(self, project_name: str, phase: Phase) -> str:
+        self._log_state_snapshot('store_phase', 'ENTRY')
         logger.info(
-            f'store_spec: project_name={project_name}, '
-            f'phase_name={spec.phase_name}, '
-            f'iteration={spec.iteration}, '
-            f'version={spec.version}'
+            f'store_phase: project_name={project_name}, '
+            f'phase_name={phase.phase_name}, '
+            f'iteration={phase.iteration}, '
+            f'version={phase.version}'
         )
 
-        # Store in unified spec storage - initialize project storage if needed
-        if project_name not in self._specs:
-            self._specs[project_name] = {}
+        # Store in unified phase storage - initialize project storage if needed
+        if project_name not in self._phases:
+            self._phases[project_name] = {}
 
-        # Normalize spec name for consistent storage
-        normalized_name = normalize_phase_name(spec.phase_name)
-        logger.debug(f'store_spec: Normalized "{spec.phase_name}" -> "{normalized_name}"')
+        # Normalize phase name for consistent storage
+        normalized_name = normalize_phase_name(phase.phase_name)
+        logger.debug(f'store_phase: Normalized "{phase.phase_name}" -> "{normalized_name}"')
 
-        # Auto-increment iteration and version if spec already exists
+        # Auto-increment iteration and version if phase already exists
         # Also preserve frozen fields (objectives, scope, dependencies, deliverables)
-        is_update = normalized_name in self._specs[project_name]
+        is_update = normalized_name in self._phases[project_name]
         if is_update:
-            existing_spec = self._specs[project_name][normalized_name]
-            existing_data = existing_spec.model_dump()
-            new_data = spec.model_dump()
+            existing_phase = self._phases[project_name][normalized_name]
+            existing_data = existing_phase.model_dump()
+            new_data = phase.model_dump()
 
             frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
 
-            spec = Phase(
+            phase = Phase(
                 **{
                     **new_data,
                     **frozen_fields,
@@ -245,41 +245,41 @@ class InMemoryStateManager(StateManager):
                 }
             )
             logger.info(
-                f'store_spec: Updating existing spec - '
-                f'iteration: {existing_data["iteration"]} -> {spec.iteration}, '
-                f'version: {existing_data["version"]} -> {spec.version}, '
+                f'store_phase: Updating existing phase - '
+                f'iteration: {existing_data["iteration"]} -> {phase.iteration}, '
+                f'version: {existing_data["version"]} -> {phase.version}, '
                 f'frozen fields preserved'
             )
 
-        self._specs[project_name][normalized_name] = spec
+        self._phases[project_name][normalized_name] = phase
 
         self._log_state()
-        logger.info(f'store_spec: Successfully stored spec {spec.phase_name} for project {project_name}')
-        self._log_state_snapshot('store_spec', 'EXIT')
-        return spec.phase_name
+        logger.info(f'store_phase: Successfully stored phase {phase.phase_name} for project {project_name}')
+        self._log_state_snapshot('store_phase', 'EXIT')
+        return phase.phase_name
 
-    async def update_spec(self, project_name: str, phase_name: str, updated_spec: Phase) -> str:
-        self._log_state_snapshot('update_spec', 'ENTRY')
+    async def update_phase(self, project_name: str, phase_name: str, updated_phase: Phase) -> str:
+        self._log_state_snapshot('update_phase', 'ENTRY')
         logger.info(
-            f'update_spec: project_name={project_name}, '
+            f'update_phase: project_name={project_name}, '
             f'phase_name={phase_name}, '
-            f'updated_iteration={updated_spec.iteration}, '
-            f'updated_version={updated_spec.version}'
+            f'updated_iteration={updated_phase.iteration}, '
+            f'updated_version={updated_phase.version}'
         )
 
-        # Get existing spec to preserve frozen fields
-        existing_spec = await self.get_spec(project_name, phase_name)
+        # Get existing phase to preserve frozen fields
+        existing_phase = await self.get_phase(project_name, phase_name)
 
-        # Normalize spec name for storage
+        # Normalize phase name for storage
         normalized_name = normalize_phase_name(phase_name)
 
-        # Create new spec with preserved frozen fields and incremented iteration/version
-        existing_data = existing_spec.model_dump()
-        new_data = updated_spec.model_dump()
+        # Create new phase with preserved frozen fields and incremented iteration/version
+        existing_data = existing_phase.model_dump()
+        new_data = updated_phase.model_dump()
 
         frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
 
-        final_spec = Phase(
+        final_phase = Phase(
             **{
                 **new_data,
                 **frozen_fields,
@@ -289,123 +289,139 @@ class InMemoryStateManager(StateManager):
         )
 
         logger.info(
-            f'update_spec: Preserved frozen fields, '
-            f'iteration: {existing_data["iteration"]} -> {final_spec.iteration}, '
-            f'version: {existing_data["version"]} -> {final_spec.version}'
+            f'update_phase: Preserved frozen fields, '
+            f'iteration: {existing_data["iteration"]} -> {final_phase.iteration}, '
+            f'version: {existing_data["version"]} -> {final_phase.version}'
         )
 
-        # Store the updated spec
-        self._specs[project_name][normalized_name] = final_spec
+        # Store the updated phase
+        self._phases[project_name][normalized_name] = final_phase
 
         self._log_state()
-        logger.info(f'update_spec: Successfully updated spec {phase_name} for project {project_name}')
-        self._log_state_snapshot('update_spec', 'EXIT')
-        return f'Updated spec "{phase_name}" to iteration {final_spec.iteration}, version {final_spec.version}'
+        logger.info(f'update_phase: Successfully updated phase {phase_name} for project {project_name}')
+        self._log_state_snapshot('update_phase', 'EXIT')
+        return f'Updated phase "{phase_name}" to iteration {final_phase.iteration}, version {final_phase.version}'
 
-    async def get_spec(self, project_name: str, phase_name: str) -> Phase:
-        self._log_state_snapshot('get_spec', 'ENTRY')
-        logger.debug(f'get_spec: project_name={project_name}, phase_name={phase_name}')
+    async def get_phase(self, project_name: str, phase_name: str) -> Phase:
+        self._log_state_snapshot('get_phase', 'ENTRY')
+        logger.debug(f'get_phase: project_name={project_name}, phase_name={phase_name}')
 
-        # Normalize spec name for lookup
+        # Normalize phase name for lookup
         normalized_name = normalize_phase_name(phase_name)
-        logger.debug(f'get_spec: Normalized "{phase_name}" -> "{normalized_name}"')
+        logger.debug(f'get_phase: Normalized "{phase_name}" -> "{normalized_name}"')
 
-        if project_name not in self._specs or normalized_name not in self._specs[project_name]:
+        if project_name not in self._phases or normalized_name not in self._phases[project_name]:
             logger.error(
-                f'get_spec failed: Spec not found: {phase_name} (normalized: {normalized_name}) '
+                f'get_phase failed: Phase not found: {phase_name} (normalized: {normalized_name}) '
                 f'in project {project_name}'
             )
             raise SpecNotFoundError(f'Spec not found: {phase_name} in project {project_name}')
 
-        spec = self._specs[project_name][normalized_name]
+        phase = self._phases[project_name][normalized_name]
         logger.debug(
-            f'get_spec: Retrieved spec using normalized name "{normalized_name}" (iteration={spec.iteration}, version={spec.version})'
+            f'get_phase: Retrieved phase using normalized name "{normalized_name}" (iteration={phase.iteration}, version={phase.version})'
         )
-        self._log_state_snapshot('get_spec', 'EXIT')
-        return spec
+        self._log_state_snapshot('get_phase', 'EXIT')
+        return phase
 
-    async def list_specs(self, project_name: str) -> list[str]:
-        self._log_state_snapshot('list_specs', 'ENTRY')
-        logger.debug(f'list_specs: project_name={project_name}')
+    async def list_phases(self, project_name: str) -> list[str]:
+        self._log_state_snapshot('list_phases', 'ENTRY')
+        logger.debug(f'list_phases: project_name={project_name}')
 
-        if project_name not in self._specs:
-            logger.debug(f'list_specs: No specs found for project: {project_name}')
-            self._log_state_snapshot('list_specs', 'EXIT')
+        if project_name not in self._phases:
+            logger.debug(f'list_phases: No phases found for project: {project_name}')
+            self._log_state_snapshot('list_phases', 'EXIT')
             return []
 
-        phase_names = list(self._specs[project_name].keys())
-        logger.debug(f'list_specs: Found {len(phase_names)} specs: {phase_names}')
-        self._log_state_snapshot('list_specs', 'EXIT')
+        phase_names = list(self._phases[project_name].keys())
+        logger.debug(f'list_phases: Found {len(phase_names)} phases: {phase_names}')
+        self._log_state_snapshot('list_phases', 'EXIT')
         return phase_names
 
-    async def delete_spec(self, project_name: str, phase_name: str) -> bool:
-        self._log_state_snapshot('delete_spec', 'ENTRY')
-        logger.info(f'delete_spec: project_name={project_name}, phase_name={phase_name}')
+    async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
+        all_phases = await self.list_phases(project_name)
 
-        # Normalize spec name for deletion
+        if not all_phases:
+            return (None, [])
+
+        normalized_partial = normalize_phase_name(partial_name)
+
+        if normalized_partial in all_phases:
+            return (normalized_partial, [normalized_partial])
+
+        matches = [phase for phase in all_phases if normalized_partial in phase]
+        canonical = matches[0] if len(matches) == 1 else None
+
+        return (canonical, matches)
+
+    async def delete_phase(self, project_name: str, phase_name: str) -> bool:
+        self._log_state_snapshot('delete_phase', 'ENTRY')
+        logger.info(f'delete_phase: project_name={project_name}, phase_name={phase_name}')
+
+        # Normalize phase name for deletion
         normalized_name = normalize_phase_name(phase_name)
-        logger.debug(f'delete_spec: Normalized "{phase_name}" -> "{normalized_name}"')
+        logger.debug(f'delete_phase: Normalized "{phase_name}" -> "{normalized_name}"')
 
-        if project_name not in self._specs or normalized_name not in self._specs[project_name]:
+        if project_name not in self._phases or normalized_name not in self._phases[project_name]:
             logger.warning(
-                f'delete_spec: Spec not found: {phase_name} (normalized: {normalized_name}) in project {project_name}'
+                f'delete_phase: Phase not found: {phase_name} (normalized: {normalized_name}) in project {project_name}'
             )
-            self._log_state_snapshot('delete_spec', 'EXIT')
+            self._log_state_snapshot('delete_phase', 'EXIT')
             return False
 
-        # Remove from specs storage
-        del self._specs[project_name][normalized_name]
-        logger.info(f'delete_spec: Removed {phase_name} using normalized name "{normalized_name}" from specs storage')
+        # Remove from phases storage
+        del self._phases[project_name][normalized_name]
+        logger.info(f'delete_phase: Removed {phase_name} using normalized name "{normalized_name}" from phases storage')
 
         self._log_state()
-        self._log_state_snapshot('delete_spec', 'EXIT')
+        self._log_state_snapshot('delete_phase', 'EXIT')
         return True
 
     # Loop-to-Spec Mapping (for temporary refinement sessions)
-    async def link_loop_to_spec(self, loop_id: str, project_name: str, phase_name: str) -> None:
-        self._log_state_snapshot('link_loop_to_spec', 'ENTRY')
-        logger.info(f'link_loop_to_spec: loop_id={loop_id}, project_name={project_name}, phase_name={phase_name}')
+    async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None:
+        self._log_state_snapshot('link_loop_to_phase', 'ENTRY')
+        logger.info(f'link_loop_to_phase: loop_id={loop_id}, project_name={project_name}, phase_name={phase_name}')
 
-        # Normalize spec name for consistent linking
+        # Normalize phase name for consistent linking
         normalized_name = normalize_phase_name(phase_name)
-        logger.debug(f'link_loop_to_spec: Normalized "{phase_name}" -> "{normalized_name}"')
+        logger.debug(f'link_loop_to_phase: Normalized "{phase_name}" -> "{normalized_name}"')
 
-        self._loop_to_spec[loop_id] = (project_name, normalized_name)
-        logger.info(f'Linked loop {loop_id} to spec {normalized_name} in project {project_name}')
+        self._loop_to_phase[loop_id] = (project_name, normalized_name)
+        logger.info(f'Linked loop {loop_id} to phase {normalized_name} in project {project_name}')
         self._log_state()
-        self._log_state_snapshot('link_loop_to_spec', 'EXIT')
+        self._log_state_snapshot('link_loop_to_phase', 'EXIT')
 
-    async def get_spec_by_loop(self, loop_id: str) -> Phase:
-        self._log_state_snapshot('get_spec_by_loop', 'ENTRY')
-        logger.debug(f'get_spec_by_loop: loop_id={loop_id}')
-        if loop_id not in self._loop_to_spec:
-            logger.error(f'get_spec_by_loop failed: Loop not linked to any spec: {loop_id}')
-            raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
-        project_name, phase_name = self._loop_to_spec[loop_id]
-        logger.debug(f'get_spec_by_loop: Loop {loop_id} linked to spec {phase_name} in project {project_name}')
-        self._log_state_snapshot('get_spec_by_loop', 'EXIT')
-        return await self.get_spec(project_name, phase_name)
+    async def get_phase_by_loop(self, loop_id: str) -> Phase:
+        self._log_state_snapshot('get_phase_by_loop', 'ENTRY')
+        logger.debug(f'get_phase_by_loop: loop_id={loop_id}')
+        if loop_id not in self._loop_to_phase:
+            logger.error(f'get_phase_by_loop failed: Loop not linked to any phase: {loop_id}')
+            raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
+        project_name, phase_name = self._loop_to_phase[loop_id]
+        logger.debug(f'get_phase_by_loop: Loop {loop_id} linked to phase {phase_name} in project {project_name}')
+        self._log_state_snapshot('get_phase_by_loop', 'EXIT')
+        return await self.get_phase(project_name, phase_name)
 
-    async def update_spec_by_loop(self, loop_id: str, spec: Phase) -> None:
-        self._log_state_snapshot('update_spec_by_loop', 'ENTRY')
-        logger.info(f'update_spec_by_loop: loop_id={loop_id}, phase_name={spec.phase_name}')
-        if loop_id not in self._loop_to_spec:
-            logger.error(f'update_spec_by_loop failed: Loop not linked to any spec: {loop_id}')
-            raise LoopNotFoundError(f'Loop not linked to any spec: {loop_id}')
-        project_name, phase_name = self._loop_to_spec[loop_id]
-        logger.debug(f'update_spec_by_loop: Updating spec {phase_name} in project {project_name}')
-        await self.store_spec(project_name, spec)
-        self._log_state_snapshot('update_spec_by_loop', 'EXIT')
+    async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None:
+        self._log_state_snapshot('update_phase_by_loop', 'ENTRY')
+        logger.info(f'update_phase_by_loop: loop_id={loop_id}, phase_name={phase.phase_name}')
+        if loop_id not in self._loop_to_phase:
+            logger.error(f'update_phase_by_loop failed: Loop not linked to any phase: {loop_id}')
+            raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
+        project_name, phase_name = self._loop_to_phase[loop_id]
+        logger.debug(f'update_phase_by_loop: Updating phase {phase_name} in project {project_name}')
+        await self.store_phase(project_name, phase)
+        self._log_state_snapshot('update_phase_by_loop', 'EXIT')
 
     async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
         self._log_state_snapshot('unlink_loop', 'ENTRY')
         logger.info(f'unlink_loop: loop_id={loop_id}')
-        result = self._loop_to_spec.pop(loop_id, None)
+        result = self._loop_to_phase.pop(loop_id, None)
         if result:
             project_name, phase_name = result
-            logger.info(f'unlink_loop: Unlinked loop {loop_id} from spec {phase_name} in project {project_name}')
+            logger.info(f'unlink_loop: Unlinked loop {loop_id} from phase {phase_name} in project {project_name}')
         else:
-            logger.warning(f'unlink_loop: Loop {loop_id} was not linked to any spec')
+            logger.warning(f'unlink_loop: Loop {loop_id} was not linked to any phase')
         self._log_state()
         self._log_state_snapshot('unlink_loop', 'EXIT')
         return result
@@ -553,204 +569,6 @@ class InMemoryStateManager(StateManager):
         logger.info(f'Linked loop {loop_id} to {doc_type} document at {path}')
         self._log_state()
         self._log_state_snapshot('link_loop_to_document', 'EXIT')
-
-    async def store_phase(self, project_name: str, phase: Phase) -> str:
-        self._log_state_snapshot('store_phase', 'ENTRY')
-        logger.info(
-            f'store_phase: project_name={project_name}, '
-            f'phase_name={phase.phase_name}, '
-            f'iteration={phase.iteration}, '
-            f'version={phase.version}'
-        )
-
-        if project_name not in self._specs:
-            self._specs[project_name] = {}
-
-        normalized_name = normalize_phase_name(phase.phase_name)
-        logger.debug(f'store_phase: Normalized "{phase.phase_name}" -> "{normalized_name}"')
-
-        is_update = normalized_name in self._specs[project_name]
-        if is_update:
-            existing_spec = self._specs[project_name][normalized_name]
-            existing_data = existing_spec.model_dump()
-            new_data = phase.model_dump()
-
-            frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
-
-            phase = Phase(
-                **{
-                    **new_data,
-                    **frozen_fields,
-                    'iteration': existing_data['iteration'] + 1,
-                    'version': existing_data['version'] + 1,
-                }
-            )
-            logger.info(
-                f'store_phase: Updating existing phase - '
-                f'iteration: {existing_data["iteration"]} -> {phase.iteration}, '
-                f'version: {existing_data["version"]} -> {phase.version}, '
-                f'frozen fields preserved'
-            )
-
-        self._specs[project_name][normalized_name] = phase
-
-        self._log_state()
-        logger.info(f'store_phase: Successfully stored phase {phase.phase_name} for project {project_name}')
-        self._log_state_snapshot('store_phase', 'EXIT')
-        return phase.phase_name
-
-    async def update_phase(self, project_name: str, phase_name: str, updated_phase: Phase) -> str:
-        self._log_state_snapshot('update_phase', 'ENTRY')
-        logger.info(
-            f'update_phase: project_name={project_name}, '
-            f'phase_name={phase_name}, '
-            f'updated_iteration={updated_phase.iteration}, '
-            f'updated_version={updated_phase.version}'
-        )
-
-        existing_phase = await self.get_phase(project_name, phase_name)
-        normalized_name = normalize_phase_name(phase_name)
-
-        existing_data = existing_phase.model_dump()
-        new_data = updated_phase.model_dump()
-
-        frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
-
-        final_phase = Phase(
-            **{
-                **new_data,
-                **frozen_fields,
-                'iteration': existing_data['iteration'] + 1,
-                'version': existing_data['version'] + 1,
-            }
-        )
-
-        logger.info(
-            f'update_phase: Preserved frozen fields, '
-            f'iteration: {existing_data["iteration"]} -> {final_phase.iteration}, '
-            f'version: {existing_data["version"]} -> {final_phase.version}'
-        )
-
-        self._specs[project_name][normalized_name] = final_phase
-
-        self._log_state()
-        logger.info(f'update_phase: Successfully updated phase {phase_name} for project {project_name}')
-        self._log_state_snapshot('update_phase', 'EXIT')
-        return f'Updated phase "{phase_name}" to iteration {final_phase.iteration}, version {final_phase.version}'
-
-    async def get_phase(self, project_name: str, phase_name: str) -> Phase:
-        self._log_state_snapshot('get_phase', 'ENTRY')
-        logger.debug(f'get_phase: project_name={project_name}, phase_name={phase_name}')
-
-        normalized_name = normalize_phase_name(phase_name)
-        logger.debug(f'get_phase: Normalized "{phase_name}" -> "{normalized_name}"')
-
-        if project_name not in self._specs or normalized_name not in self._specs[project_name]:
-            logger.error(
-                f'get_phase failed: Phase not found: {phase_name} (normalized: {normalized_name}) '
-                f'in project {project_name}'
-            )
-            raise SpecNotFoundError(f'Phase not found: {phase_name} in project {project_name}')
-
-        phase = self._specs[project_name][normalized_name]
-        logger.debug(
-            f'get_phase: Retrieved phase using normalized name "{normalized_name}" (iteration={phase.iteration}, version={phase.version})'
-        )
-        self._log_state_snapshot('get_phase', 'EXIT')
-        return phase
-
-    async def list_phases(self, project_name: str) -> list[str]:
-        self._log_state_snapshot('list_phases', 'ENTRY')
-        logger.debug(f'list_phases: project_name={project_name}')
-
-        if project_name not in self._specs:
-            logger.debug(f'list_phases: No phases found for project: {project_name}')
-            self._log_state_snapshot('list_phases', 'EXIT')
-            return []
-
-        phase_names = list(self._specs[project_name].keys())
-        logger.debug(f'list_phases: Found {len(phase_names)} phases: {phase_names}')
-        self._log_state_snapshot('list_phases', 'EXIT')
-        return phase_names
-
-    async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]:
-        self._log_state_snapshot('resolve_phase_name', 'ENTRY')
-        logger.debug(f'resolve_phase_name: project_name={project_name}, partial_name={partial_name}')
-
-        all_phases = await self.list_phases(project_name)
-
-        if not all_phases:
-            logger.warning(f'No phases found in project {project_name}')
-            return (None, [])
-
-        normalized_partial = normalize_phase_name(partial_name)
-
-        if normalized_partial in all_phases:
-            logger.info(f'Exact match found: {normalized_partial}')
-            return (normalized_partial, [normalized_partial])
-
-        matches = [phase for phase in all_phases if normalized_partial in phase]
-
-        logger.info(f'Found {len(matches)} matches for "{partial_name}": {matches}')
-
-        canonical = matches[0] if len(matches) == 1 else None
-        self._log_state_snapshot('resolve_phase_name', 'EXIT')
-        return (canonical, matches)
-
-    async def delete_phase(self, project_name: str, phase_name: str) -> bool:
-        self._log_state_snapshot('delete_phase', 'ENTRY')
-        logger.info(f'delete_phase: project_name={project_name}, phase_name={phase_name}')
-
-        normalized_name = normalize_phase_name(phase_name)
-        logger.debug(f'delete_phase: Normalized "{phase_name}" -> "{normalized_name}"')
-
-        if project_name not in self._specs or normalized_name not in self._specs[project_name]:
-            logger.warning(
-                f'delete_phase: Phase not found: {phase_name} (normalized: {normalized_name}) in project {project_name}'
-            )
-            self._log_state_snapshot('delete_phase', 'EXIT')
-            return False
-
-        del self._specs[project_name][normalized_name]
-        logger.info(f'delete_phase: Removed {phase_name} using normalized name "{normalized_name}" from phase storage')
-
-        self._log_state()
-        self._log_state_snapshot('delete_phase', 'EXIT')
-        return True
-
-    async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None:
-        self._log_state_snapshot('link_loop_to_phase', 'ENTRY')
-        logger.info(f'link_loop_to_phase: loop_id={loop_id}, project_name={project_name}, phase_name={phase_name}')
-
-        normalized_name = normalize_phase_name(phase_name)
-        logger.debug(f'link_loop_to_phase: Normalized "{phase_name}" -> "{normalized_name}"')
-
-        self._loop_to_spec[loop_id] = (project_name, normalized_name)
-        logger.info(f'Linked loop {loop_id} to phase {normalized_name} in project {project_name}')
-        self._log_state()
-        self._log_state_snapshot('link_loop_to_phase', 'EXIT')
-
-    async def get_phase_by_loop(self, loop_id: str) -> Phase:
-        self._log_state_snapshot('get_phase_by_loop', 'ENTRY')
-        logger.debug(f'get_phase_by_loop: loop_id={loop_id}')
-        if loop_id not in self._loop_to_spec:
-            logger.error(f'get_phase_by_loop failed: Loop not linked to any phase: {loop_id}')
-            raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
-        project_name, phase_name = self._loop_to_spec[loop_id]
-        logger.debug(f'get_phase_by_loop: Loop {loop_id} linked to phase {phase_name} in project {project_name}')
-        self._log_state_snapshot('get_phase_by_loop', 'EXIT')
-        return await self.get_phase(project_name, phase_name)
-
-    async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None:
-        self._log_state_snapshot('update_phase_by_loop', 'ENTRY')
-        logger.info(f'update_phase_by_loop: loop_id={loop_id}, phase_name={phase.phase_name}')
-        if loop_id not in self._loop_to_spec:
-            logger.error(f'update_phase_by_loop failed: Loop not linked to any phase: {loop_id}')
-            raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
-        project_name, phase_name = self._loop_to_spec[loop_id]
-        logger.debug(f'update_phase_by_loop: Updating phase {phase_name} in project {project_name}')
-        await self.store_phase(project_name, phase)
-        self._log_state_snapshot('update_phase_by_loop', 'EXIT')
 
     async def store_task(self, phase_path: str, task: Task) -> str:
         self._log_state_snapshot('store_task', 'ENTRY')

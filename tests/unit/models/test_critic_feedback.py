@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 
@@ -9,7 +10,7 @@ class TestCriticFeedback:
     def test_critic_feedback_creation_with_all_fields(self) -> None:
         feedback = CriticFeedback(
             loop_id='test-loop-123',
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=3,
             overall_score=85,
             assessment_summary='Good technical specification with minor improvements needed',
@@ -22,7 +23,7 @@ class TestCriticFeedback:
         )
 
         assert feedback.loop_id == 'test-loop-123'
-        assert feedback.critic_agent == CriticAgent.SPEC_CRITIC
+        assert feedback.critic_agent == CriticAgent.PHASE_CRITIC
         assert feedback.iteration == 3
         assert feedback.overall_score == 85
         assert feedback.assessment_summary == 'Good technical specification with minor improvements needed'
@@ -40,7 +41,7 @@ class TestCriticFeedback:
     def test_quality_score_property_returns_overall_score(self) -> None:
         feedback = CriticFeedback(
             loop_id='test-loop',
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=92,
             assessment_summary='Test assessment',
@@ -57,7 +58,7 @@ class TestCriticFeedback:
         with pytest.raises(ValueError, match='Overall score must be between 0 and 100'):
             CriticFeedback(
                 loop_id='test-loop',
-                critic_agent=CriticAgent.SPEC_CRITIC,
+                critic_agent=CriticAgent.PHASE_CRITIC,
                 iteration=1,
                 overall_score=150,  # Invalid: > 100
                 assessment_summary='Test assessment',
@@ -70,7 +71,7 @@ class TestCriticFeedback:
         with pytest.raises(ValueError, match='Overall score must be between 0 and 100'):
             CriticFeedback(
                 loop_id='test-loop',
-                critic_agent=CriticAgent.SPEC_CRITIC,
+                critic_agent=CriticAgent.PHASE_CRITIC,
                 iteration=1,
                 overall_score=-5,  # Invalid: < 0
                 assessment_summary='Test assessment',
@@ -130,7 +131,7 @@ The specification demonstrates thorough understanding of requirements and provid
         feedback = CriticFeedback.parse_markdown(markdown)
 
         assert feedback.loop_id == 'test-loop-789'
-        assert feedback.critic_agent == CriticAgent.SPEC_CRITIC
+        assert feedback.critic_agent == CriticAgent.PHASE_CRITIC
         assert feedback.iteration == 2
         assert feedback.overall_score == 88
         assert (
@@ -219,7 +220,7 @@ The roadmap provides a foundation but requires refinement in several critical ar
     def test_round_trip_parse_and_build_markdown(self) -> None:
         original_feedback = CriticFeedback(
             loop_id='round-trip-test',
-            critic_agent=CriticAgent.BUILD_CRITIC,
+            critic_agent=CriticAgent.TASK_CRITIC,
             iteration=3,
             overall_score=91,
             assessment_summary='Excellent build implementation',

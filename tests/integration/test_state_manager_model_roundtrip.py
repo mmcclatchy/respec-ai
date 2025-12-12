@@ -58,7 +58,7 @@ async def postgres_manager(check_database_available: bool) -> AsyncGenerator[Sta
             async with db_pool._pool.acquire() as conn:
                 await conn.execute(
                     'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                    'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+                    'phases, project_plans, loop_to_phase_mappings CASCADE'
                 )
         except Exception:
             pass
@@ -97,7 +97,7 @@ async def state_manager(
                 async with db_pool._pool.acquire() as conn:
                     await conn.execute(
                         'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                        'technical_specs, project_plans, loop_to_spec_mappings CASCADE'
+                        'phases, project_plans, loop_to_phase_mappings CASCADE'
                     )
             except Exception:
                 pass
@@ -127,13 +127,13 @@ def sample_roadmap(markdown_builder: Callable) -> Roadmap:
         quality_gates='Test coverage >80%, Zero critical bugs',
         performance_targets='API response <100ms p95',
         roadmap_status=RoadmapStatus.IN_PROGRESS,
-        spec_count=3,
+        phase_count=3,
     )
     return Roadmap.parse_markdown(markdown)
 
 
 @pytest.fixture
-def sample_spec(markdown_builder: Callable) -> Phase:
+def sample_phase(markdown_builder: Callable) -> Phase:
     markdown = markdown_builder(
         Phase,
         phase_name='user-authentication-service',
@@ -187,7 +187,7 @@ def sample_project_plan(markdown_builder: Callable) -> ProjectPlan:
         contingency_plans='Extended timeline, Reduced scope, Additional resources',
         quality_standards='WCAG 2.1 AA, SOC 2 compliance',
         testing_strategy='Unit, Integration, E2E, Load testing',
-        documentation_standards='OpenAPI specs, Architecture decision records',
+        documentation_standards='OpenAPI phases, Architecture decision records',
         project_status=ProjectStatus.ACTIVE,
     )
     return ProjectPlan.parse_markdown(markdown)
@@ -247,8 +247,8 @@ async def test_roadmap_store_retrieve_preserves_all_fields(
     retrieved = await state_manager.get_roadmap(project_name)
 
     # Compare all fields (exclude dynamic fields like id)
-    original_data = sample_roadmap.model_dump(exclude={'id', 'specs'})
-    retrieved_data = retrieved.model_dump(exclude={'id', 'specs'})
+    original_data = sample_roadmap.model_dump(exclude={'id', 'phases'})
+    retrieved_data = retrieved.model_dump(exclude={'id', 'phases'})
 
     assert original_data == retrieved_data, 'Roadmap round-trip changed field values'
 
@@ -283,33 +283,33 @@ async def test_roadmap_multiple_updates_preserve_latest(
 
 
 @pytest.mark.asyncio
-async def test_spec_store_retrieve_preserves_all_fields(
-    state_manager: StateManager, project_name: str, sample_spec: Phase
+async def test_phase_store_retrieve_preserves_all_fields(
+    state_manager: StateManager, project_name: str, sample_phase: Phase
 ) -> None:
     """Verify storing and retrieving Phase preserves all field values."""
-    # Store spec
-    phase_name = await state_manager.store_spec(project_name, sample_spec)
+    # Store phase
+    phase_name = await state_manager.store_phase(project_name, sample_phase)
 
-    # Retrieve spec
-    retrieved = await state_manager.get_spec(project_name, phase_name)
+    # Retrieve phase
+    retrieved = await state_manager.get_phase(project_name, phase_name)
 
     # Compare all fields
-    original_data = sample_spec.model_dump(exclude={'id'})
+    original_data = sample_phase.model_dump(exclude={'id'})
     retrieved_data = retrieved.model_dump(exclude={'id'})
 
     assert original_data == retrieved_data, 'Phase round-trip changed field values'
 
 
 @pytest.mark.asyncio
-async def test_spec_frozen_fields_preserved_on_update(
-    state_manager: StateManager, project_name: str, sample_spec: Phase
+async def test_phase_frozen_fields_preserved_on_update(
+    state_manager: StateManager, project_name: str, sample_phase: Phase
 ) -> None:
     """Verify frozen fields (objectives, scope, dependencies, deliverables) are preserved."""
-    # Store original spec
-    phase_name = await state_manager.store_spec(project_name, sample_spec)
+    # Store original phase
+    phase_name = await state_manager.store_phase(project_name, sample_phase)
 
-    # Create updated spec with attempted changes to frozen fields
-    updated_spec = sample_spec.model_copy(
+    # Create updated phase with attempted changes to frozen fields
+    updated_spec = sample_phase.model_copy(
         update={
             'objectives': 'CHANGED - should not persist',
             'scope': 'CHANGED - should not persist',
@@ -317,32 +317,32 @@ async def test_spec_frozen_fields_preserved_on_update(
         }
     )
 
-    await state_manager.update_spec(project_name, phase_name, updated_spec)
+    await state_manager.update_phase(project_name, phase_name, updated_spec)
 
     # Retrieve and verify frozen fields unchanged
-    retrieved = await state_manager.get_spec(project_name, phase_name)
+    retrieved = await state_manager.get_phase(project_name, phase_name)
 
-    assert retrieved.objectives == sample_spec.objectives, 'Frozen field "objectives" was modified'
-    assert retrieved.scope == sample_spec.scope, 'Frozen field "scope" was modified'
+    assert retrieved.objectives == sample_phase.objectives, 'Frozen field "objectives" was modified'
+    assert retrieved.scope == sample_phase.scope, 'Frozen field "scope" was modified'
     assert retrieved.architecture == 'Updated architecture - should persist'
 
 
 @pytest.mark.asyncio
-async def test_spec_iteration_and_version_auto_increment(
-    state_manager: StateManager, project_name: str, sample_spec: Phase
+async def test_phase_iteration_and_version_auto_increment(
+    state_manager: StateManager, project_name: str, sample_phase: Phase
 ) -> None:
-    """Verify iteration and version auto-increment on duplicate spec names."""
-    # Store spec twice with same name
-    await state_manager.store_spec(project_name, sample_spec)
+    """Verify iteration and version auto-increment on duplicate phase names."""
+    # Store phase twice with same name
+    await state_manager.store_phase(project_name, sample_phase)
 
     # Store again with same phase_name
-    duplicate_spec = sample_spec.model_copy()
-    await state_manager.store_spec(project_name, duplicate_spec)
+    duplicate_spec = sample_phase.model_copy()
+    await state_manager.store_phase(project_name, duplicate_spec)
 
     # Retrieve - should have incremented iteration/version
-    retrieved = await state_manager.get_spec(project_name, sample_spec.phase_name)
+    retrieved = await state_manager.get_phase(project_name, sample_phase.phase_name)
 
-    assert retrieved.iteration > sample_spec.iteration or retrieved.version > sample_spec.version
+    assert retrieved.iteration > sample_phase.iteration or retrieved.version > sample_phase.version
 
 
 # ============================================================================
@@ -468,8 +468,8 @@ async def test_both_implementations_produce_identical_results(
     postgres_result = await postgres_manager.get_roadmap(project_name)
 
     # Compare results
-    inmemory_data = inmemory_result.model_dump(exclude={'id', 'specs'})
-    postgres_data = postgres_result.model_dump(exclude={'id', 'specs'})
+    inmemory_data = inmemory_result.model_dump(exclude={'id', 'phases'})
+    postgres_data = postgres_result.model_dump(exclude={'id', 'phases'})
 
     assert inmemory_data == postgres_data, 'InMemory and Postgres implementations differ'
 
@@ -480,57 +480,57 @@ async def test_both_implementations_produce_identical_results(
 
 
 @pytest.mark.asyncio
-async def test_loop_spec_mapping_preserves_spec_data(
-    state_manager: StateManager, project_name: str, sample_spec: Phase
+async def test_loop_phase_mapping_preserves_phase_data(
+    state_manager: StateManager, project_name: str, sample_phase: Phase
 ) -> None:
-    """Verify loop-to-spec mapping preserves spec data through refinement cycle."""
-    # Store spec
-    phase_name = await state_manager.store_spec(project_name, sample_spec)
+    """Verify loop-to-spec mapping preserves phase data through refinement cycle."""
+    # Store phase
+    phase_name = await state_manager.store_phase(project_name, sample_phase)
 
-    # Create loop and link to spec
+    # Create loop and link to phase
     loop = LoopState(loop_type=LoopType.PHASE)
     await state_manager.add_loop(loop, project_name)
-    await state_manager.link_loop_to_spec(loop.id, project_name, phase_name)
+    await state_manager.link_loop_to_phase(loop.id, project_name, phase_name)
 
-    # Retrieve spec via loop
-    retrieved = await state_manager.get_spec_by_loop(loop.id)
+    # Retrieve phase via loop
+    retrieved = await state_manager.get_phase_by_loop(loop.id)
 
     # Compare
-    original_data = sample_spec.model_dump(exclude={'id'})
+    original_data = sample_phase.model_dump(exclude={'id'})
     retrieved_data = retrieved.model_dump(exclude={'id'})
 
-    assert original_data == retrieved_data, 'Loop-to-spec mapping altered spec data'
+    assert original_data == retrieved_data, 'Loop-to-spec mapping altered phase data'
 
 
 @pytest.mark.asyncio
-async def test_update_spec_by_loop_preserves_frozen_fields(
-    state_manager: StateManager, project_name: str, sample_spec: Phase
+async def test_update_phase_by_loop_preserves_frozen_fields(
+    state_manager: StateManager, project_name: str, sample_phase: Phase
 ) -> None:
-    """Verify updating spec via loop also preserves frozen fields.
+    """Verify updating phase via loop also preserves frozen fields.
 
-    Note: update_spec_by_loop calls store_spec internally, which preserves frozen fields
-    on conflict/update operations. This matches update_spec behavior.
+    Note: update_phase_by_loop calls store_phase internally, which preserves frozen fields
+    on conflict/update operations. This matches update_phase behavior.
     """
-    # Store spec and link to loop
-    phase_name = await state_manager.store_spec(project_name, sample_spec)
+    # Store phase and link to loop
+    phase_name = await state_manager.store_phase(project_name, sample_phase)
 
     loop = LoopState(loop_type=LoopType.PHASE)
     await state_manager.add_loop(loop, project_name)
-    await state_manager.link_loop_to_spec(loop.id, project_name, phase_name)
+    await state_manager.link_loop_to_phase(loop.id, project_name, phase_name)
 
-    # Create updated spec with attempted frozen field changes
-    updated_spec = sample_spec.model_copy(
+    # Create updated phase with attempted frozen field changes
+    updated_spec = sample_phase.model_copy(
         update={
             'objectives': 'CHANGED objectives - should not persist',
             'testing_strategy': 'Updated testing strategy - should persist',
         }
     )
 
-    await state_manager.update_spec_by_loop(loop.id, updated_spec)
+    await state_manager.update_phase_by_loop(loop.id, updated_spec)
 
     # Retrieve via loop
-    retrieved = await state_manager.get_spec_by_loop(loop.id)
+    retrieved = await state_manager.get_phase_by_loop(loop.id)
 
     # Verify frozen field unchanged, flexible field updated
-    assert retrieved.objectives == sample_spec.objectives
+    assert retrieved.objectives == sample_phase.objectives
     assert retrieved.testing_strategy == 'Updated testing strategy - should persist'

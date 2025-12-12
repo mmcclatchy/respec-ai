@@ -49,8 +49,8 @@ class Roadmap(MCPModel):
     performance_targets: str = 'Performance Targets not specified'
     roadmap_status: RoadmapStatus = RoadmapStatus.DRAFT
 
-    def build_markdown(self, specs: list[Phase] | None = None) -> str:
-        spec_count = len(specs) if specs else 0
+    def build_markdown(self, phases: list[Phase] | None = None) -> str:
+        phase_count = len(phases) if phases else 0
         roadmap_metadata = f"""{self.TITLE_PATTERN}: {self.project_name}
 
 ## Project Details
@@ -114,12 +114,12 @@ class Roadmap(MCPModel):
 ### Status
 {self.roadmap_status.value}
 
-### Spec Count
-{spec_count}
+### Phase Count
+{phase_count}
 """
         # Append full Phase markdown for round-trip consistency
-        if specs:
-            specs_markdown = '\n\n'.join(spec.build_markdown() for spec in specs)
-            return roadmap_metadata + '\n' + specs_markdown
+        if phases:
+            phases_markdown = '\n\n'.join(phase.build_markdown() for phase in phases)
+            return roadmap_metadata + '\n' + phases_markdown
 
         return roadmap_metadata
