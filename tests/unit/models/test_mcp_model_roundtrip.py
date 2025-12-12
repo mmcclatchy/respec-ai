@@ -13,7 +13,7 @@ from typing import Callable, Type
 import pytest
 
 from src.models.base import MCPModel
-from src.models.enums import BuildStatus, ProjectStatus, RequirementsStatus, RoadmapStatus, PhaseStatus
+from src.models.enums import BuildStatus, PhaseStatus, ProjectStatus, RequirementsStatus, RoadmapStatus
 from src.models.feature_requirements import FeatureRequirements
 from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
@@ -43,12 +43,12 @@ def sample_roadmap_markdown(markdown_builder: Callable) -> str:
         quality_gates='All tests pass',
         performance_targets='Fast response',
         roadmap_status=RoadmapStatus.DRAFT,
-        spec_count=1,
+        phase_count=1,
     )
 
 
 @pytest.fixture
-def sample_spec_markdown(markdown_builder: Callable) -> str:
+def sample_phase_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         Phase,
         phase_name='test-phase',
@@ -105,7 +105,7 @@ def sample_project_plan_markdown(markdown_builder: Callable) -> str:
 
 
 @pytest.fixture
-def sample_phase_markdown(markdown_builder: Callable) -> str:
+def sample_task_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         Task,
         project_name='Test Platform',
@@ -159,9 +159,9 @@ def sample_feature_requirements_markdown(markdown_builder: Callable) -> str:
     'model_class,fixture_name',
     [
         (Roadmap, 'sample_roadmap_markdown'),
-        (Phase, 'sample_spec_markdown'),
+        (Phase, 'sample_phase_markdown'),
         (ProjectPlan, 'sample_project_plan_markdown'),
-        (Task, 'sample_phase_markdown'),
+        (Task, 'sample_task_markdown'),
         (FeatureRequirements, 'sample_feature_requirements_markdown'),
     ],
 )
@@ -180,8 +180,8 @@ def test_mcp_model_round_trip_idempotency(
     rebuilt_markdown = original.build_markdown()
     reparsed = model_class.parse_markdown(rebuilt_markdown)
 
-    original_data = original.model_dump(exclude={'id', 'specs'})
-    reparsed_data = reparsed.model_dump(exclude={'id', 'specs'})
+    original_data = original.model_dump(exclude={'id', 'phases'})
+    reparsed_data = reparsed.model_dump(exclude={'id', 'phases'})
 
     assert original_data == reparsed_data, f'{model_class.__name__} round-trip changed field values'
 

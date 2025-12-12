@@ -206,7 +206,7 @@ MCP Server           ✓ Registered as respec-ai
 Available Commands (restart Claude Code to activate):
   • /respec-plan - Create strategic plans
   • /respec-roadmap - Create phased roadmaps
-  • /respec-phase - Transform plans into specs
+  • /respec-phase - Transform plans into phases
   • /respec-code - Execute implementation
 
 🚀 Ready to begin! Restart Claude Code to use the respec-ai commands.
@@ -396,7 +396,7 @@ Regenerated 5 commands and 12 agents
 ⚠ Restart Claude Code to activate the updated templates
 ```
 
-**Note:** Existing work (plans, specs) won't automatically migrate between platforms.
+**Note:** Existing work (plans, phases) won't automatically migrate between platforms.
 
 ---
 
@@ -881,7 +881,7 @@ respec-ai supports three platforms with different capabilities:
 - None (uses built-in Claude Code tools)
 
 **Workflow:**
-- Specs stored as markdown files in `.respec-ai/projects/[project-name]/respec-phases/`
+- Specs stored as markdown files in `.respec-ai/plans/[project-name]/phases/`
 - Plans stored as markdown files
 - Git-friendly version control
 
@@ -937,7 +937,7 @@ The command will:
 - Regenerate all 5 commands in `.claude/commands/` with new platform-specific tools
 - Regenerate all 12 agents in `.claude/agents/` with updated configurations
 
-**Note:** Existing work (plans, specs) won't automatically migrate between platforms. You'll need to manually recreate them in the new platform if needed.
+**Note:** Existing work (plans, phases) won't automatically migrate between platforms. You'll need to manually recreate them in the new platform if needed.
 
 ---
 
@@ -990,7 +990,7 @@ respec-ai supports running multiple projects with explicit project context. Each
 - ✅ All 391+ tests passing with multi-project scenarios
 
 **Current Limitations:**
-- ⏸️ **In-memory state**: Plans, specs, and loop state stored in memory
+- ⏸️ **In-memory state**: Plans, phases, and loop state stored in memory
   - State does not persist across MCP server restarts
   - Acceptable for single-user development workflows
 - ⏸️ **Global configuration**: Platform config stored at project level
@@ -1189,7 +1189,7 @@ respec-ai supports running multiple projects with explicit project context. Each
 **Problem:** Platform-specific operations fail during workflow execution
 
 **Symptoms:**
-- Error: "Tool not found" when creating issues/specs
+- Error: "Tool not found" when creating issues/phases
 - Linear/GitHub operations timeout or fail
 - Markdown files not created in expected locations
 
@@ -1238,10 +1238,10 @@ respec-ai supports running multiple projects with explicit project context. Each
 4. **For Markdown platform:**
    ```bash
    # Verify project directory exists
-   ls -la .respec-ai/projects/
+   ls -la .respec-ai/plans/
 
    # If missing, create it:
-   mkdir -p .respec-ai/projects/
+   mkdir -p .respec-ai/plans/
    ```
 
 5. **Check file permissions**
@@ -1283,7 +1283,7 @@ respec-ai supports running multiple projects with explicit project context. Each
 3. **Manual refinement**
 
    If automated refinement stagnates:
-   - Review the current document (plan/spec/code)
+   - Review the current document (plan/phase/code)
    - Make manual edits to address critic feedback
    - Re-run the workflow command
 
@@ -1447,8 +1447,8 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 - Consider security and performance
 
 **Don't:**
-- Skip spec creation before implementation
-- Mix specs with code
+- Skip phase creation before implementation
+- Mix phases with code
 - Ignore critic feedback
 
 ### Implementation

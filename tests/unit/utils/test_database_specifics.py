@@ -45,11 +45,11 @@ class TestDatabaseCascadeDeletes:
             assert count_after == 0
 
     @pytest.mark.asyncio
-    async def test_cascade_delete_on_loop_to_spec_mappings(self, db_state_manager: PostgresStateManager) -> None:
+    async def test_cascade_delete_on_loop_to_phase_mappings(self, db_state_manager: PostgresStateManager) -> None:
         loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
-        spec = Phase(
+        phase = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
@@ -57,18 +57,20 @@ class TestDatabaseCascadeDeletes:
             deliverables='Deliverables',
             phase_status=PhaseStatus.DRAFT,
         )
-        await db_state_manager.store_spec('test-project', spec)
-        await db_state_manager.link_loop_to_spec(loop.id, 'test-project', spec.phase_name)
+        await db_state_manager.store_phase('test-project', phase)
+        await db_state_manager.link_loop_to_phase(loop.id, 'test-project', phase.phase_name)
 
         async with db_pool.acquire() as conn:
-            count_before = await conn.fetchval('SELECT COUNT(*) FROM loop_to_spec_mappings WHERE loop_id = $1', loop.id)
+            count_before = await conn.fetchval(
+                'SELECT COUNT(*) FROM loop_to_phase_mappings WHERE loop_id = $1', loop.id
+            )
             assert count_before == 1
 
         async with db_pool.acquire() as conn:
             await conn.execute('DELETE FROM loop_states WHERE id = $1', loop.id)
 
         async with db_pool.acquire() as conn:
-            count_after = await conn.fetchval('SELECT COUNT(*) FROM loop_to_spec_mappings WHERE loop_id = $1', loop.id)
+            count_after = await conn.fetchval('SELECT COUNT(*) FROM loop_to_phase_mappings WHERE loop_id = $1', loop.id)
             assert count_after == 0
 
 
@@ -78,7 +80,7 @@ class TestDatabaseJSONBSerialization:
         loop = LoopState(loop_type=LoopType.PHASE)
         feedback1 = CriticFeedback(
             loop_id=loop.id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=85,
             assessment_summary='Good progress',
@@ -88,7 +90,7 @@ class TestDatabaseJSONBSerialization:
         )
         feedback2 = CriticFeedback(
             loop_id=loop.id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=2,
             overall_score=90,
             assessment_summary='Excellent work',
@@ -111,8 +113,8 @@ class TestDatabaseJSONBSerialization:
         assert retrieved_loop.feedback_history[0].key_issues == ['Missing details']
 
     @pytest.mark.asyncio
-    async def test_spec_additional_sections_jsonb_roundtrip(self, db_state_manager: PostgresStateManager) -> None:
-        spec = Phase(
+    async def test_phase_additional_sections_jsonb_roundtrip(self, db_state_manager: PostgresStateManager) -> None:
+        phase = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
@@ -122,19 +124,19 @@ class TestDatabaseJSONBSerialization:
             additional_sections={'custom_field': 'custom value', 'notes': 'note1, note2'},
         )
 
-        await db_state_manager.store_spec('test-project', spec)
-        retrieved_spec = await db_state_manager.get_spec('test-project', spec.phase_name)
+        await db_state_manager.store_phase('test-project', phase)
+        retrieved_phase = await db_state_manager.get_phase('test-project', phase.phase_name)
 
-        assert retrieved_spec.additional_sections == {'custom_field': 'custom value', 'notes': 'note1, note2'}
-        assert retrieved_spec.additional_sections['custom_field'] == 'custom value'
-        assert retrieved_spec.additional_sections['notes'] == 'note1, note2'
+        assert retrieved_phase.additional_sections == {'custom_field': 'custom value', 'notes': 'note1, note2'}
+        assert retrieved_phase.additional_sections['custom_field'] == 'custom value'
+        assert retrieved_phase.additional_sections['notes'] == 'note1, note2'
 
 
 class TestDatabaseConstraints:
     @pytest.mark.asyncio
     async def test_unique_constraint_on_project_phase_name(self, db_state_manager: PostgresStateManager) -> None:
-        spec = Phase(
-            phase_name='Test Spec',
+        phase = Phase(
+            phase_name='test-phase',
             objectives='Objectives',
             scope='Scope',
             dependencies='Dependencies',
@@ -142,20 +144,20 @@ class TestDatabaseConstraints:
             phase_status=PhaseStatus.DRAFT,
         )
 
-        await db_state_manager.store_spec('test-project', spec)
+        await db_state_manager.store_phase('test-project', phase)
 
         async with db_pool.acquire() as conn:
             with pytest.raises(UniqueViolationError):
                 await conn.execute(
                     """
-                    INSERT INTO technical_specs (
+                    INSERT INTO phases (
                         id, project_name, phase_name, objectives, scope,
                         dependencies, deliverables, phase_status
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,
                     'testid01',
                     'test-project',
-                    'test-spec',
+                    'test-phase',
                     'Objectives',
                     'Scope',
                     'Dependencies',
@@ -185,7 +187,7 @@ class TestDatabaseConstraints:
 class TestDatabaseTransactions:
     @pytest.mark.asyncio
     async def test_transaction_rollback_on_error(self, db_state_manager: PostgresStateManager) -> None:
-        spec = Phase(
+        phase = Phase(
             phase_name='Test Spec',
             objectives='Objectives',
             scope='Scope',
@@ -194,23 +196,23 @@ class TestDatabaseTransactions:
             phase_status=PhaseStatus.DRAFT,
         )
 
-        await db_state_manager.store_spec('test-project', spec)
+        await db_state_manager.store_phase('test-project', phase)
 
         try:
             async with db_pool.acquire() as conn:
                 async with conn.transaction():
                     await conn.execute(
-                        'UPDATE technical_specs SET objectives = $1 WHERE project_name = $2 AND phase_name = $3',
+                        'UPDATE phases SET objectives = $1 WHERE project_name = $2 AND phase_name = $3',
                         'Updated objectives',
                         'test-project',
-                        'test-spec',
+                        'test-phase',
                     )
                     raise RuntimeError('Simulated error')
         except RuntimeError:
             pass
 
-        retrieved_spec = await db_state_manager.get_spec('test-project', spec.phase_name)
-        assert retrieved_spec.objectives == 'Objectives'
+        retrieved_phase = await db_state_manager.get_phase('test-project', phase.phase_name)
+        assert retrieved_phase.objectives == 'Objectives'
 
 
 class TestDatabaseBoundedQueue:

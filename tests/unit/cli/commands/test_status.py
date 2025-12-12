@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
+
 from src.cli.commands import status
 
 
@@ -16,10 +17,10 @@ class TestStatusCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
         config_data = {'platform': 'linear', 'version': '0.2.0', 'project_name': 'test'}
-        (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
+        (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
@@ -57,10 +58,10 @@ class TestStatusCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
         config_data = {'platform': 'linear', 'version': '0.1.0', 'project_name': 'test'}
-        (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
+        (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
@@ -85,10 +86,10 @@ class TestStatusCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
         config_data = {'platform': 'linear', 'version': '0.2.0', 'project_name': 'test'}
-        (reRESPEC_AI_dir / 'config.json').write_text(json.dumps(config_data))
+        (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
@@ -108,9 +109,9 @@ class TestStatusCommand:
     def test_corrupted_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
-        (reRESPEC_AI_dir / 'config.json').write_text('{ invalid json }')
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        (respec_ai_dir / 'config.json').write_text('{ invalid json }')
 
         args = Namespace()
         result = status.run(args)

@@ -247,7 +247,12 @@ else
     # Check if already initialized
     if [ -f "$TARGET_DIR/.respec-ai/config.json" ]; then
         print_info "Regenerating commands and agents (preserving existing documents)..."
-        CLI_COMMAND="regenerate"
+        # Always force regeneration in local mode to use current code state
+        if [ "$EXECUTION_MODE" = "local" ]; then
+            CLI_COMMAND="regenerate --force"
+        else
+            CLI_COMMAND="regenerate"
+        fi
     else
         print_info "Generating respec-ai workflow files (first-time setup)..."
         CLI_COMMAND="init --project-name \"$PROJECT_NAME\" --platform \"$PLATFORM\" --skip-mcp-registration"

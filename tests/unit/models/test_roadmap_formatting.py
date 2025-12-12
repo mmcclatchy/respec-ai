@@ -5,6 +5,7 @@ parse -> build -> reparse cycles.
 """
 
 import pytest
+
 from src.models.roadmap import Roadmap
 
 
@@ -81,7 +82,7 @@ Response time under 200ms
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 2
 """
 
@@ -162,7 +163,7 @@ Reasonable speed
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 1
 """
 
@@ -298,7 +299,7 @@ Fast
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 1
 """
 
@@ -398,7 +399,7 @@ Response time targets
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 1
 """
 
@@ -510,7 +511,7 @@ Response time under threshold
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 1
 """
 
@@ -634,7 +635,7 @@ Optimized performance
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 1
 """
 

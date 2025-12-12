@@ -27,8 +27,8 @@ class PlatformSelector:
                 'external_integration': True,
             },
             PlatformType.MARKDOWN: {
-                'supports_issues': True,  # Via structured spec files
-                'supports_comments': True,  # Via spec comment functionality
+                'supports_issues': True,  # Via structured phase files
+                'supports_comments': True,  # Via phase comment functionality
                 'supports_projects': True,  # Via project plan files
                 'supports_labels': False,
                 'real_time_collaboration': False,

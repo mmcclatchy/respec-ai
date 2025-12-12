@@ -246,10 +246,10 @@ class MCPModel(BaseModel, ABC):
                 # For titles without colons, use the full title text
                 title_value = title_text.strip()
 
-            # Validate strict kebab-case format for spec names
+            # Validate strict kebab-case format for phase names
             if cls.TITLE_FIELD == 'phase_name' and not re.match(r'^[a-z0-9]+(-[a-z0-9]+)*$', title_value):
                 raise ValueError(
-                    f"Invalid spec name format: '{title_value}'. "
+                    f"Invalid phase name format: '{title_value}'. "
                     f'Spec name must be lowercase kebab-case. '
                     f"Example: 'phase-1-foundation'"
                 )

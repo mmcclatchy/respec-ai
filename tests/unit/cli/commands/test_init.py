@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
+
 from src.cli.commands import init
 from src.cli.config.claude_config import ClaudeConfigError
 
@@ -42,9 +43,9 @@ class TestInitCommand:
     def test_already_initialized(self, mocker: MockerFixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
 
-        reRESPEC_AI_dir = tmp_path / '.respec-ai'
-        reRESPEC_AI_dir.mkdir()
-        (reRESPEC_AI_dir / 'config.json').write_text('{}')
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        (respec_ai_dir / 'config.json').write_text('{}')
 
         args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
         result = init.run(args)

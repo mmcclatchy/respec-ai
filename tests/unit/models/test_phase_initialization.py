@@ -5,7 +5,7 @@ from src.models.phase import Phase
 
 
 @pytest.fixture
-def sample_initial_spec_markdown() -> str:
+def sample_initial_phase_markdown() -> str:
     return """# Phase: user-authentication-system
 
 ## Overview
@@ -31,19 +31,19 @@ draft
 
 
 class TestInitialSpecParsing:
-    def test_parse_markdown_extracts_basic_fields(self, sample_initial_spec_markdown: str) -> None:
-        spec = Phase.parse_markdown(sample_initial_spec_markdown)
+    def test_parse_markdown_extracts_basic_fields(self, sample_initial_phase_markdown: str) -> None:
+        phase = Phase.parse_markdown(sample_initial_phase_markdown)
 
-        assert spec.phase_name == 'user-authentication-system'
-        assert spec.objectives == 'Implement secure user login and registration'
-        assert spec.scope == 'Login, logout, password reset functionality'
-        assert spec.dependencies == 'Database, encryption library'
-        assert spec.deliverables == 'Working authentication system'
-        assert spec.phase_status == PhaseStatus.DRAFT
+        assert phase.phase_name == 'user-authentication-system'
+        assert phase.objectives == 'Implement secure user login and registration'
+        assert phase.scope == 'Login, logout, password reset functionality'
+        assert phase.dependencies == 'Database, encryption library'
+        assert phase.deliverables == 'Working authentication system'
+        assert phase.phase_status == PhaseStatus.DRAFT
 
-    def test_initial_spec_generates_8_char_id(self) -> None:
-        spec = Phase(
-            phase_name='test-spec',
+    def test_initial_phase_generates_8_char_id(self) -> None:
+        phase = Phase(
+            phase_name='test-phase',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='None',
@@ -51,12 +51,12 @@ class TestInitialSpecParsing:
             phase_status=PhaseStatus.DRAFT,
         )
 
-        assert len(spec.id) == 8
-        assert spec.id.isalnum()
+        assert len(phase.id) == 8
+        assert phase.id.isalnum()
 
-    def test_build_markdown_creates_initial_spec_format(self) -> None:
-        spec = Phase(
-            phase_name='test-spec',
+    def test_build_markdown_creates_initial_phase_format(self) -> None:
+        phase = Phase(
+            phase_name='test-phase',
             objectives='Test objectives',
             scope='Test scope',
             dependencies='Test dependencies',
@@ -64,28 +64,28 @@ class TestInitialSpecParsing:
             phase_status=PhaseStatus.DRAFT,
         )
 
-        markdown = spec.build_markdown()
+        markdown = phase.build_markdown()
 
-        assert '# Phase: test-spec' in markdown
+        assert '# Phase: test-phase' in markdown
         assert '### Objectives\nTest objectives' in markdown
         assert '### Scope\nTest scope' in markdown
         assert '### Dependencies\nTest dependencies' in markdown
         assert '### Deliverables\nTest deliverables' in markdown
         assert '### Status\ndraft' in markdown
 
-    def test_round_trip_parsing_maintains_data_integrity(self, sample_initial_spec_markdown: str) -> None:
-        original_spec = Phase.parse_markdown(sample_initial_spec_markdown)
+    def test_round_trip_parsing_maintains_data_integrity(self, sample_initial_phase_markdown: str) -> None:
+        original_phase = Phase.parse_markdown(sample_initial_phase_markdown)
 
-        rebuilt_markdown = original_spec.build_markdown()
+        rebuilt_markdown = original_phase.build_markdown()
 
-        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
+        reparsed_phase = Phase.parse_markdown(rebuilt_markdown)
 
-        assert original_spec.phase_name == reparsed_spec.phase_name
-        assert original_spec.objectives == reparsed_spec.objectives
-        assert original_spec.scope == reparsed_spec.scope
-        assert original_spec.dependencies == reparsed_spec.dependencies
-        assert original_spec.deliverables == reparsed_spec.deliverables
-        assert original_spec.phase_status == reparsed_spec.phase_status
+        assert original_phase.phase_name == reparsed_phase.phase_name
+        assert original_phase.objectives == reparsed_phase.objectives
+        assert original_phase.scope == reparsed_phase.scope
+        assert original_phase.dependencies == reparsed_phase.dependencies
+        assert original_phase.deliverables == reparsed_phase.deliverables
+        assert original_phase.phase_status == reparsed_phase.phase_status
 
 
 class TestInitialSpecUtilities:

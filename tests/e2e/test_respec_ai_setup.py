@@ -121,15 +121,15 @@ class TestRespecAISetupEndToEnd:
 
             assert result.returncode == 0
 
-            spec_command_path = platform_project / '.claude' / 'commands' / 'respec-phase.md'
-            spec_command_content = spec_command_path.read_text()
+            phase_command_path = platform_project / '.claude' / 'commands' / 'respec-phase.md'
+            phase_command_content = phase_command_path.read_text()
 
             if platform == 'linear':
-                assert 'mcp__linear-server__create_issue' in spec_command_content
+                assert 'mcp__linear-server__create_issue' in phase_command_content
             elif platform == 'github':
-                assert 'mcp__github__create_issue' in spec_command_content
+                assert 'mcp__github__create_issue' in phase_command_content
             elif platform == 'markdown':
-                assert 'Write' in spec_command_content
+                assert 'Write' in phase_command_content
 
     def test_agent_templates_contain_platform_specific_tools(self, tmp_path: Path) -> None:
         for platform in ['linear', 'github', 'markdown']:
@@ -155,15 +155,15 @@ class TestRespecAISetupEndToEnd:
 
             assert result.returncode == 0
 
-            create_spec_agent_path = project_path / '.claude' / 'agents' / 'respec-create-phase.md'
-            create_spec_agent_content = create_spec_agent_path.read_text()
+            create_phase_tool_agent_path = project_path / '.claude' / 'agents' / 'respec-create-phase.md'
+            create_phase_tool_agent_content = create_phase_tool_agent_path.read_text()
 
             if platform == 'linear':
-                assert 'mcp__linear-server__create_issue' in create_spec_agent_content
+                assert 'mcp__linear-server__create_issue' in create_phase_tool_agent_content
             elif platform == 'github':
-                assert 'mcp__github__create_issue' in create_spec_agent_content
+                assert 'mcp__github__create_issue' in create_phase_tool_agent_content
             elif platform == 'markdown':
-                assert 'Write' in create_spec_agent_content
+                assert 'Write' in create_phase_tool_agent_content
 
     def test_platform_config_contains_correct_metadata(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'

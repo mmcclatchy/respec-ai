@@ -1,7 +1,8 @@
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
-from src.models.roadmap import Roadmap
+
 from src.models.phase import Phase
+from src.models.roadmap import Roadmap
 from src.shared import state_manager
 from src.utils.state_manager import StateManager
 
@@ -17,21 +18,21 @@ class RoadmapTools:
             raise ToolError('Roadmap data cannot be empty')
 
         try:
-            spec_blocks = roadmap_data.split('# Phase:')
-            roadmap_metadata = spec_blocks[0]
+            phase_blocks = roadmap_data.split('# Phase:')
+            roadmap_metadata = phase_blocks[0]
 
             roadmap = Roadmap.parse_markdown(roadmap_metadata)
             await self.state.store_roadmap(project_name, roadmap)
 
-            # Parse and store each spec individually
-            specs = []
-            for i, spec_block in enumerate(spec_blocks[1:], 1):
-                spec_markdown = f'# Phase:{spec_block}'
-                spec = Phase.parse_markdown(spec_markdown)
-                specs.append(spec)
-                await self.state.store_spec(project_name, spec)
+            # Parse and store each phase individually
+            phases = []
+            for i, phase_block in enumerate(phase_blocks[1:], 1):
+                phase_markdown = f'# Phase:{phase_block}'
+                phase = Phase.parse_markdown(phase_markdown)
+                phases.append(phase)
+                await self.state.store_phase(project_name, phase)
 
-            return f'Created roadmap "{roadmap.project_name}" with {len(specs)} specs for project {project_name}'
+            return f'Created roadmap "{roadmap.project_name}" with {len(phases)} phases for project {project_name}'
         except Exception as e:
             raise ToolError(f'Failed to create roadmap: {str(e)}')
 
@@ -41,8 +42,8 @@ class RoadmapTools:
 
         try:
             roadmap = await self.state.get_roadmap(project_name)
-            specs = await self.state.get_roadmap_specs(project_name)
-            return roadmap.build_markdown(specs)
+            phases = await self.state.get_roadmap_phases(project_name)
+            return roadmap.build_markdown(phases)
         except Exception as e:
             raise ResourceError(f'Roadmap not found for project {project_name}: {str(e)}')
 

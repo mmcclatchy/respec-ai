@@ -116,7 +116,7 @@ PROJECT_NAME = config["project_name"]
 #### Step 1.2: Search file system for matching phase files
 
 ```text
-SPEC_GLOB_PATTERN = ".respec-ai/projects/{{PROJECT_NAME}}/respec-phases/{{PHASE_NAME_PARTIAL}}*.md"
+SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PROJECT_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
 SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 ```
 
@@ -125,7 +125,7 @@ SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
 ```text
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/projects/{{PROJECT_NAME}}/respec-phases/"
+  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PROJECT_NAME}}/phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
@@ -154,7 +154,7 @@ ELSE:
 
 #### Step 1.4: Extract canonical name from file path
 
-Extract: ".respec-ai/projects/X/respec-phases/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
+Extract: ".respec-ai/plans/X/phases/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
 
 ```text
 PHASE_NAME = [basename of SPEC_FILE_PATH without .md extension]
@@ -177,7 +177,7 @@ Load phase and plan from file system, store in MCP:
 #### Step 2.1: Read documents using canonical names
 
 ```text
-PLAN_MARKDOWN = Read(.respec-ai/projects/{{PLAN_NAME}}/project_plan.md)
+PLAN_MARKDOWN = Read(.respec-ai/plans/{{PLAN_NAME}}/project_plan.md)
 PHASE_MARKDOWN = Read({{SPEC_FILE_PATH}})
 ```
 
@@ -505,7 +505,7 @@ IF platform storage tool fails:
   ERROR_RESPONSE = {{
     "error_type": "storage_failure",
     "error_message": "Failed to store Phase in configured platform",
-    "recovery_action": "Saving to local Markdown backup at docs/respec-phases/[timestamp]-phase.md",
+    "recovery_action": "Saving to local Markdown backup at docs/phases/[timestamp]-phase.md",
     "user_guidance": "Platform storage failed. Phase saved locally. Check platform connectivity and configuration.",
     "partial_output": "Complete Phase document"
   }}

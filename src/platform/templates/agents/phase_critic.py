@@ -8,7 +8,7 @@ from src.platform.models import PhaseCriticAgentTools
 # Generate phase-critic feedback template
 phase_feedback_template = CriticFeedback(
     loop_id='[loop_id from input]',
-    critic_agent=CriticAgent.SPEC_CRITIC,
+    critic_agent=CriticAgent.PHASE_CRITIC,
     iteration=0,
     overall_score=0,
     assessment_summary='[Brief one-sentence quality evaluation]',

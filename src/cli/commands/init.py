@@ -65,8 +65,8 @@ def run(args: Namespace) -> int:
         platform = args.platform
         project_name = args.project_name or project_path.name
 
-        reRESPEC_AI_dir = project_path / '.respec-ai'
-        config_path = reRESPEC_AI_dir / 'config.json'
+        respec_ai_dir = project_path / '.respec-ai'
+        config_path = respec_ai_dir / 'config.json'
 
         if config_path.exists():
             if not args.force:
@@ -79,8 +79,8 @@ def run(args: Namespace) -> int:
                 return 1
             else:
                 print_warning('Force flag detected - reinitializing project')
-                if reRESPEC_AI_dir.exists():
-                    shutil.rmtree(reRESPEC_AI_dir)
+                if respec_ai_dir.exists():
+                    shutil.rmtree(respec_ai_dir)
 
         platform_type = PlatformType(platform)
         orchestrator = PlatformOrchestrator.create_with_default_config()
@@ -92,7 +92,7 @@ def run(args: Namespace) -> int:
         ) as progress:
             task = progress.add_task('Creating directories...', total=None)
 
-            reRESPEC_AI_dir.mkdir(parents=True, exist_ok=True)
+            respec_ai_dir.mkdir(parents=True, exist_ok=True)
             get_commands_dir(project_path).mkdir(parents=True, exist_ok=True)
             get_agents_dir(project_path).mkdir(parents=True, exist_ok=True)
 

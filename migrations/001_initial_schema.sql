@@ -18,7 +18,7 @@ CREATE TABLE loop_states (
     updated_at TIMESTAMP NOT NULL,
     feedback_history JSONB NOT NULL DEFAULT '[]',
 
-    CONSTRAINT valid_loop_type CHECK (loop_type IN ('plan', 'roadmap', 'spec', 'phase', 'build_code', 'analyst')),
+    CONSTRAINT valid_loop_type CHECK (loop_type IN ('plan', 'roadmap', 'phase', 'task', 'analyst')),
     CONSTRAINT valid_status CHECK (status IN ('initialized', 'in_progress', 'completed', 'user_input', 'refine'))
 );
 

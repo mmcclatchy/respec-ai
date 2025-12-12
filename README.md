@@ -13,7 +13,7 @@
 
 **Agentic-Critic Refinement Loop Platform for Claude Code**
 
-Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing specs helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
+Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing phases helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
 `respec-ai` is a meta MCP server for Claude Code that adds systematic critical evaluation to LLM-generated content. Follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Phase, Task. Automated critic agents validate each stage against its parent document target using 0-100 quality thresholds. You determine the target, LLMs generate content, critics evaluate against parent specifications, and the system iterates until quality thresholds are met—removing the manual evaluation burden from developers. Works with Linear, GitHub, or local Markdown files.
 
@@ -39,7 +39,7 @@ claude
 /respec-plan my-first-project
 ```
 
-That's it! `respec-ai` will guide you through strategic planning, technical specs, and implementation.
+That's it! `respec-ai` will guide you through strategic planning, technical phases, and implementation.
 
 **[Full Installation Guide →](docs/CLI_GUIDE.md#installation)**
 
@@ -49,7 +49,7 @@ That's it! `respec-ai` will guide you through strategic planning, technical spec
 
 - **Critic Refinement Loops** - Automated quality gates at each stage (0-100 thresholds) that serve triple duty: quality gatekeepers enforcing standards, alignment validators checking against parent documents, and improvement guides providing specific recommendations.
 
-- **Hierarchical Validation** - Each level validates against the level above (code → spec → roadmap → plan) to prevent alignment drift. Every line of code traces back to business objectives through systematic validation.
+- **Hierarchical Validation** - Each level validates against the level above (code → phase → roadmap → plan) to prevent alignment drift. Every line of code traces back to business objectives through systematic validation.
 
 - **Strategic to Implementation Pipeline** - Complete workflow from business objectives (`/respec-plan`) through phased roadmaps (`/respec-roadmap`), technical design (`/respec-phase`), to code generation (`/respec-code`).
 
@@ -83,7 +83,7 @@ That's it! `respec-ai` will guide you through strategic planning, technical spec
 2. Phase Breakdown
    /respec-roadmap
    → Multi-phase implementation roadmap
-   → Initial specs for each phase
+   → Initial phases for each phase
    → Refinement with roadmap-critic (validates against plan)
 
 3. Technical Design

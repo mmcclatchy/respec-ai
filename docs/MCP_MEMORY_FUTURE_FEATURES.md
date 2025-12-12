@@ -110,7 +110,7 @@ class WorkflowErrorRecovery:
 
 ### 3. Platform Syncing
 
-**Description**: Allow users to modify platform plans/respec-phases/documents/comments in the external platform. Sync any changes in these documents to the MCP memory.
+**Description**: Allow users to modify platform plans/phases/documents/comments in the external platform. Sync any changes in these documents to the MCP memory.
 
 **Why Future Feature**:
 - Currently there is little to no good way for users to manually modify the MCP memory

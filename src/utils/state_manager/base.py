@@ -19,7 +19,7 @@ FROZEN_SPEC_FIELDS = ('objectives', 'scope', 'dependencies', 'deliverables')
 
 def normalize_phase_name(phase_name: str) -> str:
     """
-    Normalize spec name to lowercase-kebab-case for consistent storage/retrieval.
+    Normalize phase name to lowercase-kebab-case for consistent storage/retrieval.
 
     Examples:
         "Phase 1 - Foundation" -> "phase-1-foundation"
@@ -27,10 +27,10 @@ def normalize_phase_name(phase_name: str) -> str:
         "PHASE_1_FOUNDATION" -> "phase-1-foundation"
 
     Args:
-        phase_name: Original spec name from user or markdown title
+        phase_name: Original phase name from user or markdown title
 
     Returns:
-        Normalized kebab-case spec name
+        Normalized kebab-case phase name
     """
 
     # Convert to lowercase
@@ -77,46 +77,9 @@ class StateManager(ABC):
     async def get_roadmap(self, project_name: str) -> Roadmap: ...
 
     @abstractmethod
-    async def get_roadmap_specs(self, project_name: str) -> list[Phase]: ...
+    async def get_roadmap_phases(self, project_name: str) -> list[Phase]: ...
 
-    # Unified Spec Management (replaces InitialSpec + Phase separation)
-    @abstractmethod
-    async def store_spec(self, project_name: str, spec: Phase) -> str: ...
-
-    @abstractmethod
-    async def update_spec(self, project_name: str, phase_name: str, updated_spec: Phase) -> str:
-        """
-        MUST not mutate the following fields:
-            - objectives
-            - scope
-            - dependencies
-            - deliverables
-        """
-        ...
-
-    @abstractmethod
-    async def get_spec(self, project_name: str, phase_name: str) -> Phase: ...
-
-    @abstractmethod
-    async def list_specs(self, project_name: str) -> list[str]: ...
-
-    @abstractmethod
-    async def delete_spec(self, project_name: str, phase_name: str) -> bool: ...
-
-    # Loop-to-Spec Mapping (for temporary refinement sessions)
-    @abstractmethod
-    async def link_loop_to_spec(self, loop_id: str, project_name: str, phase_name: str) -> None: ...
-
-    @abstractmethod
-    async def get_spec_by_loop(self, loop_id: str) -> Phase: ...
-
-    @abstractmethod
-    async def update_spec_by_loop(self, loop_id: str, spec: Phase) -> None: ...
-
-    @abstractmethod
-    async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None: ...
-
-    # Phase Management (new naming)
+    # Unified Phase Management (replaces InitialSpec + Phase separation)
     @abstractmethod
     async def store_phase(self, project_name: str, phase: Phase) -> str: ...
 
@@ -137,12 +100,7 @@ class StateManager(ABC):
     @abstractmethod
     async def list_phases(self, project_name: str) -> list[str]: ...
 
-    @abstractmethod
-    async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
-
-    @abstractmethod
-    async def delete_phase(self, project_name: str, phase_name: str) -> bool: ...
-
+    # Loop-to-Spec Mapping (for temporary refinement sessions)
     @abstractmethod
     async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None: ...
 
@@ -151,6 +109,15 @@ class StateManager(ABC):
 
     @abstractmethod
     async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None: ...
+
+    @abstractmethod
+    async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None: ...
+
+    @abstractmethod
+    async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
+
+    @abstractmethod
+    async def delete_phase(self, project_name: str, phase_name: str) -> bool: ...
 
     # Task Management
     @abstractmethod

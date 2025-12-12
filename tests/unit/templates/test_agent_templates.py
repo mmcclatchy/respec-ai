@@ -24,11 +24,11 @@ class TestPlanRoadmapTemplate:
         assert 'model: sonnet' in template
         assert 'tools:' in template
 
-        # Check MCP tools section - roadmap agent only retrieves plan, doesn't create specs
+        # Check MCP tools section - roadmap agent only retrieves plan, doesn't create phases
         assert 'mcp__respec-ai__get_project_plan_markdown' in template
-        # Roadmap agent no longer creates specs - that's done by parallel create-phase agents
-        assert 'mcp__respec-ai__add_spec' not in template
-        assert 'mcp__respec-ai__list_specs' not in template
+        # Roadmap agent no longer creates phases - that's done by parallel create-phase agents
+        assert 'mcp__respec-ai__add_phase' not in template
+        assert 'mcp__respec-ai__list_phases' not in template
 
         # Check agent identity
         assert 'You are a' in template
@@ -115,7 +115,7 @@ class TestRoadmapCriticTemplate:
 
 class TestCreatePhaseTemplate:
     def test_template_structure(self) -> None:
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         tools = create_create_phase_agent_tools(platform_tools)
         template = generate_create_phase_template(tools)
 
@@ -127,17 +127,17 @@ class TestCreatePhaseTemplate:
         assert 'tools:' in template
 
     def test_template_includes_mcp_tools(self) -> None:
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         tools = create_create_phase_agent_tools(platform_tools)
         template = generate_create_phase_template(tools)
 
         # Should include MCP tools
-        mcp_tools = ['get_roadmap', 'add_spec', 'store_spec']
+        mcp_tools = ['get_roadmap', 'add_phase', 'store_phase']
         has_mcp_tool = any(tool in template for tool in mcp_tools)
         assert has_mcp_tool, 'Template should include MCP tools for roadmap operations'
 
     def test_template_supports_parallel_execution(self) -> None:
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         tools = create_create_phase_agent_tools(platform_tools)
         template = generate_create_phase_template(tools)
 
@@ -146,8 +146,8 @@ class TestCreatePhaseTemplate:
         assert 'Phase Name' in template
         assert 'phase_name' in template
 
-    def test_template_includes_initialspec_creation(self) -> None:
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+    def test_template_includes_initialphase_creation(self) -> None:
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         tools = create_create_phase_agent_tools(platform_tools)
         template = generate_create_phase_template(tools)
 
@@ -159,7 +159,7 @@ class TestTemplateConsistency:
     def test_all_templates_use_sonnet(self) -> None:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         create_phase_tools = create_create_phase_agent_tools(platform_tools)
 
         templates = [
@@ -174,7 +174,7 @@ class TestTemplateConsistency:
     def test_all_templates_have_required_sections(self) -> None:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         create_phase_tools = create_create_phase_agent_tools(platform_tools)
 
         templates = [
@@ -192,7 +192,7 @@ class TestTemplateConsistency:
     def test_no_template_contains_behavioral_descriptions(self) -> None:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
-        platform_tools = ['Write(.respec-ai/projects/*/respec-phases/*.md)', 'Read', 'Edit']
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         create_phase_tools = create_create_phase_agent_tools(platform_tools)
 
         templates = [

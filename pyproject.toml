@@ -60,6 +60,7 @@ dev = [
     "mypy>=1.19.0",
     "zuban>=0.3.0",
     "pytest-xdist>=3.8.0",
+    "asyncpg-stubs>=0.31.1",
 ]
 server = ["fastmcp>=2.12.2,<3.0.0"]
 

@@ -1,4 +1,5 @@
 from .models import PlatformToolMapping, ToolReference
+from .path_constants import PathComponent
 from .platform_selector import PlatformType
 from .tool_enums import (
     AbstractOperation,
@@ -18,70 +19,58 @@ class ToolRegistry:
                 operation=AbstractOperation.CREATE_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
-                markdown_tool=ToolReference(
-                    tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/respec-phases/*.md'
-                ),
+                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters=PathComponent.build_phase_path()),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.GET_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_GET_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_GET_ISSUE),
-                markdown_tool=ToolReference(
-                    tool=BuiltInTool.READ, parameters='.respec-ai/projects/*/respec-phases/*.md'
-                ),
+                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters=PathComponent.build_phase_path()),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.UPDATE_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_UPDATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_ISSUE),
-                markdown_tool=ToolReference(
-                    tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/respec-phases/*.md'
-                ),
+                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters=PathComponent.build_phase_path()),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.COMMENT_PHASE_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_COMMENT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_COMMENT),
-                markdown_tool=ToolReference(
-                    tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/respec-phases/*.md'
-                ),
+                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters=PathComponent.build_phase_path()),
             ),
             # Project Management Tools
             PlatformToolMapping(
                 operation=AbstractOperation.CREATE_PROJECT_EXTERNAL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_PROJECT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_PROJECT),
-                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/project_plan.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters=PathComponent.build_plan_path()),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.CREATE_PROJECT_COMPLETION_EXTERNAL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
-                markdown_tool=ToolReference(
-                    tool=BuiltInTool.WRITE, parameters='.respec-ai/projects/*/project_completion.md'
-                ),
+                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters=PathComponent.build_completion_path()),
             ),
             # Plan Management Tools
             PlatformToolMapping(
                 operation=AbstractOperation.GET_PROJECT_PLAN_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_GET_DOCUMENT),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_GET_FILE),
-                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/projects/*/project_plan.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.READ, parameters=PathComponent.build_plan_path()),
             ),
             PlatformToolMapping(
                 operation=AbstractOperation.UPDATE_PROJECT_PLAN_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_UPDATE_ISSUE),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_UPDATE_FILE),
-                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters='.respec-ai/projects/*/project_plan.md'),
+                markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters=PathComponent.build_plan_path()),
             ),
             # Phase Listing Tools
             PlatformToolMapping(
                 operation=AbstractOperation.LIST_PROJECT_PHASES_TOOL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_LIST_ISSUES),
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_LIST_FILES),
-                markdown_tool=ToolReference(
-                    tool=BuiltInTool.GLOB, parameters='.respec-ai/projects/*/respec-phases/*.md'
-                ),
+                markdown_tool=ToolReference(tool=BuiltInTool.GLOB, parameters=PathComponent.build_phase_path()),
             ),
         ]
 

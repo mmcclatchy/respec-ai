@@ -1,4 +1,5 @@
 import pytest
+
 from src.mcp.tools.loop_tools import loop_tools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
@@ -84,7 +85,7 @@ class TestLoopManagement:
         loop_state = await state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.BUILD_REVIEWER,
+            critic_agent=CriticAgent.TASK_REVIEWER,
             iteration=1,
             overall_score=95,
             assessment_summary='High quality code',

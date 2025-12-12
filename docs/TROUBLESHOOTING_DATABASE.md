@@ -172,7 +172,7 @@ Use `ON CONFLICT` for upsert operations:
 ```python
 await conn.execute(
     '''
-    INSERT INTO technical_specs (project_name, phase_name, ...)
+    INSERT INTO phases (project_name, phase_name, ...)
     VALUES ($1, $2, ...)
     ON CONFLICT (project_name, phase_name) DO UPDATE SET
         architecture = $3,
@@ -285,7 +285,7 @@ LIMIT 10;
 
 2. **Use EXPLAIN ANALYZE**:
    ```sql
-   EXPLAIN ANALYZE SELECT * FROM technical_specs WHERE project_name = 'my-project';
+   EXPLAIN ANALYZE SELECT * FROM phases WHERE project_name = 'my-project';
    ```
    Look for:
    - Sequential Scans (should use indexes instead)
@@ -352,18 +352,18 @@ ORDER BY query_start;
 1. **Optimize query joins**:
    ```sql
    -- Before (slow)
-   SELECT * FROM technical_specs
+   SELECT * FROM phases
    WHERE project_name IN (SELECT project_name FROM roadmaps);
 
    -- After (fast)
-   SELECT ts.* FROM technical_specs ts
+   SELECT ts.* FROM phases ts
    INNER JOIN roadmaps r ON ts.project_name = r.project_name;
    ```
 
 2. **Limit result sets**:
    ```python
    # Avoid fetching entire table
-   rows = await conn.fetch('SELECT * FROM technical_specs LIMIT 100')
+   rows = await conn.fetch('SELECT * FROM phases LIMIT 100')
    ```
 
 3. **Use connection pooling**:
@@ -422,8 +422,8 @@ async def monitor_pool():
 
 **Diagnosis**:
 ```sql
--- Find specs without projects
-SELECT project_name FROM technical_specs
+-- Find phases without projects
+SELECT project_name FROM phases
 WHERE project_name NOT IN (SELECT project_name FROM roadmaps);
 
 -- Find loop history without loops
@@ -434,7 +434,7 @@ WHERE loop_id NOT IN (SELECT id FROM loop_states);
 **Solution**:
 ```sql
 -- Cleanup orphaned records
-DELETE FROM technical_specs
+DELETE FROM phases
 WHERE project_name NOT IN (SELECT project_name FROM roadmaps);
 
 -- Should not happen due to CASCADE DELETE constraints
@@ -455,7 +455,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_specs_updated_at BEFORE UPDATE ON technical_specs
+CREATE TRIGGER update_phases_updated_at BEFORE UPDATE ON phases
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 

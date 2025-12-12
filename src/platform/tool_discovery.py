@@ -19,7 +19,7 @@ from src.mcp.tools import (
 from .tool_enums import RespecAITool
 
 
-def discover_registered_reRESPEC_AI_tools() -> set[str]:
+def discover_registered_respec_ai_tools() -> set[str]:
     temp_mcp = FastMCP('discovery')
     register_all_tools(temp_mcp)
 
@@ -27,8 +27,8 @@ def discover_registered_reRESPEC_AI_tools() -> set[str]:
     return tool_names
 
 
-def validate_reRESPEC_AI_enum_completeness() -> dict[str, list[str]]:
-    registered_tools = discover_registered_reRESPEC_AI_tools()
+def validate_respec_ai_enum_completeness() -> dict[str, list[str]]:
+    registered_tools = discover_registered_respec_ai_tools()
     enum_tools = {str(tool) for tool in RespecAITool}
 
     missing_from_enum = registered_tools - enum_tools
@@ -77,11 +77,11 @@ def discover_tool_registration_functions() -> dict[str, list[str]]:
 
 
 def validate_tool_enum_against_codebase() -> dict[str, Any]:
-    reRESPEC_AI_validation = validate_reRESPEC_AI_enum_completeness()
+    respec_ai_validation = validate_respec_ai_enum_completeness()
     tool_discovery = discover_tool_registration_functions()
 
-    missing_from_enum = reRESPEC_AI_validation['missing_from_enum']
-    missing_from_registration = reRESPEC_AI_validation['missing_from_registration']
+    missing_from_enum = respec_ai_validation['missing_from_enum']
+    missing_from_registration = respec_ai_validation['missing_from_registration']
 
     issues = []
     if missing_from_enum:
@@ -93,17 +93,17 @@ def validate_tool_enum_against_codebase() -> dict[str, Any]:
     is_complete = not (missing_from_enum or missing_from_registration)
 
     return {
-        'reRESPEC_AI_tools': reRESPEC_AI_validation,
+        'respec_ai_tools': respec_ai_validation,
         'tool_registration_discovery': tool_discovery,
         'validation_summary': {
-            'reRESPEC_AI_enum_complete': is_complete,
+            'respec_ai_enum_complete': is_complete,
             'issues': issues,
         },
     }
 
 
 def generate_enum_updates_from_discovery() -> str:
-    registered_tools = discover_registered_reRESPEC_AI_tools()
+    registered_tools = discover_registered_respec_ai_tools()
     enum_tools = {tool for tool in RespecAITool}
 
     missing_tools = registered_tools - enum_tools

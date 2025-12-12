@@ -66,11 +66,11 @@ Producer Agent → Content → Critic Agent → Score → MCP Decision
 
 **Pattern**: Create templates as functions that receive platform tool dataclasses and inject tools via string interpolation.
 
-**Actual Implementation Pattern** (from `src/platform/templates/commands/spec_command.py`):
+**Actual Implementation Pattern** (from `src/platform/templates/commands/phase_command.py`):
 ```python
 from src.platform.models import SpecCommandTools
 
-def generate_spec_command_template(tools: SpecCommandTools) -> str:
+def generate_phase_command_template(tools: SpecCommandTools) -> str:
     return f"""---
 allowed-tools:
 {tools.tools_yaml}
@@ -146,7 +146,7 @@ Platform mapping and tool selection happens in platform service layer, not in te
 ```python
 # ❌ WRONG: Platform logic in template
 PLATFORM_TOOL_MAPPING = {...}  # Belongs in MCP server
-def generate_spec_command_template(platform: str = 'linear'):  # Default values
+def generate_phase_command_template(platform: str = 'linear'):  # Default values
     return f"Use {platform.title()} platform"  # Platform-specific content
 
 # ❌ WRONG: Agent behavioral instructions
@@ -163,7 +163,7 @@ def generate_spec_command_template(platform: str = 'linear'):  # Default values
 
 ```python
 # ✅ CORRECT: Pure template with tool injection
-def generate_spec_command_template(
+def generate_phase_command_template(
     create_phase_tool: str,
     get_phase_tool: str,
     update_phase_tool: str,
@@ -481,7 +481,7 @@ description: Create strategic plans through conversational discovery
 src/platform/templates/
 ├── agents/
 │   ├── plan_command.py
-│   ├── spec_command.py
+│   ├── phase_command.py
 │   └── build_command.py
 ├── commands/
 │   └── [generated files]

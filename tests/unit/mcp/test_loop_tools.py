@@ -1,4 +1,5 @@
 import pytest
+
 from src.mcp.tools.loop_tools import LoopTools, loop_tools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
@@ -25,7 +26,7 @@ class TestLoopToolsMCP:
         loop_state = await state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.BUILD_REVIEWER,
+            critic_agent=CriticAgent.TASK_REVIEWER,
             iteration=1,
             overall_score=96,
             assessment_summary='High quality code',
@@ -43,7 +44,7 @@ class TestLoopToolsMCP:
 
     @pytest.mark.asyncio
     async def test_decide_loop_next_action_refine_decision(self, project_name: str) -> None:
-        # Initialize a spec loop (threshold 85%)
+        # Initialize a phase loop (threshold 85%)
         init_result = await loop_tools.initialize_refinement_loop(project_name, 'phase')
         loop_id = init_result.id
 
@@ -52,7 +53,7 @@ class TestLoopToolsMCP:
         loop_state = await state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=70,
             assessment_summary='Needs improvement',
@@ -234,7 +235,7 @@ class TestLoopFeedbackIntegration:
 
         feedback1 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=70,
             assessment_summary='Initial assessment needs improvement',
@@ -246,7 +247,7 @@ class TestLoopFeedbackIntegration:
 
         feedback2 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=2,
             overall_score=80,
             assessment_summary='Improved specification with good coverage',
@@ -296,7 +297,7 @@ class TestLoopFeedbackIntegration:
 
         feedback1 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=60,
             assessment_summary='Initial poor assessment',
@@ -308,7 +309,7 @@ class TestLoopFeedbackIntegration:
 
         feedback2 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=2,
             overall_score=75,
             assessment_summary='Improved but still needs work',
@@ -320,7 +321,7 @@ class TestLoopFeedbackIntegration:
 
         feedback3 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=3,
             overall_score=85,
             assessment_summary='Good specification with minor issues',
@@ -353,7 +354,7 @@ class TestLoopFeedbackIntegration:
 
         feedback1 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=1,
             overall_score=60,
             assessment_summary='Poor assessment',
@@ -365,7 +366,7 @@ class TestLoopFeedbackIntegration:
 
         feedback2 = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.SPEC_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=2,
             overall_score=65,
             assessment_summary='Minor improvement',

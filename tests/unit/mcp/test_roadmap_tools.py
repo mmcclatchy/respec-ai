@@ -6,8 +6,8 @@ from pytest_mock import MockerFixture
 
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.models.enums import RoadmapStatus
-from src.models.roadmap import Roadmap
 from src.models.phase import Phase
+from src.models.roadmap import Roadmap
 from src.utils.state_manager import StateManager
 
 
@@ -64,7 +64,7 @@ class TestRoadmapTools:
         return RoadmapTools(mock_state_manager)
 
     @pytest.fixture
-    def valid_spec_markdown(self) -> str:
+    def valid_phase_markdown(self) -> str:
         return """# Phase: User Authentication
 
 ## Overview
@@ -97,10 +97,10 @@ Test Team
 """
 
     @pytest.fixture
-    def malformed_spec_markdown(self) -> str:
+    def malformed_phase_markdown(self) -> str:
         return """# Some title
         
-This is not properly formatted spec markdown.
+This is not properly formatted phase markdown.
 Missing required sections and structure.
 """
 
@@ -176,26 +176,26 @@ class TestCreateRoadmap(TestRoadmapTools):
 
 class TestGetRoadmap(TestRoadmapTools):
     @pytest.mark.asyncio
-    async def test_get_roadmap_returns_success_with_spec_count(
+    async def test_get_roadmap_returns_success_with_phase_count(
         self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
     ) -> None:
-        mock_specs = [
+        mock_phases = [
             Phase(
-                phase_name='spec1',
+                phase_name='phase1',
                 objectives='Test objectives 1',
                 scope='Test scope 1',
                 dependencies='Test deps 1',
                 deliverables='Test deliverables 1',
             ),
             Phase(
-                phase_name='spec2',
+                phase_name='phase2',
                 objectives='Test objectives 2',
                 scope='Test scope 2',
                 dependencies='Test deps 2',
                 deliverables='Test deliverables 2',
             ),
             Phase(
-                phase_name='spec3',
+                phase_name='phase3',
                 objectives='Test objectives 3',
                 scope='Test scope 3',
                 dependencies='Test deps 3',
@@ -224,16 +224,16 @@ class TestGetRoadmap(TestRoadmapTools):
             roadmap_status=RoadmapStatus.DRAFT,
         )
         mock_state_manager.get_roadmap.return_value = mock_roadmap
-        mock_state_manager.get_roadmap_specs.return_value = mock_specs
+        mock_state_manager.get_roadmap_phases.return_value = mock_phases
 
         result = await roadmap_tools.get_roadmap('test-project')
 
         assert isinstance(result, str)
         assert 'Test Roadmap' in result
         # Check for full Phase content (not summary list)
-        assert '# Phase: spec1' in result
-        assert '# Phase: spec2' in result
-        assert '# Phase: spec3' in result
+        assert '# Phase: phase1' in result
+        assert '# Phase: phase2' in result
+        assert '# Phase: phase3' in result
 
     @pytest.mark.asyncio
     async def test_get_roadmap_raises_error_when_not_found(
@@ -269,13 +269,13 @@ class TestGetRoadmap(TestRoadmapTools):
             roadmap_status=RoadmapStatus.DRAFT,
         )
         mock_state_manager.get_roadmap.return_value = mock_roadmap
-        mock_state_manager.get_roadmap_specs.return_value = []
+        mock_state_manager.get_roadmap_phases.return_value = []
 
         result = await roadmap_tools.get_roadmap('empty-project')
 
         assert isinstance(result, str)
-        # For empty specs list, no Phase sections should be present
+        # For empty phases list, no Phase sections should be present
         assert '# Phase:' not in result
         # Metadata should still be present
         assert '## Metadata' in result
-        assert '### Spec Count\n0' in result
+        assert '### Phase Count\n0' in result

@@ -21,7 +21,7 @@ def markdown_builder() -> Callable:
         markdown = markdown_builder(Phase,
                                    phase_name='Auth System',
                                    objectives='Implement secure login')
-        spec = Phase.parse_markdown(markdown)
+        phase = Phase.parse_markdown(markdown)
 
     Args:
         model_class: The MCPModel subclass to generate markdown for
@@ -152,7 +152,7 @@ def _generate_realistic_content(field_name: str) -> str:
         'sequence': '1',
         'effort_estimate': '5 days',
         'priority': 'high',
-        'spec_count': '1',
+        'phase_count': '1',
         'roadmap_status': 'draft',
         'phase_status': 'draft',
         'project_status': 'draft',

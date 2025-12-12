@@ -1,6 +1,6 @@
 import pytest
 
-from src.models.enums import ProjectStatus, RoadmapStatus, PhaseStatus
+from src.models.enums import PhaseStatus, ProjectStatus, RoadmapStatus
 from src.models.phase import Phase
 from src.models.project_plan import ProjectPlan
 from src.models.roadmap import Roadmap
@@ -108,7 +108,7 @@ class TestInMemoryStateManager:
         )
 
     @pytest.fixture
-    def sample_spec(self) -> Phase:
+    def sample_phase(self) -> Phase:
         return Phase(
             phase_name='Sample Spec',
             objectives='Test objectives',
@@ -245,80 +245,80 @@ class TestRoadmapOperations(TestInMemoryStateManager):
 
 class TestSpecOperations(TestInMemoryStateManager):
     @pytest.mark.asyncio
-    async def test_store_spec_initializes_project_storage(
-        self, state_manager: InMemoryStateManager, sample_spec: Phase
+    async def test_store_phase_initializes_project_storage(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
     ) -> None:
-        result = await state_manager.store_spec('new-project', sample_spec)
-        assert result == sample_spec.phase_name
+        result = await state_manager.store_phase('new-project', sample_phase)
+        assert result == sample_phase.phase_name
 
-        # Verify spec was stored
-        retrieved = await state_manager.get_spec('new-project', sample_spec.phase_name)
-        assert retrieved.phase_name == sample_spec.phase_name
+        # Verify phase was stored
+        retrieved = await state_manager.get_phase('new-project', sample_phase.phase_name)
+        assert retrieved.phase_name == sample_phase.phase_name
 
     @pytest.mark.asyncio
-    async def test_store_spec_returns_phase_name(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
+    async def test_store_phase_returns_phase_name(
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        result = await state_manager.store_spec(project_name, sample_spec)
+        result = await state_manager.store_phase(project_name, sample_phase)
 
-        assert result == sample_spec.phase_name
+        assert result == sample_phase.phase_name
 
     @pytest.mark.asyncio
-    async def test_store_spec_makes_retrievable(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
+    async def test_store_phase_makes_retrievable(
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        await state_manager.store_spec(project_name, sample_spec)
-        retrieved_spec = await state_manager.get_spec(project_name, sample_spec.phase_name)
+        await state_manager.store_phase(project_name, sample_phase)
+        retrieved_phase = await state_manager.get_phase(project_name, sample_phase.phase_name)
 
-        assert retrieved_spec == sample_spec
-        assert retrieved_spec.objectives == 'Test objectives'
+        assert retrieved_phase == sample_phase
+        assert retrieved_phase.objectives == 'Test objectives'
 
     @pytest.mark.asyncio
-    async def test_get_spec_raises_error_when_spec_not_found_in_project(
-        self, state_manager: InMemoryStateManager, sample_spec: Phase
+    async def test_get_phase_raises_error_when_phase_not_found_in_project(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
     ) -> None:
-        # Store a spec first
-        await state_manager.store_spec('test-project', sample_spec)
+        # Store a phase first
+        await state_manager.store_phase('test-project', sample_phase)
 
-        # Try to get non-existent spec
+        # Try to get non-existent phase
         with pytest.raises(SpecNotFoundError, match='Spec not found'):
-            await state_manager.get_spec('test-project', 'nonexistent-spec')
+            await state_manager.get_phase('test-project', 'nonexistent-phase')
 
     @pytest.mark.asyncio
-    async def test_get_spec_raises_error_when_spec_not_found(
+    async def test_get_phase_raises_error_when_phase_not_found(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
         with pytest.raises(SpecNotFoundError):
-            await state_manager.get_spec(project_name, 'non-existent-spec')
+            await state_manager.get_phase(project_name, 'non-existent-phase')
 
     @pytest.mark.asyncio
-    async def test_list_specs_returns_empty_for_empty_roadmap(
+    async def test_list_phases_returns_empty_for_empty_roadmap(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'empty-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        phase_names = await state_manager.list_specs(project_name)
+        phase_names = await state_manager.list_phases(project_name)
 
         assert phase_names == []
 
     @pytest.mark.asyncio
-    async def test_list_specs_returns_all_phase_names(
+    async def test_list_phases_returns_all_phase_names(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'multi-spec-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        spec1 = Phase(
+        phase1 = Phase(
             phase_name='spec-1',
             objectives='Obj 1',
             scope='Scope 1',
@@ -326,7 +326,7 @@ class TestSpecOperations(TestInMemoryStateManager):
             deliverables='Del 1',
             phase_status=PhaseStatus.DRAFT,
         )
-        spec2 = Phase(
+        phase2 = Phase(
             phase_name='spec-2',
             objectives='Obj 2',
             scope='Scope 2',
@@ -335,82 +335,84 @@ class TestSpecOperations(TestInMemoryStateManager):
             phase_status=PhaseStatus.DRAFT,
         )
 
-        await state_manager.store_spec(project_name, spec1)
-        await state_manager.store_spec(project_name, spec2)
+        await state_manager.store_phase(project_name, phase1)
+        await state_manager.store_phase(project_name, phase2)
 
-        phase_names = await state_manager.list_specs(project_name)
+        phase_names = await state_manager.list_phases(project_name)
 
         assert len(phase_names) == 2
         assert 'spec-1' in phase_names
         assert 'spec-2' in phase_names
 
     @pytest.mark.asyncio
-    async def test_list_specs_returns_empty_for_project_without_specs(
+    async def test_list_phases_returns_empty_for_project_without_phases(
         self, state_manager: InMemoryStateManager
     ) -> None:
-        result = await state_manager.list_specs('project-without-specs')
+        result = await state_manager.list_phases('project-without-phases')
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_delete_spec_returns_true_when_spec_exists(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
+    async def test_delete_phase_returns_true_when_phase_exists(
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
-        await state_manager.store_spec(project_name, sample_spec)
+        await state_manager.store_phase(project_name, sample_phase)
 
-        result = await state_manager.delete_spec(project_name, sample_spec.phase_name)
+        result = await state_manager.delete_phase(project_name, sample_phase.phase_name)
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_delete_spec_removes_spec_from_roadmap(
-        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_spec: Phase
+    async def test_delete_phase_removes_phase_from_roadmap(
+        self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
-        await state_manager.store_spec(project_name, sample_spec)
+        await state_manager.store_phase(project_name, sample_phase)
 
-        await state_manager.delete_spec(project_name, sample_spec.phase_name)
+        await state_manager.delete_phase(project_name, sample_phase.phase_name)
 
         # Should raise SpecNotFoundError now
         with pytest.raises(SpecNotFoundError):
-            await state_manager.get_spec(project_name, sample_spec.phase_name)
+            await state_manager.get_phase(project_name, sample_phase.phase_name)
 
     @pytest.mark.asyncio
-    async def test_delete_spec_returns_false_when_spec_not_found(
+    async def test_delete_phase_returns_false_when_phase_not_found(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap
     ) -> None:
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        result = await state_manager.delete_spec(project_name, 'non-existent-spec')
+        result = await state_manager.delete_phase(project_name, 'non-existent-phase')
 
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_delete_spec_returns_false_for_nonexistent_project(self, state_manager: InMemoryStateManager) -> None:
-        result = await state_manager.delete_spec('nonexistent-project', 'nonexistent-spec')
+    async def test_delete_phase_returns_false_for_nonexistent_project(
+        self, state_manager: InMemoryStateManager
+    ) -> None:
+        result = await state_manager.delete_phase('nonexistent-project', 'nonexistent-phase')
         assert result is False
 
     @pytest.mark.parametrize(
         'phase_names',
         [
-            ['single-spec'],
-            ['first-spec', 'second-spec'],
+            ['single-phase'],
+            ['first-phase', 'second-phase'],
             ['alpha', 'beta', 'gamma', 'delta'],
         ],
     )
     @pytest.mark.asyncio
-    async def test_spec_operations_with_multiple_specs(
+    async def test_phase_operations_with_multiple_phases(
         self, state_manager: InMemoryStateManager, sample_roadmap: Roadmap, phase_names: list[str]
     ) -> None:
         project_name = 'multi-spec-test'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        # Store all specs
+        # Store all phases
         for phase_name in phase_names:
-            spec = Phase(
+            phase = Phase(
                 phase_name=phase_name,
                 objectives=f'Obj {phase_name}',
                 scope=f'Scope {phase_name}',
@@ -418,22 +420,22 @@ class TestSpecOperations(TestInMemoryStateManager):
                 deliverables=f'Del {phase_name}',
                 phase_status=PhaseStatus.DRAFT,
             )
-            await state_manager.store_spec(project_name, spec)
+            await state_manager.store_phase(project_name, phase)
 
         # List should return all names
-        listed_names = await state_manager.list_specs(project_name)
+        listed_names = await state_manager.list_phases(project_name)
         assert len(listed_names) == len(phase_names)
         for name in phase_names:
             assert name in listed_names
 
-        # Delete half the specs
+        # Delete half the phases
         to_delete = phase_names[: len(phase_names) // 2] if len(phase_names) > 1 else []
         for name in to_delete:
-            result = await state_manager.delete_spec(project_name, name)
+            result = await state_manager.delete_phase(project_name, name)
             assert result is True
 
-        # List should return remaining specs
-        remaining_names = await state_manager.list_specs(project_name)
+        # List should return remaining phases
+        remaining_names = await state_manager.list_phases(project_name)
         expected_remaining = [name for name in phase_names if name not in to_delete]
         assert len(remaining_names) == len(expected_remaining)
         for name in expected_remaining:
@@ -906,7 +908,7 @@ class TestProjectPlanOperations(TestInMemoryStateManager):
 class TestCrossOperationIntegration(TestInMemoryStateManager):
     @pytest.mark.asyncio
     async def test_multiple_projects_independent_state(self, state_manager: InMemoryStateManager) -> None:
-        # Create two projects with different roadmaps and specs
+        # Create two projects with different roadmaps and phases
         project1_roadmap = Roadmap(
             project_name='Project 1 Roadmap',
             project_goal='Test goal',
@@ -951,16 +953,16 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         await state_manager.store_roadmap('project-1', project1_roadmap)
         await state_manager.store_roadmap('project-2', project2_roadmap)
 
-        spec1 = Phase(
-            phase_name='p1-spec',
+        phase1 = Phase(
+            phase_name='p1-phase',
             objectives='P1 Obj',
             scope='P1 Scope',
             dependencies='P1 Dep',
             deliverables='P1 Del',
             phase_status=PhaseStatus.DRAFT,
         )
-        spec2 = Phase(
-            phase_name='p2-spec',
+        phase2 = Phase(
+            phase_name='p2-phase',
             objectives='P2 Obj',
             scope='P2 Scope',
             dependencies='P2 Dep',
@@ -968,17 +970,17 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
             phase_status=PhaseStatus.DRAFT,
         )
 
-        await state_manager.store_spec('project-1', spec1)
-        await state_manager.store_spec('project-2', spec2)
+        await state_manager.store_phase('project-1', phase1)
+        await state_manager.store_phase('project-2', phase2)
 
-        # Each project should only see its own specs
-        p1_specs = await state_manager.list_specs('project-1')
-        p2_specs = await state_manager.list_specs('project-2')
+        # Each project should only see its own phases
+        p1_phases = await state_manager.list_phases('project-1')
+        p2_phases = await state_manager.list_phases('project-2')
 
-        assert 'p1-spec' in p1_specs
-        assert 'p1-spec' not in p2_specs
-        assert 'p2-spec' in p2_specs
-        assert 'p2-spec' not in p1_specs
+        assert 'p1-phase' in p1_phases
+        assert 'p1-phase' not in p2_phases
+        assert 'p2-phase' in p2_phases
+        assert 'p2-phase' not in p1_phases
 
     @pytest.mark.asyncio
     async def test_loops_and_roadmaps_coexist_independently(

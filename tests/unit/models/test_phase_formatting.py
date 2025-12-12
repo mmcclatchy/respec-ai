@@ -5,11 +5,12 @@ nested lists, etc.) is preserved through parse → build → parse cycles.
 """
 
 import pytest
+
 from src.models.phase import Phase
 
 
 @pytest.fixture
-def spec_with_bullet_lists() -> str:
+def phase_with_bullet_lists() -> str:
     return """# Phase: authentication-system
 
 ## Overview
@@ -106,7 +107,7 @@ draft
 
 
 @pytest.fixture
-def spec_with_mixed_content() -> str:
+def phase_with_mixed_content() -> str:
     return """# Phase: data-pipeline
 
 ## Overview
@@ -182,70 +183,70 @@ in-development
 """
 
 
-def test_bullet_list_content_preserved_in_dependencies(spec_with_bullet_lists: str) -> None:
-    original_markdown = spec_with_bullet_lists
+def test_bullet_list_content_preserved_in_dependencies(phase_with_bullet_lists: str) -> None:
+    original_markdown = phase_with_bullet_lists
 
-    spec = Phase.parse_markdown(original_markdown)
+    phase = Phase.parse_markdown(original_markdown)
 
-    assert 'PostgreSQL database for user storage' in spec.dependencies
-    assert 'Redis for session management' in spec.dependencies
-    assert 'JWT library for token generation' in spec.dependencies
+    assert 'PostgreSQL database for user storage' in phase.dependencies
+    assert 'Redis for session management' in phase.dependencies
+    assert 'JWT library for token generation' in phase.dependencies
 
-    rebuilt_markdown = spec.build_markdown()
-    reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
+    rebuilt_markdown = phase.build_markdown()
+    reparsed_phase = Phase.parse_markdown(rebuilt_markdown)
 
-    assert spec.dependencies == reparsed_spec.dependencies, 'Dependencies content changed during round-trip'
+    assert phase.dependencies == reparsed_phase.dependencies, 'Dependencies content changed during round-trip'
 
 
-def test_bullet_list_content_preserved_in_deliverables(spec_with_bullet_lists: str) -> None:
-    original_markdown = spec_with_bullet_lists
+def test_bullet_list_content_preserved_in_deliverables(phase_with_bullet_lists: str) -> None:
+    original_markdown = phase_with_bullet_lists
 
-    spec = Phase.parse_markdown(original_markdown)
-    rebuilt = spec.build_markdown()
+    phase = Phase.parse_markdown(original_markdown)
+    rebuilt = phase.build_markdown()
     reparsed = Phase.parse_markdown(rebuilt)
 
-    assert 'Working authentication API' in spec.deliverables
-    assert 'User registration endpoint' in spec.deliverables
-    assert 'Password reset functionality' in spec.deliverables
+    assert 'Working authentication API' in phase.deliverables
+    assert 'User registration endpoint' in phase.deliverables
+    assert 'Password reset functionality' in phase.deliverables
 
-    assert spec.deliverables == reparsed.deliverables, 'Deliverables content changed during round-trip'
+    assert phase.deliverables == reparsed.deliverables, 'Deliverables content changed during round-trip'
 
 
-def test_bullet_list_content_preserved_in_architecture(spec_with_bullet_lists: str) -> None:
-    original_markdown = spec_with_bullet_lists
+def test_bullet_list_content_preserved_in_architecture(phase_with_bullet_lists: str) -> None:
+    original_markdown = phase_with_bullet_lists
 
-    spec = Phase.parse_markdown(original_markdown)
-    rebuilt = spec.build_markdown()
+    phase = Phase.parse_markdown(original_markdown)
+    rebuilt = phase.build_markdown()
     reparsed = Phase.parse_markdown(rebuilt)
 
-    assert isinstance(spec.architecture, str)
-    assert 'Auth service handles login/logout' in spec.architecture
-    assert 'Token service manages JWT generation' in spec.architecture
-    assert 'Session service maintains active sessions' in spec.architecture
+    assert isinstance(phase.architecture, str)
+    assert 'Auth service handles login/logout' in phase.architecture
+    assert 'Token service manages JWT generation' in phase.architecture
+    assert 'Session service maintains active sessions' in phase.architecture
 
-    assert spec.architecture == reparsed.architecture, 'Architecture content changed during round-trip'
+    assert phase.architecture == reparsed.architecture, 'Architecture content changed during round-trip'
 
 
-def test_mixed_content_format_preserved(spec_with_mixed_content: str) -> None:
-    original_markdown = spec_with_mixed_content
+def test_mixed_content_format_preserved(phase_with_mixed_content: str) -> None:
+    original_markdown = phase_with_mixed_content
 
-    spec = Phase.parse_markdown(original_markdown)
-    rebuilt = spec.build_markdown()
+    phase = Phase.parse_markdown(original_markdown)
+    rebuilt = phase.build_markdown()
     reparsed = Phase.parse_markdown(rebuilt)
 
-    assert 'scalable data processing pipeline' in spec.objectives
-    assert 'real-time and batch processing' in spec.objectives
+    assert 'scalable data processing pipeline' in phase.objectives
+    assert 'real-time and batch processing' in phase.objectives
 
-    assert 'Data ingestion from multiple sources' in spec.scope
-    assert 'Transformation and validation' in spec.scope
-    assert 'Additional considerations include' in spec.scope or 'error handling and monitoring' in spec.scope
+    assert 'Data ingestion from multiple sources' in phase.scope
+    assert 'Transformation and validation' in phase.scope
+    assert 'Additional considerations include' in phase.scope or 'error handling and monitoring' in phase.scope
 
-    assert spec.objectives == reparsed.objectives, 'Objectives content changed during round-trip'
-    assert spec.scope == reparsed.scope, 'Scope content changed during round-trip'
+    assert phase.objectives == reparsed.objectives, 'Objectives content changed during round-trip'
+    assert phase.scope == reparsed.scope, 'Scope content changed during round-trip'
 
 
 def test_plain_text_content_still_works() -> None:
-    markdown = """# Phase: simple-spec
+    markdown = """# Phase: simple-phase
 
 ## Overview
 
@@ -267,16 +268,16 @@ Single deliverable
 draft
 """
 
-    spec = Phase.parse_markdown(markdown)
-    rebuilt = spec.build_markdown()
+    phase = Phase.parse_markdown(markdown)
+    rebuilt = phase.build_markdown()
     reparsed = Phase.parse_markdown(rebuilt)
 
-    assert spec.objectives == 'Basic functionality without lists'
-    assert spec.objectives == reparsed.objectives
+    assert phase.objectives == 'Basic functionality without lists'
+    assert phase.objectives == reparsed.objectives
 
 
-def test_character_for_character_round_trip(spec_with_bullet_lists: str) -> None:
-    original_markdown = spec_with_bullet_lists
+def test_character_for_character_round_trip(phase_with_bullet_lists: str) -> None:
+    original_markdown = phase_with_bullet_lists
 
     first_parse = Phase.parse_markdown(original_markdown)
     first_build = first_parse.build_markdown()
@@ -330,24 +331,24 @@ Testing phases
 draft
 """
 
-    spec = Phase.parse_markdown(markdown_with_ordered_lists)
-    rebuilt = spec.build_markdown()
+    phase = Phase.parse_markdown(markdown_with_ordered_lists)
+    rebuilt = phase.build_markdown()
     reparsed = Phase.parse_markdown(rebuilt)
 
-    assert isinstance(spec.functional_requirements, str)
-    assert isinstance(spec.development_plan, str)
+    assert isinstance(phase.functional_requirements, str)
+    assert isinstance(phase.development_plan, str)
 
-    assert 'First requirement: User authentication' in spec.functional_requirements
-    assert 'Second requirement: Password reset' in spec.functional_requirements
-    assert 'Third requirement: Session management' in spec.functional_requirements
+    assert 'First requirement: User authentication' in phase.functional_requirements
+    assert 'Second requirement: Password reset' in phase.functional_requirements
+    assert 'Third requirement: Session management' in phase.functional_requirements
 
-    assert 'Phase 1: Setup development environment' in spec.development_plan
-    assert 'Phase 2: Implement core authentication' in spec.development_plan
+    assert 'Phase 1: Setup development environment' in phase.development_plan
+    assert 'Phase 2: Implement core authentication' in phase.development_plan
 
-    assert spec.functional_requirements == reparsed.functional_requirements, (
+    assert phase.functional_requirements == reparsed.functional_requirements, (
         'Ordered list content changed during round-trip'
     )
-    assert spec.development_plan == reparsed.development_plan, 'Development plan changed during round-trip'
+    assert phase.development_plan == reparsed.development_plan, 'Development plan changed during round-trip'
 
 
 def test_code_blocks_preserved() -> None:
@@ -413,30 +414,30 @@ describe('Authentication API', () => {
 draft
 """
 
-    spec = Phase.parse_markdown(markdown_with_code_blocks)
-    rebuilt = spec.build_markdown()
+    phase = Phase.parse_markdown(markdown_with_code_blocks)
+    rebuilt = phase.build_markdown()
     reparsed = Phase.parse_markdown(rebuilt)
 
-    assert isinstance(spec.functional_requirements, str)
-    assert isinstance(spec.non_functional_requirements, str)
-    assert isinstance(spec.testing_strategy, str)
+    assert isinstance(phase.functional_requirements, str)
+    assert isinstance(phase.non_functional_requirements, str)
+    assert isinstance(phase.testing_strategy, str)
 
     assert (
-        '@app.post("/api/auth/login")' in spec.functional_requirements
-        or 'authenticate_user' in spec.functional_requirements
+        '@app.post("/api/auth/login")' in phase.functional_requirements
+        or 'authenticate_user' in phase.functional_requirements
     )
-    assert 'async def login' in spec.functional_requirements or 'login' in spec.functional_requirements
+    assert 'async def login' in phase.functional_requirements or 'login' in phase.functional_requirements
 
-    assert 'response_time' in spec.non_functional_requirements or 'p50: 50ms' in spec.non_functional_requirements
+    assert 'response_time' in phase.non_functional_requirements or 'p50: 50ms' in phase.non_functional_requirements
 
-    assert 'describe' in spec.testing_strategy or 'Authentication API' in spec.testing_strategy
+    assert 'describe' in phase.testing_strategy or 'Authentication API' in phase.testing_strategy
 
-    assert spec.functional_requirements == reparsed.functional_requirements, (
+    assert phase.functional_requirements == reparsed.functional_requirements, (
         'Code blocks in functional requirements changed during round-trip'
     )
-    assert spec.non_functional_requirements == reparsed.non_functional_requirements, (
+    assert phase.non_functional_requirements == reparsed.non_functional_requirements, (
         'Code blocks in non-functional requirements changed during round-trip'
     )
-    assert spec.testing_strategy == reparsed.testing_strategy, (
+    assert phase.testing_strategy == reparsed.testing_strategy, (
         'Code blocks in testing strategy changed during round-trip'
     )

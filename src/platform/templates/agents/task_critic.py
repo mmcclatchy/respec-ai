@@ -8,7 +8,7 @@ from src.platform.models import TaskCriticAgentTools
 # Generate task-critic feedback template
 task_feedback_template = CriticFeedback(
     loop_id='[loop_id from context]',
-    critic_agent=CriticAgent.BUILD_CRITIC,
+    critic_agent=CriticAgent.TASK_CRITIC,
     iteration=0,
     overall_score=0,
     assessment_summary='[2-3 sentence summary of Task quality and readiness]',

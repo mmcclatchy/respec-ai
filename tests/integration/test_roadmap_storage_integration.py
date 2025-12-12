@@ -1,4 +1,5 @@
 import pytest
+
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.utils.state_manager import InMemoryStateManager
 
@@ -19,7 +20,7 @@ def roadmap_tools(state_manager: InMemoryStateManager) -> RoadmapTools:
 
 
 @pytest.fixture
-def sample_roadmap_markdown_with_specs() -> str:
+def sample_roadmap_markdown_with_phases() -> str:
     return """# Project Roadmap: RAG Best Practices POC
 
 ## Project Details
@@ -83,7 +84,7 @@ Sub-second query response
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 3
 
 # Phase: phase-1-neo4j-setup
@@ -171,15 +172,15 @@ draft
 
 class TestRoadmapStorageIntegration:
     @pytest.mark.asyncio
-    async def test_store_and_retrieve_roadmap_with_specs(
-        self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_specs: str
+    async def test_store_and_retrieve_roadmap_with_phases(
+        self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_phases: str
     ) -> None:
         # Store roadmap
-        result = await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_specs)
+        result = await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_phases)
 
         assert 'Created roadmap' in result
         assert project_name in result
-        assert '3 specs' in result
+        assert '3 phases' in result
 
         # Retrieve roadmap
         retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
@@ -200,17 +201,17 @@ class TestRoadmapStorageIntegration:
 
     @pytest.mark.asyncio
     async def test_round_trip_preserves_all_content(
-        self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_specs: str
+        self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_phases: str
     ) -> None:
         # Store original
-        await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_specs)
+        await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_phases)
 
         # Retrieve
         retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
 
         # Parse retrieved markdown like create_roadmap does
-        spec_blocks = retrieved_markdown.split('# Phase:')
-        assert len(spec_blocks) == 4  # Roadmap metadata + 3 specs
+        phase_blocks = retrieved_markdown.split('# Phase:')
+        assert len(phase_blocks) == 4  # Roadmap metadata + 3 phases
 
         # Store retrieved markdown again (simulating agent workflow)
         result = await roadmap_tools.create_roadmap(project_name, retrieved_markdown)
@@ -292,7 +293,7 @@ Test
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 0
 """
 
@@ -310,7 +311,7 @@ draft
         assert 'not found' in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_store_roadmap_without_specs(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
+    async def test_store_roadmap_without_phases(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
         minimal_roadmap = """# Project Roadmap: Minimal Project
 
 ## Project Details
@@ -374,13 +375,13 @@ Test
 ### Status
 draft
 
-### Spec Count
+### Phase Count
 0
 """
 
         result = await roadmap_tools.create_roadmap(project_name, minimal_roadmap)
         assert 'Created roadmap' in result
-        assert '0 specs' in result
+        assert '0 phases' in result
 
         retrieved = await roadmap_tools.get_roadmap(project_name)
         assert '# Project Roadmap: Minimal Project' in retrieved

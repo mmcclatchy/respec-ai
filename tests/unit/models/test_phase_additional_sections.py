@@ -3,7 +3,7 @@ from src.models.phase import Phase
 
 class TestAdditionalSections:
     def test_additional_sections_captured_from_markdown(self) -> None:
-        markdown = """# Phase: test-spec
+        markdown = """# Phase: test-phase
 
 ## Overview
 
@@ -60,25 +60,25 @@ Unit tests with pytest
 draft
 """
 
-        spec = Phase.parse_markdown(markdown)
+        phase = Phase.parse_markdown(markdown)
 
-        assert spec.phase_name == 'test-spec'
-        assert spec.objectives == 'Build a web service'
-        assert spec.scope == 'API endpoints only'
-        assert spec.architecture == 'Microservices architecture with API gateway'
-        assert spec.testing_strategy == 'Unit tests with pytest'
+        assert phase.phase_name == 'test-phase'
+        assert phase.objectives == 'Build a web service'
+        assert phase.scope == 'API endpoints only'
+        assert phase.architecture == 'Microservices architecture with API gateway'
+        assert phase.testing_strategy == 'Unit tests with pytest'
 
-        assert spec.additional_sections is not None
-        assert 'Data Models' in spec.additional_sections
-        assert 'API Design' in spec.additional_sections
-        assert 'Security Architecture' in spec.additional_sections
+        assert phase.additional_sections is not None
+        assert 'Data Models' in phase.additional_sections
+        assert 'API Design' in phase.additional_sections
+        assert 'Security Architecture' in phase.additional_sections
 
-        assert 'User (1) <-> (N) Posts' in spec.additional_sections['Data Models']
-        assert 'GET /api/users' in spec.additional_sections['API Design']
-        assert 'JWT tokens' in spec.additional_sections['Security Architecture']
+        assert 'User (1) <-> (N) Posts' in phase.additional_sections['Data Models']
+        assert 'GET /api/users' in phase.additional_sections['API Design']
+        assert 'JWT tokens' in phase.additional_sections['Security Architecture']
 
     def test_additional_sections_in_build_markdown_output(self) -> None:
-        markdown = """# Phase: test-spec
+        markdown = """# Phase: test-phase
 
 ## Overview
 
@@ -128,23 +128,23 @@ Integration tests with Click testing utilities
 in-review
 """
 
-        spec = Phase.parse_markdown(markdown)
-        rebuilt_markdown = spec.build_markdown()
+        phase = Phase.parse_markdown(markdown)
+        rebuilt_markdown = phase.build_markdown()
 
         assert 'CLI Commands' in rebuilt_markdown
         assert 'Configuration' in rebuilt_markdown
         assert 'init: Initialize project' in rebuilt_markdown
         assert 'Config file format: YAML' in rebuilt_markdown
 
-        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
+        reparsed_phase = Phase.parse_markdown(rebuilt_markdown)
 
-        assert reparsed_spec.phase_name == 'test-spec'
-        assert reparsed_spec.additional_sections is not None
-        assert 'CLI Commands' in reparsed_spec.additional_sections
-        assert 'Configuration' in reparsed_spec.additional_sections
+        assert reparsed_phase.phase_name == 'test-phase'
+        assert reparsed_phase.additional_sections is not None
+        assert 'CLI Commands' in reparsed_phase.additional_sections
+        assert 'Configuration' in reparsed_phase.additional_sections
 
-    def test_spec_without_additional_sections(self) -> None:
-        markdown = """# Phase: minimal-spec
+    def test_phase_without_additional_sections(self) -> None:
+        markdown = """# Phase: minimal-phase
 
 ## Overview
 
@@ -182,17 +182,17 @@ Basic unit tests
 draft
 """
 
-        spec = Phase.parse_markdown(markdown)
+        phase = Phase.parse_markdown(markdown)
 
-        assert spec.phase_name == 'minimal-spec'
-        assert spec.additional_sections is None
+        assert phase.phase_name == 'minimal-phase'
+        assert phase.additional_sections is None
 
-        rebuilt_markdown = spec.build_markdown()
-        assert 'minimal-spec' in rebuilt_markdown
+        rebuilt_markdown = phase.build_markdown()
+        assert 'minimal-phase' in rebuilt_markdown
         assert '## Metadata' in rebuilt_markdown
 
     def test_round_trip_with_complex_additional_sections(self) -> None:
-        markdown = """# Phase: complex-spec
+        markdown = """# Phase: complex-phase
 
 ## Overview
 
@@ -345,37 +345,37 @@ GET /api/posts/:id
 approved
 """
 
-        spec = Phase.parse_markdown(markdown)
+        phase = Phase.parse_markdown(markdown)
 
-        assert spec.phase_name == 'complex-spec'
-        assert spec.iteration == 2
-        assert spec.version == 3
+        assert phase.phase_name == 'complex-phase'
+        assert phase.iteration == 2
+        assert phase.version == 3
 
-        assert spec.additional_sections is not None
-        assert len(spec.additional_sections) == 5
-        assert 'Data Models' in spec.additional_sections
-        assert 'API Design' in spec.additional_sections
-        assert 'Security Architecture' in spec.additional_sections
-        assert 'Performance Requirements' in spec.additional_sections
-        assert 'Deployment Architecture' in spec.additional_sections
+        assert phase.additional_sections is not None
+        assert len(phase.additional_sections) == 5
+        assert 'Data Models' in phase.additional_sections
+        assert 'API Design' in phase.additional_sections
+        assert 'Security Architecture' in phase.additional_sections
+        assert 'Performance Requirements' in phase.additional_sections
+        assert 'Deployment Architecture' in phase.additional_sections
 
-        rebuilt_markdown = spec.build_markdown()
+        rebuilt_markdown = phase.build_markdown()
 
-        reparsed_spec = Phase.parse_markdown(rebuilt_markdown)
+        reparsed_phase = Phase.parse_markdown(rebuilt_markdown)
 
-        assert reparsed_spec.phase_name == 'complex-spec'
-        assert reparsed_spec.iteration == 2
-        assert reparsed_spec.version == 3
-        assert reparsed_spec.objectives == spec.objectives
-        assert reparsed_spec.scope == spec.scope
-        assert reparsed_spec.architecture == spec.architecture
-        assert reparsed_spec.technology_stack == spec.technology_stack
-        assert reparsed_spec.functional_requirements == spec.functional_requirements
+        assert reparsed_phase.phase_name == 'complex-phase'
+        assert reparsed_phase.iteration == 2
+        assert reparsed_phase.version == 3
+        assert reparsed_phase.objectives == phase.objectives
+        assert reparsed_phase.scope == phase.scope
+        assert reparsed_phase.architecture == phase.architecture
+        assert reparsed_phase.technology_stack == phase.technology_stack
+        assert reparsed_phase.functional_requirements == phase.functional_requirements
 
-        assert reparsed_spec.additional_sections is not None
-        assert len(reparsed_spec.additional_sections) == 5
-        assert 'CREATE TABLE users' in reparsed_spec.additional_sections['Data Models']
-        assert 'POST /api/auth/login' in reparsed_spec.additional_sections['API Design']
-        assert 'JWT tokens' in reparsed_spec.additional_sections['Security Architecture']
-        assert '<200ms p95' in reparsed_spec.additional_sections['Performance Requirements']
-        assert 'CloudWatch' in reparsed_spec.additional_sections['Deployment Architecture']
+        assert reparsed_phase.additional_sections is not None
+        assert len(reparsed_phase.additional_sections) == 5
+        assert 'CREATE TABLE users' in reparsed_phase.additional_sections['Data Models']
+        assert 'POST /api/auth/login' in reparsed_phase.additional_sections['API Design']
+        assert 'JWT tokens' in reparsed_phase.additional_sections['Security Architecture']
+        assert '<200ms p95' in reparsed_phase.additional_sections['Performance Requirements']
+        assert 'CloudWatch' in reparsed_phase.additional_sections['Deployment Architecture']
