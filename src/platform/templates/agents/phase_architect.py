@@ -157,6 +157,8 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Wrong: "Step 1: Schema setup (30 minutes)"
 - Right: "Phase 1: Schema foundation - define node structure and constraints"
 
+**NOTE ON SCOPING**: If adding timeline estimates, that's acceptable, but scope phases by work complexity and cohesion, not hours or days.
+
 ❌ **Complete Code Implementations**:
 - Wrong: Full Pydantic model with validators
 - Right: Model schema with validation requirements
@@ -186,6 +188,41 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Is this readable in 20-30 minutes? ✓
 - Does task-planner have freedom to choose file organization? ✓
 
+### Phase Scoping Guidelines
+
+**CRITICAL SCOPING PRINCIPLE**: Think of each phase as ONE SPRINT'S worth of work.
+
+**Scoping Philosophy**:
+- Phase sizing based on SCOPE and COHESION, not time estimates
+- Not too large: Avoid combining multiple independent features (split instead)
+- Not too trivial: Avoid single-function phases (combine related work)
+- Sprint-sized: Cohesive set of related work that delivers testable value
+- If adding timeline estimates, that's acceptable, but scope by work complexity, not hours
+
+**Scoping Principle**: Each phase should deliver a cohesive, testable increment of value. If a phase feels like "two different things," split it. If it's "just one function," combine with related work.
+
+**Examples**:
+
+Sprint-Sized (Good):
+- ✅ "Implement user authentication with email/password" - Single cohesive feature, testable independently
+- ✅ "Integrate payment processing with order management" - Multiple related features working together
+- ✅ "Neo4j schema and LlamaIndex integration" - Two components that must work together
+
+Too Large (Split Needed):
+- ❌ "Complete e-commerce platform" → Split into: checkout phase, inventory phase, shipping phase
+- ❌ "Storage, testing, MCP validation, and documentation" → Split into: storage + validation phase, testing + documentation phase
+
+Too Trivial (Combine):
+- ❌ "Create single configuration class" → Combine with related configuration/setup work
+- ❌ "Add one validation function" → Combine with other validation work
+
+**When Decomposing Phases**:
+If a phase is too large and needs to be split into sub-phases:
+- Each sub-phase follows same `phase-{{number}}-{{description}}` naming pattern
+- Number sub-phases sequentially: phase-1, phase-2, phase-3 (NOT phase-1a, phase-1b)
+- Original phase will be marked SUPERSEDED in lifecycle management
+- Document dependencies between sub-phases clearly in Dependencies section
+
 ## PHASE STRUCTURE
 
 **CRITICAL REQUIREMENTS**:
@@ -197,21 +234,45 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Complete architecture design
 - Comprehensive research requirements
 
-### Phase Naming Convention
+### Phase Naming Requirements (STRICTLY ENFORCED)
 
-**REQUIRED FORMAT**: `phase-name` (kebab-case)
+**REQUIRED PATTERN**: `phase-{{number}}-{{descriptive-name}}`
+
+Phase names MUST follow this pattern to ensure:
+- Clear execution sequence from numbering
+- Consistency across roadmap and phase workflows
+- Proper storage and retrieval from platform
 
 **Valid Examples**:
-- `phase-1-foundation`
-- `neo4j-setup`
-- `user-authentication-v2`
-- `api-gateway-service`
+- `phase-1-foundation` ✅
+- `phase-2-api-integration` ✅
+- `phase-3-testing` ✅
 
-**INVALID Examples** (will cause validation errors):
-- ❌ `Phase 1 Foundation` (contains spaces and title case)
-- ❌ `phase_1_foundation` (uses underscores)
+**INVALID Examples** (will cause storage failures):
+- ❌ `neo4j-setup` (missing phase number prefix)
+- ❌ `Phase 1` (uppercase, missing kebab-case description)
+- ❌ `authentication-system` (missing phase number prefix)
+- ❌ `phase_1_foundation` (uses underscores instead of hyphens)
 - ❌ `Phase1Foundation` (uses camelCase/PascalCase)
-- ❌ `PHASE-1` (uppercase letters)
+- ❌ `PHASE-1-SETUP` (uppercase letters)
+
+**Pattern Rules**:
+- Phase names MUST be lowercase kebab-case: `[a-z0-9]+(-[a-z0-9]+)*`
+- Number indicates execution sequence: phase-1, phase-2, phase-3, etc.
+- Lowercase letters, numbers, and hyphens only - NO spaces, underscores, or uppercase
+- Storage will FAIL if phase names don't follow this format
+
+### Phase Sequencing Requirements
+
+**Default Execution**: Phases execute SEQUENTIALLY in numeric order (phase-1 → phase-2 → phase-3)
+
+**Key Principles**:
+- Phase numbers indicate execution sequence, NOT parallelization groups
+- If decomposed phases CAN be parallelized, document in Dependencies section, NOT in naming
+- Example parallel note in Dependencies: "Can run in parallel with phase-2-api-integration"
+- NEVER use sub-numbering to indicate parallelization (e.g., phase-2a, phase-2b)
+- Sub-numbering (phase-2a, phase-2b) only for splitting single phase into sub-phases
+- Keep phase numbering simple and sequential: phase-1, phase-2, phase-3, etc.
 
 ### Section Structure Philosophy
 
