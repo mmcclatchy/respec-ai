@@ -125,12 +125,16 @@ def create_mcp_server() -> FastMCP:
         error_logger.error(f'Method: {context.method}')
         error_logger.error(f'Error Type: {type(error).__name__}')
         error_logger.error(f'Error Message: {error}')
-        if mcp_settings.debug:
+
+        # Show traceback if debug mode OR log level is DEBUG
+        show_traceback = mcp_settings.debug or mcp_settings.log_level == 'DEBUG'
+
+        if show_traceback:
             error_logger.error('=' * 60)
             error_logger.exception('Full traceback:')
         else:
             error_logger.error('=' * 60)
-            error_logger.error('(Enable DEBUG mode for full traceback)')
+            error_logger.error('(Enable DEBUG mode for full traceback: Set MCP_DEBUG=true or MCP_LOG_LEVEL=DEBUG)')
         error_logger.error('=' * 60)
 
     mcp.add_middleware(

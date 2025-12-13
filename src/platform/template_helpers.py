@@ -235,16 +235,15 @@ def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType
     for tool in PlanRoadmapCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
+    for builtin_tool, params in PlanRoadmapCommandTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
     builder.add_platform_tools(platform_tools)
 
     return PlanRoadmapCommandTools(
         tools_yaml=builder.render_comma_separated_tools(),
         get_project_plan_tool=platform_tools[0],
-        update_project_plan_tool=platform_tools[1],
-        create_phase_tool=platform_tools[2],
-        get_phase_tool=platform_tools[3],
-        update_phase_tool=platform_tools[4],
-        list_project_phases_tool=platform_tools[5],
+        list_project_phases_tool=platform_tools[1],
         platform=platform_type,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PROJECT_PLAN_MARKDOWN, project_name='PROJECT_NAME'
@@ -262,12 +261,6 @@ def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType
             RespecAITool.GET_FEEDBACK, loop_id='ROADMAP_LOOP_ID', count='1'
         ),
         get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, project_name='PROJECT_NAME'),
-        list_documents=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.LIST_DOCUMENTS, doc_type='"phase"', parent_path='PROJECT_NAME'
-        ),
-        get_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='phase_path'
-        ),
     )
 
 
@@ -293,7 +286,7 @@ def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
             RespecAITool.UPDATE_DOCUMENT,
             doc_type='"phase"',
             path='f"{project_name}/{phase_name}"',
-            content='generated_specification',
+            content='generated_phaseification',
         ),
     )
 
@@ -399,6 +392,9 @@ def create_roadmap_agent_tools() -> RoadmapAgentTools:
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='loop_id'),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='loop_id', count='1'
+        ),
+        create_roadmap=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.CREATE_ROADMAP, project_name='PROJECT_NAME', roadmap_data='roadmap_markdown'
         ),
     )
 

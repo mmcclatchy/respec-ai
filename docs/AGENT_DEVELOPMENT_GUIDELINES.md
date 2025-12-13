@@ -452,10 +452,10 @@ ELSE:
 
 STEP 1: Retrieve Current Specification
 CALL mcp__respec-ai__get_phase_markdown(loop_id=loop_id)
-→ Store: CURRENT_SPEC
+→ Store: CURRENT_PHASES
 
 STEP 2: Process Using Retrieved Data
-Use PREVIOUS_FEEDBACK and CURRENT_SPEC to generate improvements
+Use PREVIOUS_FEEDBACK and CURRENT_PHASES to generate improvements
 ```
 
 **❌ WRONG: Agent receives data as parameters**

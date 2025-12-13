@@ -309,7 +309,7 @@ async def test_phase_frozen_fields_preserved_on_update(
     phase_name = await state_manager.store_phase(project_name, sample_phase)
 
     # Create updated phase with attempted changes to frozen fields
-    updated_spec = sample_phase.model_copy(
+    updated_phase = sample_phase.model_copy(
         update={
             'objectives': 'CHANGED - should not persist',
             'scope': 'CHANGED - should not persist',
@@ -317,7 +317,7 @@ async def test_phase_frozen_fields_preserved_on_update(
         }
     )
 
-    await state_manager.update_phase(project_name, phase_name, updated_spec)
+    await state_manager.update_phase(project_name, phase_name, updated_phase)
 
     # Retrieve and verify frozen fields unchanged
     retrieved = await state_manager.get_phase(project_name, phase_name)
@@ -336,8 +336,8 @@ async def test_phase_iteration_and_version_auto_increment(
     await state_manager.store_phase(project_name, sample_phase)
 
     # Store again with same phase_name
-    duplicate_spec = sample_phase.model_copy()
-    await state_manager.store_phase(project_name, duplicate_spec)
+    duplicate_phase = sample_phase.model_copy()
+    await state_manager.store_phase(project_name, duplicate_phase)
 
     # Retrieve - should have incremented iteration/version
     retrieved = await state_manager.get_phase(project_name, sample_phase.phase_name)
@@ -519,14 +519,14 @@ async def test_update_phase_by_loop_preserves_frozen_fields(
     await state_manager.link_loop_to_phase(loop.id, project_name, phase_name)
 
     # Create updated phase with attempted frozen field changes
-    updated_spec = sample_phase.model_copy(
+    updated_phase = sample_phase.model_copy(
         update={
             'objectives': 'CHANGED objectives - should not persist',
             'testing_strategy': 'Updated testing strategy - should persist',
         }
     )
 
-    await state_manager.update_phase_by_loop(loop.id, updated_spec)
+    await state_manager.update_phase_by_loop(loop.id, updated_phase)
 
     # Retrieve via loop
     retrieved = await state_manager.get_phase_by_loop(loop.id)

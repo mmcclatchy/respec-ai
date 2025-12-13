@@ -19,16 +19,12 @@ Orchestrate the transformation of strategic plans into discrete, implementable p
 
 ### 0. Setup and Initialization
 
-#### Step 0.1: Load Existing Documents from Platform
+#### Step 0.1: Load Project Plan from Platform
 
-Load project plan and all existing phases from platform:
+Load project plan from platform:
 
 ```text
-(Load Project Plan)
 {tools.sync_project_plan_instructions}
-
-(Load All Existing Phases)
-{tools.sync_all_phases_instructions}
 ```
 
 #### Step 0.2: Extract Command Arguments
@@ -67,25 +63,27 @@ ROADMAP_LOOP_ID = {tools.initialize_loop})
 Coordinate roadmap → roadmap-critic → MCP decision cycle:
 
 #### Step 3.1: Invoke Roadmap Agent
+
+Use the Task tool to launch the respec-roadmap agent with these instructions:
+
 ```text
-Invoke: respec-roadmap
-Input:
-  - loop_id: ROADMAP_LOOP_ID
-  - project_name: PROJECT_NAME
-  - phasing_preferences: PHASING_PREFERENCES
-  # NO feedback parameter - analyst retrieves from MCP itself
+Invoke the respec-roadmap agent to generate implementation roadmap.
 
-Agent will:
-1. Retrieve current roadmap from MCP using loop_id
-2. Retrieve previous critic feedback from MCP (if iteration > 1)
-3. Refine roadmap based on strategic plan and feedback
-4. Store updated roadmap to MCP
+Pass the following information to the agent:
+- loop_id: ROADMAP_LOOP_ID
+- project_name: PROJECT_NAME
+- phasing_preferences: PHASING_PREFERENCES
 
-**CRITICAL**: Capture the agent's complete output markdown as CURRENT_ROADMAP.
-The agent returns the full roadmap markdown but does NOT store it.
-You MUST store this output in Step 3.2 using {tools.create_roadmap}.
+The agent will:
+1. Retrieve strategic plan from MCP using get_project_plan_markdown
+2. Retrieve previous feedback from MCP using get_feedback (if iteration > 1)
+3. Generate the roadmap based on plan and feedback
+4. Store the roadmap to MCP using create_roadmap
 
-CURRENT_ROADMAP = [complete markdown output from roadmap agent]
+The agent will NOT return the roadmap markdown.
+The agent will report only: completion status and any errors encountered.
+
+Wait for agent completion before proceeding.
 ```
 
 Expected: Implementation roadmap with appropriately-sized phases using one of these strategies:
@@ -117,47 +115,29 @@ Choose strategy based on project characteristics. Phases should be:
 - Large enough to deliver meaningful functionality
 - Naturally ordered by dependencies
 
-#### Step 3.2: Store Roadmap in MCP (MANDATORY - DO NOT SKIP)
+#### Step 3.2: Invoke Roadmap-Critic Agent
 
-**CRITICAL: This step MUST be executed immediately after Step 3.1 completes.**
-
-The roadmap agent returns markdown but does NOT store it. YOU must store it now.
+Use the Task tool to launch the respec-roadmap-critic agent with these instructions:
 
 ```text
-STORE_RESULT = {tools.create_roadmap}
-    project_name=PROJECT_NAME,
-    roadmap_data=CURRENT_ROADMAP
-)
+Invoke the respec-roadmap-critic agent to evaluate roadmap quality.
 
-IF STORE_RESULT contains error:
-  **CRITICAL ERROR - STOP WORKFLOW**:
-  - Report the specific MCP error message to user
-  - DO NOT create roadmap.md files as workaround
-  - DO NOT use file-based storage as alternative to MCP
-  - DO NOT proceed to Step 3.3
+Pass the following information to the agent:
+- project_name: PROJECT_NAME
+- loop_id: ROADMAP_LOOP_ID
 
-  Example error message:
-  "ERROR: MCP roadmap storage failed: [error details]
-   Verify: MCP server running and PROJECT_NAME valid
-   DO NOT create file-based workarounds - MCP storage is required."
-
-  EXIT: Workflow terminated
-```
-
-#### Step 3.3: Invoke Roadmap-Critic Agent
-```text
-Invoke: respec-roadmap-critic
-Input:
-  - project_name: PROJECT_NAME
-  - loop_id: ROADMAP_LOOP_ID
-
-Roadmap-critic will:
-1. Retrieve roadmap from MCP using project_name
+The agent will:
+1. Retrieve roadmap from MCP using get_roadmap
 2. Evaluate against FSDD framework
-3. Store feedback in MCP loop using loop_id
+3. Store feedback in MCP using store_critic_feedback
+
+The agent will NOT return the roadmap or feedback.
+The agent will report only: completion status and any errors encountered.
+
+Wait for agent completion before proceeding.
 ```
 
-#### Step 3.4: Get Loop Decision
+#### Step 3.3: Get Loop Decision
 ```text
 LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
@@ -186,8 +166,21 @@ ELIF LOOP_DECISION == "user_input":
   - Key issues identified by roadmap-critic
   - Recommendations for improvement
 
-  Prompt: "Please provide guidance to improve the roadmap:"
-  Store user input and return to Step 3.1
+  Use AskUserQuestion tool to present options:
+  Question: "The roadmap quality is at [SCORE]/100. How would you like to proceed?"
+  Options:
+    1. "Proceed with current roadmap - quality is sufficient"
+    2. "One more refinement iteration - address remaining issues"
+    3. "Provide specific guidance for refinement"
+
+  IF user selects option 1:
+    Override MCP decision and proceed to Step 5 (Phase Extraction Planning)
+  ELIF user selects option 2:
+    Return to Step 3.1 for one more refinement iteration
+  ELIF user selects option 3:
+    Prompt for specific guidance
+    Store as user feedback using store_user_feedback
+    Return to Step 3.1 with user guidance
 
 ELIF LOOP_DECISION == "complete":
   Proceed to Step 5.
@@ -229,69 +222,75 @@ Extract sparse Phases from roadmap and save to MCP storage:
 **CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse Phase objects (iteration=0) embedded in the roadmap markdown. The create-phase agents DO NOT generate new phases - they extract existing phases from the roadmap and save them to MCP.
 
 #### Launch Parallel Phase Extraction Agents
+
+Launch all create-phase agents IN PARALLEL using the Task tool:
+
 ```text
-IMPORTANT: Launch ALL agents in a SINGLE message using multiple agent invocations for true parallelism.
+For each phase in ROADMAP_PHASES, invoke a respec-create-phase agent.
 
-For each phase in ROADMAP_PHASES, invoke respec-create-phase agent:
+Pass the following information to each agent:
+- project_name: PROJECT_NAME
+- phase_name: [the specific phase name from ROADMAP_PHASES]
+- loop_id: ROADMAP_LOOP_ID
 
-Invoke: respec-create-phase
-Input:
-  - project_name: PROJECT_NAME
-  - phase_name: [phase_name from ROADMAP_PHASES]
-  - loop_id: ROADMAP_LOOP_ID
+Each agent will:
+1. Retrieve roadmap from MCP using get_roadmap
+2. Extract the phase matching the provided phase_name
+3. Store to MCP using store_document
+4. Store to platform using platform-specific tool
 
-Launch all invocations in parallel (one message with multiple agent invocations).
+Each agent will NOT return the phase markdown.
+Each agent will report only: completion status and any errors encountered.
+
+IMPORTANT: Launch ALL agents in a SINGLE message (multiple Task tool calls in parallel).
+Do NOT launch agents sequentially. True parallelism requires one message with all invocations.
+
+Wait for all agents to complete before proceeding to result aggregation.
 ```
 
 #### Aggregate Results
 ```text
 After all agents complete, collect results:
-- SUCCESSFUL_SPECS: List of phases created successfully
-- FAILED_SPECS: List of phases that failed with error details
-- TOTAL_SPECS: Should equal PHASE_COUNT
+- SUCCESSFUL_PHASES: List of phases created successfully
+- FAILED_PHASES: List of phases that failed with error details
+- TOTAL_PHASES: Should equal PHASE_COUNT
 
 Validate that each planned phase has a corresponding phase result.
 ```
 
 ### 7. Verify Phase Creation (MANDATORY)
 
-**CRITICAL**: Verify actual MCP storage, not agent completion messages.
+**CRITICAL**: Verify actual platform storage, not agent completion messages.
 
 Verification Sequence:
 ```text
-STEP 1: Query MCP Storage
-STORED_SPECS = {tools.list_documents})
+STEP 1: Extract Expected Phase Names from Roadmap
+EXPECTED_PHASE_NAMES = [Extract phase names from FINAL_ROADMAP (retrieved in Step 5)]
+EXPECTED_COUNT = length of EXPECTED_PHASE_NAMES
 
-STEP 2: Compare Results
-EXPECTED_COUNT = PHASE_COUNT (from Step 5)
-ACTUAL_COUNT = length of STORED_SPECS
+STEP 2: Query Platform Storage
+STORED_PHASES = {tools.list_project_phases_tool_interpolated}
+ACTUAL_COUNT = length of STORED_PHASES
 
-STEP 3: Detailed Verification
-For each phase in ROADMAP_PHASES:
-  EXPECTED_PHASE_NAME = phase.name
-
-  IF EXPECTED_PHASE_NAME in STORED_SPECS:
+STEP 3: Verification Report
+For each phase_name in EXPECTED_PHASE_NAMES:
+  IF phase_name in STORED_PHASES:
     STATUS = "✅ SUCCESS"
-    VERIFY_SPEC = {tools.get_document}
-      doc_type="phase",
-      path=f"{{PROJECT_NAME}}/{{EXPECTED_PHASE_NAME}}"
-    )
-    CONFIRM: Phase contains valid Phase markdown
   ELSE:
     STATUS = "❌ FAILED"
-    LOG: Phase not found in MCP storage despite agent completion
+    LOG: Phase not found in platform storage despite agent completion
 
-  Record: (phase_name, status, evidence)
+  Record: (phase_name, status)
 
 STEP 4: Generate Evidence-Based Report
 Report actual verification results:
-  - Total phases: PHASE_COUNT
+  - Total phases expected: EXPECTED_COUNT
   - Successfully stored: [count with ✅]
   - Failed storage: [count with ❌]
-  - Evidence: MCP list_documents response
+  - Evidence: Platform list response
 
 DO NOT rely on agent completion messages.
-Only report success for phases verified in MCP storage.
+Only report success for phases verified in platform storage.
 ```
 
 ### 8. Final Integration and Comprehensive Reporting
@@ -304,10 +303,10 @@ Present verified results only:
 - Total Phases: [PHASE_COUNT from Step 5]
 
 **Phase Storage Verification** (from Step 7):
-- Phases in MCP Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
+- Phases in Platform Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
 - Verified Phases: [list of ✅ phase names]
 - Missing Phases: [list of ❌ phase names]
-- Evidence: {tools.list_documents} output
+- Evidence: Platform list response
 
 **Readiness Assessment**:
 IF ACTUAL_COUNT == EXPECTED_COUNT:
@@ -315,7 +314,7 @@ IF ACTUAL_COUNT == EXPECTED_COUNT:
   Next: Execute /respec-phase on individual phases
 ELSE:
   ⚠️ Partial completion - manual intervention required
-  Missing: [list specific phase names without MCP storage]
+  Missing: [list specific phase names without platform storage]
   Action: Review Step 6 agent failures and retry failed phases
 
 **Next Steps**:

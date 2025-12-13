@@ -24,6 +24,11 @@ class RoadmapTools:
             roadmap = Roadmap.parse_markdown(roadmap_metadata)
             await self.state.store_roadmap(project_name, roadmap)
 
+            # Mark existing phases as inactive before storing new ones
+            inactive_count = await self.state.mark_phases_inactive(project_name)
+            if inactive_count > 0:
+                print(f'Marked {inactive_count} existing phases as inactive')
+
             # Parse and store each phase individually
             phases = []
             for i, phase_block in enumerate(phase_blocks[1:], 1):

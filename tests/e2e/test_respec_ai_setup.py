@@ -97,7 +97,7 @@ class TestRespecAISetupEndToEnd:
         assert config_data['platform'] == 'markdown'
         assert config_data['project_name'] == 'test-project'
 
-    def test_command_templates_contain_platform_specific_tools(self, tmp_path: Path) -> None:
+    def test_command_templates_contain_platform_phaseific_tools(self, tmp_path: Path) -> None:
         for platform in ['linear', 'github', 'markdown']:
             platform_project = tmp_path / f'{platform}_project'
             platform_project.mkdir()
@@ -131,7 +131,7 @@ class TestRespecAISetupEndToEnd:
             elif platform == 'markdown':
                 assert 'Write' in phase_command_content
 
-    def test_agent_templates_contain_platform_specific_tools(self, tmp_path: Path) -> None:
+    def test_agent_templates_contain_platform_phaseific_tools(self, tmp_path: Path) -> None:
         for platform in ['linear', 'github', 'markdown']:
             project_path = tmp_path / f'{platform}_test_project'
             project_path.mkdir()

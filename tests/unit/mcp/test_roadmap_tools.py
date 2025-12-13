@@ -57,7 +57,9 @@ def create_test_roadmap_markdown(project_name: str) -> str:
 class TestRoadmapTools:
     @pytest.fixture
     def mock_state_manager(self, mocker: MockerFixture) -> MagicMock:
-        return mocker.Mock(spec=StateManager)
+        mock = mocker.Mock(spec=StateManager)
+        mock.mark_phases_inactive.return_value = 0  # Default: no phases to mark inactive
+        return mock
 
     @pytest.fixture
     def roadmap_tools(self, mock_state_manager: MagicMock) -> RoadmapTools:

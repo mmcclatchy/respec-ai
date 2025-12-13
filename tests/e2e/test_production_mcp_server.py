@@ -3,6 +3,7 @@ import os
 from typing import Any
 
 from pytest_mock import MockerFixture
+
 from src.mcp.server import create_mcp_server, health_check
 from src.utils.enums import HealthState
 from src.utils.setting_configs import MCPSettings
@@ -104,7 +105,7 @@ class TestProductionMCPServer:
         # Test with custom environment variables
         test_env = {
             'LOOP_PLAN_THRESHOLD': '90',
-            'LOOP_SPEC_THRESHOLD': '88',
+            'LOOP_PHASES_THRESHOLD': '88',
             'MCP_SERVER_NAME': 'Test Production Server',
             'MCP_DEBUG': 'true',
         }
@@ -209,7 +210,7 @@ class TestProductionMCPServer:
         # Test with invalid environment variables
         invalid_env = {
             'FSDD_LOOP_PLAN_THRESHOLD': '-10',  # Invalid: below range
-            'FSDD_LOOP_SPEC_THRESHOLD': '150',  # Invalid: above range
+            'FSDD_LOOP_PHASES_THRESHOLD': '150',  # Invalid: above range
         }
 
         # Configuration validation should handle invalid values gracefully

@@ -93,7 +93,7 @@ Expected Output Format:
 
 ## Step 3: Quality Assessment Loop
 Invoke the phase-critic agent with this input:
-${{CURRENT_SPECIFICATION}}
+${{CURRENT_PHASESIFICATION}}
 Expected Output Format:
 - Overall Quality Score: [0-100 numerical value]
 - Priority Improvements: [List of suggestions]
@@ -251,7 +251,7 @@ Expected Output Format:
 **Principle**: Documentation should drive agent behavior, not describe it after the fact.
 
 **Implementation**:
-Use the [Agent Input Specification Template](../fsdd-templates/AGENT_INPUT_SPECIFICATION_TEMPLATE.md) to create clear, actionable input specifications that drive predictable agent behavior.
+Use the [Agent Input Specification Template](../fsdd-templates/AGENT_INPUT_PHASESIFICATION_TEMPLATE.md) to create clear, actionable input specifications that drive predictable agent behavior.
 
 **Example Usage in Command Templates**:
 ```text
@@ -721,6 +721,6 @@ These patterns provide a foundation for creating reliable, maintainable, and ext
 ## Related Documentation
 
 - [/respec-plan Command Specification](commands/respec-plan.md) - Complete command specification
-- [MCP Tools Specification](MCP_TOOLS_SPECIFICATION.md) - Loop state management tools
+- [MCP Tools Specification](MCP_TOOLS_PHASESIFICATION.md) - Loop state management tools
 - [Architecture Guide](ARCHITECTURE.md) - System architecture overview
 - [Agent Development Guidelines](AGENT_DEVELOPMENT_GUIDELINES.md) - Agent creation standards
