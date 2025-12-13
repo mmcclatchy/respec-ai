@@ -288,7 +288,11 @@ Agent will:
 2. Retrieve previous critic feedback from MCP (if iteration > 1)
 3. Refine phase based on strategic plan, feedback, and archive insights
 4. Store updated phase directly in MCP
-5. Return brief status message (no full markdown)
+5. **Lifecycle Management**: If phase is being decomposed into sub-phases:
+   - Original phase status should transition to SUPERSEDED (future enhancement)
+   - Each sub-phase follows `phase-{{number}}-{{description}}` naming pattern
+   - Document dependencies between sub-phases in Dependencies section
+6. Return brief status message (no full markdown)
 
 Verify agent completed successfully:
 IF agent returns error status:

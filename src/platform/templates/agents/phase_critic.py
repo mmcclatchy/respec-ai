@@ -283,6 +283,31 @@ Phases vary by project type. Evaluate based on project context:
 - Recommend: "Section X should be nested under H2 'Y' as '### X' not standalone '## X'"
 - This is implementation-blocking - phase will not parse correctly into model fields
 
+**Phase Naming and Scoping Compliance (included in assessment - not scored separately)**
+
+**Naming Pattern Compliance**:
+- Phase name follows `phase-{{number}}-{{description}}` pattern
+- Lowercase kebab-case format maintained
+- Sequential numbering if multiple phases
+- If naming doesn't follow pattern, note in Key Issues and recommend correction
+
+**Scoping Quality Assessment** (inform Scope Completeness score):
+- Phase represents ONE SPRINT'S worth of cohesive work
+- Not too large: Multiple independent features should be separate phases
+- Not too trivial: Single function should be part of larger phase
+- Clear, testable increment of value
+- If decomposed, sub-phases also follow sprint-sized scoping
+
+**Scoping Quality Indicators**:
+- ✅ GOOD: Single cohesive feature or multiple related features working together
+- ❌ TOO LARGE: "Complete platform", "Storage + testing + validation + documentation"
+- ❌ TOO TRIVIAL: "Create single configuration class", "Add one validation function"
+
+**Assessment Action**:
+- If scope too large: Recommend splitting into multiple phases with specific breakdown
+- If scope too trivial: Recommend combining with related work
+- Use scoping assessment to inform Scope Completeness score (below)
+
 **1. Objectives Clarity (10 points)**
 - Clear, measurable goals defined
 - Business value articulated
