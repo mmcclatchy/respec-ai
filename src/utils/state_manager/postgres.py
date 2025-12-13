@@ -15,12 +15,13 @@ from src.utils.enums import LoopStatus, LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
+    PhaseNotFoundError,
     ProjectPlanNotFoundError,
     RoadmapNotFoundError,
-    SpecNotFoundError,
 )
 from src.utils.loop_state import LoopState, MCPResponse
-from .base import FROZEN_SPEC_FIELDS, StateManager, logger, normalize_phase_name
+
+from .base import FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
 
 if TYPE_CHECKING:
     from asyncpg.pool import PoolConnectionProxy
@@ -44,7 +45,7 @@ class PostgresStateManager(StateManager):
         await db_pool.close()
         self._initialized = False
 
-    def _row_to_spec(self, row: Record) -> Phase:
+    def _row_to_phase(self, row: Record) -> Phase:
         additional_sections_data = None
         if row['additional_sections']:
             additional_sections_data = (
@@ -321,9 +322,26 @@ class PostgresStateManager(StateManager):
         await self.get_roadmap(project_name)
 
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT * FROM phases WHERE project_name = $1 ORDER BY created_at', project_name)
+            rows = await conn.fetch(
+                'SELECT * FROM phases WHERE project_name = $1 AND active = TRUE ORDER BY created_at', project_name
+            )
 
-        return [self._row_to_spec(row) for row in rows]
+        return [self._row_to_phase(row) for row in rows]
+
+    async def mark_phases_inactive(self, project_name: str) -> int:
+        """Mark all current active phases for a project as inactive.
+
+        Returns the number of phases marked inactive.
+        """
+        async with db_pool.acquire() as conn:
+            result = await conn.execute(
+                'UPDATE phases SET active = FALSE WHERE project_name = $1 AND active = TRUE', project_name
+            )
+
+        # Extract count from result string like "UPDATE 5"
+        count = int(result.split()[-1]) if result else 0
+        logger.info(f'mark_phases_inactive: Marked {count} phases as inactive for project {project_name}')
+        return count
 
     async def store_phase(self, project_name: str, phase: Phase) -> str:
         normalized_name = normalize_phase_name(phase.phase_name)
@@ -347,14 +365,14 @@ class PostgresStateManager(StateManager):
                     id, project_name, phase_name, objectives, scope, dependencies, deliverables,
                     architecture, technology_stack, functional_requirements, non_functional_requirements,
                     development_plan, testing_strategy, research_requirements, success_criteria,
-                    integration_context, task_breakdown, additional_sections, iteration, version, phase_status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+                    integration_context, task_breakdown, additional_sections, iteration, version, phase_status, active
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
                 ON CONFLICT (project_name, phase_name) DO UPDATE SET
                     id = $1, architecture = $8, technology_stack = $9,
                     functional_requirements = $10, non_functional_requirements = $11,
                     development_plan = $12, testing_strategy = $13, research_requirements = $14,
                     success_criteria = $15, integration_context = $16, task_breakdown = $17,
-                    additional_sections = $18, iteration = $19, version = $20, phase_status = $21,
+                    additional_sections = $18, iteration = $19, version = $20, phase_status = $21, active = $22,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 phase.id,
@@ -378,6 +396,7 @@ class PostgresStateManager(StateManager):
                 phase.iteration,
                 phase.version,
                 phase.phase_status.value,
+                True,  # Always store new phases as active
             )
 
         return phase.phase_name
@@ -387,7 +406,7 @@ class PostgresStateManager(StateManager):
         existing_data = existing_phase.model_dump()
         new_data = updated_phase.model_dump()
 
-        frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
+        frozen_fields = {field: existing_data[field] for field in FROZEN_PHASES_FIELDS}
 
         final_phase = Phase(
             **{
@@ -407,19 +426,21 @@ class PostgresStateManager(StateManager):
 
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                'SELECT * FROM phases WHERE project_name = $1 AND phase_name = $2',
+                'SELECT * FROM phases WHERE project_name = $1 AND phase_name = $2 AND active = TRUE',
                 project_name,
                 normalized_name,
             )
 
             if not row:
-                raise SpecNotFoundError(f'Spec not found: {phase_name} in project {project_name}')
+                raise PhaseNotFoundError(f'Spec not found: {phase_name} in project {project_name}')
 
-            return self._row_to_spec(row)
+            return self._row_to_phase(row)
 
     async def list_phases(self, project_name: str) -> list[str]:
         async with db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT phase_name FROM phases WHERE project_name = $1', project_name)
+            rows = await conn.fetch(
+                'SELECT phase_name FROM phases WHERE project_name = $1 AND active = TRUE', project_name
+            )
 
         return [row['phase_name'] for row in rows]
 
@@ -440,15 +461,24 @@ class PostgresStateManager(StateManager):
         return (canonical, matches)
 
     async def delete_phase(self, project_name: str, phase_name: str) -> bool:
+        """Mark a specific phase as inactive (soft delete).
+
+        This maintains backward compatibility while using the inactive flag approach.
+        """
         normalized_name = normalize_phase_name(phase_name)
 
         async with db_pool.acquire() as conn:
             result = await conn.execute(
-                'DELETE FROM phases WHERE project_name = $1 AND phase_name = $2', project_name, normalized_name
+                'UPDATE phases SET active = FALSE WHERE project_name = $1 AND phase_name = $2 AND active = TRUE',
+                project_name,
+                normalized_name,
             )
 
-        deleted_count = int(result.split()[-1])
-        return deleted_count > 0
+        # Extract count from result string like "UPDATE 1"
+        updated_count = int(result.split()[-1]) if result else 0
+        if updated_count > 0:
+            logger.info(f'delete_phase: Marked phase "{phase_name}" as inactive for project {project_name}')
+        return updated_count > 0
 
     async def link_loop_to_phase(self, loop_id: str, project_name: str, phase_name: str) -> None:
         normalized_name = normalize_phase_name(phase_name)

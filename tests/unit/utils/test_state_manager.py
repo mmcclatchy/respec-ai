@@ -8,9 +8,9 @@ from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
+    PhaseNotFoundError,
     ProjectPlanNotFoundError,
     RoadmapNotFoundError,
-    SpecNotFoundError,
 )
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, Queue
@@ -287,7 +287,7 @@ class TestSpecOperations(TestInMemoryStateManager):
         await state_manager.store_phase('test-project', sample_phase)
 
         # Try to get non-existent phase
-        with pytest.raises(SpecNotFoundError, match='Spec not found'):
+        with pytest.raises(PhaseNotFoundError, match='Spec not found'):
             await state_manager.get_phase('test-project', 'nonexistent-phase')
 
     @pytest.mark.asyncio
@@ -297,7 +297,7 @@ class TestSpecOperations(TestInMemoryStateManager):
         project_name = 'test-project'
         await state_manager.store_roadmap(project_name, sample_roadmap)
 
-        with pytest.raises(SpecNotFoundError):
+        with pytest.raises(PhaseNotFoundError):
             await state_manager.get_phase(project_name, 'non-existent-phase')
 
     @pytest.mark.asyncio
@@ -373,8 +373,8 @@ class TestSpecOperations(TestInMemoryStateManager):
 
         await state_manager.delete_phase(project_name, sample_phase.phase_name)
 
-        # Should raise SpecNotFoundError now
-        with pytest.raises(SpecNotFoundError):
+        # Should raise PhaseNotFoundError now
+        with pytest.raises(PhaseNotFoundError):
             await state_manager.get_phase(project_name, sample_phase.phase_name)
 
     @pytest.mark.asyncio

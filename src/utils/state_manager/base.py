@@ -14,7 +14,7 @@ logger = logging.getLogger('state_manager')
 
 T = TypeVar('T')
 
-FROZEN_SPEC_FIELDS = ('objectives', 'scope', 'dependencies', 'deliverables')
+FROZEN_PHASES_FIELDS = ('objectives', 'scope', 'dependencies', 'deliverables')
 
 
 def normalize_phase_name(phase_name: str) -> str:
@@ -79,6 +79,9 @@ class StateManager(ABC):
     @abstractmethod
     async def get_roadmap_phases(self, project_name: str) -> list[Phase]: ...
 
+    @abstractmethod
+    async def mark_phases_inactive(self, project_name: str) -> int: ...
+
     # Unified Phase Management (replaces InitialSpec + Phase separation)
     @abstractmethod
     async def store_phase(self, project_name: str, phase: Phase) -> str: ...
@@ -117,7 +120,13 @@ class StateManager(ABC):
     async def resolve_phase_name(self, project_name: str, partial_name: str) -> tuple[str | None, list[str]]: ...
 
     @abstractmethod
-    async def delete_phase(self, project_name: str, phase_name: str) -> bool: ...
+    async def delete_phase(self, project_name: str, phase_name: str) -> bool:
+        """Mark a specific phase as inactive (soft delete).
+
+        This maintains backward compatibility while using the inactive flag approach.
+        Returns True if phase was found and marked inactive, False otherwise.
+        """
+        ...
 
     # Task Management
     @abstractmethod

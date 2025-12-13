@@ -52,10 +52,11 @@ class TestPlanRoadmapTemplate:
         tools = create_roadmap_agent_tools()
         template = generate_roadmap_template(tools)
 
-        # Should not contain threshold percentages or scores
-        threshold_terms = ['85%', '90%', 'threshold', 'score', '%']
+        # Should not contain hardcoded loop decision thresholds
+        # Note: "score" references for feedback guidance are acceptable
+        threshold_terms = ['85%', '90%', 'if score >= ', 'if score < ', 'score threshold']
         for term in threshold_terms:
-            assert term not in template, f'Template should not contain threshold reference: {term}'
+            assert term not in template, f'Template should not contain loop decision threshold: {term}'
 
     def test_template_includes_error_handling(self) -> None:
         tools = create_roadmap_agent_tools()

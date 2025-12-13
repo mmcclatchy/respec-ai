@@ -8,9 +8,9 @@ from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
+    PhaseNotFoundError,
     ProjectPlanNotFoundError,
     RoadmapNotFoundError,
-    SpecNotFoundError,
 )
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import PostgresStateManager
@@ -223,7 +223,7 @@ class TestDatabaseSpecOperations:
     ) -> None:
         await db_state_manager.store_phase('test-project', sample_phase)
 
-        with pytest.raises(SpecNotFoundError, match='Spec not found'):
+        with pytest.raises(PhaseNotFoundError, match='Spec not found'):
             await db_state_manager.get_phase('test-project', 'nonexistent-phase')
 
     @pytest.mark.asyncio
@@ -233,7 +233,7 @@ class TestDatabaseSpecOperations:
         project_name = 'test-project'
         await db_state_manager.store_roadmap(project_name, sample_roadmap)
 
-        with pytest.raises(SpecNotFoundError):
+        with pytest.raises(PhaseNotFoundError):
             await db_state_manager.get_phase(project_name, 'non-existent-phase')
 
     @pytest.mark.asyncio
@@ -309,7 +309,7 @@ class TestDatabaseSpecOperations:
 
         await db_state_manager.delete_phase(project_name, sample_phase.phase_name)
 
-        with pytest.raises(SpecNotFoundError):
+        with pytest.raises(PhaseNotFoundError):
             await db_state_manager.get_phase(project_name, sample_phase.phase_name)
 
     @pytest.mark.asyncio

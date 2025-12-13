@@ -77,6 +77,9 @@ class BuiltInTool(StrEnum):
     EXIT_PLAN_MODE = 'ExitPlanMode'
     SLASH_COMMAND = 'SlashCommand'
 
+    # User Interaction
+    ASK_USER_QUESTION = 'AskUserQuestion'
+
 
 class RespecAITool(StrEnum):
     # Loop Management Tools

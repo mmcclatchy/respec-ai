@@ -36,8 +36,26 @@ class TestGetPackageInstallationPath:
 class TestGetPackageVersion:
     def test_successful_version_extraction(self, mocker: MockerFixture) -> None:
         mocker.patch('src.cli.config.package_info.version', return_value='0.4.6')
+        mocker.patch('src.cli.config.package_info._is_git_dirty', return_value=False)
+        mocker.patch('src.cli.config.package_info._get_git_commit', return_value=None)
         result = get_package_version()
         assert result == '0.4.6'
+
+    def test_dev_version_with_dirty_git(self, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.package_info.version', return_value='0.4.6')
+        mocker.patch('src.cli.config.package_info._is_git_dirty', return_value=True)
+        mocker.patch('src.cli.config.package_info._get_git_commit', return_value='8a8492d')
+        result = get_package_version()
+        assert result == '0.4.6-dev+8a8492d-dirty'
+
+    def test_dev_version_with_clean_git(self, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.package_info.version', return_value='0.4.6')
+        mocker.patch('src.cli.config.package_info._is_git_dirty', return_value=False)
+        mocker.patch('src.cli.config.package_info._get_git_commit', return_value='8a8492d')
+        mock_git_describe = mocker.patch('subprocess.run')
+        mock_git_describe.return_value.returncode = 1
+        result = get_package_version()
+        assert result == '0.4.6-dev+8a8492d'
 
     def test_package_not_found(self, mocker: MockerFixture) -> None:
         mocker.patch(

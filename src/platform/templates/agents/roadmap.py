@@ -28,7 +28,7 @@ roadmap_example = Roadmap(
 
 # Create sparse Phase example (iteration=0 with only 4 Overview fields)
 sparse_phase_example = Phase(
-    phase_name='[Phase Name]',
+    phase_name='[phase-name-in-kebab-case]',
     objectives='[What this phase aims to achieve]',
     scope='[What IS and is NOT included]',
     dependencies='[Prerequisites and blocking relationships]',
@@ -97,12 +97,22 @@ Break strategic plan into appropriately-sized implementation phases (2-4 weeks e
 STEP 3: Generate Roadmap Markdown
 Create comprehensive roadmap following OUTPUT FORMAT below
 → Include roadmap metadata
-→ Include sparse Phase for EVERY phase
+→ Include sparse Phase for EVERY phase in the FINAL design
+→ **CRITICAL for refinement (iteration > 1)**: Output COMPLETE roadmap with ONLY final phases
+→ **CRITICAL for refinement**: Remove/replace old phase versions - do NOT keep historical duplicates
+→ **CRITICAL for refinement**: Each phase appears EXACTLY ONCE in output
+→ If phases were split (e.g., Phase 3 → 3a and 3b), output ONLY 3a and 3b, NOT original Phase 3
+→ If phases were merged or renamed, output ONLY the new version, NOT the old version
 
-STEP 4: Return to Orchestrator
-Output complete roadmap markdown
-→ DO NOT call any storage tools yourself
-→ Orchestrator handles roadmap storage
+STEP 4: Store Roadmap to MCP
+CALL {tools.create_roadmap}
+→ Verify: Roadmap stored successfully to MCP
+→ If failed: Report error and STOP
+
+STEP 5: Return Completion Status
+Output brief completion message to orchestrator:
+→ "Roadmap generation complete. Stored to MCP."
+→ DO NOT return the roadmap markdown itself
 → Orchestrator will invoke roadmap-critic for quality assessment
 
 **CRITICAL**: Do NOT create phases. Phase creation happens AFTER roadmap is finalized by parallel create-phase agents.
@@ -111,9 +121,9 @@ Output complete roadmap markdown
 - NEVER use Read/Write/Edit tools to access roadmap.md or any other files
 - NEVER create or modify files directly on disk
 - ONLY use {tools.get_project_plan} to retrieve input data
-- ONLY return markdown output to Main Agent (do not store it yourself)
-- File storage is handled exclusively by Main Agent using MCP tools
-- If you encounter file references, ignore them and use MCP tools instead
+- ONLY use {tools.create_roadmap} to store roadmap to MCP
+- DO NOT return roadmap markdown to Main Agent - return completion status only
+- File storage is handled exclusively by you using MCP tools
 
 TASKS:
 
@@ -142,8 +152,14 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Implement ALL items in "Recommendations" section
 
 STEP 3: Phase Decomposition
-Break requirements into sprint-sized phases (2-4 weeks each)
+Break requirements into appropriately-sized implementation phases
 → Apply phasing_preferences if provided
+→ **CRITICAL**: Think of each phase as ONE SPRINT'S worth of work
+→ **CRITICAL**: Phase sizing based on SCOPE and COHESION, not time estimates
+→ Not too large: Avoid combining multiple independent features (split instead)
+→ Not too trivial: Avoid single-function phases (combine related work)
+→ Sprint-sized: Cohesive set of related work that delivers testable value
+→ If adding timeline estimates, that's acceptable, but scope by work complexity, not hours
 → Ensure clear phase boundaries
 → Validate dependency relationships
 
@@ -161,25 +177,30 @@ Output roadmap markdown to orchestrator
 ## PHASE DECOMPOSITION STRATEGY
 
 ### Phase Sizing Guidelines
-Extract requirements into appropriately sized phases:
+Extract requirements into appropriately sized phases based on WORK SCOPE and COHESION:
 
-#### Small Phase (2 weeks)
-- Single feature or component implementation
-- Limited integration complexity
-- Well-understood technology stack
-- Low risk, clear requirements
+#### Small Phase (Sprint-Sized)
+- Single cohesive feature or component
+- Clear, focused objective with minimal dependencies
+- Well-understood implementation approach
+- Low complexity, testable independently
+- Example: "Implement user authentication with email/password"
 
-#### Medium Phase (2-3 weeks)
-- Multiple related features working together
-- Moderate integration requirements
-- Some new technology evaluation
-- Manageable complexity and risk
+#### Medium Phase (Sprint-Sized)
+- Multiple related features working together as a cohesive unit
+- Moderate integration with existing systems
+- Some technical uncertainty requiring investigation
+- Manageable complexity with clear success criteria
+- Example: "Integrate payment processing with order management"
 
-#### Large Phase (3-4 weeks)
-- Complex feature set with multiple components
-- Significant integration challenges
-- Multiple new technologies or frameworks
-- Higher risk with more unknowns
+#### Large Phase (May need splitting)
+- Complex feature set spanning multiple domains
+- Significant integration challenges across systems
+- High technical uncertainty or unknowns
+- Consider splitting into multiple sprint-sized phases
+- Example: "Complete e-commerce platform" → Split into checkout, inventory, shipping phases
+
+**Scoping Principle**: Each phase should deliver a cohesive, testable increment of value. If a phase feels like "two different things," split it. If it's "just one function," combine with related work.
 
 ### Decomposition Patterns
 
@@ -208,6 +229,31 @@ Extract requirements into appropriately sized phases:
   - Example: `# Project Roadmap: best-practices-graph`
   - NOT "Implementation Roadmap", NOT "Project Implementation Roadmap"
   - Note: No brackets in actual output - project name appears directly after colon and space
+- **PHASE NAMING REQUIREMENTS** (STRICTLY ENFORCED):
+  - Phase names MUST follow pattern: `phase-{{number}}-{{descriptive-name}}`
+  - Number indicates execution sequence: phase-1, phase-2, phase-3, etc.
+  - Valid examples: `phase-1-foundation`, `phase-2-api-integration`, `phase-3-testing`
+  - Invalid examples:
+    - `foundation-and-infrastructure` (missing phase number prefix)
+    - `Phase 1` (uppercase, missing kebab-case description)
+    - `neo4j-setup` (missing phase number prefix)
+  - Phase names MUST be lowercase kebab-case: `[a-z0-9]+(-[a-z0-9]+)*`
+  - Lowercase letters, numbers, and hyphens only - NO spaces, underscores, or uppercase
+  - Storage will FAIL if phase names don't follow this format
+- **PHASE SEQUENCING REQUIREMENTS**:
+  - Phases execute SEQUENTIALLY by default in numeric order (phase-1, then phase-2, then phase-3)
+  - Phase numbers indicate execution sequence, NOT parallelization groups
+  - If phases CAN be parallelized, document in Dependencies section, NOT in naming
+  - Example parallel note in Dependencies: "Can run in parallel with phase-2-api-integration"
+  - NEVER use sub-numbering to indicate parallelization (e.g., phase-2a, phase-2b)
+  - Sub-numbering (phase-2a, phase-2b) only for splitting single phase into sub-phases
+  - Keep phase numbering simple and sequential: phase-1, phase-2, phase-3, etc.
+- **REFINEMENT REQUIREMENTS** (for iteration > 1):
+  - Output COMPLETE refined roadmap, NOT incremental additions
+  - Each phase appears EXACTLY ONCE - remove all duplicate/old versions
+  - If Phase 3 split into 3a and 3b, output ONLY 3a and 3b (NOT Phase 3)
+  - If phase renamed, output ONLY new name (NOT both old and new)
+  - Replace entire roadmap content with final version during refinement
 - Output roadmap metadata followed by sparse Phases (one per phase)
 - **NEVER truncate phases** - output a sparse phase for EVERY phase you define
 - **NEVER use** "[Remaining phases omitted...]" text

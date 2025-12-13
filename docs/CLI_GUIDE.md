@@ -1499,7 +1499,7 @@ Configure refinement loop thresholds:
 ```bash
 # Set via environment variables (future feature)
 export RESPEC_AI_PLAN_THRESHOLD=80
-export RESPEC_AI_SPEC_THRESHOLD=85
+export RESPEC_AI_PHASES_THRESHOLD=85
 export RESPEC_AI_BUILD_THRESHOLD=90
 ```
 

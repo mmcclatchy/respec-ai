@@ -8,13 +8,13 @@ from src.models.task import Task
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
+    PhaseNotFoundError,
     ProjectPlanNotFoundError,
     RoadmapNotFoundError,
-    SpecNotFoundError,
 )
 from src.utils.loop_state import LoopState, MCPResponse
 
-from .base import FROZEN_SPEC_FIELDS, StateManager, logger, normalize_phase_name
+from .base import FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
 
 
 T = TypeVar('T')
@@ -46,6 +46,7 @@ class InMemoryStateManager(StateManager):
 
         # UNIFIED phase storage (single source of truth)
         self._phases: dict[str, dict[str, Phase]] = {}  # project_name -> {phase_name -> Phase}
+        self._inactive_phases: dict[str, dict[str, Phase]] = {}  # project_name -> {phase_name -> Phase}
 
         # Temporary loop-to-spec mapping (for active refinement sessions)
         self._loop_to_phase: dict[str, tuple[str, str]] = {}  # loop_id -> (project_name, phase_name)
@@ -77,12 +78,14 @@ class InMemoryStateManager(StateManager):
 
     def _log_state_snapshot(self, method_name: str, stage: str) -> None:
         phases_dict = {proj: list(phases.keys()) for proj, phases in self._phases.items()}
+        inactive_phases_dict = {proj: list(phases.keys()) for proj, phases in self._inactive_phases.items()}
         logger.debug(
             f'{method_name} [{stage}] - State snapshot:\n'
             f'  active_loops={list(self._active_loops.keys())}\n'
             f'  roadmaps={list(self._roadmaps.keys())}\n'
             f'  project_plans={list(self._project_plans.keys())}\n'
             f'  phases_by_project={phases_dict}\n'
+            f'  inactive_phases_by_project={inactive_phases_dict}\n'
             f'  loop_to_phase={dict(self._loop_to_phase)}\n'
             f'  objective_feedback_loops={list(self._objective_feedback.keys())}'
         )
@@ -208,6 +211,35 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_roadmap_phases', 'EXIT')
         return phases
 
+    async def mark_phases_inactive(self, project_name: str) -> int:
+        """Mark all current active phases for a project as inactive.
+
+        Returns the number of phases marked inactive.
+        """
+        logger.info(f'mark_phases_inactive: project_name={project_name}')
+
+        if project_name not in self._phases:
+            logger.debug(f'mark_phases_inactive: No active phases found for project {project_name}')
+            return 0
+
+        # Move all active phases to inactive
+        if project_name not in self._inactive_phases:
+            self._inactive_phases[project_name] = {}
+
+        active_phases = self._phases[project_name]
+        count = len(active_phases)
+
+        # Move each active phase to inactive (overwrites any existing inactive with same name)
+        for phase_name, phase in active_phases.items():
+            self._inactive_phases[project_name][phase_name] = phase
+            logger.debug(f'mark_phases_inactive: Moved phase "{phase_name}" to inactive')
+
+        # Clear active phases for this project
+        self._phases[project_name] = {}
+
+        logger.info(f'mark_phases_inactive: Marked {count} phases as inactive for project {project_name}')
+        return count
+
     # Unified Phase Management (single source of truth)
     async def store_phase(self, project_name: str, phase: Phase) -> str:
         self._log_state_snapshot('store_phase', 'ENTRY')
@@ -234,7 +266,7 @@ class InMemoryStateManager(StateManager):
             existing_data = existing_phase.model_dump()
             new_data = phase.model_dump()
 
-            frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
+            frozen_fields = {field: existing_data[field] for field in FROZEN_PHASES_FIELDS}
 
             phase = Phase(
                 **{
@@ -277,7 +309,7 @@ class InMemoryStateManager(StateManager):
         existing_data = existing_phase.model_dump()
         new_data = updated_phase.model_dump()
 
-        frozen_fields = {field: existing_data[field] for field in FROZEN_SPEC_FIELDS}
+        frozen_fields = {field: existing_data[field] for field in FROZEN_PHASES_FIELDS}
 
         final_phase = Phase(
             **{
@@ -315,7 +347,7 @@ class InMemoryStateManager(StateManager):
                 f'get_phase failed: Phase not found: {phase_name} (normalized: {normalized_name}) '
                 f'in project {project_name}'
             )
-            raise SpecNotFoundError(f'Spec not found: {phase_name} in project {project_name}')
+            raise PhaseNotFoundError(f'Spec not found: {phase_name} in project {project_name}')
 
         phase = self._phases[project_name][normalized_name]
         logger.debug(
@@ -355,10 +387,13 @@ class InMemoryStateManager(StateManager):
         return (canonical, matches)
 
     async def delete_phase(self, project_name: str, phase_name: str) -> bool:
+        """Mark a specific phase as inactive (soft delete).
+
+        This maintains backward compatibility while using the inactive flag approach.
+        """
         self._log_state_snapshot('delete_phase', 'ENTRY')
         logger.info(f'delete_phase: project_name={project_name}, phase_name={phase_name}')
 
-        # Normalize phase name for deletion
         normalized_name = normalize_phase_name(phase_name)
         logger.debug(f'delete_phase: Normalized "{phase_name}" -> "{normalized_name}"')
 
@@ -369,9 +404,15 @@ class InMemoryStateManager(StateManager):
             self._log_state_snapshot('delete_phase', 'EXIT')
             return False
 
-        # Remove from phases storage
+        # Move to inactive instead of deleting
+        if project_name not in self._inactive_phases:
+            self._inactive_phases[project_name] = {}
+
+        phase = self._phases[project_name][normalized_name]
+        self._inactive_phases[project_name][normalized_name] = phase
         del self._phases[project_name][normalized_name]
-        logger.info(f'delete_phase: Removed {phase_name} using normalized name "{normalized_name}" from phases storage')
+
+        logger.info(f'delete_phase: Marked {phase_name} (normalized: {normalized_name}) as inactive')
 
         self._log_state()
         self._log_state_snapshot('delete_phase', 'EXIT')

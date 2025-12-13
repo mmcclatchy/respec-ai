@@ -8,10 +8,10 @@ from src.utils.errors import (
     LoopNotFoundError,
     LoopStateError,
     LoopValidationError,
+    PhaseNotFoundError,
     RoadmapError,
     RoadmapNotFoundError,
     RoadmapValidationError,
-    SpecNotFoundError,
 )
 
 
@@ -130,7 +130,7 @@ class TestRoadmapErrors:
         assert str(error) == 'Roadmap not found'
 
     def test_phase_not_found_error_inheritance(self) -> None:
-        error = SpecNotFoundError('Spec not found')
+        error = PhaseNotFoundError('Spec not found')
 
         assert isinstance(error, RoadmapError)
         assert isinstance(error, Exception)

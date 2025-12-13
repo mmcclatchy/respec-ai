@@ -551,19 +551,16 @@ class PlanRoadmapCommandTools(BaseModel):
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
         RespecAITool.CREATE_ROADMAP,
         RespecAITool.GET_ROADMAP,
-        RespecAITool.STORE_DOCUMENT,
-        RespecAITool.GET_DOCUMENT,
-        RespecAITool.LIST_DOCUMENTS,
         RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
         RespecAITool.GET_FEEDBACK,
     ]
 
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.ASK_USER_QUESTION, ''),
+    ]
+
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_project_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
-    update_project_plan_tool: str = Field(..., description='Platform-specific tool for updating project plans')
-    create_phase_tool: str = Field(..., description='Platform-specific tool for creating phases')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
-    update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project phases')
     platform: 'PlatformType' = Field(..., description='Selected platform type')
 
@@ -574,8 +571,6 @@ class PlanRoadmapCommandTools(BaseModel):
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_roadmap: str = Field(..., description='Get final roadmap')
-    list_documents: str = Field(..., description='List stored phase documents')
-    get_document: str = Field(..., description='Get phase document')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
 
@@ -588,30 +583,6 @@ class PlanRoadmapCommandTools(BaseModel):
         if '*' not in self.get_project_plan_tool:
             return self.get_project_plan_tool
         return self.get_project_plan_tool.replace('*', '{project_name}')
-
-    @computed_field
-    def update_project_plan_tool_interpolated(self) -> str:
-        if '*' not in self.update_project_plan_tool:
-            return self.update_project_plan_tool
-        return self.update_project_plan_tool.replace('*', '{project_name}')
-
-    @computed_field
-    def create_phase_tool_interpolated(self) -> str:
-        if '*' not in self.create_phase_tool:
-            return self.create_phase_tool
-        return self.create_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def get_phase_tool_interpolated(self) -> str:
-        if '*' not in self.get_phase_tool:
-            return self.get_phase_tool
-        return self.get_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def update_phase_tool_interpolated(self) -> str:
-        if '*' not in self.update_phase_tool:
-            return self.update_phase_tool
-        return self.update_phase_tool.replace('*', '{project_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def list_project_phases_tool_interpolated(self) -> str:
@@ -659,57 +630,6 @@ EXCEPT:
         else:
             return """# Platform-specific sync not configured
 Display: "⚠️ Sync not configured for this platform"
-"""
-
-    @computed_field
-    def sync_all_phases_instructions(self) -> str:
-        if self.platform == PlatformType.MARKDOWN:
-            return f"""PHASES_LOADED = 0
-PHASE_FILES = Glob({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PROJECT_NAME}}/{PathComponent.PHASES_DIR}/*.md)
-FOR each phase_file in PHASE_FILES:
-  PHASE_NAME = [extract filename without .md extension]
-  PHASE_MARKDOWN = Read(phase_file)
-  mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
-    content=PHASE_MARKDOWN
-  )
-  PHASES_LOADED = PHASES_LOADED + 1
-Display: "✓ Loaded {{PHASES_LOADED}} phases from platform"
-"""
-        elif self.platform == PlatformType.LINEAR:
-            return """PHASES_LOADED = 0
-PHASE_LIST = mcp__linear-server__list_issues(project_name=PROJECT_NAME, label="phase")
-FOR each phase in PHASE_LIST:
-  PHASE_RESULT = mcp__linear-server__get_issue(issue_id=phase.id)
-  PHASE_MARKDOWN = PHASE_RESULT.description
-  PHASE_NAME = PHASE_RESULT.title
-  mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
-    content=PHASE_MARKDOWN
-  )
-  PHASES_LOADED = PHASES_LOADED + 1
-Display: "✓ Loaded {PHASES_LOADED} phases from platform"
-"""
-        elif self.platform == PlatformType.GITHUB:
-            return """PHASES_LOADED = 0
-PHASE_LIST = mcp__github__list_issues(label="phase")
-FOR each phase in PHASE_LIST:
-  PHASE_RESULT = mcp__github__get_issue(issue_number=phase.number)
-  PHASE_MARKDOWN = PHASE_RESULT.body
-  PHASE_NAME = PHASE_RESULT.title
-  mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
-    content=PHASE_MARKDOWN
-  )
-  PHASES_LOADED = PHASES_LOADED + 1
-Display: "✓ Loaded {PHASES_LOADED} phases from platform"
-"""
-        else:
-            return """# Platform-specific sync not configured
-Display: "⚠️ Phase sync not configured for this platform"
 """
 
     @computed_field
@@ -902,6 +822,7 @@ class RoadmapAgentTools(BaseModel):
         RespecAITool.GET_PROJECT_PLAN_MARKDOWN,
         RespecAITool.GET_LOOP_STATUS,
         RespecAITool.GET_FEEDBACK,
+        RespecAITool.CREATE_ROADMAP,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
@@ -910,6 +831,7 @@ class RoadmapAgentTools(BaseModel):
     get_project_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_loop_status: str = Field(..., description='Get loop status for iteration check')
     get_feedback: str = Field(..., description='Retrieve previous critic feedback')
+    create_roadmap: str = Field(..., description='Store roadmap to MCP')
 
 
 class RoadmapCriticAgentTools(BaseModel):

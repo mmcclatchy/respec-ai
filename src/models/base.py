@@ -55,11 +55,11 @@ class MCPModel(BaseModel, ABC):
         if h2_idx is None:
             return ''
 
-        # If no h3 specified, get content from h2 until next h2
+        # If no h3 specified, get content from h2 until next h2 or markdown separator
         if h3_header is None:
             content_lines = []
             for i in range(h2_idx + 1, len(lines)):
-                if lines[i].startswith('## '):
+                if lines[i].startswith('## ') or lines[i].strip() == '---':
                     break
                 content_lines.append(lines[i])
 
@@ -78,10 +78,10 @@ class MCPModel(BaseModel, ABC):
         if h3_idx is None:
             return ''
 
-        # Extract content from h3 until next h2 or h3
+        # Extract content from h3 until next h2 or h3 or markdown separator
         content_lines = []
         for i in range(h3_idx + 1, len(lines)):
-            if lines[i].startswith('## ') or lines[i].startswith('### '):
+            if lines[i].startswith('## ') or lines[i].startswith('### ') or lines[i].strip() == '---':
                 break
             content_lines.append(lines[i])
 
