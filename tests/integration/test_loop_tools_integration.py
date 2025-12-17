@@ -10,7 +10,7 @@ from src.utils.setting_configs import LoopConfig
 
 
 @pytest.fixture
-def project_name() -> str:
+def plan_name() -> str:
     return 'test-project'
 
 
@@ -33,11 +33,9 @@ async def add_feedback_and_decide(loop_id: str, score: int, iteration: int, agen
 
 class TestLoopToolsIntegration:
     @pytest.mark.asyncio
-    async def test_complete_mcp_tool_workflow_end_to_end(
-        self, project_name: str, stable_loop_config: LoopConfig
-    ) -> None:
+    async def test_complete_mcp_tool_workflow_end_to_end(self, plan_name: str, stable_loop_config: LoopConfig) -> None:
         # Initialize loop
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         assert init_result.status == LoopStatus.INITIALIZED
@@ -54,11 +52,9 @@ class TestLoopToolsIntegration:
         assert final_result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_realistic_score_progression_scenarios(
-        self, project_name: str, stable_loop_config: LoopConfig
-    ) -> None:
+    async def test_realistic_score_progression_scenarios(self, plan_name: str, stable_loop_config: LoopConfig) -> None:
         # Test gradual improvement scenario
-        loop1 = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        loop1 = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
 
         # Gradual improvement that should complete (meets plan threshold)
         threshold = stable_loop_config.plan_threshold
@@ -71,8 +67,8 @@ class TestLoopToolsIntegration:
                 assert result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_stagnation_detection_in_full_context(self, project_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'task')).id
+    async def test_stagnation_detection_in_full_context(self, plan_name: str) -> None:
+        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'task')).id
 
         # Create stagnation pattern
         stagnant_scores = [70, 71, 70, 71, 70]
@@ -86,11 +82,9 @@ class TestLoopToolsIntegration:
         assert results[-1].status == LoopStatus.USER_INPUT
 
     @pytest.mark.asyncio
-    async def test_configuration_loading_from_environment(
-        self, project_name: str, stable_loop_config: LoopConfig
-    ) -> None:
+    async def test_configuration_loading_from_environment(self, plan_name: str, stable_loop_config: LoopConfig) -> None:
         # Test different loop types use correct thresholds
-        build_code_loop = await loop_tools.initialize_refinement_loop(project_name, 'task')
+        build_code_loop = await loop_tools.initialize_refinement_loop(plan_name, 'task')
 
         threshold = stable_loop_config.task_threshold
         # Score just below build_code threshold should refine
@@ -102,10 +96,10 @@ class TestLoopToolsIntegration:
         assert result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_error_recovery_scenarios(self, project_name: str) -> None:
+    async def test_error_recovery_scenarios(self, plan_name: str) -> None:
         # Test invalid loop type
         with pytest.raises(LoopValidationError):
-            await loop_tools.initialize_refinement_loop(project_name, 'invalid_type')
+            await loop_tools.initialize_refinement_loop(plan_name, 'invalid_type')
 
         # Test operations on non-existent loop
         with pytest.raises(LoopStateError):
@@ -115,7 +109,7 @@ class TestLoopToolsIntegration:
             await loop_tools.get_loop_status('non-existent-id')
 
         # Test no feedback error
-        valid_loop = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        valid_loop = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
 
         with pytest.raises(LoopStateError) as exc_info:
             await loop_tools.decide_loop_next_action(valid_loop.id)
@@ -123,7 +117,7 @@ class TestLoopToolsIntegration:
         assert 'No feedback available' in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_concurrent_loop_management(self, project_name: str) -> None:
+    async def test_concurrent_loop_management(self, plan_name: str) -> None:
         # Create multiple loops
         loop_types = ['plan', 'phase', 'task']
         agents = [
@@ -133,11 +127,11 @@ class TestLoopToolsIntegration:
         ]
         loops = []
         for loop_type in loop_types:
-            loop = await loop_tools.initialize_refinement_loop(project_name, loop_type)
+            loop = await loop_tools.initialize_refinement_loop(plan_name, loop_type)
             loops.append(loop)
 
         # Verify all loops are active
-        active_loops = await loop_tools.list_active_loops(project_name)
+        active_loops = await loop_tools.list_active_loops(plan_name)
         assert len(active_loops) >= 4
 
         loop_ids = {loop.id for loop in active_loops}
@@ -153,9 +147,9 @@ class TestLoopToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_checkpoint_frequency_boundary_conditions(
-        self, project_name: str, stable_loop_config: LoopConfig
+        self, plan_name: str, stable_loop_config: LoopConfig
     ) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'plan')).id
+        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'plan')).id
 
         # Add scores up to checkpoint frequency
         checkpoint_freq = stable_loop_config.plan_checkpoint_frequency
@@ -166,9 +160,9 @@ class TestLoopToolsIntegration:
         assert result.status == LoopStatus.USER_INPUT
 
     @pytest.mark.asyncio
-    async def test_cross_loop_independence(self, project_name: str, stable_loop_config: LoopConfig) -> None:
-        loop1 = await loop_tools.initialize_refinement_loop(project_name, 'phase')
-        loop2 = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+    async def test_cross_loop_independence(self, plan_name: str, stable_loop_config: LoopConfig) -> None:
+        loop1 = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
+        loop2 = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
 
         # Advance loop1 significantly
         for i, score in enumerate([70, 75, 80, 85], start=1):
@@ -188,8 +182,8 @@ class TestLoopToolsIntegration:
         assert result2.status == LoopStatus.REFINE
 
     @pytest.mark.asyncio
-    async def test_score_history_preservation(self, project_name: str, stable_loop_config: LoopConfig) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(project_name, 'phase')).id
+    async def test_score_history_preservation(self, plan_name: str, stable_loop_config: LoopConfig) -> None:
+        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
 
         scores = [70, 75, 80, 85]
         for i, score in enumerate(scores, start=1):

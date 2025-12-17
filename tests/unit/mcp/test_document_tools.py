@@ -24,8 +24,75 @@ def document_tools(state_manager: InMemoryStateManager) -> DocumentTools:
 @pytest.fixture
 def sample_documents() -> dict[DocumentType, str]:
     return {
-        DocumentType.PHASE: '# Phase: Test Phase\n\nPhase content here',
-        DocumentType.TASK: '# Task: Test Task\n\nTask content here',
+        DocumentType.PHASE: """# Phase: test-phase
+
+## Overview
+
+### Objectives
+- Test objective 1
+- Test objective 2
+
+### Scope
+Test scope description
+
+### Dependencies
+None
+
+### Deliverables
+- Test deliverable 1
+- Test deliverable 2
+""",
+        DocumentType.TASK: """# Task: test-task
+
+## Identity
+
+### Phase Path
+test-plan/test-phase
+
+## Overview
+
+### Goal
+Test task goal
+
+### Acceptance Criteria
+- Criterion 1
+- Criterion 2
+
+### Technology Stack Reference
+Python 3.13+, FastAPI
+
+## Implementation
+
+### Checklist
+- [ ] Setup project structure (verify: ls -la)
+- [ ] Implement core logic (verify: pytest)
+
+### Steps
+
+#### Step 1: Setup
+Initial setup steps
+
+#### Step 2: Implementation
+Main implementation steps
+
+## Quality
+
+### Testing Strategy
+Test strategy description
+
+## Status
+
+### Current Status
+pending
+
+## Metadata
+
+### Active
+true
+
+### Version
+1.0
+""",
         DocumentType.COMPLETION_REPORT: '# Completion Report\n\nReport content here',
     }
 
@@ -35,7 +102,6 @@ def sample_documents() -> dict[DocumentType, str]:
     [
         DocumentType.PHASE,
         DocumentType.TASK,
-        DocumentType.COMPLETION_REPORT,
     ],
 )
 class TestDocumentToolsCRUD:
@@ -44,30 +110,41 @@ class TestDocumentToolsCRUD:
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test storing document works for all types"""
-        path = f'test-project/{doc_type.value}-test'
+        if doc_type == DocumentType.PHASE:
+            key = 'test-plan/test-phase'
+        else:  # TASK - requires 3 segments
+            key = 'test-plan/test-phase/test-task'
+
         content = sample_documents[doc_type]
 
-        result = await document_tools.store_document(doc_type, path, content)
+        result = await document_tools.store_document(doc_type, key, content)
 
         assert isinstance(result, str)
-        assert f'Stored {doc_type.value} document at {path}' == result
+        if doc_type == DocumentType.PHASE:
+            assert result == 'test-phase'
+        elif doc_type == DocumentType.TASK:
+            assert result == 'test-task'
 
     @pytest.mark.asyncio
-    async def test_get_document_by_path_success(
+    async def test_get_document_by_key_success(
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
-        """Test retrieving document by path works for all types"""
-        path = f'test-project/{doc_type.value}-test'
+        """Test retrieving document by key works for all types"""
+        if doc_type == DocumentType.PHASE:
+            key = 'test-plan/test-phase'
+        else:  # TASK
+            key = 'test-plan/test-phase/test-task'
+
         content = sample_documents[doc_type]
 
-        await document_tools.store_document(doc_type, path, content)
-        response = await document_tools.get_document(doc_type, path=path)
+        await document_tools.store_document(doc_type, key, content)
+        response = await document_tools.get_document(doc_type, key=key)
 
         assert isinstance(response, MCPResponse)
-        assert response.id == path
+        assert response.id == key
         assert response.status == LoopStatus.COMPLETED
-        assert response.message == content
-        assert response.char_length == len(content)
+        assert 'test-phase' in response.message or 'test-task' in response.message
+        assert response.char_length is not None and response.char_length > 0
 
     @pytest.mark.asyncio
     async def test_get_document_by_loop_id_success(
@@ -78,28 +155,31 @@ class TestDocumentToolsCRUD:
         state_manager: InMemoryStateManager,
     ) -> None:
         """Test retrieving document by loop_id works for all types"""
+        if doc_type == DocumentType.PHASE:
+            key = 'test-plan/test-phase'
+        else:  # TASK
+            key = 'test-plan/test-phase/test-task'
 
-        path = f'test-project/{doc_type.value}-test'
         content = sample_documents[doc_type]
-        loop_id = 'test-loop-123'
+        loop_id = 'a1b2c3d4'  # UUID first section format
 
-        # Create loop first
         loop_state = LoopState(id=loop_id, loop_type=LoopType.PHASE)
-        await state_manager.add_loop(loop_state, 'test-project')
+        await state_manager.add_loop(loop_state, 'test-plan')
 
-        await document_tools.store_document(doc_type, path, content)
-        await document_tools.link_loop_to_document(loop_id, doc_type, path)
+        await document_tools.store_document(doc_type, key, content)
+        await document_tools.link_loop_to_document(loop_id, doc_type, key)
 
         response = await document_tools.get_document(doc_type, loop_id=loop_id)
 
         assert isinstance(response, MCPResponse)
         assert response.id == loop_id
-        assert response.message == content
-        assert response.char_length == len(content)
+        assert 'test-phase' in response.message or 'test-task' in response.message
+        assert response.char_length is not None and response.char_length > 0
 
     @pytest.mark.asyncio
     async def test_list_documents_empty(self, document_tools: DocumentTools, doc_type: DocumentType) -> None:
-        response = await document_tools.list_documents(doc_type)
+        parent_key = 'test-plan' if doc_type == DocumentType.PHASE else 'test-plan/test-phase'
+        response = await document_tools.list_documents(doc_type, parent_key=parent_key)
 
         assert isinstance(response, MCPResponse)
         assert response.id == doc_type.value
@@ -111,58 +191,153 @@ class TestDocumentToolsCRUD:
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test list_documents returns multiple items correctly"""
-        content = sample_documents[doc_type]
-        paths = [
-            f'test-project/{doc_type.value}-1',
-            f'test-project/{doc_type.value}-2',
-            f'test-project/{doc_type.value}-3',
-        ]
+        if doc_type == DocumentType.PHASE:
+            parent_key = 'test-plan'
+            items = []
+            for i in range(1, 4):
+                phase_name = f'test-phase-{i}'
+                content = f"""# Phase: {phase_name}
 
-        for path in paths:
-            await document_tools.store_document(doc_type, path, content)
+## Overview
 
-        response = await document_tools.list_documents(doc_type)
+### Objectives
+- Test objective {i}
+
+### Scope
+Test scope {i}
+
+### Dependencies
+None
+
+### Deliverables
+- Test deliverable {i}
+"""
+                items.append((f'test-plan/{phase_name}', content, phase_name))
+        else:  # TASK
+            parent_key = 'test-plan/test-phase'
+            items = []
+            for i in range(1, 4):
+                task_name = f'test-task-{i}'
+                content = f"""# Task: {task_name}
+
+## Identity
+
+### Phase Path
+test-plan/test-phase
+
+## Overview
+
+### Goal
+Test task {i} goal
+
+### Acceptance Criteria
+- Criterion {i}
+
+### Technology Stack Reference
+Python 3.13+
+
+## Implementation
+
+### Checklist
+- [ ] Task {i} setup (verify: test command)
+
+### Steps
+
+#### Step 1: Setup
+Test notes {i}
+
+## Quality
+
+### Testing Strategy
+Test strategy {i}
+
+## Status
+
+### Current Status
+pending
+
+## Metadata
+
+### Active
+true
+
+### Version
+1.0
+"""
+                items.append((f'test-plan/test-phase/{task_name}', content, task_name))
+
+        for key, content, name in items:
+            await document_tools.store_document(doc_type, key, content)
+
+        response = await document_tools.list_documents(doc_type, parent_key=parent_key)
 
         assert isinstance(response, MCPResponse)
         assert response.id == doc_type.value
         assert response.status == LoopStatus.COMPLETED
         assert f'Found 3 {doc_type.value} documents' in response.message
-        for path in paths:
-            assert path in response.message
+        for key, _, _ in items:
+            assert key in response.message
 
     @pytest.mark.asyncio
     async def test_update_document_success(
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test updating document works for all types"""
-        path = f'test-project/{doc_type.value}-test'
-        original_content = sample_documents[doc_type]
-        updated_content = f'{original_content}\n\n## Updated Section'
+        if doc_type == DocumentType.PHASE:
+            key = 'test-plan/test-phase'
+        else:  # TASK
+            key = 'test-plan/test-phase/test-task'
 
-        await document_tools.store_document(doc_type, path, original_content)
-        result = await document_tools.update_document(doc_type, path, updated_content)
+        original_content = sample_documents[doc_type]
+
+        await document_tools.store_document(doc_type, key, original_content)
+
+        if doc_type == DocumentType.PHASE:
+            updated_content = (
+                original_content
+                + """
+## System Design
+
+### Architecture
+Updated architecture description
+"""
+            )
+        else:  # TASK
+            updated_content = original_content.replace('Initial setup steps', 'Updated setup steps with more details')
+
+        result = await document_tools.update_document(doc_type, key, updated_content)
 
         assert isinstance(result, str)
-        assert f'Updated {doc_type.value} document at {path}' == result
+        if doc_type == DocumentType.PHASE:
+            assert result == 'test-phase'
+        elif doc_type == DocumentType.TASK:
+            assert result == 'test-task'
 
-        response = await document_tools.get_document(doc_type, path=path)
-        assert response.message == updated_content
+        response = await document_tools.get_document(doc_type, key=key)
+        if doc_type == DocumentType.PHASE:
+            assert 'Updated architecture' in response.message
+        else:
+            assert 'Updated setup steps' in response.message
 
     @pytest.mark.asyncio
     async def test_delete_document_success(
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test deleting document works for all types"""
-        path = f'test-project/{doc_type.value}-test'
+        if doc_type == DocumentType.PHASE:
+            key = 'test-plan/test-phase'
+        else:  # TASK
+            key = 'test-plan/test-phase/test-task'
+
         content = sample_documents[doc_type]
 
-        await document_tools.store_document(doc_type, path, content)
-        response = await document_tools.delete_document(doc_type, path)
+        await document_tools.store_document(doc_type, key, content)
+        response = await document_tools.delete_document(doc_type, key)
 
         assert isinstance(response, MCPResponse)
-        assert response.id == path
+        assert response.id == key
         assert response.status == LoopStatus.COMPLETED
-        assert f'Deleted {doc_type.value} document at {path}' == response.message
+        assert f'Deleted {doc_type.value} document at {key}' == response.message
 
     @pytest.mark.asyncio
     async def test_link_loop_to_document_success(
@@ -173,44 +348,58 @@ class TestDocumentToolsCRUD:
         state_manager: InMemoryStateManager,
     ) -> None:
         """Test linking loop to document works for all types"""
+        if doc_type == DocumentType.PHASE:
+            key = 'test-plan/test-phase'
+        else:  # TASK
+            key = 'test-plan/test-phase/test-task'
 
-        path = f'test-project/{doc_type.value}-test'
         content = sample_documents[doc_type]
-        loop_id = 'test-loop-456'
+        loop_id = 'b2c3d4e5'  # UUID first section format
 
-        # Create loop first
         loop_state = LoopState(id=loop_id, loop_type=LoopType.PHASE)
-        await state_manager.add_loop(loop_state, 'test-project')
+        await state_manager.add_loop(loop_state, 'test-plan')
 
-        await document_tools.store_document(doc_type, path, content)
-        result = await document_tools.link_loop_to_document(loop_id, doc_type, path)
+        await document_tools.store_document(doc_type, key, content)
+        result = await document_tools.link_loop_to_document(loop_id, doc_type, key)
 
         assert isinstance(result, MCPResponse)
         assert result.id == loop_id
-        assert f'Linked loop {loop_id} to {doc_type.value} document at {path}' == result.message
+        assert f'Linked loop {loop_id} to {doc_type.value} document at {key}' == result.message
 
 
 @pytest.mark.parametrize(
     'method,kwargs,error_pattern',
     [
-        # Empty path validation (only test empty string '', not whitespace)
-        ('store_document', {'doc_type': DocumentType.PHASE, 'path': '', 'content': 'x'}, 'Path cannot be empty'),
-        ('update_document', {'doc_type': DocumentType.PHASE, 'path': '', 'content': 'x'}, 'Path cannot be empty'),
-        ('delete_document', {'doc_type': DocumentType.PHASE, 'path': ''}, 'Path cannot be empty'),
-        # Empty content validation (only test empty string '', not whitespace)
-        ('store_document', {'doc_type': DocumentType.PHASE, 'path': 'test', 'content': ''}, 'Content cannot be empty'),
-        ('update_document', {'doc_type': DocumentType.PHASE, 'path': 'test', 'content': ''}, 'Content cannot be empty'),
-        # Empty loop_id validation (only test empty string '', not whitespace)
+        (
+            'store_document',
+            {'doc_type': DocumentType.PHASE, 'key': '', 'content': 'x'},
+            'key and content cannot be empty',
+        ),
+        (
+            'update_document',
+            {'doc_type': DocumentType.PHASE, 'key': '', 'content': 'x'},
+            'Key and content cannot be empty',
+        ),
+        ('delete_document', {'doc_type': DocumentType.PHASE, 'key': ''}, 'Key cannot be empty'),
+        (
+            'store_document',
+            {'doc_type': DocumentType.PHASE, 'key': 'test', 'content': ''},
+            'key and content cannot be empty',
+        ),
+        (
+            'update_document',
+            {'doc_type': DocumentType.PHASE, 'key': 'test', 'content': ''},
+            'Key and content cannot be empty',
+        ),
         (
             'link_loop_to_document',
-            {'loop_id': '', 'doc_type': DocumentType.PHASE, 'path': 'test'},
-            'Loop ID cannot be empty',
+            {'loop_id': '', 'doc_type': DocumentType.PHASE, 'key': 'test'},
+            'Loop ID and key cannot be empty',
         ),
-        # get_document requires path OR loop_id
         (
             'get_document',
-            {'doc_type': DocumentType.PHASE, 'path': None, 'loop_id': None},
-            'Either path OR loop_id must be provided',
+            {'doc_type': DocumentType.PHASE, 'key': None, 'loop_id': None},
+            'Either key OR loop_id must be provided',
         ),
     ],
 )
@@ -225,7 +414,6 @@ async def test_validation_errors(document_tools: DocumentTools, method: str, kwa
     [
         DocumentType.PHASE,
         DocumentType.TASK,
-        DocumentType.COMPLETION_REPORT,
     ],
 )
 class TestDocumentToolsErrorHandling:
@@ -234,75 +422,146 @@ class TestDocumentToolsErrorHandling:
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
         """ResourceError raised when document doesn't exist"""
-        path = f'nonexistent/{doc_type.value}'
+        if doc_type == DocumentType.PHASE:
+            key = 'nonexistent/phase'
+        else:  # TASK
+            key = 'nonexistent/phase/task'
 
         with pytest.raises(ResourceError):
-            await document_tools.get_document(doc_type, path=path)
+            await document_tools.get_document(doc_type, key=key)
 
     @pytest.mark.asyncio
     async def test_delete_document_not_found_returns_not_found_message(
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
-        """delete_document returns 'not found' message when document doesn't exist (doesn't raise error)"""
-        path = f'nonexistent/{doc_type.value}'
+        """delete_document returns 'not found' message when document doesn't exist"""
+        if doc_type == DocumentType.PHASE:
+            key = 'nonexistent/phase'
+        else:  # TASK
+            key = 'nonexistent/phase/task'
 
-        response = await document_tools.delete_document(doc_type, path)
+        response = await document_tools.delete_document(doc_type, key)
 
         assert isinstance(response, MCPResponse)
-        assert response.id == path
+        assert response.id == key
         assert response.status == LoopStatus.COMPLETED
-        assert f'{doc_type.value} document not found at {path}' == response.message
+        assert f'{doc_type.value} document not found at {key}' == response.message
 
     @pytest.mark.asyncio
     async def test_update_document_not_found_raises_resource_error(
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
         """ResourceError raised when updating non-existent document"""
-        path = f'nonexistent/{doc_type.value}'
+        if doc_type == DocumentType.PHASE:
+            key = 'nonexistent/phase'
+        else:  # TASK
+            key = 'nonexistent/phase/task'
 
-        with pytest.raises(ResourceError):
-            await document_tools.update_document(doc_type, path, 'new content')
+        with pytest.raises((ResourceError, ToolError)):
+            await document_tools.update_document(doc_type, key, 'new content')
 
     @pytest.mark.asyncio
     async def test_get_document_by_loop_id_not_found_raises_resource_error(
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
         """ResourceError raised when loop doesn't exist or isn't linked"""
-        loop_id = 'nonexistent-loop'
+        loop_id = 'deadbeef'  # UUID first section format
 
         with pytest.raises(ResourceError, match='Loop does not exist or is not linked to a document'):
             await document_tools.get_document(doc_type, loop_id=loop_id)
 
 
 @pytest.mark.parametrize(
-    'doc_type,parent_path,store_count,expected_count',
+    'doc_type,parent_key,store_count,expected_count',
     [
-        (DocumentType.PHASE, None, 0, 0),  # Empty list
-        (DocumentType.PHASE, None, 5, 5),  # All items
-        (DocumentType.TASK, 'project-a', 3, 3),  # With parent path
-        (DocumentType.COMPLETION_REPORT, None, 2, 2),  # Few items
+        (DocumentType.PHASE, 'test-plan', 0, 0),
+        (DocumentType.PHASE, 'test-plan', 5, 5),
+        (DocumentType.TASK, 'plan-a/phase-a', 3, 3),
     ],
 )
 @pytest.mark.asyncio
 async def test_list_documents_count_filtering(
     document_tools: DocumentTools,
     doc_type: DocumentType,
-    parent_path: str | None,
+    parent_key: str,
     store_count: int,
     expected_count: int,
-    sample_documents: dict[DocumentType, str],
 ) -> None:
     """Test list_documents count works for all document types"""
-    content = sample_documents[doc_type]
 
-    for i in range(store_count):
-        if parent_path:
-            path = f'{parent_path}/{doc_type.value}-{i}'
-        else:
-            path = f'{doc_type.value}-{i}'
-        await document_tools.store_document(doc_type, path, content)
+    for i in range(1, store_count + 1):
+        if doc_type == DocumentType.PHASE:
+            phase_name = f'test-phase-{i}'
+            content = f"""# Phase: {phase_name}
 
-    response = await document_tools.list_documents(doc_type, parent_path)
+## Overview
+
+### Objectives
+- Test objective {i}
+
+### Scope
+Test scope description {i}
+
+### Dependencies
+None
+
+### Deliverables
+- Test deliverable {i}
+"""
+            key = f'{parent_key}/{phase_name}'
+        else:  # TASK
+            task_name = f'test-task-{i}'
+            content = f"""# Task: {task_name}
+
+## Identity
+
+### Phase Path
+{parent_key}
+
+## Overview
+
+### Goal
+Test task goal {i}
+
+### Acceptance Criteria
+- Criterion {i}
+
+### Technology Stack Reference
+Python 3.13+
+
+## Implementation
+
+### Checklist
+- [ ] Task {i} setup (verify: test command)
+
+### Steps
+
+#### Step 1: Setup
+Test implementation notes {i}
+
+## Quality
+
+### Testing Strategy
+Test strategy description {i}
+
+## Status
+
+### Current Status
+pending
+
+## Metadata
+
+### Active
+true
+
+### Version
+1.0
+"""
+            key = f'{parent_key}/{task_name}'
+
+        await document_tools.store_document(doc_type, key, content)
+
+    response = await document_tools.list_documents(doc_type, parent_key)
 
     assert isinstance(response, MCPResponse)
     if expected_count == 0:
@@ -314,12 +573,10 @@ async def test_list_documents_count_filtering(
 @pytest.mark.parametrize(
     'doc_type,retrieval_mode',
     [
-        (DocumentType.PHASE, 'path'),
+        (DocumentType.PHASE, 'key'),
         (DocumentType.PHASE, 'loop_id'),
-        (DocumentType.TASK, 'path'),
+        (DocumentType.TASK, 'key'),
         (DocumentType.TASK, 'loop_id'),
-        (DocumentType.COMPLETION_REPORT, 'path'),
-        (DocumentType.COMPLETION_REPORT, 'loop_id'),
     ],
 )
 @pytest.mark.asyncio
@@ -330,29 +587,37 @@ async def test_get_document_retrieval_modes(
     sample_documents: dict[DocumentType, str],
     state_manager: InMemoryStateManager,
 ) -> None:
-    """Test both path-based and loop_id-based retrieval"""
+    """Test both key-based and loop_id-based retrieval"""
 
-    path = f'test/{doc_type.value}'
+    if doc_type == DocumentType.PHASE:
+        key = 'test-plan/test-phase'
+    else:  # TASK
+        key = 'test-plan/test-phase/test-task'
+
     content = sample_documents[doc_type]
-    loop_id = f'loop-{doc_type.value}'
+    loop_id = 'c3d4e5f6'  # UUID first section format
 
-    await document_tools.store_document(doc_type, path, content)
+    await document_tools.store_document(doc_type, key, content)
 
-    if retrieval_mode == 'path':
-        response = await document_tools.get_document(doc_type, path=path)
-        assert response.id == path
+    if retrieval_mode == 'key':
+        response = await document_tools.get_document(doc_type, key=key)
+        assert response.id == key
         assert response.status == LoopStatus.COMPLETED
     else:  # loop_id mode
-        # Create loop first
         loop_state = LoopState(id=loop_id, loop_type=LoopType.PHASE)
-        await state_manager.add_loop(loop_state, 'test-project')
+        await state_manager.add_loop(loop_state, 'test-plan')
 
-        await document_tools.link_loop_to_document(loop_id, doc_type, path)
+        await document_tools.link_loop_to_document(loop_id, doc_type, key)
         response = await document_tools.get_document(doc_type, loop_id=loop_id)
         assert response.id == loop_id
 
-    assert response.message == content
-    assert response.char_length == len(content)
+    if doc_type == DocumentType.PHASE:
+        assert 'test-phase' in response.message
+        assert 'Objectives' in response.message
+    else:  # TASK
+        assert 'test-task' in response.message
+        assert 'Goal' in response.message
+    assert response.char_length is not None and response.char_length > 0
 
 
 @pytest.mark.parametrize(
@@ -377,32 +642,163 @@ async def test_mcp_response_structure(
     """All operations return well-formed responses"""
 
     doc_type = DocumentType.PHASE
-    path = f'test/{doc_type.value}'
+    key = 'test-plan/test-phase'
     content = sample_documents[doc_type]
-    loop_id = 'test-loop'
+    loop_id = 'd4e5f6a7'  # UUID first section format
 
     if operation in ('get_document', 'update_document', 'delete_document', 'link_loop_to_document'):
-        await document_tools.store_document(doc_type, path, content)
+        await document_tools.store_document(doc_type, key, content)
 
     if operation == 'link_loop_to_document':
-        # Create loop first
         loop_state = LoopState(id=loop_id, loop_type=LoopType.PHASE)
-        await state_manager.add_loop(loop_state, 'test-project')
+        await state_manager.add_loop(loop_state, 'test-plan')
 
     result: str | MCPResponse
     if operation == 'store_document':
-        result = await document_tools.store_document(doc_type, path, content)
+        result = await document_tools.store_document(doc_type, key, content)
     elif operation == 'get_document':
-        result = await document_tools.get_document(doc_type, path=path)
+        result = await document_tools.get_document(doc_type, key=key)
     elif operation == 'update_document':
-        result = await document_tools.update_document(doc_type, path, f'{content}\nUpdated')
+        updated_content = (
+            content
+            + """
+## System Design
+
+### Architecture
+Updated architecture description
+"""
+        )
+        result = await document_tools.update_document(doc_type, key, updated_content)
     elif operation == 'delete_document':
-        result = await document_tools.delete_document(doc_type, path)
+        result = await document_tools.delete_document(doc_type, key)
     elif operation == 'list_documents':
-        result = await document_tools.list_documents(doc_type)
+        result = await document_tools.list_documents(doc_type, parent_key='test-plan')
     elif operation == 'link_loop_to_document':
-        result = await document_tools.link_loop_to_document(loop_id, doc_type, path)
+        result = await document_tools.link_loop_to_document(loop_id, doc_type, key)
     else:
         raise ValueError(f'Unknown operation: {operation}')
 
     assert status_check(result)
+
+
+class TestCompletionReportViaDocumentTools:
+    @pytest.fixture
+    def completion_report_content(self) -> str:
+        return """# Strategic Plan Output
+
+## Plan Quality
+
+### Final Plan Score
+85
+
+### Plan Completion Status
+User-accepted (human-driven decision)
+
+### User Decision
+accept_plan
+
+## Analyst Validation
+
+### Final Analyst Score
+90
+
+### Analyst Completion Status
+completed
+
+### Analyst Loop Result
+completed
+
+## Strategic Plan Document
+
+Test plan content
+
+## Structured Objectives
+
+Test objectives
+
+## Next Steps
+
+1. Review the strategic plan
+2. Proceed with Phase creation
+
+## Metadata
+
+### Analyst Loop ID
+a1b2c3d4
+
+### Timestamp
+2024-01-15
+"""
+
+    @pytest.mark.asyncio
+    async def test_store_completion_report_success(
+        self, document_tools: DocumentTools, state_manager: InMemoryStateManager, completion_report_content: str
+    ) -> None:
+        """Storing completion reports works through unified interface"""
+        loop_id = 'e5f6a7b8'  # UUID first section format
+        loop_state = LoopState(id=loop_id, loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop_state, 'test-plan')
+
+        result = await document_tools.store_document(DocumentType.COMPLETION_REPORT, loop_id, completion_report_content)
+        assert isinstance(result, str)
+        assert f'Stored completion report for loop {loop_id}' in result
+
+    @pytest.mark.asyncio
+    async def test_get_completion_report_success(
+        self, document_tools: DocumentTools, state_manager: InMemoryStateManager, completion_report_content: str
+    ) -> None:
+        """Getting completion reports works through unified interface"""
+        loop_id = 'f6a7b8c9'  # UUID first section format
+        loop_state = LoopState(id=loop_id, loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop_state, 'test-plan')
+
+        await document_tools.store_document(DocumentType.COMPLETION_REPORT, loop_id, completion_report_content)
+        response = await document_tools.get_document(DocumentType.COMPLETION_REPORT, key=loop_id)
+
+        assert isinstance(response, MCPResponse)
+        assert response.id == loop_id
+        assert 'Strategic Plan Output' in response.message
+
+    @pytest.mark.asyncio
+    async def test_list_completion_reports_success(
+        self, document_tools: DocumentTools, state_manager: InMemoryStateManager, completion_report_content: str
+    ) -> None:
+        """Listing completion reports works through unified interface"""
+        loop_id = 'a7b8c9d0'  # UUID first section format
+        loop_state = LoopState(id=loop_id, loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop_state, 'test-plan')
+
+        await document_tools.store_document(DocumentType.COMPLETION_REPORT, loop_id, completion_report_content)
+        response = await document_tools.list_documents(DocumentType.COMPLETION_REPORT)
+
+        assert isinstance(response, MCPResponse)
+        assert 'Found 1 report' in response.message
+
+    @pytest.mark.asyncio
+    async def test_delete_completion_report_success(
+        self, document_tools: DocumentTools, state_manager: InMemoryStateManager, completion_report_content: str
+    ) -> None:
+        """Deleting completion reports works through unified interface"""
+        loop_id = 'b8c9d0e1'  # UUID first section format
+        loop_state = LoopState(id=loop_id, loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop_state, 'test-plan')
+
+        await document_tools.store_document(DocumentType.COMPLETION_REPORT, loop_id, completion_report_content)
+        response = await document_tools.delete_document(DocumentType.COMPLETION_REPORT, loop_id)
+
+        assert isinstance(response, MCPResponse)
+        assert 'Deleted completion report' in response.message
+
+    @pytest.mark.asyncio
+    async def test_link_loop_to_completion_report_implicit(self, document_tools: DocumentTools) -> None:
+        loop_id = 'c9d0e1f2'  # UUID first section format
+
+        response = await document_tools.link_loop_to_document(loop_id, DocumentType.COMPLETION_REPORT, loop_id)
+
+        assert isinstance(response, MCPResponse)
+        assert 'already linked' in response.message
+
+    @pytest.mark.asyncio
+    async def test_link_loop_to_completion_report_mismatch_raises_error(self, document_tools: DocumentTools) -> None:
+        with pytest.raises(ToolError, match='loop_id must equal key'):
+            await document_tools.link_loop_to_document('d0e1f2a3', DocumentType.COMPLETION_REPORT, 'different-key')

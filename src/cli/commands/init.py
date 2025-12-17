@@ -35,7 +35,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         '-n',
-        '--project-name',
+        '--plan-name',
         help='Project name (defaults to directory name)',
     )
     parser.add_argument(
@@ -63,7 +63,7 @@ def run(args: Namespace) -> int:
     try:
         project_path = Path.cwd().resolve()
         platform = args.platform
-        project_name = args.project_name or project_path.name
+        plan_name = args.plan_name or project_path.name
 
         respec_ai_dir = project_path / '.respec-ai'
         config_path = respec_ai_dir / 'config.json'
@@ -108,7 +108,7 @@ def run(args: Namespace) -> int:
             progress.update(task, description='Creating configuration...')
 
             config = {
-                'project_name': project_name,
+                'plan_name': plan_name,
                 'platform': platform,
                 'created_at': datetime.now().isoformat(),
                 'version': get_package_version(),

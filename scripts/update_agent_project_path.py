@@ -9,7 +9,7 @@ def update_agent_inputs(content: str) -> str:
     # Find INPUTS section and add project_path if not present
     if 'INPUTS:' in content and 'project_path:' not in content:
         pattern = r'(INPUTS:[^\n]*\n)'
-        replacement = r'\1- project_path: Project directory path (automatically provided by calling command)\n\n**Important**: All `mcp__respec-ai__*` tool calls must include project_path as the first parameter.\n\n'
+        replacement = r'\1- project_path: Plan directory path (automatically provided by calling command)\n\n**Important**: All `mcp__respec-ai__*` tool calls must include project_path as the first parameter.\n\n'
         content = re.sub(pattern, replacement, content, count=1)
 
     return content

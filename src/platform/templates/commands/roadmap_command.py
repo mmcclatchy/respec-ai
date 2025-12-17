@@ -4,7 +4,7 @@ from src.platform.models import PlanRoadmapCommandTools
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [project-name] [optional: phasing-preferences]
+argument-hint: [plan-name] [optional: phasing-preferences]
 description: Transform strategic plans into multiple Phases through quality-driven refinement
 ---
 
@@ -19,38 +19,38 @@ Orchestrate the transformation of strategic plans into discrete, implementable p
 
 ### 0. Setup and Initialization
 
-#### Step 0.1: Load Project Plan from Platform
-
-Load project plan from platform:
-
-```text
-{tools.sync_project_plan_instructions}
-```
-
-#### Step 0.2: Extract Command Arguments
+#### Step 0.1: Extract Command Arguments
 
 Parse command arguments from user input:
 ```text
-PROJECT_NAME = [first argument from command - the project name]
+PLAN_NAME = [first argument from command - the project name]
 PHASING_PREFERENCES = [second argument if provided, otherwise empty string]
 ```
 
-**Important**: PROJECT_NAME from command arguments is used for all MCP storage operations.
+**Important**: PLAN_NAME from command arguments is used for all MCP storage operations.
+
+#### Step 0.2: Sync Plan from Platform to MCP
+
+**CRITICAL**: Sync the plan from platform storage to MCP before proceeding. This ensures any manual edits the user made to the plan file are captured.
+
+```text
+{tools.sync_plan_instructions}
+```
 
 ### 1. Strategic Plan Retrieval and Validation
-Retrieve and validate completed strategic plan from /respec-plan command:
+Retrieve and validate the synced strategic plan:
 
-#### Retrieve Project Plan
+#### Retrieve Plan
 ```text
 STRATEGIC_PLAN = {tools.get_plan}
 IF STRATEGIC_PLAN not found:
-  ERROR: "No strategic plan found for project: [PROJECT_NAME]"
-  SUGGEST: "Run '/respec-plan [PROJECT_NAME]' to create strategic plan first"
+  ERROR: "No strategic plan found for project: [PLAN_NAME]"
+  SUGGEST: "Run '/respec-plan [PLAN_NAME]' to create strategic plan first"
   EXIT: Graceful failure with guidance
 STRUCTURED_OBJECTIVES = [Extract from strategic plan Business Objectives analysis]
 ```
 
-Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.
+Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.1.
 
 ### 2. Initialize Roadmap Generation Loop
 Set up MCP-managed quality refinement loop:
@@ -71,11 +71,11 @@ Invoke the respec-roadmap agent to generate implementation roadmap.
 
 Pass the following information to the agent:
 - loop_id: ROADMAP_LOOP_ID
-- project_name: PROJECT_NAME
+- plan_name: PLAN_NAME
 - phasing_preferences: PHASING_PREFERENCES
 
 The agent will:
-1. Retrieve strategic plan from MCP using get_project_plan_markdown
+1. Retrieve strategic plan from MCP using get_plan_markdown
 2. Retrieve previous feedback from MCP using get_feedback (if iteration > 1)
 3. Generate the roadmap based on plan and feedback
 4. Store the roadmap to MCP using create_roadmap
@@ -123,7 +123,7 @@ Use the Task tool to launch the respec-roadmap-critic agent with these instructi
 Invoke the respec-roadmap-critic agent to evaluate roadmap quality.
 
 Pass the following information to the agent:
-- project_name: PROJECT_NAME
+- plan_name: PLAN_NAME
 - loop_id: ROADMAP_LOOP_ID
 
 The agent will:
@@ -229,7 +229,7 @@ Launch all create-phase agents IN PARALLEL using the Task tool:
 For each phase in ROADMAP_PHASES, invoke a respec-create-phase agent.
 
 Pass the following information to each agent:
-- project_name: PROJECT_NAME
+- plan_name: PLAN_NAME
 - phase_name: [the specific phase name from ROADMAP_PHASES]
 - loop_id: ROADMAP_LOOP_ID
 
@@ -327,8 +327,8 @@ ELSE:
 
 #### Strategic Plan Not Available
 ```text
-Display: "No strategic plan found for project: [PROJECT_NAME]"
-Suggest: "/respec-plan [PROJECT_NAME] to create strategic plan"
+Display: "No strategic plan found for project: [PLAN_NAME]"
+Suggest: "/respec-plan [PLAN_NAME] to create strategic plan"
 Exit gracefully with guidance
 ```
 
@@ -383,7 +383,7 @@ The command maintains orchestration focus by:
 All specialized work delegated to appropriate agents:
 - **roadmap**: Phase breakdown and roadmap generation (with MCP tool access)
 - **roadmap-critic**: Quality assessment and feedback
-- **create-phase**: Individual InitialSpec extraction and MCP storage
+- **create-phase**: Individual InitialPhase extraction and MCP storage
 - **MCP Server**: Decision logic and threshold management
 
 ## Workflow Enhancements

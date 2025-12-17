@@ -18,7 +18,7 @@ def get_commands_dir(project_path: Path) -> Path:
     """Get IDE commands directory for project.
 
     Args:
-        project_path: Project root directory
+        project_path: Plan root directory
 
     Returns:
         Path to commands directory
@@ -30,7 +30,7 @@ def get_agents_dir(project_path: Path) -> Path:
     """Get IDE agents directory for project.
 
     Args:
-        project_path: Project root directory
+        project_path: Plan root directory
 
     Returns:
         Path to agents directory

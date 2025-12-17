@@ -1,4 +1,5 @@
 import pytest
+
 from src.models.enums import RequirementsStatus
 from src.models.feature_requirements import FeatureRequirements
 
@@ -77,7 +78,7 @@ approved
 
         requirements = FeatureRequirements.parse_markdown(markdown)
 
-        assert requirements.project_name == 'User Authentication System'
+        assert requirements.plan_name == 'User Authentication System'
         assert requirements.feature_description == 'Secure user authentication with multi-factor support'
         assert (
             requirements.problem_statement
@@ -126,7 +127,7 @@ draft
 
         requirements = FeatureRequirements.parse_markdown(markdown)
 
-        assert requirements.project_name == 'Basic Feature'
+        assert requirements.plan_name == 'Basic Feature'
         assert requirements.feature_description == 'Simple feature implementation'
         # Missing sections should have default values
         assert 'User Stories not specified' in requirements.user_stories
@@ -144,7 +145,7 @@ class TestFeatureRequirementsMarkdownBuilding:
     @pytest.fixture
     def sample_requirements(self) -> FeatureRequirements:
         return FeatureRequirements(
-            project_name='Shopping Cart Feature',
+            plan_name='Shopping Cart Feature',
             feature_description='Add items to cart for later purchase',
             problem_statement='Users need to collect items before checkout',
             target_users='All e-commerce customers',
@@ -188,7 +189,7 @@ class TestFeatureRequirementsMarkdownBuilding:
         parsed_requirements = FeatureRequirements.parse_markdown(markdown)
 
         # Should match original (except timestamps)
-        assert parsed_requirements.project_name == sample_requirements.project_name
+        assert parsed_requirements.plan_name == sample_requirements.plan_name
         assert parsed_requirements.feature_description == sample_requirements.feature_description
         assert parsed_requirements.problem_statement == sample_requirements.problem_statement
         assert parsed_requirements.target_users == sample_requirements.target_users

@@ -1,8 +1,8 @@
-# Agent Development Guidelines: Spec-Driven Workflow System
+# Agent Development Guidelines: Phase-Driven Workflow System
 
 ## Executive Summary
 
-This document establishes architectural patterns and development standards for creating specialized agents within the Spec-Driven Development workflow system. Through analysis of system architecture, command development lessons, and Claude Code subagent best practices, we define clear boundaries, responsibilities, and implementation patterns that ensure agent reliability, maintainability, and predictable behavior.
+This document establishes architectural patterns and development standards for creating specialized agents within the Phase-Driven Development workflow system. Through analysis of system architecture, command development lessons, and Claude Code subagent best practices, we define clear boundaries, responsibilities, and implementation patterns that ensure agent reliability, maintainability, and predictable behavior.
 
 These guidelines focus on the four core agent concerns: inputs, tools, imperative behavior instructions, and outputs - with strict boundaries preventing external context pollution.
 
@@ -97,7 +97,7 @@ tools: None
 You are a strategic planning specialist focused on requirements discovery.
 
 INPUTS: 
-- Project context and business objectives
+- Plan context and business objectives
 - Previous conversation history (if refinement cycle)
 - User feedback and clarifications
 
@@ -230,7 +230,7 @@ DECISION CRITERIA:
 
 **Critic Agents** (with MCP retrieval and storage):
 ```markdown
-tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_plan_markdown, mcp__respec-ai__store_critic_feedback
 # Use for: plan-critic, roadmap-critic evaluating via MCP
 ```
 
@@ -246,7 +246,7 @@ tools: Read, Edit, Write, Bash
 # Use for: coders, build agents
 ```
 
-**Spec Creation Agents** (with platform integration):
+**Phase Creation Agents** (with platform integration):
 ```markdown
 tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_phase, {tools.create_phase_tool}, {tools.update_phase_tool}
 # Use for: create-phase agents with dual storage (MCP + platform)
@@ -262,7 +262,7 @@ tools: mcp__respec-ai__get_roadmap, mcp__respec-ai__store_phase, {tools.create_p
 - Referenced as `{tools.create_phase_tool}` in frontmatter
 
 **2. Invocation Form** (in workflow instructions):
-- Uses placeholders: `Write(.respec-ai/plans/{project_name}/phases/{phase_name}.md)`
+- Uses placeholders: `Write(.respec-ai/plans/{plan_name}/phases/{phase_name}.md)`
 - Shows actual usage pattern with named parameter placeholders
 - Accessed via `{tools.create_phase_tool_interpolated}` computed field from AgentTools model
 
@@ -280,8 +280,8 @@ Workflow Instructions:
 STEP 4: Store to Platform
 CALL {tools.create_phase_tool_interpolated}
 
-# Markdown actual usage: Write(.respec-ai/plans/{project_name}/phases/{phase_name}.md, phase_markdown)
-# Linear actual usage: mcp__linear-server__create_issue(project={project_name}, title={phase_name}, ...)
+# Markdown actual usage: Write(.respec-ai/plans/{plan_name}/phases/{phase_name}.md, phase_markdown)
+# Linear actual usage: mcp__linear-server__create_issue(project={plan_name}, title={phase_name}, ...)
 ```
 
 **Why Two Forms?**
@@ -293,7 +293,7 @@ CALL {tools.create_phase_tool_interpolated}
 ```markdown
 ---
 name: respec-plan-critic
-tools: mcp__respec-ai__get_project_plan_markdown, mcp__respec-ai__store_critic_feedback
+tools: mcp__respec-ai__get_plan_markdown, mcp__respec-ai__store_critic_feedback
 ---
 
 ---
@@ -481,7 +481,7 @@ STEP 5: Invoke Specialized Agent
 CALL respec-phase-architect
 Input:
   - loop_id: LOOP_ID
-  - project_name: PROJECT_NAME
+  - plan_name: PLAN_NAME
   - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   # NO feedback parameter - architect retrieves from MCP itself
@@ -534,7 +534,7 @@ STEP 5: Phase Refinement
 Invoke: respec-phase-architect
 Input:
   - loop_id: LOOP_ID
-  - project_name: PROJECT_NAME
+  - plan_name: PLAN_NAME
   - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: USER_INSTRUCTIONS (if provided)
@@ -621,7 +621,7 @@ The agent retrieves the current specification from MCP using `loop_id`, ensuring
 ```markdown
 STEP 1: Retrieve Current Specification
 CALL mcp__respec-ai__get_phase_markdown(
-  project_name=None,
+  plan_name=None,
   phase_name=None,
   loop_id=loop_id
 )
@@ -696,7 +696,7 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
 
 This optimization pattern applies to **MCP-driven refinement loop workflows** only:
 
-**spec Workflow:** ✅ Uses this pattern
+**phase Workflow:** ✅ Uses this pattern
 - Command: `phase_command.py`
 - Agents: `phase-architect` ↔ `phase-critic`
 - Pattern: Architect retrieves feedback from MCP using loop_id
@@ -790,7 +790,7 @@ Use these files as the reference implementation when creating new MCP-driven wor
 Commands are Python f-strings (return f"""..."""). This creates a critical distinction between template generation time and command execution time.
 
 **Template Generation Time** (Python scope):
-- Function executes: `generate_phase_command_template(tools: SpecCommandTools)`
+- Function executes: `generate_phase_command_template(tools: PhaseCommandTools)`
 - Python evaluates f-string and processes all {variable} expressions
 - Available variables: tools, and any Python variables in function scope
 - Output: Markdown template string stored in .claude/commands/
@@ -798,7 +798,7 @@ Commands are Python f-strings (return f"""..."""). This creates a critical disti
 **Command Execution Time** (Main Agent scope):
 - Main Agent reads markdown from .claude/commands/
 - Main Agent executes pseudocode instructions
-- Available variables: LOOP_DECISION, LATEST_FEEDBACK, PROJECT_NAME (defined in pseudocode)
+- Available variables: LOOP_DECISION, LATEST_FEEDBACK, PLAN_NAME (defined in pseudocode)
 
 **The Problem**:
 ```python
@@ -837,12 +837,12 @@ def generate_command_template(tools):
 
 ❌ {LATEST_FEEDBACK.message}
 ❌ {LOOP_DECISION}
-❌ {PROJECT_NAME} in pseudocode sections
+❌ {PLAN_NAME} in pseudocode sections
 ```
 
 **Detection Rule**:
 If a variable in curly braces is:
-- A function parameter (tools, project_name passed to function) → ✅ Safe
+- A function parameter (tools, plan_name passed to function) → ✅ Safe
 - Defined in Python code above the f-string → ✅ Safe
 - Defined in pseudocode/markdown instructions → ❌ Unsafe - remove braces
 
@@ -1025,7 +1025,7 @@ tools: None
 You are a strategic planning specialist focused on requirements discovery.
 
 INPUTS: Business context and objectives provided through conversation
-- Project goals and constraints
+- Plan goals and constraints
 - User responses to clarifying questions
 - Business requirements and priorities
 
@@ -1428,7 +1428,7 @@ tools: None  # Content generation from conversation, no file access needed
 **Violation Examples**:
 ```markdown
 # ❌ WRONG: Vague input specification
-"INPUTS: Project information and requirements"
+"INPUTS: Plan information and requirements"
 
 # ❌ WRONG: Unclear task instructions
 "TASKS: Analyze and improve the provided content"
@@ -1462,7 +1462,7 @@ tools: None  # Content generation from conversation, no file access needed
 
 ## Conclusion
 
-The Spec-Driven Workflow system achieves reliability and maintainability through strict agent isolation, clear behavioral specifications, and minimal permission boundaries. Success depends on following these architectural patterns: single-responsibility design, imperative instruction specification, structured input/output contracts, and complete context isolation.
+The Phase-Driven Workflow system achieves reliability and maintainability through strict agent isolation, clear behavioral specifications, and minimal permission boundaries. Success depends on following these architectural patterns: single-responsibility design, imperative instruction specification, structured input/output contracts, and complete context isolation.
 
 Agents that operate as isolated processing units with clear boundaries create predictable, testable, and maintainable workflows. By focusing solely on inputs, tools, behavior, and outputs - without external system knowledge - agents remain robust across system changes and platform evolution.
 

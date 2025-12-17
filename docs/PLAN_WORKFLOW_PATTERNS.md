@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document captures essential patterns and lessons learned from developing the `/respec-plan` command within the Spec-Driven Development workflow system. Through iterative refinement and architectural evolution, several key patterns emerged that significantly improved command reliability, maintainability, and user experience. These insights provide actionable guidance for future command development.
+This document captures essential patterns and lessons learned from developing the `/respec-plan` command within the Phase-Driven Development workflow system. Through iterative refinement and architectural evolution, several key patterns emerged that significantly improved command reliability, maintainability, and user experience. These insights provide actionable guidance for future command development.
 
 ## Command Architecture Patterns
 
@@ -68,9 +68,9 @@ Producer Agent → Content → Critic Agent → Score → MCP Decision
 
 **Actual Implementation Pattern** (from `src/platform/templates/commands/phase_command.py`):
 ```python
-from src.platform.models import SpecCommandTools
+from src.platform.models import PhaseCommandTools
 
-def generate_phase_command_template(tools: SpecCommandTools) -> str:
+def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     return f"""---
 allowed-tools:
 {tools.tools_yaml}
@@ -106,7 +106,7 @@ Content: [Complete specification with research requirements]
 ```
 
 **Tool Dataclass Structure**:
-The `SpecCommandTools` dataclass contains:
+The `PhaseCommandTools` dataclass contains:
 - `tools_yaml`: Complete YAML-formatted tools list for frontmatter
 - `create_phase_tool`: Platform-specific creation tool name
 - `get_phase_tool`: Platform-specific retrieval tool name
@@ -543,7 +543,7 @@ Before creating a new command template, validate these architectural requirement
    description: [platform-agnostic purpose]
    ```
 
-   **Note**: The `{tools.tools_yaml}` placeholder is replaced with complete formatted tools list at generation time from the `SpecCommandTools` dataclass. Individual tools are injected as `{tools.create_phase_tool}` within template content.
+   **Note**: The `{tools.tools_yaml}` placeholder is replaced with complete formatted tools list at generation time from the `PhaseCommandTools` dataclass. Individual tools are injected as `{tools.create_phase_tool}` within template content.
 
 2. **Orchestration Steps**
    - Sequential workflow with clear handoffs

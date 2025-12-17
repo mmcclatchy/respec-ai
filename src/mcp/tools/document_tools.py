@@ -1,182 +1,141 @@
 from fastmcp import Context, FastMCP
-from fastmcp.exceptions import ResourceError, ToolError
+from fastmcp.exceptions import ToolError
+
+from src.mcp.tools.base import DocumentToolsInterface
+from src.mcp.tools.phase_tools import PhaseTools
+from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
+from src.mcp.tools.plan_tools import PlanTools
+from src.mcp.tools.roadmap_tools import RoadmapTools
+from src.mcp.tools.task_tools import TaskTools
 from src.models.enums import DocumentType
 from src.shared import state_manager
-from src.utils.enums import LoopStatus
-from src.utils.errors import LoopNotFoundError
 from src.utils.loop_state import MCPResponse
 from src.utils.state_manager import StateManager
 
 
 class DocumentTools:
     def __init__(self, state: StateManager) -> None:
-        self.state = state
+        self.plan_tools = PlanTools(state)
+        self.roadmap_tools = RoadmapTools(state)
+        self.phase_tools = PhaseTools(state)
+        self.task_tools = TaskTools(state)
+        self.completion_report_tools = PlanCompletionReportTools(state)
 
-    async def store_document(self, doc_type: DocumentType, path: str, content: str) -> str:
-        if not path:
-            raise ToolError('Path cannot be empty')
-        if not content:
-            raise ToolError('Content cannot be empty')
+        self._tool_map: dict[DocumentType, DocumentToolsInterface] = {
+            DocumentType.PLAN: self.plan_tools,
+            DocumentType.ROADMAP: self.roadmap_tools,
+            DocumentType.PHASE: self.phase_tools,
+            DocumentType.TASK_BREAKDOWN: self.task_tools,  # Deprecated: maps to TaskTools for backwards compat
+            DocumentType.TASK: self.task_tools,
+            DocumentType.COMPLETION_REPORT: self.completion_report_tools,
+        }
 
-        try:
-            return await self.state.store_document(doc_type.value, path, content)
-        except Exception as e:
-            raise ToolError(f'Failed to store document: {str(e)}')
+    async def store_document(self, doc_type: DocumentType, key: str, content: str) -> str:
+        if not key or not content:
+            raise ToolError('key and content cannot be empty')
+
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
+
+        response = await tool.store(key, content)
+        return response.message
 
     async def get_document(
-        self, doc_type: DocumentType, path: str | None = None, loop_id: str | None = None
+        self, doc_type: DocumentType, key: str | None = None, loop_id: str | None = None
     ) -> MCPResponse:
-        try:
-            if loop_id:
-                loop_state = await self.state.get_loop(loop_id)
-                retrieved_doc_type, content = await self.state.get_document_by_loop(loop_id)
-                char_length = len(content)
-                return MCPResponse(
-                    id=loop_id,
-                    status=loop_state.status,
-                    message=content,
-                    char_length=char_length,
-                )
+        if not key and not loop_id:
+            raise ToolError('Either key OR loop_id must be provided')
 
-            if path:
-                content = await self.state.get_document(doc_type.value, path)
-                char_length = len(content)
-                return MCPResponse(
-                    id=path,
-                    status=LoopStatus.COMPLETED,
-                    message=content,
-                    char_length=char_length,
-                )
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
 
-            raise ToolError('Either path OR loop_id must be provided')
-        except LoopNotFoundError:
-            raise ResourceError('Loop does not exist or is not linked to a document')
-        except ValueError as e:
-            raise ResourceError(str(e))
-        except Exception as e:
-            raise ToolError(f'Failed to retrieve document: {str(e)}')
+        return await tool.get(key, loop_id)
 
-    async def list_documents(self, doc_type: DocumentType, parent_path: str | None = None) -> MCPResponse:
-        try:
-            paths = await self.state.list_documents(doc_type.value, parent_path)
-            if not paths:
-                parent_msg = f' under {parent_path}' if parent_path else ''
-                return MCPResponse(
-                    id=f'{doc_type.value}',
-                    status=LoopStatus.COMPLETED,
-                    message=f'No {doc_type.value} documents found{parent_msg}',
-                )
+    async def list_documents(self, doc_type: DocumentType, parent_key: str | None = None) -> MCPResponse:
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
 
-            paths_str = ', '.join(paths)
-            parent_msg = f' under {parent_path}' if parent_path else ''
-            return MCPResponse(
-                id=f'{doc_type.value}',
-                status=LoopStatus.COMPLETED,
-                message=f'Found {len(paths)} {doc_type.value} document{"s" if len(paths) != 1 else ""}{parent_msg}: {paths_str}',
-            )
-        except Exception as e:
-            raise ToolError(f'Failed to list documents: {str(e)}')
+        return await tool.list(parent_key)
 
-    async def update_document(self, doc_type: DocumentType, path: str, content: str) -> str:
-        if not path:
-            raise ToolError('Path cannot be empty')
-        if not content:
-            raise ToolError('Content cannot be empty')
+    async def update_document(self, doc_type: DocumentType, key: str, content: str) -> str:
+        if not key or not content:
+            raise ToolError('Key and content cannot be empty')
 
-        try:
-            return await self.state.update_document(doc_type.value, path, content)
-        except ValueError as e:
-            raise ResourceError(str(e))
-        except Exception as e:
-            raise ToolError(f'Failed to update document: {str(e)}')
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
 
-    async def delete_document(self, doc_type: DocumentType, path: str) -> MCPResponse:
-        if not path:
-            raise ToolError('Path cannot be empty')
+        response = await tool.update(key, content)
+        return response.message
 
-        try:
-            was_deleted = await self.state.delete_document(doc_type.value, path)
-            if was_deleted:
-                return MCPResponse(
-                    id=path,
-                    status=LoopStatus.COMPLETED,
-                    message=f'Deleted {doc_type.value} document at {path}',
-                )
-            else:
-                return MCPResponse(
-                    id=path,
-                    status=LoopStatus.COMPLETED,
-                    message=f'{doc_type.value} document not found at {path}',
-                )
-        except Exception as e:
-            raise ToolError(f'Failed to delete document: {str(e)}')
+    async def delete_document(self, doc_type: DocumentType, key: str) -> MCPResponse:
+        if not key:
+            raise ToolError('Key cannot be empty')
 
-    async def link_loop_to_document(self, loop_id: str, doc_type: DocumentType, path: str) -> MCPResponse:
-        if not loop_id:
-            raise ToolError('Loop ID cannot be empty')
-        if not path:
-            raise ToolError('Path cannot be empty')
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
+        return await tool.delete(key)
 
-        try:
-            await self.state.link_loop_to_document(loop_id, doc_type.value, path)
-            loop_state = await self.state.get_loop(loop_id)
-            return MCPResponse(
-                id=loop_id,
-                status=loop_state.status,
-                message=f'Linked loop {loop_id} to {doc_type.value} document at {path}',
-            )
-        except LoopNotFoundError:
-            raise ResourceError('Loop does not exist')
-        except Exception as e:
-            raise ToolError(f'Failed to link loop to document: {str(e)}')
+    async def link_loop_to_document(self, loop_id: str, doc_type: DocumentType, key: str) -> MCPResponse:
+        if not loop_id or not key:
+            raise ToolError('Loop ID and key cannot be empty')
+
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
+        return await tool.link_loop(loop_id, key)
 
 
 def register_document_tools(mcp: FastMCP) -> None:
     doc_tools = DocumentTools(state_manager)
 
     @mcp.tool()
-    async def store_document(doc_type: DocumentType, path: str, content: str, ctx: Context) -> str:
-        """Store document with hierarchical path.
+    async def store_document(doc_type: DocumentType, key: str, content: str, ctx: Context) -> str:
+        """Store document with hierarchical key.
 
         Generic document storage for Phase, Task, and CompletionReport documents.
-        Uses hierarchical paths for organization (e.g., plan-name/phase-name/task-name).
+        Uses hierarchical keys for organization (e.g., plan-name/phase-name/task-name).
 
         Parameters:
         - doc_type: Type of document ("phase", "task", "completion_report")
-        - path: Hierarchical path (e.g., "plan-name/phase-name" or "plan-name/phase-name/task-name")
+        - key: Hierarchical key (e.g., "plan-name/phase-name" or "plan-name/phase-name/task-name")
         - content: Complete document in markdown format
 
         Returns:
         - str: Confirmation message
         """
-        await ctx.info(f'Storing {doc_type.value} document at {path}')
+        await ctx.info(f'Storing {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.store_document(doc_type, path, content)
-            await ctx.info(f'Stored {doc_type.value} document at {path}')
+            result = await doc_tools.store_document(doc_type, key, content)
+            await ctx.info(f'Stored {doc_type.value} document at {key}')
             return result
         except Exception as e:
             await ctx.error(f'Failed to store document: {str(e)}')
             raise
 
     @mcp.tool()
-    async def get_document(doc_type: DocumentType, path: str | None, loop_id: str | None, ctx: Context) -> MCPResponse:
+    async def get_document(doc_type: DocumentType, key: str | None, loop_id: str | None, ctx: Context) -> MCPResponse:
         """Retrieve document as markdown.
 
         Two retrieval modes:
         1. By loop_id: Retrieves document linked to active refinement loop
-        2. By path: Retrieves document directly from storage
+        2. By key: Retrieves document directly from storage
 
         Parameters:
         - doc_type: Type of document ("phase", "task", "completion_report")
-        - path: Hierarchical path (required if not using loop_id)
-        - loop_id: Loop identifier (alternative to path)
+        - key: Hierarchical key (required if not using loop_id)
+        - loop_id: Loop identifier (alternative to key)
 
         Returns:
         - MCPResponse: Contains document markdown in message field
         """
         await ctx.info(f'Retrieving {doc_type.value} document')
         try:
-            result = await doc_tools.get_document(doc_type, path, loop_id)
+            result = await doc_tools.get_document(doc_type, key, loop_id)
             await ctx.info(f'Retrieved {doc_type.value} document')
             return result
         except Exception as e:
@@ -184,8 +143,8 @@ def register_document_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def list_documents(doc_type: DocumentType, parent_path: str | None, ctx: Context) -> MCPResponse:
-        """List documents of a type, optionally filtered by parent path.
+    async def list_documents(doc_type: DocumentType, parent_key: str | None, ctx: Context) -> MCPResponse:
+        """List documents of a type, optionally filtered by parent key.
 
         Examples:
         - list_documents("phase", None) → All phases
@@ -194,15 +153,15 @@ def register_document_tools(mcp: FastMCP) -> None:
 
         Parameters:
         - doc_type: Type of document ("phase", "task", "completion_report")
-        - parent_path: Optional parent path to filter results
+        - parent_key: Optional parent key to filter results
 
         Returns:
-        - MCPResponse: Contains list of document paths in message field
+        - MCPResponse: Contains list of document keys in message field
         """
-        parent_msg = f' under {parent_path}' if parent_path else ''
+        parent_msg = f' under {parent_key}' if parent_key else ''
         await ctx.info(f'Listing {doc_type.value} documents{parent_msg}')
         try:
-            result = await doc_tools.list_documents(doc_type, parent_path)
+            result = await doc_tools.list_documents(doc_type, parent_key)
             await ctx.info(f'Listed {doc_type.value} documents')
             return result
         except Exception as e:
@@ -210,50 +169,50 @@ def register_document_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def update_document(doc_type: DocumentType, path: str, content: str, ctx: Context) -> str:
+    async def update_document(doc_type: DocumentType, key: str, content: str, ctx: Context) -> str:
         """Update existing document with new content.
 
         Used during refinement loops when agents improve content.
 
         Parameters:
         - doc_type: Type of document ("phase", "task", "completion_report")
-        - path: Hierarchical path to document
+        - key: Hierarchical key to document
         - content: Updated markdown content
 
         Returns:
         - str: Confirmation message
         """
-        await ctx.info(f'Updating {doc_type.value} document at {path}')
+        await ctx.info(f'Updating {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.update_document(doc_type, path, content)
-            await ctx.info(f'Updated {doc_type.value} document at {path}')
+            result = await doc_tools.update_document(doc_type, key, content)
+            await ctx.info(f'Updated {doc_type.value} document at {key}')
             return result
         except Exception as e:
             await ctx.error(f'Failed to update document: {str(e)}')
             raise
 
     @mcp.tool()
-    async def delete_document(doc_type: DocumentType, path: str, ctx: Context) -> MCPResponse:
+    async def delete_document(doc_type: DocumentType, key: str, ctx: Context) -> MCPResponse:
         """Delete document from storage.
 
         Parameters:
         - doc_type: Type of document ("phase", "task", "completion_report")
-        - path: Hierarchical path to document
+        - key: Hierarchical key to document
 
         Returns:
         - MCPResponse: Contains deletion confirmation
         """
-        await ctx.info(f'Deleting {doc_type.value} document at {path}')
+        await ctx.info(f'Deleting {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.delete_document(doc_type, path)
-            await ctx.info(f'Deleted {doc_type.value} document at {path}')
+            result = await doc_tools.delete_document(doc_type, key)
+            await ctx.info(f'Deleted {doc_type.value} document at {key}')
             return result
         except Exception as e:
             await ctx.error(f'Failed to delete document: {str(e)}')
             raise
 
     @mcp.tool()
-    async def link_loop_to_document(loop_id: str, doc_type: DocumentType, path: str, ctx: Context) -> MCPResponse:
+    async def link_loop_to_document(loop_id: str, doc_type: DocumentType, key: str, ctx: Context) -> MCPResponse:
         """Link active refinement loop to document for idempotent iteration.
 
         Creates temporary mapping allowing agents to retrieve/update documents via loop_id
@@ -262,16 +221,56 @@ def register_document_tools(mcp: FastMCP) -> None:
         Parameters:
         - loop_id: Active loop identifier
         - doc_type: Type of document ("phase", "task", "completion_report")
-        - path: Hierarchical path to document
+        - key: Hierarchical key to document
 
         Returns:
         - MCPResponse: Contains linking confirmation
         """
-        await ctx.info(f'Linking loop {loop_id} to {doc_type.value} document at {path}')
+        await ctx.info(f'Linking loop {loop_id} to {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.link_loop_to_document(loop_id, doc_type, path)
+            result = await doc_tools.link_loop_to_document(loop_id, doc_type, key)
             await ctx.info(f'Linked loop {loop_id} to document')
             return result
         except Exception as e:
             await ctx.error(f'Failed to link loop to document: {str(e)}')
+            raise
+
+    # Dedicated roadmap tools to prevent loop_id misuse
+    @mcp.tool()
+    async def get_roadmap(plan_name: str, ctx: Context) -> MCPResponse:
+        """Retrieve roadmap as markdown.
+
+        Parameters:
+        - plan_name: Name of the project
+
+        Returns:
+        - MCPResponse: Contains roadmap markdown
+        """
+        await ctx.info(f'Retrieving roadmap for plan: {plan_name}')
+        try:
+            result = await doc_tools.get_document(DocumentType.ROADMAP, key=plan_name, loop_id=None)
+            await ctx.info(f'Retrieved roadmap for plan: {plan_name}')
+            return result
+        except Exception as e:
+            await ctx.error(f'Failed to retrieve roadmap: {str(e)}')
+            raise
+
+    @mcp.tool()
+    async def create_roadmap(plan_name: str, roadmap_data: str, ctx: Context) -> str:
+        """Create a new roadmap for a project.
+
+        Parameters:
+        - plan_name: Name for this project
+        - roadmap_data: Complete roadmap markdown content including all Phase sections
+
+        Returns:
+        - str: Confirmation message
+        """
+        await ctx.info(f'Creating roadmap for plan: {plan_name}')
+        try:
+            result = await doc_tools.store_document(DocumentType.ROADMAP, key=plan_name, content=roadmap_data)
+            await ctx.info(f'Created roadmap for plan: {plan_name}')
+            return result
+        except Exception as e:
+            await ctx.error(f'Failed to create roadmap: {str(e)}')
             raise

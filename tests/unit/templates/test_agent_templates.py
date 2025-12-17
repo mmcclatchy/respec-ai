@@ -25,7 +25,7 @@ class TestPlanRoadmapTemplate:
         assert 'tools:' in template
 
         # Check MCP tools section - roadmap agent only retrieves plan, doesn't create phases
-        assert 'mcp__respec-ai__get_project_plan_markdown' in template
+        assert 'mcp__respec-ai__get_document' in template
         # Roadmap agent no longer creates phases - that's done by parallel create-phase agents
         assert 'mcp__respec-ai__add_phase' not in template
         assert 'mcp__respec-ai__list_phases' not in template
@@ -77,10 +77,9 @@ class TestRoadmapCriticTemplate:
         assert 'model: sonnet' in template
         assert 'tools:' in template
 
-        # Check MCP tools - roadmap-critic works with loop_id
-        assert 'mcp__respec-ai__get_roadmap' in template  # Uses get_roadmap, not get_roadmap_markdown
+        # Check MCP tools - roadmap-critic uses dedicated get_roadmap (no loop_id support)
+        assert 'mcp__respec-ai__get_roadmap' in template  # Dedicated roadmap retrieval
         assert 'mcp__respec-ai__store_critic_feedback' in template
-        # Removed get_feedback - critic retrieves roadmap directly using loop_id
 
     def test_template_includes_critic_feedback_format(self) -> None:
         tools = create_roadmap_critic_agent_tools()
@@ -143,7 +142,7 @@ class TestCreatePhaseTemplate:
         template = generate_create_phase_template(tools)
 
         # Should mention individual phase creation (not multiple)
-        assert 'project_name' in template
+        assert 'plan_name' in template
         assert 'Phase Name' in template
         assert 'phase_name' in template
 

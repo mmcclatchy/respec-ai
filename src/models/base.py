@@ -221,7 +221,9 @@ class MCPModel(BaseModel, ABC):
         if cls.TITLE_PATTERN not in markdown:
             # Convert class name from CamelCase to readable format
             readable_name = (
-                cls.__name__.replace('Plan', ' Plan').replace('Spec', ' Spec').replace('Requirements', ' Requirements')
+                cls.__name__.replace('Plan', ' Plan')
+                .replace('Phase', ' Phase')
+                .replace('Requirements', ' Requirements')
             )
             readable_name = ' '.join(readable_name.split()).lower()
             raise ValueError(f'Invalid {readable_name} format: missing title')
@@ -250,7 +252,7 @@ class MCPModel(BaseModel, ABC):
             if cls.TITLE_FIELD == 'phase_name' and not re.match(r'^[a-z0-9]+(-[a-z0-9]+)*$', title_value):
                 raise ValueError(
                     f"Invalid phase name format: '{title_value}'. "
-                    f'Spec name must be lowercase kebab-case. '
+                    f'Phase name must be lowercase kebab-case. '
                     f"Example: 'phase-1-foundation'"
                 )
 

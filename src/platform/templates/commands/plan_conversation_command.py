@@ -162,7 +162,7 @@ I've gathered comprehensive context for your project plan.
 The /respec-plan command is designed to call this command internally. To use this workflow:
 
 ```bash
-/respec-plan [project-name] [optional: initial context]
+/respec-plan [plan-name] [optional: initial context]
 ```
 
 The /respec-plan command will:

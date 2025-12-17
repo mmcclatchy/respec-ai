@@ -1,6 +1,6 @@
-# respec-ai MCP Server - Project Standards
+# respec-ai MCP Server - Plan Standards
 
-## Project Rules (Mandatory)
+## Plan Rules (Mandatory)
 
 ### Critical Requirements
 

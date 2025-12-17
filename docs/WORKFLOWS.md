@@ -31,7 +31,7 @@
 
 respec-ai provides a complete development pipeline that adds systematic critical evaluation to LLM-generated content. Instead of manually iterating with LLMs to check alignment and provide feedback, respec-ai automates the refinement process through:
 
-1. **Clear separation of responsibilities** - Each workflow has a definitive purpose (Plan, Roadmap, Spec, Build)
+1. **Clear separation of responsibilities** - Each workflow has a definitive purpose (Plan, Roadmap, Phase, Build)
 2. **Automated critic refinement loops** - Quality gates at each stage validate against parent document targets
 3. **Quality thresholds (0-100)** - Concrete, measurable quality scores determine when to proceed
 4. **Hierarchical validation** - Each level validates against its parent to prevent alignment drift
@@ -220,7 +220,7 @@ Would you like me to refine any phase?
 
 **How it works:**
 1. **Plan retrieval** - Retrieves existing strategic plan or roadmap phase
-2. **Spec generation** - phase-architect creates technical specification
+2. **Phase generation** - phase-architect creates technical specification
 3. **Quality evaluation** - phase-critic validates against parent document (plan or roadmap)
 4. **Platform creation** - Creates phase in your platform (Linear issue, GitHub issue, or Markdown file)
 5. **Refinement** - Iterates until quality threshold met
@@ -262,10 +262,10 @@ Creating Linear issue...
 ```
 
 **Tips:**
-- Specs should include architecture, technology choices, and implementation approach
+- Phases should include architecture, technology choices, and implementation approach
 - Review security considerations carefully for auth-related features
 - Quality scores >90 indicate well-defined phases
-- Specs created in your platform (Linear/GitHub/Markdown) serve as single source of truth
+- Phases created in your platform (Linear/GitHub/Markdown) serve as single source of truth
 
 ---
 
@@ -276,7 +276,7 @@ Creating Linear issue...
 **What it will do:** Implement specifications with automated code generation
 
 **Planned workflow:**
-1. **Spec retrieval** - Retrieves technical specification
+1. **Phase retrieval** - Retrieves technical specification
 2. **Build planning** - taskner creates implementation plan
 3. **Plan evaluation** - task-critic validates plan quality
 4. **Code generation** - task-coder generates code with TDD approach
@@ -601,7 +601,7 @@ The respec-ai MCP server provides 38 tools across 7 modules that power the workf
 - Support stagnation detection
 
 **Document Management (21 tools):**
-- Project plans (5 tools)
+- Plan plans (5 tools)
 - Roadmaps (2 tools)
 - Technical phases (9 tools)
 - Build plans (4 tools)
@@ -723,4 +723,4 @@ update_phase → Linear: update_issue | GitHub: update_issue | Markdown: Edit
 
 - **[CLI Guide](CLI_GUIDE.md)** - Installation, setup, and CLI reference
 - **[Architecture Guide](ARCHITECTURE.md)** - System design and implementation details
-- **[README](../README.md)** - Project overview and quick start
+- **[README](../README.md)** - Plan overview and quick start

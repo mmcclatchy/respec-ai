@@ -3,11 +3,11 @@ from typing import Any
 
 from .config_manager import ConfigManager
 from .models import (
+    PlanPlatformChangeRequest,
+    PlanSetupRequest,
+    PlanSetupWithRecommendationRequest,
     PlatformRequirements,
     ProjectConfig,
-    ProjectPlatformChangeRequest,
-    ProjectSetupRequest,
-    ProjectSetupWithRecommendationRequest,
     TemplateGenerationRequest,
 )
 from .platform_selector import PlatformSelector, PlatformType
@@ -27,7 +27,7 @@ class PlatformOrchestrator:
         default_config_dir = str(Path.home() / '.respec-ai' / 'projects')
         return cls(default_config_dir)
 
-    def setup_project(self, request: ProjectSetupRequest) -> ProjectConfig:
+    def setup_project(self, request: PlanSetupRequest) -> ProjectConfig:
         requirements_dict = request.requirements.model_dump()
         if not self.platform_selector.validate_platform_choice(request.platform, requirements_dict):
             raise ValueError(f'Platform {request.platform.value} does not meet requirements: {requirements_dict}')
@@ -42,7 +42,7 @@ class PlatformOrchestrator:
 
         return config
 
-    def setup_project_with_recommendation(self, request: ProjectSetupWithRecommendationRequest) -> ProjectConfig:
+    def setup_project_with_recommendation(self, request: PlanSetupWithRecommendationRequest) -> ProjectConfig:
         requirements_dict = request.requirements.model_dump()
         platform = self.platform_selector.recommend_platform(requirements_dict)
 
@@ -57,7 +57,7 @@ class PlatformOrchestrator:
         # Explicit default requirements - no hidden behavior
         requirements = PlatformRequirements(supports_issues=True, supports_comments=True, real_time_collaboration=False)
 
-        request = ProjectSetupRequest(project_path=Path(project_path), platform=platform, requirements=requirements)
+        request = PlanSetupRequest(project_path=Path(project_path), platform=platform, requirements=requirements)
 
         return self.setup_project(request)
 
@@ -76,7 +76,7 @@ class PlatformOrchestrator:
         config = self.config_manager.load_project_config(project_path)
         return self.tool_registry.get_all_tools_for_platform(config.platform)
 
-    def change_project_platform(self, request: ProjectPlatformChangeRequest) -> None:
+    def change_project_platform(self, request: PlanPlatformChangeRequest) -> None:
         existing_config = self.config_manager.load_project_config(request.project_path)
 
         requirements = request.requirements or existing_config.requirements

@@ -155,7 +155,7 @@ def _generate_realistic_content(field_name: str) -> str:
         'phase_count': '1',
         'roadmap_status': 'draft',
         'phase_status': 'draft',
-        'project_status': 'draft',
+        'plan_status': 'draft',
         'build_status': 'planning',
         'requirements_status': 'draft',
         'report_title': 'Completion Report',

@@ -30,7 +30,7 @@ draft
 """
 
 
-class TestInitialSpecParsing:
+class TestInitialPhaseParsing:
     def test_parse_markdown_extracts_basic_fields(self, sample_initial_phase_markdown: str) -> None:
         phase = Phase.parse_markdown(sample_initial_phase_markdown)
 
@@ -88,7 +88,7 @@ class TestInitialSpecParsing:
         assert original_phase.phase_status == reparsed_phase.phase_status
 
 
-class TestInitialSpecUtilities:
+class TestInitialPhaseUtilities:
     def test_recursive_traversal_utilities_exist(self) -> None:
         assert hasattr(Phase, '_find_nodes_by_type')
         assert hasattr(Phase, '_extract_text_content')

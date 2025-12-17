@@ -146,8 +146,8 @@ In Claude Code, verify the server is available:
 Available MCP Servers:
   respec-ai
     ├─ 29+ tools available
-    ├─ create_project_plan
-    ├─ store_project_plan
+    ├─ create_plan
+    ├─ store_plan
     └─ [other tools...]
 ```
 
@@ -219,7 +219,7 @@ Available Commands (restart Claude Code to activate):
 claude
 ```
 
-### Verify Project Setup
+### Verify Plan Setup
 
 Check that everything was created correctly:
 
@@ -310,7 +310,7 @@ respec-ai init --platform <platform> [OPTIONS]
 
 **Arguments:**
 - `--platform` (required) - Platform type: `linear`, `github`, or `markdown`
-- `--project-name` (optional) - Project name (defaults to directory name)
+- `--plan-name` (optional) - Plan name (defaults to directory name)
 - `--skip-mcp-registration` (optional) - Skip automatic MCP server registration
 - `--force` (optional) - Overwrite existing configuration
 
@@ -437,7 +437,7 @@ respec-ai validate
 ```
 
 **Validation Checks:**
-- Project initialized (config file exists)
+- Plan initialized (config file exists)
 - Config valid (proper JSON format)
 - Platform valid (one of: linear, github, markdown)
 - Version current (config matches package version)
@@ -827,7 +827,7 @@ respec-ai supports three platforms with different capabilities:
 
 **Capabilities:**
 - ✅ Issue tracking
-- ✅ Projects
+- ✅ Plans
 - ✅ Comments
 - ✅ Labels
 - ✅ Cycles (sprint planning)
@@ -839,7 +839,7 @@ respec-ai supports three platforms with different capabilities:
 - Linear API access
 
 **Workflow:**
-- Specs created as Linear issues
+- Phases created as Linear issues
 - Plans stored as Linear projects
 - Comments for feedback and discussion
 
@@ -849,7 +849,7 @@ respec-ai supports three platforms with different capabilities:
 
 **Capabilities:**
 - ✅ Issue tracking
-- ✅ Projects (boards)
+- ✅ Plans (boards)
 - ✅ Comments
 - ✅ Labels
 - ✅ Milestones
@@ -861,7 +861,7 @@ respec-ai supports three platforms with different capabilities:
 - GitHub API access
 
 **Workflow:**
-- Specs created as GitHub issues
+- Phases created as GitHub issues
 - Plans stored as GitHub project boards
 - Comments for feedback
 
@@ -871,7 +871,7 @@ respec-ai supports three platforms with different capabilities:
 
 **Capabilities:**
 - ✅ Issue tracking (via structured files)
-- ✅ Projects (via markdown files)
+- ✅ Plans (via markdown files)
 - ✅ Comments (via markdown sections)
 - ❌ Labels
 - ❌ Real-time collaboration
@@ -881,7 +881,7 @@ respec-ai supports three platforms with different capabilities:
 - None (uses built-in Claude Code tools)
 
 **Workflow:**
-- Specs stored as markdown files in `.respec-ai/plans/[project-name]/phases/`
+- Phases stored as markdown files in `.respec-ai/plans/[plan-name]/phases/`
 - Plans stored as markdown files
 - Git-friendly version control
 
@@ -914,7 +914,7 @@ Platform selection stored in `.respec-ai/config.json`:
 ```json
 {
   "platform": "markdown",
-  "project_name": "my-project",
+  "plan_name": "my-project",
   "created_at": "2025-01-15T12:00:00.000000",
   "version": "0.6.3"
 }
@@ -1464,7 +1464,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 - Ignore code review feedback
 - Bypass quality gates
 
-### Project Setup
+### Plan Setup
 
 **Do:**
 - Run `respec-ai validate` after initial setup
@@ -1503,7 +1503,7 @@ export RESPEC_AI_PHASES_THRESHOLD=85
 export RESPEC_AI_BUILD_THRESHOLD=90
 ```
 
-### Multi-Phase Projects
+### Multi-Phase Plans
 
 For complex projects:
 
@@ -1568,7 +1568,7 @@ uv sync
 
 # 2. Run the install script from your project directory
 cd ~/path/to/your/project
-~/path/to/respec-ai/scripts/install-respec-ai.sh -n <PROJECT_NAME> -p <PLATFORM>
+~/path/to/respec-ai/scripts/install-respec-ai.sh -n <PLAN_NAME> -p <PLATFORM>
 ```
 
 **Example:**
@@ -1659,9 +1659,9 @@ In Claude Code, verify the local server is loaded:
 Available MCP Servers:
   respec-ai
     ├─ 29+ tools available
-    ├─ create_project_plan
-    ├─ store_project_plan
-    ├─ get_project_plan
+    ├─ create_plan
+    ├─ store_plan
+    ├─ get_plan
     └─ [other tools...]
 ```
 
@@ -1675,12 +1675,12 @@ Available MCP Servers:
 
 1. **Edit files** in `src/mcp/tools/`
    ```bash
-   vim src/mcp/tools/project_plan_tools.py
+   vim src/mcp/tools/plan_tools.py
    ```
 
 2. **Write/update tests** in `tests/unit/mcp/`
    ```bash
-   vim tests/unit/mcp/test_project_plan_tools.py
+   vim tests/unit/mcp/test_plan_tools.py
    ```
 
 3. **Run tests**
@@ -1717,13 +1717,13 @@ Generate and view templates without side effects:
 uv run python scripts/generate_templates.py
 ```
 
-**Method 2: Test in Isolated Project**
+**Method 2: Test in Isolated Plan**
 
 Test full template generation:
 
 ```bash
 cd /tmp
-respec-ai init --platform markdown --project-name test-templates
+respec-ai init --platform markdown --plan-name test-templates
 cat .claude/agents/plan-analyst.md
 cat .claude/commands/respec-plan.md
 ```

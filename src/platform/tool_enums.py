@@ -72,7 +72,7 @@ class BuiltInTool(StrEnum):
     WEB_FETCH = 'WebFetch'
     WEB_SEARCH = 'WebSearch'
 
-    # Project Management
+    # Plan Management
     TODO_WRITE = 'TodoWrite'
     EXIT_PLAN_MODE = 'ExitPlanMode'
     SLASH_COMMAND = 'SlashCommand'
@@ -97,17 +97,6 @@ class RespecAITool(StrEnum):
     STORE_CURRENT_ANALYSIS = f'{_RESPEC_AI_PREFIX}store_current_analysis'
     GET_PREVIOUS_ANALYSIS = f'{_RESPEC_AI_PREFIX}get_previous_analysis'
 
-    # Project Plan Tools
-    CREATE_PROJECT_PLAN = f'{_RESPEC_AI_PREFIX}create_project_plan'
-    STORE_PROJECT_PLAN = f'{_RESPEC_AI_PREFIX}store_project_plan'
-    GET_PROJECT_PLAN_MARKDOWN = f'{_RESPEC_AI_PREFIX}get_project_plan_markdown'
-    LIST_PROJECT_PLANS = f'{_RESPEC_AI_PREFIX}list_project_plans'
-    DELETE_PROJECT_PLAN = f'{_RESPEC_AI_PREFIX}delete_project_plan'
-
-    # Roadmap Management Tools
-    CREATE_ROADMAP = f'{_RESPEC_AI_PREFIX}create_roadmap'
-    GET_ROADMAP = f'{_RESPEC_AI_PREFIX}get_roadmap'
-
     # Document Management Tools (Generic)
     STORE_DOCUMENT = f'{_RESPEC_AI_PREFIX}store_document'
     GET_DOCUMENT = f'{_RESPEC_AI_PREFIX}get_document'
@@ -116,13 +105,9 @@ class RespecAITool(StrEnum):
     DELETE_DOCUMENT = f'{_RESPEC_AI_PREFIX}delete_document'
     LINK_LOOP_TO_DOCUMENT = f'{_RESPEC_AI_PREFIX}link_loop_to_document'
 
-    # Plan Completion Report Tools
-    CREATE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}create_plan_completion_report'
-    STORE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}store_plan_completion_report'
-    GET_PLAN_COMPLETION_REPORT_MARKDOWN = f'{_RESPEC_AI_PREFIX}get_plan_completion_report_markdown'
-    UPDATE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}update_plan_completion_report'
-    LIST_PLAN_COMPLETION_REPORTS = f'{_RESPEC_AI_PREFIX}list_plan_completion_reports'
-    DELETE_PLAN_COMPLETION_REPORT = f'{_RESPEC_AI_PREFIX}delete_plan_completion_report'
+    # Roadmap-specific Tools (dedicated to prevent loop_id misuse)
+    GET_ROADMAP = f'{_RESPEC_AI_PREFIX}get_roadmap'
+    CREATE_ROADMAP = f'{_RESPEC_AI_PREFIX}create_roadmap'
 
 
 class AbstractOperation(StrEnum):
@@ -133,13 +118,17 @@ class AbstractOperation(StrEnum):
     COMMENT_PHASE_TOOL = 'comment_phase_tool'
     LIST_PROJECT_PHASES_TOOL = 'list_project_phases_tool'
 
-    # Project Management Operations
+    # Task Management Operations
+    CREATE_TASK_TOOL = 'create_task_tool'
+    LIST_PHASE_TASKS_TOOL = 'list_phase_tasks_tool'
+
+    # Plan Management Operations
     CREATE_PROJECT_EXTERNAL = 'create_project_external'
     CREATE_PROJECT_COMPLETION_EXTERNAL = 'create_project_completion_external'
 
     # Plan Management Operations
-    GET_PROJECT_PLAN_TOOL = 'get_project_plan_tool'
-    UPDATE_PROJECT_PLAN_TOOL = 'update_project_plan_tool'
+    GET_PROJECT_PLAN_TOOL = 'get_plan_tool'
+    UPDATE_PROJECT_PLAN_TOOL = 'update_plan_tool'
 
 
 class RespecAIAgent(StrEnum):
@@ -153,12 +142,16 @@ class RespecAIAgent(StrEnum):
     PLAN_ANALYST = f'{_RESPEC_AGENT_PREFIX}plan-analyst'
     ANALYST_CRITIC = f'{_RESPEC_AGENT_PREFIX}analyst-critic'
 
+    # Task workflow agents
+    TASK_PLANNER = f'{_RESPEC_AGENT_PREFIX}task-planner'
+    TASK_PLAN_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-plan-critic'
+    CREATE_TASK = f'{_RESPEC_AGENT_PREFIX}create-task'
+
     # Code workflow agents
     PHASE_PLANNER = f'{_RESPEC_AGENT_PREFIX}phase-planner'
     TASK_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-critic'
     TASK_CODER = f'{_RESPEC_AGENT_PREFIX}task-coder'
     TASK_REVIEWER = f'{_RESPEC_AGENT_PREFIX}task-reviewer'
-    RESEARCH_SYNTHESIZER = f'{_RESPEC_AGENT_PREFIX}research-synthesizer'
 
     # Roadmap workflow agents
     ROADMAP = f'{_RESPEC_AGENT_PREFIX}roadmap'
@@ -169,6 +162,7 @@ class RespecAIAgent(StrEnum):
 class RespecAICommand(StrEnum):
     PLAN = 'respec-plan'
     PHASE = 'respec-phase'
+    TASK = 'respec-task'
     CODE = 'respec-code'
     ROADMAP = 'respec-roadmap'
     PLAN_CONVERSATION = 'respec-plan-conversation'

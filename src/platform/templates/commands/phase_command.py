@@ -110,46 +110,46 @@ PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
 
 Read .respec-ai/config.json
-PROJECT_NAME = config["project_name"]
+PLAN_NAME = config["plan_name"]
 ```
 
 #### Step 1.2: Search file system for matching phase files
 
 ```text
-SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PROJECT_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
-SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
+SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
+SPEC_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
 ```
 
 #### Step 1.3: Handle multiple matches
 
 ```text
 IF count(SPEC_FILE_MATCHES) == 0:
-  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PROJECT_NAME}}/phases/"
+  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PLAN_NAME}}"
+  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PLAN_NAME}}/phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
-  SPEC_FILE_PATH = SPEC_FILE_MATCHES[0]
+  PHASE_FILE_PATH = PHASE_FILE_MATCHES[0]
 
 ELSE:
   (Multiple matches - use interactive selection)
   Use AskUserQuestion tool to present options:
     Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
-    Header: "Select Spec"
+    Header: "Select Phase"
     multiSelect: false
     Options: [
       {{
-        "label": "{{SPEC_FILE_MATCHES[0]}}",
-        "description": "Use: {{SPEC_FILE_MATCHES[0]}}"
+        "label": "{{PHASE_FILE_MATCHES[0]}}",
+        "description": "Use: {{PHASE_FILE_MATCHES[0]}}"
       }},
       {{
-        "label": "{{SPEC_FILE_MATCHES[1]}}",
-        "description": "Use: {{SPEC_FILE_MATCHES[1]}}"
+        "label": "{{PHASE_FILE_MATCHES[1]}}",
+        "description": "Use: {{PHASE_FILE_MATCHES[1]}}"
       }},
       ... for all matches
     ]
 
-  SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
+  PHASE_FILE_PATH = [selected file path from AskUserQuestion response]
 ```
 
 #### Step 1.4: Extract canonical name from file path
@@ -157,7 +157,7 @@ ELSE:
 Extract: ".respec-ai/plans/X/phases/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
 
 ```text
-PHASE_NAME = [basename of SPEC_FILE_PATH without .md extension]
+PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
 
 Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 ```
@@ -166,7 +166,7 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 - PLAN_NAME identifies which strategic plan to use for context
 - PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
 - PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
-- PROJECT_NAME from config is used for all MCP storage operations
+- PLAN_NAME from config is used for all MCP storage operations
 - OPTIONAL_INSTRUCTIONS provides additional context for phase development
 - All subsequent operations use PHASE_NAME (canonical)
 
@@ -177,22 +177,22 @@ Load phase and plan from file system, store in MCP:
 #### Step 2.1: Read documents using canonical names
 
 ```text
-PLAN_MARKDOWN = Read(.respec-ai/plans/{{PLAN_NAME}}/project_plan.md)
-PHASE_MARKDOWN = Read({{SPEC_FILE_PATH}})
+PLAN_MARKDOWN = Read(.respec-ai/plans/{{PLAN_NAME}}/plan.md)
+PHASE_MARKDOWN = Read({{PHASE_FILE_PATH}})
 ```
 
 #### Step 2.2: Store in MCP using canonical phase name
 
 ```text
 {tools.store_plan}
-  project_name=PLAN_NAME,
-  project_plan_markdown=PLAN_MARKDOWN
+  plan_name=PLAN_NAME,
+  plan_markdown=PLAN_MARKDOWN
 )
 
 {tools.store_document_inline_doc}
 {tools.store_document}
   doc_type="phase",
-  path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}",
+  path=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
   content=PHASE_MARKDOWN
 )
 
@@ -200,7 +200,7 @@ Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
 ```
 
 **Important**:
-- SPEC_FILE_PATH is the full path from Step 1
+- PHASE_FILE_PATH is the full path from Step 1
 - PHASE_NAME is the canonical name extracted from file path
 - Both documents are now in MCP storage for refinement loop
 
@@ -211,7 +211,7 @@ Initialize MCP refinement loop and retrieve strategic plan:
 (Initialize MCP refinement loop)
 {tools.initialize_refinement_loop_inline_doc}
 {tools.initialize_loop}
-  project_name=PROJECT_NAME,
+  plan_name=PLAN_NAME,
   loop_type="phase"
 )
 
@@ -243,7 +243,7 @@ IF LOOP_ID is None or LOOP_ID == "":
 {tools.link_loop}
   loop_id=LOOP_ID,
   doc_type="phase",
-  path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}"
+  path=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
 )
 
 (Verify the link was created)
@@ -276,7 +276,7 @@ STRATEGIC_PLAN_SUMMARY = [strategic plan content: STRATEGIC_PLAN_MARKDOWN retrie
 Invoke: respec-phase-architect
 Input:
   - loop_id: LOOP_ID
-  - project_name: PROJECT_NAME
+  - plan_name: PLAN_NAME
   - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: OPTIONAL_INSTRUCTIONS
@@ -305,17 +305,17 @@ Display to user: "✓ Phase refined by phase-architect"
 
 ### Step 6: Quality Assessment Loop
 
-#### Step 6.1: Invoke Spec-Critic Agent
+#### Step 6.1: Invoke Phase-Critic Agent
 
 ```text
 Invoke: respec-phase-critic
 Input:
-  - project_name: PROJECT_NAME
+  - plan_name: PLAN_NAME
   - loop_id: LOOP_ID
   - phase_name: PHASE_NAME
 
 Spec-critic will:
-1. Retrieve phase from MCP using project_name and phase_name
+1. Retrieve phase from MCP using plan_name and phase_name
 2. Evaluate against FSDD framework
 3. Store feedback in MCP loop using loop_id
 ```
@@ -362,7 +362,7 @@ ELIF LOOP_DECISION == "USER_INPUT":
     Recommended: Break into 3-5 focused phases
 
     **Next Steps:**
-    1. Run: /respec-roadmap [PROJECT_NAME]
+    1. Run: /respec-roadmap [PLAN_NAME]
     2. This will analyze the current phase and create multiple smaller phases
     3. Each resulting phase will be appropriately scoped
 
@@ -396,7 +396,7 @@ Retrieve the Phase from MCP storage:
 ```text
 FINAL_PHASE_RESPONSE = {tools.get_document}
     doc_type="phase",
-    path=f"{{PROJECT_NAME}}/{{PHASE_NAME}}"
+    path=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
 )
 
 FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
@@ -474,7 +474,7 @@ IF no strategic plan available:
     "user_guidance": "Please provide the strategic plan document path or run /respec-plan command first",
     "partial_output": "Phase template prepared"
   }}
-  → Request plan location OR suggest: "Run /respec-plan [project-name] to create strategic plan first"
+  → Request plan location OR suggest: "Run /respec-plan [plan-name] to create strategic plan first"
 ```
 
 #### 2. Archive Scanning Failure

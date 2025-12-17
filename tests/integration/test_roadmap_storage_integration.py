@@ -5,7 +5,7 @@ from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture
-def project_name() -> str:
+def plan_name() -> str:
     return 'test-project'
 
 
@@ -21,11 +21,11 @@ def roadmap_tools(state_manager: InMemoryStateManager) -> RoadmapTools:
 
 @pytest.fixture
 def sample_roadmap_markdown_with_phases() -> str:
-    return """# Project Roadmap: RAG Best Practices POC
+    return """# Plan Roadmap: RAG Best Practices POC
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Create a proof-of-concept intelligent knowledge management system
 
 ### Total Duration
@@ -173,20 +173,19 @@ draft
 class TestRoadmapStorageIntegration:
     @pytest.mark.asyncio
     async def test_store_and_retrieve_roadmap_with_phases(
-        self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_phases: str
+        self, roadmap_tools: RoadmapTools, plan_name: str, sample_roadmap_markdown_with_phases: str
     ) -> None:
         # Store roadmap
-        result = await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_phases)
+        result = await roadmap_tools.store(plan_name, sample_roadmap_markdown_with_phases)
 
-        assert 'Created roadmap' in result
-        assert project_name in result
-        assert '3 phases' in result
+        assert result.id == plan_name
 
         # Retrieve roadmap
-        retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
+        response = await roadmap_tools.get(key=plan_name)
+        retrieved_markdown = response.message
 
         assert isinstance(retrieved_markdown, str)
-        assert '# Project Roadmap: RAG Best Practices POC' in retrieved_markdown
+        assert '# Plan Roadmap: RAG Best Practices POC' in retrieved_markdown
         assert 'Create a proof-of-concept intelligent knowledge management system' in retrieved_markdown
 
         # Verify full Phase content is present
@@ -201,40 +200,40 @@ class TestRoadmapStorageIntegration:
 
     @pytest.mark.asyncio
     async def test_round_trip_preserves_all_content(
-        self, roadmap_tools: RoadmapTools, project_name: str, sample_roadmap_markdown_with_phases: str
+        self, roadmap_tools: RoadmapTools, plan_name: str, sample_roadmap_markdown_with_phases: str
     ) -> None:
         # Store original
-        await roadmap_tools.create_roadmap(project_name, sample_roadmap_markdown_with_phases)
+        await roadmap_tools.store(plan_name, sample_roadmap_markdown_with_phases)
 
         # Retrieve
-        retrieved_markdown = await roadmap_tools.get_roadmap(project_name)
+        response = await roadmap_tools.get(key=plan_name)
+        retrieved_markdown = response.message
 
-        # Parse retrieved markdown like create_roadmap does
+        # Parse retrieved markdown like store does
         phase_blocks = retrieved_markdown.split('# Phase:')
         assert len(phase_blocks) == 4  # Roadmap metadata + 3 phases
 
         # Store retrieved markdown again (simulating agent workflow)
-        result = await roadmap_tools.create_roadmap(project_name, retrieved_markdown)
-        assert 'Created roadmap' in result
+        result = await roadmap_tools.store(plan_name, retrieved_markdown)
+        assert result.id == plan_name
 
         # Retrieve again
-        second_retrieval = await roadmap_tools.get_roadmap(project_name)
+        second_response = await roadmap_tools.get(key=plan_name)
+        second_retrieval = second_response.message
 
         # Verify content still matches
-        assert '# Project Roadmap: RAG Best Practices POC' in second_retrieval
+        assert '# Plan Roadmap: RAG Best Practices POC' in second_retrieval
         assert '# Phase: phase-1-neo4j-setup' in second_retrieval
         assert '# Phase: phase-2-embedding-pipeline' in second_retrieval
         assert '# Phase: phase-3-query-system' in second_retrieval
 
     @pytest.mark.asyncio
-    async def test_create_roadmap_with_invalid_title_format(
-        self, roadmap_tools: RoadmapTools, project_name: str
-    ) -> None:
-        invalid_markdown = """# Implementation Roadmap: My Project
+    async def test_store_roadmap_with_invalid_title_format(self, roadmap_tools: RoadmapTools, plan_name: str) -> None:
+        invalid_markdown = """# Implementation Roadmap: My Plan
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test goal
 
 ### Total Duration
@@ -299,24 +298,24 @@ draft
 
         # Should fail with clear error about title format
         with pytest.raises(Exception) as exc_info:
-            await roadmap_tools.create_roadmap(project_name, invalid_markdown)
+            await roadmap_tools.store(plan_name, invalid_markdown)
 
         assert 'title' in str(exc_info.value).lower() or 'roadmap' in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_retrieve_nonexistent_roadmap(self, roadmap_tools: RoadmapTools) -> None:
         with pytest.raises(Exception) as exc_info:
-            await roadmap_tools.get_roadmap('nonexistent-project')
+            await roadmap_tools.get(key='nonexistent-project')
 
         assert 'not found' in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_store_roadmap_without_phases(self, roadmap_tools: RoadmapTools, project_name: str) -> None:
-        minimal_roadmap = """# Project Roadmap: Minimal Project
+    async def test_store_roadmap_without_phases(self, roadmap_tools: RoadmapTools, plan_name: str) -> None:
+        minimal_roadmap = """# Plan Roadmap: Minimal Plan
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test goal
 
 ### Total Duration
@@ -379,10 +378,10 @@ draft
 0
 """
 
-        result = await roadmap_tools.create_roadmap(project_name, minimal_roadmap)
-        assert 'Created roadmap' in result
-        assert '0 phases' in result
+        result = await roadmap_tools.store(plan_name, minimal_roadmap)
+        assert result.id == plan_name
 
-        retrieved = await roadmap_tools.get_roadmap(project_name)
-        assert '# Project Roadmap: Minimal Project' in retrieved
+        response = await roadmap_tools.get(key=plan_name)
+        retrieved = response.message
+        assert '# Plan Roadmap: Minimal Plan' in retrieved
         assert '# Phase:' not in retrieved

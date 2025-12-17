@@ -50,7 +50,7 @@ class TestDatabaseCascadeDeletes:
         await db_state_manager.add_loop(loop, 'test-project')
 
         phase = Phase(
-            phase_name='Test Spec',
+            phase_name='Test Phase',
             objectives='Objectives',
             scope='Scope',
             dependencies='Dependencies',
@@ -115,7 +115,7 @@ class TestDatabaseJSONBSerialization:
     @pytest.mark.asyncio
     async def test_phase_additional_sections_jsonb_roundtrip(self, db_state_manager: PostgresStateManager) -> None:
         phase = Phase(
-            phase_name='Test Spec',
+            phase_name='Test Phase',
             objectives='Objectives',
             scope='Scope',
             dependencies='Dependencies',
@@ -151,7 +151,7 @@ class TestDatabaseConstraints:
                 await conn.execute(
                     """
                     INSERT INTO phases (
-                        id, project_name, phase_name, objectives, scope,
+                        id, plan_name, phase_name, objectives, scope,
                         dependencies, deliverables, phase_status
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                     """,
@@ -188,7 +188,7 @@ class TestDatabaseTransactions:
     @pytest.mark.asyncio
     async def test_transaction_rollback_on_error(self, db_state_manager: PostgresStateManager) -> None:
         phase = Phase(
-            phase_name='Test Spec',
+            phase_name='Test Phase',
             objectives='Objectives',
             scope='Scope',
             dependencies='Dependencies',
@@ -202,7 +202,7 @@ class TestDatabaseTransactions:
             async with db_pool.acquire() as conn:
                 async with conn.transaction():
                     await conn.execute(
-                        'UPDATE phases SET objectives = $1 WHERE project_name = $2 AND phase_name = $3',
+                        'UPDATE phases SET objectives = $1 WHERE plan_name = $2 AND phase_name = $3',
                         'Updated objectives',
                         'test-project',
                         'test-phase',

@@ -23,11 +23,9 @@ class PlanCommandStrategy(CommandStrategy[PlanCommandTools]):
         create_project_completion_external = self.tool_registry.get_tool_for_platform(
             AbstractOperation.CREATE_PROJECT_COMPLETION_EXTERNAL, platform
         )
-        get_project_plan_tool = self.tool_registry.get_tool_for_platform(
-            AbstractOperation.GET_PROJECT_PLAN_TOOL, platform
-        )
+        get_plan_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_PROJECT_PLAN_TOOL, platform)
 
-        platform_tools = [create_project_external, create_project_completion_external, get_project_plan_tool]
+        platform_tools = [create_project_external, create_project_completion_external, get_plan_tool]
         return create_plan_command_tools(platform_tools, platform)
 
     def get_template_func(self) -> Callable[[PlanCommandTools], str]:

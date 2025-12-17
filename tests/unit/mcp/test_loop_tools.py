@@ -10,15 +10,15 @@ from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture
-def project_name() -> str:
+def plan_name() -> str:
     return 'test-project'
 
 
 class TestLoopToolsMCP:
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_complete_decision(self, project_name: str) -> None:
+    async def test_decide_loop_next_action_complete_decision(self, plan_name: str) -> None:
         # Initialize a build_code loop (threshold 95%)
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'task')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'task')
         loop_id = init_result.id
 
         # Add feedback with high score
@@ -43,9 +43,9 @@ class TestLoopToolsMCP:
         assert result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_refine_decision(self, project_name: str) -> None:
+    async def test_decide_loop_next_action_refine_decision(self, plan_name: str) -> None:
         # Initialize a phase loop (threshold 85%)
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Add feedback with score below threshold
@@ -70,9 +70,9 @@ class TestLoopToolsMCP:
         assert result.status == LoopStatus.REFINE
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_user_input_decision(self, project_name: str) -> None:
+    async def test_decide_loop_next_action_user_input_decision(self, plan_name: str) -> None:
         # Initialize a plan loop
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
         loop_id = init_result.id
 
         state_manager = loop_tools.state
@@ -118,9 +118,9 @@ class TestLoopToolsMCP:
             await loop_tools.decide_loop_next_action('nonexistent-loop-id')
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_no_feedback_error(self, project_name: str) -> None:
+    async def test_decide_loop_next_action_no_feedback_error(self, plan_name: str) -> None:
         # Test that decide_loop_next_action requires feedback to be present
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
         loop_id = init_result.id
 
         # Should raise error when no feedback available
@@ -130,9 +130,9 @@ class TestLoopToolsMCP:
         assert 'No feedback available' in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_checkpoint_frequency(self, project_name: str) -> None:
+    async def test_decide_loop_next_action_checkpoint_frequency(self, plan_name: str) -> None:
         # Initialize a plan loop to test checkpoint frequency
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
         loop_id = init_result.id
 
         state_manager = loop_tools.state
@@ -157,16 +157,16 @@ class TestLoopToolsMCP:
         assert result.status == LoopStatus.USER_INPUT
 
     @pytest.mark.asyncio
-    async def test_initialize_refinement_loop_integration(self, project_name: str) -> None:
-        result = await loop_tools.initialize_refinement_loop(project_name, 'task')
+    async def test_initialize_refinement_loop_integration(self, plan_name: str) -> None:
+        result = await loop_tools.initialize_refinement_loop(plan_name, 'task')
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.INITIALIZED
         assert len(result.id) > 0
 
     @pytest.mark.asyncio
-    async def test_get_loop_status_integration(self, project_name: str) -> None:
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'phase')
+    async def test_get_loop_status_integration(self, plan_name: str) -> None:
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         status = await loop_tools.get_loop_status(loop_id)
@@ -176,12 +176,12 @@ class TestLoopToolsMCP:
         assert status.status == LoopStatus.INITIALIZED
 
     @pytest.mark.asyncio
-    async def test_list_active_loops_integration(self, project_name: str) -> None:
+    async def test_list_active_loops_integration(self, plan_name: str) -> None:
         # Create multiple loops
-        loop1 = await loop_tools.initialize_refinement_loop(project_name, 'plan')
-        loop2 = await loop_tools.initialize_refinement_loop(project_name, 'phase')
+        loop1 = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
+        loop2 = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
 
-        active_loops = await loop_tools.list_active_loops(project_name)
+        active_loops = await loop_tools.list_active_loops(plan_name)
 
         assert isinstance(active_loops, list)
         assert len(active_loops) >= 2
@@ -201,17 +201,15 @@ class TestLoopFeedbackIntegration:
         return LoopTools(state_manager)
 
     @pytest.fixture
-    async def sample_loop(self, state_manager: InMemoryStateManager, project_name: str) -> LoopState:
+    async def sample_loop(self, state_manager: InMemoryStateManager, plan_name: str) -> LoopState:
         loop_state = LoopState(loop_type=LoopType.PHASE)
-        await state_manager.add_loop(loop_state, project_name)
+        await state_manager.add_loop(loop_state, plan_name)
         return loop_state
 
     @pytest.mark.asyncio
-    async def test_get_loop_feedback_summary_no_feedback(
-        self, loop_tools_instance: LoopTools, project_name: str
-    ) -> None:
+    async def test_get_loop_feedback_summary_no_feedback(self, loop_tools_instance: LoopTools, plan_name: str) -> None:
         # Initialize a loop
-        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools_instance.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Get feedback summary for loop with no feedback
@@ -224,10 +222,10 @@ class TestLoopFeedbackIntegration:
 
     @pytest.mark.asyncio
     async def test_get_loop_feedback_summary_with_feedback(
-        self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, project_name: str
+        self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, plan_name: str
     ) -> None:
         # Initialize a loop
-        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools_instance.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Add some feedback to the loop
@@ -270,10 +268,10 @@ class TestLoopFeedbackIntegration:
 
     @pytest.mark.asyncio
     async def test_get_loop_feedback_summary_insufficient_feedback(
-        self, loop_tools_instance: LoopTools, project_name: str
+        self, loop_tools_instance: LoopTools, plan_name: str
     ) -> None:
         # Initialize a loop
-        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools_instance.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Try to get improvement analysis with no feedback
@@ -286,10 +284,10 @@ class TestLoopFeedbackIntegration:
 
     @pytest.mark.asyncio
     async def test_get_loop_feedback_summary_with_history(
-        self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, project_name: str
+        self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, plan_name: str
     ) -> None:
         # Initialize a loop
-        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools_instance.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Add feedback with improvement
@@ -343,10 +341,10 @@ class TestLoopFeedbackIntegration:
 
     @pytest.mark.asyncio
     async def test_get_loop_feedback_summary_with_recurring_issues(
-        self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, project_name: str
+        self, loop_tools_instance: LoopTools, state_manager: InMemoryStateManager, plan_name: str
     ) -> None:
         # Initialize a loop
-        init_result = await loop_tools_instance.initialize_refinement_loop(project_name, 'phase')
+        init_result = await loop_tools_instance.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Add feedback with recurring issues

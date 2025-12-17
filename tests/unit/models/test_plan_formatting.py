@@ -1,16 +1,16 @@
-"""Format preservation tests for ProjectPlan model.
+"""Format preservation tests for Plan model.
 
 These tests verify that complex markdown formatting (bullet lists, code blocks,
 nested lists, etc.) is preserved through parse → build → parse cycles.
 """
 
 import pytest
-from src.models.project_plan import ProjectPlan
+from src.models.plan import Plan
 
 
 @pytest.fixture
-def project_plan_with_bullet_lists() -> str:
-    return """# Project Plan: Customer Portal Redesign
+def plan_with_bullet_lists() -> str:
+    return """# Plan Plan: Customer Portal Redesign
 
 ## Executive Summary
 
@@ -47,7 +47,7 @@ $400,000 total project cost
 - Customer feedback scores
 - Mobile vs desktop usage
 
-## Project Scope
+## Plan Scope
 
 ### Included Features
 - User dashboard redesign
@@ -76,7 +76,7 @@ $400,000 total project cost
 
 ## Stakeholders
 
-### Project Sponsor
+### Plan Sponsor
 Chief Technology Officer - Sarah Johnson, provides strategic direction
 
 ### Key Stakeholders
@@ -92,7 +92,7 @@ Chief Technology Officer - Sarah Johnson, provides strategic direction
 - Account managers
 - System administrators
 
-## Project Structure
+## Plan Structure
 
 ### Work Breakdown
 - Phase 1: Research & Design (2 months)
@@ -117,7 +117,7 @@ Sequential implementation phases:
 ## Resource Requirements
 
 ### Team Structure
-- 1 Project Manager
+- 1 Plan Manager
 - 2 Frontend Developers
 - 1 Backend Developer
 - 1 UI/UX Designer
@@ -200,8 +200,8 @@ active
 
 
 @pytest.fixture
-def project_plan_with_mixed_content() -> str:
-    return """# Project Plan: API Platform Development
+def plan_with_mixed_content() -> str:
+    return """# Plan Plan: API Platform Development
 
 ## Executive Summary
 
@@ -235,7 +235,7 @@ Key success indicators
 ### Key Performance Indicators
 Tracking metrics
 
-## Project Scope
+## Plan Scope
 
 ### Included Features
 Core platform capabilities:
@@ -257,7 +257,7 @@ Budget and timeline constraints
 
 ## Stakeholders
 
-### Project Sponsor
+### Plan Sponsor
 VP of Engineering
 
 ### Key Stakeholders
@@ -266,7 +266,7 @@ Engineering and product teams
 ### End Users
 External developers
 
-## Project Structure
+## Plan Structure
 
 ### Work Breakdown
 Phased implementation
@@ -317,29 +317,29 @@ draft
 """
 
 
-def test_bullet_list_content_preserved_in_objectives(project_plan_with_bullet_lists: str) -> None:
-    original_markdown = project_plan_with_bullet_lists
+def test_bullet_list_content_preserved_in_objectives(plan_with_bullet_lists: str) -> None:
+    original_markdown = plan_with_bullet_lists
 
-    plan = ProjectPlan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(original_markdown)
 
     assert 'Improve customer satisfaction scores by 30%' in plan.primary_objectives
     assert 'Reduce support tickets by 25%' in plan.primary_objectives
     assert 'Increase portal usage by 50%' in plan.primary_objectives
 
     rebuilt_markdown = plan.build_markdown()
-    reparsed_plan = ProjectPlan.parse_markdown(rebuilt_markdown)
+    reparsed_plan = Plan.parse_markdown(rebuilt_markdown)
 
     assert plan.primary_objectives == reparsed_plan.primary_objectives, (
         'Primary Objectives content changed during round-trip'
     )
 
 
-def test_bullet_list_content_preserved_in_success_metrics(project_plan_with_bullet_lists: str) -> None:
-    original_markdown = project_plan_with_bullet_lists
+def test_bullet_list_content_preserved_in_success_metrics(plan_with_bullet_lists: str) -> None:
+    original_markdown = plan_with_bullet_lists
 
-    plan = ProjectPlan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(original_markdown)
     rebuilt = plan.build_markdown()
-    reparsed = ProjectPlan.parse_markdown(rebuilt)
+    reparsed = Plan.parse_markdown(rebuilt)
 
     assert 'Customer satisfaction score >4.5/5' in plan.success_metrics
     assert 'Support ticket reduction >25%' in plan.success_metrics
@@ -348,12 +348,12 @@ def test_bullet_list_content_preserved_in_success_metrics(project_plan_with_bull
     assert plan.success_metrics == reparsed.success_metrics, 'Success Metrics content changed during round-trip'
 
 
-def test_bullet_list_content_preserved_in_included_features(project_plan_with_bullet_lists: str) -> None:
-    original_markdown = project_plan_with_bullet_lists
+def test_bullet_list_content_preserved_in_included_features(plan_with_bullet_lists: str) -> None:
+    original_markdown = plan_with_bullet_lists
 
-    plan = ProjectPlan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(original_markdown)
     rebuilt = plan.build_markdown()
-    reparsed = ProjectPlan.parse_markdown(rebuilt)
+    reparsed = Plan.parse_markdown(rebuilt)
 
     assert 'User dashboard redesign' in plan.included_features
     assert 'Mobile responsive design' in plan.included_features
@@ -362,12 +362,12 @@ def test_bullet_list_content_preserved_in_included_features(project_plan_with_bu
     assert plan.included_features == reparsed.included_features, 'Included Features content changed during round-trip'
 
 
-def test_mixed_content_format_preserved(project_plan_with_mixed_content: str) -> None:
-    original_markdown = project_plan_with_mixed_content
+def test_mixed_content_format_preserved(plan_with_mixed_content: str) -> None:
+    original_markdown = plan_with_mixed_content
 
-    plan = ProjectPlan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(original_markdown)
     rebuilt = plan.build_markdown()
-    reparsed = ProjectPlan.parse_markdown(rebuilt)
+    reparsed = Plan.parse_markdown(rebuilt)
 
     assert 'world-class API platform' in plan.project_vision
     assert 'REST and GraphQL protocols' in plan.project_vision
@@ -385,7 +385,7 @@ def test_mixed_content_format_preserved(project_plan_with_mixed_content: str) ->
 
 
 def test_plain_text_content_still_works() -> None:
-    markdown = """# Project Plan: Simple Project
+    markdown = """# Plan Plan: Simple Plan
 
 ## Executive Summary
 
@@ -418,27 +418,27 @@ On-time delivery
 active
 """
 
-    plan = ProjectPlan.parse_markdown(markdown)
+    plan = Plan.parse_markdown(markdown)
     rebuilt = plan.build_markdown()
-    reparsed = ProjectPlan.parse_markdown(rebuilt)
+    reparsed = Plan.parse_markdown(rebuilt)
 
     assert plan.primary_objectives == 'Deliver on time'
     assert plan.primary_objectives == reparsed.primary_objectives
 
 
-def test_character_for_character_round_trip(project_plan_with_bullet_lists: str) -> None:
-    original_markdown = project_plan_with_bullet_lists
+def test_character_for_character_round_trip(plan_with_bullet_lists: str) -> None:
+    original_markdown = plan_with_bullet_lists
 
-    first_parse = ProjectPlan.parse_markdown(original_markdown)
+    first_parse = Plan.parse_markdown(original_markdown)
     first_build = first_parse.build_markdown()
-    second_parse = ProjectPlan.parse_markdown(first_build)
+    second_parse = Plan.parse_markdown(first_build)
     second_build = second_parse.build_markdown()
 
     assert first_build == second_build, 'Markdown changed between first and second round-trip'
 
 
 def test_ordered_lists_preserved() -> None:
-    markdown_with_ordered_lists = """# Project Plan: Phased Implementation
+    markdown_with_ordered_lists = """# Plan Plan: Phased Implementation
 
 ## Executive Summary
 
@@ -469,7 +469,7 @@ $600,000
 ### Key Performance Indicators
 Milestone completion tracking
 
-## Project Scope
+## Plan Scope
 
 ### Included Features
 1. First feature: User authentication system
@@ -492,9 +492,9 @@ Project constraints
 draft
 """
 
-    plan = ProjectPlan.parse_markdown(markdown_with_ordered_lists)
+    plan = Plan.parse_markdown(markdown_with_ordered_lists)
     rebuilt = plan.build_markdown()
-    reparsed = ProjectPlan.parse_markdown(rebuilt)
+    reparsed = Plan.parse_markdown(rebuilt)
 
     assert 'Phase 1: Complete foundation' in plan.primary_objectives
     assert 'Phase 2: Deliver core features' in plan.primary_objectives
@@ -508,7 +508,7 @@ draft
 
 
 def test_nested_bullet_lists_preserved() -> None:
-    markdown_with_nested_lists = """# Project Plan: Complex Structure
+    markdown_with_nested_lists = """# Plan Plan: Complex Structure
 
 ## Executive Summary
 
@@ -542,7 +542,7 @@ Key metrics for tracking
 ### Key Performance Indicators
 Performance tracking
 
-## Project Scope
+## Plan Scope
 
 ### Included Features
 - Feature Category 1: Core Platform
@@ -567,9 +567,9 @@ Constraints
 draft
 """
 
-    plan = ProjectPlan.parse_markdown(markdown_with_nested_lists)
+    plan = Plan.parse_markdown(markdown_with_nested_lists)
     rebuilt = plan.build_markdown()
-    reparsed = ProjectPlan.parse_markdown(rebuilt)
+    reparsed = Plan.parse_markdown(rebuilt)
 
     assert 'Strategic Objective A: Market Expansion' in plan.primary_objectives
     assert 'Sub-goal A1: Enter EMEA market' in plan.primary_objectives

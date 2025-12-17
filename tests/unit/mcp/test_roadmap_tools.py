@@ -1,87 +1,118 @@
-from unittest.mock import MagicMock
-
 import pytest
 from fastmcp.exceptions import ResourceError, ToolError
-from pytest_mock import MockerFixture
 
 from src.mcp.tools.roadmap_tools import RoadmapTools
-from src.models.enums import RoadmapStatus
 from src.models.phase import Phase
 from src.models.roadmap import Roadmap
-from src.utils.state_manager import StateManager
+from src.utils.enums import LoopStatus
+from src.utils.loop_state import MCPResponse
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture
-def project_path() -> str:
-    return '/tmp/test-project'
+def state_manager() -> InMemoryStateManager:
+    return InMemoryStateManager()
 
 
-def create_test_roadmap_markdown(project_name: str) -> str:
-    return f"""# Project Roadmap: {project_name}
+@pytest.fixture
+def roadmap_tools(state_manager: InMemoryStateManager) -> RoadmapTools:
+    return RoadmapTools(state_manager)
 
-## Project Details
-- **Project Goal**: Build and deploy {project_name}
-- **Total Duration**: 6 months
-- **Team Size**: 5 developers
-- **Budget**: $100,000
+
+def create_test_roadmap_markdown(plan_name: str) -> str:
+    return f"""# Plan Roadmap: {plan_name}
+
+## Plan Details
+
+### Plan Goal
+Build and deploy {plan_name}
+
+### Total Duration
+6 months
+
+### Team Size
+5 developers
+
+### Budget
+$100,000
 
 ## Specifications
 
 
 ## Risk Assessment
-- **Critical Path Analysis**: Critical path analysis pending
-- **Key Risks**: Standard development risks
-- **Mitigation Plans**: Standard mitigation strategies
-- **Buffer Time**: 2 weeks
+
+### Critical Path Analysis
+Critical path analysis pending
+
+### Key Risks
+Standard development risks
+
+### Mitigation Plans
+Standard mitigation strategies
+
+### Buffer Time
+2 weeks
 
 ## Resource Planning
-- **Development Resources**: 5 developers, 1 PM
-- **Infrastructure Requirements**: AWS cloud infrastructure
-- **External Dependencies**: None identified
-- **Quality Assurance Plan**: Automated testing and manual QA
+
+### Development Resources
+5 developers, 1 PM
+
+### Infrastructure Requirements
+AWS cloud infrastructure
+
+### External Dependencies
+None identified
+
+### Quality Assurance Plan
+Automated testing and manual QA
 
 ## Success Metrics
-- **Technical Milestones**: Alpha, Beta, Production release
-- **Business Milestones**: User adoption targets
-- **Quality Gates**: Code review, testing, security review
-- **Performance Targets**: Sub-2s response times
+
+### Technical Milestones
+Alpha, Beta, Production release
+
+### Business Milestones
+User adoption targets
+
+### Quality Gates
+Code review, testing, security review
+
+### Performance Targets
+Sub-2s response times
 
 ## Metadata
-- **Status**: draft
-- **Created**: 2024-01-01
-- **Last Updated**: 2024-01-01
-- **Spec Count**: 0
+
+### Status
+draft
+
+### Created
+2024-01-01
+
+### Last Updated
+2024-01-01
+
+### Phase Count
+0
 """
 
 
-class TestRoadmapTools:
-    @pytest.fixture
-    def mock_state_manager(self, mocker: MockerFixture) -> MagicMock:
-        mock = mocker.Mock(spec=StateManager)
-        mock.mark_phases_inactive.return_value = 0  # Default: no phases to mark inactive
-        return mock
-
-    @pytest.fixture
-    def roadmap_tools(self, mock_state_manager: MagicMock) -> RoadmapTools:
-        return RoadmapTools(mock_state_manager)
-
-    @pytest.fixture
-    def valid_phase_markdown(self) -> str:
-        return """# Phase: User Authentication
+def create_test_phase_markdown(phase_name: str) -> str:
+    return f"""# Phase: {phase_name}
 
 ## Overview
 
 ### Objectives
-Implement secure user authentication system
+Implement {phase_name} functionality
 
 ### Scope
-Login, logout, session management
+Core {phase_name} features
 
 ### Dependencies
-Database setup, encryption library
+None
 
 ### Deliverables
-User login/logout endpoints, session management middleware
+Working {phase_name} implementation
 
 ## Metadata
 
@@ -98,90 +129,92 @@ draft
 Test Team
 """
 
-    @pytest.fixture
-    def malformed_phase_markdown(self) -> str:
-        return """# Some title
-        
-This is not properly formatted phase markdown.
-Missing required sections and structure.
-"""
 
-
-class TestCreateRoadmap(TestRoadmapTools):
+class TestRoadmapToolsStore:
     @pytest.mark.asyncio
-    async def test_create_roadmap_returns_success_message(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
+    async def test_store_creates_roadmap(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
     ) -> None:
-        mock_state_manager.store_roadmap.return_value = 'test-project'
+        key = 'test-project'
         roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
 
-        result = await roadmap_tools.create_roadmap('test-project', roadmap_markdown)
+        response = await roadmap_tools.store(key, roadmap_markdown)
 
-        assert isinstance(result, str)
-        assert 'Test Roadmap' in result
-        assert 'test-project' in result
-        assert 'Created roadmap' in result
+        assert isinstance(response, MCPResponse)
+        assert response.status == LoopStatus.COMPLETED
+        assert response.id == key
 
-    @pytest.mark.asyncio
-    async def test_create_roadmap_delegates_to_state_manager(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
-    ) -> None:
-        mock_state_manager.store_roadmap.return_value = 'project-123'
-        roadmap_markdown = create_test_roadmap_markdown('My Roadmap')
-
-        await roadmap_tools.create_roadmap('project-123', roadmap_markdown)
-
-        mock_state_manager.store_roadmap.assert_called_once()
-        call_args = mock_state_manager.store_roadmap.call_args
-        assert call_args[0][0] == 'project-123'  # project_name
-        assert isinstance(call_args[0][1], Roadmap)  # roadmap instance
-        assert call_args[0][1].project_name == 'My Roadmap'
+        assert key in state_manager._roadmaps
+        stored_roadmap = state_manager._roadmaps[key]
+        assert isinstance(stored_roadmap, Roadmap)
+        assert stored_roadmap.plan_name == 'Test Roadmap'
 
     @pytest.mark.asyncio
-    async def test_create_roadmap_raises_error_for_empty_project_name(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
-    ) -> None:
-        with pytest.raises(ToolError, match='Project name cannot be empty'):
-            await roadmap_tools.create_roadmap('', 'Test Roadmap')
+    async def test_store_validates_empty_key(self, roadmap_tools: RoadmapTools) -> None:
+        with pytest.raises(ToolError, match='Key and content cannot be empty'):
+            await roadmap_tools.store('', 'some content')
 
     @pytest.mark.asyncio
-    async def test_create_roadmap_raises_error_for_empty_roadmap_data(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
+    async def test_store_validates_empty_content(self, roadmap_tools: RoadmapTools) -> None:
+        with pytest.raises(ToolError, match='Key and content cannot be empty'):
+            await roadmap_tools.store('test-project', '')
+
+    @pytest.mark.asyncio
+    async def test_store_handles_roadmap_with_phases(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
     ) -> None:
-        with pytest.raises(ToolError, match='Roadmap data cannot be empty'):
-            await roadmap_tools.create_roadmap('test-project', '')
+        key = 'test-project'
+        roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
+        phase1_markdown = create_test_phase_markdown('authentication')
+        phase2_markdown = create_test_phase_markdown('authorization')
+
+        combined_markdown = roadmap_markdown + '\n' + phase1_markdown + '\n' + phase2_markdown
+
+        response = await roadmap_tools.store(key, combined_markdown)
+
+        assert isinstance(response, MCPResponse)
+        assert response.id == key
+
+        assert key in state_manager._roadmaps
+        assert key in state_manager._phases
+        assert len(state_manager._phases[key]) == 2
 
     @pytest.mark.parametrize(
-        'project_name,roadmap_name',
+        'key,roadmap_name',
         [
             ('simple-project', 'Simple Roadmap'),
-            ('project-with-special-chars!@#', 'Roadmap with émojis 🚀'),
+            ('project-with-special-chars', 'Roadmap with émojis 🚀'),
             ('very-long-project-id-' + 'x' * 50, 'Long name test'),
         ],
     )
     @pytest.mark.asyncio
-    async def test_create_roadmap_handles_various_inputs(
+    async def test_store_handles_various_inputs(
         self,
         roadmap_tools: RoadmapTools,
-        mock_state_manager: MagicMock,
-        project_name: str,
+        state_manager: InMemoryStateManager,
+        key: str,
         roadmap_name: str,
     ) -> None:
-        mock_state_manager.store_roadmap.return_value = project_name
         roadmap_markdown = create_test_roadmap_markdown(roadmap_name)
 
-        result = await roadmap_tools.create_roadmap(project_name, roadmap_markdown)
+        response = await roadmap_tools.store(key, roadmap_markdown)
 
-        assert isinstance(result, str)
-        assert roadmap_name in result
+        assert isinstance(response, MCPResponse)
+        assert key in state_manager._roadmaps
+        stored_roadmap = state_manager._roadmaps[key]
+        assert stored_roadmap.plan_name == roadmap_name
 
 
-class TestGetRoadmap(TestRoadmapTools):
+class TestRoadmapToolsGet:
     @pytest.mark.asyncio
-    async def test_get_roadmap_returns_success_with_phase_count(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
+    async def test_get_returns_roadmap_with_phases(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
     ) -> None:
-        mock_phases = [
+        key = 'test-project'
+        roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
+        await roadmap_tools.store(key, roadmap_markdown)
+
+        phases = [
             Phase(
                 phase_name='phase1',
                 objectives='Test objectives 1',
@@ -196,88 +229,101 @@ class TestGetRoadmap(TestRoadmapTools):
                 dependencies='Test deps 2',
                 deliverables='Test deliverables 2',
             ),
-            Phase(
-                phase_name='phase3',
-                objectives='Test objectives 3',
-                scope='Test scope 3',
-                dependencies='Test deps 3',
-                deliverables='Test deliverables 3',
-            ),
         ]
 
-        mock_roadmap = Roadmap(
-            project_name='Test Roadmap',
-            project_goal='Test goal',
-            total_duration='6 months',
-            team_size='5 developers',
-            roadmap_budget='$100k',
-            critical_path_analysis='Test analysis',
-            key_risks='Test risks',
-            mitigation_plans='Test plans',
-            buffer_time='1 week',
-            development_resources='Test resources',
-            infrastructure_requirements='Test infrastructure',
-            external_dependencies='Test dependencies',
-            quality_assurance_plan='Test QA',
-            technical_milestones='Test milestones',
-            business_milestones='Test business',
-            quality_gates='Test gates',
-            performance_targets='Test performance',
-            roadmap_status=RoadmapStatus.DRAFT,
-        )
-        mock_state_manager.get_roadmap.return_value = mock_roadmap
-        mock_state_manager.get_roadmap_phases.return_value = mock_phases
+        for phase in phases:
+            await state_manager.store_phase(key, phase)
 
-        result = await roadmap_tools.get_roadmap('test-project')
+        response = await roadmap_tools.get(key=key)
 
-        assert isinstance(result, str)
-        assert 'Test Roadmap' in result
-        # Check for full Phase content (not summary list)
-        assert '# Phase: phase1' in result
-        assert '# Phase: phase2' in result
-        assert '# Phase: phase3' in result
+        assert isinstance(response, MCPResponse)
+        assert response.status == LoopStatus.COMPLETED
+        assert response.id == key
+        assert 'Test Roadmap' in response.message
+        assert '# Phase: phase1' in response.message
+        assert '# Phase: phase2' in response.message
 
     @pytest.mark.asyncio
-    async def test_get_roadmap_raises_error_when_not_found(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
-    ) -> None:
-        mock_state_manager.get_roadmap.side_effect = Exception('Not found')
-
-        with pytest.raises(ResourceError, match='Roadmap not found for project non-existent-project'):
-            await roadmap_tools.get_roadmap('non-existent-project')
+    async def test_get_raises_error_when_not_found(self, roadmap_tools: RoadmapTools) -> None:
+        with pytest.raises(ResourceError, match='Roadmap not found'):
+            await roadmap_tools.get(key='non-existent-project')
 
     @pytest.mark.asyncio
-    async def test_get_roadmap_handles_empty_roadmap(
-        self, roadmap_tools: RoadmapTools, mock_state_manager: MagicMock
+    async def test_get_requires_key(self, roadmap_tools: RoadmapTools) -> None:
+        with pytest.raises(ToolError, match='Key is required for roadmaps'):
+            await roadmap_tools.get(key=None)
+
+    @pytest.mark.asyncio
+    async def test_get_rejects_loop_id(self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager) -> None:
+        key = 'test-project'
+        roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
+        await roadmap_tools.store(key, roadmap_markdown)
+
+        with pytest.raises(ToolError, match='Roadmaps do not support loop-based retrieval'):
+            await roadmap_tools.get(key=key, loop_id='a1b2c3d4')
+
+    @pytest.mark.asyncio
+    async def test_get_handles_empty_phases(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
     ) -> None:
-        mock_roadmap = Roadmap(
-            project_name='Empty Roadmap',
-            project_goal='Test goal',
-            total_duration='6 months',
-            team_size='5 developers',
-            roadmap_budget='$100k',
-            critical_path_analysis='Test analysis',
-            key_risks='Test risks',
-            mitigation_plans='Test plans',
-            buffer_time='1 week',
-            development_resources='Test resources',
-            infrastructure_requirements='Test infrastructure',
-            external_dependencies='Test dependencies',
-            quality_assurance_plan='Test QA',
-            technical_milestones='Test milestones',
-            business_milestones='Test business',
-            quality_gates='Test gates',
-            performance_targets='Test performance',
-            roadmap_status=RoadmapStatus.DRAFT,
-        )
-        mock_state_manager.get_roadmap.return_value = mock_roadmap
-        mock_state_manager.get_roadmap_phases.return_value = []
+        key = 'empty-project'
+        roadmap_markdown = create_test_roadmap_markdown('Empty Roadmap')
+        await roadmap_tools.store(key, roadmap_markdown)
 
-        result = await roadmap_tools.get_roadmap('empty-project')
+        response = await roadmap_tools.get(key=key)
 
-        assert isinstance(result, str)
-        # For empty phases list, no Phase sections should be present
-        assert '# Phase:' not in result
-        # Metadata should still be present
-        assert '## Metadata' in result
-        assert '### Phase Count\n0' in result
+        assert isinstance(response, MCPResponse)
+        assert '# Phase:' not in response.message
+        assert '## Metadata' in response.message
+
+
+class TestRoadmapToolsList:
+    @pytest.mark.asyncio
+    async def test_list_returns_not_implemented(self, roadmap_tools: RoadmapTools) -> None:
+        response = await roadmap_tools.list()
+
+        assert isinstance(response, MCPResponse)
+        assert response.status == LoopStatus.COMPLETED
+        assert 'not yet implemented' in response.message.lower()
+
+
+class TestRoadmapToolsUpdate:
+    @pytest.mark.asyncio
+    async def test_update_delegates_to_store(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
+    ) -> None:
+        key = 'test-project'
+        roadmap_markdown = create_test_roadmap_markdown('Original Roadmap')
+        await roadmap_tools.store(key, roadmap_markdown)
+
+        updated_markdown = create_test_roadmap_markdown('Updated Roadmap')
+        response = await roadmap_tools.update(key, updated_markdown)
+
+        assert isinstance(response, MCPResponse)
+        assert response.id == key
+
+        stored_roadmap = state_manager._roadmaps[key]
+        assert stored_roadmap.plan_name == 'Updated Roadmap'
+
+
+class TestRoadmapToolsDelete:
+    @pytest.mark.asyncio
+    async def test_delete_returns_not_implemented(self, roadmap_tools: RoadmapTools) -> None:
+        response = await roadmap_tools.delete('test-project')
+
+        assert isinstance(response, MCPResponse)
+        assert response.status == LoopStatus.COMPLETED
+        assert 'not yet implemented' in response.message.lower()
+
+
+class TestRoadmapToolsLinkLoop:
+    @pytest.mark.asyncio
+    async def test_link_loop_raises_error(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
+    ) -> None:
+        key = 'test-project'
+        roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
+        await roadmap_tools.store(key, roadmap_markdown)
+
+        with pytest.raises(ToolError, match='Roadmaps do not support loop linking'):
+            await roadmap_tools.link_loop('a1b2c3d4', key)

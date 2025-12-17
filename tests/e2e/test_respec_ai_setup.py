@@ -18,7 +18,7 @@ class TestRespecAISetupEndToEnd:
                 'init',
                 '--platform',
                 'linear',
-                '--project-name',
+                '--plan-name',
                 'test-project',
                 '--skip-mcp-registration',
             ],
@@ -37,7 +37,7 @@ class TestRespecAISetupEndToEnd:
 
         config_data = json.loads((project_path / '.respec-ai' / 'config.json').read_text())
         assert config_data['platform'] == 'linear'
-        assert config_data['project_name'] == 'test-project'
+        assert config_data['plan_name'] == 'test-project'
 
     def test_full_github_project_setup_workflow(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'
@@ -51,7 +51,7 @@ class TestRespecAISetupEndToEnd:
                 'init',
                 '--platform',
                 'github',
-                '--project-name',
+                '--plan-name',
                 'test-project',
                 '--skip-mcp-registration',
             ],
@@ -66,7 +66,7 @@ class TestRespecAISetupEndToEnd:
 
         config_data = json.loads((project_path / '.respec-ai' / 'config.json').read_text())
         assert config_data['platform'] == 'github'
-        assert config_data['project_name'] == 'test-project'
+        assert config_data['plan_name'] == 'test-project'
 
     def test_full_markdown_project_setup_workflow(self, tmp_path: Path) -> None:
         project_path = tmp_path / 'test_project'
@@ -80,7 +80,7 @@ class TestRespecAISetupEndToEnd:
                 'init',
                 '--platform',
                 'markdown',
-                '--project-name',
+                '--plan-name',
                 'test-project',
                 '--skip-mcp-registration',
             ],
@@ -95,7 +95,7 @@ class TestRespecAISetupEndToEnd:
 
         config_data = json.loads((project_path / '.respec-ai' / 'config.json').read_text())
         assert config_data['platform'] == 'markdown'
-        assert config_data['project_name'] == 'test-project'
+        assert config_data['plan_name'] == 'test-project'
 
     def test_command_templates_contain_platform_phaseific_tools(self, tmp_path: Path) -> None:
         for platform in ['linear', 'github', 'markdown']:
@@ -110,7 +110,7 @@ class TestRespecAISetupEndToEnd:
                     'init',
                     '--platform',
                     platform,
-                    '--project-name',
+                    '--plan-name',
                     'test-project',
                     '--skip-mcp-registration',
                 ],
@@ -144,7 +144,7 @@ class TestRespecAISetupEndToEnd:
                     'init',
                     '--platform',
                     platform,
-                    '--project-name',
+                    '--plan-name',
                     'test-project',
                     '--skip-mcp-registration',
                 ],
@@ -177,7 +177,7 @@ class TestRespecAISetupEndToEnd:
                 'init',
                 '--platform',
                 'linear',
-                '--project-name',
+                '--plan-name',
                 'test-project',
                 '--skip-mcp-registration',
             ],
@@ -192,6 +192,6 @@ class TestRespecAISetupEndToEnd:
         config_data = json.loads(config_file_path.read_text())
 
         assert config_data['platform'] == 'linear'
-        assert config_data['project_name'] == 'test-project'
+        assert config_data['plan_name'] == 'test-project'
         assert 'created_at' in config_data
         assert config_data['version'] == get_package_version()

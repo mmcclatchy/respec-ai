@@ -18,7 +18,7 @@ def format_project_config_table(
     Args:
         project_path: Path to project directory
         platform: Platform name (linear, github, markdown)
-        version: Project config version
+        version: Plan config version
         package_version: Installed package version
         mcp_registered: Whether MCP server is registered
 

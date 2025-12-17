@@ -12,7 +12,7 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Target Project                               │
+│                    Target Plan                               │
 │                 (receives generated tools)                      │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │  .claude/commands/     │  .claude/agents/               │   │
@@ -24,7 +24,7 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
 ┌─────────────────────┴───────────────────────────────────────────┐
-│              respec-ai MCP Server (This Project)                │
+│              respec-ai MCP Server (This Plan)                │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │          Platform Orchestrator (11 files)                │   │
 │  │  • Platform Selection (Linear/GitHub/Markdown)           │   │
@@ -68,10 +68,10 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 #### Component Responsibilities
 
 **platform_orchestrator.py** - Main orchestration interface
-- Project setup with platform selection
+- Plan setup with platform selection
 - Template generation coordination
 - Platform tool retrieval
-- Project information queries
+- Plan information queries
 
 **platform_selector.py** - Platform selection logic
 - Capability-based platform recommendations
@@ -130,7 +130,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
     'update_phase_tool': 'mcp__linear-server__update_issue',
     'comment_phase_tool': 'mcp__linear-server__create_comment',
     'create_project_external': 'mcp__linear-server__create_project',
-    'get_project_plan_tool': 'mcp__linear-server__get_project'
+    'get_plan_tool': 'mcp__linear-server__get_project'
 }
 
 # GitHub Platform
@@ -147,7 +147,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
     'get_phase_tool': 'Read(.respec-ai/plans/*/phases/*.md)',
     'update_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
     'comment_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
-    'create_project_external': 'Write(.respec-ai/plans/*/project_plan.md)'
+    'create_project_external': 'Write(.respec-ai/plans/*/plan.md)'
 }
 ```
 
@@ -265,7 +265,7 @@ class CommandStrategy[T](ABC):
 
 # 5 concrete strategies:
 # - PlanCommandStrategy
-# - SpecCommandStrategy
+# - PhaseCommandStrategy
 # - BuildCommandStrategy
 # - PlanRoadmapCommandStrategy
 # - PlanConversationCommandStrategy
@@ -282,7 +282,7 @@ class CommandStrategy[T](ABC):
 **Type-safe parameter passing** using structured tool models:
 
 ```python
-class SpecCommandTools(BaseModel):
+class PhaseCommandTools(BaseModel):
     tools_yaml: str
     create_phase_tool: str
     get_phase_tool: str
@@ -290,7 +290,7 @@ class SpecCommandTools(BaseModel):
     comment_phase_tool: str
 
 # Template functions use single tools parameter:
-def generate_phase_command_template(tools: SpecCommandTools) -> str
+def generate_phase_command_template(tools: PhaseCommandTools) -> str
 ```
 
 ## MCP Tools
@@ -304,7 +304,7 @@ def generate_phase_command_template(tools: SpecCommandTools) -> str
 3. **Plan Completion** (6 tools) - Completion reporting
 4. **Roadmap Management** (2 tools) - Roadmap operations
 5. **Project Planning** (5 tools) - High-level project management
-6. **Technical Specs** (4 tools) - Specification management
+6. **Technical Phases** (4 tools) - Specification management
 7. **Build Planning** (4 tools) - Implementation planning
 
 ### Tool Categories
@@ -370,14 +370,14 @@ class MCPModel(BaseModel, ABC):
 
 **Production-ready models** with 133 total fields:
 
-1. **ProjectPlan** (31 fields) - Strategic planning
+1. **Plan** (31 fields) - Strategic planning
 2. **FeatureRequirements** (19 fields) - Technical translation
 3. **Task** (18 fields) - Implementation planning
 4. **Roadmap** (20 fields) - Phase management
 5. **Phase** (17 fields) - Technical design
 6. **PlanCompletionReport** (12 fields) - Completion docs
 7. **CriticFeedback** (9 fields) - Quality feedback
-8. **InitialSpec** (7 fields) - Initial scaffolding
+8. **InitialPhase** (7 fields) - Initial scaffolding
 
 ## Deployment System
 
@@ -396,7 +396,7 @@ cd /path/to/your/project
 ~/coding/projects/respec-ai/scripts/install-respec-ai.sh --platform linear
 ```
 
-### Project Setup Workflow
+### Plan Setup Workflow
 
 **Direct Installation:**
 - Script generates all workflow files directly using CLI
@@ -417,7 +417,7 @@ cd /path/to/your/project
 
 ## Directory Structure
 
-### Project-Level Structure
+### Plan-Level Structure
 
 ```text
 project/
@@ -442,8 +442,8 @@ project/
 └── .respec-ai/
     ├── config.json                # Platform configuration
     └── projects/                  # Markdown platform only
-        └── [project-name]/
-            ├── project_plan.md
+        └── [plan-name]/
+            ├── plan.md
             ├── project_completion.md
             └── phases/     # Specifications
 ```
@@ -484,7 +484,7 @@ project/
 
 **Full issue tracking integration:**
 - Issues (specs/tickets)
-- Projects (strategic plans)
+- Plans (strategic plans)
 - Comments (feedback/discussion)
 - Labels (categorization)
 - Cycles (sprint planning)
@@ -493,7 +493,7 @@ project/
 
 **Issue-based workflow:**
 - Issues (specs/tickets)
-- Projects (project boards)
+- Plans (project boards)
 - Comments (feedback)
 - Labels (categorization)
 - Milestones (phases)

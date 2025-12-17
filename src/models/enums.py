@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ProjectStatus(str, Enum):
+class PlanStatus(str, Enum):
     DRAFT = 'draft'
     IN_REVIEW = 'in-review'
     APPROVED = 'approved'
@@ -70,6 +70,13 @@ class CriticAgent(str, Enum):
 
 
 class DocumentType(str, Enum):
+    PLAN = 'plan'
+    ROADMAP = 'roadmap'
     PHASE = 'phase'
     TASK = 'task'
+    TASK_BREAKDOWN = 'task_breakdown'  # Deprecated: use TASK (kept for backwards compat)
     COMPLETION_REPORT = 'completion_report'
+
+    @property
+    def quoted(self) -> str:
+        return f'"{self.value}"'

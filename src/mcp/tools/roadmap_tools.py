@@ -1,91 +1,77 @@
-from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
+from src.mcp.tools.base import DocumentToolsInterface
 from src.models.phase import Phase
 from src.models.roadmap import Roadmap
-from src.shared import state_manager
-from src.utils.state_manager import StateManager
+from src.utils.enums import LoopStatus
+from src.utils.loop_state import MCPResponse
 
 
-class RoadmapTools:
-    def __init__(self, state: StateManager) -> None:
-        self.state = state
-
-    async def create_roadmap(self, project_name: str, roadmap_data: str) -> str:
-        if not project_name:
-            raise ToolError('Project name cannot be empty')
-        if not roadmap_data:
-            raise ToolError('Roadmap data cannot be empty')
+class RoadmapTools(DocumentToolsInterface):
+    async def store(self, key: str, content: str) -> MCPResponse:
+        if not key or not content:
+            raise ToolError('Key and content cannot be empty')
 
         try:
-            phase_blocks = roadmap_data.split('# Phase:')
+            phase_blocks = content.split('# Phase:')
             roadmap_metadata = phase_blocks[0]
 
             roadmap = Roadmap.parse_markdown(roadmap_metadata)
-            await self.state.store_roadmap(project_name, roadmap)
+            await self.state.store_roadmap(key, roadmap)
 
             # Mark existing phases as inactive before storing new ones
-            inactive_count = await self.state.mark_phases_inactive(project_name)
-            if inactive_count > 0:
-                print(f'Marked {inactive_count} existing phases as inactive')
+            await self.state.mark_phases_inactive(key)
 
             # Parse and store each phase individually
             phases = []
-            for i, phase_block in enumerate(phase_blocks[1:], 1):
+            for phase_block in phase_blocks[1:]:
                 phase_markdown = f'# Phase:{phase_block}'
                 phase = Phase.parse_markdown(phase_markdown)
                 phases.append(phase)
-                await self.state.store_phase(project_name, phase)
+                await self.state.store_phase(key, phase)
 
-            return f'Created roadmap "{roadmap.project_name}" with {len(phases)} phases for project {project_name}'
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=key)
         except Exception as e:
-            raise ToolError(f'Failed to create roadmap: {str(e)}')
+            raise ToolError(f'Failed to store roadmap: {str(e)}')
 
-    async def get_roadmap(self, project_name: str) -> str:
-        if not project_name:
-            raise ToolError('Project name cannot be empty')
+    async def get(self, key: str | None = None, loop_id: str | None = None) -> MCPResponse:
+        if not key:
+            raise ToolError('Key is required for roadmaps')
+
+        if loop_id:
+            raise ToolError('Roadmaps do not support loop-based retrieval')
 
         try:
-            roadmap = await self.state.get_roadmap(project_name)
-            phases = await self.state.get_roadmap_phases(project_name)
-            return roadmap.build_markdown(phases)
+            roadmap = await self.state.get_roadmap(key)
+            phases = await self.state.get_roadmap_phases(key)
+            markdown = roadmap.build_markdown(phases)
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=markdown, char_length=len(markdown))
         except Exception as e:
-            raise ResourceError(f'Roadmap not found for project {project_name}: {str(e)}')
+            raise ResourceError(f'Roadmap not found for project {key}: {str(e)}')
 
+    async def list(self, parent_key: str | None = None) -> MCPResponse:
+        try:
+            # Note: StateManager doesn't have list_roadmaps method, so we'll return empty
+            # This can be implemented if needed
+            return MCPResponse(id='roadmap', status=LoopStatus.COMPLETED, message='Roadmap listing not yet implemented')
+        except Exception as e:
+            raise ToolError(f'Failed to list roadmaps: {str(e)}')
 
-def register_roadmap_tools(mcp: FastMCP) -> None:
-    roadmap_tools = RoadmapTools(state_manager)
+    async def update(self, key: str, content: str) -> MCPResponse:
+        return await self.store(key, content)
 
-    @mcp.tool()
-    async def create_roadmap(project_name: str, roadmap_data: str, ctx: Context) -> str:
-        """Create a new roadmap for a project.
+    async def delete(self, key: str) -> MCPResponse:
+        if not key:
+            raise ToolError('Key cannot be empty')
 
-        Parameters:
-        - project_name: Name for this project
-        - roadmap_data: Complete roadmap markdown content including all Phase sections
+        try:
+            # Note: StateManager doesn't have delete_roadmap method
+            # For now, we'll return a placeholder response
+            return MCPResponse(
+                id=key, status=LoopStatus.COMPLETED, message=f'Roadmap deletion not yet implemented for {key}'
+            )
+        except Exception as e:
+            raise ToolError(f'Failed to delete roadmap: {str(e)}')
 
-        Returns:
-        - str: Confirmation message
-        """
-        await ctx.info(f'Creating roadmap for project: {project_name}')
-        result = await roadmap_tools.create_roadmap(project_name, roadmap_data)
-        await ctx.info(f'Created roadmap for project: {project_name}')
-        return result
-
-    @mcp.tool()
-    async def get_roadmap(project_name: str, ctx: Context) -> str:
-        """Retrieve roadmap as markdown.
-
-        Parameters:
-        - project_name: Name of the project
-
-        Returns:
-        - str: Roadmap markdown
-        """
-        await ctx.info(f'Getting roadmap for project: {project_name}')
-        result = await roadmap_tools.get_roadmap(project_name)
-        await ctx.info(f'Got roadmap for project: {project_name}')
-        return result
-
-
-roadmap_tools = RoadmapTools(state_manager)
+    async def link_loop(self, loop_id: str, key: str) -> MCPResponse:
+        raise ToolError('Roadmaps do not support loop linking')

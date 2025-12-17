@@ -4,7 +4,7 @@ from src.platform.models import CodeCommandTools
 def generate_code_command_template(tools: CodeCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [project-name] [phase-name]
+argument-hint: [plan-name] [phase-name]
 description: Transform Phases into production-ready code through parallel research, implementation planning, and TDD development
 ---
 
@@ -24,53 +24,53 @@ Parse command arguments and locate phase file using partial name:
 #### Step 1.1: Parse arguments
 
 ```text
-PROJECT_NAME = [first argument from command - the project name]
+PLAN_NAME = [first argument from command - the project name]
 PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 ```
 
 #### Step 1.2: Search file system for matching phase files
 
 ```text
-SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PROJECT_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
-SPEC_FILE_MATCHES = Glob(pattern=SPEC_GLOB_PATTERN)
+SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
+SPEC_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
 ```
 
 #### Step 1.3: Handle multiple matches
 
 ```text
 IF count(SPEC_FILE_MATCHES) == 0:
-  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PROJECT_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PROJECT_NAME}}/phases/"
+  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PLAN_NAME}}"
+  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PLAN_NAME}}/phases/"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
-  SPEC_FILE_PATH = SPEC_FILE_MATCHES[0]
+  PHASE_FILE_PATH = PHASE_FILE_MATCHES[0]
 
 ELSE:
   (Multiple matches - use interactive selection)
   Use AskUserQuestion tool to present options:
     Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
-    Header: "Select Spec"
+    Header: "Select Phase"
     multiSelect: false
     Options: [
       {{
-        "label": "{{SPEC_FILE_MATCHES[0]}}",
-        "description": "Use: {{SPEC_FILE_MATCHES[0]}}"
+        "label": "{{PHASE_FILE_MATCHES[0]}}",
+        "description": "Use: {{PHASE_FILE_MATCHES[0]}}"
       }},
       {{
-        "label": "{{SPEC_FILE_MATCHES[1]}}",
-        "description": "Use: {{SPEC_FILE_MATCHES[1]}}"
+        "label": "{{PHASE_FILE_MATCHES[1]}}",
+        "description": "Use: {{PHASE_FILE_MATCHES[1]}}"
       }},
       ... for all matches
     ]
 
-  SPEC_FILE_PATH = [selected file path from AskUserQuestion response]
+  PHASE_FILE_PATH = [selected file path from AskUserQuestion response]
 ```
 
 #### Step 1.4: Extract canonical name from file path
 
 ```text
-PHASE_NAME = [basename of SPEC_FILE_PATH without .md extension]
+PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
 
 Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 ```
@@ -78,7 +78,7 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 **Important**:
 - PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
 - PHASE_NAME is the canonical name extracted from file path
-- PROJECT_NAME is used for all MCP storage operations
+- PLAN_NAME is used for all MCP storage operations
 - All subsequent operations use PHASE_NAME (canonical)
 
 ### 2. Load and Store Existing Spec
@@ -88,7 +88,7 @@ Load phase from file system, store in MCP:
 #### Step 2.1: Read phase using canonical name
 
 ```text
-PHASE_MARKDOWN = Read({{SPEC_FILE_PATH}})
+PHASE_MARKDOWN = Read({{PHASE_FILE_PATH}})
 ```
 
 #### Step 2.2: Store in MCP using canonical phase name
@@ -100,7 +100,7 @@ Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
 ```
 
 **Important**:
-- SPEC_FILE_PATH is the full path from Step 1
+- PHASE_FILE_PATH is the full path from Step 1
 - PHASE_NAME is the canonical name extracted from file path
 - Phase is now in MCP storage for build workflow
 
@@ -114,7 +114,7 @@ Retrieve and validate completed Phase from /respec-phase command:
 TECHNICAL_PHASE = {tools.get_phase_document}
 IF TECHNICAL_PHASE not found:
   ERROR: "No Phase found: [PHASE_NAME]"
-  SUGGEST: "Run '/respec-phase [PROJECT_NAME] [PHASE_NAME]' to create Phase first"
+  SUGGEST: "Run '/respec-phase [PLAN_NAME] [PHASE_NAME]' to create Phase first"
   EXIT: Graceful failure with guidance
 
 SPEC_OBJECTIVES = [Extract from Phase Objectives section]
@@ -168,7 +168,7 @@ State to maintain:
 Invoke task-planner agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
 - research_file_paths: {{COMPLETE_DOCUMENTATION_PATHS}}
-- project_name: {{PROJECT_NAME}}
+- plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
@@ -189,7 +189,7 @@ Expected: Phase stored in MCP with planning_loop_id
 ```text
 Invoke task-critic agent with:
 - planning_loop_id: {{PLANNING_LOOP_ID}}
-- project_name: {{PROJECT_NAME}}
+- plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
@@ -273,10 +273,10 @@ IF PHASE_MARKDOWN contains "## Architectural Override Proposals" section:
     Build workflow paused until Phase updated.
 
     To approve and update:
-      /respec-phase {{PROJECT_NAME}} {{PHASE_NAME}} \"[your instructions based on proposal]\"
+      /respec-phase {{PLAN_NAME}} {{PHASE_NAME}} \"[your instructions based on proposal]\"
 
     To reject and proceed with current phase:
-      Re-run /respec-code {{PROJECT_NAME}} {{PHASE_NAME}} --ignore-overrides"
+      Re-run /respec-code {{PLAN_NAME}} {{PHASE_NAME}} --ignore-overrides"
 
     EXIT: Workflow suspended pending user decision
   ELSE:
@@ -327,7 +327,7 @@ State to maintain (CRITICAL - TWO loop IDs):
 Invoke task-coder agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
-- project_name: {{PROJECT_NAME}}
+- plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
@@ -357,7 +357,7 @@ Expected: Code implementation committed, platform status updated
 Invoke task-reviewer agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
-- project_name: {{PROJECT_NAME}}
+- plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
@@ -518,7 +518,7 @@ Note: Loop decisions determined by MCP Server based on scoring and configuration
 #### Phase Not Available
 ```text
 Display: "No Phase found: [PHASE_NAME]"
-Suggest: "/respec-phase [PROJECT_NAME] [PHASE_NAME] to create Phase"
+Suggest: "/respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
 Exit gracefully with guidance
 ```
 

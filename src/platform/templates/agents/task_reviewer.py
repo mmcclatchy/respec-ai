@@ -1,4 +1,75 @@
+from textwrap import indent
+
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
 from src.platform.models import TaskReviewerAgentTools
+
+
+task_reviewer_feedback_template = CriticFeedback(
+    loop_id='[coding_loop_id from input]',
+    critic_agent=CriticAgent.TASK_REVIEWER,
+    iteration=0,
+    overall_score=0,
+    assessment_summary='[2-3 sentence summary of code quality and production readiness]',
+    detailed_feedback="""### Test Execution Results
+
+#### Tests Passing (Score: X/30)
+- Total Tests: [count]
+- Passing: [count]
+- Failing: [count]
+- Test Command: pytest --tb=short -v
+- **Test Output Summary**: [Brief summary of test results]
+- **Failed Tests** (if any):
+  - test_module.py::test_function: [failure reason]
+  - [additional failures]
+
+#### Type Checking (Score: X/15)
+- MyPy Command: mypy src/
+- Total Errors: [count]
+- **Type Errors** (if any):
+  - src/module.py:42: [error description]
+  - [additional errors]
+
+#### Linting (Score: X/10)
+- Ruff Command: ruff check src/ tests/
+- Total Issues: [count]
+- **Linting Issues** (if any):
+  - src/module.py:15: [issue description]
+  - [additional issues]
+
+#### Test Coverage (Score: X/15)
+- Coverage Percentage: [X]%
+- Coverage Command: pytest --cov=services --cov-report=term-missing
+- **Uncovered Lines**: [list critical uncovered code paths]
+
+### Code Quality Analysis
+
+#### Phase Alignment (Score: X/15)
+[Detailed analysis of how implementation matches Phase]
+- **File Structure**: [matches/deviates from Phase]
+- **Feature Implementation**: [completeness assessment]
+- **Architecture Adherence**: [alignment with Phase architecture]
+
+#### Phase Requirements (Score: X/15)
+[Analysis of how code addresses Phase objectives]
+- **Objectives Coverage**: [X/Y objectives implemented]
+- **Scope Adherence**: [within scope / scope creep detected]
+- **Technical Constraints**: [satisfied / violated]
+
+### Progress Notes
+[Analysis of improvement from previous iteration if applicable]
+[Stagnation warning if score improved <5 points from previous iteration]""",
+    key_issues=[
+        '**[Specific Issue 1]**: [Detailed description with file/line references]',
+        '**[Specific Issue 2]**: [Detailed description with file/line references]',
+        '**[Specific Issue N]**: [Detailed description with file/line references]',
+    ],
+    recommendations=[
+        '**[Priority 1]**: [Specific actionable fix with expected point improvement]',
+        '**[Priority 2]**: [Specific actionable fix with expected point improvement]',
+        '**[Priority N]**: [Specific actionable fix with expected point improvement]',
+    ],
+).build_markdown()
 
 
 def generate_task_reviewer_template(tools: TaskReviewerAgentTools) -> str:
@@ -16,7 +87,7 @@ You are a code quality reviewer focused on evaluating implementation quality aga
 INPUTS: Dual loop context for code assessment
 - coding_loop_id: Loop identifier for code feedback storage
 - planning_loop_id: Loop identifier for Phase retrieval (CRITICAL - different from coding_loop_id)
-- project_name: Project name for phase retrieval (from .respec-ai/config.json, passed by orchestrating command)
+- plan_name: Plan name for phase retrieval (from .respec-ai/config.json, passed by orchestrating command)
 - phase_name: Phase name for retrieval
 
 WORKFLOW: Code Assessment → CriticFeedback
@@ -216,75 +287,10 @@ Loop decisions made by MCP Server based on configuration.
 
 ## CRITIC FEEDBACK OUTPUT FORMAT
 
-Generate feedback in this exact markdown structure:
+Generate feedback in CriticFeedback format:
 
 ```markdown
-## Code Review Assessment
-
-### Overall Score
-[Numeric score 0-100]
-
-### Assessment Summary
-[2-3 sentence summary of code quality and production readiness]
-
-### Test Execution Results
-
-#### Tests Passing (Score: X/30)
-- Total Tests: [count]
-- Passing: [count]
-- Failing: [count]
-- Test Command: pytest --tb=short -v
-- **Test Output Summary**: [Brief summary of test results]
-- **Failed Tests** (if any):
-  - test_module.py::test_function: [failure reason]
-  - [additional failures]
-
-#### Type Checking (Score: X/15)
-- MyPy Command: mypy src/
-- Total Errors: [count]
-- **Type Errors** (if any):
-  - src/module.py:42: [error description]
-  - [additional errors]
-
-#### Linting (Score: X/10)
-- Ruff Command: ruff check src/ tests/
-- Total Issues: [count]
-- **Linting Issues** (if any):
-  - src/module.py:15: [issue description]
-  - [additional issues]
-
-#### Test Coverage (Score: X/15)
-- Coverage Percentage: [X]%
-- Coverage Command: pytest --cov=services --cov-report=term-missing
-- **Uncovered Lines**: [list critical uncovered code paths]
-
-### Code Quality Analysis
-
-#### Phase Alignment (Score: X/15)
-[Detailed analysis of how implementation matches Phase]
-- **File Structure**: [matches/deviates from Phase]
-- **Feature Implementation**: [completeness assessment]
-- **Architecture Adherence**: [alignment with Phase architecture]
-
-#### Phase Requirements (Score: X/15)
-[Analysis of how code addresses Phase objectives]
-- **Objectives Coverage**: [X/Y objectives implemented]
-- **Scope Adherence**: [within scope / scope creep detected]
-- **Technical Constraints**: [satisfied / violated]
-
-### Key Issues
-- [Specific Issue 1]: [Detailed description with file/line references]
-- [Specific Issue 2]: [Detailed description with file/line references]
-- [Specific Issue N]: [Detailed description with file/line references]
-
-### Recommendations
-- [Priority 1]: [Specific actionable fix with expected point improvement]
-- [Priority 2]: [Specific actionable fix with expected point improvement]
-- [Priority N]: [Specific actionable fix with expected point improvement]
-
-### Progress Notes
-[Analysis of improvement from previous iteration if applicable]
-[Stagnation warning if score improved <5 points from previous iteration]
+{indent(task_reviewer_feedback_template, '  ')}
 ```
 
 ## FEEDBACK QUALITY STANDARDS
@@ -342,7 +348,7 @@ ruff check src/ tests/
 - Identify high-severity issues (security, bugs) vs style
 - Note patterns (many similar issues suggest systematic problem)
 
-## CODE INSPECTION APPROACH
+## CODE INPHASETION APPROACH
 
 ### File Structure Review
 1. Use Glob to list all Python files: `**/*.py`

@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
 from typing import Any
+
 from pydantic import ValidationError
 
-from .platform_selector import PlatformType
 from .models import ProjectConfig
+from .platform_selector import PlatformType
 
 
 class ConfigManager:

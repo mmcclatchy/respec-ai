@@ -11,7 +11,7 @@
 
 ---
 
-**Agentic-Critic Refinement Loop Platform for Claude Code**
+**Reflection Patterned Spec-Driven-Development Platform for Claude Code**
 
 Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing phases helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
@@ -113,7 +113,7 @@ Producer Agent → LLM Generation → Critic Agent → Score → MCP Decision
 - **[Workflows Guide](docs/WORKFLOWS.md)** - Detailed workflow documentation, examples, best practices, technical details
 - **[Architecture Guide](docs/ARCHITECTURE.md)** - System design, platform orchestrator, MCP tools, document models
 
-## Project Status
+## Plan Status
 
 **Version:** 0.6.3 (Beta)
 **Test Coverage:** 595 passing tests

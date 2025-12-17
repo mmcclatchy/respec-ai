@@ -11,7 +11,7 @@ from src.utils.setting_configs import mcp_settings
 
 
 @pytest.fixture
-def project_name() -> str:
+def plan_name() -> str:
     return 'test-project'
 
 
@@ -25,7 +25,7 @@ class TestFastMCPServerIntegration:
     async def test_mcp_tool_registration(self) -> None:
         server = create_mcp_server()
 
-        # Check that all MCP tools are registered (loop + document tools)
+        # Check that all MCP tools are registered (loop + unified document tools)
         tools = await server.get_tools()
         expected_loop_tools = [
             'decide_loop_next_action',
@@ -35,8 +35,6 @@ class TestFastMCPServerIntegration:
             'get_loop_feedback_summary',
         ]
         expected_document_tools = [
-            'create_roadmap',
-            'get_roadmap',
             'store_document',
             'get_document',
             'update_document',
@@ -80,9 +78,9 @@ class TestFastMCPServerIntegration:
             await loop_tools.decide_loop_next_action('nonexistent-id')
 
     @pytest.mark.asyncio
-    async def test_tool_parameter_validation_through_fastmcp(self, project_name: str) -> None:
+    async def test_tool_parameter_validation_through_fastmcp(self, plan_name: str) -> None:
         # Test with valid parameters using new API
-        init_result = await loop_tools.initialize_refinement_loop(project_name, 'plan')
+        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
 
         # Add feedback with high score
         state_manager = loop_tools.state
@@ -116,5 +114,5 @@ class TestFastMCPServerIntegration:
 
         assert isinstance(health_status, HealthStatus)
         assert health_status.status == HealthState.HEALTHY
-        assert health_status.tools_count >= 13  # At least 6 loop + 7 roadmap tools
+        assert health_status.tools_count >= 11  # At least 5 loop + 6 document tools
         assert health_status.error is None

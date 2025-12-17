@@ -37,7 +37,7 @@ def run(args: Namespace) -> int:
 
         config = json.loads(config_path.read_text(encoding='utf-8'))
         platform = config.get('platform')
-        project_name = config.get('project_name')
+        plan_name = config.get('plan_name')
 
         if not platform:
             print_error('Platform not set in config')
@@ -117,7 +117,7 @@ def run(args: Namespace) -> int:
         console.print()
         print_success('Project rebuilt successfully')
         print_success(f'Platform: {platform}')
-        print_success(f'Project: {project_name}')
+        print_success(f'Project: {plan_name}')
         print_success(f'Version: {package_version}')
         print_success(f'Regenerated {commands_count} commands and {agents_count} agents')
         console.print()

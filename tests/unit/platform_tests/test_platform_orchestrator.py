@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 
 from src.platform.models import (
+    PlanPlatformChangeRequest,
+    PlanSetupRequest,
+    PlanSetupWithRecommendationRequest,
     PlatformRequirements,
-    ProjectPlatformChangeRequest,
-    ProjectSetupRequest,
-    ProjectSetupWithRecommendationRequest,
     TemplateGenerationRequest,
 )
 from src.platform.platform_orchestrator import PlatformOrchestrator
@@ -25,7 +25,7 @@ class TestPlatformOrchestrator:
 
     def test_setup_project_with_auto_selection(self) -> None:
         requirements = PlatformRequirements(supports_issues=True, real_time_collaboration=True, supports_comments=True)
-        request = ProjectSetupWithRecommendationRequest(
+        request = PlanSetupWithRecommendationRequest(
             project_path=Path(self.test_project_path), requirements=requirements
         )
 
@@ -46,7 +46,7 @@ class TestPlatformOrchestrator:
             supports_comments=True,
             real_time_collaboration=True,  # Markdown doesn't support this
         )
-        request = ProjectSetupRequest(
+        request = PlanSetupRequest(
             project_path=Path(self.test_project_path), platform=PlatformType.MARKDOWN, requirements=requirements
         )
 
@@ -89,9 +89,7 @@ class TestPlatformOrchestrator:
         self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)
 
         # Change to GitHub
-        request = ProjectPlatformChangeRequest(
-            project_path=Path(self.test_project_path), new_platform=PlatformType.GITHUB
-        )
+        request = PlanPlatformChangeRequest(project_path=Path(self.test_project_path), new_platform=PlatformType.GITHUB)
         self.orchestrator.change_project_platform(request)
 
         # Verify platform changed
@@ -101,7 +99,7 @@ class TestPlatformOrchestrator:
     def test_get_project_info(self) -> None:
         # Set up project
         requirements = PlatformRequirements(supports_issues=True, supports_comments=True)
-        request = ProjectSetupRequest(
+        request = PlanSetupRequest(
             project_path=Path(self.test_project_path), platform=PlatformType.MARKDOWN, requirements=requirements
         )
         self.orchestrator.setup_project(request)

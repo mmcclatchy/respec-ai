@@ -25,10 +25,10 @@ class TestToolRegistryScoping:
             'get_phase_tool': 'Read(.respec-ai/plans/*/phases/*.md)',
             'update_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
             'comment_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
-            'create_project_external': 'Write(.respec-ai/plans/*/project_plan.md)',
+            'create_project_external': 'Write(.respec-ai/plans/*/plan.md)',
             'create_project_completion_external': 'Write(.respec-ai/plans/*/project_completion.md)',
-            'get_project_plan_tool': 'Read(.respec-ai/plans/*/project_plan.md)',
-            'update_project_plan_tool': 'Edit(.respec-ai/plans/*/project_plan.md)',
+            'get_plan_tool': 'Read(.respec-ai/plans/*/plan.md)',
+            'update_plan_tool': 'Edit(.respec-ai/plans/*/plan.md)',
             'list_project_phases_tool': 'Glob(.respec-ai/plans/*/phases/*.md)',
         }
 
@@ -60,8 +60,8 @@ class TestToolRegistryScoping:
             'comment_phase_tool',
             'create_project_external',
             'create_project_completion_external',
-            'get_project_plan_tool',
-            'update_project_plan_tool',
+            'get_plan_tool',
+            'update_plan_tool',
             'list_project_phases_tool',
         ]
 
@@ -76,17 +76,17 @@ class TestToolRegistryScoping:
 
         for tool_name in phase_tools:
             tool_path = markdown_tools[tool_name]
-            assert '/phases/' in tool_path, f'Spec tool {tool_name} not scoped to phases directory: {tool_path}'
-            assert '.md' in tool_path, f'Spec tool {tool_name} should target .md files: {tool_path}'
+            assert '/phases/' in tool_path, f'Phase tool {tool_name} not scoped to phases directory: {tool_path}'
+            assert '.md' in tool_path, f'Phase tool {tool_name} should target .md files: {tool_path}'
 
     def test_project_tools_are_scoped_to_project_files(self, tool_registry: ToolRegistry) -> None:
         markdown_tools = tool_registry.get_all_tools_for_platform(PlatformType.MARKDOWN)
 
         project_file_tools = {
-            'create_project_external': 'project_plan.md',
+            'create_project_external': 'plan.md',
             'create_project_completion_external': 'project_completion.md',
-            'get_project_plan_tool': 'project_plan.md',
-            'update_project_plan_tool': 'project_plan.md',
+            'get_plan_tool': 'plan.md',
+            'update_plan_tool': 'plan.md',
         }
 
         for tool_name, expected_file in project_file_tools.items():

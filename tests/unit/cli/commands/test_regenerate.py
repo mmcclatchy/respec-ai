@@ -129,7 +129,7 @@ class TestRegenerateCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        config_data = {'platform': 'github', 'version': '0.1.0', 'project_name': 'test'}
+        config_data = {'platform': 'github', 'version': '0.1.0', 'plan_name': 'test'}
         (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
@@ -144,4 +144,4 @@ class TestRegenerateCommand:
         config = json.loads((respec_ai_dir / 'config.json').read_text())
         assert config['platform'] == 'github'
         assert config['version'] == '0.2.0'
-        assert config['project_name'] == 'test'
+        assert config['plan_name'] == 'test'

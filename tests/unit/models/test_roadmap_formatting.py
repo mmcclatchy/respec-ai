@@ -11,11 +11,11 @@ from src.models.roadmap import Roadmap
 
 @pytest.fixture
 def roadmap_with_bullet_lists() -> str:
-    return """# Project Roadmap: Test Project
+    return """# Plan Roadmap: Test Plan
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Build a comprehensive test system
 
 ### Total Duration
@@ -28,8 +28,8 @@ Build a comprehensive test system
 $100,000
 
 ## Specifications
-- **Spec 1**: Authentication Module
-- **Spec 2**: Data Processing Pipeline
+- **Phase 1**: Authentication Module
+- **Phase 2**: Data Processing Pipeline
 
 ## Risk Assessment
 
@@ -89,11 +89,11 @@ draft
 
 @pytest.fixture
 def roadmap_with_mixed_content() -> str:
-    return """# Project Roadmap: Mixed Content Test
+    return """# Plan Roadmap: Mixed Content Test
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test mixed content formats
 
 ### Total Duration
@@ -106,7 +106,7 @@ Test mixed content formats
 $75,000
 
 ## Specifications
-- **Spec 1**: Core Module
+- **Phase 1**: Core Module
 
 ## Risk Assessment
 
@@ -233,11 +233,11 @@ def test_mixed_content_format_preserved(roadmap_with_mixed_content: str) -> None
 
 
 def test_plain_text_content_still_works() -> None:
-    markdown = """# Project Roadmap: Plain Text Test
+    markdown = """# Plan Roadmap: Plain Text Test
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Simple plain text goal
 
 ### Total Duration
@@ -250,7 +250,7 @@ Simple plain text goal
 $50,000
 
 ## Specifications
-- **Spec 1**: Module A
+- **Phase 1**: Module A
 
 ## Risk Assessment
 
@@ -329,11 +329,11 @@ def test_character_for_character_round_trip(roadmap_with_bullet_lists: str) -> N
 
 
 def test_ordered_lists_preserved() -> None:
-    markdown_with_ordered_lists = """# Project Roadmap: Ordered List Test
+    markdown_with_ordered_lists = """# Plan Roadmap: Ordered List Test
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test ordered list preservation
 
 ### Total Duration
@@ -346,7 +346,7 @@ Test ordered list preservation
 $75,000
 
 ## Specifications
-- **Spec 1**: Core Module
+- **Phase 1**: Core Module
 
 ## Risk Assessment
 
@@ -433,11 +433,11 @@ draft
 
 
 def test_nested_bullet_lists_preserved() -> None:
-    markdown_with_nested_lists = """# Project Roadmap: Nested List Test
+    markdown_with_nested_lists = """# Plan Roadmap: Nested List Test
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test nested bullet list preservation
 
 ### Total Duration
@@ -450,7 +450,7 @@ Test nested bullet list preservation
 $100,000
 
 ## Specifications
-- **Spec 1**: Multi-tier Module
+- **Phase 1**: Multi-tier Module
 
 ## Risk Assessment
 
@@ -548,11 +548,11 @@ draft
 
 
 def test_code_blocks_preserved() -> None:
-    markdown_with_code_blocks = """# Project Roadmap: Code Block Test
+    markdown_with_code_blocks = """# Plan Roadmap: Code Block Test
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test code block preservation in documentation
 
 ### Total Duration
@@ -565,7 +565,7 @@ Test code block preservation in documentation
 $80,000
 
 ## Specifications
-- **Spec 1**: Technical Implementation
+- **Phase 1**: Technical Implementation
 
 ## Risk Assessment
 

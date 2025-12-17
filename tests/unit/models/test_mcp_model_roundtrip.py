@@ -13,10 +13,10 @@ from typing import Callable, Type
 import pytest
 
 from src.models.base import MCPModel
-from src.models.enums import BuildStatus, PhaseStatus, ProjectStatus, RequirementsStatus, RoadmapStatus
+from src.models.enums import BuildStatus, PhaseStatus, PlanStatus, RequirementsStatus, RoadmapStatus
 from src.models.feature_requirements import FeatureRequirements
 from src.models.phase import Phase
-from src.models.project_plan import ProjectPlan
+from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.models.task import Task
 
@@ -25,7 +25,7 @@ from src.models.task import Task
 def sample_roadmap_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         Roadmap,
-        project_name='Test Project',
+        plan_name='Test Plan',
         project_goal='Build a test system',
         total_duration='8 weeks',
         team_size='4 developers',
@@ -70,10 +70,10 @@ def sample_phase_markdown(markdown_builder: Callable) -> str:
 
 
 @pytest.fixture
-def sample_project_plan_markdown(markdown_builder: Callable) -> str:
+def sample_plan_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
-        ProjectPlan,
-        project_name='Test Portal',
+        Plan,
+        plan_name='Test Portal',
         project_vision='Transform user experience',
         project_mission='Deliver user-friendly portal',
         project_timeline='8 months',
@@ -91,7 +91,7 @@ def sample_project_plan_markdown(markdown_builder: Callable) -> str:
         work_breakdown='Phase 1: Design',
         phases_overview='Discovery and research',
         project_dependencies='Design system',
-        team_structure='1 Project Manager',
+        team_structure='1 Plan Manager',
         technology_requirements='React.js frontend',
         infrastructure_needs='AWS instances',
         identified_risks='Timeline delays',
@@ -100,7 +100,7 @@ def sample_project_plan_markdown(markdown_builder: Callable) -> str:
         quality_standards='WCAG 2.1 AA',
         testing_strategy='Unit testing',
         documentation_standards='API documentation',
-        project_status=ProjectStatus.ACTIVE,
+        plan_status=PlanStatus.ACTIVE,
     )
 
 
@@ -108,7 +108,7 @@ def sample_project_plan_markdown(markdown_builder: Callable) -> str:
 def sample_task_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         Task,
-        project_name='Test Platform',
+        plan_name='Test Platform',
         project_goal='Build scalable platform',
         total_duration='6 months',
         team_size='5 developers',
@@ -133,7 +133,7 @@ def sample_task_markdown(markdown_builder: Callable) -> str:
 def sample_feature_requirements_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         FeatureRequirements,
-        project_name='User Authentication',
+        plan_name='User Authentication',
         feature_description='Secure login system',
         problem_statement='Users need secure authentication',
         target_users='All application users',
@@ -160,7 +160,7 @@ def sample_feature_requirements_markdown(markdown_builder: Callable) -> str:
     [
         (Roadmap, 'sample_roadmap_markdown'),
         (Phase, 'sample_phase_markdown'),
-        (ProjectPlan, 'sample_project_plan_markdown'),
+        (Plan, 'sample_plan_markdown'),
         (Task, 'sample_task_markdown'),
         (FeatureRequirements, 'sample_feature_requirements_markdown'),
     ],

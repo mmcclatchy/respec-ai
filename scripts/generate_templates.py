@@ -7,16 +7,16 @@ of each model and outputting their markdown representation. This ensures
 templates stay synchronized with model definitions.
 """
 
-from src.models.enums import CriticAgent, ProjectStatus, RequirementsStatus, RoadmapStatus
+from src.models.enums import CriticAgent, RequirementsStatus, RoadmapStatus, PlanStatus
 from src.models.feature_requirements import FeatureRequirements
 from src.models.feedback import CriticFeedback
-from src.models.project_plan import ProjectPlan
+from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 
 
 def generate_roadmap_template() -> str:
     roadmap = Roadmap(
-        project_name='[Project Name]',
+        plan_name='[Project Name]',
         project_goal='[Brief description of the main project goal]',
         total_duration="[Expected duration, e.g., '6 months']",
         team_size="[Team size, e.g., '5 developers']",
@@ -40,7 +40,7 @@ def generate_roadmap_template() -> str:
 
 def generate_feature_requirements_template() -> str:
     requirements = FeatureRequirements(
-        project_name='[Feature Name]',
+        plan_name='[Feature Name]',
         feature_description='[Detailed feature description]',
         problem_statement='[Problem this feature solves]',
         target_users='[Target user groups]',
@@ -63,9 +63,9 @@ def generate_feature_requirements_template() -> str:
     return requirements.build_markdown()
 
 
-def generate_project_plan_template() -> str:
-    project_plan = ProjectPlan(
-        project_name='[Project Name]',
+def generate_plan_template() -> str:
+    plan = Plan(
+        plan_name='[Project Name]',
         project_vision='[High-level vision statement]',
         project_mission='[Mission and purpose]',
         project_timeline='[Overall timeline]',
@@ -95,9 +95,9 @@ def generate_project_plan_template() -> str:
         reporting_structure='[Reporting structure]',
         meeting_schedule='[Meeting schedule]',
         documentation_standards='[Documentation standards]',
-        project_status=ProjectStatus.DRAFT,
+        plan_status=PlanStatus.DRAFT,
     )
-    return project_plan.build_markdown()
+    return plan.build_markdown()
 
 
 def generate_critic_feedback_template() -> str:
@@ -118,7 +118,7 @@ def main() -> None:
     templates = {
         'roadmap_template.md': generate_roadmap_template(),
         'feature_requirements_template.md': generate_feature_requirements_template(),
-        'project_plan_template.md': generate_project_plan_template(),
+        'plan_template.md': generate_plan_template(),
         'critic_feedback_template.md': generate_critic_feedback_template(),
     }
 

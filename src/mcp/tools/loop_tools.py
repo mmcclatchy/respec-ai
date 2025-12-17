@@ -1,4 +1,5 @@
 from fastmcp import Context, FastMCP
+
 from src.shared import state_manager
 from src.utils.enums import LoopType
 from src.utils.errors import LoopAlreadyExistsError, LoopNotFoundError, LoopStateError, LoopValidationError
@@ -10,11 +11,11 @@ class LoopTools:
     def __init__(self, state: StateManager) -> None:
         self.state = state
 
-    async def initialize_refinement_loop(self, project_name: str, loop_type: str) -> MCPResponse:
+    async def initialize_refinement_loop(self, plan_name: str, loop_type: str) -> MCPResponse:
         try:
             loop_type_enum = LoopType(loop_type)
             loop_state = LoopState(loop_type=loop_type_enum)
-            await self.state.add_loop(loop_state, project_name)
+            await self.state.add_loop(loop_state, plan_name)
             return loop_state.mcp_response
         except ValueError:
             valid_types = {'plan', 'roadmap', 'phase', 'task', 'analyst'}
@@ -34,9 +35,9 @@ class LoopTools:
         except Exception as e:
             raise LoopStateError(loop_id, 'status_retrieval', f'Unexpected error: {str(e)}')
 
-    async def list_active_loops(self, project_name: str) -> list[MCPResponse]:
+    async def list_active_loops(self, plan_name: str) -> list[MCPResponse]:
         try:
-            return await self.state.list_active_loops(project_name)
+            return await self.state.list_active_loops(plan_name)
         except Exception as e:
             raise LoopStateError('all', 'list_retrieval', f'Failed to retrieve loop list: {str(e)}')
 
@@ -169,7 +170,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         return result
 
     @mcp.tool()
-    async def initialize_refinement_loop(project_name: str, loop_type: str, ctx: Context) -> MCPResponse:
+    async def initialize_refinement_loop(plan_name: str, loop_type: str, ctx: Context) -> MCPResponse:
         """Initialize a new refinement loop.
 
         Creates a new refinement loop session.
@@ -177,14 +178,14 @@ def register_loop_tools(mcp: FastMCP) -> None:
         the refinement process.
 
         Parameters:
-        - project_name: Name of the project (from .respec-ai/config.json)
+        - plan_name: Name of the project (from .respec-ai/config.json)
         - loop_type: One of 'plan', 'roadmap', 'phase', 'task', 'analyst'
 
         Returns:
         - MCPResponse: Contains loop_id and status ('initialized')
         """
-        await ctx.info(f'Initializing new {loop_type} loop for {project_name}')
-        result = await loop_tools.initialize_refinement_loop(project_name, loop_type)
+        await ctx.info(f'Initializing new {loop_type} loop for {plan_name}')
+        result = await loop_tools.initialize_refinement_loop(plan_name, loop_type)
         await ctx.info(f'Created {loop_type} loop with ID: {result.id}')
         return result
 
@@ -207,20 +208,20 @@ def register_loop_tools(mcp: FastMCP) -> None:
         return result
 
     @mcp.tool()
-    async def list_active_loops(project_name: str, ctx: Context) -> list[MCPResponse]:
+    async def list_active_loops(plan_name: str, ctx: Context) -> list[MCPResponse]:
         """List all currently active refinement loops.
 
         Returns summary information for all active loops in the current
         session. Useful for managing multiple concurrent refinement processes.
 
         Parameters:
-        - project_name: Name of the project (from .respec-ai/config.json)
+        - plan_name: Name of the project (from .respec-ai/config.json)
 
         Returns:
         - list[MCPResponse]: List of active loops with their current status
         """
-        await ctx.info(f'Retrieving list of active loops for {project_name}')
-        result = await loop_tools.list_active_loops(project_name)
+        await ctx.info(f'Retrieving list of active loops for {plan_name}')
+        result = await loop_tools.list_active_loops(plan_name)
         await ctx.info(f'Found {len(result)} active loops')
         return result
 

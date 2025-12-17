@@ -11,7 +11,7 @@ from src.mcp.tools import (
     feedback_tools_unified,
     loop_tools,
     plan_completion_report_tools,
-    project_plan_tools,
+    plan_tools,
     register_all_tools,
     roadmap_tools,
 )
@@ -46,7 +46,7 @@ def discover_tool_registration_functions() -> dict[str, list[str]]:
     modules: list[ModuleType] = [
         loop_tools,
         feedback_tools_unified,
-        project_plan_tools,
+        plan_tools,
         plan_completion_report_tools,
         roadmap_tools,
     ]

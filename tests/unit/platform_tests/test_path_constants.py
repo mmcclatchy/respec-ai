@@ -13,25 +13,25 @@ class TestPathComponentValues:
     def test_phases_dir_value(self) -> None:
         assert PathComponent.PHASES_DIR == 'phases'
 
-    def test_project_plan_file_value(self) -> None:
-        assert PathComponent.PROJECT_PLAN_FILE == 'project_plan.md'
+    def test_plan_file_value(self) -> None:
+        assert PathComponent.PROJECT_PLAN_FILE == 'plan.md'
 
     def test_completion_file_value(self) -> None:
         assert PathComponent.COMPLETION_FILE == 'project_completion.md'
 
 
 class TestBuildPlanPath:
-    def test_build_plan_path_with_project_name(self) -> None:
+    def test_build_plan_path_with_plan_name(self) -> None:
         result = PathComponent.build_plan_path('my-project')
-        assert result == '.respec-ai/plans/my-project/project_plan.md'
+        assert result == '.respec-ai/plans/my-project/plan.md'
 
-    def test_build_plan_path_without_project_name(self) -> None:
+    def test_build_plan_path_without_plan_name(self) -> None:
         result = PathComponent.build_plan_path()
-        assert result == '.respec-ai/plans/*/project_plan.md'
+        assert result == '.respec-ai/plans/*/plan.md'
 
     def test_build_plan_path_with_none(self) -> None:
         result = PathComponent.build_plan_path(None)
-        assert result == '.respec-ai/plans/*/project_plan.md'
+        assert result == '.respec-ai/plans/*/plan.md'
 
 
 class TestBuildPhasePath:
@@ -57,11 +57,11 @@ class TestBuildPhasePath:
 
 
 class TestBuildCompletionPath:
-    def test_build_completion_path_with_project_name(self) -> None:
+    def test_build_completion_path_with_plan_name(self) -> None:
         result = PathComponent.build_completion_path('my-project')
         assert result == '.respec-ai/plans/my-project/project_completion.md'
 
-    def test_build_completion_path_without_project_name(self) -> None:
+    def test_build_completion_path_without_plan_name(self) -> None:
         result = PathComponent.build_completion_path()
         assert result == '.respec-ai/plans/*/project_completion.md'
 
