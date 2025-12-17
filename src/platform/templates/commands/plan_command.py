@@ -1,13 +1,14 @@
 from textwrap import indent
 
+from src.models.plan import Plan
+
 from src.models.plan_completion_report import PlanCompletionReport
-from src.models.project_plan import ProjectPlan
 from src.platform.models import PlanCommandTools
 
 
 # Create template instance with instructional placeholders
-project_plan_template = ProjectPlan(
-    project_name='[Project Name from conversation]',
+plan_template = Plan(
+    plan_name='[Project Name from conversation]',
     project_vision='[High-level project vision from conversation]',
     project_mission='[Project mission statement from conversation]',
     project_timeline='[Phased approach from timeline constraints]',
@@ -62,28 +63,28 @@ description: Orchestrate strategic planning workflow
 
 # Strategic Planning Orchestration
 
-## Step 0: Initialize Project Context
+## Step 0: Initialize Plan Context
 
 Read project configuration:
 ```text
 Read .respec-ai/config.json
-PROJECT_NAME = config["project_name"]
+PLAN_NAME = config["plan_name"]
 ```
 
-**Important**: PROJECT_NAME from config is used for all MCP storage operations. The project_name was set during respec-ai installation.
+**Important**: PLAN_NAME from config is used for all MCP storage operations. The plan_name was set during respec-ai installation.
 
-## Step 0.1: Load Existing Project Plan from Platform
+## Step 0.1: Load Existing Plan Plan from Platform
 
 Load existing project plan from platform (if exists):
 
 ```text
-{tools.sync_project_plan_instructions}
+{tools.sync_plan_instructions}
 ```
 
 ## Context Variables
 
 All respec-ai MCP tools require project context:
-- **PROJECT_NAME**: From config - used as identifier for all MCP storage operations
+- **PLAN_NAME**: From config - used as identifier for all MCP storage operations
 
 Example usage: `{tools.initialize_analyst_loop}`
 
@@ -91,7 +92,7 @@ Example usage: `{tools.initialize_analyst_loop}`
 
 ### Track only essential orchestration state
 
-- **PROJECT_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
+- **PLAN_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
 - **CONVERSATION_CONTEXT**: Markdown document returned from /respec-plan-conversation - conversation results from Step 2
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
@@ -104,7 +105,7 @@ Example usage: `{tools.initialize_analyst_loop}`
 
 Human-driven phase (Steps 1-5):
 - Uses variables for orchestration state (CONVERSATION_CONTEXT, CURRENT_PLAN, CRITIC_FEEDBACK)
-- Stores plan in MCP using PROJECT_NAME: `{tools.store_plan}`
+- Stores plan in MCP using PLAN_NAME: `{tools.store_plan}`
 - Writes plan to external file/platform using platform-specific tools
 - Plan-critic returns feedback to Main Agent (not stored in MCP during human phase)
 
@@ -121,7 +122,7 @@ Automated analyst phase (Steps 6-9):
 ### Set up the conversational planning workflow
 
 ### Set initial context
-- Extract PROJECT_NAME from first argument in `$ARGUMENTS`
+- Extract PLAN_NAME from first argument in `$ARGUMENTS`
 - Use remaining arguments as initial conversation context
 - If no conversation context provided, start with: "I need help creating a strategic plan for my project"
 - Initialize variables for state management throughout the human-driven process
@@ -131,10 +132,10 @@ Automated analyst phase (Steps 6-9):
 
 ### Use the /respec-plan-conversation command to conduct conversational discovery
 
-Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PROJECT_NAME) as the initial conversation context:
+Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PLAN_NAME) as the initial conversation context:
 
 ```bash
-/respec-plan-conversation [arguments from $ARGUMENTS after PROJECT_NAME, or "I need help creating a strategic plan for my project"]
+/respec-plan-conversation [arguments from $ARGUMENTS after PLAN_NAME, or "I need help creating a strategic plan for my project"]
 ```
 
 The plan-conversation command will conduct the three-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
@@ -212,7 +213,7 @@ Use the CONVERSATION_CONTEXT variable returned from Step 2 to create the strateg
 
 ### Create strategic plan using template
    ```markdown
-{indent(project_plan_template, '   ')}
+{indent(plan_template, '   ')}
    ```
 
 Strategic plan creation process:
@@ -232,7 +233,7 @@ Write the strategic plan to the user's platform using the platform-specific tool
 ```
 
 This creates:
-- **Markdown platform**: `.respec-ai/plans/PROJECT_NAME/project_plan.md`
+- **Markdown platform**: `.respec-ai/plans/PLAN_NAME/plan.md`
 - **Linear platform**: Linear project with plan details
 - **GitHub platform**: GitHub project with plan details
 
@@ -244,7 +245,7 @@ Invoke the plan-critic agent with project name for plan retrieval:
 
 ```text
 Invoke: respec-plan-critic
-Input: PROJECT_NAME
+Input: PLAN_NAME
 ```
 
 ### Plan-critic workflow
@@ -428,7 +429,7 @@ Input: ANALYST_LOOP_ID
 ```
 
 ### Plan-analyst workflow
-1. **Agent retrieves strategic plan** from MCP using get_project_plan_markdown(ANALYST_LOOP_ID)
+1. **Agent retrieves strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
 2. **Agent checks for previous analysis** using get_previous_analysis(ANALYST_LOOP_ID)
 3. **Agent extracts structured objectives** from strategic plan
 4. **Agent stores analysis** using store_current_analysis(ANALYST_LOOP_ID, analysis)
@@ -444,7 +445,7 @@ Input: ANALYST_LOOP_ID
 
 ### Analyst-critic workflow
 1. **Agent retrieves business objectives analysis** from MCP using get_previous_analysis(ANALYST_LOOP_ID)
-2. **Agent retrieves original strategic plan** from MCP using get_project_plan_markdown(ANALYST_LOOP_ID)
+2. **Agent retrieves original strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
 3. **Agent validates extraction quality** against validation framework
 4. **Agent stores analysis feedback** using store_current_analysis(ANALYST_LOOP_ID, analysis)
 

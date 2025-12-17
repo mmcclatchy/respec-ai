@@ -61,10 +61,13 @@ class PlanCompletionReport(MCPModel):
     @classmethod
     def validate_score_format(cls, v: str) -> str:
         if v and not v.startswith('${') and v not in ['0', '[Score]']:
+            # Strip % suffix from parsed markdown
+            score_str = v.rstrip('%').strip()
             try:
-                score = int(v)
+                score = int(score_str)
                 if not 0 <= score <= 100:
                     raise ValueError('Score must be between 0 and 100')
+                return score_str  # Return without % for consistent storage
             except ValueError as e:
                 if 'invalid literal' in str(e):
                     raise ValueError(f'Score must be a valid integer or template variable, got: {v}')

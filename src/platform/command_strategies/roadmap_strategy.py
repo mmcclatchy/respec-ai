@@ -16,15 +16,13 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
         ]
 
     def build_tools(self, platform: PlatformType) -> PlanRoadmapCommandTools:
-        get_project_plan_tool = self.tool_registry.get_tool_for_platform(
-            AbstractOperation.GET_PROJECT_PLAN_TOOL, platform
-        )
+        get_plan_tool = self.tool_registry.get_tool_for_platform(AbstractOperation.GET_PROJECT_PLAN_TOOL, platform)
         list_project_phases_tool = self.tool_registry.get_tool_for_platform(
             AbstractOperation.LIST_PROJECT_PHASES_TOOL, platform
         )
 
         platform_tools = [
-            get_project_plan_tool,
+            get_plan_tool,
             list_project_phases_tool,
         ]
         return create_roadmap_tools(platform_tools, platform)

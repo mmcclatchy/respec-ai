@@ -165,20 +165,20 @@ SELECT * FROM pg_extension WHERE extname = 'pg_trgm';
 
 #### Error: "UniqueViolationError: duplicate key value violates unique constraint"
 
-**Cause**: Attempting to insert duplicate `(project_name, phase_name)` pair.
+**Cause**: Attempting to insert duplicate `(plan_name, phase_name)` pair.
 
 **Solution**:
 Use `ON CONFLICT` for upsert operations:
 ```python
 await conn.execute(
     '''
-    INSERT INTO phases (project_name, phase_name, ...)
+    INSERT INTO phases (plan_name, phase_name, ...)
     VALUES ($1, $2, ...)
-    ON CONFLICT (project_name, phase_name) DO UPDATE SET
+    ON CONFLICT (plan_name, phase_name) DO UPDATE SET
         architecture = $3,
         updated_at = CURRENT_TIMESTAMP
     ''',
-    project_name, phase_name, architecture
+    plan_name, phase_name, architecture
 )
 ```
 
@@ -285,7 +285,7 @@ LIMIT 10;
 
 2. **Use EXPLAIN ANALYZE**:
    ```sql
-   EXPLAIN ANALYZE SELECT * FROM phases WHERE project_name = 'my-project';
+   EXPLAIN ANALYZE SELECT * FROM phases WHERE plan_name = 'my-project';
    ```
    Look for:
    - Sequential Scans (should use indexes instead)
@@ -353,11 +353,11 @@ ORDER BY query_start;
    ```sql
    -- Before (slow)
    SELECT * FROM phases
-   WHERE project_name IN (SELECT project_name FROM roadmaps);
+   WHERE plan_name IN (SELECT plan_name FROM roadmaps);
 
    -- After (fast)
    SELECT ts.* FROM phases ts
-   INNER JOIN roadmaps r ON ts.project_name = r.project_name;
+   INNER JOIN roadmaps r ON ts.plan_name = r.plan_name;
    ```
 
 2. **Limit result sets**:
@@ -423,8 +423,8 @@ async def monitor_pool():
 **Diagnosis**:
 ```sql
 -- Find phases without projects
-SELECT project_name FROM phases
-WHERE project_name NOT IN (SELECT project_name FROM roadmaps);
+SELECT plan_name FROM phases
+WHERE plan_name NOT IN (SELECT plan_name FROM roadmaps);
 
 -- Find loop history without loops
 SELECT loop_id FROM loop_history
@@ -435,7 +435,7 @@ WHERE loop_id NOT IN (SELECT id FROM loop_states);
 ```sql
 -- Cleanup orphaned records
 DELETE FROM phases
-WHERE project_name NOT IN (SELECT project_name FROM roadmaps);
+WHERE plan_name NOT IN (SELECT plan_name FROM roadmaps);
 
 -- Should not happen due to CASCADE DELETE constraints
 ```

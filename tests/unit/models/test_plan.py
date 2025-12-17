@@ -1,11 +1,12 @@
 import pytest
-from src.models.enums import ProjectStatus
-from src.models.project_plan import ProjectPlan
+
+from src.models.enums import PlanStatus
+from src.models.plan import Plan
 
 
-class TestProjectPlanParsing:
+class TestPlanParsing:
     def test_parse_markdown_extracts_all_fields(self) -> None:
-        markdown = """# Project Plan: Customer Portal Redesign
+        markdown = """# Plan Plan: Customer Portal Redesign
 
 ## Executive Summary
 
@@ -32,7 +33,7 @@ Customer satisfaction score >4.5/5, support ticket reduction >25%, user engageme
 ### Key Performance Indicators
 Daily active users, session duration, task completion rates, customer feedback scores
 
-## Project Scope
+## Plan Scope
 
 ### Included Features
 User dashboard redesign, mobile responsive design, self-service features, account management tools
@@ -48,7 +49,7 @@ Must maintain 99.9% uptime during migration, limited to current technology stack
 
 ## Stakeholders
 
-### Project Sponsor
+### Plan Sponsor
 Chief Technology Officer - Sarah Johnson, provides strategic direction and final approvals
 
 ### Key Stakeholders
@@ -57,7 +58,7 @@ Customer Success team, IT Operations, Security team, Executive leadership, Custo
 ### End Users
 Existing customers (5000+ active users), customer support representatives, account managers
 
-## Project Structure
+## Plan Structure
 
 ### Work Breakdown
 Phase 1: Research & Design (2 months), Phase 2: Development (4 months), Phase 3: Testing & Launch (2 months)
@@ -71,7 +72,7 @@ Design system completion, API documentation updates, security review approval, i
 ## Resource Requirements
 
 ### Team Structure
-1 Project Manager, 2 Frontend Developers, 1 Backend Developer, 1 UI/UX Designer, 1 QA Engineer
+1 Plan Manager, 2 Frontend Developers, 1 Backend Developer, 1 UI/UX Designer, 1 QA Engineer
 
 ### Technology Requirements
 React.js frontend, Node.js backend, PostgreSQL database, AWS cloud infrastructure, Docker containers
@@ -127,63 +128,63 @@ approved
 2.1
 """
 
-        project_plan = ProjectPlan.parse_markdown(markdown)
+        plan = Plan.parse_markdown(markdown)
 
-        assert project_plan.project_name == 'Customer Portal Redesign'
-        assert project_plan.project_vision == 'Transform customer experience through modern, intuitive portal design'
+        assert plan.plan_name == 'Customer Portal Redesign'
+        assert plan.project_vision == 'Transform customer experience through modern, intuitive portal design'
         assert (
-            project_plan.project_mission
+            plan.project_mission
             == 'Deliver a user-friendly portal that increases customer satisfaction and reduces support tickets'
         )
-        assert project_plan.project_timeline == '8 months from project kickoff to production deployment'
-        assert project_plan.project_budget == '$400,000 including development, design, and infrastructure costs'
+        assert plan.project_timeline == '8 months from project kickoff to production deployment'
+        assert plan.project_budget == '$400,000 including development, design, and infrastructure costs'
 
         # Business objectives
-        assert 'Improve customer satisfaction scores by 30%' in project_plan.primary_objectives
-        assert 'Customer satisfaction score >4.5/5' in project_plan.success_metrics
-        assert 'Daily active users, session duration' in project_plan.key_performance_indicators
+        assert 'Improve customer satisfaction scores by 30%' in plan.primary_objectives
+        assert 'Customer satisfaction score >4.5/5' in plan.success_metrics
+        assert 'Daily active users, session duration' in plan.key_performance_indicators
 
-        # Project scope
-        assert 'User dashboard redesign, mobile responsive design' in project_plan.included_features
-        assert 'Legacy system migration, third-party integrations' in project_plan.excluded_features
-        assert 'Existing infrastructure can support new portal' in project_plan.project_assumptions
-        assert 'Must maintain 99.9% uptime during migration' in project_plan.project_constraints
+        # Plan scope
+        assert 'User dashboard redesign, mobile responsive design' in plan.included_features
+        assert 'Legacy system migration, third-party integrations' in plan.excluded_features
+        assert 'Existing infrastructure can support new portal' in plan.project_assumptions
+        assert 'Must maintain 99.9% uptime during migration' in plan.project_constraints
 
         # Stakeholders
-        assert 'Chief Technology Officer - Sarah Johnson' in project_plan.project_sponsor
-        assert 'Customer Success team, IT Operations' in project_plan.key_stakeholders
-        assert 'Existing customers (5000+ active users)' in project_plan.end_users
+        assert 'Chief Technology Officer - Sarah Johnson' in plan.project_sponsor
+        assert 'Customer Success team, IT Operations' in plan.key_stakeholders
+        assert 'Existing customers (5000+ active users)' in plan.end_users
 
-        # Project structure
-        assert 'Phase 1: Research & Design (2 months)' in project_plan.work_breakdown
-        assert 'Discovery and user research, UI/UX design' in project_plan.phases_overview
-        assert 'Design system completion, API documentation' in project_plan.project_dependencies
+        # Plan structure
+        assert 'Phase 1: Research & Design (2 months)' in plan.work_breakdown
+        assert 'Discovery and user research, UI/UX design' in plan.phases_overview
+        assert 'Design system completion, API documentation' in plan.project_dependencies
 
         # Resource requirements
-        assert '1 Project Manager, 2 Frontend Developers' in project_plan.team_structure
-        assert 'React.js frontend, Node.js backend' in project_plan.technology_requirements
-        assert 'Additional AWS instances, CDN setup' in project_plan.infrastructure_needs
+        assert '1 Plan Manager, 2 Frontend Developers' in plan.team_structure
+        assert 'React.js frontend, Node.js backend' in plan.technology_requirements
+        assert 'Additional AWS instances, CDN setup' in plan.infrastructure_needs
 
         # Risk management
-        assert 'Timeline delays due to design complexity' in project_plan.identified_risks
-        assert 'Regular design reviews, early integration testing' in project_plan.mitigation_strategies
-        assert 'Simplified design fallback, manual processes' in project_plan.contingency_plans
+        assert 'Timeline delays due to design complexity' in plan.identified_risks
+        assert 'Regular design reviews, early integration testing' in plan.mitigation_strategies
+        assert 'Simplified design fallback, manual processes' in plan.contingency_plans
 
         # Quality assurance
-        assert 'WCAG 2.1 AA accessibility compliance' in project_plan.quality_standards
-        assert 'Unit testing (90% coverage), integration testing' in project_plan.testing_strategy
-        assert 'All user stories complete, performance benchmarks met' in project_plan.acceptance_criteria
+        assert 'WCAG 2.1 AA accessibility compliance' in plan.quality_standards
+        assert 'Unit testing (90% coverage), integration testing' in plan.testing_strategy
+        assert 'All user stories complete, performance benchmarks met' in plan.acceptance_criteria
 
         # Communication plan
-        assert 'Weekly status reports to sponsor' in project_plan.reporting_structure
-        assert 'Daily standups, weekly team meetings' in project_plan.meeting_schedule
-        assert 'Confluence for project docs, Jira for task tracking' in project_plan.documentation_standards
+        assert 'Weekly status reports to sponsor' in plan.reporting_structure
+        assert 'Daily standups, weekly team meetings' in plan.meeting_schedule
+        assert 'Confluence for project docs, Jira for task tracking' in plan.documentation_standards
 
         # Metadata
-        assert project_plan.project_status == ProjectStatus.APPROVED
+        assert plan.plan_status == PlanStatus.APPROVED
 
     def test_parse_markdown_handles_missing_sections(self) -> None:
-        markdown = """# Project Plan: Simple Website
+        markdown = """# Plan Plan: Simple Website
 
 ## Executive Summary
 
@@ -214,27 +215,27 @@ draft
 1.0
 """
 
-        project_plan = ProjectPlan.parse_markdown(markdown)
+        plan = Plan.parse_markdown(markdown)
 
-        assert project_plan.project_name == 'Simple Website'
-        assert project_plan.project_vision == 'Create a simple business website'
+        assert plan.plan_name == 'Simple Website'
+        assert plan.project_vision == 'Create a simple business website'
         # Missing sections should have default values
-        assert 'Primary Objectives not specified' in project_plan.primary_objectives
-        assert 'Success Metrics not specified' in project_plan.success_metrics
-        assert 'Team Structure not specified' in project_plan.team_structure
+        assert 'Primary Objectives not specified' in plan.primary_objectives
+        assert 'Success Metrics not specified' in plan.success_metrics
+        assert 'Team Structure not specified' in plan.team_structure
 
     def test_parse_markdown_invalid_format_raises_error(self) -> None:
         invalid_markdown = """This is not a project plan format"""
 
-        with pytest.raises(ValueError, match='Invalid project plan format: missing title'):
-            ProjectPlan.parse_markdown(invalid_markdown)
+        with pytest.raises(ValueError, match='Invalid plan format: missing title'):
+            Plan.parse_markdown(invalid_markdown)
 
 
-class TestProjectPlanMarkdownBuilding:
+class TestPlanMarkdownBuilding:
     @pytest.fixture
-    def sample_project_plan(self) -> ProjectPlan:
-        return ProjectPlan(
-            project_name='E-Learning Platform',
+    def sample_plan(self) -> Plan:
+        return Plan(
+            plan_name='E-Learning Platform',
             project_vision='Create an accessible online learning platform for professional development',
             project_mission='Deliver high-quality educational content through modern technology',
             project_timeline='12 months from inception to full deployment',
@@ -264,13 +265,13 @@ class TestProjectPlanMarkdownBuilding:
             reporting_structure='Weekly team updates, bi-weekly sponsor reviews, monthly board presentations',
             meeting_schedule='Daily standups, weekly planning, bi-weekly demos, monthly stakeholder meetings',
             documentation_standards='Technical docs in GitBook, project tracking in Asana, code docs in GitHub',
-            project_status=ProjectStatus.ACTIVE,
+            plan_status=PlanStatus.ACTIVE,
         )
 
-    def test_build_markdown_creates_valid_template_format(self, sample_project_plan: ProjectPlan) -> None:
-        markdown = sample_project_plan.build_markdown()
+    def test_build_markdown_creates_valid_template_format(self, sample_plan: Plan) -> None:
+        markdown = sample_plan.build_markdown()
 
-        assert '# Project Plan: E-Learning Platform' in markdown
+        assert '# Plan: E-Learning Platform' in markdown
         assert '## Executive Summary' in markdown
         assert '### Vision' in markdown
         assert 'Create an accessible online learning platform for professional development' in markdown
@@ -284,53 +285,53 @@ class TestProjectPlanMarkdownBuilding:
         assert '### Quality Standards' in markdown
         assert '### Status\nactive' in markdown
 
-    def test_round_trip_parsing_maintains_data_integrity(self, sample_project_plan: ProjectPlan) -> None:
+    def test_round_trip_parsing_maintains_data_integrity(self, sample_plan: Plan) -> None:
         # Build markdown from the model
-        markdown = sample_project_plan.build_markdown()
+        markdown = sample_plan.build_markdown()
 
         # Parse it back into a model
-        parsed_project_plan = ProjectPlan.parse_markdown(markdown)
+        parsed_plan = Plan.parse_markdown(markdown)
 
         # Should match original (except timestamps)
-        assert parsed_project_plan.project_name == sample_project_plan.project_name
-        assert parsed_project_plan.project_vision == sample_project_plan.project_vision
-        assert parsed_project_plan.project_mission == sample_project_plan.project_mission
-        assert parsed_project_plan.project_timeline == sample_project_plan.project_timeline
-        assert parsed_project_plan.project_budget == sample_project_plan.project_budget
-        assert parsed_project_plan.primary_objectives == sample_project_plan.primary_objectives
-        assert parsed_project_plan.success_metrics == sample_project_plan.success_metrics
-        assert parsed_project_plan.key_performance_indicators == sample_project_plan.key_performance_indicators
-        assert parsed_project_plan.included_features == sample_project_plan.included_features
-        assert parsed_project_plan.excluded_features == sample_project_plan.excluded_features
-        assert parsed_project_plan.project_assumptions == sample_project_plan.project_assumptions
-        assert parsed_project_plan.project_constraints == sample_project_plan.project_constraints
-        assert parsed_project_plan.project_sponsor == sample_project_plan.project_sponsor
-        assert parsed_project_plan.key_stakeholders == sample_project_plan.key_stakeholders
-        assert parsed_project_plan.end_users == sample_project_plan.end_users
-        assert parsed_project_plan.work_breakdown == sample_project_plan.work_breakdown
-        assert parsed_project_plan.phases_overview == sample_project_plan.phases_overview
-        assert parsed_project_plan.project_dependencies == sample_project_plan.project_dependencies
-        assert parsed_project_plan.team_structure == sample_project_plan.team_structure
-        assert parsed_project_plan.technology_requirements == sample_project_plan.technology_requirements
-        assert parsed_project_plan.infrastructure_needs == sample_project_plan.infrastructure_needs
-        assert parsed_project_plan.identified_risks == sample_project_plan.identified_risks
-        assert parsed_project_plan.mitigation_strategies == sample_project_plan.mitigation_strategies
-        assert parsed_project_plan.contingency_plans == sample_project_plan.contingency_plans
-        assert parsed_project_plan.quality_standards == sample_project_plan.quality_standards
-        assert parsed_project_plan.testing_strategy == sample_project_plan.testing_strategy
-        assert parsed_project_plan.acceptance_criteria == sample_project_plan.acceptance_criteria
-        assert parsed_project_plan.reporting_structure == sample_project_plan.reporting_structure
-        assert parsed_project_plan.meeting_schedule == sample_project_plan.meeting_schedule
-        assert parsed_project_plan.documentation_standards == sample_project_plan.documentation_standards
-        assert parsed_project_plan.project_status == sample_project_plan.project_status
+        assert parsed_plan.plan_name == sample_plan.plan_name
+        assert parsed_plan.project_vision == sample_plan.project_vision
+        assert parsed_plan.project_mission == sample_plan.project_mission
+        assert parsed_plan.project_timeline == sample_plan.project_timeline
+        assert parsed_plan.project_budget == sample_plan.project_budget
+        assert parsed_plan.primary_objectives == sample_plan.primary_objectives
+        assert parsed_plan.success_metrics == sample_plan.success_metrics
+        assert parsed_plan.key_performance_indicators == sample_plan.key_performance_indicators
+        assert parsed_plan.included_features == sample_plan.included_features
+        assert parsed_plan.excluded_features == sample_plan.excluded_features
+        assert parsed_plan.project_assumptions == sample_plan.project_assumptions
+        assert parsed_plan.project_constraints == sample_plan.project_constraints
+        assert parsed_plan.project_sponsor == sample_plan.project_sponsor
+        assert parsed_plan.key_stakeholders == sample_plan.key_stakeholders
+        assert parsed_plan.end_users == sample_plan.end_users
+        assert parsed_plan.work_breakdown == sample_plan.work_breakdown
+        assert parsed_plan.phases_overview == sample_plan.phases_overview
+        assert parsed_plan.project_dependencies == sample_plan.project_dependencies
+        assert parsed_plan.team_structure == sample_plan.team_structure
+        assert parsed_plan.technology_requirements == sample_plan.technology_requirements
+        assert parsed_plan.infrastructure_needs == sample_plan.infrastructure_needs
+        assert parsed_plan.identified_risks == sample_plan.identified_risks
+        assert parsed_plan.mitigation_strategies == sample_plan.mitigation_strategies
+        assert parsed_plan.contingency_plans == sample_plan.contingency_plans
+        assert parsed_plan.quality_standards == sample_plan.quality_standards
+        assert parsed_plan.testing_strategy == sample_plan.testing_strategy
+        assert parsed_plan.acceptance_criteria == sample_plan.acceptance_criteria
+        assert parsed_plan.reporting_structure == sample_plan.reporting_structure
+        assert parsed_plan.meeting_schedule == sample_plan.meeting_schedule
+        assert parsed_plan.documentation_standards == sample_plan.documentation_standards
+        assert parsed_plan.plan_status == sample_plan.plan_status
 
-    def test_character_for_character_round_trip_validation(self, sample_project_plan: ProjectPlan) -> None:
+    def test_character_for_character_round_trip_validation(self, sample_plan: Plan) -> None:
         # Build markdown
-        original_markdown = sample_project_plan.build_markdown()
+        original_markdown = sample_plan.build_markdown()
 
         # Parse and rebuild
-        parsed_project_plan = ProjectPlan.parse_markdown(original_markdown)
-        rebuilt_markdown = parsed_project_plan.build_markdown()
+        parsed_plan = Plan.parse_markdown(original_markdown)
+        rebuilt_markdown = parsed_plan.build_markdown()
 
         # Should be identical
         assert original_markdown == rebuilt_markdown

@@ -93,7 +93,7 @@ Stores active refinement loops with JSONB feedback history.
 | Column | Type | Description |
 |--------|------|-------------|
 | id | VARCHAR(8) | Unique loop identifier (primary key) |
-| project_name | VARCHAR(255) | Associated project |
+| plan_name | VARCHAR(255) | Associated project |
 | loop_type | VARCHAR(50) | Loop category (plan, roadmap, phase, task, analyst) |
 | status | VARCHAR(50) | Current status (initialized, in_progress, completed, user_input, refine) |
 | current_score | INTEGER | Latest quality score (0-100) |
@@ -127,7 +127,7 @@ Stores technical specifications with frozen core fields.
 #### roadmaps
 Project roadmap metadata with 16 required fields.
 
-#### project_plans
+#### plans
 Comprehensive project plans with 31 structured fields.
 
 #### loop_history
@@ -153,11 +153,11 @@ Temporary associations between refinement loops and phases.
 | `idx_loop_states_status` | B-tree | Filter loops by status |
 | `idx_loop_states_created` | B-tree (DESC) | Chronological ordering |
 | `idx_loop_history_sequence` | B-tree (DESC) | Bounded queue operations |
-| `idx_phases_project` | B-tree | Project-based phase queries |
+| `idx_phases_project` | B-tree | Plan-based phase queries |
 | `idx_phases_status` | B-tree | Filter phases by status |
 | `idx_phases_iteration` | B-tree (DESC) | Version tracking |
 | `idx_phases_name_search` | GIN (pg_trgm) | Fuzzy phase name matching |
-| `idx_plans_status` | B-tree | Project plan filtering |
+| `idx_plans_status` | B-tree | Plan plan filtering |
 
 ## Database Operations
 
@@ -239,10 +239,10 @@ psql -U respec -d respec_dev -c "REINDEX DATABASE respec_dev;"
 
 ### Query Performance
 
-1. **Use Indexes**: Queries should use indexed columns (`project_name`, `phase_status`, etc.)
+1. **Use Indexes**: Queries should use indexed columns (`plan_name`, `phase_status`, etc.)
 2. **EXPLAIN ANALYZE**: Investigate slow queries
    ```sql
-   EXPLAIN ANALYZE SELECT * FROM phases WHERE project_name = 'my-project';
+   EXPLAIN ANALYZE SELECT * FROM phases WHERE plan_name = 'my-project';
    ```
 3. **Connection Pooling**: Reuse connections via `db_pool.acquire()`
 
@@ -311,10 +311,10 @@ All PostgresStateManager methods are async:
 # Correct usage
 manager = PostgresStateManager()
 await manager.initialize()
-spec = await manager.get_phase('project', 'spec-name')
+spec = await manager.get_phase('project', 'phase-name')
 
 # Incorrect (raises error)
-spec = manager.get_phase('project', 'spec-name')  # Missing await
+spec = manager.get_phase('project', 'phase-name')  # Missing await
 ```
 
 ### Connection Lifecycle
@@ -366,6 +366,6 @@ await conn.execute(f'SELECT * FROM phases WHERE name = {phase_name}')
 ## Future Enhancements
 
 - **Read Replicas**: Scale read operations
-- **Partitioning**: Split large tables by project_name
+- **Partitioning**: Split large tables by plan_name
 - **Caching**: Redis layer for hot data
 - **Audit Logs**: Track all state changes

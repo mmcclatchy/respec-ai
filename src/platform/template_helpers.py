@@ -1,3 +1,5 @@
+from src.models.enums import DocumentType
+
 from .models import (
     AnalystCriticAgentTools,
     CodeCommandTools,
@@ -12,7 +14,10 @@ from .models import (
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
     TaskCoderAgentTools,
+    TaskCommandTools,
     TaskCriticAgentTools,
+    TaskPlanCriticAgentTools,
+    TaskPlannerAgentTools,
     TaskReviewerAgentTools,
     ToolReference,
 )
@@ -88,35 +93,35 @@ def create_phase_command_tools(platform_tools: list[str], platform_type: 'Platfo
         update_phase_tool=platform_tools[2],
         platform=platform_type,
         store_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_PROJECT_PLAN, project_name='PLAN_NAME', project_plan_markdown='strategic_plan_markdown'
+            RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{STRATEGIC_PLAN_MARKDOWN}'
         ),
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
-            path='f"{PLAN_NAME}/{EXPECTED_PHASE_NAME}"',
-            content='extracted_phase_markdown',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{EXTRACTED_PHASE_MARKDOWN}',
         ),
         initialize_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.INITIALIZE_REFINEMENT_LOOP, project_name='PLAN_NAME', loop_type='"phase"'
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"phase"'
         ),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, project_name='PLAN_NAME'
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
         link_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.LINK_LOOP_TO_DOCUMENT,
-            loop_id='LOOP_ID',
+            loop_id='{LOOP_ID}',
             doc_type='"phase"',
-            path='f"{PLAN_NAME}/{EXPECTED_PHASE_NAME}"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
         ),
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='LOOP_ID'),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='LOOP_ID'
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{LOOP_ID}'
         ),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='LOOP_ID', count='1'
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
         get_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='LOOP_ID'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='{LOOP_ID}'
         ),
     )
 
@@ -137,33 +142,34 @@ def create_plan_command_tools(platform_tools: list[str], platform_type: 'Platfor
         tools_yaml=builder.render_comma_separated_tools(),
         create_project_external=platform_tools[0],
         create_project_completion_external=platform_tools[1],
-        get_project_plan_tool=platform_tools[2],
+        get_plan_tool=platform_tools[2],
         platform=platform_type,
         initialize_analyst_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.INITIALIZE_REFINEMENT_LOOP, project_name='PROJECT_NAME', loop_type="'analyst'"
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"analyst"'
         ),
         store_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_PROJECT_PLAN, project_name='PROJECT_NAME', project_plan_markdown='CURRENT_PLAN'
+            RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{CURRENT_PLAN}'
         ),
         store_plan_in_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_PROJECT_PLAN,
-            project_name='ANALYST_LOOP_ID',
-            project_plan_markdown='plan_from_previous_step',
+            RespecAITool.STORE_DOCUMENT,
+            doc_type='"plan"',
+            key='{ANALYST_LOOP_ID}',
+            content='{PLAN_FROM_PREVIOUS_STEP}',
         ),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, project_name='PROJECT_NAME'
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='ANALYST_LOOP_ID'
+            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{ANALYST_LOOP_ID}'
         ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='ANALYST_LOOP_ID'
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{ANALYST_LOOP_ID}'
         ),
         store_completion_report=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_PLAN_COMPLETION_REPORT,
-            project_path='PROJECT_PATH',
-            loop_id='ANALYST_LOOP_ID',
-            completion_report_markdown='completion_report_markdown',
+            RespecAITool.STORE_DOCUMENT,
+            doc_type='"completion_report"',
+            key='{ANALYST_LOOP_ID}',
+            content='{COMPLETION_REPORT_MARKDOWN}',
         ),
     )
 
@@ -174,7 +180,7 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_task_agent(RespecAIAgent.TASK_CRITIC)
     builder.add_task_agent(RespecAIAgent.TASK_CODER)
     builder.add_task_agent(RespecAIAgent.TASK_REVIEWER)
-    builder.add_task_agent(RespecAIAgent.RESEARCH_SYNTHESIZER)
+    builder.add_builtin_tool(BuiltInTool.TASK, 'research-synthesizer')
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
@@ -190,38 +196,38 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"task"',
-            path='f"{PROJECT_NAME}/{PHASE_NAME}"',
-            content='build_plan_markdown',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{BUILD_PLAN_MARKDOWN}',
         ),
         store_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
-            path='f"{PROJECT_NAME}/{PHASE_NAME}"',
-            content='PHASE_MARKDOWN',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{PHASE_MARKDOWN}',
         ),
         get_phase_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='f"{PROJECT_NAME}/{PHASE_NAME}"'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         initialize_planning_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.INITIALIZE_REFINEMENT_LOOP, project_name='PROJECT_NAME', loop_type='"task"'
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
         ),
         initialize_coding_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.INITIALIZE_REFINEMENT_LOOP, project_name='PROJECT_NAME', loop_type='"task"'
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
         ),
         decide_planning_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='PLANNING_LOOP_ID'
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{PLANNING_LOOP_ID}'
         ),
         decide_coding_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='CODING_LOOP_ID'
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{CODING_LOOP_ID}'
         ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_USER_FEEDBACK, loop_id='LOOP_ID', feedback_markdown='USER_FEEDBACK_MARKDOWN'
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
         ),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='LOOP_ID', count='1'
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
         get_task_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='PLANNING_LOOP_ID'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
         ),
     )
 
@@ -242,25 +248,76 @@ def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType
 
     return PlanRoadmapCommandTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_project_plan_tool=platform_tools[0],
+        get_plan_tool=platform_tools[0],
         list_project_phases_tool=platform_tools[1],
         platform=platform_type,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, project_name='PROJECT_NAME'
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
         initialize_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.INITIALIZE_REFINEMENT_LOOP, project_name='PROJECT_NAME', loop_type='"roadmap"'
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"roadmap"'
         ),
         create_roadmap=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.CREATE_ROADMAP, project_name='PROJECT_NAME', roadmap_data='roadmap_markdown'
+            RespecAITool.STORE_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}', content='{ROADMAP_MARKDOWN}'
         ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='ROADMAP_LOOP_ID'
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{ROADMAP_LOOP_ID}'
         ),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='ROADMAP_LOOP_ID', count='1'
+            RespecAITool.GET_FEEDBACK, loop_id='{ROADMAP_LOOP_ID}', count='1'
         ),
-        get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, project_name='PROJECT_NAME'),
+        get_roadmap=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}'
+        ),
+    )
+
+
+def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') -> 'TaskCommandTools':
+    builder = TemplateToolBuilder()
+    builder.add_task_agent(RespecAIAgent.TASK_PLANNER)
+    builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
+    builder.add_task_agent(RespecAIAgent.CREATE_TASK)
+
+    for tool in TaskCommandTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in TaskCommandTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    builder.add_platform_tools(platform_tools)
+
+    return TaskCommandTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        get_phase_tool=platform_tools[0],
+        list_phase_tasks_tool=platform_tools[1],
+        platform=platform_type,
+        store_phase_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{PHASE_MARKDOWN}',
+        ),
+        initialize_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
+        ),
+        link_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LINK_LOOP_TO_DOCUMENT,
+            loop_id='{TASK_LOOP_ID}',
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{TASK_LOOP_ID}'
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{TASK_LOOP_ID}', count='1'
+        ),
+        get_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
+        ),
+        store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{TASK_LOOP_ID}', feedback_markdown='{USER_FEEDBACK}'
+        ),
     )
 
 
@@ -275,18 +332,18 @@ def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
 
     return PhaseArchitectAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='loop_id'),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='loop_id', count='1'
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
         get_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='None', loop_id='loop_id'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='None', loop_id='{LOOP_ID}'
         ),
         update_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.UPDATE_DOCUMENT,
             doc_type='"phase"',
-            path='f"{project_name}/{phase_name}"',
-            content='generated_phaseification',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{GENERATED_PHASE_MARKDOWN}',
         ),
     )
 
@@ -304,10 +361,10 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
         tools_yaml=builder.render_comma_separated_tools(),
         phase_length_soft_cap=phase_length_soft_cap,
         get_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='None', loop_id='loop_id'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='None', loop_id='{LOOP_ID}'
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='loop_id', feedback_markdown='generated_feedback'
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),
     )
 
@@ -323,14 +380,14 @@ def create_analyst_critic_agent_tools() -> AnalystCriticAgentTools:
 
     return AnalystCriticAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_project_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, loop_id='loop_id'
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{LOOP_ID}'
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='loop_id'
+            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
         ),
         store_current_analysis=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='loop_id', analysis='analysis'
+            RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='{LOOP_ID}', analysis='{ANALYSIS}'
         ),
     )
 
@@ -346,14 +403,14 @@ def create_plan_analyst_agent_tools() -> PlanAnalystAgentTools:
 
     return PlanAnalystAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_project_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, loop_id='loop_id'
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{LOOP_ID}'
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='loop_id'
+            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
         ),
         store_current_analysis=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='loop_id', analysis='analysis'
+            RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='{LOOP_ID}', analysis='{ANALYSIS}'
         ),
     )
 
@@ -369,8 +426,8 @@ def create_plan_critic_agent_tools() -> PlanCriticAgentTools:
 
     return PlanCriticAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_project_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, project_name='project_name'
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
     )
 
@@ -386,15 +443,15 @@ def create_roadmap_agent_tools() -> RoadmapAgentTools:
 
     return RoadmapAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_project_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_PROJECT_PLAN_MARKDOWN, project_name='PROJECT_NAME'
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='loop_id'),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='loop_id', count='1'
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
         create_roadmap=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.CREATE_ROADMAP, project_name='PROJECT_NAME', roadmap_data='roadmap_markdown'
+            RespecAITool.CREATE_ROADMAP, plan_name='{PLAN_NAME}', roadmap_data='{ROADMAP_MARKDOWN}'
         ),
     )
 
@@ -410,9 +467,9 @@ def create_roadmap_critic_agent_tools() -> RoadmapCriticAgentTools:
 
     return RoadmapCriticAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
-        get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, project_name='PROJECT_NAME'),
+        get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, plan_name='{PLAN_NAME}'),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='LOOP_ID', feedback_markdown='generated_feedback'
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),
     )
 
@@ -429,16 +486,16 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     return TaskCriticAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='planning_loop_id'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='f"{project_name}/{phase_name}"'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='planning_loop_id'
+            RespecAITool.GET_FEEDBACK, loop_id='{PLANNING_LOOP_ID}'
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='planning_loop_id', feedback_markdown='feedback_markdown'
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{PLANNING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
     )
 
@@ -455,16 +512,80 @@ def create_task_reviewer_agent_tools() -> TaskReviewerAgentTools:
     return TaskReviewerAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='planning_loop_id'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='f"{project_name}/{phase_name}"'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='coding_loop_id'
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='coding_loop_id', feedback_markdown='feedback_markdown'
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
+        ),
+    )
+
+
+def create_task_planner_agent_tools() -> TaskPlannerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in TaskPlannerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in TaskPlannerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return TaskPlannerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{TASK_LOOP_ID}', count='1'
+        ),
+        store_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.TASK.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{TASK_MARKDOWN}',
+        ),
+        link_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LINK_LOOP_TO_DOCUMENT,
+            loop_id='{TASK_LOOP_ID}',
+            doc_type='"task"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{TASK_LOOP_ID}'
+        ),
+    )
+
+
+def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in TaskPlanCriticAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in TaskPlanCriticAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return TaskPlanCriticAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{TASK_LOOP_ID}', count='2'
+        ),
+        store_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{TASK_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
     )
 
@@ -484,13 +605,13 @@ def create_task_coder_agent_tools(platform_tools: list[str]) -> TaskCoderAgentTo
         tools_yaml=builder.render_comma_separated_tools(),
         update_task_status=platform_tools[0],
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='planning_loop_id'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', path='f"{project_name}/{phase_name}"'
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='coding_loop_id'
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
     )
 
@@ -508,11 +629,13 @@ def create_create_phase_agent_tools(platform_tools: list[str]) -> CreatePhaseAge
         create_phase_tool=platform_tools[0],
         get_phase_tool=platform_tools[1],
         update_phase_tool=platform_tools[2],
-        get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, project_name='PROJECT_NAME'),
+        get_roadmap=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}'
+        ),
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
-            path='f"{PROJECT_NAME}/{PHASE_NAME}"',
-            content='extracted_phase_markdown',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{EXTRACTED_PHASE_MARKDOWN}',
         ),
     )

@@ -25,6 +25,8 @@ from src.platform.template_helpers import (
     create_roadmap_critic_agent_tools,
     create_task_coder_agent_tools,
     create_task_critic_agent_tools,
+    create_task_plan_critic_agent_tools,
+    create_task_planner_agent_tools,
     create_task_reviewer_agent_tools,
 )
 from src.platform.templates.agents import (
@@ -38,6 +40,8 @@ from src.platform.templates.agents import (
     generate_roadmap_template,
     generate_task_coder_template,
     generate_task_critic_template,
+    generate_task_plan_critic_template,
+    generate_task_planner_template,
     generate_task_reviewer_template,
 )
 from src.platform.tool_enums import AbstractOperation, RespecAICommand
@@ -45,13 +49,13 @@ from src.platform.tool_registry import ToolRegistry
 from src.utils.setting_configs import loop_config
 
 
-def setup_project(project_path: str, platform: Literal['linear', 'github', 'markdown'], project_name: str) -> int:
+def setup_project(project_path: str, platform: Literal['linear', 'github', 'markdown'], plan_name: str) -> int:
     """Set up respec-ai workflow files for a project.
 
     Args:
         project_path: Absolute path to project directory
         platform: Platform type (linear, github, or markdown)
-        project_name: Name for this project
+        plan_name: Name for this project
 
     Returns:
         Exit code (0 for success, 1 for failure)
@@ -60,7 +64,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         project = Path(project_path).resolve()
 
         if not project.exists():
-            print(f'❌ Error: Project directory does not exist: {project}', file=sys.stderr)
+            print(f'❌ Error: Plan directory does not exist: {project}', file=sys.stderr)
             return 1
 
         platform_type = PlatformType(platform)
@@ -75,6 +79,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         command_templates = [
             RespecAICommand.PLAN,
             RespecAICommand.PHASE,
+            RespecAICommand.TASK,
             RespecAICommand.CODE,
             RespecAICommand.ROADMAP,
             RespecAICommand.PLAN_CONVERSATION,
@@ -94,7 +99,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
             files_written.append(str(file_path.relative_to(project)))
 
         config = {
-            'project_name': project_name,
+            'plan_name': plan_name,
             'platform': platform,
             'created_at': datetime.now().isoformat(),
             'version': '1.0',
@@ -150,6 +155,8 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
     create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools)
     phase_architect_tools = create_phase_architect_agent_tools()
     phase_critic_tools = create_phase_critic_agent_tools(phase_length_soft_cap=loop_config.phase_length_soft_cap)
+    task_planner_tools = create_task_planner_agent_tools()
+    task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
     task_coder_tools = create_task_coder_agent_tools(task_coder_platform_tools)
     task_reviewer_tools = create_task_reviewer_agent_tools()
@@ -163,6 +170,8 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         ('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         ('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         ('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
+        ('respec-task-planner', generate_task_planner_template(task_planner_tools)),
+        ('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-task-coder', generate_task_coder_template(task_coder_tools)),
         ('respec-task-reviewer', generate_task_reviewer_template(task_reviewer_tools)),
@@ -176,7 +185,7 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description='Set up respec-ai workflow files for a project')
     parser.add_argument('--project-path', required=True, help='Absolute path to project directory')
-    parser.add_argument('--project-name', required=True, help='Name for this project')
+    parser.add_argument('--plan-name', required=True, help='Name for this project')
     parser.add_argument(
         '--platform',
         required=True,
@@ -186,7 +195,7 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    return setup_project(args.project_path, args.platform, args.project_name)
+    return setup_project(args.project_path, args.platform, args.plan_name)
 
 
 if __name__ == '__main__':

@@ -97,7 +97,7 @@ class TestCriticFeedback:
         assert feedback.quality_score == 75
 
     def test_parse_markdown_creates_valid_feedback(self) -> None:
-        markdown = """# Critic Feedback: SPEC-CRITIC
+        markdown = """# Critic Feedback: PHASE-CRITIC
 
 ## Assessment Summary
 - **Loop ID**: test-loop-789
@@ -123,7 +123,7 @@ The specification demonstrates thorough understanding of requirements and provid
 - Include monitoring and alerting specifications
 
 ## Metadata
-- **Critic**: SPEC-CRITIC
+- **Critic**: PHASE-CRITIC
 - **Timestamp**: 2024-01-15T14:30:00Z
 - **Status**: completed
 """

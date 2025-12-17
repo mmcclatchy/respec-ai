@@ -8,6 +8,7 @@ from src.platform.models import (
     PhaseCommandTools,
     PlanCommandTools,
     PlanRoadmapCommandTools,
+    TaskCommandTools,
 )
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
@@ -22,6 +23,8 @@ from src.platform.template_helpers import (
     create_roadmap_critic_agent_tools,
     create_task_coder_agent_tools,
     create_task_critic_agent_tools,
+    create_task_plan_critic_agent_tools,
+    create_task_planner_agent_tools,
     create_task_reviewer_agent_tools,
 )
 from src.platform.templates.agents import (
@@ -35,6 +38,8 @@ from src.platform.templates.agents import (
     generate_roadmap_template,
     generate_task_coder_template,
     generate_task_critic_template,
+    generate_task_plan_critic_template,
+    generate_task_planner_template,
     generate_task_reviewer_template,
 )
 from src.platform.tool_enums import AbstractOperation, RespecAICommand
@@ -52,7 +57,7 @@ def generate_templates(
 
     Args:
         orchestrator: Platform orchestrator instance
-        project_path: Project root directory
+        project_path: Plan root directory
         platform_type: Platform type (linear, github, markdown)
         mcp: Optional FastMCP instance for tool documentation extraction
 
@@ -62,6 +67,7 @@ def generate_templates(
     if mcp:
         PhaseCommandTools.initialize_tool_docs(mcp)
         PlanCommandTools.initialize_tool_docs(mcp)
+        TaskCommandTools.initialize_tool_docs(mcp)
         CodeCommandTools.initialize_tool_docs(mcp)
         PlanRoadmapCommandTools.initialize_tool_docs(mcp)
 
@@ -76,6 +82,7 @@ def generate_templates(
     command_templates = [
         RespecAICommand.PLAN,
         RespecAICommand.PHASE,
+        RespecAICommand.TASK,
         RespecAICommand.CODE,
         RespecAICommand.ROADMAP,
         RespecAICommand.PLAN_CONVERSATION,
@@ -124,6 +131,8 @@ def _get_agent_generators(
     create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools)
     phase_architect_tools = create_phase_architect_agent_tools()
     phase_critic_tools = create_phase_critic_agent_tools(loop_config.phase_length_soft_cap)
+    task_planner_tools = create_task_planner_agent_tools()
+    task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
     task_coder_tools = create_task_coder_agent_tools(task_coder_platform_tools)
     task_reviewer_tools = create_task_reviewer_agent_tools()
@@ -137,6 +146,8 @@ def _get_agent_generators(
         ('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         ('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         ('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
+        ('respec-task-planner', generate_task_planner_template(task_planner_tools)),
+        ('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-task-coder', generate_task_coder_template(task_coder_tools)),
         ('respec-task-reviewer', generate_task_reviewer_template(task_reviewer_tools)),

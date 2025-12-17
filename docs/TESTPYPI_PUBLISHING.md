@@ -325,7 +325,7 @@ claude
 - [ ] Package installs without errors
 - [ ] All CLI commands execute successfully
 - [ ] MCP server registers correctly
-- [ ] Project initialization creates all files
+- [ ] Plan initialization creates all files
 - [ ] Commands are available in Claude Code
 - [ ] Full workflow completes successfully
 

@@ -1,31 +1,40 @@
-from typing import ClassVar
+from typing import Any, ClassVar
 from uuid import uuid4
 
 from pydantic import Field
 
 from .base import MCPModel
 
-
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
-from typing import Any
 
 
 class Task(MCPModel):
+    """Unified Task model - a complete implementation document with Checklist and Steps.
+
+    This model consolidates the previous TaskBreakdown and Task models into
+    a single document that contains:
+    - Overview: goal, acceptance criteria, tech stack
+    - Implementation: checklist (prioritized todos) + steps (### Step N: sections)
+    - Quality: testing strategy
+    - Status and metadata
+
+    Steps are stored as raw markdown within the implementation_steps field,
+    preserving all formatting and structure.
+    """
+
     TITLE_PATTERN: ClassVar[str] = '# Task'
     TITLE_FIELD: ClassVar[str] = 'name'
     HEADER_FIELD_MAPPING: ClassVar[dict[str, tuple[str, ...]]] = {
         'phase_path': ('Identity', 'Phase Path'),
-        'description': ('Overview', 'Description'),
+        'goal': ('Overview', 'Goal'),
         'acceptance_criteria': ('Overview', 'Acceptance Criteria'),
-        'mode': ('Overview', 'Mode'),
-        'sequence': ('Overview', 'Sequence'),
-        'dependencies': ('Overview', 'Dependencies'),
-        'estimated_complexity': ('Overview', 'Estimated Complexity'),
-        'implementation_notes': ('Implementation', 'Notes'),
-        'test_strategy': ('Implementation', 'Test Strategy'),
+        'tech_stack_reference': ('Overview', 'Technology Stack Reference'),
+        'implementation_checklist': ('Implementation', 'Checklist'),
+        'implementation_steps': ('Implementation', 'Steps'),
+        'testing_strategy': ('Quality', 'Testing Strategy'),
         'status': ('Status', 'Current Status'),
-        'iteration': ('Metadata', 'Iteration'),
+        'active': ('Metadata', 'Active'),
         'version': ('Metadata', 'Version'),
     }
 
@@ -34,26 +43,24 @@ class Task(MCPModel):
     name: str
     phase_path: str  # "plan-name/phase-name"
 
-    # Definition
-    description: str = 'Description not specified'
+    # What we're building
+    goal: str = 'Goal not specified'
     acceptance_criteria: str = 'Acceptance criteria not specified'
-    mode: str = 'implementation'  # "database" | "api" | "integration" | "test" | "implementation"
+    tech_stack_reference: str = 'Technology stack reference not specified'
 
-    # Sequencing
-    sequence: int = 1
-    dependencies: list[str] = Field(default_factory=list)
-    estimated_complexity: str = 'medium'  # "low" | "medium" | "high"
+    # How to build it
+    implementation_checklist: str = 'Implementation checklist not specified'
+    implementation_steps: str = 'Implementation steps not specified'
 
-    # Implementation
-    implementation_notes: str | None = None
-    test_strategy: str | None = None
+    # Quality assurance
+    testing_strategy: str = 'Testing strategy not specified'
 
-    # Status
+    # Status management
     status: str = 'pending'  # "pending" | "in_progress" | "completed"
+    active: bool = True  # For lifecycle management (soft delete)
 
     # Metadata
-    iteration: int = 0
-    version: int = 1
+    version: str = '1.0'
 
     @classmethod
     def parse_markdown(cls, markdown: str) -> 'Task':
@@ -66,7 +73,6 @@ class Task(MCPModel):
         fields: dict[str, Any] = {}
 
         # Extract title
-        # TITLE_PATTERN is "# Task" but _extract_text_content strips the "#", so check for "Task"
         title_pattern_text = cls.TITLE_PATTERN.replace('# ', '')
         for node in cls._find_nodes_by_type(tree, 'heading'):
             if node.tag != 'h1':
@@ -76,7 +82,6 @@ class Task(MCPModel):
                 if ':' in title_text:
                     fields[cls.TITLE_FIELD] = title_text.split(':', 1)[1].strip()
                 else:
-                    # If no colon, the whole text is the title
                     fields[cls.TITLE_FIELD] = title_text.replace(title_pattern_text, '').strip()
                 break
 
@@ -87,18 +92,10 @@ class Task(MCPModel):
                 fields[field_name] = extracted_content
 
         # Post-process specific fields for type conversion
-        # Convert dependencies string to list
-        if 'dependencies' in fields:
-            deps_str = fields['dependencies'].strip()
-            if deps_str.lower() in ('none', '', '[]'):
-                fields['dependencies'] = []
-            else:
-                fields['dependencies'] = [d.strip() for d in deps_str.split(',') if d.strip()]
-
-        # Convert numeric fields from string to int
-        for int_field in ['sequence', 'iteration', 'version']:
-            if int_field in fields and isinstance(fields[int_field], str):
-                fields[int_field] = int(fields[int_field].strip())
+        # Convert active string to bool
+        if 'active' in fields:
+            active_str = fields['active'].strip().lower()
+            fields['active'] = active_str in ('true', 'yes', '1')
 
         return cls(**fields)
 
@@ -109,27 +106,23 @@ class Task(MCPModel):
         sections.append(f'\n### Phase Path\n{self.phase_path}')
 
         sections.append('\n## Overview')
-        sections.append(f'\n### Description\n{self.description}')
+        sections.append(f'\n### Goal\n{self.goal}')
         sections.append(f'\n### Acceptance Criteria\n{self.acceptance_criteria}')
-        sections.append(f'\n### Mode\n{self.mode}')
-        sections.append(f'\n### Sequence\n{self.sequence}')
+        sections.append(f'\n### Technology Stack Reference\n{self.tech_stack_reference}')
 
-        deps_str = ', '.join(self.dependencies) if self.dependencies else 'None'
-        sections.append(f'\n### Dependencies\n{deps_str}')
-        sections.append(f'\n### Estimated Complexity\n{self.estimated_complexity}')
+        sections.append('\n## Implementation')
+        sections.append(f'\n### Checklist\n{self.implementation_checklist}')
+        sections.append(f'\n### Steps\n{self.implementation_steps}')
 
-        if self.implementation_notes or self.test_strategy:
-            sections.append('\n## Implementation')
-            if self.implementation_notes:
-                sections.append(f'\n### Notes\n{self.implementation_notes}')
-            if self.test_strategy:
-                sections.append(f'\n### Test Strategy\n{self.test_strategy}')
+        sections.append('\n## Quality')
+        sections.append(f'\n### Testing Strategy\n{self.testing_strategy}')
 
         sections.append('\n## Status')
         sections.append(f'\n### Current Status\n{self.status}')
 
         sections.append('\n## Metadata')
-        sections.append(f'\n### Iteration\n{self.iteration}')
+        active_str = 'true' if self.active else 'false'
+        sections.append(f'\n### Active\n{active_str}')
         sections.append(f'\n### Version\n{self.version}')
 
         return '\n'.join(sections) + '\n'

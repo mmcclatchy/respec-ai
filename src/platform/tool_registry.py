@@ -39,7 +39,20 @@ class ToolRegistry:
                 github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_COMMENT),
                 markdown_tool=ToolReference(tool=BuiltInTool.EDIT, parameters=PathComponent.build_phase_path()),
             ),
-            # Project Management Tools
+            # Task Management Tools
+            PlatformToolMapping(
+                operation=AbstractOperation.CREATE_TASK_TOOL,
+                linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
+                github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
+                markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters=PathComponent.build_task_path()),
+            ),
+            PlatformToolMapping(
+                operation=AbstractOperation.LIST_PHASE_TASKS_TOOL,
+                linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_LIST_ISSUES),
+                github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_LIST_FILES),
+                markdown_tool=ToolReference(tool=BuiltInTool.GLOB, parameters=PathComponent.build_task_path()),
+            ),
+            # Plan Management Tools
             PlatformToolMapping(
                 operation=AbstractOperation.CREATE_PROJECT_EXTERNAL,
                 linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_PROJECT),

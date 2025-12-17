@@ -56,11 +56,11 @@ draft
         assert '---' not in str(phase.phase_status.value)
 
     def test_roadmap_status_field_stops_at_markdown_separator(self) -> None:
-        markdown = """# Project Roadmap: test-project
+        markdown = """# Plan Roadmap: test-project
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 Test goal
 
 ### Total Duration

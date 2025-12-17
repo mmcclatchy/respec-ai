@@ -9,11 +9,11 @@ from src.utils.enums import HealthState
 from src.utils.setting_configs import MCPSettings
 
 
-def create_test_roadmap_markdown(project_name: str) -> str:
-    return f"""# Project Roadmap: {project_name}
+def create_test_roadmap_markdown(plan_name: str) -> str:
+    return f"""# Plan Roadmap: {plan_name}
 
-## Project Details
-- **Project Goal**: Build and deploy {project_name}
+## Plan Details
+- **Project Goal**: Build and deploy {plan_name}
 - **Total Duration**: 6 months
 - **Team Size**: 5 developers
 - **Budget**: $100,000
@@ -43,7 +43,7 @@ def create_test_roadmap_markdown(project_name: str) -> str:
 - **Status**: draft
 - **Created**: 2024-01-01
 - **Last Updated**: 2024-01-01
-- **Spec Count**: 0
+- **Phase Count**: 0
 """
 
 
@@ -64,8 +64,6 @@ class TestProductionMCPServer:
             'get_loop_feedback_summary',
         ]
         expected_unified_tools = [
-            'create_roadmap',
-            'get_roadmap',
             'store_document',
             'get_document',
             'list_documents',
@@ -253,9 +251,8 @@ class TestProductionMCPServer:
         essential_tools = {
             'decide_loop_next_action',
             'initialize_refinement_loop',
-            'create_roadmap',
-            'get_roadmap',
             'store_document',
+            'get_document',
         }
 
         for tool_set in tool_names_sets:
@@ -302,8 +299,6 @@ class TestProductionMCPServer:
             'get_loop_feedback_summary',
         ]
         expected_unified_tools = [
-            'create_roadmap',
-            'get_roadmap',
             'store_document',
             'get_document',
             'list_documents',

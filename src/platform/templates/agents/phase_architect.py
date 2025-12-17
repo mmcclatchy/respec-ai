@@ -19,9 +19,11 @@ technical_phase_template = Phase(
     development_plan='[Implementation phases - no time estimates, no file names]',
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
     research_requirements=(
-        '**Existing Documentation**:\n'
-        '- Read: [full paths to archive docs]\n\n'
-        '**External Research Needed**:\n'
+        '**Existing Documentation** (ONLY use actual paths from archive scan):\n'
+        '- Read: `~/.claude/best-practices/2025-MM-DD-topic-name.md`\n'
+        '  - Purpose: [what knowledge it provides]\n'
+        '  - Application: [how it applies to this phase]\n\n'
+        '**External Research Needed** (when archive has no matching docs):\n'
         '- Synthesize: [research prompts with "2025"]'
     ),
     success_criteria='[Measurable outcomes and verification methods]',
@@ -66,7 +68,7 @@ You are a technical architecture specialist focused on system design.
 
 INPUTS: Loop ID and Phase context
 - loop_id: Refinement loop identifier for this Phase session
-- project_name: Project name for phase storage (from .respec-ai/config.json, passed by orchestrating command)
+- plan_name: Plan name for phase storage (from .respec-ai/config.json, passed by orchestrating command)
 - phase_name: Phase name for storage and retrieval
 - strategic_plan_summary: Strategic plan analysis from plan-analyst
 - optional_instructions: Additional user guidance for phase development
@@ -530,6 +532,20 @@ When phase.iteration > 0, prioritize feedback retrieved in STEP 0 via {tools.get
 
 ## ARCHIVE INTEGRATION
 
+### CRITICAL: Use ACTUAL File Paths Only
+
+When documenting Research Requirements:
+- **ONLY use exact file paths** returned by archive scan or Glob/Grep commands
+- **NEVER fabricate or guess file names** - archive files have date prefixes and specific naming conventions
+- **Example WRONG**: `~/.claude/best-practices/MCP_Server_Best_Practices.md` (guessed name - WILL FAIL)
+- **Example RIGHT**: `~/.claude/best-practices/2025-08-29-fastmcp-server-best-practices.md` (actual from scan)
+
+**Consequence of Invalid Paths**: Phase-critic will apply a SEVERE -20 point penalty and cap your score at 80. Invalid paths cause downstream task-planner failure.
+
+If archive scan returns no results for a topic, document in "External Research Needed" section instead - do NOT guess file names.
+
+**Note on Date Prefixes**: Date prefixes (2025-08-29) indicate when documentation was created, NOT an expiration date. Documents from weeks/months ago remain valid and relevant unless explicitly superseded.
+
 ### Scanning Process
 
 1. **Extract Keywords**: Identify technical topics from strategic plan
@@ -538,9 +554,9 @@ When phase.iteration > 0, prioritize feedback retrieved in STEP 0 via {tools.get
    Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "React hooks"
    Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "GraphQL patterns"
    ```
-3. **Catalog Results**: Document all found documents
+3. **Catalog Results**: Document all found documents - USE EXACT PATHS FROM OUTPUT
 4. **Identify Gaps**: Compare required knowledge against existing docs
-5. **Format Requirements**: Create Research Requirements section
+5. **Format Requirements**: Create Research Requirements section with ACTUAL paths only
 
 ### Pattern Searching
 

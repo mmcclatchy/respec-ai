@@ -20,7 +20,7 @@ def update_command_template(file_path: Path) -> tuple[bool, str]:
     if 'PROJECT_PATH' not in content and 'pwd' not in content:
         # Find the first ## heading after the --- block
         pattern = r'(---\n\n# .*?\n\n)(##)'
-        replacement = r'\1## Step 0: Initialize Project Context\n\nCapture the current project directory for multi-project support:\n\n```bash\npwd\n```\n\nStore the result as PROJECT_PATH. This will be passed to all respec-ai MCP tools.\n\n```text\nPROJECT_PATH = [result of pwd command]\n```\n\n\2'
+        replacement = r'\1## Step 0: Initialize Plan Context\n\nCapture the current project directory for multi-project support:\n\n```bash\npwd\n```\n\nStore the result as PROJECT_PATH. This will be passed to all respec-ai MCP tools.\n\n```text\nPROJECT_PATH = [result of pwd command]\n```\n\n\2'
         content = re.sub(pattern, replacement, content, count=1)
 
     # Update MCP calls - pattern: mcp__respec-ai__tool_name(params)
@@ -55,7 +55,7 @@ def update_agent_template(file_path: Path) -> tuple[bool, str]:
         # Find INPUTS section
         pattern = r'(INPUTS:.*?\n)'
         if re.search(pattern, content):
-            replacement = r'\1- project_path: Project directory path (provided by calling command/agent)\n'
+            replacement = r'\1- project_path: Plan directory path (provided by calling command/agent)\n'
             content = re.sub(pattern, replacement, content, count=1)
 
     # Update MCP calls to include project_path

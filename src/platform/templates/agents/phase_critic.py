@@ -111,6 +111,7 @@ phase_feedback_template = CriticFeedback(
         '**[Category]**: [Implementation readiness gap]',
         '**[Category]**: [Technical concern]',
         '**[Category]**: [Missing detail]',
+        '**[Research Path Invalid - BLOCKING]**: Path `[path]` does not exist - phase-architect must use actual file paths from archive scan output, not guessed names',
     ],
     recommendations=[
         '**[Priority Level - Critical/Important/Nice-to-Have]**: [Specific improvement action]',
@@ -145,8 +146,8 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a Phase quality specialist.
 
-INPUTS: Project name and Loop ID for operations
-- project_name: Project name for phase retrieval
+INPUTS: Plan name and Loop ID for operations
+- plan_name: Plan name for phase retrieval
 - loop_id: Refinement loop identifier for feedback storage
 - phase_name: Phase name for retrieval
 
@@ -155,7 +156,7 @@ TASKS:
 STEP 1: Validate loop_id Parameter
 IF loop_id is None or loop_id == "":
     ERROR: "phase-critic requires valid loop_id parameter"
-    DIAGNOSTIC: "loop_id={{loop_id}}, project_name={{project_name}}, phase_name={{phase_name}}"
+    DIAGNOSTIC: "loop_id={{loop_id}}, plan_name={{plan_name}}, phase_name={{phase_name}}"
     HELP: "The phase-critic agent MUST receive loop_id from the calling command"
     EXIT: Agent terminated
 → Verify: loop_id is valid (non-empty string)
@@ -169,8 +170,8 @@ STEP 2.5: Extract Phase Length from Response Metadata
 Extract length metric calculated by MCP server:
 
 SPEC_RESPONSE = [result from Step 2]
-PHASE_MARKDOWN = SPEC_RESPONSE.message
-CHAR_LENGTH = SPEC_RESPONSE.char_length  # Provided by MCP server
+PHASE_MARKDOWN = PHASE_RESPONSE.message
+CHAR_LENGTH = PHASE_RESPONSE.char_length  # Provided by MCP server
 
 ## No need to calculate - server already did it
 ESTIMATED_TOKENS = CHAR_LENGTH / 4  (Approximate token count: ~4 chars per token)
@@ -234,6 +235,41 @@ LENGTH_ASSESSMENT = {{
     "root_cause": ROOT_CAUSE,
     "evidence": EVIDENCE
 }}
+
+STEP 2.6: Verify Research File Paths Exist
+Extract research file paths from Phase's Research Requirements section:
+
+RESEARCH_PATHS = []
+Search PHASE_MARKDOWN for "### Research Requirements" section
+IF section exists:
+  Extract all file paths matching pattern: `~/.claude/best-practices/*.md`
+  For each path found:
+    RESEARCH_PATHS.append(path)
+
+Verify each path exists using Glob tool:
+VALID_PATHS = []
+INVALID_PATHS = []
+
+For each path in RESEARCH_PATHS:
+  result = Glob(pattern=path)
+  IF result contains matching file:
+    VALID_PATHS.append(path)
+  ELSE:
+    INVALID_PATHS.append(path)
+
+## Store verification results for scoring
+RESEARCH_PATH_VALIDATION = {{
+    "valid_count": len(VALID_PATHS),
+    "invalid_count": len(INVALID_PATHS),
+    "valid_paths": VALID_PATHS,
+    "invalid_paths": INVALID_PATHS
+}}
+
+## SEVERE PENALTY for invalid paths
+IF len(INVALID_PATHS) > 0:
+    RESEARCH_PATH_PENALTY = -20  # Non-negotiable blocking penalty
+ELSE:
+    RESEARCH_PATH_PENALTY = 0
 
 STEP 3: Evaluate Phase Structure
 Assess Phase against FSDD quality framework criteria
@@ -389,10 +425,27 @@ Phases vary by project type. Evaluate based on project context:
 - Dependencies between phases mapped
 - Resource implications noted
 
-**11. Research Requirements (5 points)**
+**11. Research Requirements (5 points + SEVERE penalty for invalid paths)**
 - Knowledge gaps identified
 - Archive paths specified (Read: format)
+- **Archive paths verified to exist** (from STEP 2.6 validation)
 - External research defined (Synthesize: format)
+
+**Research Path Validation (CRITICAL)**:
+- Valid paths found: [RESEARCH_PATH_VALIDATION.valid_count]
+- Invalid paths found: [RESEARCH_PATH_VALIDATION.invalid_count]
+
+**SEVERE PENALTY FOR INVALID PATHS**:
+- If ANY invalid paths found: Apply RESEARCH_PATH_PENALTY (-20 points)
+- This is a BLOCKING issue - invalid paths cause downstream task-planner failure
+- Phase CANNOT score above 80 with any invalid research paths
+- All invalid paths MUST be corrected before phase is considered ready
+- List each invalid path in Key Issues section
+
+**Root Cause**: Phase author likely guessed filename instead of using actual archive scan output.
+**Solution**: Re-run archive scan and use exact file paths returned.
+
+**Note on Date Prefixes**: Date prefixes (2025-08-29) indicate when documentation was created, NOT an expiration date. Documents from weeks/months ago remain valid unless superseded.
 
 **12. Success Criteria (5 points)**
 - Measurable outcomes defined
@@ -439,7 +492,7 @@ These sections vary by project type. Identify all sections beyond core sections,
 - Public API: Exported functions/classes, usage examples
 - Extension Points: Plugin architecture, hooks
 
-**General (Any Project):**
+**General (Any Plan):**
 - Deployment: Infrastructure, CI/CD, rollback procedures
 - Monitoring: Metrics, alerting, observability
 
@@ -496,12 +549,16 @@ Assess phase for implementation details that belong in Phase:
 
 ### Overall Score Calculation
 
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty**
+**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty - Research Path Penalty**
 
 **Core Sections (70 points)**:
 - Required sections (Objectives, Scope, Architecture, Testing): 40 points
 - Structure compliance bonus: 5 points (if H2 > H3 nesting correct)
 - Optional core sections present and substantive: 30 points (6 points each x 5 sections)
+
+**Research Path Penalty (BLOCKING)**:
+- If ANY invalid research file paths found: -20 points (from STEP 2.6)
+- Caps maximum score at 80 until all paths are corrected
 
 **Domain-Specific Sections (30 points)**:
 - Section presence: 15 points (3 points each x 5 RELEVANT sections only)
@@ -511,19 +568,22 @@ Assess phase for implementation details that belong in Phase:
 - Length penalty: 0 to -50 points based on phase size (SOFT_CAP=40k chars, WARNING=50k, CONCERNING=60k, CRITICAL=80k, SEVERE=80k+)
 - Over-detailing penalty: Up to -10 points for implementation details
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
+- **Research path penalty: -20 points if ANY invalid research file paths (BLOCKING)**
 
 **Maximum possible: 105 points** (base 100 + 5 structure bonus)
 **Minimum possible: 0 points** (penalties can reduce to 0 but not below)
 
 **Convert to 0-100 scale**:
 1. Calculate Raw Score by adding all positive scores (Core Sections + Domain-Specific Sections + Structure Bonus)
-2. Subtract all penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty)
+2. Subtract all penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty + Research Path Penalty)
 3. Ensure Overall Score stays between 0 and 100 by capping at maximum 100 and minimum 0
+4. **BLOCKING**: If Research Path Penalty applied, cap score at 80 maximum
 
 **Note**:
 - Structure bonus allows phases to reach 100/100 even with minor gaps in optional sections
 - Length penalty escalates dramatically for oversized phases (0, -5, -15, -30, -50 points)
 - Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
+- **Research path penalty is BLOCKING** - invalid paths cause downstream task-planner failure
 - Score cannot go below 0 or above 100
 
 ### Score Interpretation

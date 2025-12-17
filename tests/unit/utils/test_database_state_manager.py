@@ -1,15 +1,15 @@
 import pytest
 
-from src.models.enums import PhaseStatus, ProjectStatus, RoadmapStatus
+from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
 from src.models.phase import Phase
-from src.models.project_plan import ProjectPlan
+from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
     PhaseNotFoundError,
-    ProjectPlanNotFoundError,
+    PlanNotFoundError,
     RoadmapNotFoundError,
 )
 from src.utils.loop_state import LoopState
@@ -17,14 +17,14 @@ from src.utils.state_manager import PostgresStateManager
 
 
 @pytest.fixture
-def project_name() -> str:
+def plan_name() -> str:
     return 'test-project'
 
 
 @pytest.fixture
 def sample_roadmap() -> Roadmap:
     return Roadmap(
-        project_name='Test Roadmap',
+        plan_name='Test Roadmap',
         project_goal='Test goal',
         total_duration='8 weeks',
         team_size='4 developers',
@@ -64,26 +64,26 @@ def sample_loop() -> LoopState:
 
 class TestDatabaseRoadmapOperations:
     @pytest.mark.asyncio
-    async def test_store_roadmap_returns_project_name(
+    async def test_store_roadmap_returns_plan_name(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_name = 'test-project'
+        plan_name = 'test-project'
 
-        result = await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        result = await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
-        assert result == project_name
+        assert result == plan_name
 
     @pytest.mark.asyncio
     async def test_store_roadmap_makes_retrievable(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_name = 'test-project'
+        plan_name = 'test-project'
 
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
-        retrieved_roadmap = await db_state_manager.get_roadmap(project_name)
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
+        retrieved_roadmap = await db_state_manager.get_roadmap(plan_name)
 
         assert retrieved_roadmap == sample_roadmap
-        assert retrieved_roadmap.project_name == 'Test Roadmap'
+        assert retrieved_roadmap.plan_name == 'Test Roadmap'
 
     @pytest.mark.asyncio
     async def test_get_roadmap_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
@@ -94,9 +94,9 @@ class TestDatabaseRoadmapOperations:
 
     @pytest.mark.asyncio
     async def test_store_roadmap_overwrites_existing(self, db_state_manager: PostgresStateManager) -> None:
-        project_name = 'same-project'
+        plan_name = 'same-project'
         original_roadmap = Roadmap(
-            project_name='Original',
+            plan_name='Original',
             project_goal='Test goal',
             total_duration='8 weeks',
             team_size='4 developers',
@@ -116,7 +116,7 @@ class TestDatabaseRoadmapOperations:
             roadmap_status=RoadmapStatus.DRAFT,
         )
         updated_roadmap = Roadmap(
-            project_name='Updated',
+            plan_name='Updated',
             project_goal='Test goal',
             total_duration='8 weeks',
             team_size='4 developers',
@@ -136,26 +136,26 @@ class TestDatabaseRoadmapOperations:
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-        await db_state_manager.store_roadmap(project_name, original_roadmap)
-        await db_state_manager.store_roadmap(project_name, updated_roadmap)
+        await db_state_manager.store_roadmap(plan_name, original_roadmap)
+        await db_state_manager.store_roadmap(plan_name, updated_roadmap)
 
-        retrieved = await db_state_manager.get_roadmap(project_name)
-        assert retrieved.project_name == 'Updated'
+        retrieved = await db_state_manager.get_roadmap(plan_name)
+        assert retrieved.plan_name == 'Updated'
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        'project_name,roadmap_name',
+        'plan_name,roadmap_name',
         [
             ('proj-1', 'Roadmap 1'),
-            ('project-with-dashes', 'Complex Project Roadmap'),
-            ('123', 'Numeric Project'),
+            ('project-with-dashes', 'Complex Plan Roadmap'),
+            ('123', 'Numeric Plan'),
         ],
     )
     async def test_roadmap_storage_with_various_ids(
-        self, db_state_manager: PostgresStateManager, project_name: str, roadmap_name: str
+        self, db_state_manager: PostgresStateManager, plan_name: str, roadmap_name: str
     ) -> None:
         roadmap = Roadmap(
-            project_name=roadmap_name,
+            plan_name=roadmap_name,
             project_goal='Test goal',
             total_duration='8 weeks',
             team_size='4 developers',
@@ -175,11 +175,11 @@ class TestDatabaseRoadmapOperations:
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-        stored_id = await db_state_manager.store_roadmap(project_name, roadmap)
-        retrieved = await db_state_manager.get_roadmap(project_name)
+        stored_id = await db_state_manager.store_roadmap(plan_name, roadmap)
+        retrieved = await db_state_manager.get_roadmap(plan_name)
 
-        assert stored_id == project_name
-        assert retrieved.project_name == roadmap_name
+        assert stored_id == plan_name
+        assert retrieved.plan_name == roadmap_name
 
 
 class TestDatabaseSpecOperations:
@@ -197,10 +197,10 @@ class TestDatabaseSpecOperations:
     async def test_store_phase_returns_phase_name(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
-        project_name = 'test-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        plan_name = 'test-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
-        result = await db_state_manager.store_phase(project_name, sample_phase)
+        result = await db_state_manager.store_phase(plan_name, sample_phase)
 
         assert result == sample_phase.phase_name
 
@@ -208,11 +208,11 @@ class TestDatabaseSpecOperations:
     async def test_store_phase_makes_retrievable(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
-        project_name = 'test-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        plan_name = 'test-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
-        await db_state_manager.store_phase(project_name, sample_phase)
-        retrieved_phase = await db_state_manager.get_phase(project_name, sample_phase.phase_name)
+        await db_state_manager.store_phase(plan_name, sample_phase)
+        retrieved_phase = await db_state_manager.get_phase(plan_name, sample_phase.phase_name)
 
         assert retrieved_phase == sample_phase
         assert retrieved_phase.objectives == 'Test objectives'
@@ -223,27 +223,27 @@ class TestDatabaseSpecOperations:
     ) -> None:
         await db_state_manager.store_phase('test-project', sample_phase)
 
-        with pytest.raises(PhaseNotFoundError, match='Spec not found'):
+        with pytest.raises(PhaseNotFoundError, match='Phase not found'):
             await db_state_manager.get_phase('test-project', 'nonexistent-phase')
 
     @pytest.mark.asyncio
     async def test_get_phase_raises_error_when_phase_not_found(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_name = 'test-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        plan_name = 'test-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
         with pytest.raises(PhaseNotFoundError):
-            await db_state_manager.get_phase(project_name, 'non-existent-phase')
+            await db_state_manager.get_phase(plan_name, 'non-existent-phase')
 
     @pytest.mark.asyncio
     async def test_list_phases_returns_empty_for_empty_roadmap(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_name = 'empty-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        plan_name = 'empty-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
-        phase_names = await db_state_manager.list_phases(project_name)
+        phase_names = await db_state_manager.list_phases(plan_name)
 
         assert phase_names == []
 
@@ -251,11 +251,11 @@ class TestDatabaseSpecOperations:
     async def test_list_phases_returns_all_phase_names(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_name = 'multi-spec-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        plan_name = 'multi-phase-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
         phase1 = Phase(
-            phase_name='spec-1',
+            phase_name='phase-1',
             objectives='Obj 1',
             scope='Scope 1',
             dependencies='Dep 1',
@@ -263,7 +263,7 @@ class TestDatabaseSpecOperations:
             phase_status=PhaseStatus.DRAFT,
         )
         phase2 = Phase(
-            phase_name='spec-2',
+            phase_name='phase-2',
             objectives='Obj 2',
             scope='Scope 2',
             dependencies='Dep 2',
@@ -271,14 +271,14 @@ class TestDatabaseSpecOperations:
             phase_status=PhaseStatus.DRAFT,
         )
 
-        await db_state_manager.store_phase(project_name, phase1)
-        await db_state_manager.store_phase(project_name, phase2)
+        await db_state_manager.store_phase(plan_name, phase1)
+        await db_state_manager.store_phase(plan_name, phase2)
 
-        phase_names = await db_state_manager.list_phases(project_name)
+        phase_names = await db_state_manager.list_phases(plan_name)
 
         assert len(phase_names) == 2
-        assert 'spec-1' in phase_names
-        assert 'spec-2' in phase_names
+        assert 'phase-1' in phase_names
+        assert 'phase-2' in phase_names
 
     @pytest.mark.asyncio
     async def test_list_phases_returns_empty_for_project_without_phases(
@@ -291,11 +291,11 @@ class TestDatabaseSpecOperations:
     async def test_delete_phase_returns_true_when_phase_exists(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
-        project_name = 'test-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
-        await db_state_manager.store_phase(project_name, sample_phase)
+        plan_name = 'test-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
+        await db_state_manager.store_phase(plan_name, sample_phase)
 
-        result = await db_state_manager.delete_phase(project_name, sample_phase.phase_name)
+        result = await db_state_manager.delete_phase(plan_name, sample_phase.phase_name)
 
         assert result is True
 
@@ -303,23 +303,23 @@ class TestDatabaseSpecOperations:
     async def test_delete_phase_removes_phase_from_roadmap(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap, sample_phase: Phase
     ) -> None:
-        project_name = 'test-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
-        await db_state_manager.store_phase(project_name, sample_phase)
+        plan_name = 'test-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
+        await db_state_manager.store_phase(plan_name, sample_phase)
 
-        await db_state_manager.delete_phase(project_name, sample_phase.phase_name)
+        await db_state_manager.delete_phase(plan_name, sample_phase.phase_name)
 
         with pytest.raises(PhaseNotFoundError):
-            await db_state_manager.get_phase(project_name, sample_phase.phase_name)
+            await db_state_manager.get_phase(plan_name, sample_phase.phase_name)
 
     @pytest.mark.asyncio
     async def test_delete_phase_returns_false_when_phase_not_found(
         self, db_state_manager: PostgresStateManager, sample_roadmap: Roadmap
     ) -> None:
-        project_name = 'test-project'
-        await db_state_manager.store_roadmap(project_name, sample_roadmap)
+        plan_name = 'test-project'
+        await db_state_manager.store_roadmap(plan_name, sample_roadmap)
 
-        result = await db_state_manager.delete_phase(project_name, 'non-existent-phase')
+        result = await db_state_manager.delete_phase(plan_name, 'non-existent-phase')
 
         assert result is False
 
@@ -334,24 +334,24 @@ class TestDatabaseSpecOperations:
 class TestDatabaseLoopOperations:
     @pytest.mark.asyncio
     async def test_add_loop_stores_loop_state(
-        self, db_state_manager: PostgresStateManager, project_name: str, sample_loop: LoopState
+        self, db_state_manager: PostgresStateManager, plan_name: str, sample_loop: LoopState
     ) -> None:
-        await db_state_manager.add_loop(sample_loop, project_name)
+        await db_state_manager.add_loop(sample_loop, plan_name)
 
         retrieved_loop = await db_state_manager.get_loop(sample_loop.id)
         assert retrieved_loop == sample_loop
 
     @pytest.mark.asyncio
     async def test_add_loop_raises_error_for_duplicate_id(
-        self, db_state_manager: PostgresStateManager, project_name: str, sample_loop: LoopState
+        self, db_state_manager: PostgresStateManager, plan_name: str, sample_loop: LoopState
     ) -> None:
-        await db_state_manager.add_loop(sample_loop, project_name)
+        await db_state_manager.add_loop(sample_loop, plan_name)
 
         duplicate_loop = LoopState(loop_type=LoopType.PLAN)
         duplicate_loop.id = sample_loop.id
 
         with pytest.raises(LoopAlreadyExistsError):
-            await db_state_manager.add_loop(duplicate_loop, project_name)
+            await db_state_manager.add_loop(duplicate_loop, plan_name)
 
     @pytest.mark.asyncio
     async def test_get_loop_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
@@ -360,7 +360,7 @@ class TestDatabaseLoopOperations:
 
     @pytest.mark.asyncio
     async def test_loop_history_management_respects_max_size(
-        self, db_state_manager: PostgresStateManager, project_name: str
+        self, db_state_manager: PostgresStateManager, plan_name: str
     ) -> None:
         loops = [
             LoopState(loop_type=LoopType.PLAN),
@@ -370,7 +370,7 @@ class TestDatabaseLoopOperations:
         ]
 
         for loop in loops:
-            await db_state_manager.add_loop(loop, project_name)
+            await db_state_manager.add_loop(loop, plan_name)
 
         with pytest.raises(LoopNotFoundError):
             await db_state_manager.get_loop(loops[0].id)
@@ -380,12 +380,12 @@ class TestDatabaseLoopOperations:
             assert retrieved == loop
 
 
-class TestDatabaseProjectPlanOperations:
+class TestDatabasePlanOperations:
     @pytest.mark.asyncio
-    async def test_store_project_plan_returns_project_name(self, db_state_manager: PostgresStateManager) -> None:
-        project_name = 'test-project'
-        project_plan = ProjectPlan(
-            project_name=project_name,
+    async def test_store_plan_returns_plan_name(self, db_state_manager: PostgresStateManager) -> None:
+        plan_name = 'test-project'
+        plan = Plan(
+            plan_name=plan_name,
             project_vision='Test vision',
             project_mission='Test mission',
             project_timeline='Q1 2024',
@@ -415,18 +415,18 @@ class TestDatabaseProjectPlanOperations:
             reporting_structure='Weekly updates',
             meeting_schedule='Daily standups',
             documentation_standards='Standard docs',
-            project_status=ProjectStatus.DRAFT,
+            plan_status=PlanStatus.DRAFT,
         )
 
-        result = await db_state_manager.store_project_plan(project_name, project_plan)
+        result = await db_state_manager.store_plan(plan_name, plan)
 
-        assert result == project_name
+        assert result == plan_name
 
     @pytest.mark.asyncio
-    async def test_store_project_plan_makes_retrievable(self, db_state_manager: PostgresStateManager) -> None:
-        project_name = 'test-project'
-        project_plan = ProjectPlan(
-            project_name=project_name,
+    async def test_store_plan_makes_retrievable(self, db_state_manager: PostgresStateManager) -> None:
+        plan_name = 'test-project'
+        plan = Plan(
+            plan_name=plan_name,
             project_vision='Test vision',
             project_mission='Test mission',
             project_timeline='Q1 2024',
@@ -456,37 +456,35 @@ class TestDatabaseProjectPlanOperations:
             reporting_structure='Reporting',
             meeting_schedule='Meetings',
             documentation_standards='Docs',
-            project_status=ProjectStatus.DRAFT,
+            plan_status=PlanStatus.DRAFT,
         )
 
-        await db_state_manager.store_project_plan(project_name, project_plan)
-        retrieved_plan = await db_state_manager.get_project_plan(project_name)
+        await db_state_manager.store_plan(plan_name, plan)
+        retrieved_plan = await db_state_manager.get_plan(plan_name)
 
-        assert retrieved_plan == project_plan
-        assert retrieved_plan.project_name == project_name
+        assert retrieved_plan == plan
+        assert retrieved_plan.plan_name == plan_name
         assert retrieved_plan.project_vision == 'Test vision'
 
     @pytest.mark.asyncio
-    async def test_get_project_plan_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
-        with pytest.raises(ProjectPlanNotFoundError) as exc_info:
-            await db_state_manager.get_project_plan('non-existent-project')
+    async def test_get_plan_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
+        with pytest.raises(PlanNotFoundError) as exc_info:
+            await db_state_manager.get_plan('non-existent-project')
 
         assert 'non-existent-project' in str(exc_info.value)
         assert 'Project plan not found' in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_list_project_plans_returns_empty_for_no_plans(self, db_state_manager: PostgresStateManager) -> None:
-        result = await db_state_manager.list_project_plans()
+    async def test_list_plans_returns_empty_for_no_plans(self, db_state_manager: PostgresStateManager) -> None:
+        result = await db_state_manager.list_plans()
 
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_delete_project_plan_returns_true_when_plan_exists(
-        self, db_state_manager: PostgresStateManager
-    ) -> None:
-        project_name = 'test-project'
-        project_plan = ProjectPlan(
-            project_name=project_name,
+    async def test_delete_plan_returns_true_when_plan_exists(self, db_state_manager: PostgresStateManager) -> None:
+        plan_name = 'test-project'
+        plan = Plan(
+            plan_name=plan_name,
             project_vision='Test vision',
             project_mission='Test mission',
             project_timeline='Q1 2024',
@@ -516,19 +514,19 @@ class TestDatabaseProjectPlanOperations:
             reporting_structure='Reporting',
             meeting_schedule='Meetings',
             documentation_standards='Docs',
-            project_status=ProjectStatus.DRAFT,
+            plan_status=PlanStatus.DRAFT,
         )
 
-        await db_state_manager.store_project_plan(project_name, project_plan)
-        result = await db_state_manager.delete_project_plan(project_name)
+        await db_state_manager.store_plan(plan_name, plan)
+        result = await db_state_manager.delete_plan(plan_name)
 
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_delete_project_plan_removes_plan(self, db_state_manager: PostgresStateManager) -> None:
-        project_name = 'test-project'
-        project_plan = ProjectPlan(
-            project_name=project_name,
+    async def test_delete_plan_removes_plan(self, db_state_manager: PostgresStateManager) -> None:
+        plan_name = 'test-project'
+        plan = Plan(
+            plan_name=plan_name,
             project_vision='Test vision',
             project_mission='Test mission',
             project_timeline='Q1 2024',
@@ -558,21 +556,19 @@ class TestDatabaseProjectPlanOperations:
             reporting_structure='Reporting',
             meeting_schedule='Meetings',
             documentation_standards='Docs',
-            project_status=ProjectStatus.DRAFT,
+            plan_status=PlanStatus.DRAFT,
         )
 
-        await db_state_manager.store_project_plan(project_name, project_plan)
-        await db_state_manager.delete_project_plan(project_name)
+        await db_state_manager.store_plan(plan_name, plan)
+        await db_state_manager.delete_plan(plan_name)
 
-        with pytest.raises(ProjectPlanNotFoundError):
-            await db_state_manager.get_project_plan(project_name)
+        with pytest.raises(PlanNotFoundError):
+            await db_state_manager.get_plan(plan_name)
 
     @pytest.mark.asyncio
-    async def test_delete_project_plan_raises_error_when_not_found(
-        self, db_state_manager: PostgresStateManager
-    ) -> None:
-        with pytest.raises(ProjectPlanNotFoundError) as exc_info:
-            await db_state_manager.delete_project_plan('non-existent-project')
+    async def test_delete_plan_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
+        with pytest.raises(PlanNotFoundError) as exc_info:
+            await db_state_manager.delete_plan('non-existent-project')
 
         assert 'non-existent-project' in str(exc_info.value)
         assert 'Project plan not found' in str(exc_info.value)

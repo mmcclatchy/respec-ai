@@ -98,8 +98,6 @@ class CriticFeedback(MCPModel):
             'PLAN-CRITIC': CriticAgent.PLAN_CRITIC,
             'ROADMAP': CriticAgent.ROADMAP_CRITIC,
             'ROADMAP-CRITIC': CriticAgent.ROADMAP_CRITIC,
-            'SPEC': CriticAgent.PHASE_CRITIC,
-            'SPEC-CRITIC': CriticAgent.PHASE_CRITIC,
             'PHASE': CriticAgent.PHASE_CRITIC,
             'PHASE-CRITIC': CriticAgent.PHASE_CRITIC,
             'BUILD': CriticAgent.TASK_CRITIC,

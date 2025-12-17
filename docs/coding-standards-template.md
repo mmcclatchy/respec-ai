@@ -21,7 +21,7 @@ The `task-coder` agent reads this file at the start of each coding iteration and
 - Below is a template that users can customize for their projects:
 
     ```markdown
-    # Project Coding Standards
+    # Plan Coding Standards
     
     ## Documentation Rules
     

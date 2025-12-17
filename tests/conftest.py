@@ -8,7 +8,6 @@ import pytest
 from pytest_mock import MockerFixture
 
 from src.mcp.tools.loop_tools import LoopTools
-from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.utils.database_pool import db_pool
 from src.utils.setting_configs import LoopConfig
 from src.utils.state_manager import InMemoryStateManager, PostgresStateManager
@@ -35,11 +34,6 @@ def isolated_state_manager() -> InMemoryStateManager:
 
 
 @pytest.fixture
-def isolated_roadmap_tools(isolated_state_manager: InMemoryStateManager) -> RoadmapTools:
-    return RoadmapTools(isolated_state_manager)
-
-
-@pytest.fixture
 def isolated_loop_tools(isolated_state_manager: InMemoryStateManager) -> LoopTools:
     return LoopTools(isolated_state_manager)
 
@@ -49,7 +43,6 @@ def mock_shared_state(
     mocker: MockerFixture, isolated_state_manager: InMemoryStateManager
 ) -> Generator[InMemoryStateManager, None, None]:
     mocker.patch('src.shared.state_manager', isolated_state_manager)
-    mocker.patch('src.mcp.tools.roadmap_tools.state_manager', isolated_state_manager)
     mocker.patch('src.mcp.tools.loop_tools.state_manager', isolated_state_manager)
     yield isolated_state_manager
 
@@ -135,7 +128,7 @@ async def db_state_manager(check_database_available: bool) -> AsyncGenerator[Pos
             async with db_pool._pool.acquire() as conn:
                 await conn.execute(
                     'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                    'phases, project_plans, loop_to_phase_mappings, tasks, loop_to_task_mappings CASCADE'
+                    'phases, plans, loop_to_phase_mappings, tasks, loop_to_task_mappings CASCADE'
                 )
         except Exception:
             pass

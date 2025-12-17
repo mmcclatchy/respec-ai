@@ -8,6 +8,8 @@ from .roadmap import generate_roadmap_template
 from .roadmap_critic import generate_roadmap_critic_template
 from .task_coder import generate_task_coder_template
 from .task_critic import generate_task_critic_template
+from .task_plan_critic import generate_task_plan_critic_template
+from .task_planner import generate_task_planner_template
 from .task_reviewer import generate_task_reviewer_template
 
 
@@ -19,6 +21,8 @@ __all__ = [
     'generate_plan_critic_template',
     'generate_phase_architect_template',
     'generate_phase_critic_template',
+    'generate_task_planner_template',
+    'generate_task_plan_critic_template',
     'generate_task_coder_template',
     'generate_task_critic_template',
     'generate_task_reviewer_template',

@@ -19,7 +19,7 @@ class TestStatusCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        config_data = {'platform': 'linear', 'version': '0.2.0', 'project_name': 'test'}
+        config_data = {'platform': 'linear', 'version': '0.2.0', 'plan_name': 'test'}
         (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         commands_dir = tmp_path / 'commands'
@@ -60,7 +60,7 @@ class TestStatusCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        config_data = {'platform': 'linear', 'version': '0.1.0', 'project_name': 'test'}
+        config_data = {'platform': 'linear', 'version': '0.1.0', 'plan_name': 'test'}
         (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         commands_dir = tmp_path / 'commands'
@@ -88,7 +88,7 @@ class TestStatusCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        config_data = {'platform': 'linear', 'version': '0.2.0', 'project_name': 'test'}
+        config_data = {'platform': 'linear', 'version': '0.2.0', 'plan_name': 'test'}
         (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
 
         commands_dir = tmp_path / 'commands'

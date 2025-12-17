@@ -8,11 +8,12 @@ testing by ensuring the builder creates independently-constructed markdown.
 from typing import Callable, Type
 
 import pytest
+from src.models.plan import Plan
+
 from src.models.base import MCPModel
 from src.models.feature_requirements import FeatureRequirements
-from src.models.project_plan import ProjectPlan
-from src.models.roadmap import Roadmap
 from src.models.phase import Phase
+from src.models.roadmap import Roadmap
 from src.models.task import Task
 
 
@@ -21,7 +22,7 @@ from src.models.task import Task
     [
         Roadmap,
         Phase,
-        ProjectPlan,
+        Plan,
         Task,
         FeatureRequirements,
     ],
@@ -46,7 +47,7 @@ def test_markdown_builder_creates_valid_markdown(markdown_builder: Callable, mod
     [
         Roadmap,
         Phase,
-        ProjectPlan,
+        Plan,
         Task,
         FeatureRequirements,
     ],

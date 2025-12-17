@@ -7,13 +7,13 @@ from .phase import Phase
 
 class Roadmap(MCPModel):
     # Class configuration for MCPModel
-    TITLE_PATTERN: ClassVar[str] = '# Project Roadmap'
-    TITLE_FIELD: ClassVar[str] = 'project_name'
+    TITLE_PATTERN: ClassVar[str] = '# Plan Roadmap'
+    TITLE_FIELD: ClassVar[str] = 'plan_name'
     HEADER_FIELD_MAPPING: ClassVar[dict[str, tuple[str, ...]]] = {
-        'project_goal': ('Project Details', 'Project Goal'),
-        'total_duration': ('Project Details', 'Total Duration'),
-        'team_size': ('Project Details', 'Team Size'),
-        'roadmap_budget': ('Project Details', 'Budget'),
+        'project_goal': ('Plan Details', 'Plan Goal'),
+        'total_duration': ('Plan Details', 'Total Duration'),
+        'team_size': ('Plan Details', 'Team Size'),
+        'roadmap_budget': ('Plan Details', 'Budget'),
         'critical_path_analysis': ('Risk Assessment', 'Critical Path Analysis'),
         'key_risks': ('Risk Assessment', 'Key Risks'),
         'mitigation_plans': ('Risk Assessment', 'Mitigation Plans'),
@@ -30,7 +30,7 @@ class Roadmap(MCPModel):
     }
 
     # Model fields with defaults
-    project_name: str = 'Unnamed Project'
+    plan_name: str = 'Unnamed Plan'
     project_goal: str = 'Project Goal not specified'
     total_duration: str = 'Total Duration not specified'
     team_size: str = 'Team Size not specified'
@@ -51,11 +51,11 @@ class Roadmap(MCPModel):
 
     def build_markdown(self, phases: list[Phase] | None = None) -> str:
         phase_count = len(phases) if phases else 0
-        roadmap_metadata = f"""{self.TITLE_PATTERN}: {self.project_name}
+        roadmap_metadata = f"""{self.TITLE_PATTERN}: {self.plan_name}
 
-## Project Details
+## Plan Details
 
-### Project Goal
+### Plan Goal
 {self.project_goal}
 
 ### Total Duration

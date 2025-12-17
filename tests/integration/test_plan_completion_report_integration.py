@@ -1,4 +1,5 @@
 import pytest
+
 from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
 from src.models.plan_completion_report import PlanCompletionReport
 from src.platform.templates.commands.plan_command import plan_completion_template
@@ -48,6 +49,7 @@ completed
 completed
 
 ## Strategic Plan Document
+
 # Test Strategic Plan
 
 This is a test strategic plan document with comprehensive details.
@@ -57,6 +59,7 @@ This is a test strategic plan document with comprehensive details.
 - Objective 2: Reduce costs by 25%
 
 ## Structured Objectives
+
 1. Primary: Efficiency improvement
    - Target: 50% increase in processing speed
    - Timeline: 6 months
@@ -66,6 +69,7 @@ This is a test strategic plan document with comprehensive details.
    - Timeline: 12 months
 
 ## Next Steps
+
 1. Review the strategic plan for accuracy
 2. Proceed with technical specification using: /respec-phase
 3. The structured objectives will feed directly into phase-architect
@@ -73,7 +77,7 @@ This is a test strategic plan document with comprehensive details.
 ## Metadata
 
 ### Analyst Loop ID
-analyst-loop-12345
+a1b2c3d4
 
 ### Timestamp
 2025-01-15T14:30:00Z
@@ -88,9 +92,9 @@ analyst-loop-12345
         await state_manager.add_loop(loop_state, project_path)
         loop_id = loop_state.id
 
-        # Step 2: Create and store a completion report
+        # Step 2: Create and store a completion report via standardized interface
         completion_report = PlanCompletionReport(
-            report_title='Integration Test Report',
+            report_title='Strategic Plan Output',
             final_plan_score='88',
             final_analyst_score='92',
             strategic_plan_document='# Integration Test Plan\nDetailed content',
@@ -99,33 +103,33 @@ analyst-loop-12345
             completion_timestamp='2025-01-15T16:00:00Z',
         )
 
-        store_result = await completion_report_tools.store_completion_report(project_path, completion_report, loop_id)
+        store_result = await completion_report_tools.store(loop_id, completion_report.build_markdown())
 
         # Verify storage result
         assert isinstance(store_result, MCPResponse)
         assert store_result.id == loop_id
-        assert 'Integration Test Report' in store_result.message
+        assert f'Stored completion report for loop {loop_id}' in store_result.message
 
         # Step 3: Retrieve the stored report
-        retrieved_report = await completion_report_tools.get_completion_report_data(project_path, loop_id)
+        get_result = await completion_report_tools.get(key=loop_id)
+        retrieved_report = PlanCompletionReport.parse_markdown(get_result.message)
 
         # Verify retrieved data matches stored data
-        assert retrieved_report.report_title == 'Integration Test Report'
+        assert retrieved_report.report_title == 'Strategic Plan Output'
         assert retrieved_report.final_plan_score == '88'
         assert retrieved_report.final_analyst_score == '92'
         assert retrieved_report.strategic_plan_document == '# Integration Test Plan\nDetailed content'
         assert retrieved_report.analyst_loop_id == loop_id
 
-        # Step 4: Get markdown representation
-        markdown_result = await completion_report_tools.get_completion_report_markdown(project_path, loop_id)
-        assert isinstance(markdown_result, MCPResponse)
-        assert '# Integration Test Report' in markdown_result.message
-        assert '88%' in markdown_result.message
-        assert '92%' in markdown_result.message
+        # Step 4: Verify markdown contains expected content
+        assert isinstance(get_result, MCPResponse)
+        assert '# Strategic Plan Output' in get_result.message
+        assert '88%' in get_result.message
+        assert '92%' in get_result.message
 
         # Step 5: Update the report
         updated_report = PlanCompletionReport(
-            report_title='Updated Integration Test Report',
+            report_title='Strategic Plan Output',
             final_plan_score='95',
             final_analyst_score='97',
             strategic_plan_document='# Updated Integration Test Plan\nUpdated content',
@@ -134,25 +138,26 @@ analyst-loop-12345
             completion_timestamp='2025-01-15T17:00:00Z',
         )
 
-        update_result = await completion_report_tools.update_completion_report(project_path, updated_report, loop_id)
-        assert 'Updated Integration Test Report' in update_result.message
+        update_result = await completion_report_tools.update(loop_id, updated_report.build_markdown())
+        assert f'Updated completion report for loop {loop_id}' in update_result.message
 
         # Verify update
-        updated_retrieved = await completion_report_tools.get_completion_report_data(project_path, loop_id)
-        assert updated_retrieved.report_title == 'Updated Integration Test Report'
+        updated_get_result = await completion_report_tools.get(key=loop_id)
+        updated_retrieved = PlanCompletionReport.parse_markdown(updated_get_result.message)
+        assert updated_retrieved.report_title == 'Strategic Plan Output'
         assert updated_retrieved.final_plan_score == '95'
 
         # Step 6: List reports
-        list_result = await completion_report_tools.list_completion_reports(project_path)
-        assert 'Found 1 completion report' in list_result.message
-        assert 'Updated Integration Test Report' in list_result.message
+        list_result = await completion_report_tools.list()
+        assert 'Found 1 report' in list_result.message
+        assert 'Strategic Plan Output' in list_result.message
 
         # Step 7: Delete the report
-        delete_result = await completion_report_tools.delete_completion_report(project_path, loop_id)
-        assert 'Updated Integration Test Report' in delete_result.message
+        delete_result = await completion_report_tools.delete(loop_id)
+        assert 'Strategic Plan Output' in delete_result.message
 
         # Verify deletion
-        list_result_after_delete = await completion_report_tools.list_completion_reports(project_path)
+        list_result_after_delete = await completion_report_tools.list()
         assert 'No completion reports found' in list_result_after_delete.message
 
     @pytest.mark.asyncio
@@ -166,36 +171,29 @@ analyst-loop-12345
             await state_manager.add_loop(loop_state, project_path)
             loop_states.append(loop_state)
 
-        # Create completion reports for each loop
+        # Create completion reports for each loop (all use required title)
         for i, loop_state in enumerate(loop_states):
             completion_report = PlanCompletionReport(
-                report_title=f'Report {i + 1}',
+                report_title='Strategic Plan Output',
                 final_plan_score=f'{80 + i * 5}',
                 final_analyst_score=f'{85 + i * 3}',
                 analyst_loop_id=loop_state.id,
             )
 
-            result = await completion_report_tools.store_completion_report(
-                project_path, completion_report, loop_state.id
-            )
+            result = await completion_report_tools.store(loop_state.id, completion_report.build_markdown())
             assert isinstance(result, MCPResponse)
-            assert f'Report {i + 1}' in result.message
+            assert f'Stored completion report for loop {loop_state.id}' in result.message
 
         # List all reports
-        list_result = await completion_report_tools.list_completion_reports(project_path)
-        assert 'Found 3 completion reports' in list_result.message
-        assert 'Report 1' in list_result.message
-        assert 'Report 2' in list_result.message
-        assert 'Report 3' in list_result.message
-
-        # Test count limit
-        limited_list = await completion_report_tools.list_completion_reports(project_path, count=2)
-        assert 'Found 2 completion reports' in limited_list.message
+        list_result = await completion_report_tools.list()
+        assert 'Found 3 reports' in list_result.message
+        assert 'Strategic Plan Output' in list_result.message
 
         # Verify each report can be retrieved individually
         for i, loop_state in enumerate(loop_states):
-            retrieved = await completion_report_tools.get_completion_report_data(project_path, loop_state.id)
-            assert retrieved.report_title == f'Report {i + 1}'
+            get_result = await completion_report_tools.get(key=loop_state.id)
+            retrieved = PlanCompletionReport.parse_markdown(get_result.message)
+            assert retrieved.report_title == 'Strategic Plan Output'
             assert retrieved.final_plan_score == f'{80 + i * 5}'
 
     @pytest.mark.asyncio
@@ -213,39 +211,39 @@ analyst-loop-12345
         assert retrieved_loop.loop_type == LoopType.PLAN
 
         # Store completion report
-        completion_report = PlanCompletionReport(report_title='Lifecycle Test Report', analyst_loop_id=loop_id)
+        completion_report = PlanCompletionReport(report_title='Strategic Plan Output', analyst_loop_id=loop_id)
 
-        store_result = await completion_report_tools.store_completion_report(project_path, completion_report, loop_id)
+        store_result = await completion_report_tools.store(loop_id, completion_report.build_markdown())
         assert store_result.id == loop_id
 
         # Update loop status in StateManager (simulating loop progression)
         retrieved_loop.status = LoopStatus.COMPLETED
 
         # Verify completion report still accessible after loop status change
-        retrieved_report = await completion_report_tools.get_completion_report_data(project_path, loop_id)
-        assert retrieved_report.report_title == 'Lifecycle Test Report'
+        get_result = await completion_report_tools.get(key=loop_id)
+        retrieved_report = PlanCompletionReport.parse_markdown(get_result.message)
+        assert retrieved_report.report_title == 'Strategic Plan Output'
 
-        # Generate markdown and verify it reflects current loop status
-        markdown_result = await completion_report_tools.get_completion_report_markdown(project_path, loop_id)
-        assert markdown_result.status == LoopStatus.COMPLETED
+        # Status in response reflects loop status
+        assert get_result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
     async def test_error_scenarios_integration(
         self, state_manager: InMemoryStateManager, completion_report_tools: PlanCompletionReportTools, project_path: str
     ) -> None:
         # Test storing report for non-existent loop
-        non_existent_loop_id = 'non-existent-loop'
+        non_existent_loop_id = 'deadbeef'
         completion_report = PlanCompletionReport(report_title='Error Test Report')
 
         with pytest.raises(Exception):  # Should raise ResourceError via LoopNotFoundError
-            await completion_report_tools.store_completion_report(project_path, completion_report, non_existent_loop_id)
+            await completion_report_tools.store(non_existent_loop_id, completion_report.build_markdown())
 
         # Test retrieving report that was never stored
         loop_state = LoopState(loop_type=LoopType.PLAN)
         await state_manager.add_loop(loop_state, project_path)
 
         with pytest.raises(Exception):  # Should raise ResourceError
-            await completion_report_tools.get_completion_report_data(project_path, loop_state.id)
+            await completion_report_tools.get(key=loop_state.id)
 
     def test_template_generation_integration(self) -> None:
         # This tests the template instance creation used in plan_command.py
@@ -272,7 +270,7 @@ analyst-loop-12345
         )
         # Check that structured_objectives contains the parsed content (may be default if parsing issues)
         assert parsed_report.structured_objectives  # Just verify it's not empty
-        assert parsed_report.analyst_loop_id == 'analyst-loop-12345'
+        assert parsed_report.analyst_loop_id == 'a1b2c3d4'
         assert parsed_report.completion_timestamp == '2025-01-15T14:30:00Z'
 
         # Regenerate markdown
@@ -284,5 +282,5 @@ analyst-loop-12345
         assert 'This is a test strategic plan document with comprehensive details.' in regenerated_markdown
         # Check that structured_objectives content is in regenerated markdown
         assert parsed_report.structured_objectives in regenerated_markdown
-        assert 'analyst-loop-12345' in regenerated_markdown
+        assert 'a1b2c3d4' in regenerated_markdown
         assert '2025-01-15T14:30:00Z' in regenerated_markdown

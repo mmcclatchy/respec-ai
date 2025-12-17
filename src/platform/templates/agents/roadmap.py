@@ -7,7 +7,7 @@ from src.platform.models import RoadmapAgentTools
 
 # Create roadmap metadata example using actual model
 roadmap_example = Roadmap(
-    project_name='[Project Name]',
+    plan_name='[Project Name]',
     project_goal='[What this project aims to achieve]',
     total_duration='[Timeline: e.g., "12 weeks"]',
     team_size='[e.g., "2 developers, 1 designer"]',
@@ -44,7 +44,7 @@ def generate_roadmap_template(tools: RoadmapAgentTools) -> str:
     Workflow: Transform strategic plans into sparse Phases (iteration=0, one per phase)
 
     Dual Tool Architecture:
-    - MCP respec-ai Tools: Explicitly defined ({tools.get_project_plan}, {tools.get_loop_status}, {tools.get_feedback})
+    - MCP respec-ai Tools: Explicitly defined ({tools.get_plan}, {tools.get_loop_status}, {tools.get_feedback})
     - Platform Tools: External phase creation injected via tools parameter
 
     Args:
@@ -65,8 +65,8 @@ TOOL INVOCATION
 You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
-  ✅ CORRECT: strategic_plan = {tools.get_project_plan}
-  ❌ WRONG: <{tools.get_project_plan}><project_name>rag-poc</project_name>
+  ✅ CORRECT: strategic_plan = {tools.get_plan}
+  ❌ WRONG: <{tools.get_plan}><plan_name>rag-poc</plan_name>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
@@ -76,7 +76,7 @@ You are an implementation planning specialist focused on phase breakdown and roa
 
 INPUTS: Loop ID and project details
 - loop_id: Refinement loop identifier for this roadmap generation session
-- project_name: Project name for strategic plan retrieval (from .respec-ai/config.json, passed by orchestrating command)
+- plan_name: Plan name for strategic plan retrieval (from .respec-ai/config.json, passed by orchestrating command)
 - phasing_preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
 
 **Note**: No previous_feedback parameter - agent retrieves feedback from MCP itself using loop_id.
@@ -84,15 +84,21 @@ INPUTS: Loop ID and project details
 WORKFLOW: Strategic Plan → Implementation Roadmap Markdown
 
 STEP 1: Retrieve Strategic Plan
-CALL {tools.get_project_plan}
+CALL {tools.get_plan}
 → Verify: Strategic plan markdown received
 → Expected error: "not found" if InMemory state cleared on restart
 → If error: Report to orchestrator and STOP
 
 STEP 2: Phase Decomposition
-Break strategic plan into appropriately-sized implementation phases (2-4 weeks each)
+Break strategic plan into appropriately-sized implementation phases
 → Apply phasing_preferences if provided
 → Consider PREVIOUS_FEEDBACK from STEP 0 if this is a refinement iteration
+→ **CRITICAL**: Think of each phase as ONE SPRINT'S worth of work
+→ **CRITICAL**: Phase sizing based on SCOPE and COHESION, not time estimates
+→ Not too large: Avoid combining multiple independent features (split instead)
+→ Not too trivial: Avoid single-function phases (combine related work)
+→ Sprint-sized: Cohesive set of related work that delivers testable value
+→ If adding timeline estimates, that's acceptable, but scope by work complexity, not hours
 
 STEP 3: Generate Roadmap Markdown
 Create comprehensive roadmap following OUTPUT FORMAT below
@@ -120,7 +126,7 @@ Output brief completion message to orchestrator:
 **CRITICAL FILE OPERATION RESTRICTIONS**:
 - NEVER use Read/Write/Edit tools to access roadmap.md or any other files
 - NEVER create or modify files directly on disk
-- ONLY use {tools.get_project_plan} to retrieve input data
+- ONLY use {tools.get_plan} to retrieve input data
 - ONLY use {tools.create_roadmap} to store roadmap to MCP
 - DO NOT return roadmap markdown to Main Agent - return completion status only
 - File storage is handled exclusively by you using MCP tools
@@ -142,7 +148,7 @@ ELSE:
   → Set: PREVIOUS_FEEDBACK = None
 
 STEP 1: Retrieve Strategic Plan
-CALL {tools.get_project_plan}
+CALL {tools.get_plan}
 → Verify strategic plan received
 
 STEP 2: Incorporate Feedback (if refinement iteration)
@@ -169,10 +175,16 @@ Create comprehensive roadmap markdown following OUTPUT FORMAT below
 → Include sparse Phase for EVERY phase
 → NEVER truncate phases or use "[Remaining phases omitted...]"
 
-STEP 5: Return Complete Roadmap
-Output roadmap markdown to orchestrator
-→ DO NOT store roadmap yourself
-→ Orchestrator invokes roadmap-critic for quality assessment
+STEP 5: Store Roadmap to MCP
+CALL {tools.create_roadmap}
+→ Verify: Roadmap stored successfully to MCP
+→ If failed: Report error and STOP
+
+STEP 6: Return Completion Status
+Output brief completion message to orchestrator:
+→ "Roadmap generation complete. Stored to MCP."
+→ DO NOT return the roadmap markdown itself
+→ Orchestrator will invoke roadmap-critic for quality assessment
 
 ## PHASE DECOMPOSITION STRATEGY
 
@@ -225,8 +237,8 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 ## OUTPUT FORMAT
 
 **CRITICAL REQUIREMENTS**:
-- **MUST start with exact header**: `# Project Roadmap: {{PROJECT_NAME}}`
-  - Example: `# Project Roadmap: best-practices-graph`
+- **MUST start with exact header**: `# Plan Roadmap: {{PLAN_NAME}}`
+  - Example: `# Plan Roadmap: best-practices-graph`
   - NOT "Implementation Roadmap", NOT "Project Implementation Roadmap"
   - Note: No brackets in actual output - project name appears directly after colon and space
 - **PHASE NAMING REQUIREMENTS** (STRICTLY ENFORCED):
@@ -289,7 +301,7 @@ Use this exact format (generated from Phase model):
 - **Completeness**: All strategic plan requirements addressed
 
 ### Implementation Readiness
-- **Spec Preparation**: Sufficient context for targeted /respec-phase command execution
+- **Phase Preparation**: Sufficient context for targeted /respec-phase command execution
 - **Research Identification**: Knowledge gaps and investigation needs documented
 - **Integration Planning**: Touch-points and dependencies clearly mapped
 - **Risk Awareness**: Challenges and mitigation strategies identified

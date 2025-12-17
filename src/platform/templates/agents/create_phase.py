@@ -26,10 +26,10 @@ You have access to MCP tools AND platform-specific tools listed in frontmatter.
 When instructions say "CALL tool_name", you execute the tool:
   ✅ CORRECT: roadmap = {tools.get_roadmap}
   ✅ CORRECT: {tools.create_phase_tool_interpolated}
-  ❌ WRONG: <get_roadmap><project_name>rag-poc</project_name>
+  ❌ WRONG: <get_roadmap><plan_name>rag-poc</plan_name>
 
 Platform tools vary by configured platform:
-- Markdown: Write/Read/Edit for .respec-ai/plans/{{project_name}}/phases/{{lowercase-kebab-phase-name}}.md
+- Markdown: Write/Read/Edit for .respec-ai/plans/{{plan_name}}/phases/{{lowercase-kebab-phase-name}}.md
 - Linear: mcp__linear-server__create_issue, get_issue, update_issue
 - GitHub: mcp__github__create_issue, get_issue, update_issue
 
@@ -48,7 +48,7 @@ You are a Phase extraction specialist focused on retrieving existing sparse Phas
 DO NOT generate new phases - they already exist in the roadmap.
 
 INPUTS: Phase-specific context for phase extraction (passed by orchestrating command)
-- project_name: Project name for roadmap retrieval
+- plan_name: Plan name for roadmap retrieval
 - phase_name: Phase name from roadmap to extract
 - loop_id: Refinement loop identifier (optional, for tracking)
 
@@ -91,7 +91,7 @@ Save phase to configured platform using platform-specific tool.
 CALL {tools.create_phase_tool_interpolated}
 
 Platform-specific examples:
-- Markdown: Write(.respec-ai/plans/PROJECT_NAME/phases/lowercase-kebab-phase-name.md, extracted_phase_markdown)
+- Markdown: Write(.respec-ai/plans/PLAN_NAME/phases/lowercase-kebab-phase-name.md, extracted_phase_markdown)
 - Linear: mcp__linear-server__create_issue(title=PHASE_NAME, description=extracted_phase_markdown, ...)
 - GitHub: mcp__github__create_issue(title=PHASE_NAME, body=extracted_phase_markdown, ...)
 
@@ -112,7 +112,7 @@ Return confirmation with both storage statuses.
 Generate creation confirmation ONLY if both storage operations succeeded:
 
 Phase Created Successfully:
-- **Project**: [project_name]
+- **Project**: [plan_name]
 - **Phase Name**: [phase_name from Phase]
 - **MCP Storage**: ✅ Stored using {tools.store_document}
 - **Platform Storage**: ✅ Saved using {tools.create_phase_tool_interpolated}
@@ -162,7 +162,7 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 ### Individual Phase Focus
 - Process single phase per agent invocation
 - Operate independently of other create-phase agent instances
-- Use project_name and phase_name for targeted phase processing
+- Use plan_name and phase_name for targeted phase processing
 - Store results independently without cross-phase dependencies
 
 ### Coordination Support
@@ -181,10 +181,10 @@ If fields are incomplete, this indicates a roadmap generation issue - report it 
 
 ### Roadmap Retrieval Issues
 
-#### Project Not Found
-- Document project_name validation failure clearly
-- Request verification of Project name accuracy
-- Provide guidance for correct Project name
+#### Plan Not Found
+- Document plan_name validation failure clearly
+- Request verification of Plan name accuracy
+- Provide guidance for correct Plan name
 - Fail gracefully with actionable error message
 
 #### Roadmap Data Incomplete

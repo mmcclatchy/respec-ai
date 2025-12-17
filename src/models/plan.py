@@ -1,13 +1,13 @@
 from typing import ClassVar
 
 from .base import MCPModel
-from .enums import ProjectStatus
+from .enums import PlanStatus
 
 
-class ProjectPlan(MCPModel):
+class Plan(MCPModel):
     # Class configuration
-    TITLE_PATTERN: ClassVar[str] = '# Project Plan'
-    TITLE_FIELD: ClassVar[str] = 'project_name'
+    TITLE_PATTERN: ClassVar[str] = '# Plan'
+    TITLE_FIELD: ClassVar[str] = 'plan_name'
     HEADER_FIELD_MAPPING: ClassVar[dict[str, tuple[str, ...]]] = {
         'project_vision': ('Executive Summary', 'Vision'),
         'project_mission': ('Executive Summary', 'Mission'),
@@ -16,16 +16,16 @@ class ProjectPlan(MCPModel):
         'primary_objectives': ('Business Objectives', 'Primary Objectives'),
         'success_metrics': ('Business Objectives', 'Success Metrics'),
         'key_performance_indicators': ('Business Objectives', 'Key Performance Indicators'),
-        'included_features': ('Project Scope', 'Included Features'),
-        'excluded_features': ('Project Scope', 'Excluded Features'),
-        'project_assumptions': ('Project Scope', 'Assumptions'),
-        'project_constraints': ('Project Scope', 'Constraints'),
-        'project_sponsor': ('Stakeholders', 'Project Sponsor'),
+        'included_features': ('Plan Scope', 'Included Features'),
+        'excluded_features': ('Plan Scope', 'Excluded Features'),
+        'project_assumptions': ('Plan Scope', 'Assumptions'),
+        'project_constraints': ('Plan Scope', 'Constraints'),
+        'project_sponsor': ('Stakeholders', 'Plan Sponsor'),
         'key_stakeholders': ('Stakeholders', 'Key Stakeholders'),
         'end_users': ('Stakeholders', 'End Users'),
-        'work_breakdown': ('Project Structure', 'Work Breakdown'),
-        'phases_overview': ('Project Structure', 'Phases Overview'),
-        'project_dependencies': ('Project Structure', 'Dependencies'),
+        'work_breakdown': ('Plan Structure', 'Work Breakdown'),
+        'phases_overview': ('Plan Structure', 'Phases Overview'),
+        'project_dependencies': ('Plan Structure', 'Dependencies'),
         'team_structure': ('Resource Requirements', 'Team Structure'),
         'technology_requirements': ('Resource Requirements', 'Technology Requirements'),
         'infrastructure_needs': ('Resource Requirements', 'Infrastructure Needs'),
@@ -38,11 +38,11 @@ class ProjectPlan(MCPModel):
         'reporting_structure': ('Communication Plan', 'Reporting Structure'),
         'meeting_schedule': ('Communication Plan', 'Meeting Schedule'),
         'documentation_standards': ('Communication Plan', 'Documentation Standards'),
-        'project_status': ('Metadata', 'Status'),
+        'plan_status': ('Metadata', 'Status'),
     }
 
     # Model fields with defaults
-    project_name: str = 'Unnamed Project'
+    plan_name: str = 'Unnamed Plan'
     project_vision: str = 'Project Vision not specified'
     project_mission: str = 'Project Mission not specified'
     project_timeline: str = 'Project Timeline not specified'
@@ -72,10 +72,10 @@ class ProjectPlan(MCPModel):
     reporting_structure: str = 'Reporting Structure not specified'
     meeting_schedule: str = 'Meeting Schedule not specified'
     documentation_standards: str = 'Documentation Standards not specified'
-    project_status: ProjectStatus = ProjectStatus.DRAFT
+    plan_status: PlanStatus = PlanStatus.DRAFT
 
     def build_markdown(self) -> str:
-        return f"""{self.TITLE_PATTERN}: {self.project_name}
+        return f"""{self.TITLE_PATTERN}: {self.plan_name}
 
 ## Executive Summary
 
@@ -102,7 +102,7 @@ class ProjectPlan(MCPModel):
 ### Key Performance Indicators
 {self.key_performance_indicators}
 
-## Project Scope
+## Plan Scope
 
 ### Included Features
 {self.included_features}
@@ -118,7 +118,7 @@ class ProjectPlan(MCPModel):
 
 ## Stakeholders
 
-### Project Sponsor
+### Plan Sponsor
 {self.project_sponsor}
 
 ### Key Stakeholders
@@ -127,7 +127,7 @@ class ProjectPlan(MCPModel):
 ### End Users
 {self.end_users}
 
-## Project Structure
+## Plan Structure
 
 ### Work Breakdown
 {self.work_breakdown}
@@ -185,5 +185,5 @@ class ProjectPlan(MCPModel):
 ## Metadata
 
 ### Status
-{self.project_status.value}
+{self.plan_status.value}
 """

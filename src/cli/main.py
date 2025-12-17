@@ -2,12 +2,12 @@
 """Main CLI entry point for respec-ai package.
 
 Provides commands for:
-- Project initialization (init)
+- Plan initialization (init)
 - Platform switching (platform)
 - Status checking (status)
 - Validation (validate)
 - Template regeneration (regenerate)
-- Project rebuild (rebuild)
+- Plan rebuild (rebuild)
 - Package updates (update)
 - MCP registration (register-mcp)
 - MCP unregistration (unregister-mcp)
