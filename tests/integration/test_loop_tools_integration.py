@@ -88,11 +88,11 @@ class TestLoopToolsIntegration:
 
         threshold = stable_loop_config.task_threshold
         # Score just below build_code threshold should refine
-        result = await add_feedback_and_decide(build_code_loop.id, threshold - 1, 1, CriticAgent.TASK_REVIEWER)
+        result = await add_feedback_and_decide(build_code_loop.id, threshold - 1, 1, CriticAgent.CODE_REVIEWER)
         assert result.status == LoopStatus.REFINE
 
         # Score at threshold should complete
-        result = await add_feedback_and_decide(build_code_loop.id, threshold, 2, CriticAgent.TASK_REVIEWER)
+        result = await add_feedback_and_decide(build_code_loop.id, threshold, 2, CriticAgent.CODE_REVIEWER)
         assert result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
@@ -123,7 +123,7 @@ class TestLoopToolsIntegration:
         agents = [
             CriticAgent.PLAN_CRITIC,
             CriticAgent.PHASE_CRITIC,
-            CriticAgent.TASK_REVIEWER,
+            CriticAgent.CODE_REVIEWER,
         ]
         loops = []
         for loop_type in loop_types:

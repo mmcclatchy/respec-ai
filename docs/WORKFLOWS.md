@@ -84,7 +84,7 @@ respec-ai follows a standard enterprise workflow with automated quality gates at
    │
    ├─ Implementation planning
    ├─ TDD-driven code generation
-   └─ Code review with task-reviewer (validates against spec)
+   └─ Code review with code-reviewer (validates against spec)
 
    ▼ Validates: Code aligns with phase
 ```
@@ -279,8 +279,8 @@ Creating Linear issue...
 1. **Phase retrieval** - Retrieves technical specification
 2. **Build planning** - taskner creates implementation plan
 3. **Plan evaluation** - task-critic validates plan quality
-4. **Code generation** - task-coder generates code with TDD approach
-5. **Code review** - task-reviewer validates against phase
+4. **Code generation** - coder generates code with TDD approach
+5. **Code review** - code-reviewer validates against phase
 6. **Refinement** - Quality loops until tests pass and code meets standards
 
 **When to use (future):**
@@ -534,7 +534,7 @@ respec-ai uses two types of quality loops to ensure high-quality outputs:
 - Ensures plan aligns with technical phase
 - Validates: Implementation approach, testing strategy, code structure
 
-**task-reviewer:**
+**code-reviewer:**
 - Reviews generated code
 - Checks code quality and best practices
 - Validates implementation correctness
@@ -620,7 +620,7 @@ The respec-ai MCP server provides 38 tools across 7 modules that power the workf
 - `roadmap` - Generates multi-phase roadmaps from plans
 - `phase-architect` - Creates technical specifications from plans/roadmaps
 - `taskner` - Creates implementation plans from phases
-- `task-coder` - Generates code from build plans
+- `coder` - Generates code from build plans
 
 **Critic Agents:**
 - `plan-critic` - Validates strategic plans
@@ -628,7 +628,7 @@ The respec-ai MCP server provides 38 tools across 7 modules that power the workf
 - `roadmap-critic` - Validates roadmaps against plans
 - `phase-critic` - Validates phases against roadmaps/plans
 - `task-critic` - Validates build plans against phases
-- `task-reviewer` - Validates code against build plans/phases
+- `code-reviewer` - Validates code against build plans/phases
 
 **Command Templates:**
 Each `/respec-*` command is a template that orchestrates:

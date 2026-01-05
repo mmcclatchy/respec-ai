@@ -1,3 +1,5 @@
+from textwrap import indent
+
 from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import PhaseCommandTools
@@ -385,8 +387,103 @@ ELIF LOOP_DECISION == "USER_INPUT":
 ELIF LOOP_DECISION == "MAX_ITERATIONS":
   Display warning: "Maximum iterations reached. Review feedback and decide next steps."
   Display LATEST_FEEDBACK to user
-  Proceed to Step 8.
+  Proceed to Step 7.5.
 ```
+
+### Step 7.5: Synthesize Research Requirements
+
+Extract and synthesize any research requirements from final Phase:
+
+#### Step 7.5.1: Retrieve Final Phase
+```text
+FINAL_PHASE_RESPONSE = {tools.get_document}
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+  loop_id=LOOP_ID
+)
+
+FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
+```
+
+#### Step 7.5.2: Parse Research Requirements
+```text
+RESEARCH_REQUIREMENTS = [Extract "### Research Requirements" section from FINAL_PHASE_MARKDOWN]
+
+IF RESEARCH_REQUIREMENTS is empty or None:
+  Display: "✓ No research requirements to synthesize"
+  Proceed to Step 8
+
+SYNTHESIZE_PROMPTS = []
+EXISTING_PATHS = []
+
+For each line in RESEARCH_REQUIREMENTS:
+  IF line contains "Read: `" pattern:
+    PATH = [Extract file path between backticks]
+    Add PATH to EXISTING_PATHS
+    Display: "📄 Existing research: {{PATH}}"
+
+  IF line starts with "- Synthesize:" or "  - Synthesize:":
+    PROMPT = [Extract text after "Synthesize: "]
+    Add PROMPT to SYNTHESIZE_PROMPTS
+    Display: "🔬 Research needed: {{PROMPT}}"
+```
+
+#### Step 7.5.3: Invoke Research Synthesizer Agents (if needed)
+```text
+IF SYNTHESIZE_PROMPTS is not empty:
+  Display: "📚 Synthesizing {{len(SYNTHESIZE_PROMPTS)}} research brief(s)..."
+
+  SYNTHESIZED_PATHS = []
+
+  For each PROMPT in SYNTHESIZE_PROMPTS:
+    Display: "⏳ Researching: {{PROMPT}}"
+
+    Launch research-synthesizer agent using Task tool:
+    - subagent_type: "research-synthesizer"
+    - description: "Synthesize research brief"
+    - prompt: PROMPT
+    - Wait for completion
+
+    Extract synthesized file path from agent result
+    Add to SYNTHESIZED_PATHS
+    Display: "✓ Research synthesized: {{file_path}}"
+
+  COMPLETE_PATHS = EXISTING_PATHS + SYNTHESIZED_PATHS
+  Display: "✓ All research synthesis complete: {{len(COMPLETE_PATHS)}} total documents"
+
+ELSE:
+  COMPLETE_PATHS = EXISTING_PATHS
+  Display: "✓ No research synthesis required - using {{len(EXISTING_PATHS)}} existing document(s)"
+```
+
+#### Step 7.5.4: Update Phase with Synthesized Research
+```text
+IF SYNTHESIZED_PATHS is not empty:
+  Display: "📝 Updating Phase with synthesized research paths..."
+
+  Reconstruct research_requirements section with ONLY "Read:" entries:
+
+  UPDATED_RESEARCH = ""
+  For each PATH in COMPLETE_PATHS:
+    UPDATED_RESEARCH += "- Read: `{{PATH}}`\n"
+
+  Update FINAL_PHASE_MARKDOWN by replacing "### Research Requirements" section content with UPDATED_RESEARCH
+
+  Store updated Phase using {tools.store_document}:
+  - doc_type: "phase"
+  - key: f"{{PLAN_NAME}}/{{PHASE_NAME}}"
+  - content: UPDATED_PHASE_MARKDOWN
+
+  Display: "✓ Phase updated with {{len(SYNTHESIZED_PATHS)}} synthesized research file(s)"
+  Display: "✓ Phase now contains {{len(COMPLETE_PATHS)}} total research documents"
+
+ELSE:
+  Display: "✓ Phase already contains only file paths - no update needed"
+
+Proceed to Step 8.
+```
+
+**Note**: After this step, Phase.research_requirements contains ONLY "Read: `~/.claude/...`" paths, no "Synthesize:" prompts remain.
 
 ### Step 8: Phase Storage
 
@@ -435,32 +532,32 @@ Labels: phase, architecture, phase-2
 Archive scanning performed via `research-advisor-archive-scan.sh` to identify existing documentation and knowledge gaps for research requirements section.
 
 ### Research Requirements Format
-```markdown
-## Research Requirements
+  ```markdown
+  ## Research Requirements
 
-### Existing Documentation  
-- Read: ~/.claude/best-practices/react-hooks-patterns.md
-- Read: ~/.claude/best-practices/postgresql-optimization.md
+  ### Existing Documentation  
+  - Read: ~/.claude/best-practices/react-hooks-patterns.md
+  - Read: ~/.claude/best-practices/postgresql-optimization.md
 
-### External Research Needed
-- Synthesize: Best practices for integrating React with GraphQL in 2025
-- Synthesize: PostgreSQL connection pooling strategies for microservices
-```
+  ### External Research Needed
+  - Synthesize: Best practices for integrating React with GraphQL in 2025
+  - Synthesize: PostgreSQL connection pooling strategies for microservices
+  ```
 
-## Error Handling
+  ## Error Handling
 
-### Standardized Error Response Format
-All error scenarios return structured responses:
+  ### Standardized Error Response Format
+  All error scenarios return structured responses:
 
-```json
-{{
-  "error_type": "missing_plan|archive_failure|mcp_error|storage_failure|quality_plateau",
-  "error_message": "Detailed error description",
-  "recovery_action": "Specific recovery steps taken",
-  "user_guidance": "Clear instructions for user",
-  "partial_output": "Any salvageable work completed"
-}}
-```
+  ```json
+  {{
+    "error_type": "missing_plan|archive_failure|mcp_error|storage_failure|quality_plateau",
+    "error_message": "Detailed error description",
+    "recovery_action": "Specific recovery steps taken",
+    "user_guidance": "Clear instructions for user",
+    "partial_output": "Any salvageable work completed"
+  }}
+  ```
 
 ### Error Scenario Implementations
 
@@ -492,7 +589,7 @@ IF ~/.claude/scripts/research-advisor-archive-scan.sh fails:
 
 #### 3. MCP Loop State Errors
 ```text
-IF mcp__respec-ai__* tools unavailable:
+IF mcp__respec-ai tools unavailable:
   ERROR_RESPONSE = {{
     "error_type": "mcp_error",
     "error_message": "MCP loop state management unavailable",
@@ -559,9 +656,9 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 
 ### Structure Template
 
-```markdown
-{technical_phase_template}
-```
+  ```markdown
+{indent(technical_phase_template, '  ')}
+  ```
 
 ### Structure Rules
 

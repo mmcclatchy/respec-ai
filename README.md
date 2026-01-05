@@ -96,7 +96,7 @@ That's it! `respec-ai` will guide you through strategic planning, technical phas
    /respec-code [phase-name]
    → Implementation planning
    → TDD-driven code generation
-   → Code review with task-reviewer (validates against phase)
+   → Code review with code-reviewer (validates against phase)
 ```
 
 Each stage iterates through refinement loops until quality threshold met or user approves. Hierarchical validation ensures every code change traces back to business objectives.

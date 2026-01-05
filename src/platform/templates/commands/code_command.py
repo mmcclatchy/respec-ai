@@ -5,13 +5,13 @@ def generate_code_command_template(tools: CodeCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [phase-name]
-description: Transform Phases into production-ready code through parallel research, implementation planning, and TDD development
+description: Transform Phases into production-ready code through TDD-driven implementation
 ---
 
 # /respec-code Command: Implementation Orchestration
 
 ## Overview
-Orchestrate the complete implementation workflow, transforming Phases into production-ready code through parallel research synthesis, implementation planning, and TDD-driven code development with comprehensive quality validation.
+Orchestrate the complete implementation workflow, transforming Phases into production-ready code through TDD-driven code development with comprehensive quality validation.
 
 {tools.mcp_tools_reference}
 
@@ -106,6 +106,8 @@ Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
 
 **Note**: Build plans are not stored in external platforms - they only exist in MCP during the build workflow.
 
+**Note on Step Numbering**: Step 3 was intentionally removed when research logic was moved to the phase workflow. Step numbering is preserved (1, 2, 4, 5...) for workflow compatibility.
+
 ### 4. Phase Retrieval and Validation
 Retrieve and validate completed Phase from /respec-phase command:
 
@@ -118,221 +120,107 @@ IF TECHNICAL_PHASE not found:
   EXIT: Graceful failure with guidance
 
 SPEC_OBJECTIVES = [Extract from Phase Objectives section]
-RESEARCH_REQUIREMENTS = [Extract from Phase Research Requirements section]
 TECH_STACK = [Extract from Phase Technology Stack section]
 ```
 
-### 5. Parallel Research Orchestration
-Coordinate research synthesis for implementation guidance:
+### 5. Retrieve Task from /respec-task Command
 
-#### Parse Research Requirements
+Retrieve completed Task document from task workflow:
+
 ```text
-DOCUMENTATION_PATHS = []
+TASK_MARKDOWN = {tools.get_task_document}
 
-For each item in RESEARCH_REQUIREMENTS:
+IF TASK_MARKDOWN not found:
+  ERROR: "No Task found for Phase: {{PHASE_NAME}}"
+  SUGGEST: "Run '/respec-task {{PLAN_NAME}} {{PHASE_NAME}}' to create Task first"
+  EXIT: Graceful failure with guidance
 
-  IF item starts with "Read:":
-    EXISTING_PATH = [Extract path from "Read: [path]"]
-    Add EXISTING_PATH to DOCUMENTATION_PATHS
-
-  IF item starts with "Synthesize:":
-    RESEARCH_PROMPT = [Extract prompt from "Synthesize: [prompt]"]
-
-    Launch parallel research-synthesizer agents (single message, multiple Task calls):
-    Task(
-        agent="research-synthesizer",
-        prompt=RESEARCH_PROMPT
-    )
-
-    Expected: Research brief file path from each agent
-    SYNTHESIZED_PATH = [research-synthesizer output: document path]
-    Add SYNTHESIZED_PATH to DOCUMENTATION_PATHS
-
-Collect: COMPLETE_DOCUMENTATION_PATHS = [All paths from existing docs + research synthesis]
+Display: "✓ Task retrieved - ready for implementation"
 ```
 
-### 6. Planning Loop Initialization and Refinement
-Set up and execute MCP-managed planning quality refinement:
+**Note**: Task contains:
+- Implementation Checklist with verification methods
+- Implementation Steps with research citations embedded
+- Testing Strategy
+- All research has been read and applied during task planning
 
-#### Initialize Planning Loop
-{tools.initialize_refinement_loop_inline_doc}
-```text
-PLANNING_LOOP_ID = {tools.initialize_planning_loop}
+### 6. Check for Architectural Override Proposals
 
-State to maintain:
-- planning_loop_id: For Phase storage and retrieval
-```
-
-#### Planning Refinement Cycle
-```text
-Invoke task-planner agent with:
-- planning_loop_id: {{PLANNING_LOOP_ID}}
-- research_file_paths: {{COMPLETE_DOCUMENTATION_PATHS}}
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
-
-Agent will autonomously:
-1. Read .respec-ai/coding-standards.md (if exists)
-2. Retrieve Phase via MCP
-3. Retrieve existing Phase via MCP (empty on first iteration)
-4. Retrieve critic feedback via MCP (none on first iteration)
-5. Retrieve user feedback via MCP (if stagnation occurred)
-6. Read research briefs from file paths
-7. Generate or refine Phase
-8. Store Phase via MCP
-9. Exit
-
-Expected: Phase stored in MCP with planning_loop_id
-```
-
-#### Planning Quality Assessment
-```text
-Invoke task-critic agent with:
-- planning_loop_id: {{PLANNING_LOOP_ID}}
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
-
-Agent will autonomously:
-1. Retrieve Phase via MCP
-2. Retrieve Phase via MCP
-3. Retrieve previous critic feedback via MCP (for progress tracking)
-4. Assess Phase against FSDD criteria (5 categories, 100 points total)
-5. Calculate quality score (0-100)
-6. Generate CriticFeedback markdown
-7. Store CriticFeedback via MCP
-8. Exit
-
-Expected: CriticFeedback with Overall Score stored in MCP
-```
-
-#### MCP Planning Decision
-```text
-PLANNING_DECISION_RESPONSE = {tools.decide_planning_action}
-PLANNING_DECISION = PLANNING_DECISION_RESPONSE.status
-
-Note: MCP Server retrieves latest score from task-critic feedback internally.
-No need to retrieve or pass score from command.
-
-Decision options: "COMPLETE", "REFINE", "USER_INPUT"
-```
-
-### 7. Planning Decision Handling
-
-**Follow PLANNING_DECISION exactly. Do not override based on score assessment.**
+Retrieve Task to check for override proposals:
 
 ```text
-IF PLANNING_DECISION == "refine":
-  Re-invoke task-planner agent (same parameters).
-  Re-invoke task-critic agent.
-  Call MCP decision again.
+TASK_MARKDOWN = {tools.get_task_document}
 
-ELIF PLANNING_DECISION == "complete":
-  Proceed to Step 8.
+IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
+  OVERRIDE_SECTION = [Extract section content]
 
-ELIF PLANNING_DECISION == "user_input":
-  Retrieve Phase and feedback (count=2).
-  Present PLAN_QUALITY_SCORE, Key Issues, and Recommendations to user.
-  Request technical guidance (approach preferences, strategies, accept/proceed).
-  Store user feedback: {tools.store_user_feedback})
-  Re-invoke task-planner agent.
-  Re-invoke task-critic agent.
-  Call MCP decision again.
-```
-
-### 7.5. Process Architectural Override Proposals
-
-**CRITICAL**: Check for override proposals after planning completion, before starting code implementation.
-
-After planning decision is "complete", check for architectural override proposals:
-
-Retrieve Phase to check for override proposals:
-```text
-PHASE_MARKDOWN = {tools.get_task_document}
-```
-
-Check if Phase contains "Architectural Override Proposals" section:
-```text
-IF PHASE_MARKDOWN contains "## Architectural Override Proposals" section:
-  (Extract override proposals content)
-  OVERRIDE_PROPOSALS = [Extract content from "## Architectural Override Proposals" section]
-
-  (Check if section has actual content - not just header)
-  IF OVERRIDE_PROPOSALS is not empty AND not just placeholder text:
-    (STOP build workflow - architectural changes require user approval)
-
+  IF OVERRIDE_SECTION is not empty (has content beyond just header):
     Display to user:
-    "⚠️ Build-planner has identified potential architecture improvements.
+    "⚠️ Task-planner has identified potential architecture improvements.
 
-    {{OVERRIDE_PROPOSALS}}
+    Review override proposals in Task document.
 
-    This requires updating Phase. Choose action:
+    Choose action:
     1. Approve proposal → Re-run /respec-phase to update architecture
-    2. Reject proposal → Continue with current phase as-is
-    3. Modify proposal → Adjust and re-run /respec-phase
+    2. Reject proposal → Continue with current Phase as-is
 
-    Build workflow paused until Phase updated.
+    Task workflow paused until Phase updated.
 
-    To approve and update:
-      /respec-phase {{PLAN_NAME}} {{PHASE_NAME}} \"[your instructions based on proposal]\"
-
-    To reject and proceed with current phase:
-      Re-run /respec-code {{PLAN_NAME}} {{PHASE_NAME}} --ignore-overrides"
+    To approve: /respec-phase {{PLAN_NAME}} {{PHASE_NAME}} [instructions based on proposal]
+    To reject: Re-run /respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
 
     EXIT: Workflow suspended pending user decision
-  ELSE:
-    # Section exists but is empty - proceed normally
-    Proceed to Step 8
 
-ELSE:
-  # No override proposals section - proceed normally
-  Proceed to Step 8
+Proceed to Step 7 (Coding Loop)
 ```
 
-**Important Notes**:
-- Build-planner is a subagent with NO user interaction capability
-- Architectural changes MUST route through /respec-phase workflow
-- Phase must remain consistent across refinement loop passes
-- Any changes to architecture, technology stack, or design decisions require phase update
-- If user rejects override, task-planner proceeds with original phase constraints
-
-**Override Proposal Format** (in Phase):
-```markdown
-## Architectural Override Proposals
-
-**Current Phase Decision**: [What phase currently specifies]
-**Proposed Change**: [What task-planner recommends instead]
-
-**Justification**:
-- Research: [Evidence from documentation/research that supports change]
-- Trade-off: [Why original phase concern no longer applies]
-- Impact: [Which phase sections would need updating]
-
-**Next Action Required**: User must approve/reject via /respec-phase
-```
-
-### 8. Coding Loop Initialization and Refinement
+### 7. Coding Loop Initialization and Refinement
 Set up and execute MCP-managed code quality refinement:
 
-#### Initialize Coding Loop
-```text
-CODING_LOOP_ID = {tools.initialize_coding_loop}
+#### Step 7.1: Retrieve Task Loop ID from Task Workflow
 
-State to maintain (CRITICAL - TWO loop IDs):
-- planning_loop_id: For retrieving Phase
-- coding_loop_id: For code feedback storage/retrieval
+Retrieve the task_loop_id that was created during /respec-task:
+
+```text
+TASK_INFO = {tools.get_task_document}
+
+TASK_LOOP_ID = [Extract loop_id from task metadata or use plan_name/phase_name to find active task loop]
 ```
 
-#### Code Implementation Cycle
+**Note**: Task was created during /respec-task workflow. We need its loop_id to pass to coding agents.
+
+#### Step 7.2: Initialize Coding Loop
 ```text
-Invoke task-coder agent with:
+CODING_LOOP_ID = {tools.initialize_coding_loop}
+```
+
+#### Step 7.3: CRITICAL - Dual Loop ID Management
+
+You now have TWO active loop IDs - DO NOT confuse them:
+
+**task_loop_id = {{TASK_LOOP_ID}}**
+- Purpose: Retrieve Task document (created during /respec-task)
+- Used by: coder (to get implementation plan), code-reviewer (to verify against Task)
+- Storage: Task document linked to this loop
+
+**coding_loop_id = {{CODING_LOOP_ID}}**
+- Purpose: Store/retrieve code feedback
+- Used by: coder (feedback retrieval), code-reviewer (feedback storage)
+- Storage: CriticFeedback for code quality
+
+Pass BOTH IDs to coding agents. Never swap them.
+
+#### Step 7.4: Code Implementation Cycle
+```text
+Invoke coder agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
-- planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
+- task_loop_id: {{TASK_LOOP_ID}} (CRITICAL - for Task retrieval)
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
 1. Read .respec-ai/coding-standards.md (if exists, otherwise use Phase Code Standards)
-2. Retrieve Phase via MCP using planning_loop_id
+2. Retrieve Task via MCP using task_loop_id
 3. Retrieve Phase via MCP
 4. Retrieve critic feedback via MCP using coding_loop_id (none on first iteration)
 5. Retrieve user feedback via MCP using coding_loop_id (if stagnation occurred)
@@ -354,14 +242,14 @@ Expected: Code implementation committed, platform status updated
 
 #### Code Quality Assessment
 ```text
-Invoke task-reviewer agent with:
+Invoke code-reviewer agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
-- planning_loop_id: {{PLANNING_LOOP_ID}} (CRITICAL - for Phase retrieval)
+- task_loop_id: {{TASK_LOOP_ID}} (CRITICAL - for Phase retrieval)
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
 Agent will autonomously:
-1. Retrieve Phase via MCP using planning_loop_id
+1. Retrieve Phase via MCP using task_loop_id
 2. Retrieve Phase via MCP
 3. Retrieve previous critic feedback via MCP using coding_loop_id (for progress tracking)
 4. Inspect codebase (Read/Glob)
@@ -381,36 +269,36 @@ Expected: CriticFeedback with Overall Score and test results stored in MCP
 CODING_DECISION_RESPONSE = {tools.decide_coding_action}
 CODING_DECISION = CODING_DECISION_RESPONSE.status
 
-Note: MCP Server retrieves latest score from task-reviewer feedback internally.
+Note: MCP Server retrieves latest score from code-reviewer feedback internally.
 No need to retrieve or pass score from command.
 
 Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```
 
-### 9. Coding Decision Handling
+### 8. Coding Decision Handling
 
 **Follow CODING_DECISION exactly. Do not override based on score assessment.**
 
 ```text
 IF CODING_DECISION == "refine":
-  Re-invoke task-coder agent (same parameters).
-  Re-invoke task-reviewer agent.
+  Re-invoke coder agent (same parameters).
+  Re-invoke code-reviewer agent.
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
-  Proceed to Step 10.
+  Proceed to Step 9.
 
 ELIF CODING_DECISION == "user_input":
   Retrieve Phase and feedback (count=2).
   Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
   Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
   Store user feedback: {tools.store_user_feedback})
-  Re-invoke task-coder agent.
-  Re-invoke task-reviewer agent.
+  Re-invoke coder agent.
+  Re-invoke code-reviewer agent.
   Call MCP decision again.
 ```
 
-### 10. Integration & Documentation
+### 9. Integration & Documentation
 Complete implementation workflow and update Phase:
 
 #### Generate Implementation Summary
@@ -447,7 +335,7 @@ Present final summary:
 
 Task Planning:
 - Quality Score: {{PLAN_QUALITY_SCORE}}%
-- Iterations: {{PLANNING_ITERATION_COUNT}}
+- Iterations: {{TASK_ITERATION_COUNT}}
 
 Code Implementation:
 - Quality Score: {{CODE_QUALITY_SCORE}}%
@@ -458,7 +346,7 @@ Code Implementation:
 - Ruff: {{RUFF_STATUS}}
 
 Implementation artifacts:
-- Phase: Available via planning_loop_id={{PLANNING_LOOP_ID}}
+- Phase: Available via task_loop_id={{TASK_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
 - Phase Status: Updated via {tools.store_phase_document}
@@ -488,7 +376,7 @@ Ready for deployment."
 
 ### Quality Assessment
 - **Phase Evaluation**: Assessed by task-critic agent
-- **Code Quality Evaluation**: Assessed by task-reviewer agent
+- **Code Quality Evaluation**: Assessed by code-reviewer agent
 - **Loop Decisions**: Made by MCP Server based on configuration
 - **Thresholds and Limits**: Managed by MCP Server
 
@@ -522,38 +410,15 @@ Suggest: "/respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
 Exit gracefully with guidance
 ```
 
-#### Research Synthesis Failures
-```text
-IF some research-synthesizer agents fail:
-  Continue with available documentation
-  Note missing research areas in DOCUMENTATION_PATHS
-  Flag gaps in Phase for user awareness
-  Proceed with available research
-```
-
-#### Planning Loop Failures
-```text
-IF task-planner fails:
-  Retry once with simplified context
-  Create minimal Phase from Phase
-  Note limitations and suggest manual review
-
-IF task-critic fails:
-  Continue without quality assessment
-  Use single-pass Phase
-  Warn user that quality not validated
-  Suggest manual review before coding
-```
-
 #### Coding Loop Failures
 ```text
-IF task-coder fails:
+IF coder fails:
   Preserve git commits for rollback
   Report failure with TodoList state
   Provide diagnostic information
   Suggest manual intervention
 
-IF task-reviewer fails:
+IF code-reviewer fails:
   Run static analysis manually (Bash: pytest, mypy, ruff)
   Report test results without quality score
   Continue with manual quality assessment
@@ -574,34 +439,33 @@ IF loop initialization fails:
 The command maintains orchestration focus by:
 - **Validating Phase completion** before proceeding
 - **Coordinating agent invocations** without defining their behavior
-- **Maintaining dual loop IDs** (planning_loop_id + coding_loop_id)
+- **Maintaining dual loop IDs** (task_loop_id + coding_loop_id)
 - **Handling MCP Server responses** without evaluating quality scores
 - **Managing user feedback** during stagnation scenarios
 - **Providing error recovery** without detailed implementation guidance
 
 All specialized work delegated to appropriate agents:
-- **task-planner**: Phase generation with research integration (MCP access)
-- **task-critic**: Phase quality assessment (80% threshold)
-- **task-coder**: TDD code implementation with platform integration (MCP access + platform tools)
-- **task-reviewer**: Code quality assessment (95% threshold)
-- **research-synthesizer**: Parallel research brief generation
+- **coder**: TDD code implementation (MCP access + platform tools)
+- **code-reviewer**: Code quality assessment (95% threshold)
 - **MCP Server**: Decision logic, threshold management, state storage
+
+**Note**: task-planner, task-critic, and research-synthesizer are part of /respec-task and /respec-phase workflows respectively, not /respec-code.
 
 ## Workflow Enhancements
 
 ### Dual Loop Architecture
-- Separate planning loop (Phase refinement) and coding loop (code refinement)
-- planning_loop_id used for Phase storage/retrieval by all agents
+- Separate task loop (from /respec-task) and coding loop (code refinement)
+- task_loop_id used to retrieve Task document created by task workflow
 - coding_loop_id used for code feedback storage/retrieval
-- Agents receive both IDs and use appropriately
+- Coding agents receive both IDs and use appropriately
 
 ### Coding Standards Integration
-- task-coder reads .respec-ai/coding-standards.md on initialization
+- coder reads .respec-ai/coding-standards.md on initialization
 - User-customizable coding standards applied to all generated code
 - Fallback to Phase Code Standards if file doesn't exist
 
 ### TDD Enforcement
-- Strict test-first discipline enforced by task-coder agent
+- Strict test-first discipline enforced by coder agent
 - Tests must fail before implementation proceeds
 - Tests must pass before considering feature complete
 - Commit after each iteration for rollback capability

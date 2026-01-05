@@ -4,7 +4,7 @@ Update all command and agent templates to include project_path parameter in MCP 
 
 This script:
 1. Adds PROJECT_PATH initialization to command templates
-2. Updates all mcp__respec-ai__* calls to include project_path parameter
+2. Updates all mcp__respec-ai calls to include project_path parameter
 3. Documents project_path in agent template INPUTS sections
 """
 
