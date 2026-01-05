@@ -26,7 +26,7 @@ class TestLoopToolsMCP:
         loop_state = await state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.TASK_REVIEWER,
+            critic_agent=CriticAgent.CODE_REVIEWER,
             iteration=1,
             overall_score=96,
             assessment_summary='High quality code',

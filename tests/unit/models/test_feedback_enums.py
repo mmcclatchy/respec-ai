@@ -37,7 +37,7 @@ class TestCriticAgent:
             'roadmap-critic',
             'phase-critic',
             'task-critic',
-            'task-reviewer',
+            'code-reviewer',
         }
 
         actual_agents = {agent.value for agent in CriticAgent}

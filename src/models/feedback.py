@@ -104,9 +104,9 @@ class CriticFeedback(MCPModel):
             'BUILD-CRITIC': CriticAgent.TASK_CRITIC,
             'TASK': CriticAgent.TASK_CRITIC,
             'TASK-CRITIC': CriticAgent.TASK_CRITIC,
-            'BUILD-REVIEWER': CriticAgent.TASK_REVIEWER,
-            'TASK-REVIEWER': CriticAgent.TASK_REVIEWER,
-            'REVIEWER': CriticAgent.TASK_REVIEWER,
+            'BUILD-REVIEWER': CriticAgent.CODE_REVIEWER,
+            'CODE-REVIEWER': CriticAgent.CODE_REVIEWER,
+            'REVIEWER': CriticAgent.CODE_REVIEWER,
         }
 
         critic_agent = agent_mapping.get(agent_name, CriticAgent.ANALYST_CRITIC)

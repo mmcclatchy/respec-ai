@@ -670,7 +670,7 @@ class TaskCommandTools(BaseModel):
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
         (BuiltInTool.ASK_USER_QUESTION, ''),
         (BuiltInTool.GLOB, ''),
-        (BuiltInTool.READ, '(.respec-ai/plans/*/phases/*.md)'),
+        (BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md'),
         (BuiltInTool.TASK, ''),
     ]
 
@@ -835,7 +835,7 @@ class CreatePhaseAgentTools(BaseModel):
         return self.update_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
 
 
-class TaskCoderAgentTools(BaseModel):
+class CoderAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -951,7 +951,7 @@ class TaskCriticAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store critic feedback in planning loop')
 
 
-class TaskReviewerAgentTools(BaseModel):
+class CodeReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -981,7 +981,7 @@ class TaskPlannerAgentTools(BaseModel):
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, '(~/.claude/best-practices/*.md)'),
+        (BuiltInTool.READ, '~/.claude/best-practices/*.md'),
         (BuiltInTool.GREP, ''),
         (BuiltInTool.GLOB, ''),
     ]

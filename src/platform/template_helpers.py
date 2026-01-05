@@ -3,6 +3,8 @@ from src.models.enums import DocumentType
 from .models import (
     AnalystCriticAgentTools,
     CodeCommandTools,
+    CoderAgentTools,
+    CodeReviewerAgentTools,
     CreatePhaseAgentTools,
     PhaseArchitectAgentTools,
     PhaseCommandTools,
@@ -13,12 +15,10 @@ from .models import (
     PlanRoadmapCommandTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
-    TaskCoderAgentTools,
     TaskCommandTools,
     TaskCriticAgentTools,
     TaskPlanCriticAgentTools,
     TaskPlannerAgentTools,
-    TaskReviewerAgentTools,
     ToolReference,
 )
 from .platform_selector import PlatformType
@@ -178,8 +178,8 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_CRITIC)
-    builder.add_task_agent(RespecAIAgent.TASK_CODER)
-    builder.add_task_agent(RespecAIAgent.TASK_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.CODER)
+    builder.add_task_agent(RespecAIAgent.CODE_REVIEWER)
     builder.add_builtin_tool(BuiltInTool.TASK, 'research-synthesizer')
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
 
@@ -500,16 +500,16 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     )
 
 
-def create_task_reviewer_agent_tools() -> TaskReviewerAgentTools:
+def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
     builder = TemplateToolBuilder()
 
-    for tool in TaskReviewerAgentTools.respec_ai_tools:
+    for tool in CodeReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
-    for builtin_tool, params in TaskReviewerAgentTools.builtin_tools:
+    for builtin_tool, params in CodeReviewerAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
 
-    return TaskReviewerAgentTools(
+    return CodeReviewerAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -590,18 +590,18 @@ def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
     )
 
 
-def create_task_coder_agent_tools(platform_tools: list[str]) -> TaskCoderAgentTools:
+def create_coder_agent_tools(platform_tools: list[str]) -> CoderAgentTools:
     builder = TemplateToolBuilder()
 
-    for tool in TaskCoderAgentTools.respec_ai_tools:
+    for tool in CoderAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
-    for builtin_tool, params in TaskCoderAgentTools.builtin_tools:
+    for builtin_tool, params in CoderAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
 
     builder.add_platform_tools(platform_tools)
 
-    return TaskCoderAgentTools(
+    return CoderAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
         update_task_status=platform_tools[0],
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(

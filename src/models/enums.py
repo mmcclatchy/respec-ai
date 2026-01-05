@@ -66,7 +66,7 @@ class CriticAgent(str, Enum):
     ROADMAP_CRITIC = 'roadmap-critic'
     PHASE_CRITIC = 'phase-critic'
     TASK_CRITIC = 'task-critic'
-    TASK_REVIEWER = 'task-reviewer'
+    CODE_REVIEWER = 'code-reviewer'
 
 
 class DocumentType(str, Enum):

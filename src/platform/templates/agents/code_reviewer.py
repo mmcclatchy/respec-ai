@@ -2,12 +2,12 @@ from textwrap import indent
 
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
-from src.platform.models import TaskReviewerAgentTools
+from src.platform.models import CodeReviewerAgentTools
 
 
-task_reviewer_feedback_template = CriticFeedback(
+code_reviewer_feedback_template = CriticFeedback(
     loop_id='[coding_loop_id from input]',
-    critic_agent=CriticAgent.TASK_REVIEWER,
+    critic_agent=CriticAgent.CODE_REVIEWER,
     iteration=0,
     overall_score=0,
     assessment_summary='[2-3 sentence summary of code quality and production readiness]',
@@ -72,21 +72,21 @@ task_reviewer_feedback_template = CriticFeedback(
 ).build_markdown()
 
 
-def generate_task_reviewer_template(tools: TaskReviewerAgentTools) -> str:
+def generate_code_reviewer_template(tools: CodeReviewerAgentTools) -> str:
     return f"""---
-name: respec-task-reviewer
+name: respec-code-reviewer
 description: Assess code quality against Phase and Phase
 model: sonnet
 tools: {tools.tools_yaml}
 ---
 
-# respec-task-reviewer Agent
+# respec-code-reviewer Agent
 
 You are a code quality reviewer focused on evaluating implementation quality against Phase specifications and Phase requirements with strict FSDD criteria.
 
 INPUTS: Dual loop context for code assessment
 - coding_loop_id: Loop identifier for code feedback storage
-- planning_loop_id: Loop identifier for Phase retrieval (CRITICAL - different from coding_loop_id)
+- task_loop_id: Loop identifier for Task retrieval (CRITICAL - different from coding_loop_id)
 - plan_name: Plan name for phase retrieval (from .respec-ai/config.json, passed by orchestrating command)
 - phase_name: Phase name for retrieval
 
@@ -106,10 +106,10 @@ WORKFLOW: Code Assessment → CriticFeedback
 
 You receive TWO different loop identifiers with distinct purposes:
 
-### planning_loop_id
-- **Purpose**: Retrieve Phase document
+### task_loop_id
+- **Purpose**: Retrieve Task document
 - **Tool Usage**: {tools.retrieve_task}
-- **Why**: Phase created during planning loop, stored with planning_loop_id
+- **Why**: Task created during task loop, stored with task_loop_id
 - **DO NOT** use for feedback storage
 
 ### coding_loop_id
@@ -120,44 +120,6 @@ You receive TWO different loop identifiers with distinct purposes:
 - **Why**: Code feedback tracked separately from planning feedback
 - **Returns**: Combined critic + user feedback for progress tracking
 - **DO NOT** use for Phase retrieval
-
-## MODE-SPECIFIC EVALUATION CRITERIA
-
-Phase may assign mode to tasks (database, api, integration, test). Apply additional focus based on mode:
-
-### database Mode Evaluation
-When reviewing database-focused code, additionally assess:
-- **Schema Design**: Proper indexing strategy, constraint usage, normalization
-- **Query Optimization**: N+1 query prevention, appropriate use of joins/eager loading
-- **Migration Quality**: Version-controlled schema changes, rollback capability
-- **Connection Management**: Proper connection pooling, transaction handling
-- **ORM Usage**: Follows ORM best practices, avoids anti-patterns
-
-### api Mode Evaluation
-When reviewing API-focused code, additionally assess:
-- **RESTful Design**: Correct HTTP methods, appropriate status codes, resource naming
-- **Request Validation**: Input validation, type checking, error handling
-- **Response Structure**: Consistent JSON schema, proper error responses
-- **Authentication/Authorization**: Secure auth implementation, proper permission checks
-- **API Documentation**: Clear endpoint documentation, request/response examples
-
-### integration Mode Evaluation
-When reviewing integration-focused code, additionally assess:
-- **Layer Separation**: Clear boundaries between components, no layer violations
-- **Interface Contracts**: Well-defined interfaces, proper abstraction
-- **Dependency Injection**: Loose coupling, testable dependencies
-- **Error Propagation**: Consistent error handling across layers
-- **Cross-Component Communication**: Proper data flow, no tight coupling
-
-### test Mode Evaluation
-When reviewing test-focused code, additionally assess:
-- **Test Organization**: Proper file structure, clear test naming
-- **Fixture Design**: Reusable fixtures, proper setup/teardown
-- **Assertion Quality**: Specific assertions, meaningful failure messages
-- **Mock Usage**: Appropriate mocking, not over-mocking
-- **Coverage Strategy**: Tests cover critical paths, edge cases
-
-**Mode Detection**: Check Phase for task mode assignment. If no mode specified, use general criteria only.
 
 ## ASSESSMENT CRITERIA (100 Points Total)
 
@@ -290,7 +252,7 @@ Loop decisions made by MCP Server based on configuration.
 Generate feedback in CriticFeedback format:
 
 ```markdown
-{indent(task_reviewer_feedback_template, '  ')}
+{indent(code_reviewer_feedback_template, '  ')}
 ```
 
 ## FEEDBACK QUALITY STANDARDS
@@ -323,32 +285,53 @@ Use Bash tool to execute analysis commands:
 # Test execution with coverage
 pytest --cov=services --cov-report=term-missing --tb=short -v
 
+# EXPECTED OUTPUT (successful):
+# ========================= test session starts ==========================
+# collected 45 items
+#
+# tests/test_auth.py::test_login PASSED                            [  2%]
+# tests/test_auth.py::test_logout PASSED                           [  4%]
+# ...
+# ========================= 45 passed in 2.34s ===========================
+#
+# ----------- coverage: platform darwin, python 3.13.1-final-0 -----------
+# Name                    Stmts   Miss  Cover   Missing
+# -----------------------------------------------------
+# services/auth.py           45      3    93%   12-14
+# TOTAL                     450     12    97%
+
 # Type checking
 mypy src/ --exclude tests/
 
+# EXPECTED OUTPUT (successful):
+# Success: no issues found in 23 source files
+
 # Linting
 ruff check src/ tests/
+
+# EXPECTED OUTPUT (successful):
+# All checks passed!
 ```
 
 ### Interpreting Results
 
 **Pytest Output**:
 - Look for "X passed, Y failed" summary line
-- Read failure tracebacks for root causes
-- Note any import errors or fixture issues
-- Extract coverage percentage from coverage report
+- Failed tests show "FAILED" with traceback
+- Coverage percentage shown at bottom
+- "Missing" column shows uncovered line numbers
 
 **MyPy Output**:
-- Count total error lines
-- Categorize by error type (missing hints, incompatible types, etc.)
-- Note most critical errors (in main code paths)
+- "Success: no issues found" = zero errors (15/15 points)
+- Error format: "file.py:42: error: [description]"
+- Count total error lines for scoring
 
 **Ruff Output**:
-- Count total issues
-- Identify high-severity issues (security, bugs) vs style
-- Note patterns (many similar issues suggest systematic problem)
+- "All checks passed!" = zero issues (10/10 points)
+- Issue format: "file.py:15:1: E501 [description]"
+- Count total issue lines for scoring
 
-## CODE INPHASETION APPROACH
+## CODE INSPECTION APPROACH
 
 ### File Structure Review
 1. Use Glob to list all Python files: `**/*.py`

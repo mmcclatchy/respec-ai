@@ -18,8 +18,8 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │   │  .claude/commands/     │  .claude/agents/               │   │
 │   │  • respec-plan.md      │  • plan-analyst.md             │   │
 │   │  • respec-phase.md      │  • phase-architect.md           │   │
-│   │  • respec-code.md     │  • task-coder.md            │   │
-│   │  • respec-roadmap.md   │  • task-coder.md              │   │
+│   │  • respec-code.md     │  • coder.md            │   │
+│   │  • respec-roadmap.md   │  • coder.md              │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
@@ -168,7 +168,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Manages phase refinement cycles
 
 3. **respec-code** - Implementation orchestration
-   - Coordinates taskner, task-coder, task-reviewer
+   - Coordinates taskner, coder, code-reviewer
    - Executes implementation workflows
    - Validates code quality
 
@@ -191,7 +191,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **roadmap** - Implementation roadmap generation
 - **phase-architect** - Technical specification design
 - **taskner** - Implementation planning
-- **task-coder** - Code implementation
+- **coder** - Code implementation
 
 **Critic Agents (Quality Assessment):**
 - **plan-critic** - Strategic plan evaluation
@@ -199,7 +199,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **roadmap-critic** - Roadmap completeness validation
 - **phase-critic** - Technical specification review
 - **task-critic** - Implementation plan evaluation
-- **task-reviewer** - Code quality review
+- **code-reviewer** - Code quality review
 
 **Specialized Agents:**
 - **create-phase** - External platform phase creation
@@ -435,10 +435,10 @@ project/
 │       ├── respec-roadmap.md             # Generated (static)
 │       ├── respec-roadmap-critic.md      # Generated (static)
 │       ├── respec-create-phase.md         # Generated (platform-specific)
-│       ├── respec-task-coder.md       # Generated (static)
+│       ├── respec-coder.md       # Generated (static)
 │       ├── respec-task-critic.md        # Generated (static)
-│       ├── respec-task-coder.md         # Generated (platform-specific)
-│       └── respec-task-reviewer.md      # Generated (static)
+│       ├── respec-coder.md         # Generated (platform-specific)
+│       └── respec-code-reviewer.md      # Generated (static)
 └── .respec-ai/
     ├── config.json                # Platform configuration
     └── projects/                  # Markdown platform only

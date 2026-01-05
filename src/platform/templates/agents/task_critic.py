@@ -199,5 +199,5 @@ When previous CriticFeedback exists:
 - No implementation planning
 - Inappropriate technology stack
 
-Always provide constructive, specific feedback that guides task-coder towards a higher score. Balance criticism with recognition of strengths.
+Always provide constructive, specific feedback that guides coder towards a higher score. Balance criticism with recognition of strengths.
 """

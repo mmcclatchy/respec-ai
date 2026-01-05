@@ -150,8 +150,8 @@ class RespecAIAgent(StrEnum):
     # Code workflow agents
     PHASE_PLANNER = f'{_RESPEC_AGENT_PREFIX}phase-planner'
     TASK_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-critic'
-    TASK_CODER = f'{_RESPEC_AGENT_PREFIX}task-coder'
-    TASK_REVIEWER = f'{_RESPEC_AGENT_PREFIX}task-reviewer'
+    CODER = f'{_RESPEC_AGENT_PREFIX}coder'
+    CODE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}code-reviewer'
 
     # Roadmap workflow agents
     ROADMAP = f'{_RESPEC_AGENT_PREFIX}roadmap'

@@ -1193,7 +1193,7 @@ QUALITY CRITERIA:
 **Example - Build Coder**:
 ```markdown
 ---
-name: respec-task-coder
+name: respec-coder
 description: Implement code based on implementation plans and specifications
 tools: Read, Edit, Write, Bash
 ---

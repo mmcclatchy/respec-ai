@@ -14,6 +14,8 @@ from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_helpers import (
     create_analyst_critic_agent_tools,
+    create_code_reviewer_agent_tools,
+    create_coder_agent_tools,
     create_create_phase_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
@@ -21,14 +23,14 @@ from src.platform.template_helpers import (
     create_plan_critic_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
-    create_task_coder_agent_tools,
     create_task_critic_agent_tools,
     create_task_plan_critic_agent_tools,
     create_task_planner_agent_tools,
-    create_task_reviewer_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
+    generate_code_reviewer_template,
+    generate_coder_template,
     generate_create_phase_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
@@ -36,11 +38,9 @@ from src.platform.templates.agents import (
     generate_plan_critic_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
-    generate_task_coder_template,
     generate_task_critic_template,
     generate_task_plan_critic_template,
     generate_task_planner_template,
-    generate_task_reviewer_template,
 )
 from src.platform.tool_enums import AbstractOperation, RespecAICommand
 from src.platform.tool_registry import ToolRegistry
@@ -119,7 +119,7 @@ def _get_agent_generators(
         tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_PHASE_TOOL, platform_type),
     ]
 
-    task_coder_platform_tools = [
+    coder_platform_tools = [
         tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_PHASE_TOOL, platform_type),
     ]
 
@@ -134,8 +134,8 @@ def _get_agent_generators(
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
-    task_coder_tools = create_task_coder_agent_tools(task_coder_platform_tools)
-    task_reviewer_tools = create_task_reviewer_agent_tools()
+    coder_tools = create_coder_agent_tools(coder_platform_tools)
+    code_reviewer_tools = create_code_reviewer_agent_tools()
 
     return [
         ('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
@@ -149,6 +149,6 @@ def _get_agent_generators(
         ('respec-task-planner', generate_task_planner_template(task_planner_tools)),
         ('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
-        ('respec-task-coder', generate_task_coder_template(task_coder_tools)),
-        ('respec-task-reviewer', generate_task_reviewer_template(task_reviewer_tools)),
+        ('respec-coder', generate_coder_template(coder_tools)),
+        ('respec-code-reviewer', generate_code_reviewer_template(code_reviewer_tools)),
     ]
