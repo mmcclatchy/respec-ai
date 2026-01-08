@@ -36,15 +36,35 @@ WORKFLOW: Task + Phase → Production Code
 8. Commit changes with test results
 9. Update task status: {tools.update_task_tool_interpolated}
 
-## TASK STRUCTURE
+## RESEARCH INTEGRATION
 
-The Task document contains:
-- **Goal**: Clear implementation objective
-- **Acceptance Criteria**: Measurable completion requirements
-- **Technology Stack Reference**: Key technologies to use
-- **Implementation Checklist**: Prioritized action items with verification methods
-- **Implementation Steps**: `#### Step N:` sections with detailed action items
-- **Testing Strategy**: How to verify implementation
+**Research Location in Task**:
+- "## Research > ### Research Read Log" section lists research file paths
+- Implementation Steps contain citations: `(per research: pattern-name from doc-name.md)`
+
+**Using Research During Implementation**:
+- When implementing a Step, check for research citations in action items
+- Citation format: `(per research: pattern from filename.md)`
+- If pattern is unclear, use Read tool on research file path
+- Research files stored in: `~/.claude/best-practices/YYYY-MM-DD-topic-name.md`
+
+**Do NOT**:
+- Search for additional research (phase workflow already did this)
+- Glob for research files based on tech stack
+- Ignore research citations in Task Steps
+
+**Example**:
+```markdown
+#### Step 2: HTMX Button Implementation
+Action: Add hx-get to button (per research: hx-target pattern from htmx-patterns.md)
+```
+
+**Implementation**:
+```python
+# If pattern unclear, read research:
+# Read(~/.claude/best-practices/2025-12-13-htmx-patterns.md)
+# Then apply hx-target pattern as documented
+```
 
 ## USING THE IMPLEMENTATION CHECKLIST
 
@@ -237,24 +257,120 @@ Read coding standards from `.respec-ai/coding-standards.md` at workflow start.
 ## FEEDBACK INTEGRATION
 
 ### Feedback Processing
-When {tools.retrieve_feedback} returns feedback (contains both critic and user feedback):
+
+When {tools.retrieve_feedback} returns feedback (contains critic + user):
 - **User feedback ALWAYS takes priority** over critic suggestions
-- **Address ALL issues** from critic feedback "Key Issues" section
-- **Implement ALL recommendations** from critic feedback "Recommendations" section
-- Prioritize fixes by impact on quality score
-- Focus on: test failures, type errors, coverage gaps, Task deviations
+- **Address ALL blocking issues** from Key Issues section
+- **Implement ALL recommendations** for blocking problems
+- Prioritize by implementation dependency (foundation before features)
+- Focus on: test failures in core code, import errors, architectural type errors
 
-### First Iteration (No Previous Feedback)
-- Focus on implementing Task Steps in sequence
-- Start with Step 1, complete fully, then Step 2, etc.
-- Establish file structure and testing patterns
-- Aim for completing Steps rather than partial progress
+### Using Feedback for Regression Checking
 
-### Refinement Iterations (With Feedback)
-- Target specific issues identified in feedback
-- Fix failing tests, improve coverage, address type errors
-- Refine implementations to better match Task requirements
-- Make incremental progress toward 95% threshold
+Retrieve multiple iterations to track progress:
+- Compare current iteration to previous iterations
+- Identify regressions (previously passing tests now failing)
+- Check if coverage is improving or dropping
+- Note which issues persist vs which are resolved
+
+**Purpose**: Context for your decisions, NOT for making loop decisions
+**MCP Server**: Makes all loop completion/stagnation decisions
+
+## ITERATION STRATEGY
+
+### First Iteration: Establish Architecture (40-60% Implementation)
+
+Implement first half of Checklist items (rounded up):
+- Follow TDD cycle for each item
+- Create complete file structure per Phase
+- Prove integration points work end-to-end
+- Some test failures or coverage gaps OK
+- Goal: Working system (even if rough edges)
+
+Exception: Small tasks (<3 items) may implement all items in first iteration
+
+### Refinement Iterations: Complete + Polish
+
+After each iteration, review code-reviewer feedback and decide next action:
+
+#### Step 1: Identify Blocking Issues
+
+Blocking issues prevent building on current code or indicate architectural problems.
+
+**Ask**: "Can I implement the next Checklist item with this issue present?"
+
+**Common blocking issues**:
+- Test failures in foundation code (auth, database, core models)
+- Import errors or module not found
+- Type errors indicating architectural mismatches (wrong types between modules)
+- Circular dependencies
+- Test coverage dropping from previous iteration (regression)
+- Runtime errors preventing execution
+
+**Decision**:
+IF ANY blocking issues found:
+  → STOP implementing new items
+  → Next iteration: Fix blocking issues
+  → Rationale: Must maintain solid foundation
+
+ELSE:
+  → Proceed to Step 2
+
+#### Step 2: Assess Non-Blocking Issue Load
+
+Non-blocking issues don't prevent forward progress and can be fixed in batch.
+
+**Ask**: "Will this issue prevent me from writing the next feature?"
+
+**Common non-blocking issues**:
+- Lint errors (line length, import order, naming)
+- Missing type hints (not architectural type errors)
+- Test failures in new feature code (not dependencies)
+- Coverage gaps in edge cases (happy path tested)
+- Docstring/comment style issues
+
+**Gray area judgment**:
+- 5 test failures in new feature?
+  - Blocking IF other features depend on it
+  - Non-blocking IF independent feature
+- Type error: returns `list` instead of `list[User]`?
+  - Blocking IF consumers expect User objects
+  - Non-blocking IF just missing generic annotation
+- 20 missing type hints?
+  - Blocking IF pattern indicates misunderstanding
+  - Non-blocking IF mechanical "add `: str`" work
+
+**Decision**:
+Ask yourself: "Can I stay effective with this technical debt?"
+
+IF debt manageable and you can track it:
+  → Continue implementing next Checklist items
+  → Plan to fix non-blocking issues after all items done
+  → Rationale: Batch fixes more efficient
+
+IF debt feels overwhelming or hard to track:
+  → Pause implementation
+  → Fix non-blocking issues to clear mental space
+  → Resume implementation with clean slate
+  → Rationale: Too much debt reduces effectiveness
+
+**When in doubt**: Ask "Will continuing make this worse or better?" If worse, it's blocking.
+
+#### Step 3: MCP Server Decides Completion
+
+After you complete iteration and store feedback:
+- Command invokes MCP Server's `decide_loop_next_action`
+- MCP Server checks score against configured threshold
+- MCP Server detects stagnation using configured improvement threshold
+- MCP Server returns decision: REFINE/COMPLETED/USER_INPUT
+- Command follows decision exactly (no interpretation)
+
+**You have NO awareness of**:
+- What score is "good enough" (MCP Server knows)
+- When stagnation occurs (MCP Server detects)
+- Iteration limits or checkpoints (MCP Server manages)
+
+**Your job**: Produce highest quality code possible, fix blocking issues immediately, batch non-blocking issues intelligently.
 
 ## COMMIT STRATEGY
 

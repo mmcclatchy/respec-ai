@@ -138,12 +138,6 @@ IF TASK_MARKDOWN not found:
 Display: "✓ Task retrieved - ready for implementation"
 ```
 
-**Note**: Task contains:
-- Implementation Checklist with verification methods
-- Implementation Steps with research citations embedded
-- Testing Strategy
-- All research has been read and applied during task planning
-
 ### 6. Check for Architectural Override Proposals
 
 Retrieve Task to check for override proposals:
@@ -187,8 +181,6 @@ TASK_INFO = {tools.get_task_document}
 TASK_LOOP_ID = [Extract loop_id from task metadata or use plan_name/phase_name to find active task loop]
 ```
 
-**Note**: Task was created during /respec-task workflow. We need its loop_id to pass to coding agents.
-
 #### Step 7.2: Initialize Coding Loop
 ```text
 CODING_LOOP_ID = {tools.initialize_coding_loop}
@@ -218,25 +210,6 @@ Invoke coder agent with:
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
-Agent will autonomously:
-1. Read .respec-ai/coding-standards.md (if exists, otherwise use Phase Code Standards)
-2. Retrieve Task via MCP using task_loop_id
-3. Retrieve Phase via MCP
-4. Retrieve critic feedback via MCP using coding_loop_id (none on first iteration)
-5. Retrieve user feedback via MCP using coding_loop_id (if stagnation occurred)
-6. Inspect codebase (Read/Glob to check current state)
-7. Create TodoList (TodoWrite)
-8. Execute TDD cycle:
-   - Write test (Write/Edit)
-   - Run test, verify fails (Bash: pytest)
-   - Implement code (Write/Edit)
-   - Run test, verify passes (Bash: pytest)
-   - Run full suite (Bash: pytest --cov)
-   - Run static analysis (Bash: mypy, ruff)
-9. Commit changes (Bash: git add, git commit with test results)
-10. Update platform task status (using agent's platform-specific tool)
-11. Exit
-
 Expected: Code implementation committed, platform status updated
 ```
 
@@ -247,19 +220,6 @@ Invoke code-reviewer agent with:
 - task_loop_id: {{TASK_LOOP_ID}} (CRITICAL - for Phase retrieval)
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
-
-Agent will autonomously:
-1. Retrieve Phase via MCP using task_loop_id
-2. Retrieve Phase via MCP
-3. Retrieve previous critic feedback via MCP using coding_loop_id (for progress tracking)
-4. Inspect codebase (Read/Glob)
-5. Run static analysis (Bash: mypy, ruff)
-6. Run test suite (Bash: pytest --cov)
-7. Assess code quality against criteria (6 categories, 100 points total)
-8. Calculate quality score (0-100)
-9. Generate CriticFeedback markdown with test results
-10. Store CriticFeedback via MCP using coding_loop_id
-11. Exit
 
 Expected: CriticFeedback with Overall Score and test results stored in MCP
 ```
@@ -289,13 +249,18 @@ ELIF CODING_DECISION == "complete":
   Proceed to Step 9.
 
 ELIF CODING_DECISION == "user_input":
-  Retrieve Phase and feedback (count=2).
-  Present CODE_QUALITY_SCORE, Test Results, Key Issues, and Recommendations to user.
-  Request guidance (quality concerns, alternative approaches, accept/complete, constraints).
-  Store user feedback: {tools.store_user_feedback})
-  Re-invoke coder agent.
-  Re-invoke code-reviewer agent.
-  Call MCP decision again.
+  LATEST_FEEDBACK = {tools.get_feedback}
+
+  Display LATEST_FEEDBACK to user with:
+  - Current quality score and iteration
+  - Key issues requiring attention
+  - Recommended improvements
+
+  Prompt user for guidance
+  Store user feedback: {tools.store_user_feedback}
+  Re-invoke coder agent (same parameters)
+  Re-invoke code-reviewer agent (same parameters)
+  Call MCP decision again
 ```
 
 ### 9. Integration & Documentation
@@ -446,10 +411,8 @@ The command maintains orchestration focus by:
 
 All specialized work delegated to appropriate agents:
 - **coder**: TDD code implementation (MCP access + platform tools)
-- **code-reviewer**: Code quality assessment (95% threshold)
+- **code-reviewer**: Code quality assessment
 - **MCP Server**: Decision logic, threshold management, state storage
-
-**Note**: task-planner, task-critic, and research-synthesizer are part of /respec-task and /respec-phase workflows respectively, not /respec-code.
 
 ## Workflow Enhancements
 

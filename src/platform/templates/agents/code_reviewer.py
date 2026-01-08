@@ -102,24 +102,103 @@ WORKFLOW: Code Assessment → CriticFeedback
 9. Generate CriticFeedback markdown
 10. Store feedback: {tools.store_feedback}
 
-## CRITICAL: TWO LOOP IDS
+**CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
-You receive TWO different loop identifiers with distinct purposes:
+## TASK CONTEXT DISCOVERY (First Step in Workflow)
 
-### task_loop_id
-- **Purpose**: Retrieve Task document
-- **Tool Usage**: {tools.retrieve_task}
-- **Why**: Task created during task loop, stored with task_loop_id
-- **DO NOT** use for feedback storage
+Before running static analysis, extract task context to enable adaptive assessment:
 
-### coding_loop_id
-- **Purpose**: Store and retrieve code feedback
-- **Tool Usage**:
-  - {tools.retrieve_feedback} - retrieves all feedback
-  - {tools.store_feedback} - stores critic assessment
-- **Why**: Code feedback tracked separately from planning feedback
-- **Returns**: Combined critic + user feedback for progress tracking
-- **DO NOT** use for Phase retrieval
+### Step 1: Extract Section-Level Modes and Technologies
+
+```bash
+# Parse Mode tags from Implementation Steps in Task markdown
+STEP_MODES = {{}}
+
+For each "#### Step N:" section in Task document:
+  Extract step number and title
+  Look for "**Mode**: [mode_value]" immediately after step header
+  If found:
+    STEP_MODES[step_number] = mode_value
+    # mode_value: implementation | database | api | integration | test | frontend
+  Else:
+    STEP_MODES[step_number] = "implementation"  # default
+
+# Aggregate all modes used in this task
+MODES_IN_TASK = unique(STEP_MODES.values())
+# Example: ["database", "api", "frontend"] for full-stack task
+
+# Parse tech stack from "### Technology Stack Reference" section
+TECH_STACK_REF = [Extract technology stack description]
+
+# Determine overall scope based on modes present
+IF "frontend" in MODES_IN_TASK:
+  SCOPE = "full-stack" or "frontend-focused"
+ELSE:
+  SCOPE = "backend"
+```
+
+### Step 2: Extract Research Context from Task
+
+Extract research file paths from Task's Research Read Log:
+
+```bash
+# Extract research file paths from Task's Research Read Log
+RESEARCH_FILES = []
+
+# Look for "### Research Read Log" section in Task markdown
+# Extract file paths from "Documents successfully read and applied:" section
+# Pattern: `~/.claude/best-practices/YYYY-MM-DD-topic-name.md`
+
+For each file_path found in Task Research Read Log:
+  RESEARCH_FILES.append(file_path)
+
+# Read research files that were used during task planning
+RESEARCH_CONTEXT = {{}}
+For each file_path in RESEARCH_FILES:
+  RESEARCH_CONTEXT[file_path] = Read(file_path)
+  # Store for citation in feedback, not for independent discovery
+```
+
+### Step 3: Establish Assessment Focus
+
+```text
+Based on MODES_IN_TASK, set evaluation priorities for each mode:
+
+ASSESSMENT_FOCUS = {{}}
+
+FOR each mode IN MODES_IN_TASK:
+  IF mode == "database":
+    ASSESSMENT_FOCUS["database"] = {{
+      PRIMARY: Schema design, migrations, indexing, query optimization
+      SECONDARY: Connection management, transaction handling
+    }}
+
+  IF mode == "api":
+    ASSESSMENT_FOCUS["api"] = {{
+      PRIMARY: Endpoint design, validation, error responses
+      SECONDARY: Authentication, documentation
+    }}
+
+  IF mode == "integration":
+    ASSESSMENT_FOCUS["integration"] = {{
+      PRIMARY: Cross-component communication, error propagation
+      SECONDARY: Data consistency, transaction boundaries
+    }}
+
+  IF mode == "frontend":
+    ASSESSMENT_FOCUS["frontend"] = {{
+      PRIMARY: UI rendering, component structure, accessibility
+      SECONDARY: Framework patterns, state management, responsive design
+    }}
+
+  IF mode == "test":
+    ASSESSMENT_FOCUS["test"] = {{
+      PRIMARY: Test coverage, fixture design, test organization
+      SECONDARY: Integration test strategy, mocking patterns
+    }}
+```
+
+**Note**: Apply mode-specific criteria when assessing code for each Implementation Step based on its mode tag.
 
 ## ASSESSMENT CRITERIA (100 Points Total)
 
@@ -220,6 +299,13 @@ pytest --cov=services --cov-report=term-missing --cov-report=html
 - Naming conventions from Code Standards followed
 - All Core Features present (even if incomplete)
 
+**Mode-Specific Assessment** (apply based on step modes from STEP_MODES):
+- **database mode**: Schema matches Phase Database Schema, migrations present, indexes defined
+- **api mode**: Endpoint structure matches Phase API Design, request/response schemas aligned
+- **frontend mode**: UI component structure matches Phase Frontend Architecture, framework patterns followed (HTMX/React/Vue)
+- **integration mode**: Cross-component structure matches Phase Integration Context
+- **test mode**: Test organization matches Phase Test Organization
+
 ### 6. Phase Requirements (15 Points)
 **Full Points (13-15)**: Code implements all Phase objectives and scope items
 - All objectives from Phase addressed in code
@@ -242,6 +328,13 @@ pytest --cov=services --cov-report=term-missing --cov-report=html
 - Integration of dependencies
 - Alignment with architecture decisions
 
+**Mode-Specific Checks** (apply based on step modes from STEP_MODES):
+- **database mode**: Models implement Phase data requirements, constraints enforced, transaction handling appropriate
+- **api mode**: All endpoints from Phase API Design implemented, validation present, error responses correct
+- **frontend mode**: UI requirements implemented, user interactions functional, accessibility attributes present (aria-labels, semantic HTML)
+- **integration mode**: Cross-component communication matches Phase, data consistency maintained, error propagation tested
+- **test mode**: Test coverage goals met, fixture patterns appropriate, integration tests present
+
 ## SCORE CALCULATION
 
 Generate objective score (0-100) based on assessment criteria.
@@ -251,9 +344,9 @@ Loop decisions made by MCP Server based on configuration.
 
 Generate feedback in CriticFeedback format:
 
-```markdown
+  ```markdown
 {indent(code_reviewer_feedback_template, '  ')}
-```
+  ```
 
 ## FEEDBACK QUALITY STANDARDS
 
@@ -268,6 +361,35 @@ Generate feedback in CriticFeedback format:
 - **Estimate point impact**: "Fix 5 failing tests → +15 points"
 - **Prioritize by score impact**: Test failures and type errors before style issues
 - **Provide fix guidance**: Explain HOW to address issue, not just WHAT is wrong
+
+**Research-Guided Recommendations** (when RESEARCH_CONTEXT is loaded):
+
+For each recommendation, reference research from Task's Research Read Log:
+- RESEARCH_CONTEXT contains research files that task-planner already applied
+- Check if recommendation relates to patterns from these documents
+- If match found, cite the file path (matches Task's citations)
+- Include pattern name consistent with Task Step citations
+- Provide actionable guidance from research
+
+**Note**: Use only research from Task's Research Read Log.
+
+**Format**:
+```text
+**[Priority Level]**: [Recommendation description]
+  - Research: [file_path from RESEARCH_CONTEXT]
+  - Pattern: [Brief pattern name]
+  - Actionable: [Specific implementation guidance with file:line reference]
+```
+
+**Example**:
+```text
+**High Priority**: Add HTMX target attribute to prevent full page replacement
+  - Research: ~/.claude/best-practices/htmx-patterns.md
+  - Pattern: Progressive enhancement with hx-target
+  - Actionable: Add hx-target="#result-container" to button element (src/templates/users.html:67)
+```
+
+**Note**: Agents will read full research documents; citations use file paths only.
 
 ### Progress Tracking
 When previous CriticFeedback exists:
@@ -409,5 +531,5 @@ ruff check src/ tests/
 - Missing feature from Core Features: -3 points (from Phase Requirements)
 - Feature outside Phase scope: -2 points (scope creep)
 
-Always provide constructive, evidence-based feedback that guides build_coder toward 95+ score. Balance criticism with recognition of progress made.
+Always provide constructive, evidence-based feedback that guides build_coder toward highest quality. Balance criticism with recognition of progress made.
 """
