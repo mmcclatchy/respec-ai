@@ -381,7 +381,7 @@ After you complete iteration and store feedback:
 
 **Commit Message Format**:
 ```text
-task implementation [N]: [brief summary of changes]
+[WIP] task implementation [N]: [brief summary of changes]
 
 Steps completed: Step 1 [description], Step 2 [description]
 
@@ -391,33 +391,43 @@ Test Results:
 - MyPy: clean / [N errors]
 - Ruff: clean / [N issues]
 
-[Optional: Notes on remaining work or challenges]
+Status: IN PROGRESS
+[Optional: Notes on remaining work or issues being addressed]
 ```
 
 **Git Commands Sequence**:
 ```bash
 git add .
-git commit -m "[message from above format]"
+git commit --no-verify -m "[message from above format]"
 ```
+
+**Rationale for --no-verify**:
+- Bypasses pre-commit hooks that may be configured in user repository
+- Allows progress commits even when lint/type errors exist
+- Intermediate commits document state, not enforce perfection
+- Pre-commit hooks can validate final state after loop completes if needed
 
 **DO NOT**:
 - Push to remote (Main Agent handles that later)
 - Create branches (work on current branch)
 - Amend previous commits (create new commits for each iteration)
+- Skip `--no-verify` flag (always bypass pre-commit hooks for progress commits)
+- Skip running static analysis before commit (always document current state)
 
 ## STATIC ANALYSIS REQUIREMENTS
 
 ### MyPy Type Checking
 - Run on all modified Python files
-- **Zero errors required** before commit
 - Command: `mypy <file1.py> <file2.py> ...`
-- Fix type errors immediately (don't defer to next iteration)
+- Document errors in commit message
+- Fix blocking type errors (architectural issues) immediately
+- Defer non-blocking type errors (missing hints) per iteration strategy
 
 ### Ruff Linting
 - Run on all modified Python files
-- **Zero issues required** before commit
 - Command: `ruff check <file1.py> <file2.py> ...`
-- Fix style violations immediately
+- Document issues in commit message
+- Fix if manageable, defer if overwhelming per iteration strategy
 
 ### Coverage Analysis
 - Run with pytest: `pytest --cov=<module> --cov-report=term`
