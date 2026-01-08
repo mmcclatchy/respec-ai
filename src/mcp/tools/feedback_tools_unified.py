@@ -101,7 +101,7 @@ class UnifiedFeedbackTools:
 
         Returns combined feedback showing recent iteration progression and user guidance.
         Default retrieves 2 most recent iterations to provide current context plus
-        previous iteration for stagnation detection (aligns with <5 points over 2 iterations).
+        previous iteration for stagnation detection.
 
         Args:
             loop_id: Loop identifier
