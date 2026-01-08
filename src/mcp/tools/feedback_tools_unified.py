@@ -304,8 +304,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """Get recent feedback (critic + user) for a loop in chronological order.
 
         Returns combined feedback showing recent iteration progression and user guidance.
-        Default retrieves 2 most recent iterations for stagnation detection context
-        (current + previous to see if <5 points improvement).
+        Default retrieves 2 most recent iterations for stagnation detection context.
 
         Parameters:
         - loop_id: Loop identifier
