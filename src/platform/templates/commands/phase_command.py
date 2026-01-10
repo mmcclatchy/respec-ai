@@ -111,15 +111,14 @@ PLAN_NAME = [first argument from command - the plan name]
 PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
 
-Read .respec-ai/config.json
+Read {tools.config_location}
 PLAN_NAME = config["plan_name"]
 ```
 
 #### Step 1.2: Search file system for matching phase files
 
 ```text
-SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
-SPEC_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
+{tools.phase_discovery_instructions}
 ```
 
 #### Step 1.3: Handle multiple matches
@@ -127,7 +126,7 @@ SPEC_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
 ```text
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PLAN_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PLAN_NAME}}/phases/"
+  SUGGEST: "Verify the phase name or check {tools.phase_location_hint}"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
@@ -156,7 +155,7 @@ ELSE:
 
 #### Step 1.4: Extract canonical name from file path
 
-Extract: ".respec-ai/plans/X/phases/phase-2a-neo4j-integration.md" → "phase-2a-neo4j-integration"
+Extract: "{tools.phase_resource_example}" → "phase-2a-neo4j-integration"
 
 ```text
 PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
@@ -176,29 +175,16 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 
 Load phase and plan from file system, store in MCP:
 
-#### Step 2.1: Read documents using canonical names
+#### Step 2.1: Sync plan document
 
 ```text
-PLAN_MARKDOWN = Read(.respec-ai/plans/{{PLAN_NAME}}/plan.md)
-PHASE_MARKDOWN = Read({{PHASE_FILE_PATH}})
+{tools.sync_plan_instructions}
 ```
 
-#### Step 2.2: Store in MCP using canonical phase name
+#### Step 2.2: Sync phase document
 
 ```text
-{tools.store_plan}
-  plan_name=PLAN_NAME,
-  plan_markdown=PLAN_MARKDOWN
-)
-
-{tools.store_document_inline_doc}
-{tools.store_document}
-  doc_type="phase",
-  path=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=PHASE_MARKDOWN
-)
-
-Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
+{tools.sync_phase_instructions}
 ```
 
 **Important**:

@@ -7,8 +7,8 @@ from fastmcp import FastMCP
 
 from src.mcp.tools import register_all_tools
 
+from .adapters import GitHubAdapter, LinearAdapter, MarkdownAdapter
 from .tool_enums import ExternalPlatformTool, RespecAITool
-from .tool_registry import ToolRegistry
 
 
 logger = logging.getLogger(__name__)
@@ -92,37 +92,63 @@ def validate_external_platform_tools() -> dict[str, Any]:
     return validation_result
 
 
-def validate_tool_registry() -> dict[str, Any]:
+def validate_platform_adapters() -> dict[str, Any]:
     validation_result: dict[str, Any] = {'success': True, 'issues': []}
 
+    required_properties = [
+        'plan_sync_instructions',
+        'phase_sync_instructions',
+        'task_sync_instructions',
+        'phase_discovery_instructions',
+        'task_discovery_instructions',
+        'coding_standards_location',
+        'phase_location_hint',
+        'task_location_hint',
+        'create_plan_tool',
+        'retrieve_plan_tool',
+        'update_plan_tool',
+        'create_plan_completion_tool',
+        'create_phase_tool',
+        'retrieve_phase_tool',
+        'update_phase_tool',
+        'comment_phase_tool',
+        'create_task_tool',
+        'retrieve_task_tool',
+        'update_task_tool',
+        'list_phases_tool',
+        'list_tasks_tool',
+    ]
+
+    adapters = {
+        'MarkdownAdapter': MarkdownAdapter(),
+        'LinearAdapter': LinearAdapter(),
+        'GitHubAdapter': GitHubAdapter(),
+    }
+
     try:
-        # Test tool registry initialization
-        registry = ToolRegistry()
+        for adapter_name, adapter in adapters.items():
+            for prop_name in required_properties:
+                if not hasattr(adapter, prop_name):
+                    validation_result['success'] = False
+                    validation_result['issues'].append(f'{adapter_name} missing required property: {prop_name}')
+                    continue
 
-        # Check that we have mappings
-        mappings = registry.get_all_mappings()
-        if not mappings:
-            validation_result['success'] = False
-            validation_result['issues'].append('Tool registry has no mappings')
-            return validation_result
+                try:
+                    value = getattr(adapter, prop_name)
+                    if not isinstance(value, str) or not value.strip():
+                        validation_result['success'] = False
+                        validation_result['issues'].append(f'{adapter_name}.{prop_name} must return non-empty string')
+                except Exception as e:
+                    validation_result['success'] = False
+                    validation_result['issues'].append(f'{adapter_name}.{prop_name} failed: {e}')
 
-        # Check each mapping
-        for mapping in mappings:
-            # Verify that each mapping has at least one platform tool
-            has_linear = mapping.linear_tool is not None
-            has_github = mapping.github_tool is not None
-            has_markdown = mapping.markdown_tool is not None
-
-            if not (has_linear or has_github or has_markdown):
-                validation_result['success'] = False
-                validation_result['issues'].append(f'Operation {mapping.operation.value} has no platform tools defined')
-
-        validation_result['mappings_count'] = len(mappings)
-        validation_result['operations'] = [m.operation.value for m in mappings]
+        validation_result['adapters_count'] = len(adapters)
+        validation_result['adapters'] = list(adapters.keys())
+        validation_result['properties_per_adapter'] = len(required_properties)
 
     except Exception as e:
         validation_result['success'] = False
-        validation_result['issues'].append(f'Tool registry validation failed: {e}')
+        validation_result['issues'].append(f'Platform adapter validation failed: {e}')
 
     return validation_result
 
@@ -135,7 +161,7 @@ def run_all_startup_validations() -> dict[str, Any]:
         'validations': {
             'respec_ai_tools': validate_respec_ai_tools_at_startup(),
             'external_platform_tools': validate_external_platform_tools(),
-            'tool_registry': validate_tool_registry(),
+            'platform_adapters': validate_platform_adapters(),
         },
         'summary': {'total_issues': 0, 'critical_issues': [], 'warnings': []},
     }

@@ -33,8 +33,7 @@ PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 ##### Step 0.1.2: Search file system for matching phase files
 
 ```text
-PHASE_GLOB_PATTERN = ".respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
-PHASE_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
+{tools.phase_discovery_instructions}
 ```
 
 ##### Step 0.1.3: Handle multiple matches
@@ -42,7 +41,7 @@ PHASE_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
 ```text
 IF count(PHASE_FILE_MATCHES) == 0:
   ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in plan {{PLAN_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PLAN_NAME}}/phases/"
+  SUGGEST: "Verify the phase name or check {tools.phase_location_hint}"
   EXIT: Workflow terminated
 
 ELIF count(PHASE_FILE_MATCHES) == 1:
@@ -82,23 +81,8 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 
 Sync platform phase file to MCP to capture any manual edits:
 
-#### Step 1.1: Read phase from file system
-
 ```text
-PHASE_MARKDOWN = Read(file_path=PHASE_FILE_PATH)
-
-IF PHASE_MARKDOWN is empty:
-  ERROR: "Phase file is empty: {{PHASE_FILE_PATH}}"
-  SUGGEST: "Run '/respec-phase {{PLAN_NAME}} {{PHASE_NAME}}' to create phase content"
-  EXIT: Workflow terminated
-```
-
-#### Step 1.2: Store phase in MCP
-
-```text
-{tools.store_phase_document}
-
-Display to user: "✓ Loaded phase: {{PHASE_NAME}}"
+{tools.sync_phase_instructions}
 ```
 
 ### 2. Extract Research Documentation Paths from Phase
@@ -261,10 +245,10 @@ Write Task to platform file for user review and version control:
 TASK_NAME = PHASE_NAME.replace("phase-", "task-")
 # Example: phase-1-foundation-and-infrastructure → task-1-foundation-and-infrastructure
 
-TASK_FILE_PATH = ".respec-ai/plans/{{PLAN_NAME}}/phases/tasks/{{TASK_NAME}}.md"
+TASK_FILE_PATH = {tools.task_resource_pattern}
 
 Ensure directory exists:
-mkdir -p ".respec-ai/plans/{{PLAN_NAME}}/phases/tasks/"
+{tools.task_location_setup}
 
 Write FINAL_TASK to TASK_FILE_PATH
 

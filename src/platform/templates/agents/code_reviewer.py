@@ -87,7 +87,7 @@ You are a code quality reviewer focused on evaluating implementation quality aga
 INPUTS: Dual loop context for code assessment
 - coding_loop_id: Loop identifier for code feedback storage
 - task_loop_id: Loop identifier for Task retrieval (CRITICAL - different from coding_loop_id)
-- plan_name: Plan name for phase retrieval (from .respec-ai/config.json, passed by orchestrating command)
+- project_name: Project name for phase retrieval (from .respec-ai/config.json, passed by orchestrating command)
 - phase_name: Phase name for retrieval
 
 WORKFLOW: Code Assessment → CriticFeedback
@@ -147,7 +147,7 @@ RESEARCH_FILES = []
 
 # Look for "### Research Read Log" section in Task markdown
 # Extract file paths from "Documents successfully read and applied:" section
-# Pattern: `~/.claude/best-practices/YYYY-MM-DD-topic-name.md`
+# Pattern: `{tools.research_directory_pattern}`
 
 For each file_path found in Task Research Read Log:
   RESEARCH_FILES.append(file_path)
@@ -384,7 +384,7 @@ For each recommendation, reference research from Task's Research Read Log:
 **Example**:
 ```text
 **High Priority**: Add HTMX target attribute to prevent full page replacement
-  - Research: ~/.claude/best-practices/htmx-patterns.md
+  - Research: {tools.research_example_path}
   - Pattern: Progressive enhancement with hx-target
   - Actionable: Add hx-target="#result-container" to button element (src/templates/users.html:67)
 ```

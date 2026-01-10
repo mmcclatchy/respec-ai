@@ -4,16 +4,14 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, computed_field, field_validator
 
-from .path_constants import PathComponent
+from .adapters import PlatformAdapter, get_platform_adapter
 from .platform_selector import PlatformType
 from .tool_doc_extractor import ToolDocumentationExtractor
 from .tool_doc_generator import ToolDocGenerator
 from .tool_enums import (
-    AbstractOperation,
     BuiltInTool,
-    ExternalPlatformTool,
     RespecAICommand,
     RespecAITool,
     ToolEnums,
@@ -114,50 +112,6 @@ class ToolReference(PlatformModel):
         return v
 
 
-class PlatformToolMapping(PlatformModel):
-    operation: AbstractOperation = Field(description='The abstract operation being mapped')
-    linear_tool: ToolReference | None = Field(default=None, description='Tool for Linear platform')
-    github_tool: ToolReference | None = Field(default=None, description='Tool for GitHub platform')
-    markdown_tool: ToolReference | None = Field(default=None, description='Tool for Markdown platform')
-
-    @field_validator('linear_tool')
-    @classmethod
-    def validate_linear_tool(cls, v: ToolReference | None) -> ToolReference | None:
-        if v and isinstance(v.tool, ExternalPlatformTool):
-            if not v.tool.startswith('mcp__linear-server__'):
-                raise ValueError(f'Linear platform tool must be a Linear server tool, got: {v.tool}')
-        return v
-
-    @field_validator('github_tool')
-    @classmethod
-    def validate_github_tool(cls, v: ToolReference | None) -> ToolReference | None:
-        if v and isinstance(v.tool, ExternalPlatformTool):
-            if not v.tool.startswith('mcp__github__'):
-                raise ValueError(f'GitHub platform tool must be a GitHub tool, got: {v.tool}')
-        return v
-
-    @field_validator('markdown_tool')
-    @classmethod
-    def validate_markdown_tool(cls, v: ToolReference | None) -> ToolReference | None:
-        if v and not isinstance(v.tool, BuiltInTool):
-            raise ValueError(f'Markdown platform must use built-in tools, got: {v.tool}')
-        return v
-
-    def get_tool_for_platform(self, platform: PlatformType) -> ToolReference | None:
-        if platform == PlatformType.LINEAR:
-            return self.linear_tool
-        elif platform == PlatformType.GITHUB:
-            return self.github_tool
-        elif platform == PlatformType.MARKDOWN:
-            return self.markdown_tool
-        else:
-            raise ValueError(f'Unknown platform: {platform}')
-
-    def render_tool_for_platform(self, platform: PlatformType) -> str | None:
-        tool_ref = self.get_tool_for_platform(platform)
-        return tool_ref.render() if tool_ref else None
-
-
 class PhaseCommandTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
@@ -173,7 +127,7 @@ class PhaseCommandTools(BaseModel):
     create_phase_tool: str = Field(..., description='Platform-specific tool for creating phases')
     get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
     update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
-    platform: 'PlatformType' = Field(..., description='Selected platform type')
+    platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
     store_plan: str = Field(..., description='Store strategic plan')
@@ -187,6 +141,10 @@ class PhaseCommandTools(BaseModel):
     get_document: str = Field(..., description='Get final phase document')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
@@ -212,31 +170,11 @@ class PhaseCommandTools(BaseModel):
 
     @computed_field
     def sync_plan_instructions(self) -> str:
-        if self.platform == PlatformType.MARKDOWN:
-            return f"""PLAN_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE})
-mcp__respec-ai__store_plan(plan_name=PLAN_NAME, plan_markdown=PLAN_MARKDOWN)"""
-        elif self.platform == PlatformType.LINEAR:
-            return """PLAN_RESULT = mcp__linear-server__get_document(plan_name=PLAN_NAME)
-mcp__respec-ai__store_plan(plan_name=PLAN_NAME, plan_markdown=PLAN_RESULT.content)"""
-        elif self.platform == PlatformType.GITHUB:
-            return f"""PLAN_RESULT = mcp__github__get_file(path="{PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE}")
-mcp__respec-ai__store_plan(plan_name=PLAN_NAME, plan_markdown=PLAN_RESULT.content)"""
-        else:
-            return """# Platform sync not configured"""
+        return self._adapter.plan_sync_instructions
 
     @computed_field
     def sync_phase_instructions(self) -> str:
-        if self.platform == PlatformType.MARKDOWN:
-            return f"""PHASE_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PHASES_DIR}/{{PHASE_NAME}}.md)
-mcp__respec-ai__store_document(doc_type="phase", path=f"{{PLAN_NAME}}/{{PHASE_NAME}}", content=PHASE_MARKDOWN)"""
-        elif self.platform == PlatformType.LINEAR:
-            return """PHASE_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
-mcp__respec-ai__store_document(doc_type="phase", path=f"{{PLAN_NAME}}/{{PHASE_NAME}}", content=PHASE_RESULT.description)"""
-        elif self.platform == PlatformType.GITHUB:
-            return """PHASE_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
-mcp__respec-ai__store_document(doc_type="phase", path=f"{{PLAN_NAME}}/{{PHASE_NAME}}", content=PHASE_RESULT.body)"""
-        else:
-            return """# Platform sync not configured"""
+        return self._adapter.phase_sync_instructions
 
     @computed_field
     def mcp_tools_reference(self) -> str:
@@ -291,6 +229,34 @@ mcp__respec-ai__store_document(doc_type="phase", path=f"{{PLAN_NAME}}/{{PHASE_NA
         except Exception:
             return ''
 
+    @computed_field
+    def config_location(self) -> str:
+        return self._adapter.config_location
+
+    @computed_field
+    def phase_discovery_pattern(self) -> str:
+        return self._adapter.phase_discovery_pattern
+
+    @computed_field
+    def phase_discovery_instructions(self) -> str:
+        return self._adapter.phase_discovery_instructions
+
+    @computed_field
+    def phase_resource_pattern(self) -> str:
+        return self._adapter.phase_resource_pattern
+
+    @computed_field
+    def phase_resource_example(self) -> str:
+        return self._adapter.phase_resource_example
+
+    @computed_field
+    def phase_location_hint(self) -> str:
+        return self._adapter.phase_location_hint
+
+    @computed_field
+    def discovery_tool_invocation(self) -> str:
+        return self._adapter.discovery_tool_invocation
+
 
 class PlanCommandTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
@@ -310,7 +276,7 @@ class PlanCommandTools(BaseModel):
         ..., description='Platform-specific tool for creating external project completion'
     )
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
-    platform: 'PlatformType' = Field(..., description='Selected platform type')
+    platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
     initialize_analyst_loop: str = Field(..., description='Initialize analyst refinement loop')
@@ -322,6 +288,10 @@ class PlanCommandTools(BaseModel):
     store_completion_report: str = Field(..., description='Store plan completion report')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
@@ -347,45 +317,7 @@ class PlanCommandTools(BaseModel):
 
     @computed_field
     def sync_plan_instructions(self) -> str:
-        if self.platform == PlatformType.MARKDOWN:
-            return f"""TRY:
-  PLAN_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE})
-  mcp__respec-ai__store_plan(
-    plan_name=PLAN_NAME,
-    plan_markdown=PLAN_MARKDOWN
-  )
-  Display: "✓ Loaded existing project plan from platform"
-EXCEPT:
-  Display: "No existing project plan found - will create new"
-"""
-        elif self.platform == PlatformType.LINEAR:
-            return """TRY:
-  PLAN_RESULT = mcp__linear-server__get_document(plan_name=PLAN_NAME)
-  PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__respec-ai__store_plan(
-    plan_name=PLAN_NAME,
-    plan_markdown=PLAN_MARKDOWN
-  )
-  Display: "✓ Loaded existing project plan from platform"
-EXCEPT:
-  Display: "No existing project plan found - will create new"
-"""
-        elif self.platform == PlatformType.GITHUB:
-            return f"""TRY:
-  PLAN_RESULT = mcp__github__get_file(path="{PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE}")
-  PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__respec-ai__store_plan(
-    plan_name=PLAN_NAME,
-    plan_markdown=PLAN_MARKDOWN
-  )
-  Display: "✓ Loaded existing project plan from platform"
-EXCEPT:
-  Display: "No existing project plan found - will create new"
-"""
-        else:
-            return """# Platform-specific sync not configured
-Display: "⚠️ Sync not configured for this platform - continuing without sync"
-"""
+        return self._adapter.plan_sync_instructions
 
     @computed_field
     def mcp_tools_reference(self) -> str:
@@ -417,6 +349,14 @@ Display: "⚠️ Sync not configured for this platform - continuing without sync
         except Exception:
             return ''
 
+    @computed_field
+    def config_location(self) -> str:
+        return self._adapter.config_location
+
+    @computed_field
+    def plan_resource_example(self) -> str:
+        return self._adapter.plan_resource_example
+
 
 class CodeCommandTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
@@ -431,7 +371,7 @@ class CodeCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
     comment_phase_tool: str = Field(..., description='Platform-specific tool for commenting on phases')
-    platform: 'PlatformType' = Field(..., description='Selected platform type')
+    platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
     store_document: str = Field(..., description='Store task build plan')
@@ -446,6 +386,10 @@ class CodeCommandTools(BaseModel):
     get_task_document: str = Field(..., description='Get task document')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
@@ -465,48 +409,35 @@ class CodeCommandTools(BaseModel):
 
     @computed_field
     def sync_phase_instructions(self) -> str:
-        if self.platform == PlatformType.MARKDOWN:
-            return f"""TRY:
-  PHASE_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PHASES_DIR}/{{PHASE_NAME}}.md)
-  mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-    content=PHASE_MARKDOWN
-  )
-  Display: "✓ Loaded phase '{{PHASE_NAME}}' from platform"
-EXCEPT:
-  Display: "No existing phase found in platform"
-"""
-        elif self.platform == PlatformType.LINEAR:
-            return """TRY:
-  PHASE_RESULT = mcp__linear-server__get_issue(phase_name=PHASE_NAME)
-  PHASE_MARKDOWN = PHASE_RESULT.description
-  mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-    content=PHASE_MARKDOWN
-  )
-  Display: "✓ Loaded phase '{PHASE_NAME}' from platform"
-EXCEPT:
-  Display: "No existing phase found in platform"
-"""
-        elif self.platform == PlatformType.GITHUB:
-            return """TRY:
-  PHASE_RESULT = mcp__github__get_issue(issue_title=PHASE_NAME)
-  PHASE_MARKDOWN = PHASE_RESULT.body
-  mcp__respec-ai__store_document(
-    doc_type="phase",
-    path=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-    content=PHASE_MARKDOWN
-  )
-  Display: "✓ Loaded phase '{PHASE_NAME}' from platform"
-EXCEPT:
-  Display: "No existing phase found in platform"
-"""
-        else:
-            return """# Platform-specific sync not configured
-Display: "⚠️ Sync not configured for this platform - continuing without sync"
-"""
+        return self._adapter.phase_sync_instructions
+
+    @computed_field
+    def phase_glob_pattern(self) -> str:
+        return self._adapter.phase_discovery_instructions
+
+    @computed_field
+    def phase_discovery_instructions(self) -> str:
+        return self._adapter.phase_discovery_instructions
+
+    @computed_field
+    def phase_location_hint(self) -> str:
+        return self._adapter.phase_location_hint
+
+    @computed_field
+    def coding_standards_path(self) -> str:
+        return self._adapter.coding_standards_location
+
+    @computed_field
+    def coding_standards_read_instruction(self) -> str:
+        return self._adapter.coding_standards_read_instruction
+
+    @computed_field
+    def research_directory_pattern(self) -> str:
+        return '~/.claude/best-practices/*.md'
+
+    @computed_field
+    def research_example_path(self) -> str:
+        return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
 
     @computed_field
     def mcp_tools_reference(self) -> str:
@@ -555,7 +486,7 @@ class PlanRoadmapCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project phases')
-    platform: 'PlatformType' = Field(..., description='Selected platform type')
+    platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
     get_plan: str = Field(..., description='Get strategic plan')
@@ -566,6 +497,10 @@ class PlanRoadmapCommandTools(BaseModel):
     get_roadmap: str = Field(..., description='Get final roadmap')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
@@ -585,45 +520,7 @@ class PlanRoadmapCommandTools(BaseModel):
 
     @computed_field
     def sync_plan_instructions(self) -> str:
-        if self.platform == PlatformType.MARKDOWN:
-            return f"""TRY:
-  PLAN_MARKDOWN = Read({PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE})
-  mcp__respec-ai__store_plan(
-    plan_name=PLAN_NAME,
-    plan_markdown=PLAN_MARKDOWN
-  )
-  Display: "✓ Loaded project plan from platform"
-EXCEPT:
-  Display: "No existing project plan found"
-"""
-        elif self.platform == PlatformType.LINEAR:
-            return """TRY:
-  PLAN_RESULT = mcp__linear-server__get_document(plan_name=PLAN_NAME)
-  PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__respec-ai__store_plan(
-    plan_name=PLAN_NAME,
-    plan_markdown=PLAN_MARKDOWN
-  )
-  Display: "✓ Loaded project plan from platform"
-EXCEPT:
-  Display: "No existing project plan found"
-"""
-        elif self.platform == PlatformType.GITHUB:
-            return f"""TRY:
-  PLAN_RESULT = mcp__github__get_file(path="{PathComponent.RESPEC_AI_DIR}/{PathComponent.PLANS_DIR}/{{PLAN_NAME}}/{PathComponent.PROJECT_PLAN_FILE}")
-  PLAN_MARKDOWN = PLAN_RESULT.content
-  mcp__respec-ai__store_plan(
-    plan_name=PLAN_NAME,
-    plan_markdown=PLAN_MARKDOWN
-  )
-  Display: "✓ Loaded project plan from platform"
-EXCEPT:
-  Display: "No existing project plan found"
-"""
-        else:
-            return """# Platform-specific sync not configured
-Display: "⚠️ Sync not configured for this platform"
-"""
+        return self._adapter.plan_sync_instructions
 
     @computed_field
     def mcp_tools_reference(self) -> str:
@@ -677,7 +574,7 @@ class TaskCommandTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
     list_phase_tasks_tool: str = Field(..., description='Platform-specific tool for listing tasks')
-    platform: 'PlatformType' = Field(..., description='Selected platform type')
+    platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
     store_phase_document: str = Field(..., description='Store phase document in MCP')
@@ -689,6 +586,10 @@ class TaskCommandTools(BaseModel):
     store_user_feedback: str = Field(..., description='Store user feedback')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
@@ -751,6 +652,26 @@ class TaskCommandTools(BaseModel):
         except Exception:
             return ''
 
+    @computed_field
+    def task_resource_pattern(self) -> str:
+        return self._adapter.task_resource_pattern
+
+    @computed_field
+    def task_location_setup(self) -> str:
+        return self._adapter.task_location_setup
+
+    @computed_field
+    def phase_discovery_instructions(self) -> str:
+        return self._adapter.phase_discovery_instructions
+
+    @computed_field
+    def phase_location_hint(self) -> str:
+        return self._adapter.phase_location_hint
+
+    @computed_field
+    def sync_phase_instructions(self) -> str:
+        return self._adapter.phase_sync_instructions
+
 
 class PlanRoadmapAgentTools(BaseModel):
     create_phase_external: str = Field(..., description='Platform-specific tool for creating external phases')
@@ -812,6 +733,12 @@ class CreatePhaseAgentTools(BaseModel):
     update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     get_roadmap: str = Field(..., description='Retrieve complete roadmap from MCP')
     store_document: str = Field(..., description='Store phase in MCP storage')
+    platform: PlatformType = Field(..., description='Selected platform type')
+
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @computed_field
     def create_phase_tool_interpolated(self) -> str:
@@ -834,6 +761,10 @@ class CreatePhaseAgentTools(BaseModel):
         # Markdown: Edit using PathComponent pattern
         return self.update_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
 
+    @computed_field
+    def platform_tool_documentation(self) -> str:
+        return self._adapter.platform_tool_documentation
+
 
 class CoderAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
@@ -855,6 +786,12 @@ class CoderAgentTools(BaseModel):
     retrieve_task: str = Field(..., description='Retrieve build plan document')
     retrieve_phase: str = Field(..., description='Retrieve phase specification')
     retrieve_feedback: str = Field(..., description='Retrieve all feedback from coding loop')
+    platform: PlatformType = Field(..., description='Selected platform type')
+
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
 
     @computed_field
     def update_task_tool_interpolated(self) -> str:
@@ -862,6 +799,22 @@ class CoderAgentTools(BaseModel):
             return self.update_task_status
         # Unlikely to have wildcards for task status updates, but handle just in case
         return self.update_task_status.replace('*', '{plan_name}', 1)
+
+    @computed_field
+    def coding_standards_path(self) -> str:
+        return self._adapter.coding_standards_location
+
+    @computed_field
+    def coding_standards_read_instruction(self) -> str:
+        return self._adapter.coding_standards_read_instruction
+
+    @computed_field
+    def research_directory_pattern(self) -> str:
+        return '~/.claude/best-practices/*.md'
+
+    @computed_field
+    def research_example_path(self) -> str:
+        return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
 
 
 class AnalystCriticAgentTools(BaseModel):
@@ -969,6 +922,20 @@ class CodeReviewerAgentTools(BaseModel):
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_feedback: str = Field(..., description='Store code review feedback in coding loop')
+    platform: PlatformType = Field(..., description='Selected platform type')
+
+    _adapter: PlatformAdapter = PrivateAttr()
+
+    def model_post_init(self, __context: Any) -> None:
+        self._adapter = get_platform_adapter(self.platform)
+
+    @computed_field
+    def research_directory_pattern(self) -> str:
+        return '~/.claude/best-practices/*.md'
+
+    @computed_field
+    def research_example_path(self) -> str:
+        return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
 
 
 class TaskPlannerAgentTools(BaseModel):

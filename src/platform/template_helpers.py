@@ -500,7 +500,7 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     )
 
 
-def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
+def create_code_reviewer_agent_tools(platform_type: 'PlatformType') -> CodeReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CodeReviewerAgentTools.respec_ai_tools:
@@ -523,6 +523,7 @@ def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
+        platform=platform_type,
     )
 
 
@@ -590,7 +591,7 @@ def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
     )
 
 
-def create_coder_agent_tools(platform_tools: list[str]) -> CoderAgentTools:
+def create_coder_agent_tools(platform_tools: list[str], platform_type: 'PlatformType') -> CoderAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CoderAgentTools.respec_ai_tools:
@@ -613,10 +614,11 @@ def create_coder_agent_tools(platform_tools: list[str]) -> CoderAgentTools:
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
+        platform=platform_type,
     )
 
 
-def create_create_phase_agent_tools(platform_tools: list[str]) -> CreatePhaseAgentTools:
+def create_create_phase_agent_tools(platform_tools: list[str], platform: PlatformType) -> CreatePhaseAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CreatePhaseAgentTools.respec_ai_tools:
@@ -638,4 +640,5 @@ def create_create_phase_agent_tools(platform_tools: list[str]) -> CreatePhaseAge
             key='{PLAN_NAME}/{PHASE_NAME}',
             content='{EXTRACTED_PHASE_MARKDOWN}',
         ),
+        platform=platform,
     )

@@ -31,17 +31,17 @@ class TestMarkdownPlatformScoping:
         # Get platform tools
         tools = orchestrator.get_platform_tools(project_path)
 
-        # Verify all expected scoped tools are present
+        # Verify all expected scoped tools are present with placeholder syntax
         expected_tools = {
-            'create_phase_tool': 'Write(.respec-ai/plans/*/phases/*.md)',
-            'get_phase_tool': 'Read(.respec-ai/plans/*/phases/*.md)',
-            'update_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
-            'comment_phase_tool': 'Edit(.respec-ai/plans/*/phases/*.md)',
-            'create_project_external': 'Write(.respec-ai/plans/*/plan.md)',
-            'create_project_completion_external': 'Write(.respec-ai/plans/*/project_completion.md)',
-            'get_plan_tool': 'Read(.respec-ai/plans/*/plan.md)',
-            'update_plan_tool': 'Edit(.respec-ai/plans/*/plan.md)',
-            'list_project_phases_tool': 'Glob(.respec-ai/plans/*/phases/*.md)',
+            'create_phase_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
+            'retrieve_phase_tool': 'Read(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
+            'update_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
+            'comment_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
+            'create_plan_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/plan.md)',
+            'create_plan_completion_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/completion-report.md)',
+            'retrieve_plan_tool': 'Read(.respec-ai/plans/{PLAN_NAME}/plan.md)',
+            'update_plan_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/plan.md)',
+            'list_phases_tool': 'Glob(.respec-ai/plans/{PLAN_NAME}/phases/*.md)',
         }
 
         for abstract_tool, expected_concrete in expected_tools.items():
@@ -92,18 +92,18 @@ class TestMarkdownPlatformScoping:
         # Get the properly scoped tools from the orchestrator
         tools = orchestrator.get_platform_tools(project_path)
 
-        # Verify we have the correct scoped tools available
+        # Verify we have the correct scoped tools available with placeholder syntax
         assert 'create_phase_tool' in tools
-        assert 'create_project_external' in tools
-        assert tools['create_phase_tool'] == 'Write(.respec-ai/plans/*/phases/*.md)'
-        assert tools['create_project_external'] == 'Write(.respec-ai/plans/*/plan.md)'
+        assert 'create_plan_tool' in tools
+        assert tools['create_phase_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)'
+        assert tools['create_plan_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/plan.md)'
 
         # Test that the scoped path patterns are properly defined
         # (The actual file operations would happen through the MCP client using these tools)
         assert '.respec-ai/plans/' in tools['create_phase_tool']
-        assert '.respec-ai/plans/' in tools['get_phase_tool']
-        assert 'phases/*.md' in tools['create_phase_tool']
-        assert 'plan.md' in tools['create_project_external']
+        assert '.respec-ai/plans/' in tools['retrieve_phase_tool']
+        assert 'phases/' in tools['create_phase_tool']
+        assert 'plan.md' in tools['create_plan_tool']
 
     def test_security_boundaries_in_integration(self, orchestrator: PlatformOrchestrator) -> None:
         # Setup project
@@ -170,14 +170,22 @@ class TestMarkdownPlatformScoping:
 
         assert info['platform_capabilities'] == expected_capabilities
 
-        # Should include all scoped tools (11 total: added create_task_tool and list_phase_tasks_tool)
-        assert len(info['platform_tools']) == 11
+        # Should include all scoped tools (13 total in adapter pattern)
+        assert len(info['platform_tools']) == 13
         assert 'create_phase_tool' in info['platform_tools']
-        assert info['platform_tools']['create_phase_tool'] == 'Write(.respec-ai/plans/*/phases/*.md)'
+        assert (
+            info['platform_tools']['create_phase_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)'
+        )
         assert 'create_task_tool' in info['platform_tools']
-        assert info['platform_tools']['create_task_tool'] == 'Write(.respec-ai/plans/*/phases/tasks/*.md)'
-        assert 'list_phase_tasks_tool' in info['platform_tools']
-        assert info['platform_tools']['list_phase_tasks_tool'] == 'Glob(.respec-ai/plans/*/phases/tasks/*.md)'
+        assert (
+            info['platform_tools']['create_task_tool']
+            == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/tasks/{TASK_NAME}.md)'
+        )
+        assert 'list_tasks_tool' in info['platform_tools']
+        assert (
+            info['platform_tools']['list_tasks_tool']
+            == 'Glob(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/tasks/*.md)'
+        )
 
         # Plan should be valid
         assert info['config_valid'] is True

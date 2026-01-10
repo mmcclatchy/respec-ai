@@ -11,14 +11,13 @@ from .models import (
     TemplateGenerationRequest,
 )
 from .platform_selector import PlatformSelector, PlatformType
+from .adapters import get_platform_adapter
 from .template_coordinator import TemplateCoordinator
-from .tool_registry import ToolRegistry
 
 
 class PlatformOrchestrator:
     def __init__(self, config_dir: str) -> None:
         self.platform_selector = PlatformSelector()
-        self.tool_registry = ToolRegistry()
         self.template_coordinator = TemplateCoordinator()
         self.config_manager = ConfigManager(config_dir)
 
@@ -74,7 +73,23 @@ class PlatformOrchestrator:
 
     def get_platform_tools(self, project_path: str) -> dict[str, str]:
         config = self.config_manager.load_project_config(project_path)
-        return self.tool_registry.get_all_tools_for_platform(config.platform)
+        adapter = get_platform_adapter(config.platform)
+
+        return {
+            'create_plan_tool': adapter.create_plan_tool,
+            'retrieve_plan_tool': adapter.retrieve_plan_tool,
+            'update_plan_tool': adapter.update_plan_tool,
+            'create_plan_completion_tool': adapter.create_plan_completion_tool,
+            'create_phase_tool': adapter.create_phase_tool,
+            'retrieve_phase_tool': adapter.retrieve_phase_tool,
+            'update_phase_tool': adapter.update_phase_tool,
+            'comment_phase_tool': adapter.comment_phase_tool,
+            'create_task_tool': adapter.create_task_tool,
+            'retrieve_task_tool': adapter.retrieve_task_tool,
+            'update_task_tool': adapter.update_task_tool,
+            'list_phases_tool': adapter.list_phases_tool,
+            'list_tasks_tool': adapter.list_tasks_tool,
+        }
 
     def change_project_platform(self, request: PlanPlatformChangeRequest) -> None:
         existing_config = self.config_manager.load_project_config(request.project_path)
@@ -127,7 +142,7 @@ class PlatformOrchestrator:
     def get_project_info(self, project_path: str) -> dict[str, Any]:
         config = self.config_manager.load_project_config(project_path)
 
-        platform_tools = self.tool_registry.get_all_tools_for_platform(config.platform)
+        platform_tools = self.get_platform_tools(project_path)
         platform_capabilities = self.platform_selector.get_platform_capabilities(config.platform)
         available_commands = [
             cmd
