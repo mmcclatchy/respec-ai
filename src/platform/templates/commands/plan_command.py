@@ -67,7 +67,7 @@ description: Orchestrate strategic planning workflow
 
 Read project configuration:
 ```text
-Read .respec-ai/config.json
+Read {tools.config_location}
 PLAN_NAME = config["plan_name"]
 ```
 
@@ -233,9 +233,7 @@ Write the strategic plan to the user's platform using the platform-specific tool
 ```
 
 This creates:
-- **Markdown platform**: `.respec-ai/plans/PLAN_NAME/plan.md`
-- **Linear platform**: Linear project with plan details
-- **GitHub platform**: GitHub project with plan details
+- {tools.plan_resource_example}
 
 The user can now review the plan file before making their decision.
 

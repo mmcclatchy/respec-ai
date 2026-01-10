@@ -31,8 +31,7 @@ PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 #### Step 1.2: Search file system for matching phase files
 
 ```text
-SPEC_GLOB_PATTERN = ".respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME_PARTIAL}}*.md"
-SPEC_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
+{tools.phase_discovery_instructions}
 ```
 
 #### Step 1.3: Handle multiple matches
@@ -40,7 +39,7 @@ SPEC_FILE_MATCHES = Glob(pattern=PHASE_GLOB_PATTERN)
 ```text
 IF count(SPEC_FILE_MATCHES) == 0:
   ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PLAN_NAME}}"
-  SUGGEST: "Verify the phase name or check .respec-ai/plans/{{PLAN_NAME}}/phases/"
+  SUGGEST: "Verify the phase name or check {tools.phase_location_hint}"
   EXIT: Workflow terminated
 
 ELIF count(SPEC_FILE_MATCHES) == 1:
@@ -85,18 +84,8 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 
 Load phase from file system, store in MCP:
 
-#### Step 2.1: Read phase using canonical name
-
 ```text
-PHASE_MARKDOWN = Read({{PHASE_FILE_PATH}})
-```
-
-#### Step 2.2: Store in MCP using canonical phase name
-
-```text
-{tools.store_phase_document}
-
-Display to user: "✓ Loaded existing phase: {{PHASE_NAME}}"
+{tools.sync_phase_instructions}
 ```
 
 **Important**:
@@ -423,9 +412,9 @@ All specialized work delegated to appropriate agents:
 - Coding agents receive both IDs and use appropriately
 
 ### Coding Standards Integration
-- coder reads .respec-ai/coding-standards.md on initialization
+- coder reads platform-specific coding standards on initialization
 - User-customizable coding standards applied to all generated code
-- Fallback to Phase Code Standards if file doesn't exist
+- Fallback to Phase Code Standards if not available
 
 ### TDD Enforcement
 - Strict test-first discipline enforced by coder agent

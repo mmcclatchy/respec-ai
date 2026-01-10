@@ -2,21 +2,19 @@
 
 import pytest
 
-from src.platform.models import PlatformToolMapping, ToolReference
+from src.platform.models import ToolReference
 from src.platform.platform_selector import PlatformType
 from src.platform.startup_validation import (
     validate_external_platform_tools,
-    validate_tool_registry,
+    validate_platform_adapters,
 )
 from src.platform.template_helpers import TemplateToolBuilder, create_phase_command_tools
 from src.platform.tool_enums import (
-    AbstractOperation,
     BuiltInTool,
     ExternalPlatformTool,
     RespecAIAgent,
     RespecAITool,
 )
-from src.platform.tool_registry import ToolRegistry
 
 
 class TestToolEnums:
@@ -33,10 +31,6 @@ class TestToolEnums:
     def test_respec_ai_tool_values(self) -> None:
         assert RespecAITool.INITIALIZE_REFINEMENT_LOOP.value == 'mcp__respec-ai__initialize_refinement_loop'
         assert RespecAITool.DECIDE_LOOP_NEXT_ACTION.value == 'mcp__respec-ai__decide_loop_next_action'
-
-    def test_abstract_operation_values(self) -> None:
-        assert AbstractOperation.CREATE_PHASE_TOOL.value == 'create_phase_tool'
-        assert AbstractOperation.GET_PHASE_TOOL.value == 'get_phase_tool'
 
 
 class TestToolReference:
@@ -71,122 +65,6 @@ class TestToolReference:
     def test_tool_reference_respec_ai_tools(self) -> None:
         tool_ref = ToolReference(tool=RespecAITool.INITIALIZE_REFINEMENT_LOOP)
         assert tool_ref.render() == 'mcp__respec-ai__initialize_refinement_loop'
-
-
-class TestPlatformToolMapping:
-    def test_platform_tool_mapping_creation(self) -> None:
-        mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_PHASE_TOOL,
-            linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            github_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
-        )
-
-        assert mapping.operation == AbstractOperation.CREATE_PHASE_TOOL
-        assert mapping.linear_tool is not None
-        assert mapping.github_tool is not None
-        assert mapping.markdown_tool is not None
-
-    def test_platform_tool_mapping_get_tool(self) -> None:
-        mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_PHASE_TOOL,
-            linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
-        )
-
-        linear_tool = mapping.get_tool_for_platform(PlatformType.LINEAR)
-        assert linear_tool is not None
-        assert linear_tool.tool == ExternalPlatformTool.LINEAR_CREATE_ISSUE
-
-        github_tool = mapping.get_tool_for_platform(PlatformType.GITHUB)
-        assert github_tool is None  # Not defined for GitHub
-
-    def test_platform_tool_mapping_render_tool(self) -> None:
-        mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_PHASE_TOOL,
-            linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
-        )
-
-        linear_rendered = mapping.render_tool_for_platform(PlatformType.LINEAR)
-        assert linear_rendered == 'mcp__linear-server__create_issue'
-
-        markdown_rendered = mapping.render_tool_for_platform(PlatformType.MARKDOWN)
-        assert markdown_rendered == 'Write(.respec-ai/plans/*/phases/*.md)'
-
-        github_rendered = mapping.render_tool_for_platform(PlatformType.GITHUB)
-        assert github_rendered is None
-
-    def test_platform_tool_mapping_validation_linear(self) -> None:
-        # Should work with Linear tools
-        mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_PHASE_TOOL,
-            linear_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-        )
-        assert mapping.linear_tool is not None
-
-        # Should fail with non-Linear external tool for Linear platform
-        with pytest.raises(ValueError, match='Linear platform tool must be a Linear server tool'):
-            PlatformToolMapping(
-                operation=AbstractOperation.CREATE_PHASE_TOOL,
-                linear_tool=ToolReference(tool=ExternalPlatformTool.GITHUB_CREATE_ISSUE),
-            )
-
-    def test_platform_tool_mapping_validation_markdown(self) -> None:
-        # Should work with built-in tools
-        mapping = PlatformToolMapping(
-            operation=AbstractOperation.CREATE_PHASE_TOOL,
-            markdown_tool=ToolReference(tool=BuiltInTool.WRITE, parameters='.respec-ai/plans/*/phases/*.md'),
-        )
-        assert mapping.markdown_tool is not None
-
-        # Should fail with external platform tool for Markdown
-        with pytest.raises(ValueError, match='Markdown platform must use built-in tools'):
-            PlatformToolMapping(
-                operation=AbstractOperation.CREATE_PHASE_TOOL,
-                markdown_tool=ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE),
-            )
-
-
-class TestToolRegistry:
-    def test_tool_registry_initialization(self) -> None:
-        registry = ToolRegistry()
-        operations = registry.get_supported_operations()
-        assert len(operations) > 0
-        assert 'create_phase_tool' in operations
-
-    def test_tool_registry_get_tool_for_platform(self) -> None:
-        registry = ToolRegistry()
-
-        # Test Linear platform
-        linear_tool = registry.get_tool_for_platform('create_phase_tool', PlatformType.LINEAR)
-        assert linear_tool == 'mcp__linear-server__create_issue'
-
-        # Test Markdown platform
-        markdown_tool = registry.get_tool_for_platform('create_phase_tool', PlatformType.MARKDOWN)
-        assert markdown_tool == 'Write(.respec-ai/plans/*/phases/*.md)'
-
-    def test_tool_registry_get_all_tools_for_platform(self) -> None:
-        registry = ToolRegistry()
-
-        linear_tools = registry.get_all_tools_for_platform(PlatformType.LINEAR)
-        assert len(linear_tools) > 0
-        assert 'create_phase_tool' in linear_tools
-        assert linear_tools['create_phase_tool'] == 'mcp__linear-server__create_issue'
-
-    def test_tool_registry_invalid_operation(self) -> None:
-        registry = ToolRegistry()
-
-        with pytest.raises(ValueError, match='Unknown abstract operation'):
-            registry.get_tool_for_platform('invalid_operation', PlatformType.LINEAR)
-
-    def test_tool_registry_unsupported_platform(self) -> None:
-        registry = ToolRegistry()
-
-        # This should work for all our defined operations, but let's test the error handling
-        # by checking the validation method
-        result = registry.validate_platform_support(PlatformType.LINEAR, ['invalid_operation'])
-        assert result is False
 
 
 class TestTemplateHelpers:
@@ -237,10 +115,11 @@ class TestStartupValidation:
         assert result['linear_tools_count'] > 0
         assert result['github_tools_count'] > 0
 
-    def test_validate_tool_registry(self) -> None:
-        result = validate_tool_registry()
+    def test_validate_platform_adapters(self) -> None:
+        result = validate_platform_adapters()
         assert isinstance(result, dict)
         assert 'success' in result
         assert 'issues' in result
-        assert result['mappings_count'] > 0
-        assert 'operations' in result
+        assert result['adapters_count'] == 3
+        assert 'adapters' in result
+        assert result['properties_per_adapter'] == 21

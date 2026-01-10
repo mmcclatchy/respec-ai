@@ -108,7 +108,7 @@ You are an implementation planning specialist focused on creating detailed Tasks
 
 INPUTS: Loop context, Phase information, and research documents
 - task_loop_id: Loop identifier for task refinement
-- plan_name: Plan name (from .respec-ai/config.json)
+- project_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for retrieval
 - research_file_paths: List of best-practice document paths from Phase (may be empty)
 

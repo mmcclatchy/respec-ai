@@ -29,9 +29,7 @@ When instructions say "CALL tool_name", you execute the tool:
   ❌ WRONG: <get_roadmap><plan_name>rag-poc</plan_name>
 
 Platform tools vary by configured platform:
-- Markdown: Write/Read/Edit for .respec-ai/plans/{{plan_name}}/phases/{{lowercase-kebab-phase-name}}.md
-- Linear: mcp__linear-server__create_issue, get_issue, update_issue
-- GitHub: mcp__github__create_issue, get_issue, update_issue
+{tools.platform_tool_documentation}
 
 **File Naming**: Always convert phase names to lowercase-kebab-case (spaces→hyphens, uppercase→lowercase)
 
@@ -90,10 +88,7 @@ Save phase to configured platform using platform-specific tool.
 
 CALL {tools.create_phase_tool_interpolated}
 
-Platform-specific examples:
-- Markdown: Write(.respec-ai/plans/PLAN_NAME/phases/lowercase-kebab-phase-name.md, extracted_phase_markdown)
-- Linear: mcp__linear-server__create_issue(title=PHASE_NAME, description=extracted_phase_markdown, ...)
-- GitHub: mcp__github__create_issue(title=PHASE_NAME, body=extracted_phase_markdown, ...)
+This will use the platform-specific tool to save the phase to external storage.
 
 → Verify: Platform storage successful
 → If failed: Report error but don't stop (MCP storage already succeeded)

@@ -1,5 +1,6 @@
 """Tests for agent template generation functions."""
 
+from src.platform.models import PlatformType
 from src.platform.template_helpers import (
     create_create_phase_agent_tools,
     create_roadmap_agent_tools,
@@ -116,7 +117,7 @@ class TestRoadmapCriticTemplate:
 class TestCreatePhaseTemplate:
     def test_template_structure(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools)
+        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Check YAML frontmatter
@@ -128,7 +129,7 @@ class TestCreatePhaseTemplate:
 
     def test_template_includes_mcp_tools(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools)
+        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Should include MCP tools
@@ -138,7 +139,7 @@ class TestCreatePhaseTemplate:
 
     def test_template_supports_parallel_execution(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools)
+        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Should mention individual phase creation (not multiple)
@@ -148,7 +149,7 @@ class TestCreatePhaseTemplate:
 
     def test_template_includes_initialphase_creation(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools)
+        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Should reference Phase
@@ -160,7 +161,7 @@ class TestTemplateConsistency:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        create_phase_tools = create_create_phase_agent_tools(platform_tools)
+        create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
 
         templates = [
             generate_roadmap_template(roadmap_tools),
@@ -175,7 +176,7 @@ class TestTemplateConsistency:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        create_phase_tools = create_create_phase_agent_tools(platform_tools)
+        create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
 
         templates = [
             generate_roadmap_template(roadmap_tools),
@@ -193,7 +194,7 @@ class TestTemplateConsistency:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        create_phase_tools = create_create_phase_agent_tools(platform_tools)
+        create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
 
         templates = [
             generate_roadmap_template(roadmap_tools),

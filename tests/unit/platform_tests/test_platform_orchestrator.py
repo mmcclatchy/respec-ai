@@ -81,8 +81,9 @@ class TestPlatformOrchestrator:
         tools = self.orchestrator.get_platform_tools(self.test_project_path)
 
         assert 'create_phase_tool' in tools
-        assert tools['create_phase_tool'] == 'mcp__github__create_issue'
-        assert tools['get_phase_tool'] == 'mcp__github__get_issue'
+        assert 'mcp__github__create_milestone' in tools['create_phase_tool']
+        assert 'retrieve_phase_tool' in tools
+        assert 'mcp__github__get_milestone' in tools['retrieve_phase_tool']
 
     def test_change_project_platform(self) -> None:
         # Set up project with Linear

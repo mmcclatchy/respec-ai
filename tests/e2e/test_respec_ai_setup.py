@@ -127,7 +127,7 @@ class TestRespecAISetupEndToEnd:
             if platform == 'linear':
                 assert 'mcp__linear-server__create_issue' in phase_command_content
             elif platform == 'github':
-                assert 'mcp__github__create_issue' in phase_command_content
+                assert 'mcp__github__create_milestone' in phase_command_content
             elif platform == 'markdown':
                 assert 'Write' in phase_command_content
 
@@ -161,7 +161,7 @@ class TestRespecAISetupEndToEnd:
             if platform == 'linear':
                 assert 'mcp__linear-server__create_issue' in create_phase_tool_agent_content
             elif platform == 'github':
-                assert 'mcp__github__create_issue' in create_phase_tool_agent_content
+                assert 'mcp__github__create_milestone' in create_phase_tool_agent_content
             elif platform == 'markdown':
                 assert 'Write' in create_phase_tool_agent_content
 

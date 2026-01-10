@@ -68,7 +68,7 @@ You are a technical architecture specialist focused on system design.
 
 INPUTS: Loop ID and Phase context
 - loop_id: Refinement loop identifier for this Phase session
-- plan_name: Plan name for phase storage (from .respec-ai/config.json, passed by orchestrating command)
+- project_name: Project name for phase storage (from .respec-ai/config.json, passed by orchestrating command)
 - phase_name: Phase name for storage and retrieval
 - strategic_plan_summary: Strategic plan analysis from plan-analyst
 - optional_instructions: Additional user guidance for phase development

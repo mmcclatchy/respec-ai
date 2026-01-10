@@ -42,8 +42,8 @@ from src.platform.templates.agents import (
     generate_task_plan_critic_template,
     generate_task_planner_template,
 )
-from src.platform.tool_enums import AbstractOperation, RespecAICommand
-from src.platform.tool_registry import ToolRegistry
+from src.platform.adapters import get_platform_adapter
+from src.platform.tool_enums import RespecAICommand
 from src.utils.setting_configs import loop_config
 
 
@@ -111,16 +111,16 @@ def _get_agent_generators(
     orchestrator: PlatformOrchestrator,
     platform_type: PlatformType,
 ) -> list[tuple[str, str]]:
-    tool_registry = ToolRegistry()
+    adapter = get_platform_adapter(platform_type)
 
     create_phase_platform_tools = [
-        tool_registry.get_tool_for_platform(AbstractOperation.CREATE_PHASE_TOOL, platform_type),
-        tool_registry.get_tool_for_platform(AbstractOperation.GET_PHASE_TOOL, platform_type),
-        tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_PHASE_TOOL, platform_type),
+        adapter.create_phase_tool,
+        adapter.retrieve_phase_tool,
+        adapter.update_phase_tool,
     ]
 
     coder_platform_tools = [
-        tool_registry.get_tool_for_platform(AbstractOperation.UPDATE_PHASE_TOOL, platform_type),
+        adapter.update_phase_tool,
     ]
 
     plan_analyst_tools = create_plan_analyst_agent_tools()
@@ -128,14 +128,14 @@ def _get_agent_generators(
     analyst_critic_tools = create_analyst_critic_agent_tools()
     roadmap_tools = create_roadmap_agent_tools()
     roadmap_critic_tools = create_roadmap_critic_agent_tools()
-    create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools)
+    create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
     phase_architect_tools = create_phase_architect_agent_tools()
     phase_critic_tools = create_phase_critic_agent_tools(loop_config.phase_length_soft_cap)
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools)
-    code_reviewer_tools = create_code_reviewer_agent_tools()
+    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type)
+    code_reviewer_tools = create_code_reviewer_agent_tools(platform_type)
 
     return [
         ('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
