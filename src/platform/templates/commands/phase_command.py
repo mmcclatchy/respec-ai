@@ -231,7 +231,7 @@ IF LOOP_ID is None or LOOP_ID == "":
 {tools.link_loop}
   loop_id=LOOP_ID,
   doc_type="phase",
-  path=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
 )
 
 (Verify the link was created)
@@ -479,7 +479,7 @@ Retrieve the Phase from MCP storage:
 ```text
 FINAL_PHASE_RESPONSE = {tools.get_document}
     doc_type="phase",
-    path=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
+    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
 )
 
 FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message

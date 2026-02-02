@@ -106,55 +106,55 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
 
     @property
     def create_plan_tool(self) -> str:
-        return 'mcp__linear-server__create_project(name={PLAN_NAME})'
+        return 'mcp__linear-server__create_project'
 
     @property
     def retrieve_plan_tool(self) -> str:
-        return 'mcp__linear-server__get_document(project={PLAN_NAME})'
+        return 'mcp__linear-server__get_document'
 
     @property
     def update_plan_tool(self) -> str:
-        return 'mcp__linear-server__update_document(project={PLAN_NAME})'
+        return 'mcp__linear-server__update_document'
 
     @property
     def create_plan_completion_tool(self) -> str:
-        return "mcp__linear-server__create_issue(project={PLAN_NAME}, title='Completion Report', label='completion')"
+        return 'mcp__linear-server__create_issue'
 
     @property
     def create_phase_tool(self) -> str:
-        return "mcp__linear-server__create_issue(project={PLAN_NAME}, title={PHASE_NAME}, label='phase')"
+        return 'mcp__linear-server__create_issue'
 
     @property
     def retrieve_phase_tool(self) -> str:
-        return "mcp__linear-server__get_issue(project={PLAN_NAME}, title={PHASE_NAME}, label='phase')"
+        return 'mcp__linear-server__get_issue'
 
     @property
     def update_phase_tool(self) -> str:
-        return "mcp__linear-server__update_issue(project={PLAN_NAME}, title={PHASE_NAME}, label='phase')"
+        return 'mcp__linear-server__update_issue'
 
     @property
     def comment_phase_tool(self) -> str:
-        return 'mcp__linear-server__create_comment(project={PLAN_NAME}, issue={PHASE_NAME})'
+        return 'mcp__linear-server__create_comment'
 
     @property
     def create_task_tool(self) -> str:
-        return "mcp__linear-server__create_issue(project={PLAN_NAME}, title={TASK_NAME}, label='task')"
+        return 'mcp__linear-server__create_issue'
 
     @property
     def retrieve_task_tool(self) -> str:
-        return "mcp__linear-server__get_issue(project={PLAN_NAME}, title={TASK_NAME}, label='task')"
+        return 'mcp__linear-server__get_issue'
 
     @property
     def update_task_tool(self) -> str:
-        return "mcp__linear-server__update_issue(project={PLAN_NAME}, title={TASK_NAME}, label='task')"
+        return 'mcp__linear-server__update_issue'
 
     @property
     def list_phases_tool(self) -> str:
-        return "mcp__linear-server__list_issues(project={PLAN_NAME}, label='phase')"
+        return 'mcp__linear-server__list_issues'
 
     @property
     def list_tasks_tool(self) -> str:
-        return "mcp__linear-server__list_issues(project={PLAN_NAME}, parent={PHASE_NAME}, label='task')"
+        return 'mcp__linear-server__list_issues'
 
     @property
     def config_location(self) -> str:
