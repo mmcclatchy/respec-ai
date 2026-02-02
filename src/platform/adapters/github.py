@@ -119,55 +119,55 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
 
     @property
     def create_plan_tool(self) -> str:
-        return 'mcp__github__create_repository(name={PLAN_NAME})'
+        return 'mcp__github__create_repository'
 
     @property
     def retrieve_plan_tool(self) -> str:
-        return "mcp__github__get_file(repo={PLAN_NAME}, path='.respec-ai/plan.md')"
+        return 'mcp__github__get_file'
 
     @property
     def update_plan_tool(self) -> str:
-        return "mcp__github__update_file(repo={PLAN_NAME}, path='.respec-ai/plan.md')"
+        return 'mcp__github__update_file'
 
     @property
     def create_plan_completion_tool(self) -> str:
-        return "mcp__github__create_issue(repo={PLAN_NAME}, title='Completion Report', labels=['completion'])"
+        return 'mcp__github__create_issue'
 
     @property
     def create_phase_tool(self) -> str:
-        return 'mcp__github__create_milestone(repo={PLAN_NAME}, title={PHASE_NAME})'
+        return 'mcp__github__create_milestone'
 
     @property
     def retrieve_phase_tool(self) -> str:
-        return 'mcp__github__get_milestone(repo={PLAN_NAME}, title={PHASE_NAME})'
+        return 'mcp__github__get_milestone'
 
     @property
     def update_phase_tool(self) -> str:
-        return 'mcp__github__update_milestone(repo={PLAN_NAME}, title={PHASE_NAME})'
+        return 'mcp__github__update_milestone'
 
     @property
     def comment_phase_tool(self) -> str:
-        return 'mcp__github__create_milestone_comment(repo={PLAN_NAME}, milestone={PHASE_NAME})'
+        return 'mcp__github__create_milestone_comment'
 
     @property
     def create_task_tool(self) -> str:
-        return "mcp__github__create_issue(repo={PLAN_NAME}, title={TASK_NAME}, milestone={PHASE_NAME}, labels=['task'])"
+        return 'mcp__github__create_issue'
 
     @property
     def retrieve_task_tool(self) -> str:
-        return 'mcp__github__get_issue(repo={PLAN_NAME}, title={TASK_NAME})'
+        return 'mcp__github__get_issue'
 
     @property
     def update_task_tool(self) -> str:
-        return 'mcp__github__update_issue(repo={PLAN_NAME}, title={TASK_NAME})'
+        return 'mcp__github__update_issue'
 
     @property
     def list_phases_tool(self) -> str:
-        return 'mcp__github__list_milestones(repo={PLAN_NAME})'
+        return 'mcp__github__list_milestones'
 
     @property
     def list_tasks_tool(self) -> str:
-        return "mcp__github__list_issues(repo={PLAN_NAME}, milestone={PHASE_NAME}, labels=['task'])"
+        return 'mcp__github__list_issues'
 
     @property
     def config_location(self) -> str:
