@@ -29,7 +29,7 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
-        args = Namespace(platform='linear', plan_name=None, skip_mcp_registration=False)
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
         result = init.run(args)
 
         assert result == 0
@@ -38,7 +38,7 @@ class TestInitCommand:
         config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
         assert config['platform'] == 'linear'
         assert config['version'] == '0.2.0'
-        assert config['plan_name'] == tmp_path.name
+        assert config['project_name'] == tmp_path.name
 
     def test_already_initialized(self, mocker: MockerFixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
@@ -47,7 +47,7 @@ class TestInitCommand:
         respec_ai_dir.mkdir()
         (respec_ai_dir / 'config.json').write_text('{}')
 
-        args = Namespace(platform='linear', plan_name=None, skip_mcp_registration=False)
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
         result = init.run(args)
 
         assert result == 1
@@ -70,7 +70,7 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
         mock_register = mocker.patch('src.cli.commands.init.register_mcp_server')
 
-        args = Namespace(platform='linear', plan_name='MyProject', skip_mcp_registration=True)
+        args = Namespace(platform='linear', project_name='MyProject', skip_mcp_registration=True)
         result = init.run(args)
 
         assert result == 0
@@ -95,13 +95,13 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
-        args = Namespace(platform='github', plan_name='CustomName', skip_mcp_registration=False)
+        args = Namespace(platform='github', project_name='CustomName', skip_mcp_registration=False)
         result = init.run(args)
 
         assert result == 0
 
         config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
-        assert config['plan_name'] == 'CustomName'
+        assert config['project_name'] == 'CustomName'
         assert config['platform'] == 'github'
 
     def test_mcp_registration_failure_continues(
@@ -126,7 +126,7 @@ class TestInitCommand:
         mock_docker = mocker.patch('src.cli.commands.init.DockerManager')
         mock_docker.return_value.verify_image_exists.return_value = True
 
-        args = Namespace(platform='linear', plan_name=None, skip_mcp_registration=False)
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
         result = init.run(args)
 
         assert result == 0
