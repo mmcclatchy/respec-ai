@@ -63,17 +63,7 @@ description: Orchestrate strategic planning workflow
 
 # Strategic Planning Orchestration
 
-## Step 0: Initialize Plan Context
-
-Read project configuration:
-```text
-Read {tools.config_location}
-PLAN_NAME = config["plan_name"]
-```
-
-**Important**: PLAN_NAME from config is used for all MCP storage operations. The plan_name was set during respec-ai installation.
-
-## Step 0.1: Load Existing Plan Plan from Platform
+## Step 0: Load Existing Plan from Platform
 
 Load existing project plan from platform (if exists):
 

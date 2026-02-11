@@ -46,8 +46,8 @@ show_usage() {
     echo "  Remote install:  cd ~/myproject && curl -fsSL https://raw.githubusercontent.com/mmcclatchy/respec-ai/main/scripts/install-respec-ai.sh | bash -s -- -n myproject -p linear --respec-path ~/coding/projects/respec-ai"
     echo ""
     echo "Arguments:"
-    echo "  -n, --plan-name   Name for this project (required)"
-    echo "  -p, --platform       Platform choice: linear, github, or markdown (required)"
+    echo "  -n, --project-name  Name for this project workspace (required)"
+    echo "  -p, --platform      Platform choice: linear, github, or markdown (required)"
     echo "  --respec-path       Path to respec-ai installation (required for remote install only)"
     echo "  --clean             Remove existing .respec-ai folder before installation (destructive)"
     echo ""
@@ -66,14 +66,14 @@ show_usage() {
 parse_arguments() {
     PLATFORM=""
     RESPEC_AI_PATH=""
-    PLAN_NAME=""
+    PROJECT_NAME=""
     STATE_MANAGER="memory"  # Default to memory
     CLEAN_INSTALL=false     # Default to non-destructive
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -n|--plan-name)
-                PLAN_NAME="$2"
+            -n|--project-name)
+                PROJECT_NAME="$2"
                 shift 2
                 ;;
             -p|--platform)
@@ -105,8 +105,8 @@ parse_arguments() {
     done
 
     # Validate required arguments
-    if [ -z "$PLAN_NAME" ]; then
-        print_error "Project name is required. Use -n <name> or --plan-name <name>"
+    if [ -z "$PROJECT_NAME" ]; then
+        print_error "Project name is required. Use -n <name> or --project-name <name>"
         show_usage
         exit 1
     fi
@@ -180,7 +180,7 @@ print_info "respec-ai Installation"
 print_info "Execution mode: $EXECUTION_MODE"
 print_info "respec-ai path: $RESPEC_AI_PATH"
 print_info "Target directory: $TARGET_DIR"
-print_info "Project name: $PLAN_NAME"
+print_info "Project name: $PROJECT_NAME"
 print_info "Platform: $PLATFORM"
 if [ "$CLEAN_INSTALL" = true ]; then
     print_info "Mode: Clean install (will remove existing .respec-ai folder)"
@@ -242,13 +242,13 @@ echo ""
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
 if [ "$CLEAN_INSTALL" = true ]; then
     print_info "Generating respec-ai workflow files (clean install - will remove existing .respec-ai folder)..."
-    CLI_COMMAND="init --plan-name $PLAN_NAME --platform $PLATFORM --skip-mcp-registration --force"
+    CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --force"
 else
     # Check if already initialized
     if [ -f "$TARGET_DIR/.respec-ai/config.json" ]; then
         print_info "Updating configuration and regenerating templates..."
 
-        # Update config.json with new platform and plan_name
+        # Update config.json with new platform and project_name
         python3 << EOF
 import json
 import sys
@@ -258,7 +258,7 @@ try:
     config_path = Path("$TARGET_DIR/.respec-ai/config.json")
     config = json.loads(config_path.read_text())
     config['platform'] = '$PLATFORM'
-    config['plan_name'] = '$PLAN_NAME'
+    config['project_name'] = '$PROJECT_NAME'
     config_path.write_text(json.dumps(config, indent=2))
 except Exception as e:
     print(f"Error updating config: {e}", file=sys.stderr)
@@ -278,7 +278,7 @@ EOF
         fi
     else
         print_info "Generating respec-ai workflow files (first-time setup)..."
-        CLI_COMMAND="init --plan-name $PLAN_NAME --platform $PLATFORM --skip-mcp-registration"
+        CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration"
     fi
 fi
 

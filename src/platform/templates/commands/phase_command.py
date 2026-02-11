@@ -110,9 +110,6 @@ Parse command arguments and locate phase file using partial name:
 PLAN_NAME = [first argument from command - the plan name]
 PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
 OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
-
-Read {tools.config_location}
-PLAN_NAME = config["plan_name"]
 ```
 
 #### Step 1.2: Search file system for matching phase files
