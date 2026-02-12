@@ -1,6 +1,8 @@
+import json
+import tomllib
 from pathlib import Path
 
-from src.platform.models import LanguageTooling
+from src.platform.models import LanguageTooling, ProjectStack
 
 
 TOOLING_DEFAULTS: dict[str, LanguageTooling] = {
@@ -58,3 +60,139 @@ def detect_project_tooling(project_path: Path) -> dict[str, LanguageTooling]:
             if language in TOOLING_DEFAULTS:
                 detected[language] = TOOLING_DEFAULTS[language]
     return detected
+
+
+PYTHON_FRAMEWORKS: dict[str, str] = {
+    'fastapi': 'fastapi',
+    'flask': 'flask',
+    'django': 'django',
+    'starlette': 'starlette',
+    'sanic': 'sanic',
+    'litestar': 'litestar',
+}
+
+JS_FRAMEWORKS: dict[str, str] = {
+    'react': 'react',
+    'react-dom': 'react',
+    'next': 'next',
+    'vue': 'vue',
+    'nuxt': 'nuxt',
+    'svelte': 'svelte',
+    'express': 'express',
+    'fastify': 'fastify',
+    'hono': 'hono',
+    '@angular/core': 'angular',
+}
+
+REST_FRAMEWORKS: set[str] = {
+    'fastapi',
+    'flask',
+    'django',
+    'express',
+    'fastify',
+    'hono',
+    'starlette',
+    'litestar',
+    'sanic',
+}
+
+
+def _detect_from_pyproject(pyproject_path: Path) -> ProjectStack:
+    try:
+        data = tomllib.loads(pyproject_path.read_text(encoding='utf-8'))
+    except Exception:
+        return ProjectStack(language='python')
+
+    package_manager = 'pip'
+    if 'tool' in data and 'uv' in data['tool']:
+        package_manager = 'uv'
+
+    runtime_version: str | None = None
+    requires_python = data.get('project', {}).get('requires-python')
+    if requires_python:
+        cleaned = requires_python.replace('>=', '').replace('>', '').replace('~=', '').replace('==', '').strip()
+        if cleaned:
+            runtime_version = cleaned.split(',')[0].strip()
+
+    framework: str | None = None
+    deps = data.get('project', {}).get('dependencies', [])
+    for dep in deps:
+        dep_name = dep.split('>=')[0].split('==')[0].split('<')[0].split('[')[0].strip().lower()
+        if dep_name in PYTHON_FRAMEWORKS:
+            framework = PYTHON_FRAMEWORKS[dep_name]
+            break
+
+    api_style: str | None = None
+    if framework and framework in REST_FRAMEWORKS:
+        api_style = 'rest'
+
+    return ProjectStack(
+        language='python',
+        framework=framework,
+        package_manager=package_manager,
+        runtime_version=runtime_version,
+        api_style=api_style,
+    )
+
+
+def _detect_from_package_json(package_json_path: Path, project_path: Path) -> ProjectStack:
+    try:
+        data = json.loads(package_json_path.read_text(encoding='utf-8'))
+    except Exception:
+        return ProjectStack(language='javascript')
+
+    language = 'javascript'
+    if (project_path / 'tsconfig.json').exists():
+        language = 'typescript'
+
+    package_manager = 'npm'
+    if (project_path / 'yarn.lock').exists():
+        package_manager = 'yarn'
+    elif (project_path / 'pnpm-lock.yaml').exists():
+        package_manager = 'pnpm'
+
+    runtime_version: str | None = None
+    engines_node = data.get('engines', {}).get('node')
+    if engines_node:
+        cleaned = engines_node.replace('>=', '').replace('>', '').replace('~', '').replace('^', '').strip()
+        if cleaned:
+            runtime_version = cleaned.split(' ')[0].strip()
+
+    framework: str | None = None
+    all_deps = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
+    for dep_name in all_deps:
+        if dep_name in JS_FRAMEWORKS:
+            framework = JS_FRAMEWORKS[dep_name]
+            break
+
+    api_style: str | None = None
+    if framework and framework in REST_FRAMEWORKS:
+        api_style = 'rest'
+
+    return ProjectStack(
+        language=language,
+        framework=framework,
+        package_manager=package_manager,
+        runtime_version=runtime_version,
+        api_style=api_style,
+    )
+
+
+def detect_project_stack(project_path: Path) -> ProjectStack:
+    pyproject = project_path / 'pyproject.toml'
+    if pyproject.exists():
+        return _detect_from_pyproject(pyproject)
+
+    package_json = project_path / 'package.json'
+    if package_json.exists():
+        return _detect_from_package_json(package_json, project_path)
+
+    go_mod = project_path / 'go.mod'
+    if go_mod.exists():
+        return ProjectStack(language='go', package_manager='go modules')
+
+    cargo_toml = project_path / 'Cargo.toml'
+    if cargo_toml.exists():
+        return ProjectStack(language='rust', package_manager='cargo')
+
+    return ProjectStack()

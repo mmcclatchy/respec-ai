@@ -12,10 +12,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from src.platform.models import LanguageTooling
+from src.platform.models import LanguageTooling, ProjectStack
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
-from src.platform.tooling_defaults import detect_project_tooling
+from src.platform.tooling_defaults import detect_project_stack, detect_project_tooling
 from src.platform.template_helpers import (
     create_analyst_critic_agent_tools,
     create_automated_quality_checker_agent_tools,
@@ -115,7 +115,12 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
             print('\nNo build files detected. Tooling section skipped.')
             print('Add tooling manually to .respec-ai/config.json if needed.')
 
-        agent_generators = _get_agent_generators(orchestrator, platform_type, tooling)
+        stack = detect_project_stack(project)
+        stack_fields = stack.model_dump(exclude_none=True)
+        if stack_fields:
+            print(f'\nStack detected: {", ".join(f"{k}={v}" for k, v in stack_fields.items())}')
+
+        agent_generators = _get_agent_generators(orchestrator, platform_type, tooling, stack)
 
         for agent_name, content in agent_generators:
             file_path = project / '.claude' / 'agents' / f'{agent_name}.md'
@@ -130,6 +135,8 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         }
         if tooling:
             config['tooling'] = {lang: lang_tools.model_dump() for lang, lang_tools in tooling.items()}
+        if stack_fields:
+            config['stack'] = stack_fields
         config_path = project / '.respec-ai' / 'config.json'
         config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         files_written.append(str(config_path.relative_to(project)))
@@ -161,6 +168,7 @@ def _get_agent_generators(
     orchestrator: PlatformOrchestrator,
     platform_type: PlatformType,
     tooling: dict[str, LanguageTooling] | None = None,
+    stack: ProjectStack = ProjectStack(),
 ) -> list[tuple[str, str]]:
     adapter = get_platform_adapter(platform_type)
 
@@ -178,14 +186,14 @@ def _get_agent_generators(
     roadmap_tools = create_roadmap_agent_tools()
     roadmap_critic_tools = create_roadmap_critic_agent_tools()
     create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
-    phase_architect_tools = create_phase_architect_agent_tools()
+    phase_architect_tools = create_phase_architect_agent_tools(stack=stack)
     phase_critic_tools = create_phase_critic_agent_tools(phase_length_soft_cap=loop_config.phase_length_soft_cap)
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling)
-    code_reviewer_tools = create_code_reviewer_agent_tools(platform_type)
-    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tooling)
+    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling, stack=stack)
+    code_reviewer_tools = create_code_reviewer_agent_tools(platform_type, stack=stack)
+    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tooling, stack=stack)
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
     frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
     backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()

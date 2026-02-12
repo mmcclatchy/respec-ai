@@ -9,6 +9,7 @@ from src.platform.models import (
     PhaseCommandTools,
     PlanCommandTools,
     PlanRoadmapCommandTools,
+    ProjectStack,
     TaskCommandTools,
 )
 from src.platform.platform_orchestrator import PlatformOrchestrator
@@ -68,6 +69,7 @@ def generate_templates(
     platform_type: PlatformType,
     mcp: FastMCP | None = None,
     tooling: dict[str, LanguageTooling] | None = None,
+    stack: ProjectStack = ProjectStack(),
 ) -> tuple[list[Path], int, int]:
     """Generate command and agent templates for a project.
 
@@ -77,6 +79,7 @@ def generate_templates(
         platform_type: Platform type (linear, github, markdown)
         mcp: Optional FastMCP instance for tool documentation extraction
         tooling: Language-keyed tooling configuration from project detection
+        stack: Project stack profile from detection or config
 
     Returns:
         Tuple of (files_written, commands_count, agents_count)
@@ -111,7 +114,7 @@ def generate_templates(
         file_path.write_text(content, encoding='utf-8')
         files_written.append(file_path)
 
-    agent_generators = _get_agent_generators(orchestrator, platform_type, tooling)
+    agent_generators = _get_agent_generators(orchestrator, platform_type, tooling, stack)
 
     for agent_name, content in agent_generators:
         file_path = agents_dir / f'{agent_name}.md'
@@ -128,6 +131,7 @@ def _get_agent_generators(
     orchestrator: PlatformOrchestrator,
     platform_type: PlatformType,
     tooling: dict[str, LanguageTooling] | None = None,
+    stack: ProjectStack = ProjectStack(),
 ) -> list[tuple[str, str]]:
     adapter = get_platform_adapter(platform_type)
 
@@ -147,14 +151,14 @@ def _get_agent_generators(
     roadmap_tools = create_roadmap_agent_tools()
     roadmap_critic_tools = create_roadmap_critic_agent_tools()
     create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
-    phase_architect_tools = create_phase_architect_agent_tools()
+    phase_architect_tools = create_phase_architect_agent_tools(stack=stack)
     phase_critic_tools = create_phase_critic_agent_tools(loop_config.phase_length_soft_cap)
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling)
-    code_reviewer_tools = create_code_reviewer_agent_tools(platform_type)
-    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tooling)
+    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling, stack=stack)
+    code_reviewer_tools = create_code_reviewer_agent_tools(platform_type, stack=stack)
+    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tooling, stack=stack)
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
     frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
     backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()

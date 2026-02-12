@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
@@ -15,10 +16,11 @@ from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
 from src.mcp.tools import register_all_tools
+from src.platform.models import ProjectStack
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
-from src.platform.tooling_defaults import detect_project_tooling
+from src.platform.tooling_defaults import detect_project_stack, detect_project_tooling
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -49,6 +51,12 @@ def add_arguments(parser: ArgumentParser) -> None:
         '--force',
         action='store_true',
         help='Overwrite existing configuration if present',
+    )
+    parser.add_argument(
+        '-y',
+        '--yes',
+        action='store_true',
+        help='Skip confirmation prompt and accept detected configuration',
     )
 
 
@@ -100,13 +108,31 @@ def run(args: Namespace) -> int:
             progress.update(task, description='Detecting project tooling...')
             tooling = detect_project_tooling(project_path)
 
-            progress.update(task, description='Generating templates...')
+            progress.update(task, description='Detecting project stack...')
+            stack = detect_project_stack(project_path)
+
+            progress.update(task, description='Detection complete!')
+
+        _display_detected_config(platform, project_name, tooling, stack)
+
+        if not args.yes:
+            response = console.input('\n[bold]Proceed with detected configuration?[/bold] [Y/n] ')
+            if response.strip().lower() in ('n', 'no'):
+                print_warning('Initialization cancelled')
+                return 1
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn('[progress.description]{task.description}'),
+            console=console,
+        ) as progress:
+            task = progress.add_task('Generating templates...', total=None)
 
             mcp = FastMCP('template-generator')
             register_all_tools(mcp)
 
             files_written, commands_count, agents_count = generate_templates(
-                orchestrator, project_path, platform_type, mcp=mcp, tooling=tooling or None
+                orchestrator, project_path, platform_type, mcp=mcp, tooling=tooling or None, stack=stack
             )
 
             progress.update(task, description='Creating configuration...')
@@ -119,6 +145,9 @@ def run(args: Namespace) -> int:
             }
             if tooling:
                 config['tooling'] = {lang: t.model_dump() for lang, t in tooling.items()}
+            stack_data = stack.model_dump(exclude_none=True)
+            if stack_data:
+                config['stack'] = stack_data
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
 
             mcp_registered = False
@@ -179,6 +208,36 @@ def run(args: Namespace) -> int:
     except Exception as e:
         print_error(f'Initialization failed: {e}')
         return 1
+
+
+def _display_detected_config(
+    platform: str,
+    project_name: str,
+    tooling: dict,
+    stack: ProjectStack,
+) -> None:
+    table = Table(title='Detected Configuration', show_header=True, header_style='bold cyan')
+    table.add_column('Setting', style='bold')
+    table.add_column('Value')
+
+    table.add_row('Project Name', project_name)
+    table.add_row('Platform', platform)
+
+    if tooling:
+        table.add_row('Tooling', ', '.join(tooling.keys()))
+    else:
+        table.add_row('Tooling', '[dim]none detected[/dim]')
+
+    stack_fields = stack.model_dump(exclude_none=True)
+    if stack_fields:
+        for field_name, value in stack_fields.items():
+            label = field_name.replace('_', ' ').title()
+            table.add_row(f'Stack: {label}', str(value))
+    else:
+        table.add_row('Stack', '[dim]none detected[/dim]')
+
+    console.print()
+    console.print(table)
 
 
 if __name__ == '__main__':

@@ -200,6 +200,10 @@ FOR each mode IN MODES_IN_TASK:
 
 **Note**: Apply mode-specific criteria when assessing code for each Implementation Step based on its mode tag.
 
+## PROJECT STACK PROFILE
+
+{tools.stack_section}
+
 ## ASSESSMENT CRITERIA (100 Points Total)
 
 ### 1. Tests Passing (30 Points)

@@ -41,6 +41,10 @@ WORKFLOW: Task + Phase → Production Code
 
 {tools.tooling_section}
 
+## PROJECT STACK PROFILE
+
+{tools.stack_section}
+
 ## RESEARCH INTEGRATION
 
 **Research Location in Task**:

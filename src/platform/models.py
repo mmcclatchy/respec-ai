@@ -25,6 +25,19 @@ class PlatformModel(BaseModel):
     )
 
 
+class ProjectStack(PlatformModel):
+    language: str | None = Field(default=None, description='Primary language (e.g., python, javascript, go, rust)')
+    framework: str | None = Field(default=None, description='Web framework (e.g., fastapi, flask, react, next)')
+    package_manager: str | None = Field(default=None, description='Package manager (e.g., uv, pip, npm, yarn)')
+    runtime_version: str | None = Field(default=None, description='Language runtime version (e.g., 3.13, 22)')
+    database: str | None = Field(default=None, description='Database (e.g., postgresql, sqlite, mongodb)')
+    api_style: str | None = Field(default=None, description='API style (e.g., rest, graphql, grpc)')
+    deployment_target: str | None = Field(default=None, description='Deployment target (e.g., docker, aws, vercel)')
+    css_framework: str | None = Field(default=None, description='CSS framework (e.g., tailwindcss, bootstrap)')
+    ui_components: str | None = Field(default=None, description='UI component library (e.g., daisyui, shadcn)')
+    architecture: str | None = Field(default=None, description='Architecture pattern (e.g., monolith, microservices)')
+
+
 class LanguageTooling(PlatformModel):
     test_runner: str = Field(description='Test runner name (e.g., pytest, vitest)')
     test_command: str = Field(description='Command to run tests')
@@ -722,6 +735,11 @@ class PhaseArchitectAgentTools(BaseModel):
     get_feedback: str = Field(..., description='Retrieve previous critic feedback')
     get_document: str = Field(..., description='Retrieve current specification')
     update_document: str = Field(..., description='Store complete specification')
+    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
+
+    @computed_field
+    def stack_section(self) -> str:
+        return _render_stack_section(self.stack)
 
 
 class PhaseCriticAgentTools(BaseModel):
@@ -785,6 +803,31 @@ class CreatePhaseAgentTools(BaseModel):
         return self._adapter.platform_tool_documentation
 
 
+def _render_stack_section(stack: 'ProjectStack') -> str:
+    fields = {
+        'Language': stack.language,
+        'Framework': stack.framework,
+        'Package Manager': stack.package_manager,
+        'Runtime Version': stack.runtime_version,
+        'Database': stack.database,
+        'API Style': stack.api_style,
+        'Deployment Target': stack.deployment_target,
+        'CSS Framework': stack.css_framework,
+        'UI Components': stack.ui_components,
+        'Architecture': stack.architecture,
+    }
+    populated = {k: v for k, v in fields.items() if v is not None}
+    if not populated:
+        return (
+            'No project stack profile configured. Run `respec-ai init` to detect project stack, '
+            'or manually add a `stack` section to `.respec-ai/config.json`.'
+        )
+    lines = ['Project stack profile (detected during `respec-ai init`):\n']
+    for label, value in populated.items():
+        lines.append(f'- **{label}**: {value}')
+    return '\n'.join(lines)
+
+
 def _render_tooling_section(tooling: dict[str, 'LanguageTooling']) -> str:
     if not tooling:
         return (
@@ -833,6 +876,7 @@ class CoderAgentTools(BaseModel):
     tooling: dict[str, LanguageTooling] = Field(
         default_factory=dict, description='Language-keyed tooling configuration'
     )
+    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
 
     _adapter: PlatformAdapter = PrivateAttr()
 
@@ -842,6 +886,10 @@ class CoderAgentTools(BaseModel):
     @computed_field
     def tooling_section(self) -> str:
         return _render_tooling_section(self.tooling)
+
+    @computed_field
+    def stack_section(self) -> str:
+        return _render_stack_section(self.stack)
 
     @computed_field
     def update_task_tool_interpolated(self) -> str:
@@ -972,11 +1020,16 @@ class CodeReviewerAgentTools(BaseModel):
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_feedback: str = Field(..., description='Store code review feedback in coding loop')
     platform: PlatformType = Field(..., description='Selected platform type')
+    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
 
     _adapter: PlatformAdapter = PrivateAttr()
 
     def model_post_init(self, __context: Any) -> None:
         self._adapter = get_platform_adapter(self.platform)
+
+    @computed_field
+    def stack_section(self) -> str:
+        return _render_stack_section(self.stack)
 
     @computed_field
     def research_directory_pattern(self) -> str:
@@ -1009,10 +1062,15 @@ class AutomatedQualityCheckerAgentTools(BaseModel):
     tooling: dict[str, LanguageTooling] = Field(
         default_factory=dict, description='Language-keyed tooling configuration'
     )
+    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
 
     @computed_field
     def tooling_section(self) -> str:
         return _render_tooling_section(self.tooling)
+
+    @computed_field
+    def stack_section(self) -> str:
+        return _render_stack_section(self.stack)
 
 
 class SpecAlignmentReviewerAgentTools(BaseModel):
