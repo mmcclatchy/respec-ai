@@ -38,14 +38,26 @@ class TestCriticAgent:
             'phase-critic',
             'task-critic',
             'code-reviewer',
+            'automated-quality-checker',
+            'spec-alignment-reviewer',
+            'frontend-reviewer',
+            'backend-api-reviewer',
+            'database-reviewer',
+            'infrastructure-reviewer',
+            'review-consolidator',
         }
 
         actual_agents = {agent.value for agent in CriticAgent}
 
         assert actual_agents == expected_agents
-        assert len(CriticAgent) == 6
+        assert len(CriticAgent) == 13
 
     def test_critic_agent_enum_values_use_kebab_case(self) -> None:
         for agent in CriticAgent:
-            assert agent.value.endswith('-critic') or agent.value.endswith('-reviewer')
+            assert (
+                agent.value.endswith('-critic')
+                or agent.value.endswith('-reviewer')
+                or agent.value.endswith('-checker')
+                or agent.value.endswith('-consolidator')
+            )
             assert '_' not in agent.value

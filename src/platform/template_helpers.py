@@ -2,10 +2,16 @@ from src.models.enums import DocumentType
 
 from .models import (
     AnalystCriticAgentTools,
+    AutomatedQualityCheckerAgentTools,
+    BackendApiReviewerAgentTools,
     CodeCommandTools,
     CoderAgentTools,
     CodeReviewerAgentTools,
     CreatePhaseAgentTools,
+    DatabaseReviewerAgentTools,
+    FrontendReviewerAgentTools,
+    InfrastructureReviewerAgentTools,
+    LanguageTooling,
     PhaseArchitectAgentTools,
     PhaseCommandTools,
     PhaseCriticAgentTools,
@@ -13,8 +19,10 @@ from .models import (
     PlanCommandTools,
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
+    ReviewConsolidatorAgentTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
+    SpecAlignmentReviewerAgentTools,
     TaskCommandTools,
     TaskCriticAgentTools,
     TaskPlanCriticAgentTools,
@@ -180,6 +188,13 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_task_agent(RespecAIAgent.TASK_CRITIC)
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.CODE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
+    builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
     builder.add_builtin_tool(BuiltInTool.TASK, 'research-synthesizer')
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
 
@@ -591,7 +606,11 @@ def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
     )
 
 
-def create_coder_agent_tools(platform_tools: list[str], platform_type: 'PlatformType') -> CoderAgentTools:
+def create_coder_agent_tools(
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    tooling: dict[str, LanguageTooling] | None = None,
+) -> CoderAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CoderAgentTools.respec_ai_tools:
@@ -615,6 +634,7 @@ def create_coder_agent_tools(platform_tools: list[str], platform_type: 'Platform
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
         platform=platform_type,
+        tooling=tooling or {},
     )
 
 
@@ -641,4 +661,199 @@ def create_create_phase_agent_tools(platform_tools: list[str], platform: Platfor
             content='{EXTRACTED_PHASE_MARKDOWN}',
         ),
         platform=platform,
+    )
+
+
+def create_automated_quality_checker_agent_tools(
+    tooling: dict[str, LanguageTooling] | None = None,
+) -> AutomatedQualityCheckerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in AutomatedQualityCheckerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in AutomatedQualityCheckerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return AutomatedQualityCheckerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-quality-check',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+        tooling=tooling or {},
+    )
+
+
+def create_spec_alignment_reviewer_agent_tools() -> SpecAlignmentReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in SpecAlignmentReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in SpecAlignmentReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return SpecAlignmentReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-spec-alignment',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_frontend_reviewer_agent_tools() -> FrontendReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in FrontendReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in FrontendReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return FrontendReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-frontend',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_backend_api_reviewer_agent_tools() -> BackendApiReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in BackendApiReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in BackendApiReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return BackendApiReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-backend-api',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_database_reviewer_agent_tools() -> DatabaseReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in DatabaseReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in DatabaseReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return DatabaseReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-database',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_infrastructure_reviewer_agent_tools() -> InfrastructureReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in InfrastructureReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in InfrastructureReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return InfrastructureReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-infrastructure',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_review_consolidator_agent_tools() -> ReviewConsolidatorAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in ReviewConsolidatorAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in ReviewConsolidatorAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return ReviewConsolidatorAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_review_sections=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LIST_DOCUMENTS,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            parent_key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        get_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{REVIEW_SECTION_KEY}',
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
+        store_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
+        ),
     )

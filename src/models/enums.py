@@ -67,6 +67,23 @@ class CriticAgent(str, Enum):
     PHASE_CRITIC = 'phase-critic'
     TASK_CRITIC = 'task-critic'
     CODE_REVIEWER = 'code-reviewer'
+    AUTOMATED_QUALITY_CHECKER = 'automated-quality-checker'
+    SPEC_ALIGNMENT_REVIEWER = 'spec-alignment-reviewer'
+    FRONTEND_REVIEWER = 'frontend-reviewer'
+    BACKEND_API_REVIEWER = 'backend-api-reviewer'
+    DATABASE_REVIEWER = 'database-reviewer'
+    INFRASTRUCTURE_REVIEWER = 'infrastructure-reviewer'
+    REVIEW_CONSOLIDATOR = 'review-consolidator'
+
+
+class StepMode(str, Enum):
+    IMPLEMENTATION = 'implementation'
+    FRONTEND = 'frontend'
+    API = 'api'
+    DATABASE = 'database'
+    INFRASTRUCTURE = 'infrastructure'
+    INTEGRATION = 'integration'
+    TEST = 'test'
 
 
 class DocumentType(str, Enum):

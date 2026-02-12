@@ -153,6 +153,15 @@ class RespecAIAgent(StrEnum):
     CODER = f'{_RESPEC_AGENT_PREFIX}coder'
     CODE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}code-reviewer'
 
+    # Review team agents
+    AUTOMATED_QUALITY_CHECKER = f'{_RESPEC_AGENT_PREFIX}automated-quality-checker'
+    SPEC_ALIGNMENT_REVIEWER = f'{_RESPEC_AGENT_PREFIX}spec-alignment-reviewer'
+    FRONTEND_REVIEWER = f'{_RESPEC_AGENT_PREFIX}frontend-reviewer'
+    BACKEND_API_REVIEWER = f'{_RESPEC_AGENT_PREFIX}backend-api-reviewer'
+    DATABASE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}database-reviewer'
+    INFRASTRUCTURE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}infrastructure-reviewer'
+    REVIEW_CONSOLIDATOR = f'{_RESPEC_AGENT_PREFIX}review-consolidator'
+
     # Roadmap workflow agents
     ROADMAP = f'{_RESPEC_AGENT_PREFIX}roadmap'
     ROADMAP_CRITIC = f'{_RESPEC_AGENT_PREFIX}roadmap-critic'

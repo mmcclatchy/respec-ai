@@ -10,36 +10,52 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
+from src.platform.models import LanguageTooling
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
+from src.platform.tooling_defaults import detect_project_tooling
 from src.platform.template_helpers import (
     create_analyst_critic_agent_tools,
+    create_automated_quality_checker_agent_tools,
+    create_backend_api_reviewer_agent_tools,
     create_code_reviewer_agent_tools,
     create_coder_agent_tools,
     create_create_phase_agent_tools,
+    create_database_reviewer_agent_tools,
+    create_frontend_reviewer_agent_tools,
+    create_infrastructure_reviewer_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
     create_plan_analyst_agent_tools,
     create_plan_critic_agent_tools,
+    create_review_consolidator_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_spec_alignment_reviewer_agent_tools,
     create_task_critic_agent_tools,
     create_task_plan_critic_agent_tools,
     create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
+    generate_automated_quality_checker_template,
+    generate_backend_api_reviewer_template,
     generate_code_reviewer_template,
     generate_coder_template,
     generate_create_phase_template,
+    generate_database_reviewer_template,
+    generate_frontend_reviewer_template,
+    generate_infrastructure_reviewer_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
     generate_plan_analyst_template,
     generate_plan_critic_template,
+    generate_review_consolidator_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
+    generate_spec_alignment_reviewer_template,
     generate_task_critic_template,
     generate_task_plan_critic_template,
     generate_task_planner_template,
@@ -91,19 +107,29 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
             file_path.write_text(content, encoding='utf-8')
             files_written.append(str(file_path.relative_to(project)))
 
-        agent_generators = _get_agent_generators(orchestrator, platform_type)
+        tooling = detect_project_tooling(project)
+        if tooling:
+            print(f'\nTooling configured for: {", ".join(tooling.keys())}')
+            print('Edit .respec-ai/config.json to customize tool commands.')
+        else:
+            print('\nNo build files detected. Tooling section skipped.')
+            print('Add tooling manually to .respec-ai/config.json if needed.')
+
+        agent_generators = _get_agent_generators(orchestrator, platform_type, tooling)
 
         for agent_name, content in agent_generators:
             file_path = project / '.claude' / 'agents' / f'{agent_name}.md'
             file_path.write_text(content, encoding='utf-8')
             files_written.append(str(file_path.relative_to(project)))
 
-        config = {
+        config: dict[str, Any] = {
             'plan_name': plan_name,
             'platform': platform,
             'created_at': datetime.now().isoformat(),
             'version': '1.0',
         }
+        if tooling:
+            config['tooling'] = {lang: lang_tools.model_dump() for lang, lang_tools in tooling.items()}
         config_path = project / '.respec-ai' / 'config.json'
         config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         files_written.append(str(config_path.relative_to(project)))
@@ -131,7 +157,11 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         return 1
 
 
-def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: PlatformType) -> list[tuple[str, str]]:
+def _get_agent_generators(
+    orchestrator: PlatformOrchestrator,
+    platform_type: PlatformType,
+    tooling: dict[str, LanguageTooling] | None = None,
+) -> list[tuple[str, str]]:
     adapter = get_platform_adapter(platform_type)
 
     create_phase_platform_tools = [
@@ -142,7 +172,6 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
 
     coder_platform_tools = [adapter.update_phase_tool]
 
-    # Create tools using helper functions
     plan_analyst_tools = create_plan_analyst_agent_tools()
     plan_critic_tools = create_plan_critic_agent_tools()
     analyst_critic_tools = create_analyst_critic_agent_tools()
@@ -154,8 +183,15 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type)
+    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling)
     code_reviewer_tools = create_code_reviewer_agent_tools(platform_type)
+    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tooling)
+    spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
+    frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
+    backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()
+    database_reviewer_tools = create_database_reviewer_agent_tools()
+    infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools()
+    review_consolidator_tools = create_review_consolidator_agent_tools()
 
     return [
         ('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
@@ -171,6 +207,16 @@ def _get_agent_generators(orchestrator: PlatformOrchestrator, platform_type: Pla
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-coder', generate_coder_template(coder_tools)),
         ('respec-code-reviewer', generate_code_reviewer_template(code_reviewer_tools)),
+        (
+            'respec-automated-quality-checker',
+            generate_automated_quality_checker_template(automated_quality_checker_tools),
+        ),
+        ('respec-spec-alignment-reviewer', generate_spec_alignment_reviewer_template(spec_alignment_reviewer_tools)),
+        ('respec-frontend-reviewer', generate_frontend_reviewer_template(frontend_reviewer_tools)),
+        ('respec-backend-api-reviewer', generate_backend_api_reviewer_template(backend_api_reviewer_tools)),
+        ('respec-database-reviewer', generate_database_reviewer_template(database_reviewer_tools)),
+        ('respec-infrastructure-reviewer', generate_infrastructure_reviewer_template(infrastructure_reviewer_tools)),
+        ('respec-review-consolidator', generate_review_consolidator_template(review_consolidator_tools)),
     ]
 
 
