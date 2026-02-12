@@ -29,7 +29,7 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
-        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
         result = init.run(args)
 
         assert result == 0
@@ -47,7 +47,7 @@ class TestInitCommand:
         respec_ai_dir.mkdir()
         (respec_ai_dir / 'config.json').write_text('{}')
 
-        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
         result = init.run(args)
 
         assert result == 1
@@ -70,7 +70,7 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
         mock_register = mocker.patch('src.cli.commands.init.register_mcp_server')
 
-        args = Namespace(platform='linear', project_name='MyProject', skip_mcp_registration=True)
+        args = Namespace(platform='linear', project_name='MyProject', skip_mcp_registration=True, yes=True, force=False)
         result = init.run(args)
 
         assert result == 0
@@ -95,7 +95,9 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
-        args = Namespace(platform='github', project_name='CustomName', skip_mcp_registration=False)
+        args = Namespace(
+            platform='github', project_name='CustomName', skip_mcp_registration=False, yes=True, force=False
+        )
         result = init.run(args)
 
         assert result == 0
@@ -126,7 +128,7 @@ class TestInitCommand:
         mock_docker = mocker.patch('src.cli.commands.init.DockerManager')
         mock_docker.return_value.verify_image_exists.return_value = True
 
-        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False)
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
         result = init.run(args)
 
         assert result == 0

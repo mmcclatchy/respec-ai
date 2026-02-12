@@ -125,6 +125,10 @@ Phase updated successfully.
 - Sections: [count of major sections]
 ```
 
+## PROJECT STACK PROFILE
+
+{tools.stack_section}
+
 ## OUTPUT DETAIL GUIDELINES
 
 ### INCLUDE (Architecture/Requirements Level)

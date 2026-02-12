@@ -19,6 +19,7 @@ from .models import (
     PlanCommandTools,
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
+    ProjectStack,
     ReviewConsolidatorAgentTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
@@ -336,7 +337,9 @@ def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') 
     )
 
 
-def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
+def create_phase_architect_agent_tools(
+    stack: ProjectStack = ProjectStack(),
+) -> PhaseArchitectAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PhaseArchitectAgentTools.respec_ai_tools:
@@ -360,6 +363,7 @@ def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
             key='{PLAN_NAME}/{PHASE_NAME}',
             content='{GENERATED_PHASE_MARKDOWN}',
         ),
+        stack=stack,
     )
 
 
@@ -515,7 +519,10 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     )
 
 
-def create_code_reviewer_agent_tools(platform_type: 'PlatformType') -> CodeReviewerAgentTools:
+def create_code_reviewer_agent_tools(
+    platform_type: 'PlatformType',
+    stack: ProjectStack = ProjectStack(),
+) -> CodeReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CodeReviewerAgentTools.respec_ai_tools:
@@ -539,6 +546,7 @@ def create_code_reviewer_agent_tools(platform_type: 'PlatformType') -> CodeRevie
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
         platform=platform_type,
+        stack=stack,
     )
 
 
@@ -610,6 +618,7 @@ def create_coder_agent_tools(
     platform_tools: list[str],
     platform_type: 'PlatformType',
     tooling: dict[str, LanguageTooling] | None = None,
+    stack: ProjectStack = ProjectStack(),
 ) -> CoderAgentTools:
     builder = TemplateToolBuilder()
 
@@ -635,6 +644,7 @@ def create_coder_agent_tools(
         ),
         platform=platform_type,
         tooling=tooling or {},
+        stack=stack,
     )
 
 
@@ -666,6 +676,7 @@ def create_create_phase_agent_tools(platform_tools: list[str], platform: Platfor
 
 def create_automated_quality_checker_agent_tools(
     tooling: dict[str, LanguageTooling] | None = None,
+    stack: ProjectStack = ProjectStack(),
 ) -> AutomatedQualityCheckerAgentTools:
     builder = TemplateToolBuilder()
 
@@ -693,6 +704,7 @@ def create_automated_quality_checker_agent_tools(
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
         tooling=tooling or {},
+        stack=stack,
     )
 
 

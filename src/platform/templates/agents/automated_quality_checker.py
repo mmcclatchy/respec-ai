@@ -35,6 +35,10 @@ TASKS: Run Static Analysis → Generate Review Section → Store
 
 {tools.tooling_section}
 
+## PROJECT STACK PROFILE
+
+{tools.stack_section}
+
 For multi-language projects, run ALL language checks and report results per language.
 
 ## ASSESSMENT CRITERIA (70 Points Total)

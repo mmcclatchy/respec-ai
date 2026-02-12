@@ -1,11 +1,14 @@
+from src.platform.models import ProjectStack
 from src.platform.platform_selector import PlatformType
 from src.platform.template_helpers import (
     create_automated_quality_checker_agent_tools,
     create_backend_api_reviewer_agent_tools,
+    create_code_reviewer_agent_tools,
     create_coder_agent_tools,
     create_database_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
+    create_phase_architect_agent_tools,
     create_review_consolidator_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
 )
@@ -344,3 +347,43 @@ class TestToolingSectionComputed:
         assert 'TOOLS.test_runner' not in template
         assert 'CONFIG = Read' not in template
         assert 'TOOLING[LANGUAGE]' not in template
+
+
+class TestStackSectionComputed:
+    def test_stack_section_on_coder_agent_tools(self) -> None:
+        stack = ProjectStack(language='python', framework='fastapi', package_manager='uv')
+        tools = create_coder_agent_tools(
+            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_type=PlatformType.MARKDOWN,
+            stack=stack,
+        )
+        section: str = tools.stack_section  # type: ignore[assignment]
+        assert '**Language**: python' in section
+        assert '**Framework**: fastapi' in section
+
+    def test_stack_section_on_automated_quality_checker(self) -> None:
+        stack = ProjectStack(language='python', package_manager='uv')
+        tools = create_automated_quality_checker_agent_tools(stack=stack)
+        section: str = tools.stack_section  # type: ignore[assignment]
+        assert '**Language**: python' in section
+
+    def test_stack_section_on_code_reviewer(self) -> None:
+        stack = ProjectStack(language='typescript', framework='react')
+        tools = create_code_reviewer_agent_tools(PlatformType.MARKDOWN, stack=stack)
+        section: str = tools.stack_section  # type: ignore[assignment]
+        assert '**Language**: typescript' in section
+        assert '**Framework**: react' in section
+
+    def test_stack_section_on_phase_architect(self) -> None:
+        stack = ProjectStack(language='go', package_manager='go modules')
+        tools = create_phase_architect_agent_tools(stack=stack)
+        section: str = tools.stack_section  # type: ignore[assignment]
+        assert '**Language**: go' in section
+
+    def test_stack_section_empty_returns_fallback(self) -> None:
+        tools = create_coder_agent_tools(
+            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_type=PlatformType.MARKDOWN,
+        )
+        section: str = tools.stack_section  # type: ignore[assignment]
+        assert 'No project stack profile configured' in section

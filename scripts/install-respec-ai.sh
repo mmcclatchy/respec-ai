@@ -242,7 +242,7 @@ echo ""
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
 if [ "$CLEAN_INSTALL" = true ]; then
     print_info "Generating respec-ai workflow files (clean install - will remove existing .respec-ai folder)..."
-    CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --force"
+    CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --force --yes"
 else
     # Check if already initialized
     if [ -f "$TARGET_DIR/.respec-ai/config.json" ]; then
@@ -278,7 +278,7 @@ EOF
         fi
     else
         print_info "Generating respec-ai workflow files (first-time setup)..."
-        CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration"
+        CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --yes"
     fi
 fi
 
