@@ -154,7 +154,51 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
 
     EXIT: Workflow suspended pending user decision
 
-Proceed to Step 7 (Coding Loop)
+Proceed to Step 6.5 (Mode Extraction)
+```
+
+### 6.5 Extract Step Modes from Task
+
+Parse Task document to determine which specialist reviewers to activate:
+
+```text
+TASK_MARKDOWN = {tools.get_task_document}
+
+STEP_MODES = set()
+
+For each "#### Step N:" section in TASK_MARKDOWN:
+  Scan Step content for mode indicators:
+  IF contains frontend keywords (UI, component, template, CSS, accessibility, HTMX, React, Vue):
+    STEP_MODES.add("frontend")
+  IF contains API keywords (endpoint, REST, route, request, response, authentication, middleware):
+    STEP_MODES.add("api")
+  IF contains database keywords (schema, migration, model, query, index, SQL, ORM):
+    STEP_MODES.add("database")
+  IF contains infrastructure keywords (Docker, CI/CD, deployment, container, pipeline, environment):
+    STEP_MODES.add("infrastructure")
+
+Display: "✓ Detected step modes: {{STEP_MODES}}"
+```
+
+### 6.6 Resolve Active Reviewers
+
+Determine which review agents to invoke based on detected modes:
+
+```text
+ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer"]
+
+IF "frontend" in STEP_MODES:
+  ACTIVE_REVIEWERS.append("frontend-reviewer")
+IF "api" in STEP_MODES:
+  ACTIVE_REVIEWERS.append("backend-api-reviewer")
+IF "database" in STEP_MODES:
+  ACTIVE_REVIEWERS.append("database-reviewer")
+IF "infrastructure" in STEP_MODES:
+  ACTIVE_REVIEWERS.append("infrastructure-reviewer")
+
+ACTIVE_REVIEWERS.append("review-consolidator")
+
+Display: "✓ Active reviewers: {{ACTIVE_REVIEWERS}}"
 ```
 
 ### 7. Coding Loop Initialization and Refinement
@@ -181,12 +225,12 @@ You now have TWO active loop IDs - DO NOT confuse them:
 
 **task_loop_id = {{TASK_LOOP_ID}}**
 - Purpose: Retrieve Task document (created during /respec-task)
-- Used by: coder (to get implementation plan), code-reviewer (to verify against Task)
+- Used by: coder (to get implementation plan), reviewers (to verify against Task/Phase)
 - Storage: Task document linked to this loop
 
 **coding_loop_id = {{CODING_LOOP_ID}}**
 - Purpose: Store/retrieve code feedback
-- Used by: coder (feedback retrieval), code-reviewer (feedback storage)
+- Used by: coder (feedback retrieval), review-consolidator (feedback storage)
 - Storage: CriticFeedback for code quality
 
 Pass BOTH IDs to coding agents. Never swap them.
@@ -202,15 +246,52 @@ Invoke coder agent with:
 Expected: Code implementation committed, platform status updated
 ```
 
-#### Code Quality Assessment
+#### Step 7.4.1: Review Team Orchestration
+
+Invoke review agents sequentially. Core reviewers always run; optional specialists based on ACTIVE_REVIEWERS from Step 6.6.
+
+**Core Reviewers (always active):**
 ```text
-Invoke code-reviewer agent with:
+Invoke automated-quality-checker agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
-- task_loop_id: {{TASK_LOOP_ID}} (CRITICAL - for Phase retrieval)
+- task_loop_id: {{TASK_LOOP_ID}}
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
 
-Expected: CriticFeedback with Overall Score and test results stored in MCP
+Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-quality-check
+```
+
+```text
+Invoke spec-alignment-reviewer agent with:
+- coding_loop_id: {{CODING_LOOP_ID}}
+- task_loop_id: {{TASK_LOOP_ID}}
+- plan_name: {{PLAN_NAME}}
+- phase_name: {{PHASE_NAME}}
+
+Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-spec-alignment
+```
+
+**Optional Specialist Reviewers (from ACTIVE_REVIEWERS):**
+```text
+For each REVIEWER in ACTIVE_REVIEWERS where REVIEWER is not core and not consolidator:
+  Invoke {{REVIEWER}} agent with:
+  - coding_loop_id: {{CODING_LOOP_ID}}
+  - task_loop_id: {{TASK_LOOP_ID}}
+  - plan_name: {{PLAN_NAME}}
+  - phase_name: {{PHASE_NAME}}
+
+  Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-{{REVIEWER_SLUG}}
+```
+
+**Consolidator (always last):**
+```text
+Invoke review-consolidator agent with:
+- coding_loop_id: {{CODING_LOOP_ID}}
+- plan_name: {{PLAN_NAME}}
+- phase_name: {{PHASE_NAME}}
+- active_reviewers: {{ACTIVE_REVIEWERS}}
+
+Expected: Single CriticFeedback with Overall Score stored in MCP coding loop
 ```
 
 #### MCP Coding Decision
@@ -231,7 +312,7 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```text
 IF CODING_DECISION == "refine":
   Re-invoke coder agent (same parameters).
-  Re-invoke code-reviewer agent.
+  Re-invoke review team (Step 7.4.1: quality-checker → spec-alignment → specialists → consolidator).
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
@@ -248,7 +329,7 @@ ELIF CODING_DECISION == "user_input":
   Prompt user for guidance
   Store user feedback: {tools.store_user_feedback}
   Re-invoke coder agent (same parameters)
-  Re-invoke code-reviewer agent (same parameters)
+  Re-invoke review team (Step 7.4.1: quality-checker → spec-alignment → specialists → consolidator)
   Call MCP decision again
 ```
 
@@ -296,8 +377,8 @@ Code Implementation:
 - Iterations: {{CODING_ITERATION_COUNT}}
 - Tests Passing: {{TESTS_PASSING}}/{{TOTAL_TESTS}}
 - Coverage: {{COVERAGE_PERCENTAGE}}%
-- MyPy: {{MYPY_STATUS}}
-- Ruff: {{RUFF_STATUS}}
+- Type Checker: {{TYPE_CHECKER_STATUS}}
+- Linter: {{LINTER_STATUS}}
 
 Implementation artifacts:
 - Phase: Available via task_loop_id={{TASK_LOOP_ID}}
@@ -330,7 +411,7 @@ Ready for deployment."
 
 ### Quality Assessment
 - **Phase Evaluation**: Assessed by task-critic agent
-- **Code Quality Evaluation**: Assessed by code-reviewer agent
+- **Code Quality Evaluation**: Assessed by review team (automated-quality-checker, spec-alignment-reviewer, optional specialists, review-consolidator)
 - **Loop Decisions**: Made by MCP Server based on configuration
 - **Thresholds and Limits**: Managed by MCP Server
 
@@ -345,8 +426,8 @@ Ready for deployment."
 
 **Code Quality Assessment Criteria**:
 1. Tests Passing: All tests execute successfully
-2. Type Checking Clean: MyPy reports zero errors
-3. Linting Clean: Ruff reports zero issues
+2. Type Checking Clean: Type checker reports zero errors
+3. Linting Clean: Linter reports zero issues
 4. Test Coverage: Adequate coverage of critical paths
 5. Phase Alignment: File structure and features match plan
 6. Phase Requirements: All objectives implemented
@@ -372,8 +453,8 @@ IF coder fails:
   Provide diagnostic information
   Suggest manual intervention
 
-IF code-reviewer fails:
-  Run static analysis manually (Bash: pytest, mypy, ruff)
+IF review team fails:
+  Run static analysis manually (Bash: test runner, type checker, linter from Phase tech stack)
   Report test results without quality score
   Continue with manual quality assessment
   Note automated review unavailable
@@ -400,7 +481,10 @@ The command maintains orchestration focus by:
 
 All specialized work delegated to appropriate agents:
 - **coder**: TDD code implementation (MCP access + platform tools)
-- **code-reviewer**: Code quality assessment
+- **automated-quality-checker**: Static analysis (tests, types, lint, coverage)
+- **spec-alignment-reviewer**: Task/Phase/Plan alignment verification
+- **specialist reviewers**: Domain-specific review (frontend, API, database, infrastructure)
+- **review-consolidator**: Merges all review sections into single CriticFeedback
 - **MCP Server**: Decision logic, threshold management, state storage
 
 ## Workflow Enhancements

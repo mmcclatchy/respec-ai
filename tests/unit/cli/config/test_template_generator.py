@@ -4,6 +4,7 @@ from pytest_mock import MockerFixture
 
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
+from src.platform.tooling_defaults import TOOLING_DEFAULTS
 
 
 class TestGenerateTemplates:
@@ -75,8 +76,8 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert agents_count == 13  # Updated: removed respec-create-task agent
-        assert len(list(agents_dir.glob('*.md'))) == 13
+        assert agents_count == 20  # 13 existing + 7 review team agents
+        assert len(list(agents_dir.glob('*.md'))) == 20
 
     def test_returns_file_paths(self, mocker: MockerFixture, tmp_path: Path) -> None:
         commands_dir = tmp_path / 'commands'
@@ -100,7 +101,7 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert len(files_written) == 19  # Updated: 6 commands + 13 agents = 19
+        assert len(files_written) == 26  # 6 commands + 20 agents = 26
         assert all(isinstance(f, Path) for f in files_written)
         assert all(f.suffix == '.md' for f in files_written)
 
@@ -126,4 +127,32 @@ class TestGenerateTemplates:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
 
             assert commands_count == 6
-            assert agents_count == 13  # Updated: removed respec-create-task agent
+            assert agents_count == 20  # 13 existing + 7 review team agents
+
+    def test_passes_tooling_to_agent_templates(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+        commands_dir.mkdir(parents=True)
+        agents_dir.mkdir(parents=True)
+
+        mocker.patch(
+            'src.platform.template_generator.get_commands_dir',
+            return_value=commands_dir,
+        )
+        mocker.patch(
+            'src.platform.template_generator.get_agents_dir',
+            return_value=agents_dir,
+        )
+
+        mock_orchestrator = mocker.MagicMock()
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+
+        generate_templates(mock_orchestrator, tmp_path, PlatformType.MARKDOWN, tooling=tooling)
+
+        coder_content = (agents_dir / 'respec-coder.md').read_text()
+        quality_checker_content = (agents_dir / 'respec-automated-quality-checker.md').read_text()
+
+        assert 'pytest' in coder_content
+        assert 'pytest' in quality_checker_content

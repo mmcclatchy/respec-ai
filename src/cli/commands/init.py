@@ -18,6 +18,7 @@ from src.mcp.tools import register_all_tools
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
+from src.platform.tooling_defaults import detect_project_tooling
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -96,13 +97,16 @@ def run(args: Namespace) -> int:
             get_commands_dir(project_path).mkdir(parents=True, exist_ok=True)
             get_agents_dir(project_path).mkdir(parents=True, exist_ok=True)
 
+            progress.update(task, description='Detecting project tooling...')
+            tooling = detect_project_tooling(project_path)
+
             progress.update(task, description='Generating templates...')
 
             mcp = FastMCP('template-generator')
             register_all_tools(mcp)
 
             files_written, commands_count, agents_count = generate_templates(
-                orchestrator, project_path, platform_type, mcp=mcp
+                orchestrator, project_path, platform_type, mcp=mcp, tooling=tooling or None
             )
 
             progress.update(task, description='Creating configuration...')
@@ -113,6 +117,8 @@ def run(args: Namespace) -> int:
                 'created_at': datetime.now().isoformat(),
                 'version': get_package_version(),
             }
+            if tooling:
+                config['tooling'] = {lang: t.model_dump() for lang, t in tooling.items()}
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
 
             mcp_registered = False

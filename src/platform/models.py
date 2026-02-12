@@ -25,6 +25,23 @@ class PlatformModel(BaseModel):
     )
 
 
+class LanguageTooling(PlatformModel):
+    test_runner: str = Field(description='Test runner name (e.g., pytest, vitest)')
+    test_command: str = Field(description='Command to run tests')
+    coverage_command: str = Field(description='Command to run tests with coverage')
+    checker: str = Field(description='Static checker name (e.g., mypy, tsc, cargo check)')
+    check_command: str = Field(description='Command to run static checks')
+    linter: str = Field(description='Linter name (e.g., ruff, eslint, clippy)')
+    lint_command: str = Field(description='Command to run linter')
+
+
+class ProjectToolingConfig(PlatformModel):
+    tooling: dict[str, LanguageTooling] = Field(
+        default_factory=dict,
+        description='Language-keyed tooling configuration',
+    )
+
+
 class PlatformRequest(PlatformModel):
     project_path: Path = Field(description='Absolute path to the project')
 
@@ -364,7 +381,9 @@ class CodeCommandTools(BaseModel):
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
+        RespecAITool.LIST_DOCUMENTS,
         RespecAITool.STORE_USER_FEEDBACK,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
         RespecAITool.GET_FEEDBACK,
     ]
 
@@ -766,6 +785,30 @@ class CreatePhaseAgentTools(BaseModel):
         return self._adapter.platform_tool_documentation
 
 
+def _render_tooling_section(tooling: dict[str, 'LanguageTooling']) -> str:
+    if not tooling:
+        return (
+            'No tooling configured. Run `respec-ai init` to configure language tooling, '
+            'or read the Phase Technology Stack section for tool commands.'
+        )
+    lines = ['Project tooling (configured during `respec-ai init`):\n']
+    for lang, lang_tools in tooling.items():
+        lines.append(f'### {lang.title()}\n')
+        lines.append(f'- **Test Runner**: {lang_tools.test_runner}')
+        lines.append(f'- **Test Command**: `{lang_tools.test_command}`')
+        lines.append(f'- **Coverage Command**: `{lang_tools.coverage_command}`')
+        lines.append(f'- **Checker**: {lang_tools.checker}')
+        lines.append(f'- **Check Command**: `{lang_tools.check_command}`')
+        lines.append(f'- **Linter**: {lang_tools.linter}')
+        lines.append(f'- **Lint Command**: `{lang_tools.lint_command}`')
+        lines.append('')
+    lines.append(
+        'Use the commands for the language relevant to your current task. '
+        'For multi-language projects, identify the target language from the Phase specification.'
+    )
+    return '\n'.join(lines)
+
+
 class CoderAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
@@ -787,6 +830,9 @@ class CoderAgentTools(BaseModel):
     retrieve_phase: str = Field(..., description='Retrieve phase specification')
     retrieve_feedback: str = Field(..., description='Retrieve all feedback from coding loop')
     platform: PlatformType = Field(..., description='Selected platform type')
+    tooling: dict[str, LanguageTooling] = Field(
+        default_factory=dict, description='Language-keyed tooling configuration'
+    )
 
     _adapter: PlatformAdapter = PrivateAttr()
 
@@ -794,10 +840,13 @@ class CoderAgentTools(BaseModel):
         self._adapter = get_platform_adapter(self.platform)
 
     @computed_field
+    def tooling_section(self) -> str:
+        return _render_tooling_section(self.tooling)
+
+    @computed_field
     def update_task_tool_interpolated(self) -> str:
         if '*' not in self.update_task_status:
             return self.update_task_status
-        # Unlikely to have wildcards for task status updates, but handle just in case
         return self.update_task_status.replace('*', '{plan_name}', 1)
 
     @computed_field
@@ -936,6 +985,141 @@ class CodeReviewerAgentTools(BaseModel):
     @computed_field
     def research_example_path(self) -> str:
         return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
+
+
+class AutomatedQualityCheckerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+        (BuiltInTool.GREP, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
+    store_review_section: str = Field(..., description='Store quality check review section')
+    tooling: dict[str, LanguageTooling] = Field(
+        default_factory=dict, description='Language-keyed tooling configuration'
+    )
+
+    @computed_field
+    def tooling_section(self) -> str:
+        return _render_tooling_section(self.tooling)
+
+
+class SpecAlignmentReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
+    store_review_section: str = Field(..., description='Store spec alignment review section')
+
+
+class FrontendReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    store_review_section: str = Field(..., description='Store frontend review section')
+
+
+class BackendApiReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    store_review_section: str = Field(..., description='Store backend API review section')
+
+
+class DatabaseReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    store_review_section: str = Field(..., description='Store database review section')
+
+
+class InfrastructureReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    store_review_section: str = Field(..., description='Store infrastructure review section')
+
+
+class ReviewConsolidatorAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.LIST_DOCUMENTS,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_review_sections: str = Field(..., description='List review section documents')
+    get_review_section: str = Field(..., description='Get individual review section document')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
+    store_feedback: str = Field(..., description='Store consolidated CriticFeedback')
 
 
 class TaskPlannerAgentTools(BaseModel):

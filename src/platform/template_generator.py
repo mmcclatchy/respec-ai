@@ -5,6 +5,7 @@ from fastmcp import FastMCP
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.platform.models import (
     CodeCommandTools,
+    LanguageTooling,
     PhaseCommandTools,
     PlanCommandTools,
     PlanRoadmapCommandTools,
@@ -14,30 +15,44 @@ from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_helpers import (
     create_analyst_critic_agent_tools,
+    create_automated_quality_checker_agent_tools,
+    create_backend_api_reviewer_agent_tools,
     create_code_reviewer_agent_tools,
     create_coder_agent_tools,
     create_create_phase_agent_tools,
+    create_database_reviewer_agent_tools,
+    create_frontend_reviewer_agent_tools,
+    create_infrastructure_reviewer_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
     create_plan_analyst_agent_tools,
     create_plan_critic_agent_tools,
+    create_review_consolidator_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_spec_alignment_reviewer_agent_tools,
     create_task_critic_agent_tools,
     create_task_plan_critic_agent_tools,
     create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
+    generate_automated_quality_checker_template,
+    generate_backend_api_reviewer_template,
     generate_code_reviewer_template,
     generate_coder_template,
     generate_create_phase_template,
+    generate_database_reviewer_template,
+    generate_frontend_reviewer_template,
+    generate_infrastructure_reviewer_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
     generate_plan_analyst_template,
     generate_plan_critic_template,
+    generate_review_consolidator_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
+    generate_spec_alignment_reviewer_template,
     generate_task_critic_template,
     generate_task_plan_critic_template,
     generate_task_planner_template,
@@ -52,6 +67,7 @@ def generate_templates(
     project_path: Path,
     platform_type: PlatformType,
     mcp: FastMCP | None = None,
+    tooling: dict[str, LanguageTooling] | None = None,
 ) -> tuple[list[Path], int, int]:
     """Generate command and agent templates for a project.
 
@@ -60,6 +76,7 @@ def generate_templates(
         project_path: Plan root directory
         platform_type: Platform type (linear, github, markdown)
         mcp: Optional FastMCP instance for tool documentation extraction
+        tooling: Language-keyed tooling configuration from project detection
 
     Returns:
         Tuple of (files_written, commands_count, agents_count)
@@ -94,7 +111,7 @@ def generate_templates(
         file_path.write_text(content, encoding='utf-8')
         files_written.append(file_path)
 
-    agent_generators = _get_agent_generators(orchestrator, platform_type)
+    agent_generators = _get_agent_generators(orchestrator, platform_type, tooling)
 
     for agent_name, content in agent_generators:
         file_path = agents_dir / f'{agent_name}.md'
@@ -110,6 +127,7 @@ def generate_templates(
 def _get_agent_generators(
     orchestrator: PlatformOrchestrator,
     platform_type: PlatformType,
+    tooling: dict[str, LanguageTooling] | None = None,
 ) -> list[tuple[str, str]]:
     adapter = get_platform_adapter(platform_type)
 
@@ -134,8 +152,15 @@ def _get_agent_generators(
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type)
+    coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling)
     code_reviewer_tools = create_code_reviewer_agent_tools(platform_type)
+    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tooling)
+    spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
+    frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
+    backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()
+    database_reviewer_tools = create_database_reviewer_agent_tools()
+    infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools()
+    review_consolidator_tools = create_review_consolidator_agent_tools()
 
     return [
         ('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
@@ -151,4 +176,14 @@ def _get_agent_generators(
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-coder', generate_coder_template(coder_tools)),
         ('respec-code-reviewer', generate_code_reviewer_template(code_reviewer_tools)),
+        (
+            'respec-automated-quality-checker',
+            generate_automated_quality_checker_template(automated_quality_checker_tools),
+        ),
+        ('respec-spec-alignment-reviewer', generate_spec_alignment_reviewer_template(spec_alignment_reviewer_tools)),
+        ('respec-frontend-reviewer', generate_frontend_reviewer_template(frontend_reviewer_tools)),
+        ('respec-backend-api-reviewer', generate_backend_api_reviewer_template(backend_api_reviewer_tools)),
+        ('respec-database-reviewer', generate_database_reviewer_template(database_reviewer_tools)),
+        ('respec-infrastructure-reviewer', generate_infrastructure_reviewer_template(infrastructure_reviewer_tools)),
+        ('respec-review-consolidator', generate_review_consolidator_template(review_consolidator_tools)),
     ]

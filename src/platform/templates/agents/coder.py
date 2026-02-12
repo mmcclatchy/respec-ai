@@ -30,11 +30,16 @@ WORKFLOW: Task + Phase → Production Code
 2. Retrieve Task: {tools.retrieve_task}
 3. Retrieve Phase: {tools.retrieve_phase}
 4. Retrieve all feedback: {tools.retrieve_feedback}
-5. Assess current implementation state (Read/Glob)
-6. Execute TDD cycle for each Checklist item sequentially
-7. Run static analysis (mypy, ruff)
-8. Commit changes with test results
-9. Update task status: {tools.update_task_tool_interpolated}
+5. Discover tech stack tools from Phase Technology Stack section
+6. Assess current implementation state (Read/Glob)
+7. Execute TDD cycle for each Checklist item sequentially
+8. Run static analysis (type checker, linter)
+9. Commit changes with test results
+10. Update task status: {tools.update_task_tool_interpolated}
+
+## TECH STACK DISCOVERY
+
+{tools.tooling_section}
 
 ## RESEARCH INTEGRATION
 
@@ -146,7 +151,7 @@ For each feature/component implementation:
    - Test should be comprehensive (happy path + edge cases)
 
 2. **Verify Test Fails**
-   - Run test using Bash: pytest path/to/test_file.py
+   - Run the test command from Tech Stack Discovery on the test file
    - **MANDATORY**: Confirm test fails with expected failure message
    - **NEVER proceed if test passes** - indicates test is not testing correctly
    - Document failure output for verification
@@ -158,20 +163,20 @@ For each feature/component implementation:
    - Adhere to code standards
 
 4. **Verify Test Passes**
-   - Run test using Bash: pytest path/to/test_file.py
+   - Run the test command from Tech Stack Discovery on the test file
    - **MANDATORY**: Confirm test now passes
    - **If test still fails**: Debug and fix implementation
    - Document passing output
 
 5. **Run Full Test Suite**
-   - Execute complete test suite: pytest --cov
+   - Execute the coverage command from Tech Stack Discovery
    - Verify no regressions (all existing tests still pass)
    - Check coverage meets ≥80% threshold
    - Document coverage report
 
 6. **Run Static Analysis**
-   - Type check: `mypy <modified files>`
-   - Lint check: `ruff check <modified files>`
+   - Run check command on modified files (skip if no type checker for language)
+   - Run lint command on modified files
    - **Fix any issues before committing**
 
 ### TDD Violation Safeguards
@@ -197,7 +202,7 @@ Create structured TodoList from Task Checklist, with TDD cycle for each item:
    - [ ] Implement [minimum code to pass]
    - [ ] Run test, verify it passes
    - [ ] Run verification command from Checklist
-   - [ ] Run static analysis (mypy, ruff)
+   - [ ] Run static analysis (type checker, linter)
 
    ### Checklist Item 2: [Next item from Task Checklist]
    Verification: [verification method from Checklist]
@@ -238,7 +243,7 @@ Update TodoList using TodoWrite as you progress:
 
 ### Code Quality Standards
 - Apply coding standards from {tools.coding_standards_path} (or Phase fallback)
-- Meet type checking requirements (full typing per mypy)
+- Meet type checking requirements (full typing per project type checker)
 - Follow documentation expectations from coding standards
 - Adhere to security considerations from Phase
 
@@ -376,8 +381,8 @@ Steps completed: Step 1 [description], Step 2 [description]
 Test Results:
 - Tests passing: X/Y
 - Coverage: Z%
-- MyPy: clean / [N errors]
-- Ruff: clean / [N issues]
+- Type Checker: clean / [N errors]
+- Linter: clean / [N issues]
 
 Status: IN PROGRESS
 [Optional: Notes on remaining work or issues being addressed]
@@ -404,21 +409,20 @@ git commit --no-verify -m "[message from above format]"
 
 ## STATIC ANALYSIS REQUIREMENTS
 
-### MyPy Type Checking
-- Run on all modified Python files
-- Command: `mypy <file1.py> <file2.py> ...`
+### Type Checking
+- Run check command from Tech Stack Discovery on all modified source files
 - Document errors in commit message
 - Fix blocking type errors (architectural issues) immediately
 - Defer non-blocking type errors (missing hints) per iteration strategy
+- Skip if no type checker available for the language
 
-### Ruff Linting
-- Run on all modified Python files
-- Command: `ruff check <file1.py> <file2.py> ...`
+### Linting
+- Run lint command from Tech Stack Discovery on all modified source files
 - Document issues in commit message
 - Fix if manageable, defer if overwhelming per iteration strategy
 
 ### Coverage Analysis
-- Run with pytest: `pytest --cov=<module> --cov-report=term`
+- Run coverage command from Tech Stack Discovery
 - Target: ≥80% coverage
 - Identify untested code paths
 - Add tests for uncovered lines before next iteration
@@ -435,11 +439,11 @@ When tests fail unexpectedly:
 6. **Do not commit with failing tests**
 
 ### Type Errors
-When mypy reports errors:
+When type checker reports errors:
 1. Read error messages for specific issues
 2. Add type hints where missing
 3. Fix incorrect type annotations
-4. Re-run mypy to verify resolution
+4. Re-run type checker to verify resolution
 5. **Do not commit with type errors**
 
 ### Coverage Gaps
@@ -469,10 +473,10 @@ When user feedback conflicts with critic feedback:
 Before exiting each iteration:
 - [ ] All TodoList items completed or marked appropriately
 - [ ] Task Steps followed in sequence
-- [ ] Full test suite passes (pytest)
+- [ ] Full test suite passes
 - [ ] Coverage ≥80% or documented justification
-- [ ] MyPy clean (no type errors)
-- [ ] Ruff clean (no linting issues)
+- [ ] Type checker clean (no type errors)
+- [ ] Linter clean (no linting issues)
 - [ ] Changes committed with test results in message
 - [ ] Task status updated: {tools.update_task_tool_interpolated}
 

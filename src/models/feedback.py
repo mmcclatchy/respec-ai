@@ -107,6 +107,20 @@ class CriticFeedback(MCPModel):
             'BUILD-REVIEWER': CriticAgent.CODE_REVIEWER,
             'CODE-REVIEWER': CriticAgent.CODE_REVIEWER,
             'REVIEWER': CriticAgent.CODE_REVIEWER,
+            'AUTOMATED-QUALITY-CHECKER': CriticAgent.AUTOMATED_QUALITY_CHECKER,
+            'QUALITY-CHECKER': CriticAgent.AUTOMATED_QUALITY_CHECKER,
+            'SPEC-ALIGNMENT-REVIEWER': CriticAgent.SPEC_ALIGNMENT_REVIEWER,
+            'SPEC-ALIGNMENT': CriticAgent.SPEC_ALIGNMENT_REVIEWER,
+            'FRONTEND-REVIEWER': CriticAgent.FRONTEND_REVIEWER,
+            'FRONTEND': CriticAgent.FRONTEND_REVIEWER,
+            'BACKEND-API-REVIEWER': CriticAgent.BACKEND_API_REVIEWER,
+            'API-REVIEWER': CriticAgent.BACKEND_API_REVIEWER,
+            'DATABASE-REVIEWER': CriticAgent.DATABASE_REVIEWER,
+            'DATABASE': CriticAgent.DATABASE_REVIEWER,
+            'INFRASTRUCTURE-REVIEWER': CriticAgent.INFRASTRUCTURE_REVIEWER,
+            'INFRASTRUCTURE': CriticAgent.INFRASTRUCTURE_REVIEWER,
+            'REVIEW-CONSOLIDATOR': CriticAgent.REVIEW_CONSOLIDATOR,
+            'CONSOLIDATOR': CriticAgent.REVIEW_CONSOLIDATOR,
         }
 
         critic_agent = agent_mapping.get(agent_name, CriticAgent.ANALYST_CRITIC)
