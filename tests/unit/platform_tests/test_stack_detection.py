@@ -21,20 +21,22 @@ class TestDetectProjectStackPython:
         assert result.language == 'python'
         assert result.package_manager == 'pip'
 
-    def test_detects_framework_fastapi(self, tmp_path: Path) -> None:
+    def test_detects_backend_framework_fastapi(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
         pyproject.write_text('[project]\ndependencies = ["fastapi>=0.100"]\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.framework == 'fastapi'
+        assert result.backend_framework == 'fastapi'
         assert result.api_style == 'rest'
+        assert result.async_runtime is True
 
-    def test_detects_framework_flask(self, tmp_path: Path) -> None:
+    def test_detects_backend_framework_flask(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
         pyproject.write_text('[project]\ndependencies = ["flask>=3.0"]\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.framework == 'flask'
+        assert result.backend_framework == 'flask'
+        assert result.async_runtime is False
 
     def test_detects_runtime_version(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
@@ -84,12 +86,31 @@ class TestDetectProjectStackJavaScript:
         assert result is not None
         assert result.package_manager == 'pnpm'
 
-    def test_detects_react_framework(self, tmp_path: Path) -> None:
+    def test_detects_frontend_framework_react(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
         package_json.write_text(json.dumps({'name': 'test', 'dependencies': {'react': '^18.0'}}))
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.framework == 'react'
+        assert result.frontend_framework == 'react'
+        assert result.backend_framework is None
+
+    def test_detects_backend_framework_express(self, tmp_path: Path) -> None:
+        package_json = tmp_path / 'package.json'
+        package_json.write_text(json.dumps({'name': 'test', 'dependencies': {'express': '^4.0'}}))
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.backend_framework == 'express'
+        assert result.api_style == 'rest'
+        assert result.async_runtime is True
+
+    def test_detects_both_frameworks(self, tmp_path: Path) -> None:
+        package_json = tmp_path / 'package.json'
+        package_json.write_text(json.dumps({'name': 'test', 'dependencies': {'express': '^4.0', 'react': '^18.0'}}))
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.backend_framework == 'express'
+        assert result.frontend_framework == 'react'
+        assert result.async_runtime is True
 
     def test_detects_node_runtime_version(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
@@ -124,7 +145,8 @@ class TestDetectProjectStackOther:
     def test_returns_empty_stack_no_build_files(self, tmp_path: Path) -> None:
         result = detect_project_stack(tmp_path)
         assert result.language is None
-        assert result.framework is None
+        assert result.backend_framework is None
+        assert result.frontend_framework is None
         assert result.model_dump(exclude_none=True) == {}
 
     def test_python_takes_precedence_over_js(self, tmp_path: Path) -> None:

@@ -116,7 +116,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
             print('Add tooling manually to .respec-ai/config.json if needed.')
 
         stack = detect_project_stack(project)
-        stack_fields = stack.model_dump(exclude_none=True)
+        stack_fields = {k: v for k, v in stack.model_dump().items() if v is not None}
         if stack_fields:
             print(f'\nStack detected: {", ".join(f"{k}={v}" for k, v in stack_fields.items())}')
 
@@ -135,8 +135,7 @@ def setup_project(project_path: str, platform: Literal['linear', 'github', 'mark
         }
         if tooling:
             config['tooling'] = {lang: lang_tools.model_dump() for lang, lang_tools in tooling.items()}
-        if stack_fields:
-            config['stack'] = stack_fields
+        config['stack'] = stack.model_dump()
         config_path = project / '.respec-ai' / 'config.json'
         config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         files_written.append(str(config_path.relative_to(project)))

@@ -37,6 +37,7 @@ dependencies = [
     "markdown-it-py>=3.0.0",
     "docker>=7.1.0,<8.0.0",
     "asyncpg>=0.29.0,<1.0.0",
+    "fastmcp>=2.13.3",
 ]
 
 [project.urls]
@@ -57,10 +58,10 @@ dev = [
     "twine>=6.2.0",
     "ruff>=0.14.8",
     "types-docker>=7.1.0.20251202",
-    "mypy>=1.19.0",
-    "zuban>=0.3.0",
     "pytest-xdist>=3.8.0",
     "asyncpg-stubs>=0.31.1",
+    "mypy>=1.19.1",
+    "zuban>=0.6.1",
 ]
 server = ["fastmcp>=2.12.2,<3.0.0"]
 
