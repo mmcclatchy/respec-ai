@@ -27,9 +27,8 @@ def validate_respec_ai_tools_at_startup() -> dict[str, Any]:
         register_all_tools(temp_mcp)
 
         # Get registered tool names
-        registered_tools = set()
-        if hasattr(temp_mcp, '_tools'):
-            registered_tools = set(temp_mcp._tools.keys())
+        tools_dict = getattr(temp_mcp, '_tools', {})
+        registered_tools = set(tools_dict.keys())
 
         # Get enum tool names
         enum_tools = {tool for tool in RespecAITool}

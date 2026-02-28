@@ -128,6 +128,7 @@ class TestDatabaseJSONBSerialization:
         retrieved_phase = await db_state_manager.get_phase('test-project', phase.phase_name)
 
         assert retrieved_phase.additional_sections == {'custom_field': 'custom value', 'notes': 'note1, note2'}
+        assert retrieved_phase.additional_sections is not None
         assert retrieved_phase.additional_sections['custom_field'] == 'custom value'
         assert retrieved_phase.additional_sections['notes'] == 'note1, note2'
 

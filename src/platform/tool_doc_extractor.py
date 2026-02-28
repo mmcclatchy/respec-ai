@@ -66,7 +66,7 @@ class ToolDocumentationExtractor:
         try:
             tools_dict = asyncio.run(self.mcp.get_tools())
             if tool_name in tools_dict:
-                return tools_dict[tool_name].fn  # type: ignore[attr-defined]
+                return tools_dict[tool_name].fn
         except Exception:
             pass
 
