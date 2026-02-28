@@ -20,6 +20,7 @@ from .models import (
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
     ProjectStack,
+    ResearchSynthesisOrchestratorAgentTools,
     ReviewConsolidatorAgentTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
@@ -384,6 +385,29 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
+        ),
+    )
+
+
+def create_research_synthesis_orchestrator_agent_tools() -> ResearchSynthesisOrchestratorAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in ResearchSynthesisOrchestratorAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in ResearchSynthesisOrchestratorAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return ResearchSynthesisOrchestratorAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        get_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}', loop_id='{LOOP_ID}'
+        ),
+        update_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.UPDATE_DOCUMENT,
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{UPDATED_PHASE_MARKDOWN}',
         ),
     )
 

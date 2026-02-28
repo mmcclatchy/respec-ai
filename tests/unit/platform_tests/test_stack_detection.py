@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-from src.platform.tooling_defaults import detect_project_stack
+from src.platform.models import ProjectStack
+from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, TOOLING_DEFAULTS
 
 
 class TestDetectProjectStackPython:
@@ -38,12 +39,42 @@ class TestDetectProjectStackPython:
         assert result.backend_framework == 'flask'
         assert result.async_runtime is False
 
+    def test_detects_backend_framework_fastmcp(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / 'pyproject.toml'
+        pyproject.write_text('[project]\ndependencies = ["fastmcp>=2.0"]\n')
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.backend_framework == 'fastmcp'
+        assert result.api_style == 'mcp'
+        assert result.async_runtime is True
+
     def test_detects_runtime_version(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
         pyproject.write_text('[project]\nrequires-python = ">=3.13"\ndependencies = []\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.runtime_version == '3.13'
+
+    def test_detects_type_checker_ty(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / 'pyproject.toml'
+        pyproject.write_text('[project]\ndependencies = []\n\n[tool.ty]\n')
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.type_checker == 'ty'
+
+    def test_detects_type_checker_mypy(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / 'pyproject.toml'
+        pyproject.write_text('[project]\ndependencies = []\n\n[tool.mypy]\n')
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.type_checker == 'mypy'
+
+    def test_detects_type_checker_pyright(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / 'pyproject.toml'
+        pyproject.write_text('[project]\ndependencies = []\n\n[tool.pyright]\n')
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.type_checker == 'pyright'
 
     def test_handles_malformed_pyproject(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
@@ -155,3 +186,52 @@ class TestDetectProjectStackOther:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'python'
+
+
+class TestApplyStackToTooling:
+    def test_updates_checker_to_ty(self) -> None:
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+        stack = ProjectStack(language='python', type_checker='ty')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['python'].checker == 'ty'
+        assert result['python'].check_command == 'ty check'
+
+    def test_updates_checker_to_mypy(self) -> None:
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+        stack = ProjectStack(language='python', type_checker='mypy')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['python'].checker == 'mypy'
+        assert result['python'].check_command == 'mypy src/ --exclude tests/'
+
+    def test_updates_checker_to_pyright(self) -> None:
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+        stack = ProjectStack(language='python', type_checker='pyright')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['python'].checker == 'pyright'
+        assert result['python'].check_command == 'pyright'
+
+    def test_updates_checker_to_pytype(self) -> None:
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+        stack = ProjectStack(language='python', type_checker='pytype')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['python'].checker == 'pytype'
+        assert result['python'].check_command == 'pytype src/'
+
+    def test_preserves_other_tooling_fields(self) -> None:
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+        stack = ProjectStack(language='python', type_checker='ty')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['python'].test_runner == 'pytest'
+        assert result['python'].linter == 'ruff'
+
+    def test_no_change_when_no_type_checker(self) -> None:
+        tooling = {'python': TOOLING_DEFAULTS['python']}
+        stack = ProjectStack(language='python')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['python'].checker == 'mypy'
+
+    def test_no_change_when_language_not_in_tooling(self) -> None:
+        tooling = {'javascript': TOOLING_DEFAULTS['javascript']}
+        stack = ProjectStack(language='python', type_checker='ty')
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result == tooling

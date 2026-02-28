@@ -11,6 +11,7 @@ from .phase_architect import generate_phase_architect_template
 from .phase_critic import generate_phase_critic_template
 from .plan_analyst import generate_plan_analyst_template
 from .plan_critic import generate_plan_critic_template
+from .research_synthesis_orchestrator import generate_research_synthesis_orchestrator_template
 from .review_consolidator import generate_review_consolidator_template
 from .roadmap import generate_roadmap_template
 from .roadmap_critic import generate_roadmap_critic_template
@@ -41,4 +42,5 @@ __all__ = [
     'generate_database_reviewer_template',
     'generate_infrastructure_reviewer_template',
     'generate_review_consolidator_template',
+    'generate_research_synthesis_orchestrator_template',
 ]

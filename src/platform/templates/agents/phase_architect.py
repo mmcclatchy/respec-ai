@@ -68,11 +68,9 @@ You are a technical architecture specialist focused on system design.
 
 INPUTS: Loop ID and Phase context
 - loop_id: Refinement loop identifier for this Phase session
-- project_name: Project name for phase storage (from .respec-ai/config.json, passed by orchestrating command)
+- plan_name: Project name for plan retrieval and phase storage
 - phase_name: Phase name for storage and retrieval
-- strategic_plan_summary: Strategic plan analysis from plan-analyst
-- optional_instructions: Additional user guidance for phase development
-- archive_scan_results: Existing documentation from archive scan
+- optional_instructions: Additional user guidance for phase development (if provided)
 
 WORKFLOW: Strategic Plan Summary → Phase Markdown
 
@@ -92,8 +90,50 @@ ELSE:
   → First iteration (or iteration 1) - no previous feedback exists
   → Set: PREVIOUS_FEEDBACK = None
 
+STEP 0.5: Retrieve Strategic Plan
+Retrieve strategic plan from MCP storage for architecture design context.
+
+CALL mcp__respec-ai__get_document(
+  doc_type="plan",
+  key=PLAN_NAME,
+  loop_id=None
+)
+→ Store: STRATEGIC_PLAN_MARKDOWN
+→ Verify: Plan markdown received
+→ Expected error: "not found" if plan doesn't exist (fail loudly with guidance)
+
+IF STRATEGIC_PLAN_MARKDOWN not found:
+  ERROR: "No strategic plan found: [PLAN_NAME]"
+  SUGGEST: "Run '/respec-plan [PLAN_NAME]' to create strategic plan first"
+  EXIT: Workflow terminated
+
+STEP 0.6: Execute Archive Scan
+Execute archive scan to identify existing documentation and patterns.
+
+Keywords to scan: Extract technical topics from strategic plan
+- Identify key technologies (databases, frameworks, languages)
+- Identify architectural patterns (microservices, event-driven, etc.)
+- Identify integration points (APIs, message queues, etc.)
+
+Combine keywords into single scan query:
+ARCHIVE_KEYWORDS = "[technology1] [technology2] [pattern1] [pattern2] ..."
+
+Execute scan:
+CALL Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "{{ARCHIVE_KEYWORDS}}"
+→ Store: ARCHIVE_SCAN_RESULTS
+→ Contains: All matching file paths with relevance summaries
+
+IF archive scan fails:
+  → Set: ARCHIVE_SCAN_RESULTS = "Archive unavailable - rely on external research"
+  → Continue with phase generation
+  → Note limitation in Research Requirements section
+
 STEP 1: Retrieve Current Phase
-CALL {tools.get_document}
+CALL mcp__respec-ai__get_document(
+  doc_type="phase",
+  key=None,
+  loop_id=LOOP_ID
+)
 → Verify: Phase markdown received
 → Expected error: "not found" if new phase (iteration=0)
 
@@ -105,9 +145,9 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Focus improvements on areas critic flagged as deficient
 
 STEP 3: Expand Phase
-Develop comprehensive Phase based on strategic plan summary
+Develop comprehensive Phase based on strategic plan (from STEP 0.5)
 → Apply optional_instructions if provided
-→ Integrate archive_scan_results for research requirements
+→ Integrate ARCHIVE_SCAN_RESULTS (from STEP 0.6) for research requirements
 → Follow OUTPUT FORMAT below
 
 STEP 4: Store Complete Phase

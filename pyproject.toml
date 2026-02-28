@@ -91,6 +91,10 @@ filterwarnings = [
     "ignore:coroutine.*was never awaited:RuntimeWarning:.*test_mcp_server.*",
     # Suppress pytest cleanup warnings for unawaited coroutines during garbage collection
     "ignore:.*coroutine.*main.*was never awaited.*",
+    # Suppress Rich library Jupyter support warning (we don't use Jupyter notebooks)
+    "ignore:install \"ipywidgets\" for Jupyter support:UserWarning:rich.live",
+    # Suppress pytest-mock context manager warning (informational only)
+    "ignore:Mocks returned by pytest-mock do not need to be used as context managers:pytest_mock.PytestMockWarning",
 ]
 markers = [
     "agent_coordination: marks tests for agent coordination and parameter passing",

@@ -12,6 +12,7 @@ class TestProjectStack:
             database='postgresql',
             api_style='rest',
             async_runtime=True,
+            type_checker='ty',
             css_framework='tailwindcss',
             ui_components='daisyui',
             architecture='monolith',
@@ -24,6 +25,7 @@ class TestProjectStack:
         assert stack.database == 'postgresql'
         assert stack.api_style == 'rest'
         assert stack.async_runtime is True
+        assert stack.type_checker == 'ty'
         assert stack.css_framework == 'tailwindcss'
         assert stack.ui_components == 'daisyui'
         assert stack.architecture == 'monolith'

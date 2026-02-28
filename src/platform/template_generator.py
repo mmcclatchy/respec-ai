@@ -28,6 +28,7 @@ from src.platform.template_helpers import (
     create_phase_critic_agent_tools,
     create_plan_analyst_agent_tools,
     create_plan_critic_agent_tools,
+    create_research_synthesis_orchestrator_agent_tools,
     create_review_consolidator_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
@@ -50,6 +51,7 @@ from src.platform.templates.agents import (
     generate_phase_critic_template,
     generate_plan_analyst_template,
     generate_plan_critic_template,
+    generate_research_synthesis_orchestrator_template,
     generate_review_consolidator_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
@@ -153,6 +155,7 @@ def _get_agent_generators(
     create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
     phase_architect_tools = create_phase_architect_agent_tools(stack=stack)
     phase_critic_tools = create_phase_critic_agent_tools(loop_config.phase_length_soft_cap)
+    research_synthesis_orchestrator_tools = create_research_synthesis_orchestrator_agent_tools()
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
@@ -175,6 +178,10 @@ def _get_agent_generators(
         ('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         ('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         ('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
+        (
+            'respec-research-synthesis-orchestrator',
+            generate_research_synthesis_orchestrator_template(research_synthesis_orchestrator_tools),
+        ),
         ('respec-task-planner', generate_task_planner_template(task_planner_tools)),
         ('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),

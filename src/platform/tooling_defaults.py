@@ -62,8 +62,41 @@ def detect_project_tooling(project_path: Path) -> dict[str, LanguageTooling]:
     return detected
 
 
+def apply_stack_to_tooling(tooling: dict[str, LanguageTooling], stack: ProjectStack) -> dict[str, LanguageTooling]:
+    if not stack.type_checker or stack.language not in tooling:
+        return tooling
+
+    updated_tooling = dict(tooling)
+    language = stack.language
+
+    if language == 'python' and language in updated_tooling:
+        current = updated_tooling[language]
+        type_checker = stack.type_checker
+
+        check_commands = {
+            'ty': 'ty check',
+            'mypy': 'mypy src/ --exclude tests/',
+            'pyright': 'pyright',
+            'pytype': 'pytype src/',
+        }
+
+        if type_checker in check_commands:
+            updated_tooling[language] = LanguageTooling(
+                test_runner=current.test_runner,
+                test_command=current.test_command,
+                coverage_command=current.coverage_command,
+                checker=type_checker,
+                check_command=check_commands[type_checker],
+                linter=current.linter,
+                lint_command=current.lint_command,
+            )
+
+    return updated_tooling
+
+
 PYTHON_FRAMEWORKS: dict[str, str] = {
     'fastapi': 'fastapi',
+    'fastmcp': 'fastmcp',
     'flask': 'flask',
     'django': 'django',
     'starlette': 'starlette',
@@ -99,8 +132,13 @@ REST_FRAMEWORKS: set[str] = {
     'sanic',
 }
 
+MCP_FRAMEWORKS: set[str] = {
+    'fastmcp',
+}
+
 ASYNC_FRAMEWORKS: set[str] = {
     'fastapi',
+    'fastmcp',
     'starlette',
     'litestar',
     'sanic',
@@ -136,12 +174,24 @@ def _detect_from_pyproject(pyproject_path: Path) -> ProjectStack:
             break
 
     api_style: str | None = None
-    if backend_framework and backend_framework in REST_FRAMEWORKS:
-        api_style = 'rest'
+    if backend_framework:
+        if backend_framework in MCP_FRAMEWORKS:
+            api_style = 'mcp'
+        elif backend_framework in REST_FRAMEWORKS:
+            api_style = 'rest'
 
     async_runtime: bool | None = None
     if backend_framework:
         async_runtime = backend_framework in ASYNC_FRAMEWORKS
+
+    type_checker: str | None = None
+    if 'tool' in data:
+        if 'ty' in data['tool']:
+            type_checker = 'ty'
+        elif 'mypy' in data['tool']:
+            type_checker = 'mypy'
+        elif 'pyright' in data['tool']:
+            type_checker = 'pyright'
 
     return ProjectStack(
         language='python',
@@ -150,6 +200,7 @@ def _detect_from_pyproject(pyproject_path: Path) -> ProjectStack:
         runtime_version=runtime_version,
         api_style=api_style,
         async_runtime=async_runtime,
+        type_checker=type_checker,
     )
 
 
@@ -186,8 +237,11 @@ def _detect_from_package_json(package_json_path: Path, project_path: Path) -> Pr
             frontend_framework = JS_FRONTEND_FRAMEWORKS[dep_name]
 
     api_style: str | None = None
-    if backend_framework and backend_framework in REST_FRAMEWORKS:
-        api_style = 'rest'
+    if backend_framework:
+        if backend_framework in MCP_FRAMEWORKS:
+            api_style = 'mcp'
+        elif backend_framework in REST_FRAMEWORKS:
+            api_style = 'rest'
 
     async_runtime: bool | None = None
     if backend_framework:

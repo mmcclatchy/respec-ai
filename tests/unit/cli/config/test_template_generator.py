@@ -77,8 +77,8 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert agents_count == 20  # 13 existing + 7 review team agents
-        assert len(list(agents_dir.glob('*.md'))) == 20
+        assert agents_count == 21  # 13 existing + 7 review team agents + 1 research orchestrator
+        assert len(list(agents_dir.glob('*.md'))) == 21
 
     def test_returns_file_paths(self, mocker: MockerFixture, tmp_path: Path) -> None:
         commands_dir = tmp_path / 'commands'
@@ -102,7 +102,7 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert len(files_written) == 26  # 6 commands + 20 agents = 26
+        assert len(files_written) == 27  # 6 commands + 21 agents = 27
         assert all(isinstance(f, Path) for f in files_written)
         assert all(f.suffix == '.md' for f in files_written)
 
@@ -128,7 +128,7 @@ class TestGenerateTemplates:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
 
             assert commands_count == 6
-            assert agents_count == 20  # 13 existing + 7 review team agents
+            assert agents_count == 21  # 13 existing + 7 review team agents + 1 research orchestrator
 
     def test_passes_tooling_to_agent_templates(self, mocker: MockerFixture, tmp_path: Path) -> None:
         commands_dir = tmp_path / 'commands'
