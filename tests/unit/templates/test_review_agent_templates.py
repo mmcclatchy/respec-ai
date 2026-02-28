@@ -351,7 +351,7 @@ class TestToolingSectionComputed:
 
 class TestStackSectionComputed:
     def test_stack_section_on_coder_agent_tools(self) -> None:
-        stack = ProjectStack(language='python', framework='fastapi', package_manager='uv')
+        stack = ProjectStack(language='python', backend_framework='fastapi', package_manager='uv')
         tools = create_coder_agent_tools(
             platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
             platform_type=PlatformType.MARKDOWN,
@@ -359,7 +359,7 @@ class TestStackSectionComputed:
         )
         section: str = tools.stack_section  # type: ignore[assignment]
         assert '**Language**: python' in section
-        assert '**Framework**: fastapi' in section
+        assert '**Backend Framework**: fastapi' in section
 
     def test_stack_section_on_automated_quality_checker(self) -> None:
         stack = ProjectStack(language='python', package_manager='uv')
@@ -368,11 +368,11 @@ class TestStackSectionComputed:
         assert '**Language**: python' in section
 
     def test_stack_section_on_code_reviewer(self) -> None:
-        stack = ProjectStack(language='typescript', framework='react')
+        stack = ProjectStack(language='typescript', frontend_framework='react')
         tools = create_code_reviewer_agent_tools(PlatformType.MARKDOWN, stack=stack)
         section: str = tools.stack_section  # type: ignore[assignment]
         assert '**Language**: typescript' in section
-        assert '**Framework**: react' in section
+        assert '**Frontend Framework**: react' in section
 
     def test_stack_section_on_phase_architect(self) -> None:
         stack = ProjectStack(language='go', package_manager='go modules')

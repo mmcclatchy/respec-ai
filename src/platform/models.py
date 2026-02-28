@@ -27,12 +27,17 @@ class PlatformModel(BaseModel):
 
 class ProjectStack(PlatformModel):
     language: str | None = Field(default=None, description='Primary language (e.g., python, javascript, go, rust)')
-    framework: str | None = Field(default=None, description='Web framework (e.g., fastapi, flask, react, next)')
+    backend_framework: str | None = Field(
+        default=None, description='Backend framework (e.g., fastapi, flask, django, express)'
+    )
+    frontend_framework: str | None = Field(
+        default=None, description='Frontend framework (e.g., react, next, vue, svelte)'
+    )
     package_manager: str | None = Field(default=None, description='Package manager (e.g., uv, pip, npm, yarn)')
     runtime_version: str | None = Field(default=None, description='Language runtime version (e.g., 3.13, 22)')
     database: str | None = Field(default=None, description='Database (e.g., postgresql, sqlite, mongodb)')
     api_style: str | None = Field(default=None, description='API style (e.g., rest, graphql, grpc)')
-    deployment_target: str | None = Field(default=None, description='Deployment target (e.g., docker, aws, vercel)')
+    async_runtime: bool | None = Field(default=None, description='Async runtime (True for async/await patterns)')
     css_framework: str | None = Field(default=None, description='CSS framework (e.g., tailwindcss, bootstrap)')
     ui_components: str | None = Field(default=None, description='UI component library (e.g., daisyui, shadcn)')
     architecture: str | None = Field(default=None, description='Architecture pattern (e.g., monolith, microservices)')
@@ -806,12 +811,13 @@ class CreatePhaseAgentTools(BaseModel):
 def _render_stack_section(stack: 'ProjectStack') -> str:
     fields = {
         'Language': stack.language,
-        'Framework': stack.framework,
+        'Backend Framework': stack.backend_framework,
+        'Frontend Framework': stack.frontend_framework,
         'Package Manager': stack.package_manager,
         'Runtime Version': stack.runtime_version,
         'Database': stack.database,
         'API Style': stack.api_style,
-        'Deployment Target': stack.deployment_target,
+        'Async Runtime': 'Yes' if stack.async_runtime else 'No' if stack.async_runtime is False else None,
         'CSS Framework': stack.css_framework,
         'UI Components': stack.ui_components,
         'Architecture': stack.architecture,

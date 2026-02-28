@@ -15,6 +15,7 @@ from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
+from src.cli.ui.stack_prompts import prompt_stack_profile
 from src.mcp.tools import register_all_tools
 from src.platform.models import ProjectStack
 from src.platform.platform_orchestrator import PlatformOrchestrator
@@ -113,10 +114,13 @@ def run(args: Namespace) -> int:
 
             progress.update(task, description='Detection complete!')
 
+        if not args.yes:
+            stack = prompt_stack_profile(stack)
+
         _display_detected_config(platform, project_name, tooling, stack)
 
         if not args.yes:
-            response = console.input('\n[bold]Proceed with detected configuration?[/bold] [Y/n] ')
+            response = console.input('\n[bold]Proceed with this configuration?[/bold] [Y/n] ')
             if response.strip().lower() in ('n', 'no'):
                 print_warning('Initialization cancelled')
                 return 1
@@ -145,9 +149,7 @@ def run(args: Namespace) -> int:
             }
             if tooling:
                 config['tooling'] = {lang: t.model_dump() for lang, t in tooling.items()}
-            stack_data = stack.model_dump(exclude_none=True)
-            if stack_data:
-                config['stack'] = stack_data
+            config['stack'] = stack.model_dump()
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
 
             mcp_registered = False
@@ -228,13 +230,10 @@ def _display_detected_config(
     else:
         table.add_row('Tooling', '[dim]none detected[/dim]')
 
-    stack_fields = stack.model_dump(exclude_none=True)
-    if stack_fields:
-        for field_name, value in stack_fields.items():
-            label = field_name.replace('_', ' ').title()
-            table.add_row(f'Stack: {label}', str(value))
-    else:
-        table.add_row('Stack', '[dim]none detected[/dim]')
+    for field_name, value in stack.model_dump().items():
+        label = field_name.replace('_', ' ').title()
+        display_value = str(value) if value is not None else '[dim]\u2014[/dim]'
+        table.add_row(f'Stack: {label}', display_value)
 
     console.print()
     console.print(table)

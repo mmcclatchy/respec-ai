@@ -62,9 +62,7 @@ def run(args: Namespace) -> int:
 
         raw_stack = config.get('stack')
         stack = ProjectStack(**raw_stack) if raw_stack else detect_project_stack(project_path)
-        stack_data = stack.model_dump(exclude_none=True)
-        if stack_data and not raw_stack:
-            config['stack'] = stack_data
+        config['stack'] = stack.model_dump()
 
         platform_type = PlatformType(platform)
         orchestrator = PlatformOrchestrator.create_with_default_config()

@@ -71,16 +71,19 @@ PYTHON_FRAMEWORKS: dict[str, str] = {
     'litestar': 'litestar',
 }
 
-JS_FRAMEWORKS: dict[str, str] = {
+JS_BACKEND_FRAMEWORKS: dict[str, str] = {
+    'express': 'express',
+    'fastify': 'fastify',
+    'hono': 'hono',
+}
+
+JS_FRONTEND_FRAMEWORKS: dict[str, str] = {
     'react': 'react',
     'react-dom': 'react',
     'next': 'next',
     'vue': 'vue',
     'nuxt': 'nuxt',
     'svelte': 'svelte',
-    'express': 'express',
-    'fastify': 'fastify',
-    'hono': 'hono',
     '@angular/core': 'angular',
 }
 
@@ -94,6 +97,16 @@ REST_FRAMEWORKS: set[str] = {
     'starlette',
     'litestar',
     'sanic',
+}
+
+ASYNC_FRAMEWORKS: set[str] = {
+    'fastapi',
+    'starlette',
+    'litestar',
+    'sanic',
+    'express',
+    'fastify',
+    'hono',
 }
 
 
@@ -114,24 +127,29 @@ def _detect_from_pyproject(pyproject_path: Path) -> ProjectStack:
         if cleaned:
             runtime_version = cleaned.split(',')[0].strip()
 
-    framework: str | None = None
+    backend_framework: str | None = None
     deps = data.get('project', {}).get('dependencies', [])
     for dep in deps:
         dep_name = dep.split('>=')[0].split('==')[0].split('<')[0].split('[')[0].strip().lower()
         if dep_name in PYTHON_FRAMEWORKS:
-            framework = PYTHON_FRAMEWORKS[dep_name]
+            backend_framework = PYTHON_FRAMEWORKS[dep_name]
             break
 
     api_style: str | None = None
-    if framework and framework in REST_FRAMEWORKS:
+    if backend_framework and backend_framework in REST_FRAMEWORKS:
         api_style = 'rest'
+
+    async_runtime: bool | None = None
+    if backend_framework:
+        async_runtime = backend_framework in ASYNC_FRAMEWORKS
 
     return ProjectStack(
         language='python',
-        framework=framework,
+        backend_framework=backend_framework,
         package_manager=package_manager,
         runtime_version=runtime_version,
         api_style=api_style,
+        async_runtime=async_runtime,
     )
 
 
@@ -158,23 +176,31 @@ def _detect_from_package_json(package_json_path: Path, project_path: Path) -> Pr
         if cleaned:
             runtime_version = cleaned.split(' ')[0].strip()
 
-    framework: str | None = None
+    backend_framework: str | None = None
+    frontend_framework: str | None = None
     all_deps = {**data.get('dependencies', {}), **data.get('devDependencies', {})}
     for dep_name in all_deps:
-        if dep_name in JS_FRAMEWORKS:
-            framework = JS_FRAMEWORKS[dep_name]
-            break
+        if not backend_framework and dep_name in JS_BACKEND_FRAMEWORKS:
+            backend_framework = JS_BACKEND_FRAMEWORKS[dep_name]
+        if not frontend_framework and dep_name in JS_FRONTEND_FRAMEWORKS:
+            frontend_framework = JS_FRONTEND_FRAMEWORKS[dep_name]
 
     api_style: str | None = None
-    if framework and framework in REST_FRAMEWORKS:
+    if backend_framework and backend_framework in REST_FRAMEWORKS:
         api_style = 'rest'
+
+    async_runtime: bool | None = None
+    if backend_framework:
+        async_runtime = backend_framework in ASYNC_FRAMEWORKS
 
     return ProjectStack(
         language=language,
-        framework=framework,
+        backend_framework=backend_framework,
+        frontend_framework=frontend_framework,
         package_manager=package_manager,
         runtime_version=runtime_version,
         api_style=api_style,
+        async_runtime=async_runtime,
     )
 
 

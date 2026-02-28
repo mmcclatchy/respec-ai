@@ -7,6 +7,7 @@ from pytest_mock import MockerFixture
 
 from src.cli.commands import init
 from src.cli.config.claude_config import ClaudeConfigError
+from src.platform.models import ProjectStack
 
 
 class TestInitCommand:
@@ -39,6 +40,99 @@ class TestInitCommand:
         assert config['platform'] == 'linear'
         assert config['version'] == '0.2.0'
         assert config['project_name'] == tmp_path.name
+
+    def test_stack_prompts_called_when_yes_false(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+        mocker.patch('src.cli.commands.init.console')
+
+        mock_prompt = mocker.patch(
+            'src.cli.commands.init.prompt_stack_profile',
+            return_value=ProjectStack(language='python'),
+        )
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=False, force=False)
+        result = init.run(args)
+
+        assert result == 0
+        mock_prompt.assert_called_once()
+
+    def test_stack_prompts_skipped_when_yes_true(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+
+        mock_prompt = mocker.patch('src.cli.commands.init.prompt_stack_profile')
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
+        result = init.run(args)
+
+        assert result == 0
+        mock_prompt.assert_not_called()
+
+    def test_config_includes_all_stack_fields(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+        mocker.patch(
+            'src.cli.commands.init.detect_project_stack',
+            return_value=ProjectStack(language='python'),
+        )
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
+        init.run(args)
+
+        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
+        stack = config['stack']
+        assert stack['language'] == 'python'
+        assert stack['backend_framework'] is None
+        assert stack['frontend_framework'] is None
+        assert stack['database'] is None
+        assert stack['async_runtime'] is None
+        assert len(stack) == 11
 
     def test_already_initialized(self, mocker: MockerFixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)

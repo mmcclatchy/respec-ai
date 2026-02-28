@@ -50,6 +50,7 @@ show_usage() {
     echo "  -p, --platform      Platform choice: linear, github, or markdown (required)"
     echo "  --respec-path       Path to respec-ai installation (required for remote install only)"
     echo "  --clean             Remove existing .respec-ai folder before installation (destructive)"
+    echo "  -y, --yes           Skip interactive prompts and accept detected configuration"
     echo ""
     echo "Examples:"
     echo "  # Regenerate commands/agents (preserves existing documents)"
@@ -69,6 +70,7 @@ parse_arguments() {
     PROJECT_NAME=""
     STATE_MANAGER="memory"  # Default to memory
     CLEAN_INSTALL=false     # Default to non-destructive
+    SKIP_PROMPTS=false      # Default to interactive
 
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -90,6 +92,10 @@ parse_arguments() {
                 ;;
             --clean)
                 CLEAN_INSTALL=true
+                shift
+                ;;
+            -y|--yes)
+                SKIP_PROMPTS=true
                 shift
                 ;;
             -h|--help)
@@ -242,44 +248,21 @@ echo ""
 # Run the setup CLI (skip MCP registration - we'll register local version manually)
 if [ "$CLEAN_INSTALL" = true ]; then
     print_info "Generating respec-ai workflow files (clean install - will remove existing .respec-ai folder)..."
-    CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --force --yes"
+    CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --force"
 else
-    # Check if already initialized
+    # Check if already initialized - remove config.json so init runs fresh
+    # Plans and other documents in .respec-ai/ are preserved
     if [ -f "$TARGET_DIR/.respec-ai/config.json" ]; then
-        print_info "Updating configuration and regenerating templates..."
-
-        # Update config.json with new platform and project_name
-        python3 << EOF
-import json
-import sys
-from pathlib import Path
-
-try:
-    config_path = Path("$TARGET_DIR/.respec-ai/config.json")
-    config = json.loads(config_path.read_text())
-    config['platform'] = '$PLATFORM'
-    config['project_name'] = '$PROJECT_NAME'
-    config_path.write_text(json.dumps(config, indent=2))
-except Exception as e:
-    print(f"Error updating config: {e}", file=sys.stderr)
-    sys.exit(1)
-EOF
-
-        if [ $? -ne 0 ]; then
-            print_error "Failed to update config.json"
-            exit 1
-        fi
-
-        # Regenerate templates with updated config
-        if [ "$EXECUTION_MODE" = "local" ]; then
-            CLI_COMMAND="regenerate --force"
-        else
-            CLI_COMMAND="regenerate"
-        fi
+        print_info "Existing configuration found - reinitializing (plans preserved)..."
+        rm "$TARGET_DIR/.respec-ai/config.json"
     else
         print_info "Generating respec-ai workflow files (first-time setup)..."
-        CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --yes"
     fi
+    CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration"
+fi
+
+if [ "$SKIP_PROMPTS" = true ]; then
+    CLI_COMMAND="$CLI_COMMAND --yes"
 fi
 
 if uv run --project "$RESPEC_AI_PATH" respec-ai $CLI_COMMAND; then

@@ -176,7 +176,7 @@ class TestGenerateTemplates:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
 
-        stack = ProjectStack(language='python', framework='fastapi', package_manager='uv')
+        stack = ProjectStack(language='python', backend_framework='fastapi', package_manager='uv')
 
         generate_templates(mock_orchestrator, tmp_path, PlatformType.MARKDOWN, stack=stack)
 
@@ -188,4 +188,4 @@ class TestGenerateTemplates:
         for content in [coder_content, quality_checker_content, code_reviewer_content, phase_architect_content]:
             assert 'PROJECT STACK PROFILE' in content
             assert '**Language**: python' in content
-            assert '**Framework**: fastapi' in content
+            assert '**Backend Framework**: fastapi' in content
