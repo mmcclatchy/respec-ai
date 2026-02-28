@@ -25,8 +25,8 @@ class TestToolRegistration:
 
     def test_register_all_tools_with_none_raises_error(self) -> None:
         with pytest.raises(AttributeError):
-            register_all_tools(None)  # type: ignore
+            register_all_tools(None)
 
     def test_register_all_tools_handles_invalid_mcp_instance(self) -> None:
         with pytest.raises(AttributeError):
-            register_all_tools('not_an_mcp_instance')  # type: ignore
+            register_all_tools('not_an_mcp_instance')

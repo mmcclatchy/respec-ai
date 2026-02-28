@@ -51,7 +51,7 @@ class TestProjectStack:
     def test_immutable(self) -> None:
         stack = ProjectStack(language='python')
         try:
-            stack.language = 'go'  # type: ignore[misc]
+            stack.language = 'go'
             assert False, 'Should have raised'
         except Exception:
             pass

@@ -36,7 +36,7 @@ class TestLanguageTooling:
             lint_command='ruff check',
         )
         with pytest.raises(ValidationError):
-            tooling.test_runner = 'vitest'  # type: ignore[misc]
+            tooling.test_runner = 'vitest'
 
     def test_extra_fields_forbidden(self) -> None:
         with pytest.raises(ValidationError):
@@ -49,7 +49,7 @@ class TestLanguageTooling:
                 linter='ruff',
                 lint_command='ruff check',
                 extra_field='not_allowed',
-            )  # type: ignore[call-arg]
+            )
 
 
 class TestProjectToolingConfig:

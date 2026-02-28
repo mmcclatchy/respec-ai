@@ -38,9 +38,9 @@ repos:
 
   - repo: local
     hooks:
-      - id: zmypy
-        name: zmypy (zuban type checker)
-        entry: zmypy
+      - id: ty
+        name: ty (astral type checker)
+        entry: uv run ty check
         language: system
         types: [python]
         pass_filenames: false
