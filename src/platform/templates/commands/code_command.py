@@ -97,19 +97,13 @@ Load phase from file system, store in MCP:
 
 **Note on Step Numbering**: Step 3 was intentionally removed when research logic was moved to the phase workflow. Step numbering is preserved (1, 2, 4, 5...) for workflow compatibility.
 
-### 4. Phase Retrieval and Validation
-Retrieve and validate completed Phase from /respec-phase command:
+### 4. Phase Validation
+Coder agent will validate Phase exists when retrieving it:
 
-#### Retrieve Phase
 ```text
-TECHNICAL_PHASE = {tools.get_phase_document}
-IF TECHNICAL_PHASE not found:
-  ERROR: "No Phase found: [PHASE_NAME]"
-  SUGGEST: "Run '/respec-phase [PLAN_NAME] [PHASE_NAME]' to create Phase first"
-  EXIT: Graceful failure with guidance
-
-SPEC_OBJECTIVES = [Extract from Phase Objectives section]
-TECH_STACK = [Extract from Phase Technology Stack section]
+# Phase validation delegated to coder agent
+# Coder retrieves Phase using loop_id and handles missing Phase error
+# This follows the token optimization pattern - agents retrieve their own data
 ```
 
 ### 5. Retrieve Task from /respec-task Command
@@ -129,10 +123,10 @@ Display: "✓ Task retrieved - ready for implementation"
 
 ### 6. Check for Architectural Override Proposals
 
-Retrieve Task to check for override proposals:
+Use Task already retrieved in Step 5:
 
 ```text
-TASK_MARKDOWN = {tools.get_task_document}
+# REUSE TASK_MARKDOWN from Step 5 (do not re-retrieve)
 
 IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
   OVERRIDE_SECTION = [Extract section content]
@@ -162,7 +156,7 @@ Proceed to Step 6.5 (Mode Extraction)
 Parse Task document to determine which specialist reviewers to activate:
 
 ```text
-TASK_MARKDOWN = {tools.get_task_document}
+# REUSE TASK_MARKDOWN from Step 5 (do not re-retrieve)
 
 STEP_MODES = set()
 

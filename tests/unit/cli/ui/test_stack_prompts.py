@@ -236,6 +236,7 @@ class TestPromptStackProfile:
             'database': 'postgresql',
             'api_style': '',
             'async_runtime': 'no',
+            'type_checker': '',
             'css_framework': '',
             'ui_components': '',
             'architecture': '',

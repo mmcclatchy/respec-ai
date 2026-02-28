@@ -190,7 +190,7 @@ Load phase and plan from file system, store in MCP:
 - Both documents are now in MCP storage for refinement loop
 
 ### Step 4: Initialize Refinement Loop
-Initialize MCP refinement loop and retrieve strategic plan:
+Initialize MCP refinement loop:
 
 ```text
 (Initialize MCP refinement loop)
@@ -199,14 +199,6 @@ Initialize MCP refinement loop and retrieve strategic plan:
   plan_name=PLAN_NAME,
   loop_type="phase"
 )
-
-(Retrieve strategic plan using PLAN_NAME argument)
-STRATEGIC_PLAN_MARKDOWN = {tools.get_plan})
-
-IF STRATEGIC_PLAN_MARKDOWN not found:
-  ERROR: "No strategic plan found: [PLAN_NAME]"
-  SUGGEST: "Run '/respec-plan [PLAN_NAME]' to create strategic plan first"
-  EXIT: Graceful failure with guidance
 ```
 
 ### Step 4.2: Link Loop to Phase
@@ -248,36 +240,29 @@ Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{PHASE_NAME}}"
 - Empty string "" is NOT valid - only non-empty string or None
 
 ### Step 5: Launch Architecture Development
-Begin technical design with archive integration:
+Begin technical design:
 
 ```text
-(Execute archive scanning first)
-ARCHIVE_SCAN_RESULTS = Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "technical architecture design patterns database integration API security"
-
-(Populate context variables from Step 4 output)
-STRATEGIC_PLAN_SUMMARY = [strategic plan content: STRATEGIC_PLAN_MARKDOWN retrieved in Step 4]
-
 (Invoke phase-architect agent)
 Invoke: respec-phase-architect
 Input:
   - loop_id: LOOP_ID
   - plan_name: PLAN_NAME
   - phase_name: PHASE_NAME
-  - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: OPTIONAL_INSTRUCTIONS
-  - archive_scan_results: ARCHIVE_SCAN_RESULTS
-  # No previous_feedback - architect retrieves feedback directly from MCP using loop_id
 
 Agent will:
-1. Retrieve current phase from MCP using loop_id
-2. Retrieve previous critic feedback from MCP (if iteration > 1)
-3. Refine phase based on strategic plan, feedback, and archive insights
-4. Store updated phase directly in MCP
-5. **Lifecycle Management**: If phase is being decomposed into sub-phases:
+1. Retrieve strategic plan from MCP using plan_name
+2. Execute archive scan to identify existing documentation
+3. Retrieve current phase from MCP using loop_id
+4. Retrieve previous critic feedback from MCP (if iteration > 1)
+5. Refine phase based on strategic plan, feedback, and archive insights
+6. Store updated phase directly in MCP
+7. **Lifecycle Management**: If phase is being decomposed into sub-phases:
    - Original phase status should transition to SUPERSEDED (future enhancement)
    - Each sub-phase follows `phase-{{number}}-{{description}}` naming pattern
    - Document dependencies between sub-phases in Dependencies section
-6. Return brief status message (no full markdown)
+8. Return brief status message (no full markdown)
 
 Verify agent completed successfully:
 IF agent returns error status:
@@ -375,98 +360,26 @@ ELIF LOOP_DECISION == "MAX_ITERATIONS":
 
 ### Step 7.5: Synthesize Research Requirements
 
-Extract and synthesize any research requirements from final Phase:
+After quality loop completes, check if research synthesis is needed:
 
-#### Step 7.5.1: Retrieve Final Phase
 ```text
-FINAL_PHASE_RESPONSE = {tools.get_document}
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  loop_id=LOOP_ID
-)
+Invoke: respec-research-synthesis-orchestrator
+Input:
+  - loop_id: LOOP_ID
+  - plan_name: PLAN_NAME
+  - phase_name: PHASE_NAME
 
-FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
-```
+Agent will:
+1. Retrieve final phase from MCP
+2. Parse research requirements section
+3. Launch research-synthesizer agents for "Synthesize:" prompts
+4. Update phase with synthesized research paths
+5. Return status message
 
-#### Step 7.5.2: Parse Research Requirements
-```text
-RESEARCH_REQUIREMENTS = [Extract "### Research Requirements" section from FINAL_PHASE_MARKDOWN]
-
-IF RESEARCH_REQUIREMENTS is empty or None:
-  Display: "✓ No research requirements to synthesize"
-  Proceed to Step 8
-
-SYNTHESIZE_PROMPTS = []
-EXISTING_PATHS = []
-
-For each line in RESEARCH_REQUIREMENTS:
-  IF line contains "Read: `" pattern:
-    PATH = [Extract file path between backticks]
-    Add PATH to EXISTING_PATHS
-    Display: "📄 Existing research: {{PATH}}"
-
-  IF line starts with "- Synthesize:" or "  - Synthesize:":
-    PROMPT = [Extract text after "Synthesize: "]
-    Add PROMPT to SYNTHESIZE_PROMPTS
-    Display: "🔬 Research needed: {{PROMPT}}"
-```
-
-#### Step 7.5.3: Invoke Research Synthesizer Agents (if needed)
-```text
-IF SYNTHESIZE_PROMPTS is not empty:
-  Display: "📚 Synthesizing {{len(SYNTHESIZE_PROMPTS)}} research brief(s)..."
-
-  SYNTHESIZED_PATHS = []
-
-  For each PROMPT in SYNTHESIZE_PROMPTS:
-    Display: "⏳ Researching: {{PROMPT}}"
-
-    Launch research-synthesizer agent using Task tool:
-    - subagent_type: "research-synthesizer"
-    - description: "Synthesize research brief"
-    - prompt: PROMPT
-    - Wait for completion
-
-    Extract synthesized file path from agent result
-    Add to SYNTHESIZED_PATHS
-    Display: "✓ Research synthesized: {{file_path}}"
-
-  COMPLETE_PATHS = EXISTING_PATHS + SYNTHESIZED_PATHS
-  Display: "✓ All research synthesis complete: {{len(COMPLETE_PATHS)}} total documents"
-
-ELSE:
-  COMPLETE_PATHS = EXISTING_PATHS
-  Display: "✓ No research synthesis required - using {{len(EXISTING_PATHS)}} existing document(s)"
-```
-
-#### Step 7.5.4: Update Phase with Synthesized Research
-```text
-IF SYNTHESIZED_PATHS is not empty:
-  Display: "📝 Updating Phase with synthesized research paths..."
-
-  Reconstruct research_requirements section with ONLY "Read:" entries:
-
-  UPDATED_RESEARCH = ""
-  For each PATH in COMPLETE_PATHS:
-    UPDATED_RESEARCH += "- Read: `{{PATH}}`\n"
-
-  Update FINAL_PHASE_MARKDOWN by replacing "### Research Requirements" section content with UPDATED_RESEARCH
-
-  Store updated Phase using {tools.store_document}:
-  - doc_type: "phase"
-  - key: f"{{PLAN_NAME}}/{{PHASE_NAME}}"
-  - content: UPDATED_PHASE_MARKDOWN
-
-  Display: "✓ Phase updated with {{len(SYNTHESIZED_PATHS)}} synthesized research file(s)"
-  Display: "✓ Phase now contains {{len(COMPLETE_PATHS)}} total research documents"
-
-ELSE:
-  Display: "✓ Phase already contains only file paths - no update needed"
+Display agent status to user
 
 Proceed to Step 8.
 ```
-
-**Note**: After this step, Phase.research_requirements contains ONLY "Read: `~/.claude/...`" paths, no "Synthesize:" prompts remain.
 
 ### Step 8: Phase Storage
 

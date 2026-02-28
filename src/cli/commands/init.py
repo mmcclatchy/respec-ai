@@ -21,7 +21,7 @@ from src.platform.models import ProjectStack
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
-from src.platform.tooling_defaults import detect_project_stack, detect_project_tooling
+from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, detect_project_tooling
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -116,6 +116,8 @@ def run(args: Namespace) -> int:
 
         if not args.yes:
             stack = prompt_stack_profile(stack)
+
+        tooling = apply_stack_to_tooling(tooling, stack)
 
         _display_detected_config(platform, project_name, tooling, stack)
 

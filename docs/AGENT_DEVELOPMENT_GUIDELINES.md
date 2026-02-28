@@ -396,8 +396,8 @@ Command Agent                           Specialized Agent               MCP Serv
      |                                          |    using loop_id          |
      |                                          |← feedback (2k chars) -----|
      |                                          |                           |
-     |                                          |--- retrieve phase -------→ |
-     |                                          |← phase data ---------------|
+     |                                          |--- retrieve phase ------→ |
+     |                                          |← phase data --------------|
      |                                          |                           |
      |                                          |--- process & store -----→ |
      | ←- receive brief status -----------------|                           |

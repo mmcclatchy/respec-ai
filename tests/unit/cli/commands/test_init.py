@@ -132,7 +132,7 @@ class TestInitCommand:
         assert stack['frontend_framework'] is None
         assert stack['database'] is None
         assert stack['async_runtime'] is None
-        assert len(stack) == 11
+        assert len(stack) == 12
 
     def test_already_initialized(self, mocker: MockerFixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)

@@ -28,16 +28,17 @@ class PlatformModel(BaseModel):
 class ProjectStack(PlatformModel):
     language: str | None = Field(default=None, description='Primary language (e.g., python, javascript, go, rust)')
     backend_framework: str | None = Field(
-        default=None, description='Backend framework (e.g., fastapi, flask, django, express)'
+        default=None, description='Backend framework (e.g., fastapi, fastmcp, flask, django, express)'
     )
     frontend_framework: str | None = Field(
         default=None, description='Frontend framework (e.g., react, next, vue, svelte)'
     )
     package_manager: str | None = Field(default=None, description='Package manager (e.g., uv, pip, npm, yarn)')
     runtime_version: str | None = Field(default=None, description='Language runtime version (e.g., 3.13, 22)')
-    database: str | None = Field(default=None, description='Database (e.g., postgresql, sqlite, mongodb)')
-    api_style: str | None = Field(default=None, description='API style (e.g., rest, graphql, grpc)')
+    database: str | None = Field(default=None, description='Database (e.g., postgresql, sqlite, mongodb, neo4j)')
+    api_style: str | None = Field(default=None, description='API style (e.g., rest, graphql, grpc, mcp)')
     async_runtime: bool | None = Field(default=None, description='Async runtime (True for async/await patterns)')
+    type_checker: str | None = Field(default=None, description='Type checker (e.g., ty, mypy, pyright for Python)')
     css_framework: str | None = Field(default=None, description='CSS framework (e.g., tailwindcss, bootstrap)')
     ui_components: str | None = Field(default=None, description='UI component library (e.g., daisyui, shadcn)')
     architecture: str | None = Field(default=None, description='Architecture pattern (e.g., monolith, microservices)')
@@ -762,6 +763,21 @@ class PhaseCriticAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store critic feedback')
 
 
+class ResearchSynthesisOrchestratorAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.UPDATE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.TASK, 'research-synthesizer'),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_document: str = Field(..., description='Retrieve phase from MCP')
+    update_document: str = Field(..., description='Update phase with synthesized research')
+
+
 class CreatePhaseAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.STORE_DOCUMENT,
@@ -818,6 +834,7 @@ def _render_stack_section(stack: 'ProjectStack') -> str:
         'Database': stack.database,
         'API Style': stack.api_style,
         'Async Runtime': 'Yes' if stack.async_runtime else 'No' if stack.async_runtime is False else None,
+        'Type Checker': stack.type_checker,
         'CSS Framework': stack.css_framework,
         'UI Components': stack.ui_components,
         'Architecture': stack.architecture,
