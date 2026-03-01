@@ -250,11 +250,8 @@ if [ "$CLEAN_INSTALL" = true ]; then
     print_info "Generating respec-ai workflow files (clean install - will remove existing .respec-ai folder)..."
     CLI_COMMAND="init --project-name $PROJECT_NAME --platform $PLATFORM --skip-mcp-registration --force"
 else
-    # Check if already initialized - remove config.json so init runs fresh
-    # Plans and other documents in .respec-ai/ are preserved
     if [ -f "$TARGET_DIR/.respec-ai/config.json" ]; then
-        print_info "Existing configuration found - reinitializing (plans preserved)..."
-        rm "$TARGET_DIR/.respec-ai/config.json"
+        print_info "Existing configuration found - preserving stack and regenerating templates..."
     else
         print_info "Generating respec-ai workflow files (first-time setup)..."
     fi

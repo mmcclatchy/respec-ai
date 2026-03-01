@@ -154,9 +154,9 @@ class PhaseTools(DocumentToolsInterface):
         try:
             plan_name, phase_name = self._parse_key(key)
             phase = Phase.parse_markdown(content)
-            await self.state.store_phase(plan_name, phase)
+            result = await self.state.update_phase(plan_name, phase_name, phase)
 
-            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=phase_name)
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=result)
         except ValidationError as e:
             raise ToolError(f'Invalid phase markdown: {str(e)}')
         except Exception as e:

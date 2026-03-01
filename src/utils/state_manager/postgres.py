@@ -369,7 +369,8 @@ class PostgresStateManager(StateManager):
                     integration_context, task_breakdown, additional_sections, iteration, version, phase_status, active
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
                 ON CONFLICT (plan_name, phase_name) DO UPDATE SET
-                    id = $1, architecture = $8, technology_stack = $9,
+                    id = $1, objectives = $4, scope = $5, dependencies = $6, deliverables = $7,
+                    architecture = $8, technology_stack = $9,
                     functional_requirements = $10, non_functional_requirements = $11,
                     development_plan = $12, testing_strategy = $13, research_requirements = $14,
                     success_criteria = $15, integration_context = $16, task_breakdown = $17,
@@ -508,12 +509,14 @@ class PostgresStateManager(StateManager):
 
     async def update_phase_by_loop(self, loop_id: str, phase: Phase) -> None:
         async with db_pool.acquire() as conn:
-            mapping = await conn.fetchrow('SELECT plan_name FROM loop_to_phase_mappings WHERE loop_id = $1', loop_id)
+            mapping = await conn.fetchrow(
+                'SELECT plan_name, phase_name FROM loop_to_phase_mappings WHERE loop_id = $1', loop_id
+            )
 
             if not mapping:
                 raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
 
-            await self.store_phase(mapping['plan_name'], phase)
+            await self.update_phase(mapping['plan_name'], mapping['phase_name'], phase)
 
     async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:
         async with db_pool.acquire() as conn:

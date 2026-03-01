@@ -266,19 +266,17 @@ class InMemoryStateManager(StateManager):
         logger.debug(f'store_phase: Normalized "{phase.phase_name}" -> "{normalized_name}"')
 
         # Auto-increment iteration and version if phase already exists
-        # Also preserve frozen fields (objectives, scope, dependencies, deliverables)
+        # Does NOT preserve frozen fields - this is a full replacement
         is_update = normalized_name in self._phases[plan_name]
         if is_update:
             existing_phase = self._phases[plan_name][normalized_name]
             existing_data = existing_phase.model_dump()
             new_data = phase.model_dump()
 
-            frozen_fields = {field: existing_data[field] for field in FROZEN_PHASES_FIELDS}
-
+            # Only increment iteration and version, NO frozen field preservation
             phase = Phase(
                 **{
                     **new_data,
-                    **frozen_fields,
                     'iteration': existing_data['iteration'] + 1,
                     'version': existing_data['version'] + 1,
                 }
@@ -287,7 +285,7 @@ class InMemoryStateManager(StateManager):
                 f'store_phase: Updating existing phase - '
                 f'iteration: {existing_data["iteration"]} -> {phase.iteration}, '
                 f'version: {existing_data["version"]} -> {phase.version}, '
-                f'frozen fields preserved'
+                f'full replacement (no frozen field preservation)'
             )
 
         self._phases[plan_name][normalized_name] = phase
@@ -458,7 +456,7 @@ class InMemoryStateManager(StateManager):
             raise LoopNotFoundError(f'Loop not linked to any phase: {loop_id}')
         plan_name, phase_name = self._loop_to_phase[loop_id]
         logger.debug(f'update_phase_by_loop: Updating phase {phase_name} in project {plan_name}')
-        await self.store_phase(plan_name, phase)
+        await self.update_phase(plan_name, phase_name, phase)
         self._log_state_snapshot('update_phase_by_loop', 'EXIT')
 
     async def unlink_loop(self, loop_id: str) -> tuple[str, str] | None:

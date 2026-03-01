@@ -305,6 +305,33 @@ async def test_phase_store_retrieve_preserves_all_fields(
 
 
 @pytest.mark.asyncio
+async def test_phase_store_replaces_frozen_fields(
+    state_manager: StateManager, plan_name: str, sample_phase: Phase
+) -> None:
+    """Verify store_phase performs full replacement including frozen fields."""
+    # Store original phase
+    phase_name = await state_manager.store_phase(plan_name, sample_phase)
+
+    # Create updated phase with changes to frozen fields
+    updated_phase = sample_phase.model_copy(
+        update={
+            'objectives': 'UPDATED objectives - should persist',
+            'scope': 'UPDATED scope - should persist',
+            'architecture': 'Updated architecture - should persist',
+        }
+    )
+
+    await state_manager.store_phase(plan_name, updated_phase)
+
+    # Retrieve and verify ALL fields updated (full replacement)
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.objectives == 'UPDATED objectives - should persist', 'store_phase should replace frozen fields'
+    assert retrieved.scope == 'UPDATED scope - should persist', 'store_phase should replace frozen fields'
+    assert retrieved.architecture == 'Updated architecture - should persist'
+
+
+@pytest.mark.asyncio
 async def test_phase_frozen_fields_preserved_on_update(
     state_manager: StateManager, plan_name: str, sample_phase: Phase
 ) -> None:
@@ -510,8 +537,8 @@ async def test_update_phase_by_loop_preserves_frozen_fields(
 ) -> None:
     """Verify updating phase via loop also preserves frozen fields.
 
-    Note: update_phase_by_loop calls store_phase internally, which preserves frozen fields
-    on conflict/update operations. This matches update_phase behavior.
+    Note: update_phase_by_loop calls update_phase internally, which preserves frozen fields
+    during refinement iterations. This is the expected behavior for loop-based updates.
     """
     # Store phase and link to loop
     phase_name = await state_manager.store_phase(plan_name, sample_phase)

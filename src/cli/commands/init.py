@@ -24,6 +24,9 @@ from src.platform.template_generator import generate_templates
 from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, detect_project_tooling
 
 
+from src.platform.models import LanguageTooling
+
+
 def add_arguments(parser: ArgumentParser) -> None:
     """Add command-specific arguments.
 
@@ -78,15 +81,50 @@ def run(args: Namespace) -> int:
         respec_ai_dir = project_path / '.respec-ai'
         config_path = respec_ai_dir / 'config.json'
 
+        existing_stack = None
+        existing_tooling = None
+
         if config_path.exists():
             if not args.force:
-                print_error('respec-ai is already initialized in this project')
-                print_warning(f'Config found at: {config_path}')
-                print_warning('Use --force to reinitialize completely')
-                print_warning('Use respec-ai rebuild to rebuild configuration')
-                print_warning('Use respec-ai platform to change platforms')
-                print_warning('Use respec-ai regenerate to update templates only')
-                return 1
+                existing_config = json.loads(config_path.read_text(encoding='utf-8'))
+
+                if 'stack' in existing_config and existing_config['stack']:
+                    print_info('Stack configuration already exists')
+
+                    if not args.yes:
+                        console.print()
+                        console.print('[bold cyan]Choose an option:[/bold cyan]')
+                        console.print('  [bold]1)[/bold] Keep existing stack configuration (regenerate templates only)')
+                        console.print('  [bold]2)[/bold] Reconfigure stack (full setup)')
+                        console.print()
+
+                        choice = console.input('[bold]Enter choice (1 or 2):[/bold] ').strip()
+
+                        if choice == '1':
+                            existing_stack = ProjectStack(**existing_config['stack'])
+                            if 'tooling' in existing_config:
+                                existing_tooling = {
+                                    lang: LanguageTooling(**config)
+                                    for lang, config in existing_config['tooling'].items()
+                                }
+                            print_info('Using existing stack configuration')
+                        elif choice == '2':
+                            print_info('Reconfiguring stack...')
+                        else:
+                            print_error('Invalid choice. Exiting.')
+                            return 1
+                    else:
+                        existing_stack = ProjectStack(**existing_config['stack'])
+                        if 'tooling' in existing_config:
+                            existing_tooling = {
+                                lang: LanguageTooling(**config) for lang, config in existing_config['tooling'].items()
+                            }
+                        print_info('Using existing stack configuration (--yes flag)')
+                else:
+                    print_error('respec-ai is already initialized but missing stack configuration')
+                    print_warning(f'Config found at: {config_path}')
+                    print_warning('Use --force to reinitialize completely')
+                    return 1
             else:
                 print_warning('Force flag detected - reinitializing project')
                 if respec_ai_dir.exists():
@@ -106,18 +144,23 @@ def run(args: Namespace) -> int:
             get_commands_dir(project_path).mkdir(parents=True, exist_ok=True)
             get_agents_dir(project_path).mkdir(parents=True, exist_ok=True)
 
-            progress.update(task, description='Detecting project tooling...')
-            tooling = detect_project_tooling(project_path)
+            if existing_stack is not None:
+                progress.update(task, description='Using existing stack configuration...')
+                stack = existing_stack
+                tooling = existing_tooling or {}
+            else:
+                progress.update(task, description='Detecting project tooling...')
+                tooling = detect_project_tooling(project_path)
 
-            progress.update(task, description='Detecting project stack...')
-            stack = detect_project_stack(project_path)
+                progress.update(task, description='Detecting project stack...')
+                stack = detect_project_stack(project_path)
 
-            progress.update(task, description='Detection complete!')
+                progress.update(task, description='Detection complete!')
 
-        if not args.yes:
-            stack = prompt_stack_profile(stack)
+                if not args.yes:
+                    stack = prompt_stack_profile(stack)
 
-        tooling = apply_stack_to_tooling(tooling, stack)
+                tooling = apply_stack_to_tooling(tooling, stack)
 
         _display_detected_config(platform, project_name, tooling, stack)
 
