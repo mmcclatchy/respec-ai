@@ -227,3 +227,210 @@ class TestInitCommand:
 
         assert result == 0
         assert (tmp_path / '.respec-ai' / 'config.json').exists()
+
+    def test_existing_stack_with_yes_flag_preserves_stack(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        existing_config = {
+            'project_name': 'test-project',
+            'platform': 'linear',
+            'stack': {
+                'language': 'python',
+                'backend_framework': 'fastapi',
+                'frontend_framework': None,
+                'database': 'postgresql',
+                'async_runtime': None,
+                'package_manager': 'uv',
+                'type_checker': 'ty',
+                'runtime_version': '3.13',
+                'api_style': 'rest',
+                'css_framework': None,
+                'ui_components': None,
+                'architecture': 'monolith',
+            },
+        }
+        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+
+        mock_detect = mocker.patch('src.cli.commands.init.detect_project_stack')
+        mock_prompt = mocker.patch('src.cli.commands.init.prompt_stack_profile')
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
+        result = init.run(args)
+
+        assert result == 0
+        mock_detect.assert_not_called()
+        mock_prompt.assert_not_called()
+
+        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
+        assert config['stack']['language'] == 'python'
+        assert config['stack']['backend_framework'] == 'fastapi'
+        assert config['stack']['database'] == 'postgresql'
+        assert config['stack']['type_checker'] == 'ty'
+        assert config['stack']['architecture'] == 'monolith'
+
+    def test_existing_stack_without_yes_flag_prompts_user_option_1(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        existing_config = {
+            'project_name': 'test-project',
+            'platform': 'linear',
+            'stack': {
+                'language': 'python',
+                'backend_framework': 'fastapi',
+                'frontend_framework': None,
+                'database': 'postgresql',
+                'async_runtime': None,
+                'package_manager': 'uv',
+                'type_checker': 'ty',
+                'runtime_version': '3.13',
+                'api_style': 'rest',
+                'css_framework': None,
+                'ui_components': None,
+                'architecture': 'monolith',
+            },
+        }
+        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+
+        mock_console = mocker.patch('src.cli.commands.init.console')
+        mock_console.input.side_effect = ['1', 'y']
+
+        mock_detect = mocker.patch('src.cli.commands.init.detect_project_stack')
+        mock_prompt = mocker.patch('src.cli.commands.init.prompt_stack_profile')
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=False, force=False)
+        result = init.run(args)
+
+        assert result == 0
+        mock_detect.assert_not_called()
+        mock_prompt.assert_not_called()
+        assert mock_console.input.call_count == 2
+
+        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
+        assert config['stack']['language'] == 'python'
+        assert config['stack']['backend_framework'] == 'fastapi'
+        assert config['stack']['type_checker'] == 'ty'
+        assert config['stack']['architecture'] == 'monolith'
+
+    def test_existing_stack_without_yes_flag_prompts_user_option_2(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        existing_config = {
+            'project_name': 'test-project',
+            'platform': 'linear',
+            'stack': {
+                'language': 'python',
+                'backend_framework': 'fastapi',
+                'frontend_framework': None,
+                'database': 'postgresql',
+                'async_runtime': None,
+                'package_manager': 'uv',
+                'type_checker': 'ty',
+                'runtime_version': '3.13',
+                'api_style': 'rest',
+                'css_framework': None,
+                'ui_components': None,
+                'architecture': 'monolith',
+            },
+        }
+        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+
+        mock_console = mocker.patch('src.cli.commands.init.console')
+        mock_console.input.side_effect = ['2', 'y']
+
+        mock_detect = mocker.patch(
+            'src.cli.commands.init.detect_project_stack',
+            return_value=ProjectStack(language='typescript'),
+        )
+        mock_prompt = mocker.patch(
+            'src.cli.commands.init.prompt_stack_profile',
+            return_value=ProjectStack(language='typescript'),
+        )
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=False, force=False)
+        result = init.run(args)
+
+        assert result == 0
+        mock_detect.assert_called_once()
+        mock_prompt.assert_called_once()
+
+        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
+        assert config['stack']['language'] == 'typescript'
+
+    def test_existing_stack_invalid_choice_returns_error(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        existing_config = {
+            'project_name': 'test-project',
+            'platform': 'linear',
+            'stack': {'language': 'python'},
+        }
+        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+
+        mock_console = mocker.patch('src.cli.commands.init.console')
+        mock_console.input.return_value = '3'
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=False, force=False)
+        result = init.run(args)
+
+        assert result == 1

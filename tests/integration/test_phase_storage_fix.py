@@ -116,8 +116,9 @@ This is the updated architecture for the system.
 
     result = await document_tools.update_document(DocumentType.PHASE, path, updated_markdown)
 
-    # Verify update success - store_phase returns the phase name
-    assert result == phase_name
+    # Verify update success - update_phase returns iteration/version info
+    assert phase_name in result
+    assert 'Updated phase' in result
 
     # Verify phase is still in typed storage with updated data
     phase = state_manager._phases[plan_name][phase_name]

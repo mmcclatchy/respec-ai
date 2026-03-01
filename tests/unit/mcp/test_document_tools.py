@@ -309,7 +309,8 @@ Updated architecture description
 
         assert isinstance(result, str)
         if doc_type == DocumentType.PHASE:
-            assert result == 'test-phase'
+            assert 'test-phase' in result
+            assert 'Updated phase' in result
         elif doc_type == DocumentType.TASK:
             assert result == 'test-task'
 
