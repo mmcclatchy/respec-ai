@@ -146,10 +146,38 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a Phase quality specialist.
 
-INPUTS: Plan name and Loop ID for operations
+INPUTS: Plan name, Loop ID, Phase name, and optional validation mode
 - plan_name: Plan name for phase retrieval
 - loop_id: Refinement loop identifier for feedback storage
 - phase_name: Phase name for retrieval
+- validation_mode: Optional - "full" (default) or "post_synthesis"
+
+## Validation Mode Behavior
+
+IF validation_mode == "post_synthesis":
+    EXECUTE ONLY:
+    - Step 2: Retrieve Phase from MCP
+    - Step 2.6: Verify Research File Paths
+      - Validate ALL paths (both "Existing" and previously "External")
+      - All should be "Read:" format now (synthesis converted them)
+    - Step 6: Store lightweight feedback
+
+    SKIP:
+    - Step 3: Structure evaluation
+    - Step 4: Quality score calculation
+    - Step 5: Recommendations generation
+
+    FEEDBACK FORMAT (simplified):
+    - loop_id: {{loop_id}}
+    - critic_agent: PHASE_CRITIC
+    - overall_score: {{preserve score from last full assessment}}
+    - assessment_summary: "Post-synthesis path validation"
+    - detailed_feedback: Only path verification results
+    - key_issues: List any invalid paths found (if any)
+    - recommendations: [] (empty)
+
+ELSE (default "full" mode):
+    Execute all steps normally (current behavior)
 
 TASKS:
 
@@ -236,40 +264,85 @@ LENGTH_ASSESSMENT = {{
     "evidence": EVIDENCE
 }}
 
-STEP 2.6: Verify Research File Paths Exist
-Extract research file paths from Phase's Research Requirements section:
+STEP 2.6: Verify Research File Paths Exist (Section-Aware)
 
-RESEARCH_PATHS = []
+Extract Research Requirements section from PHASE_MARKDOWN:
+
 Search PHASE_MARKDOWN for "### Research Requirements" section
-IF section exists:
-  Extract all file paths matching pattern: `~/.claude/best-practices/*.md`
-  For each path found:
-    RESEARCH_PATHS.append(path)
+IF section not found:
+    RESEARCH_PATH_PENALTY = 0
+    RESEARCH_PATH_VALIDATION = {{
+        "validated_count": 0,
+        "valid_count": 0,
+        "invalid_count": 0,
+        "valid_paths": [],
+        "invalid_paths": [],
+        "external_research_found": False
+    }}
+    Skip to Step 3
 
-Verify each path exists using Glob tool:
+Parse section to distinguish subsections:
+- "**Existing Documentation**" → paths with "- Read: `[path]`"
+- "**External Research Needed**" → prompts with "- Synthesize: [prompt]"
+
+PATHS_TO_VALIDATE = []
+
+## Line-by-line state machine parser (robust against formatting variations)
+in_existing_section = False
+in_external_section = False
+
+For each line in research_section.split('\\n'):
+    line = line.strip()
+
+    IF '**Existing Documentation**' in line:
+        in_existing_section = True
+        in_external_section = False
+    ELIF '**External Research Needed**' in line:
+        in_existing_section = False
+        in_external_section = True
+    ELIF line.startswith('- Read:') AND in_existing_section:
+        # Extract path from: "- Read: `~/.claude/best-practices/file.md`"
+        # Handle both backtick formats: `path` and plain path
+        IF '`' in line:
+            # Extract from backticks
+            match = regex search for `([^`]+)`
+            IF match found:
+                PATHS_TO_VALIDATE.append(match.group(1))
+        ELSE:
+            # Extract plain text after "- Read: "
+            path = line.replace('- Read:', '').strip()
+            IF path:
+                PATHS_TO_VALIDATE.append(path)
+    # Ignore "- Synthesize:" lines completely (they'll be created in Step 7.5)
+
+## Validate only paths from "Existing Documentation" subsection
 VALID_PATHS = []
 INVALID_PATHS = []
 
-For each path in RESEARCH_PATHS:
-  result = Glob(pattern=path)
-  IF result contains matching file:
-    VALID_PATHS.append(path)
-  ELSE:
-    INVALID_PATHS.append(path)
+For each path in PATHS_TO_VALIDATE:
+    result = Glob(pattern=path)
+    IF result contains matching file:
+        VALID_PATHS.append(path)
+    ELSE:
+        INVALID_PATHS.append(path)
 
 ## Store verification results for scoring
 RESEARCH_PATH_VALIDATION = {{
+    "validated_count": len(PATHS_TO_VALIDATE),
     "valid_count": len(VALID_PATHS),
     "invalid_count": len(INVALID_PATHS),
     "valid_paths": VALID_PATHS,
-    "invalid_paths": INVALID_PATHS
+    "invalid_paths": INVALID_PATHS,
+    "external_research_found": ("**External Research Needed**" in research_section)
 }}
 
-## SEVERE PENALTY for invalid paths
+## SEVERE PENALTY for invalid "Read:" paths only
 IF len(INVALID_PATHS) > 0:
-    RESEARCH_PATH_PENALTY = -20  # Non-negotiable blocking penalty
+    RESEARCH_PATH_PENALTY = -20  # Blocking penalty
 ELSE:
     RESEARCH_PATH_PENALTY = 0
+
+# Note: "Synthesize:" prompts are NOT validated - converted to files in Step 7.5
 
 STEP 3: Evaluate Phase Structure
 Assess Phase against FSDD quality framework criteria
@@ -425,21 +498,22 @@ Phases vary by project type. Evaluate based on project context:
 - Dependencies between phases mapped
 - Resource implications noted
 
-**11. Research Requirements (5 points + SEVERE penalty for invalid paths)**
+**11. Research Requirements (5 points + SEVERE penalty for invalid archive paths)**
 - Knowledge gaps identified
-- Archive paths specified (Read: format)
-- **Archive paths verified to exist** (from STEP 2.6 validation)
-- External research defined (Synthesize: format)
+- Existing documentation paths verified (from STEP 2.6 validation)
+- External research prompts identified (will be synthesized in Step 7.5)
 
-**Research Path Validation (CRITICAL)**:
-- Valid paths found: [RESEARCH_PATH_VALIDATION.valid_count]
-- Invalid paths found: [RESEARCH_PATH_VALIDATION.invalid_count]
+**Archive Path Validation (CRITICAL)**:
+- Valid "Read:" paths found: {{RESEARCH_PATH_VALIDATION.valid_count}}
+- Invalid "Read:" paths found: {{RESEARCH_PATH_VALIDATION.invalid_count}}
+- External research prompts: {{count of "Synthesize:" entries}}
 
-**SEVERE PENALTY FOR INVALID PATHS**:
-- If ANY invalid paths found: Apply RESEARCH_PATH_PENALTY (-20 points)
+**SEVERE PENALTY FOR INVALID ARCHIVE PATHS**:
+- If ANY invalid "Read:" paths found: Apply RESEARCH_PATH_PENALTY (-20 points)
 - This is a BLOCKING issue - invalid paths cause downstream task-planner failure
-- Phase CANNOT score above 80 with any invalid research paths
-- All invalid paths MUST be corrected before phase is considered ready
+- Phase CANNOT score above 80 with any invalid archive paths
+- "Synthesize:" prompts are NOT penalized (converted to files in Step 7.5)
+- All invalid "Read:" paths MUST be corrected before phase is considered ready
 - List each invalid path in Key Issues section
 
 **Root Cause**: Phase author likely guessed filename instead of using actual archive scan output.
