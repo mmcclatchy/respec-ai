@@ -42,6 +42,24 @@ code_reviewer_feedback_template = CriticFeedback(
 - Coverage Command: pytest --cov=services --cov-report=term-missing
 - **Uncovered Lines**: [list critical uncovered code paths]
 
+#### Test Quality Validation (Deduction: -X points)
+- **BLOCKING Issues**: [count]
+  - Test code in production: [YES/NO]
+  - Mocking code under test: [YES/NO]
+- **High Severity**: [count]
+  - Pointless tests (external packages): [count]
+- **Medium Severity**: [count]
+  - Testing implementation details: [count]
+- **Total Deduction**: -[X] points
+
+**Flagged Tests** (if any):
+- `src/services/user.py:5` - BLOCKING: `from tests.fixtures import mock_user`
+  - Fix: Move mock_user to src/utils/test_helpers.py
+- `tests/test_user.py::test_create_user` - BLOCKING: Mocks code under test
+  - Fix: Remove @patch('User.save'). Test actual save behavior.
+- `tests/test_settings.py::test_pydantic_loads_env` - Pointless test
+  - Fix: Test application behavior using settings, not that settings loads
+
 ### Code Quality Analysis
 
 #### Phase Alignment (Score: X/15)
@@ -193,8 +211,13 @@ FOR each mode IN MODES_IN_TASK:
 
   IF mode == "test":
     ASSESSMENT_FOCUS["test"] = {{
-      PRIMARY: Test coverage, fixture design, test organization
+      PRIMARY: Test coverage, fixture design, test organization, test quality
       SECONDARY: Integration test strategy, mocking patterns
+      BLOCKING_ISSUES: {{
+        "test_code_in_production": True,  # Always BLOCKING (ZERO TOLERANCE)
+        "mocking_production_code": True,   # Always BLOCKING (ZERO TOLERANCE)
+        "pointless_tests_count": 3         # BLOCKING if >= 3
+      }}
     }}
 ```
 
@@ -280,6 +303,156 @@ pytest --cov=services --cov-report=term-missing --cov-report=html
 - Uncovered critical paths
 - Test file coverage (tests should test, not be tested)
 - Missing edge case testing
+
+### 4.5. Test Quality Validation (Modifier: 0 to -10 points)
+
+Validate test suite quality by detecting anti-patterns.
+
+**STEP 1: Check for Test Code in Production (BLOCKING)**
+
+Run Bash command to find production imports from tests:
+```bash
+grep -r "from tests" src/ --include="*.py" || echo "No imports found"
+grep -r "import tests" src/ --include="*.py" || echo "No imports found"
+```
+
+Store results in TEST_CODE_IN_PRODUCTION.
+
+IF any matches found:
+  TEST_PRODUCTION_PENALTY = -10
+  TEST_PRODUCTION_BLOCKING = True
+  For each match, extract file:line
+ELSE:
+  TEST_PRODUCTION_PENALTY = 0
+  TEST_PRODUCTION_BLOCKING = False
+
+**STEP 2: Detect Pointless External Package Tests**
+
+Use Glob to find all test files:
+```
+TEST_FILES = Glob(pattern="tests/**/*.py")
+```
+
+For each test file, use Read to scan content.
+
+Count tests matching pointless patterns:
+- Test function names containing: "test_pydantic", "test_settings_loads", "test_fastapi", "test_sqlalchemy"
+- Test docstrings containing: "test that pydantic", "test that settings", "verify package", "check library works"
+- Test bodies with ONLY these patterns (no application logic):
+  - `settings = AppSettings()` followed immediately by `assert settings.`
+  - `isinstance` or `type` checks on config objects without behavior testing
+  - Import validation: `from package import Thing` followed by `assert Thing`
+
+Store count in POINTLESS_TESTS_COUNT.
+
+IF POINTLESS_TESTS_COUNT >= 6:
+  POINTLESS_PENALTY = -10
+ELIF POINTLESS_TESTS_COUNT >= 3:
+  POINTLESS_PENALTY = -5
+ELIF POINTLESS_TESTS_COUNT >= 1:
+  POINTLESS_PENALTY = -2
+ELSE:
+  POINTLESS_PENALTY = 0
+
+**STEP 3: Detect Mocking Code Under Test**
+
+For each test file from STEP 2, scan for excessive mocking patterns.
+
+Count tests where:
+- `@patch` decorates test function
+- Patch target matches module being tested
+- Example: `@patch('src.services.user_service.User.save')` in test for `create_user()` that calls `User.save()`
+
+Pattern detection:
+- Extract test file module path (e.g., tests/unit/test_user_service.py)
+- Extract patch targets from `@patch('...')` decorators
+- If patch target starts with same module name as test subject: FLAG
+
+Store count in MOCKING_PRODUCTION_COUNT.
+
+IF MOCKING_PRODUCTION_COUNT >= 1:
+  MOCKING_PENALTY = -10
+  MOCKING_PRODUCTION_BLOCKING = True
+ELSE:
+  MOCKING_PENALTY = 0
+  MOCKING_PRODUCTION_BLOCKING = False
+
+**STEP 4: Detect Testing Implementation Details**
+
+For each test file, scan for implementation detail testing:
+
+Count tests with:
+- Calls to private methods: `processor._validate(`, `obj._internal_method(`
+- Mock assertions on call counts without behavior: `assert mock.call_count == 2` without behavior assertion
+- Method call order assertions: `mock.assert_has_calls([call(...), call(...)])` in specific order
+- Internal state checks: accessing `._attribute` for assertion
+
+Store count in IMPLEMENTATION_DETAIL_COUNT.
+
+IF IMPLEMENTATION_DETAIL_COUNT >= 5:
+  IMPLEMENTATION_PENALTY = -3
+ELIF IMPLEMENTATION_DETAIL_COUNT >= 2:
+  IMPLEMENTATION_PENALTY = -2
+ELSE:
+  IMPLEMENTATION_PENALTY = 0
+
+**STEP 5: Calculate Total Test Quality Penalty**
+
+TOTAL_TEST_QUALITY_PENALTY = (
+  TEST_PRODUCTION_PENALTY +
+  POINTLESS_PENALTY +
+  MOCKING_PENALTY +
+  IMPLEMENTATION_PENALTY
+)
+
+Cap at -10 points maximum.
+
+**STEP 6: Generate Test Quality Feedback**
+
+IF TEST_PRODUCTION_BLOCKING == True:
+  Add to key_issues:
+  - "**BLOCKING: Test Code in Production**: Production files import from tests/"
+  - List each file:line with exact import statement
+  - "Fix: Move shared code to src/utils/ or remove test dependency"
+
+IF POINTLESS_TESTS_COUNT > 0:
+  Add to key_issues:
+  - "**Pointless Tests Found** ([count] tests): Tests validate external package behavior, not application logic"
+  - List each test file:function with specific issue
+  - "Fix: Replace with application behavior test. Example provided in recommendations."
+
+IF MOCKING_PRODUCTION_BLOCKING == True:
+  Add to key_issues:
+  - "**BLOCKING: Mocking Code Under Test** ([count] tests): Tests mock the exact code they're testing"
+  - List each test with patch target
+  - "Fix: Remove mock. Test actual behavior or refactor to use dependency injection."
+
+IF IMPLEMENTATION_DETAIL_COUNT > 0:
+  Add to recommendations:
+  - "**Testing Implementation Details** ([count] tests): Tests check internal state/private methods"
+  - List each test with specific pattern
+  - "Fix: Test public behavior instead of internal implementation"
+
+**Mode-Specific Behavior**:
+
+IF mode == "test":
+  IF TEST_PRODUCTION_BLOCKING == True:
+    status = REFINE (must fix before completion)
+  IF MOCKING_PRODUCTION_BLOCKING == True:
+    status = REFINE (must fix before completion)
+  IF POINTLESS_TESTS_COUNT >= 3:
+    status = REFINE (test suite quality too low)
+
+**Deduction Applied**: Based on test anti-pattern detection
+- **BLOCKING Issues** (-10 points each):
+  - Test code imported in production
+  - Mocking code under test (ZERO TOLERANCE)
+- **High Severity** (up to -10 points):
+  - Pointless tests: 6+ = -10, 3-5 = -5, 1-2 = -2
+- **Medium Severity** (up to -3 points):
+  - Testing implementation details: 5+ = -3, 2-4 = -2
+
+**Mode-Specific**: For "test" mode, BLOCKING issues trigger status = REFINE
 
 ### 5. Phase Alignment (15 Points)
 **Full Points (13-15)**: Implementation matches Phase structure and specifications

@@ -378,6 +378,38 @@ Agent will:
 
 Display agent status to user
 
+Proceed to Step 7.6.
+```
+
+### Step 7.6: Post-Synthesis Quality Validation
+
+After research synthesis completes, validate all research paths exist:
+
+```text
+Display to user: "🔍 Validating synthesized research paths..."
+
+Invoke: respec-phase-critic
+Input:
+  - plan_name: PLAN_NAME
+  - loop_id: LOOP_ID
+  - phase_name: PHASE_NAME
+  - validation_mode: "post_synthesis"
+
+Critic will:
+  1. Retrieve phase from MCP (now includes synthesized paths)
+  2. Run ONLY path verification (Step 2.6)
+     - This time validates ALL paths (both original and synthesized)
+  3. Store lightweight feedback with path validation results
+  4. Return pass/fail status
+
+IF validation_result shows invalid_count > 0:
+    Display warning: "⚠️ Synthesized research paths invalid:"
+    List INVALID_PATHS
+    Display: "Check research-synthesizer output logs"
+    # Non-blocking - user can proceed
+ELSE:
+    Display: "✓ All research paths validated successfully"
+
 Proceed to Step 8.
 ```
 
