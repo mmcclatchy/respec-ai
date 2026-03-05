@@ -1438,7 +1438,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 - Skip phase validation before implementation
 - Ignore phase dependencies
 
-### Technical Specifications
+### Phase Documents
 
 **Do:**
 - Reference strategic plan

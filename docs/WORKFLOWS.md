@@ -84,9 +84,9 @@ respec-ai follows a standard enterprise workflow with automated quality gates at
    │
    ├─ Implementation planning
    ├─ TDD-driven code generation
-   └─ Code review with code-reviewer (validates against spec)
+   └─ Code review with code-reviewer (validates against task breakdown)
 
-   ▼ Validates: Code aligns with phase
+   ▼ Validates: Code aligns with task breakdown
 ```
 
 **Key Principle:** Each stage validates against its parent document target, creating a chain of alignment from business objectives through to production code.
@@ -397,7 +397,7 @@ respec-ai init -p github
 
 ---
 
-#### Technical Specifications
+#### Phase Documents
 
 **DO:**
 - ✅ Include architecture, technology choices, and implementation approach
