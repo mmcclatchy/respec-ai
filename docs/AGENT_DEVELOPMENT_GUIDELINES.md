@@ -351,7 +351,7 @@ OUTPUTS: Technical specification in structured format
 
 **Key Principle**: Commands orchestrate control flow, not data flow. Data flows directly between MCP Server and specialized agents.
 
-**Scope**: This pattern applies to MCP-driven refinement loops (spec, build workflows). Main Agent driven workflows (plan workflow) manage user interaction differently and do not use this pattern.
+**Scope**: This pattern applies to MCP-driven refinement loops (phase, task workflows). Main Agent driven workflows (plan workflow) manage user interaction differently and do not use this pattern.
 
 ### Traditional vs Optimized Architecture
 
@@ -685,7 +685,7 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
 #### Scalability Benefits
 
 **Pattern Extensibility:**
-- Applies to all MCP-driven refinement workflows (spec, build)
+- Applies to all MCP-driven refinement workflows (phase, task)
 - Can add new agents without changing command patterns
 - MCP Server handles complexity of state management
 - Clear pattern for future agent development
@@ -766,7 +766,7 @@ When implementing agents using this pattern:
 
 **Core Principle**: In MCP-driven refinement loops, commands orchestrate control flow, not data flow. Specialized agents retrieve their own data directly from MCP Server using `loop_id`.
 
-**Context Optimization**: This pattern reduces command agent context by 99% and total system context by 63% in MCP-driven refinement workflows (spec, build).
+**Context Optimization**: This pattern reduces command agent context by 99% and total system context by 63% in MCP-driven refinement workflows (phase, task).
 
 **Agent Self-Sufficiency**: Agents using this pattern are independent, self-sufficient processors that retrieve exactly what they need when they need it.
 
