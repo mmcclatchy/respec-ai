@@ -1186,6 +1186,24 @@ class InfrastructureReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store infrastructure review section')
 
 
+class CodingStandardsReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.STORE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    store_review_section: str = Field(..., description='Store coding standards review section')
+
+
 class ReviewConsolidatorAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,

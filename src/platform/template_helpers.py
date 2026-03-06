@@ -7,6 +7,7 @@ from .models import (
     CodeCommandTools,
     CoderAgentTools,
     CodeReviewerAgentTools,
+    CodingStandardsReviewerAgentTools,
     CreatePhaseAgentTools,
     DatabaseReviewerAgentTools,
     FrontendReviewerAgentTools,
@@ -860,6 +861,32 @@ def create_infrastructure_reviewer_agent_tools() -> InfrastructureReviewerAgentT
             RespecAITool.STORE_DOCUMENT,
             doc_type=DocumentType.COMPLETION_REPORT.quoted,
             key='{PLAN_NAME}/{PHASE_NAME}/review-infrastructure',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in CodingStandardsReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in CodingStandardsReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return CodingStandardsReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-coding-standards',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
     )

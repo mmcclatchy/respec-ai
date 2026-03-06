@@ -3,6 +3,7 @@ from .automated_quality_checker import generate_automated_quality_checker_templa
 from .backend_api_reviewer import generate_backend_api_reviewer_template
 from .code_reviewer import generate_code_reviewer_template
 from .coder import generate_coder_template
+from .coding_standards_reviewer import generate_coding_standards_reviewer_template
 from .create_phase import generate_create_phase_template
 from .database_reviewer import generate_database_reviewer_template
 from .frontend_reviewer import generate_frontend_reviewer_template
@@ -41,6 +42,7 @@ __all__ = [
     'generate_backend_api_reviewer_template',
     'generate_database_reviewer_template',
     'generate_infrastructure_reviewer_template',
+    'generate_coding_standards_reviewer_template',
     'generate_review_consolidator_template',
     'generate_research_synthesis_orchestrator_template',
 ]

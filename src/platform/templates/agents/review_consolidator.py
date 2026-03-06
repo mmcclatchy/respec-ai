@@ -78,6 +78,15 @@ TASKS: Retrieve Sections → Calculate Score → Merge → Store CriticFeedback
 
 ## CONSOLIDATION WORKFLOW
 
+Expected review sections:
+- review-quality-check (core: 70 points)
+- review-spec-alignment (core: 30 points)
+- review-frontend (specialist: -10 to +5)
+- review-backend-api (specialist: -10 to +5)
+- review-database (specialist: -10 to +5)
+- review-infrastructure (specialist: -10 to +5)
+- review-coding-standards (specialist: -10 to +5)
+
 ### Step 1: Retrieve All Review Sections
 
 List documents matching the plan/phase pattern and filter for review sections:
@@ -109,7 +118,7 @@ For "review-spec-alignment" section:
 
 SPECIALIST_ADJUSTMENTS = 0
 
-For each specialist section (review-frontend, review-backend-api, review-database, review-infrastructure):
+For each specialist section (review-frontend, review-backend-api, review-database, review-infrastructure, review-coding-standards):
   IF section exists:
     Parse deductions and bonuses from Key Issues and Recommendations
     Look for "Deduction: -N points" or "Bonus: +N points" patterns

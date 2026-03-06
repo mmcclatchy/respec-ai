@@ -20,6 +20,7 @@ from src.platform.template_helpers import (
     create_backend_api_reviewer_agent_tools,
     create_code_reviewer_agent_tools,
     create_coder_agent_tools,
+    create_coding_standards_reviewer_agent_tools,
     create_create_phase_agent_tools,
     create_database_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
@@ -43,6 +44,7 @@ from src.platform.templates.agents import (
     generate_backend_api_reviewer_template,
     generate_code_reviewer_template,
     generate_coder_template,
+    generate_coding_standards_reviewer_template,
     generate_create_phase_template,
     generate_database_reviewer_template,
     generate_frontend_reviewer_template,
@@ -167,6 +169,7 @@ def _get_agent_generators(
     backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()
     database_reviewer_tools = create_database_reviewer_agent_tools()
     infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools()
+    coding_standards_reviewer_tools = create_coding_standards_reviewer_agent_tools()
     review_consolidator_tools = create_review_consolidator_agent_tools()
 
     return [
@@ -196,5 +199,9 @@ def _get_agent_generators(
         ('respec-backend-api-reviewer', generate_backend_api_reviewer_template(backend_api_reviewer_tools)),
         ('respec-database-reviewer', generate_database_reviewer_template(database_reviewer_tools)),
         ('respec-infrastructure-reviewer', generate_infrastructure_reviewer_template(infrastructure_reviewer_tools)),
+        (
+            'respec-coding-standards-reviewer',
+            generate_coding_standards_reviewer_template(coding_standards_reviewer_tools),
+        ),
         ('respec-review-consolidator', generate_review_consolidator_template(review_consolidator_tools)),
     ]
