@@ -190,6 +190,10 @@ IF "database" in STEP_MODES:
 IF "infrastructure" in STEP_MODES:
   ACTIVE_REVIEWERS.append("infrastructure-reviewer")
 
+Check for coding standards file:
+IF coding standards file exists at project root (CLAUDE.md with coding standards content):
+  ACTIVE_REVIEWERS.append("coding-standards-reviewer")
+
 ACTIVE_REVIEWERS.append("review-consolidator")
 
 Display: "✓ Active reviewers: {{ACTIVE_REVIEWERS}}"

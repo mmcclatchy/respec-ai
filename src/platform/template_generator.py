@@ -6,6 +6,7 @@ from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.platform.models import (
     CodeCommandTools,
     LanguageTooling,
+    PatchCommandTools,
     PhaseCommandTools,
     PlanCommandTools,
     PlanRoadmapCommandTools,
@@ -25,6 +26,7 @@ from src.platform.template_helpers import (
     create_database_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
+    create_patch_planner_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
     create_plan_analyst_agent_tools,
@@ -49,6 +51,7 @@ from src.platform.templates.agents import (
     generate_database_reviewer_template,
     generate_frontend_reviewer_template,
     generate_infrastructure_reviewer_template,
+    generate_patch_planner_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
     generate_plan_analyst_template,
@@ -93,6 +96,7 @@ def generate_templates(
         PlanCommandTools.initialize_tool_docs(mcp)
         TaskCommandTools.initialize_tool_docs(mcp)
         CodeCommandTools.initialize_tool_docs(mcp)
+        PatchCommandTools.initialize_tool_docs(mcp)
         PlanRoadmapCommandTools.initialize_tool_docs(mcp)
 
     commands_dir = get_commands_dir(project_path)
@@ -108,6 +112,7 @@ def generate_templates(
         RespecAICommand.PHASE,
         RespecAICommand.TASK,
         RespecAICommand.CODE,
+        RespecAICommand.PATCH,
         RespecAICommand.ROADMAP,
         RespecAICommand.PLAN_CONVERSATION,
     ]
@@ -160,6 +165,7 @@ def _get_agent_generators(
     research_synthesis_orchestrator_tools = create_research_synthesis_orchestrator_agent_tools()
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()
+    patch_planner_tools = create_patch_planner_agent_tools()
     task_critic_tools = create_task_critic_agent_tools()
     coder_tools = create_coder_agent_tools(coder_platform_tools, platform_type, tooling, stack=stack)
     code_reviewer_tools = create_code_reviewer_agent_tools(platform_type, stack=stack)
@@ -187,6 +193,7 @@ def _get_agent_generators(
         ),
         ('respec-task-planner', generate_task_planner_template(task_planner_tools)),
         ('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
+        ('respec-patch-planner', generate_patch_planner_template(patch_planner_tools)),
         ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-coder', generate_coder_template(coder_tools)),
         ('respec-code-reviewer', generate_code_reviewer_template(code_reviewer_tools)),

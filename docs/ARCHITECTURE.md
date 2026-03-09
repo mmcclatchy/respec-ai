@@ -35,8 +35,8 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │  └──────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                Template Engine                           │   │
-│  │  • 5 Command Templates (orchestration patterns)          │   │
-│  │  • 7 Agent Templates (specialized workflows)             │   │
+│  │  • 7 Command Templates (orchestration patterns)          │   │
+│  │  • 23 Agent Templates (specialized workflows)            │   │
 │  │  • Pydantic Tool Models (type-safe parameter passing)    │   │
 │  │  • Strategy Pattern (clean command generation)           │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -155,7 +155,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 ### Command Templates (Orchestrators)
 
-**5 sophisticated command templates** that orchestrate workflows using platform-specific tools:
+**7 command templates** that orchestrate workflows using platform-specific tools:
 
 1. **respec-plan** - Strategic planning orchestration
    - Coordinates plan-analyst and plan-critic agents
@@ -168,7 +168,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Manages phase refinement cycles
 
 3. **respec-code** - Implementation orchestration
-   - Coordinates taskner, coder, code-reviewer
+   - Coordinates task-planner, coder, review team
    - Executes implementation workflows
    - Validates code quality
 
@@ -182,16 +182,28 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Strategic input gathering
    - Context-aware dialogue
 
+6. **respec-task** - Task breakdown orchestration
+   - Transforms Phases into detailed task breakdowns
+   - Coordinates task-planner and task-plan-critic agents
+   - Manages task refinement loops
+
+7. **respec-patch** - Maintenance orchestration
+   - Bug fixes, feature extensions, and refactoring
+   - Coordinates patch-planner and review team
+   - Manages dual planning and coding loops
+
 ### Agent Templates (Specialists)
 
-**7 specialized agent templates** for focused workflow tasks:
+**23 specialized agent templates** for focused workflow tasks:
 
 **Generative Agents (Content Creation):**
 - **plan-analyst** - Business objectives analysis
 - **roadmap** - Implementation roadmap generation
 - **phase-architect** - Technical specification design
-- **taskner** - Implementation planning
+- **task-planner** - Task breakdown from Phases
+- **patch-planner** - Amendment task creation from change descriptions
 - **coder** - Code implementation
+- **research-synthesis-orchestrator** - Research coordination
 
 **Critic Agents (Quality Assessment):**
 - **plan-critic** - Strategic plan evaluation
@@ -199,7 +211,18 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **roadmap-critic** - Roadmap completeness validation
 - **phase-critic** - Technical specification review
 - **task-critic** - Implementation plan evaluation
+- **task-plan-critic** - Task breakdown quality assessment
 - **code-reviewer** - Code quality review
+
+**Review Team Agents:**
+- **automated-quality-checker** - Static analysis (tests, types, lint, coverage)
+- **spec-alignment-reviewer** - Task/Phase/Plan alignment verification
+- **frontend-reviewer** - Frontend domain review
+- **backend-api-reviewer** - API domain review
+- **database-reviewer** - Database domain review
+- **infrastructure-reviewer** - Infrastructure domain review
+- **coding-standards-reviewer** - Project coding standards compliance
+- **review-consolidator** - Merges review sections into single CriticFeedback
 
 **Specialized Agents:**
 - **create-phase** - External platform phase creation
@@ -263,10 +286,12 @@ class CommandStrategy[T](ABC):
     def get_template_func(self) -> Callable[[T], str]
     def generate_template(self, platform: PlatformType) -> str
 
-# 5 concrete strategies:
+# 7 concrete strategies:
 # - PlanCommandStrategy
 # - PhaseCommandStrategy
-# - BuildCommandStrategy
+# - CodeCommandStrategy
+# - TaskCommandStrategy
+# - PatchCommandStrategy
 # - PlanRoadmapCommandStrategy
 # - PlanConversationCommandStrategy
 ```
@@ -423,22 +448,37 @@ cd /path/to/your/project
 project/
 ├── .claude/
 │   ├── commands/
-│   │   ├── respec-plan.md        # Generated (platform-specific)
-│   │   ├── respec-phase.md        # Generated (platform-specific)
-│   │   ├── respec-code.md       # Generated (platform-specific)
-│   │   ├── respec-roadmap.md     # Generated (static)
-│   │   └── respec-plan-conversation.md  # Generated (static)
+│   │   ├── respec-plan.md              # Generated (platform-specific)
+│   │   ├── respec-phase.md             # Generated (platform-specific)
+│   │   ├── respec-code.md              # Generated (platform-specific)
+│   │   ├── respec-task.md              # Generated (platform-specific)
+│   │   ├── respec-patch.md             # Generated (platform-specific)
+│   │   ├── respec-roadmap.md           # Generated (static)
+│   │   └── respec-plan-conversation.md # Generated (static)
 │   └── agents/
-│       ├── respec-plan-analyst.md        # Generated (static)
-│       ├── respec-plan-critic.md         # Generated (static)
-│       ├── respec-analyst-critic.md      # Generated (static)
-│       ├── respec-roadmap.md             # Generated (static)
-│       ├── respec-roadmap-critic.md      # Generated (static)
-│       ├── respec-create-phase.md         # Generated (platform-specific)
-│       ├── respec-coder.md       # Generated (static)
-│       ├── respec-task-critic.md        # Generated (static)
-│       ├── respec-coder.md         # Generated (platform-specific)
-│       └── respec-code-reviewer.md      # Generated (static)
+│       ├── respec-plan-analyst.md              # Generated (static)
+│       ├── respec-plan-critic.md               # Generated (static)
+│       ├── respec-analyst-critic.md            # Generated (static)
+│       ├── respec-roadmap.md                   # Generated (static)
+│       ├── respec-roadmap-critic.md            # Generated (static)
+│       ├── respec-phase-architect.md           # Generated (static)
+│       ├── respec-phase-critic.md              # Generated (static)
+│       ├── respec-create-phase.md              # Generated (platform-specific)
+│       ├── respec-task-planner.md              # Generated (static)
+│       ├── respec-task-plan-critic.md          # Generated (static)
+│       ├── respec-task-critic.md               # Generated (static)
+│       ├── respec-patch-planner.md             # Generated (static)
+│       ├── respec-coder.md                     # Generated (static)
+│       ├── respec-code-reviewer.md             # Generated (static)
+│       ├── respec-automated-quality-checker.md # Generated (static)
+│       ├── respec-spec-alignment-reviewer.md   # Generated (static)
+│       ├── respec-frontend-reviewer.md         # Generated (static)
+│       ├── respec-backend-api-reviewer.md      # Generated (static)
+│       ├── respec-database-reviewer.md         # Generated (static)
+│       ├── respec-infrastructure-reviewer.md   # Generated (static)
+│       ├── respec-coding-standards-reviewer.md # Generated (static)
+│       ├── respec-review-consolidator.md       # Generated (static)
+│       └── respec-research-synthesis-orchestrator.md # Generated (static)
 └── .respec-ai/
     ├── config.json                # Platform configuration
     └── projects/                  # Markdown platform only
@@ -454,7 +494,7 @@ project/
 
 **Production-ready test suite:**
 
-- **516 total tests passing**
+- **742 total tests passing**
 - **37 platform tests** - Platform orchestrator functionality
 - **10 unit tests** - Template generation tools
 - **9 integration tests** - End-to-end deployment workflows
@@ -551,12 +591,12 @@ project/
 
 ### Test Coverage Summary
 
-**516 total tests passing:**
+**742 total tests passing:**
 - 37 platform tests (Platform orchestrator functionality)
 - 10 unit tests (Template generation tools)
 - 9 integration tests (End-to-end deployment workflows)
 - 25 template tests (Command/agent template validation)
-- 435 other tests (MCP tools, models, state management)
+- 646 other tests (MCP tools, models, state management)
 
 ### Documentation vs Reality
 

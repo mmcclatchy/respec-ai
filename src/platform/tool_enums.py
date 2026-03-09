@@ -160,7 +160,11 @@ class RespecAIAgent(StrEnum):
     BACKEND_API_REVIEWER = f'{_RESPEC_AGENT_PREFIX}backend-api-reviewer'
     DATABASE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}database-reviewer'
     INFRASTRUCTURE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}infrastructure-reviewer'
+    CODING_STANDARDS_REVIEWER = f'{_RESPEC_AGENT_PREFIX}coding-standards-reviewer'
     REVIEW_CONSOLIDATOR = f'{_RESPEC_AGENT_PREFIX}review-consolidator'
+
+    # Patch workflow agents
+    PATCH_PLANNER = f'{_RESPEC_AGENT_PREFIX}patch-planner'
 
     # Roadmap workflow agents
     ROADMAP = f'{_RESPEC_AGENT_PREFIX}roadmap'
@@ -173,6 +177,7 @@ class RespecAICommand(StrEnum):
     PHASE = 'respec-phase'
     TASK = 'respec-task'
     CODE = 'respec-code'
+    PATCH = 'respec-patch'
     ROADMAP = 'respec-roadmap'
     PLAN_CONVERSATION = 'respec-plan-conversation'
 
