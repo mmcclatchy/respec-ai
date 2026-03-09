@@ -19,6 +19,7 @@ from .roadmap_critic import generate_roadmap_critic_template
 from .spec_alignment_reviewer import generate_spec_alignment_reviewer_template
 from .task_critic import generate_task_critic_template
 from .task_plan_critic import generate_task_plan_critic_template
+from .patch_planner import generate_patch_planner_template
 from .task_planner import generate_task_planner_template
 
 
@@ -45,4 +46,5 @@ __all__ = [
     'generate_coding_standards_reviewer_template',
     'generate_review_consolidator_template',
     'generate_research_synthesis_orchestrator_template',
+    'generate_patch_planner_template',
 ]

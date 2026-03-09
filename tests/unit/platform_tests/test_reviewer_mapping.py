@@ -1,13 +1,20 @@
+from unittest.mock import patch
+
 from src.models.enums import StepMode
 from src.platform.reviewer_mapping import MODE_TO_REVIEWER, resolve_active_reviewers
 
 
+CODING_STANDARDS_PATCH = 'src.platform.reviewer_mapping.has_coding_standards_file'
+
+
 class TestResolveActiveReviewers:
-    def test_empty_modes_returns_core_plus_consolidator(self) -> None:
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_empty_modes_returns_core_plus_consolidator(self, _mock: object) -> None:
         result = resolve_active_reviewers(set())
         assert result == ['automated-quality-checker', 'spec-alignment-reviewer', 'review-consolidator']
 
-    def test_implementation_mode_returns_core_only(self) -> None:
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_implementation_mode_returns_core_only(self, _mock: object) -> None:
         result = resolve_active_reviewers({StepMode.IMPLEMENTATION})
         assert result == ['automated-quality-checker', 'spec-alignment-reviewer', 'review-consolidator']
 
@@ -39,12 +46,14 @@ class TestResolveActiveReviewers:
         assert 'spec-alignment-reviewer' in result
         assert 'review-consolidator' in result
 
-    def test_all_specialist_modes_activate_all_specialists(self) -> None:
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_all_specialist_modes_activate_all_specialists(self, _mock: object) -> None:
         all_specialist_modes = {StepMode.FRONTEND, StepMode.API, StepMode.DATABASE, StepMode.INFRASTRUCTURE}
         result = resolve_active_reviewers(all_specialist_modes)
         assert len(result) == 7  # 2 core + 4 specialists + consolidator
 
-    def test_passthrough_modes_only_core(self) -> None:
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_passthrough_modes_only_core(self, _mock: object) -> None:
         result = resolve_active_reviewers({StepMode.INTEGRATION, StepMode.TEST})
         assert result == ['automated-quality-checker', 'spec-alignment-reviewer', 'review-consolidator']
 
@@ -56,6 +65,18 @@ class TestResolveActiveReviewers:
         result = resolve_active_reviewers({StepMode.INFRASTRUCTURE})
         assert result[0] == 'automated-quality-checker'
         assert result[1] == 'spec-alignment-reviewer'
+
+    @patch(CODING_STANDARDS_PATCH, return_value=True)
+    def test_coding_standards_reviewer_included_when_file_exists(self, _mock: object) -> None:
+        result = resolve_active_reviewers(set())
+        assert 'coding-standards-reviewer' in result
+        assert result[-1] == 'review-consolidator'
+        assert result.index('coding-standards-reviewer') < result.index('review-consolidator')
+
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_coding_standards_reviewer_excluded_when_no_file(self, _mock: object) -> None:
+        result = resolve_active_reviewers(set())
+        assert 'coding-standards-reviewer' not in result
 
 
 class TestModeToReviewerMapping:

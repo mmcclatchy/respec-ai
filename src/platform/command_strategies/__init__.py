@@ -1,5 +1,6 @@
 from .base import CommandStrategy, CommandStrategyProtocol
 from .code_strategy import CodeCommandStrategy
+from .patch_strategy import PatchCommandStrategy
 from .phase_strategy import PhaseCommandStrategy
 from .plan_conversation_strategy import PlanConversationCommandStrategy
 from .plan_strategy import PlanCommandStrategy
@@ -14,6 +15,7 @@ __all__ = [
     'PhaseCommandStrategy',
     'TaskCommandStrategy',
     'CodeCommandStrategy',
+    'PatchCommandStrategy',
     'PlanRoadmapCommandStrategy',
     'PlanConversationCommandStrategy',
 ]

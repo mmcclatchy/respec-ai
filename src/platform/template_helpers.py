@@ -13,6 +13,8 @@ from .models import (
     FrontendReviewerAgentTools,
     InfrastructureReviewerAgentTools,
     LanguageTooling,
+    PatchCommandTools,
+    PatchPlannerAgentTools,
     PhaseArchitectAgentTools,
     PhaseCommandTools,
     PhaseCriticAgentTools,
@@ -197,6 +199,7 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
     builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
     builder.add_builtin_tool(BuiltInTool.TASK, 'research-synthesizer')
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
@@ -918,5 +921,122 @@ def create_review_consolidator_agent_tools() -> ReviewConsolidatorAgentTools:
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
+        ),
+    )
+
+
+def create_patch_planner_agent_tools() -> PatchPlannerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in PatchPlannerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in PatchPlannerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return PatchPlannerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{TASK_LOOP_ID}', count='1'
+        ),
+        store_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type=DocumentType.TASK.quoted,
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{TASK_MARKDOWN}',
+        ),
+        link_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LINK_LOOP_TO_DOCUMENT,
+            loop_id='{TASK_LOOP_ID}',
+            doc_type='"task"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{TASK_LOOP_ID}'
+        ),
+    )
+
+
+def create_patch_command_tools(platform_tools: list[str], platform_type: 'PlatformType') -> PatchCommandTools:
+    builder = TemplateToolBuilder()
+    builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
+    builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
+    builder.add_task_agent(RespecAIAgent.CODER)
+    builder.add_task_agent(RespecAIAgent.CODE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
+    builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
+    builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    builder.add_builtin_tool(BuiltInTool.GLOB)
+    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md')
+    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/phases/tasks/*.md')
+    builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
+
+    for tool in PatchCommandTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    builder.add_platform_tools(platform_tools)
+
+    return PatchCommandTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        platform=platform_type,
+        store_phase_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{PHASE_MARKDOWN}',
+        ),
+        get_phase_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        update_phase_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.UPDATE_DOCUMENT,
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{UPDATED_PHASE_MARKDOWN}',
+        ),
+        initialize_planning_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
+        ),
+        link_planning_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LINK_LOOP_TO_DOCUMENT,
+            loop_id='{PLANNING_LOOP_ID}',
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        decide_planning_action=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{PLANNING_LOOP_ID}'
+        ),
+        initialize_coding_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
+        ),
+        decide_coding_action=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{CODING_LOOP_ID}'
+        ),
+        store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
+        ),
+        get_task_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        store_task_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type='"task"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{TASK_MARKDOWN}',
         ),
     )
