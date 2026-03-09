@@ -20,6 +20,9 @@ task_feedback_template = CriticFeedback(
 
 [Analysis of how well Task matches Phase requirements - does it address all objectives and scope?]
 
+#### Deviation Assessment
+- [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description of deviation and rationale for classification]
+
 ### Test Strategy Clarity (Score: X/20)
 
 [Evaluation of TDD approach and testing strategy - is test-first discipline specified?]
@@ -39,7 +42,7 @@ task_feedback_template = CriticFeedback(
     key_issues=[
         '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
         '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
-        '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
+        '**[DEVIATION-REGRESSION]**: [Description of harmful deviation from Phase with impact]',
     ],
     recommendations=[
         '**[Priority Level]**: [Specific actionable improvement with expected point impact]',
@@ -97,8 +100,13 @@ WORKFLOW: Phase Assessment → CriticFeedback
 - Technology stack matches or provides justified alternatives to Phase tech_stack
 - All dependencies identified in Phase are accounted for
 
-**Partial Points (15-22)**: General alignment with minor mismatches or omissions
-**Low Points (0-14)**: Significant deviations from Phase without justification
+**Deviation Classification**: When implementation deviates from Phase, classify each deviation:
+- **Improvement**: Resolves ambiguity, improves architecture, or better satisfies intent. No penalty.
+- **Neutral**: Reasonable alternative approach with equivalent outcome. Minor penalty (1-3 pts max).
+- **Regression**: Drops requirements, contradicts architecture, or introduces scope creep. Full penalty.
+
+**Partial Points (15-22)**: General alignment with minor gaps or neutral deviations
+**Low Points (0-14)**: Regressions from Phase without justification
 
 ### 3. Test Strategy Clarity (20 Points)
 **Full Points (18-20)**: Comprehensive TDD approach with clear implementation guidance

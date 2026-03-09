@@ -37,7 +37,8 @@ consolidator_feedback_template = CriticFeedback(
 [Merged from specialist review section, if active]
 
 ### Progress Notes
-[Analysis of improvement from previous iteration if applicable]""",
+[Analysis of improvement from previous iteration if applicable]
+[Deviation summary: N improvements, N neutral, N regressions found across reviewers]""",
     key_issues=[
         '**[Source: reviewer-name]** [Issue description with file/line references]',
         '**[Source: reviewer-name]** [Issue description with file/line references]',
@@ -167,7 +168,11 @@ For each review section:
   Prefix each with source reviewer name
   Add to RECOMMENDATIONS
 
-Sort KEY_ISSUES by severity (critical first)
+  Extract items from "#### Deviation Assessment" subsection (if present)
+  For REGRESSION items: add to KEY_ISSUES with **[DEVIATION-REGRESSION]** prefix
+  For IMPROVEMENT items: note in Progress Notes as positive signals
+
+Sort KEY_ISSUES by severity (critical first, deviation-regressions grouped)
 Sort RECOMMENDATIONS by expected point impact (highest first)
 ```
 

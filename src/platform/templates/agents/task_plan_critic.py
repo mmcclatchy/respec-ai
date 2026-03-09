@@ -17,6 +17,9 @@ task_feedback_template = CriticFeedback(
 ### Phase Alignment (Score: X/20)
 [Analysis of how well Task addresses Phase requirements - does it cover all objectives and scope?]
 
+#### Deviation Assessment
+- [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description of deviation and rationale for classification]
+
 ### Implementation Checklist Quality (Score: X/10)
 [Assessment of Checklist structure - are items prioritized, checkable, and verification methods included?]
 
@@ -35,7 +38,7 @@ task_feedback_template = CriticFeedback(
     key_issues=[
         '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
         '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
-        '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
+        '**[DEVIATION-REGRESSION]**: [Description of harmful deviation from Phase with impact]',
     ],
     recommendations=[
         '**[Priority Level]**: [Specific actionable improvement with expected point impact]',
@@ -103,8 +106,13 @@ The Task document follows this structure:
 - Scope boundaries respected (addresses in-scope requirements)
 - Technology Stack Reference aligns with Phase tech_stack
 
-**Partial Points (12-17)**: General alignment with minor gaps
-**Low Points (0-11)**: Significant deviations from Phase without justification
+**Deviation Classification**: When Task deviates from Phase, classify each deviation:
+- **Improvement**: Deviation adds clarity, fixes ambiguity, or strengthens the plan beyond Phase intent. No penalty.
+- **Neutral**: Reasonable alternative that neither improves nor harms. Minor penalty (1-2 pts max).
+- **Regression**: Drops requirements, contradicts Phase intent, or introduces scope creep. Full penalty.
+
+**Partial Points (12-17)**: General alignment with minor gaps or neutral deviations
+**Low Points (0-11)**: Regressions from Phase without justification
 
 ### 3. Implementation Checklist Quality (10 Points)
 **Full Points (9-10)**: Clear, prioritized, actionable
