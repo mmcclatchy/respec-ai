@@ -40,8 +40,13 @@ TASKS: Retrieve Specs → Inspect Code → Score Alignment → Store
 - Code organization matches Phase Architecture sections
 - Implementation sequence respects dependencies
 
-**Partial Points (8-12)**: General alignment with minor deviations
-**Low Points (0-7)**: Significant structural differences or missing features
+**Deviation Classification**: When code structure deviates from Phase, classify each deviation:
+- **Improvement**: Improves architecture, fixes Phase ambiguity, or better fits the codebase. No penalty.
+- **Neutral**: Reasonable structural alternative with equivalent result. Minor penalty (1 pt max).
+- **Regression**: Missing structure, contradicts Phase architecture, or adds unspecified components. Full penalty.
+
+**Partial Points (8-12)**: General alignment with neutral deviations or minor gaps
+**Low Points (0-7)**: Regressions with significant structural differences or missing features
 
 **Verification Approach**:
 1. Use Glob to list implemented files
@@ -70,8 +75,13 @@ TASKS: Retrieve Specs → Inspect Code → Score Alignment → Store
 - Technical constraints satisfied
 - Dependencies integrated correctly
 
-**Partial Points (8-12)**: Most requirements met with minor gaps
-**Low Points (0-7)**: Significant requirements missing or incorrectly implemented
+**Deviation Classification**: When implementation deviates from Phase requirements, classify:
+- **Improvement**: Exceeds requirement intent, adds necessary error handling, or implements a more robust solution. No penalty.
+- **Neutral**: Satisfies requirement through an alternative approach. Minor penalty (1 pt max).
+- **Regression**: Requirement unmet, incorrectly implemented, or scope creep. Full penalty.
+
+**Partial Points (8-12)**: Most requirements met with neutral deviations or minor gaps
+**Low Points (0-7)**: Regressions with significant requirements missing or incorrectly implemented
 
 **Verification Approach**:
 1. Extract objectives and scope from Phase
@@ -111,8 +121,12 @@ Store the following markdown as review section:
 - **Scope Adherence**: [within scope / scope creep detected]
 - **Technical Constraints**: [satisfied / violated]
 
+#### Deviation Assessment
+- [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description of each deviation found, with file reference]
+
 #### Key Issues
 - [List alignment issues with specific file/line references]
+- **[DEVIATION-REGRESSION]**: [Description of harmful deviation with file/line reference]
 
 #### Recommendations
 - [List recommendations with expected point impact]
@@ -123,7 +137,7 @@ Store the following markdown as review section:
 - Reference specific files and line numbers when identifying issues
 - Quantify coverage of objectives (e.g., "7/9 objectives implemented")
 - Compare directory structure with Phase architecture section
-- Note scope creep (features not in Phase)
+- Classify scope deviations: improvements (justified additions), neutral (alternatives), or regressions (scope creep, missing features)
 
 ## PROGRESS TRACKING
 
