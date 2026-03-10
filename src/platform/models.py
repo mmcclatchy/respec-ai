@@ -562,14 +562,6 @@ class PatchCommandTools(BaseModel):
         return self._adapter.phase_sync_instructions
 
     @computed_field
-    def phase_discovery_instructions(self) -> str:
-        return self._adapter.phase_discovery_instructions
-
-    @computed_field
-    def phase_location_hint(self) -> str:
-        return self._adapter.phase_location_hint
-
-    @computed_field
     def coding_standards_path(self) -> str:
         return self._adapter.coding_standards_location
 
@@ -626,6 +618,10 @@ class PatchCommandTools(BaseModel):
     @computed_field
     def task_location_setup(self) -> str:
         return self._adapter.task_location_setup
+
+    @computed_field
+    def list_all_phases(self) -> str:
+        return self._adapter.list_phases_tool
 
 
 class PlanRoadmapCommandTools(BaseModel):
