@@ -4,7 +4,7 @@ from src.platform.models import PatchCommandTools
 def generate_patch_command_template(tools: PatchCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [phase-name] [change-description]
+argument-hint: [plan-name] [change-description]
 description: Update existing code through amendment tasks with full quality review
 ---
 
@@ -21,47 +21,57 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 ```text
 PLAN_NAME = [first argument from command - the project name]
-PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
-CHANGE_DESCRIPTION = [remaining arguments - quoted description of the change needed]
+CHANGE_DESCRIPTION = [all remaining arguments - description of the change needed]
 ```
 
-### 2. Locate + Load Phase
+### 2. Phase Resolution
 
-#### Step 2.1: Search file system for matching phase files
+#### Step 2.1: Discover all phases
 
 ```text
-{tools.phase_discovery_instructions}
+ALL_PHASES = {tools.list_all_phases}
+
+IF count(ALL_PHASES) == 0:
+  ERROR: "No phases found in project {{PLAN_NAME}}"
+  SUGGEST: "Run /respec-roadmap {{PLAN_NAME}} first to create phases"
+  EXIT
 ```
 
-#### Step 2.2: Handle multiple matches
+#### Step 2.2: Single phase shortcut
 
 ```text
-IF count(SPEC_FILE_MATCHES) == 0:
-  ERROR: "No Phase files found matching '{{PHASE_NAME_PARTIAL}}' in project {{PLAN_NAME}}"
-  SUGGEST: "Verify the phase name or check {tools.phase_location_hint}"
-  EXIT: Workflow terminated
+IF count(ALL_PHASES) == 1:
+  PHASE_FILE_PATH = ALL_PHASES[0]
+  Display: "Single phase found, auto-selected: {{basename}}"
+  → Skip to Step 2.4
+```
 
-ELIF count(SPEC_FILE_MATCHES) == 1:
-  PHASE_FILE_PATH = PHASE_FILE_MATCHES[0]
+#### Step 2.3: Multi-phase relevance matching
 
+```text
+For each PHASE_FILE in ALL_PHASES:
+  Read the Overview section (Objectives, Scope, Deliverables) — first 30 lines
+  Assess relevance of CHANGE_DESCRIPTION to this phase's content
+
+Rank phases by relevance to CHANGE_DESCRIPTION.
+
+IF clear best match (one phase strongly relevant, others weak):
+  PHASE_FILE_PATH = best match
+  Display: "Auto-detected phase: {{name}}"
+  Display: "Reason: [brief explanation of why this phase matches]"
+  IF other phases have partial relevance:
+    Display: "Note: This change may also touch concerns from: [other phase names]"
 ELSE:
-  (Multiple matches - use interactive selection)
-  Use AskUserQuestion tool to present options:
-    Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
-    Header: "Select Phase"
+  Use AskUserQuestion:
+    Question: "Which phase does this change belong to? '{{CHANGE_DESCRIPTION}}'"
+    Header: "Select Phase for Patch"
     multiSelect: false
-    Options: [
-      {{
-        "label": "{{PHASE_FILE_MATCHES[0]}}",
-        "description": "Use: {{PHASE_FILE_MATCHES[0]}}"
-      }},
-      ... for all matches
-    ]
+    Options: [ranked phases with objectives summary as description]
 
-  PHASE_FILE_PATH = [selected file path from AskUserQuestion response]
+  PHASE_FILE_PATH = [selected from response]
 ```
 
-#### Step 2.3: Extract canonical name and sync to MCP
+#### Step 2.4: Extract canonical name and sync to MCP
 
 ```text
 PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
@@ -72,9 +82,8 @@ Display to user: "Located phase file: {{PHASE_NAME}}"
 ```
 
 **Important**:
-- PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
-- PHASE_NAME is the canonical name extracted from file path
 - PLAN_NAME is used for all MCP storage operations
+- PHASE_NAME is the canonical name extracted from file path
 - All subsequent operations use PHASE_NAME (canonical)
 
 ### 3. Planning Loop (Amendment Task Creation)
