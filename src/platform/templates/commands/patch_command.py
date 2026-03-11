@@ -24,6 +24,31 @@ PLAN_NAME = [first argument from command - the project name]
 CHANGE_DESCRIPTION = [all remaining arguments - description of the change needed]
 ```
 
+#### Step 1.1: Resolve Active Plan (if referenced)
+
+```text
+IF CHANGE_DESCRIPTION references an active plan (e.g., "use the active plan",
+   "from plan mode", or contains a path to a .md file in ~/.claude/plans/):
+
+  PLAN_FILE_PATH = [extract or infer path from CHANGE_DESCRIPTION]
+  IF PLAN_FILE_PATH not explicitly provided:
+    PLAN_FILE_PATH = Glob(~/.claude/plans/*.md) → select most recently modified
+
+  PLAN_CONTENT = Read(PLAN_FILE_PATH)
+
+  Display: "Using active plan: {{basename of PLAN_FILE_PATH}}"
+
+  CHANGE_DESCRIPTION = PLAN_CONTENT
+
+ELIF recent system message contains "exited Plan Mode" with a plan file path:
+  PLAN_FILE_PATH = [path from system message]
+  PLAN_CONTENT = Read(PLAN_FILE_PATH)
+
+  Display: "Detected active plan from plan mode: {{basename of PLAN_FILE_PATH}}"
+
+  CHANGE_DESCRIPTION = PLAN_CONTENT
+```
+
 ### 2. Phase Resolution
 
 #### Step 2.1: Discover all phases
