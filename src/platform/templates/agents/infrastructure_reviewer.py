@@ -27,6 +27,8 @@ TASKS: Retrieve Specs → Inspect Infrastructure Files → Assess Quality → St
 5. Assess quality against criteria
 6. Store review section: {tools.store_review_section}
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for configuration validation only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## ASSESSMENT AREAS
 
 ### Container Configuration

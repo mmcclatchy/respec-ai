@@ -28,6 +28,8 @@ TASKS: Read Standards → Inspect Code → Assess Compliance → Store Review
 6. Assess compliance against standards
 7. Store review section: {tools.store_review_section}
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## STANDARDS DISCOVERY
 
 ### Step 1: Read Project Standards

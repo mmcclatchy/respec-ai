@@ -114,6 +114,8 @@ OUTPUTS: Amendment task stored in MCP and linked to loop
 - Loop linked to document via link_loop_to_document
 - Brief status confirmation message
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands and codebase inspection only. All document storage goes through MCP tools (store_document, link_loop_to_document). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## CRITICAL: EXACT FORMAT REQUIRED
 
 The Task document MUST follow the EXACT structure below for MCP validation.
