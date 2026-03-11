@@ -122,6 +122,8 @@ WORKFLOW: Code Assessment → CriticFeedback
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands, test execution, and static analysis only. All review output goes through MCP tools (store_critic_feedback). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## TASK CONTEXT DISCOVERY (First Step in Workflow)
 
 Before running static analysis, extract task context to enable adaptive assessment:

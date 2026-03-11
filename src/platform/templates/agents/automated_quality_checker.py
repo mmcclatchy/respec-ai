@@ -31,6 +31,8 @@ TASKS: Run Static Analysis → Generate Review Section → Store
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for test execution, type checking, and linting only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## TECH STACK DISCOVERY
 
 {tools.tooling_section}

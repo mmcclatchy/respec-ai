@@ -28,6 +28,8 @@ TASKS: Retrieve Specs → Inspect Database Code → Assess Quality → Store
 6. Assess quality against criteria
 7. Store review section: {tools.store_review_section}
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for migration state checks only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## ASSESSMENT AREAS
 
 ### Schema Design

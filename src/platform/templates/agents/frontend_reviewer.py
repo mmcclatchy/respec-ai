@@ -28,6 +28,8 @@ TASKS: Retrieve Specs → Inspect Frontend Code → Assess Quality → Store
 6. Assess quality against criteria
 7. Store review section: {tools.store_review_section}
 
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for accessibility checks only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
+
 ## FRAMEWORK DISCOVERY
 
 Read Phase Technology Stack to identify frontend framework:
