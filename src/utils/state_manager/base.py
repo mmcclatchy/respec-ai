@@ -175,6 +175,16 @@ class StateManager(ABC):
     @abstractmethod
     async def delete_completion_report(self, loop_id: str) -> bool: ...
 
+    # Review Section Management (raw markdown key-value storage for code review workflow)
+    @abstractmethod
+    async def store_review_section(self, key: str, content: str) -> str: ...
+
+    @abstractmethod
+    async def get_review_section(self, key: str) -> str: ...
+
+    @abstractmethod
+    async def list_review_sections(self, parent_key: str) -> list[str]: ...
+
     # Plan Plan Management
     @abstractmethod
     async def store_plan(self, plan_name: str, plan: Plan) -> str: ...

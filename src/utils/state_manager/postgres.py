@@ -809,3 +809,18 @@ class PostgresStateManager(StateManager):
         raise NotImplementedError(
             'PostgreSQL Completion Report storage not yet implemented. Use InMemoryStateManager instead.'
         )
+
+    async def store_review_section(self, key: str, content: str) -> str:
+        raise NotImplementedError(
+            'PostgreSQL Review Section storage not yet implemented. Use InMemoryStateManager instead.'
+        )
+
+    async def get_review_section(self, key: str) -> str:
+        raise NotImplementedError(
+            'PostgreSQL Review Section storage not yet implemented. Use InMemoryStateManager instead.'
+        )
+
+    async def list_review_sections(self, parent_key: str) -> list[str]:
+        raise NotImplementedError(
+            'PostgreSQL Review Section storage not yet implemented. Use InMemoryStateManager instead.'
+        )

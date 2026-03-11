@@ -72,7 +72,7 @@ class TestAutomatedQualityCheckerTemplate:
         template = generate_automated_quality_checker_template(tools)
 
         assert 'mcp__respec-ai__get_document' in template
-        assert 'mcp__respec-ai__store_document' in template
+        assert 'mcp__respec-ai__store_review_section' in template
 
     def test_template_no_hardcoded_python_tools(self) -> None:
         tools = create_automated_quality_checker_agent_tools()
@@ -209,7 +209,7 @@ class TestReviewConsolidatorTemplate:
         template = generate_review_consolidator_template(tools)
 
         assert 'mcp__respec-ai__store_critic_feedback' in template
-        assert 'mcp__respec-ai__list_documents' in template
+        assert 'mcp__respec-ai__list_review_sections' in template
 
 
 class TestReviewAgentConsistency:

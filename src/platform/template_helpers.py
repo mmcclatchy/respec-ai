@@ -726,8 +726,7 @@ def create_automated_quality_checker_agent_tools(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-quality-check',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -757,8 +756,7 @@ def create_spec_alignment_reviewer_agent_tools() -> SpecAlignmentReviewerAgentTo
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-spec-alignment',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -783,8 +781,7 @@ def create_frontend_reviewer_agent_tools() -> FrontendReviewerAgentTools:
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-frontend',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -809,8 +806,7 @@ def create_backend_api_reviewer_agent_tools() -> BackendApiReviewerAgentTools:
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-backend-api',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -835,8 +831,7 @@ def create_database_reviewer_agent_tools() -> DatabaseReviewerAgentTools:
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-database',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -861,8 +856,7 @@ def create_infrastructure_reviewer_agent_tools() -> InfrastructureReviewerAgentT
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-infrastructure',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -887,8 +881,7 @@ def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAge
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-coding-standards',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
@@ -907,13 +900,11 @@ def create_review_consolidator_agent_tools() -> ReviewConsolidatorAgentTools:
     return ReviewConsolidatorAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_review_sections=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.LIST_DOCUMENTS,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.LIST_REVIEW_SECTIONS,
             parent_key='{PLAN_NAME}/{PHASE_NAME}',
         ),
         get_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT,
-            doc_type=DocumentType.COMPLETION_REPORT.quoted,
+            RespecAITool.GET_REVIEW_SECTION,
             key='{REVIEW_SECTION_KEY}',
         ),
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(

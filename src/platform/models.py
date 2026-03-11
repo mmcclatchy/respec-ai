@@ -1183,7 +1183,7 @@ class AutomatedQualityCheckerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1216,7 +1216,7 @@ class SpecAlignmentReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1234,7 +1234,7 @@ class SpecAlignmentReviewerAgentTools(BaseModel):
 class FrontendReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1252,7 +1252,7 @@ class FrontendReviewerAgentTools(BaseModel):
 class BackendApiReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1269,7 +1269,7 @@ class BackendApiReviewerAgentTools(BaseModel):
 class DatabaseReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1287,7 +1287,7 @@ class DatabaseReviewerAgentTools(BaseModel):
 class InfrastructureReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1305,7 +1305,7 @@ class InfrastructureReviewerAgentTools(BaseModel):
 class CodingStandardsReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_DOCUMENT,
+        RespecAITool.STORE_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1322,8 +1322,8 @@ class CodingStandardsReviewerAgentTools(BaseModel):
 
 class ReviewConsolidatorAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
-        RespecAITool.GET_DOCUMENT,
-        RespecAITool.LIST_DOCUMENTS,
+        RespecAITool.GET_REVIEW_SECTION,
+        RespecAITool.LIST_REVIEW_SECTIONS,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]

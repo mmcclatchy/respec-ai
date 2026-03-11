@@ -109,6 +109,11 @@ class RespecAITool(StrEnum):
     GET_ROADMAP = f'{_RESPEC_AI_PREFIX}get_roadmap'
     CREATE_ROADMAP = f'{_RESPEC_AI_PREFIX}create_roadmap'
 
+    # Review Section Tools (dedicated raw markdown storage, bypasses DocumentTools)
+    STORE_REVIEW_SECTION = f'{_RESPEC_AI_PREFIX}store_review_section'
+    GET_REVIEW_SECTION = f'{_RESPEC_AI_PREFIX}get_review_section'
+    LIST_REVIEW_SECTIONS = f'{_RESPEC_AI_PREFIX}list_review_sections'
+
 
 class AbstractOperation(StrEnum):
     # Phase Management Operations

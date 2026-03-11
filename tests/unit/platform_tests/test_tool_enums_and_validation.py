@@ -32,6 +32,11 @@ class TestToolEnums:
         assert RespecAITool.INITIALIZE_REFINEMENT_LOOP.value == 'mcp__respec-ai__initialize_refinement_loop'
         assert RespecAITool.DECIDE_LOOP_NEXT_ACTION.value == 'mcp__respec-ai__decide_loop_next_action'
 
+    def test_review_section_tool_values(self) -> None:
+        assert RespecAITool.STORE_REVIEW_SECTION.value == 'mcp__respec-ai__store_review_section'
+        assert RespecAITool.GET_REVIEW_SECTION.value == 'mcp__respec-ai__get_review_section'
+        assert RespecAITool.LIST_REVIEW_SECTIONS.value == 'mcp__respec-ai__list_review_sections'
+
 
 class TestToolReference:
     def test_tool_reference_render_without_parameters(self) -> None:
