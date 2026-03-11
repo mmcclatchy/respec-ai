@@ -1016,3 +1016,47 @@ class TestCrossOperationIntegration(TestInMemoryStateManager):
         for loop in loops[1:]:
             retrieved = await custom_state_manager.get_loop(loop.id)
             assert retrieved == loop
+
+
+class TestReviewSectionManagement(TestInMemoryStateManager):
+    @pytest.mark.asyncio
+    async def test_store_and_get_review_section(self, state_manager: InMemoryStateManager) -> None:
+        key = 'my-plan/phase-1/review-quality-check'
+        content = '### Automated Quality Check (Score: 65/70)\n\nAll tests pass.'
+
+        result = await state_manager.store_review_section(key, content)
+        assert 'Stored review section' in result
+
+        retrieved = await state_manager.get_review_section(key)
+        assert retrieved == content
+
+    @pytest.mark.asyncio
+    async def test_get_review_section_not_found(self, state_manager: InMemoryStateManager) -> None:
+        with pytest.raises(ValueError, match='Review section not found'):
+            await state_manager.get_review_section('nonexistent/key')
+
+    @pytest.mark.asyncio
+    async def test_list_review_sections_filters_by_parent_key(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_review_section('plan/phase-1/review-quality-check', 'content1')
+        await state_manager.store_review_section('plan/phase-1/review-spec-alignment', 'content2')
+        await state_manager.store_review_section('plan/phase-2/review-quality-check', 'content3')
+
+        keys = await state_manager.list_review_sections('plan/phase-1')
+        assert keys == [
+            'plan/phase-1/review-quality-check',
+            'plan/phase-1/review-spec-alignment',
+        ]
+
+    @pytest.mark.asyncio
+    async def test_list_review_sections_empty_result(self, state_manager: InMemoryStateManager) -> None:
+        keys = await state_manager.list_review_sections('nonexistent/parent')
+        assert keys == []
+
+    @pytest.mark.asyncio
+    async def test_store_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
+        key = 'plan/phase-1/review-quality-check'
+        await state_manager.store_review_section(key, 'old content')
+        await state_manager.store_review_section(key, 'new content')
+
+        retrieved = await state_manager.get_review_section(key)
+        assert retrieved == 'new content'

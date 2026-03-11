@@ -62,6 +62,9 @@ class InMemoryStateManager(StateManager):
         # Completion report storage (loop_id -> CompletionReport)
         self._completion_reports: dict[str, PlanCompletionReport] = {}
 
+        # Review section storage (hierarchical key -> raw markdown)
+        self._review_sections: dict[str, str] = {}
+
         logger.info(f'InMemoryStateManager initialized with max_history_size={max_history_size}')
 
     def _log_state(self) -> None:
@@ -73,6 +76,7 @@ class InMemoryStateManager(StateManager):
             f'  projects_with_phases={len(self._phases)}\n'
             f'  tasks={len(self._tasks)}\n'
             f'  completion_reports={len(self._completion_reports)}\n'
+            f'  review_sections={len(self._review_sections)}\n'
             f'  loop_to_phase_mappings={len(self._loop_to_phase)}\n'
             f'  objective_feedback={len(self._objective_feedback)}'
         )
@@ -92,6 +96,7 @@ class InMemoryStateManager(StateManager):
             f'  tasks_by_phase={tasks_dict}\n'
             f'  inactive_tasks_by_phase={inactive_tasks_dict}\n'
             f'  completion_reports={list(self._completion_reports.keys())}\n'
+            f'  review_sections={list(self._review_sections.keys())}\n'
             f'  loop_to_phase={dict(self._loop_to_phase)}\n'
             f'  loop_to_task={dict(self._loop_to_task)}\n'
             f'  objective_feedback_loops={list(self._objective_feedback.keys())}'
@@ -709,3 +714,17 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('delete_completion_report', 'EXIT')
         return True
+
+    async def store_review_section(self, key: str, content: str) -> str:
+        self._review_sections[key] = content
+        logger.info(f'store_review_section: Stored review section at {key}')
+        return f'Stored review section at {key}'
+
+    async def get_review_section(self, key: str) -> str:
+        if key not in self._review_sections:
+            raise ValueError(f'Review section not found: {key}')
+        return self._review_sections[key]
+
+    async def list_review_sections(self, parent_key: str) -> list[str]:
+        prefix = parent_key + '/'
+        return sorted(k for k in self._review_sections if k.startswith(prefix))

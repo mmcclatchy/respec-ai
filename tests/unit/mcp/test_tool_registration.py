@@ -17,11 +17,12 @@ class TestToolRegistration:
 
         # Verify that tools are registered by checking mcp.tool() was called
         assert mock_mcp.tool.called
-        # Should have 16 tool registrations after unification:
+        # Should have 19 tool registrations after unification:
         # - 5 loop tools
         # - 5 unified feedback tools
         # - 6 document tools (universal interface)
-        assert mock_mcp.tool.call_count >= 16
+        # - 3 review section tools
+        assert mock_mcp.tool.call_count >= 19
 
     def test_register_all_tools_with_none_raises_error(self) -> None:
         with pytest.raises(AttributeError):

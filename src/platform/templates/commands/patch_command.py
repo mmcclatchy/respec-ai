@@ -274,7 +274,7 @@ Expected: Code implementation committed, platform status updated
 
 #### Step 5.4: Review Team Orchestration
 
-Invoke review agents sequentially. Core reviewers always run; optional specialists based on ACTIVE_REVIEWERS from Step 4.3.
+Launch ALL review agents (except consolidator) in parallel. Core reviewers always run; optional specialists based on ACTIVE_REVIEWERS from Step 4.3. The review-consolidator MUST run AFTER all other reviewers complete.
 
 **Core Reviewers (always active):**
 ```text
