@@ -385,7 +385,7 @@ Store updated Phase:
 ```text
 {tools.task_location_setup}
 
-Write amendment task to: .respec-ai/plans/{{PLAN_NAME}}/phases/tasks/{{TASK_NAME}}.md
+Write amendment task to: .respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md
 ```
 
 #### Report Completion
