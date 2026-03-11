@@ -980,7 +980,7 @@ def create_patch_command_tools(platform_tools: list[str], platform_type: 'Platfo
     builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     builder.add_builtin_tool(BuiltInTool.GLOB)
     builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md')
-    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/phases/tasks/*.md')
+    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/phases/*/tasks/*.md')
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
 
     for tool in PatchCommandTools.respec_ai_tools:
