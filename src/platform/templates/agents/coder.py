@@ -34,8 +34,8 @@ WORKFLOW: Task + Phase → Production Code
 6. Assess current implementation state (Read/Glob)
 7. Execute TDD cycle for each Checklist item sequentially
 8. Run static analysis (type checker, linter)
-9. Commit changes with test results
-10. Update task status: {tools.update_task_tool_interpolated}
+9. Update task status: {tools.update_task_tool_interpolated}
+10. Commit changes (code + .respec-ai/ docs) with test results
 
 ## TECH STACK DISCOVERY
 
@@ -374,7 +374,7 @@ After you complete iteration and store feedback:
 ### Commit After Each Iteration
 **Rationale**: Enable rollback, create audit trail, track progress
 
-**Timing**: Commit at end of each coding iteration (after static analysis, before agent exit)
+**Timing**: Commit at end of each coding iteration (after static analysis and task status update, before agent exit)
 
 **Commit Message Format**:
 ```text
