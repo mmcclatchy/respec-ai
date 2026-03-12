@@ -235,11 +235,20 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
         initialize_coding_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
         ),
+        initialize_standards_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
+        ),
         decide_planning_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{PLANNING_LOOP_ID}'
         ),
         decide_coding_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{CODING_LOOP_ID}'
+        ),
+        decide_standards_action=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{STANDARDS_LOOP_ID}'
+        ),
+        get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
         ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
@@ -884,6 +893,11 @@ def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAge
             RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-coding-standards',
             content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+        store_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_CRITIC_FEEDBACK,
+            loop_id='{CODING_LOOP_ID}',
+            feedback_markdown='{CRITIC_FEEDBACK_MARKDOWN}',
         ),
     )
 

@@ -18,6 +18,9 @@ INPUTS: Context for standards assessment
 - task_loop_id: Loop identifier for Task retrieval
 - plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
+- phase2_mode: boolean (optional, default false)
+  When true: store a complete CriticFeedback directly to coding_loop_id (Phase 2 — no review-consolidator)
+  When false (default): store a review section as currently implemented (Phase 1)
 
 TASKS: Read Standards → Inspect Code → Assess Compliance → Store Review
 1. Retrieve Task: {tools.retrieve_task}
@@ -26,7 +29,13 @@ TASKS: Read Standards → Inspect Code → Assess Compliance → Store Review
 4. Use git diff to identify files changed in recent commits
 5. Inspect changed files (Read/Glob)
 6. Assess compliance against standards
-7. Store review section: {tools.store_review_section}
+7. IF phase2_mode == true:
+     Calculate Score = 100 minus deductions plus bonuses (same rules as SCORING IMPACT below)
+     Store CriticFeedback directly: {tools.store_feedback}
+     (loop_id=coding_loop_id; feedback_markdown must include overall_score=Score)
+     DO NOT call store_review_section
+   ELSE:
+     Store review section: {tools.store_review_section}
 
 CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
 
