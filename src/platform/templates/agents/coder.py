@@ -18,6 +18,21 @@ INPUTS: Dual loop context for code implementation
 - task_loop_id: Loop identifier for Task retrieval (CRITICAL - different from coding_loop_id)
 - project_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
+- mode: "standards-only" (optional)
+  When set: skip TDD cycle; fix only naming, imports, type syntax, docstring violations
+
+## STANDARDS-ONLY MODE
+
+IF mode == "standards-only":
+  1. Read feedback from coding_loop_id (standards feedback only): {tools.retrieve_feedback}
+  2. Fix ONLY the following categories of issues from feedback:
+     - Naming conventions (snake_case, PascalCase, UPPER_SNAKE_CASE, camelCase)
+     - Import ordering and inline import violations (move imports to top of file)
+     - Type hint syntax (replace Optional[X] with X | None, add missing hints)
+     - Obvious docstrings and unnecessary comments
+  3. Run: ruff check . && mypy . (or project-specific equivalents) to confirm fixes
+  4. Commit: git commit --no-verify -m "chore: apply coding standards [{{phase_name}}] iter N"
+  EXIT — do not proceed to TDD cycle or feature implementation
 
 WORKFLOW: Task + Phase → Production Code
 0. **MANDATORY FIRST ACTION - Create TodoList from Checklist**:

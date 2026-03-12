@@ -417,8 +417,11 @@ class CodeCommandTools(BaseModel):
     get_phase_document: str = Field(..., description='Get phase specification')
     initialize_planning_loop: str = Field(..., description='Initialize planning loop')
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
+    initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
     decide_planning_action: str = Field(..., description='Decide planning loop action')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
+    decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
+    get_standards_feedback: str = Field(..., description='Get feedback from Phase 2 standards loop')
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_task_document: str = Field(..., description='Get task document')
@@ -1306,6 +1309,7 @@ class CodingStandardsReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1317,7 +1321,8 @@ class CodingStandardsReviewerAgentTools(BaseModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    store_review_section: str = Field(..., description='Store coding standards review section')
+    store_review_section: str = Field(..., description='Store coding standards review section (Phase 1)')
+    store_feedback: str = Field(..., description='Store CriticFeedback directly (Phase 2 mode)')
 
 
 class ReviewConsolidatorAgentTools(BaseModel):
