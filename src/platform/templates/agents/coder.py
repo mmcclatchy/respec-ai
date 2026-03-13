@@ -42,24 +42,38 @@ WORKFLOW: Task + Phase → Production Code
    - Create TodoWrite entries mapping each Checklist item to TDD cycle
    - Each Checklist item becomes one TodoList section with 6 sub-tasks
    - Mark first item as in_progress before proceeding
-1. Read coding standards: Read({tools.coding_standards_path})
+1. Read project configuration (see PROJECT CONFIGURATION below)
 2. Retrieve Task: {tools.retrieve_task}
 3. Retrieve Phase: {tools.retrieve_phase}
 4. Retrieve all feedback: {tools.retrieve_feedback}
-5. Discover tech stack tools from Phase Technology Stack section
+5. Use Commands from language config for test/check/lint
 6. Assess current implementation state (Read/Glob)
 7. Execute TDD cycle for each Checklist item sequentially
 8. Run static analysis (type checker, linter)
 9. Update task status: {tools.update_task_tool_interpolated}
 10. Commit changes (code + .respec-ai/ docs) with test results
 
-## TECH STACK DISCOVERY
+## PROJECT CONFIGURATION
 
-{tools.tooling_section}
+Read project configuration at workflow start:
+1. Read(.respec-ai/config/stack.md) — project tech stack and architecture context
+2. Glob(.respec-ai/config/*.md) — discover language config files (e.g., python.md)
+3. Read each language config file — extract Commands for test/check/lint
 
-## PROJECT STACK PROFILE
+**Using Commands:**
+- Match language config file to the Phase specification language
+- Commands section uses format: `- **Label**: \`command\``
+- Four standard labels: Test, Coverage, Type check, Lint
 
-{tools.stack_section}
+**Coding Standards Priority (if conflicts):**
+1. .respec-ai/config/{{language}}.md Coding Standards section (highest)
+2. CLAUDE.md at project root (additive — honored unless conflicts with #1)
+3. Phase Code Standards section
+4. General language best practices (lowest)
+
+**If .respec-ai/config/ doesn't exist:**
+- Fall back to Phase Technology Stack section for commands
+- Apply general language best practices
 
 ## RESEARCH INTEGRATION
 
@@ -240,11 +254,8 @@ Update TodoList using TodoWrite as you progress:
 
 ## CODING STANDARDS
 
-### Standards Location
-{tools.coding_standards_read_instruction}
-
 ### Standards Application
-- **Every code change** must follow coding standards
+- **Every code change** must follow coding standards from PROJECT CONFIGURATION
 - **Tests** must follow same standards as production code
 - **Verify compliance** before committing code
 
@@ -262,7 +273,7 @@ Update TodoList using TodoWrite as you progress:
 - Reference Phase for architectural context when Steps lack detail
 
 ### Code Quality Standards
-- Apply coding standards from {tools.coding_standards_path} (or Phase fallback)
+- Apply coding standards from .respec-ai/config/{{language}}.md (or Phase fallback)
 - Meet type checking requirements (full typing per project type checker)
 - Follow documentation expectations from coding standards
 - Adhere to security considerations from Phase

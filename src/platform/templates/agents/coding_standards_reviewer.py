@@ -26,7 +26,7 @@ INPUTS: Context for standards assessment
 TASKS: Read Standards → Inspect Code → Assess Compliance → Store Review
 1. Retrieve Task: {tools.retrieve_task}
 2. Retrieve Phase: {tools.retrieve_phase}
-3. Read coding standards from CLAUDE.md at project root
+3. Read coding standards (see STANDARDS DISCOVERY below)
 4. Use git diff to identify files changed in recent commits
 5. Inspect changed files (Read/Glob)
 6. Assess compliance against standards
@@ -44,17 +44,21 @@ CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands only.
 
 ### Step 1: Read Project Standards
 
-Use Read tool to load CLAUDE.md from project root:
-```bash
-Read("CLAUDE.md")
+Read standards from `.respec-ai/config/` language files as primary source:
+```text
+1. Glob(.respec-ai/config/*.md) — discover language config files
+2. Read each language config file — extract Coding Standards + Testing sections
+3. Also Read("CLAUDE.md") — secondary source (additive, lower priority)
 ```
 
-Extract sections:
-- "Plan Rules (Mandatory)"
-- "Python Standards"
-- "Code Formatting"
-- "Code Organization"
-- Any other standard sections
+**Standards Priority (if conflicts):**
+1. .respec-ai/config/{{language}}.md Coding Standards section (highest)
+2. CLAUDE.md at project root (additive — honored unless conflicts with #1)
+3. General language best practices (lowest)
+
+**If neither .respec-ai/config/ nor CLAUDE.md exists:**
+- Use general language best practices
+- Note in review that no project standards file was found
 
 ### Step 2: Identify Changed Files
 
@@ -141,7 +145,8 @@ Store the following markdown as review section:
 ### Coding Standards Review (Active - Optional)
 
 #### Standards File
-- Source: CLAUDE.md (project root)
+- Primary: .respec-ai/config/{{language}}.md
+- Secondary: CLAUDE.md (project root)
 - Standards Version: [extracted from file date/version if available]
 
 #### Files Reviewed
@@ -175,9 +180,9 @@ Store the following markdown as review section:
 - **[Issue N]**: [Description with file:line reference]
 
 #### Recommendations
-- **[Priority 1]**: [Fix with standard reference from CLAUDE.md]
-- **[Priority 2]**: [Fix with standard reference from CLAUDE.md]
-- **[Priority N]**: [Fix with standard reference from CLAUDE.md]
+- **[Priority 1]**: [Fix with standard reference from config file or CLAUDE.md]
+- **[Priority 2]**: [Fix with standard reference from config file or CLAUDE.md]
+- **[Priority N]**: [Fix with standard reference from config file or CLAUDE.md]
 
 #### Standards Compliance Score
 - Overall: [Compliant|Minor Violations|Major Violations]
@@ -248,7 +253,7 @@ import local_module  # ❌ Should be after stdlib/third-party
 
 ## INSPECTION WORKFLOW
 
-1. **Read Standards**: Load CLAUDE.md completely
+1. **Read Standards**: Load .respec-ai/config/ language files, then CLAUDE.md
 2. **Identify Changed Files**: Use git diff to find coder's changes
 3. **For Each Changed File**:
    - Read file contents
@@ -263,10 +268,10 @@ import local_module  # ❌ Should be after stdlib/third-party
 
 ## EDGE CASES
 
-- If CLAUDE.md doesn't exist: Note in review, no deductions (standards file missing)
+- If neither .respec-ai/config/ nor CLAUDE.md exist: Note in review, no deductions (standards file missing)
 - If no files changed: Review cannot assess, note in section
 - If git diff fails: Fall back to glob pattern to find recently modified files
 - If standards are unclear: Reference the specific standard and ask for clarification in recommendations
 
-Always provide constructive, evidence-based feedback referencing specific lines from CLAUDE.md standards.
+Always provide constructive, evidence-based feedback referencing specific standards from config files or CLAUDE.md.
 """

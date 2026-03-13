@@ -100,7 +100,7 @@ def validate_platform_adapters() -> dict[str, Any]:
         'task_sync_instructions',
         'phase_discovery_instructions',
         'task_discovery_instructions',
-        'coding_standards_location',
+        'config_directory',
         'phase_location_hint',
         'task_location_hint',
         'create_plan_tool',

@@ -190,8 +190,10 @@ IF "database" in STEP_MODES:
 IF "infrastructure" in STEP_MODES:
   ACTIVE_REVIEWERS.append("infrastructure-reviewer")
 
-Check for coding standards file:
-IF coding standards file exists at project root (CLAUDE.md with coding standards content):
+Check for coding standards config files:
+CONFIG_FILES = Glob(.respec-ai/config/*.md)
+LANGUAGE_FILES = CONFIG_FILES excluding stack.md
+IF LANGUAGE_FILES is not empty:
   ACTIVE_REVIEWERS.append("coding-standards-reviewer")
 
 ACTIVE_REVIEWERS.append("review-consolidator")
@@ -347,7 +349,7 @@ ELIF CODING_DECISION == "user_input":
 
 ### 7.5: Standards Finalization Phase
 
-Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS (CLAUDE.md detected in Step 6.6).
+Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS (language config files detected in Step 6.6).
 
 #### Step 7.5.1: Initialize Standards Loop
 

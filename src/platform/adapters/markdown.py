@@ -53,8 +53,8 @@ EXCEPT:
 """
 
     @property
-    def coding_standards_location(self) -> str:
-        return f'{self.base_path}/coding-standards.md'
+    def config_directory(self) -> str:
+        return f'{self.base_path}/config'
 
     @property
     def phase_location_hint(self) -> str:
@@ -77,22 +77,6 @@ TASK_MATCHES = Glob(pattern=TASK_GLOB_PATTERN)"""
     @property
     def task_location_hint(self) -> str:
         return f'{self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/'
-
-    @property
-    def coding_standards_read_instruction(self) -> str:
-        return f"""Read coding standards from {self.base_path}/coding-standards.md at workflow start.
-
-**If file exists**:
-- Apply ALL rules from coding-standards.md to generated code
-- Follow documentation guidelines (docstrings, comments)
-- Use specified naming conventions
-- Adhere to formatting rules (indentation, imports, etc.)
-
-**If file does not exist**:
-- Use Phase Code Standards section as fallback
-- Apply general Python best practices (PEP 8)
-- Minimal comments, self-documenting code
-- Full type hints on all functions"""
 
     @property
     def create_plan_tool(self) -> str:

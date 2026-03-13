@@ -1,14 +1,10 @@
-from src.platform.models import ProjectStack
-from src.platform.platform_selector import PlatformType
 from src.platform.template_helpers import (
     create_automated_quality_checker_agent_tools,
     create_backend_api_reviewer_agent_tools,
-    create_code_reviewer_agent_tools,
     create_coder_agent_tools,
     create_database_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
-    create_phase_architect_agent_tools,
     create_review_consolidator_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
 )
@@ -22,7 +18,6 @@ from src.platform.templates.agents import (
     generate_review_consolidator_template,
     generate_spec_alignment_reviewer_template,
 )
-from src.platform.tooling_defaults import TOOLING_DEFAULTS
 
 
 class TestAutomatedQualityCheckerTemplate:
@@ -37,25 +32,13 @@ class TestAutomatedQualityCheckerTemplate:
         assert 'INPUTS:' in template
         assert 'TASKS:' in template
 
-    def test_template_includes_tech_stack_discovery_with_tooling(self) -> None:
-        python_tooling = TOOLING_DEFAULTS['python']
-        tools = create_automated_quality_checker_agent_tools(tooling={'python': python_tooling})
-        template = generate_automated_quality_checker_template(tools)
-
-        assert 'TECH STACK DISCOVERY' in template
-        assert 'pytest' in template
-        assert 'pytest --tb=short -v' in template
-        assert 'mypy' in template
-        assert 'ruff' in template
-        assert 'Read(".respec-ai/config.json")' not in template
-
-    def test_template_includes_tech_stack_discovery_without_tooling(self) -> None:
+    def test_template_includes_project_configuration(self) -> None:
         tools = create_automated_quality_checker_agent_tools()
         template = generate_automated_quality_checker_template(tools)
 
-        assert 'TECH STACK DISCOVERY' in template
-        assert 'No tooling configured' in template
-        assert 'respec-ai init' in template
+        assert 'PROJECT CONFIGURATION' in template
+        assert '.respec-ai/config/stack.md' in template
+        assert '.respec-ai/config/*.md' in template
 
     def test_template_includes_scoring(self) -> None:
         tools = create_automated_quality_checker_agent_tools()
@@ -268,70 +251,20 @@ class TestReviewAgentConsistency:
                 assert pattern not in template, f'Template contains behavioral description: {pattern}'
 
 
-class TestToolingSectionComputed:
-    def test_tooling_section_empty_returns_fallback(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
-        section: str = tools.tooling_section  # type: ignore[assignment]
-        assert 'No tooling configured' in section
-        assert 'respec-ai init' in section
-
-    def test_tooling_section_single_language(self) -> None:
-        python_tooling = TOOLING_DEFAULTS['python']
-        tools = create_automated_quality_checker_agent_tools(tooling={'python': python_tooling})
-
-        section: str = tools.tooling_section  # type: ignore[assignment]
-        assert '### Python' in section
-        assert '`pytest --tb=short -v`' in section
-        assert '`pytest --cov --cov-report=term-missing --tb=short`' in section
-        assert 'mypy' in section
-        assert 'ruff' in section
-
-    def test_tooling_section_multiple_languages(self) -> None:
-        tools = create_automated_quality_checker_agent_tools(
-            tooling={
-                'python': TOOLING_DEFAULTS['python'],
-                'javascript': TOOLING_DEFAULTS['javascript'],
-            }
-        )
-
-        section: str = tools.tooling_section  # type: ignore[assignment]
-        assert '### Python' in section
-        assert '### Javascript' in section
-        assert 'pytest' in section
-        assert 'vitest' in section
-        assert 'multi-language' in section.lower()
-
-    def test_tooling_section_on_coder_agent_tools(self) -> None:
-        python_tooling = TOOLING_DEFAULTS['python']
+class TestCoderTemplateConfig:
+    def test_coder_template_has_project_configuration(self) -> None:
         tools = create_coder_agent_tools(
             platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
-            platform_type=PlatformType.MARKDOWN,
-            tooling={'python': python_tooling},
-        )
-
-        section: str = tools.tooling_section  # type: ignore[assignment]
-        assert '### Python' in section
-        assert '`pytest --tb=short -v`' in section
-
-    def test_coder_template_interpolates_tooling_section(self) -> None:
-        python_tooling = TOOLING_DEFAULTS['python']
-        tools = create_coder_agent_tools(
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
-            platform_type=PlatformType.MARKDOWN,
-            tooling={'python': python_tooling},
         )
         template = generate_coder_template(tools)
 
-        assert 'TECH STACK DISCOVERY' in template
-        assert 'pytest --tb=short -v' in template
-        assert 'mypy' in template
-        assert 'ruff' in template
+        assert 'PROJECT CONFIGURATION' in template
+        assert '.respec-ai/config/stack.md' in template
+        assert '.respec-ai/config/*.md' in template
 
     def test_coder_template_no_pseudocode_remains(self) -> None:
         tools = create_coder_agent_tools(
             platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
-            platform_type=PlatformType.MARKDOWN,
-            tooling={'python': TOOLING_DEFAULTS['python']},
         )
         template = generate_coder_template(tools)
 
@@ -341,49 +274,9 @@ class TestToolingSectionComputed:
         assert 'TOOLING[LANGUAGE]' not in template
 
     def test_quality_checker_template_no_pseudocode_remains(self) -> None:
-        tools = create_automated_quality_checker_agent_tools(tooling={'python': TOOLING_DEFAULTS['python']})
+        tools = create_automated_quality_checker_agent_tools()
         template = generate_automated_quality_checker_template(tools)
 
         assert 'TOOLS.test_runner' not in template
         assert 'CONFIG = Read' not in template
         assert 'TOOLING[LANGUAGE]' not in template
-
-
-class TestStackSectionComputed:
-    def test_stack_section_on_coder_agent_tools(self) -> None:
-        stack = ProjectStack(language='python', backend_framework='fastapi', package_manager='uv')
-        tools = create_coder_agent_tools(
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
-            platform_type=PlatformType.MARKDOWN,
-            stack=stack,
-        )
-        section: str = tools.stack_section  # type: ignore[assignment]
-        assert '**Language**: python' in section
-        assert '**Backend Framework**: fastapi' in section
-
-    def test_stack_section_on_automated_quality_checker(self) -> None:
-        stack = ProjectStack(language='python', package_manager='uv')
-        tools = create_automated_quality_checker_agent_tools(stack=stack)
-        section: str = tools.stack_section  # type: ignore[assignment]
-        assert '**Language**: python' in section
-
-    def test_stack_section_on_code_reviewer(self) -> None:
-        stack = ProjectStack(language='typescript', frontend_framework='react')
-        tools = create_code_reviewer_agent_tools(PlatformType.MARKDOWN, stack=stack)
-        section: str = tools.stack_section  # type: ignore[assignment]
-        assert '**Language**: typescript' in section
-        assert '**Frontend Framework**: react' in section
-
-    def test_stack_section_on_phase_architect(self) -> None:
-        stack = ProjectStack(language='go', package_manager='go modules')
-        tools = create_phase_architect_agent_tools(stack=stack)
-        section: str = tools.stack_section  # type: ignore[assignment]
-        assert '**Language**: go' in section
-
-    def test_stack_section_empty_returns_fallback(self) -> None:
-        tools = create_coder_agent_tools(
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
-            platform_type=PlatformType.MARKDOWN,
-        )
-        section: str = tools.stack_section  # type: ignore[assignment]
-        assert 'No project stack profile configured' in section

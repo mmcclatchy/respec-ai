@@ -227,8 +227,10 @@ IF "database" in STEP_MODES:
 IF "infrastructure" in STEP_MODES:
   ACTIVE_REVIEWERS.append("infrastructure-reviewer")
 
-Check for coding standards file:
-IF coding standards file exists at project root (CLAUDE.md with coding standards content):
+Check for coding standards config files:
+CONFIG_FILES = Glob(.respec-ai/config/*.md)
+LANGUAGE_FILES = CONFIG_FILES excluding stack.md
+IF LANGUAGE_FILES is not empty:
   ACTIVE_REVIEWERS.append("coding-standards-reviewer")
 
 ACTIVE_REVIEWERS.append("review-consolidator")

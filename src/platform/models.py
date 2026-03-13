@@ -465,12 +465,8 @@ class CodeCommandTools(BaseModel):
         return self._adapter.phase_location_hint
 
     @computed_field
-    def coding_standards_path(self) -> str:
-        return self._adapter.coding_standards_location
-
-    @computed_field
-    def coding_standards_read_instruction(self) -> str:
-        return self._adapter.coding_standards_read_instruction
+    def config_directory(self) -> str:
+        return self._adapter.config_directory
 
     @computed_field
     def research_directory_pattern(self) -> str:
@@ -565,12 +561,8 @@ class PatchCommandTools(BaseModel):
         return self._adapter.phase_sync_instructions
 
     @computed_field
-    def coding_standards_path(self) -> str:
-        return self._adapter.coding_standards_location
-
-    @computed_field
-    def coding_standards_read_instruction(self) -> str:
-        return self._adapter.coding_standards_read_instruction
+    def config_directory(self) -> str:
+        return self._adapter.config_directory
 
     @computed_field
     def mcp_tools_reference(self) -> str:
@@ -860,11 +852,6 @@ class PhaseArchitectAgentTools(BaseModel):
     get_feedback: str = Field(..., description='Retrieve previous critic feedback')
     get_document: str = Field(..., description='Retrieve current specification')
     update_document: str = Field(..., description='Store complete specification')
-    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
-
-    @computed_field
-    def stack_section(self) -> str:
-        return _render_stack_section(self.stack)
 
 
 class PhaseCriticAgentTools(BaseModel):
@@ -943,57 +930,6 @@ class CreatePhaseAgentTools(BaseModel):
         return self._adapter.platform_tool_documentation
 
 
-def _render_stack_section(stack: 'ProjectStack') -> str:
-    fields = {
-        'Language': stack.language,
-        'Backend Framework': stack.backend_framework,
-        'Frontend Framework': stack.frontend_framework,
-        'Package Manager': stack.package_manager,
-        'Runtime Version': stack.runtime_version,
-        'Database': stack.database,
-        'API Style': stack.api_style,
-        'Async Runtime': 'Yes' if stack.async_runtime else 'No' if stack.async_runtime is False else None,
-        'Type Checker': stack.type_checker,
-        'CSS Framework': stack.css_framework,
-        'UI Components': stack.ui_components,
-        'Architecture': stack.architecture,
-    }
-    populated = {k: v for k, v in fields.items() if v is not None}
-    if not populated:
-        return (
-            'No project stack profile configured. Run `respec-ai init` to detect project stack, '
-            'or manually add a `stack` section to `.respec-ai/config.json`.'
-        )
-    lines = ['Project stack profile (detected during `respec-ai init`):\n']
-    for label, value in populated.items():
-        lines.append(f'- **{label}**: {value}')
-    return '\n'.join(lines)
-
-
-def _render_tooling_section(tooling: dict[str, 'LanguageTooling']) -> str:
-    if not tooling:
-        return (
-            'No tooling configured. Run `respec-ai init` to configure language tooling, '
-            'or read the Phase Technology Stack section for tool commands.'
-        )
-    lines = ['Project tooling (configured during `respec-ai init`):\n']
-    for lang, lang_tools in tooling.items():
-        lines.append(f'### {lang.title()}\n')
-        lines.append(f'- **Test Runner**: {lang_tools.test_runner}')
-        lines.append(f'- **Test Command**: `{lang_tools.test_command}`')
-        lines.append(f'- **Coverage Command**: `{lang_tools.coverage_command}`')
-        lines.append(f'- **Checker**: {lang_tools.checker}')
-        lines.append(f'- **Check Command**: `{lang_tools.check_command}`')
-        lines.append(f'- **Linter**: {lang_tools.linter}')
-        lines.append(f'- **Lint Command**: `{lang_tools.lint_command}`')
-        lines.append('')
-    lines.append(
-        'Use the commands for the language relevant to your current task. '
-        'For multi-language projects, identify the target language from the Phase specification.'
-    )
-    return '\n'.join(lines)
-
-
 class CoderAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
@@ -1014,38 +950,12 @@ class CoderAgentTools(BaseModel):
     retrieve_task: str = Field(..., description='Retrieve build plan document')
     retrieve_phase: str = Field(..., description='Retrieve phase specification')
     retrieve_feedback: str = Field(..., description='Retrieve all feedback from coding loop')
-    platform: PlatformType = Field(..., description='Selected platform type')
-    tooling: dict[str, LanguageTooling] = Field(
-        default_factory=dict, description='Language-keyed tooling configuration'
-    )
-    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
-
-    _adapter: PlatformAdapter = PrivateAttr()
-
-    def model_post_init(self, __context: Any) -> None:
-        self._adapter = get_platform_adapter(self.platform)
-
-    @computed_field
-    def tooling_section(self) -> str:
-        return _render_tooling_section(self.tooling)
-
-    @computed_field
-    def stack_section(self) -> str:
-        return _render_stack_section(self.stack)
 
     @computed_field
     def update_task_tool_interpolated(self) -> str:
         if '*' not in self.update_task_status:
             return self.update_task_status
         return self.update_task_status.replace('*', '{plan_name}', 1)
-
-    @computed_field
-    def coding_standards_path(self) -> str:
-        return self._adapter.coding_standards_location
-
-    @computed_field
-    def coding_standards_read_instruction(self) -> str:
-        return self._adapter.coding_standards_read_instruction
 
     @computed_field
     def research_directory_pattern(self) -> str:
@@ -1161,17 +1071,6 @@ class CodeReviewerAgentTools(BaseModel):
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_feedback: str = Field(..., description='Store code review feedback in coding loop')
-    platform: PlatformType = Field(..., description='Selected platform type')
-    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
-
-    _adapter: PlatformAdapter = PrivateAttr()
-
-    def model_post_init(self, __context: Any) -> None:
-        self._adapter = get_platform_adapter(self.platform)
-
-    @computed_field
-    def stack_section(self) -> str:
-        return _render_stack_section(self.stack)
 
     @computed_field
     def research_directory_pattern(self) -> str:
@@ -1201,18 +1100,6 @@ class AutomatedQualityCheckerAgentTools(BaseModel):
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_review_section: str = Field(..., description='Store quality check review section')
-    tooling: dict[str, LanguageTooling] = Field(
-        default_factory=dict, description='Language-keyed tooling configuration'
-    )
-    stack: ProjectStack = Field(default_factory=ProjectStack, description='Project stack profile')
-
-    @computed_field
-    def tooling_section(self) -> str:
-        return _render_tooling_section(self.tooling)
-
-    @computed_field
-    def stack_section(self) -> str:
-        return _render_stack_section(self.stack)
 
 
 class SpecAlignmentReviewerAgentTools(BaseModel):

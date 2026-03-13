@@ -99,7 +99,7 @@ class TestInitCommand:
         assert result == 0
         mock_prompt.assert_not_called()
 
-    def test_config_includes_all_stack_fields(
+    def test_config_excludes_stack_and_tooling(
         self,
         mocker: MockerFixture,
         tmp_path: Path,
@@ -126,13 +126,12 @@ class TestInitCommand:
         init.run(args)
 
         config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
-        stack = config['stack']
-        assert stack['language'] == 'python'
-        assert stack['backend_framework'] is None
-        assert stack['frontend_framework'] is None
-        assert stack['database'] is None
-        assert stack['async_runtime'] is None
-        assert len(stack) == 12
+        assert 'stack' not in config
+        assert 'tooling' not in config
+        assert config['project_name'] == tmp_path.name
+        assert config['platform'] == 'linear'
+        assert 'version' in config
+        assert 'created_at' in config
 
     def test_already_initialized(self, mocker: MockerFixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
@@ -228,7 +227,7 @@ class TestInitCommand:
         assert result == 0
         assert (tmp_path / '.respec-ai' / 'config.json').exists()
 
-    def test_existing_stack_with_yes_flag_preserves_stack(
+    def test_existing_config_with_yes_flag_preserves_config(
         self,
         mocker: MockerFixture,
         tmp_path: Path,
@@ -238,25 +237,18 @@ class TestInitCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        existing_config = {
-            'project_name': 'test-project',
-            'platform': 'linear',
-            'stack': {
-                'language': 'python',
-                'backend_framework': 'fastapi',
-                'frontend_framework': None,
-                'database': 'postgresql',
-                'async_runtime': None,
-                'package_manager': 'uv',
-                'type_checker': 'ty',
-                'runtime_version': '3.13',
-                'api_style': 'rest',
-                'css_framework': None,
-                'ui_components': None,
-                'architecture': 'monolith',
-            },
-        }
-        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+        (respec_ai_dir / 'config.json').write_text(
+            json.dumps(
+                {
+                    'project_name': 'test-project',
+                    'platform': 'linear',
+                }
+            )
+        )
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        (config_dir / 'stack.md').write_text('# Project Stack\n\n## Languages\n- Python 3.13')
+        (config_dir / 'python.md').write_text('# Python\n\n## Commands\n- **Test**: `pytest`')
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
@@ -279,14 +271,10 @@ class TestInitCommand:
         mock_detect.assert_not_called()
         mock_prompt.assert_not_called()
 
-        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
-        assert config['stack']['language'] == 'python'
-        assert config['stack']['backend_framework'] == 'fastapi'
-        assert config['stack']['database'] == 'postgresql'
-        assert config['stack']['type_checker'] == 'ty'
-        assert config['stack']['architecture'] == 'monolith'
+        assert (config_dir / 'stack.md').read_text() == '# Project Stack\n\n## Languages\n- Python 3.13'
+        assert (config_dir / 'python.md').read_text() == '# Python\n\n## Commands\n- **Test**: `pytest`'
 
-    def test_existing_stack_without_yes_flag_prompts_user_option_1(
+    def test_existing_config_without_yes_flag_prompts_user_option_1(
         self,
         mocker: MockerFixture,
         tmp_path: Path,
@@ -296,25 +284,18 @@ class TestInitCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        existing_config = {
-            'project_name': 'test-project',
-            'platform': 'linear',
-            'stack': {
-                'language': 'python',
-                'backend_framework': 'fastapi',
-                'frontend_framework': None,
-                'database': 'postgresql',
-                'async_runtime': None,
-                'package_manager': 'uv',
-                'type_checker': 'ty',
-                'runtime_version': '3.13',
-                'api_style': 'rest',
-                'css_framework': None,
-                'ui_components': None,
-                'architecture': 'monolith',
-            },
-        }
-        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+        (respec_ai_dir / 'config.json').write_text(
+            json.dumps(
+                {
+                    'project_name': 'test-project',
+                    'platform': 'linear',
+                }
+            )
+        )
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        (config_dir / 'stack.md').write_text('# Project Stack')
+        (config_dir / 'python.md').write_text('# Python')
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
@@ -328,7 +309,7 @@ class TestInitCommand:
         mocker.patch('src.cli.commands.init.DockerManager')
 
         mock_console = mocker.patch('src.cli.commands.init.console')
-        mock_console.input.side_effect = ['1', 'y']
+        mock_console.input.return_value = '1'
 
         mock_detect = mocker.patch('src.cli.commands.init.detect_project_stack')
         mock_prompt = mocker.patch('src.cli.commands.init.prompt_stack_profile')
@@ -339,15 +320,12 @@ class TestInitCommand:
         assert result == 0
         mock_detect.assert_not_called()
         mock_prompt.assert_not_called()
-        assert mock_console.input.call_count == 2
+        mock_console.input.assert_called_once()
 
-        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
-        assert config['stack']['language'] == 'python'
-        assert config['stack']['backend_framework'] == 'fastapi'
-        assert config['stack']['type_checker'] == 'ty'
-        assert config['stack']['architecture'] == 'monolith'
+        assert (config_dir / 'stack.md').read_text() == '# Project Stack'
+        assert (config_dir / 'python.md').read_text() == '# Python'
 
-    def test_existing_stack_without_yes_flag_prompts_user_option_2(
+    def test_existing_config_without_yes_flag_prompts_user_option_2(
         self,
         mocker: MockerFixture,
         tmp_path: Path,
@@ -357,25 +335,17 @@ class TestInitCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        existing_config = {
-            'project_name': 'test-project',
-            'platform': 'linear',
-            'stack': {
-                'language': 'python',
-                'backend_framework': 'fastapi',
-                'frontend_framework': None,
-                'database': 'postgresql',
-                'async_runtime': None,
-                'package_manager': 'uv',
-                'type_checker': 'ty',
-                'runtime_version': '3.13',
-                'api_style': 'rest',
-                'css_framework': None,
-                'ui_components': None,
-                'architecture': 'monolith',
-            },
-        }
-        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+        (respec_ai_dir / 'config.json').write_text(
+            json.dumps(
+                {
+                    'project_name': 'test-project',
+                    'platform': 'linear',
+                }
+            )
+        )
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        (config_dir / 'stack.md').write_text('# Old Stack')
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
@@ -408,9 +378,9 @@ class TestInitCommand:
         mock_prompt.assert_called_once()
 
         config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
-        assert config['stack']['language'] == 'typescript'
+        assert 'stack' not in config
 
-    def test_existing_stack_invalid_choice_returns_error(
+    def test_existing_config_invalid_choice_returns_error(
         self,
         mocker: MockerFixture,
         tmp_path: Path,
@@ -420,12 +390,17 @@ class TestInitCommand:
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
-        existing_config = {
-            'project_name': 'test-project',
-            'platform': 'linear',
-            'stack': {'language': 'python'},
-        }
-        (respec_ai_dir / 'config.json').write_text(json.dumps(existing_config))
+        (respec_ai_dir / 'config.json').write_text(
+            json.dumps(
+                {
+                    'project_name': 'test-project',
+                    'platform': 'linear',
+                }
+            )
+        )
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        (config_dir / 'stack.md').write_text('# Project Stack')
 
         mock_console = mocker.patch('src.cli.commands.init.console')
         mock_console.input.return_value = '3'

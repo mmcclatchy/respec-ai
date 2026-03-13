@@ -12,7 +12,6 @@ from .models import (
     DatabaseReviewerAgentTools,
     FrontendReviewerAgentTools,
     InfrastructureReviewerAgentTools,
-    LanguageTooling,
     PatchCommandTools,
     PatchPlannerAgentTools,
     PhaseArchitectAgentTools,
@@ -22,7 +21,6 @@ from .models import (
     PlanCommandTools,
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
-    ProjectStack,
     ResearchSynthesisOrchestratorAgentTools,
     ReviewConsolidatorAgentTools,
     RoadmapAgentTools,
@@ -351,9 +349,7 @@ def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') 
     )
 
 
-def create_phase_architect_agent_tools(
-    stack: ProjectStack = ProjectStack(),
-) -> PhaseArchitectAgentTools:
+def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PhaseArchitectAgentTools.respec_ai_tools:
@@ -377,7 +373,6 @@ def create_phase_architect_agent_tools(
             key='{PLAN_NAME}/{PHASE_NAME}',
             content='{GENERATED_PHASE_MARKDOWN}',
         ),
-        stack=stack,
     )
 
 
@@ -556,10 +551,7 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     )
 
 
-def create_code_reviewer_agent_tools(
-    platform_type: 'PlatformType',
-    stack: ProjectStack = ProjectStack(),
-) -> CodeReviewerAgentTools:
+def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CodeReviewerAgentTools.respec_ai_tools:
@@ -582,8 +574,6 @@ def create_code_reviewer_agent_tools(
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
-        platform=platform_type,
-        stack=stack,
     )
 
 
@@ -653,9 +643,6 @@ def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
 
 def create_coder_agent_tools(
     platform_tools: list[str],
-    platform_type: 'PlatformType',
-    tooling: dict[str, LanguageTooling] | None = None,
-    stack: ProjectStack = ProjectStack(),
 ) -> CoderAgentTools:
     builder = TemplateToolBuilder()
 
@@ -679,9 +666,6 @@ def create_coder_agent_tools(
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
-        platform=platform_type,
-        tooling=tooling or {},
-        stack=stack,
     )
 
 
@@ -711,10 +695,7 @@ def create_create_phase_agent_tools(platform_tools: list[str], platform: Platfor
     )
 
 
-def create_automated_quality_checker_agent_tools(
-    tooling: dict[str, LanguageTooling] | None = None,
-    stack: ProjectStack = ProjectStack(),
-) -> AutomatedQualityCheckerAgentTools:
+def create_automated_quality_checker_agent_tools() -> AutomatedQualityCheckerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in AutomatedQualityCheckerAgentTools.respec_ai_tools:
@@ -739,8 +720,6 @@ def create_automated_quality_checker_agent_tools(
             key='{PLAN_NAME}/{PHASE_NAME}/review-quality-check',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
-        tooling=tooling or {},
-        stack=stack,
     )
 
 
