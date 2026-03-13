@@ -62,8 +62,8 @@ EXCEPT:
 """
 
     @property
-    def coding_standards_location(self) -> str:
-        return 'Linear project custom field: coding_standards'
+    def config_directory(self) -> str:
+        return '.respec-ai/config'
 
     @property
     def phase_location_hint(self) -> str:
@@ -90,19 +90,6 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
     @property
     def task_location_hint(self) -> str:
         return 'Linear project: {PLAN_NAME}, phase: {PHASE_NAME}'
-
-    @property
-    def coding_standards_read_instruction(self) -> str:
-        return """Read coding standards from Phase custom field or Phase Code Standards section.
-
-**If custom field 'coding_standards' exists**:
-- Apply ALL rules from custom field to generated code
-
-**If custom field does not exist**:
-- Use Phase Code Standards section as fallback
-- Apply general Python best practices (PEP 8)
-- Minimal comments, self-documenting code
-- Full type hints on all functions"""
 
     @property
     def create_plan_tool(self) -> str:

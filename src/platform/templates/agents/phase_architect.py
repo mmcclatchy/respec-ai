@@ -166,9 +166,9 @@ Phase updated successfully.
 - Sections: [count of major sections]
 ```
 
-## PROJECT STACK PROFILE
+## PROJECT CONFIGURATION
 
-{tools.stack_section}
+Read .respec-ai/config/stack.md for project stack context.
 
 ## OUTPUT DETAIL GUIDELINES
 

@@ -49,11 +49,7 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
-    def coding_standards_location(self) -> str: ...
-
-    @property
-    @abstractmethod
-    def coding_standards_read_instruction(self) -> str: ...
+    def config_directory(self) -> str: ...
 
     @property
     @abstractmethod

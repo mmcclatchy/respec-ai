@@ -34,13 +34,21 @@ TASKS: Run Static Analysis → Generate Review Section → Store
 
 CONSTRAINT: Do NOT write files to the filesystem. Bash is for test execution, type checking, and linting only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
 
-## TECH STACK DISCOVERY
+## PROJECT CONFIGURATION
 
-{tools.tooling_section}
+Read project configuration at workflow start:
+1. Read(.respec-ai/config/stack.md) — project tech stack context
+2. Glob(.respec-ai/config/*.md) — discover language config files (e.g., python.md)
+3. Read each language config file — extract Commands for test/check/lint/coverage
 
-## PROJECT STACK PROFILE
+**Using Commands:**
+- Commands section uses format: `- **Label**: \`command\``
+- Four standard labels: Test, Coverage, Type check, Lint
+- Run each command and capture output for scoring
 
-{tools.stack_section}
+**If .respec-ai/config/ doesn't exist:**
+- Fall back to Phase Technology Stack section for commands
+- Apply general language best practices
 
 For multi-language projects, run ALL language checks and report results per language.
 

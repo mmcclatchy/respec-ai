@@ -17,14 +17,12 @@ from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
 from src.cli.ui.stack_prompts import prompt_stack_profile
 from src.mcp.tools import register_all_tools
+from src.platform.config_writer import write_config_files
 from src.platform.models import ProjectStack
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
 from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, detect_project_tooling
-
-
-from src.platform.models import LanguageTooling
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -81,14 +79,12 @@ def run(args: Namespace) -> int:
         respec_ai_dir = project_path / '.respec-ai'
         config_path = respec_ai_dir / 'config.json'
 
-        existing_stack = None
-        existing_tooling = None
+        existing_config_files = False
 
         if config_path.exists():
             if not args.force:
-                existing_config = json.loads(config_path.read_text(encoding='utf-8'))
-
-                if 'stack' in existing_config and existing_config['stack']:
+                config_dir = project_path / '.respec-ai' / 'config'
+                if config_dir.exists():
                     print_info('Stack configuration already exists')
 
                     if not args.yes:
@@ -101,27 +97,19 @@ def run(args: Namespace) -> int:
                         choice = console.input('[bold]Enter choice (1 or 2):[/bold] ').strip()
 
                         if choice == '1':
-                            existing_stack = ProjectStack(**existing_config['stack'])
-                            if 'tooling' in existing_config:
-                                existing_tooling = {
-                                    lang: LanguageTooling(**config)
-                                    for lang, config in existing_config['tooling'].items()
-                                }
+                            existing_config_files = True
                             print_info('Using existing stack configuration')
                         elif choice == '2':
+                            shutil.rmtree(config_dir)
                             print_info('Reconfiguring stack...')
                         else:
                             print_error('Invalid choice. Exiting.')
                             return 1
                     else:
-                        existing_stack = ProjectStack(**existing_config['stack'])
-                        if 'tooling' in existing_config:
-                            existing_tooling = {
-                                lang: LanguageTooling(**config) for lang, config in existing_config['tooling'].items()
-                            }
+                        existing_config_files = True
                         print_info('Using existing stack configuration (--yes flag)')
                 else:
-                    print_error('respec-ai is already initialized but missing stack configuration')
+                    print_error('respec-ai is already initialized but missing config directory')
                     print_warning(f'Config found at: {config_path}')
                     print_warning('Use --force to reinitialize completely')
                     return 1
@@ -144,10 +132,10 @@ def run(args: Namespace) -> int:
             get_commands_dir(project_path).mkdir(parents=True, exist_ok=True)
             get_agents_dir(project_path).mkdir(parents=True, exist_ok=True)
 
-            if existing_stack is not None:
+            if existing_config_files:
                 progress.update(task, description='Using existing stack configuration...')
-                stack = existing_stack
-                tooling = existing_tooling or {}
+                stack = ProjectStack()
+                tooling: dict = {}
             else:
                 progress.update(task, description='Detecting project tooling...')
                 tooling = detect_project_tooling(project_path)
@@ -162,13 +150,14 @@ def run(args: Namespace) -> int:
 
                 tooling = apply_stack_to_tooling(tooling, stack)
 
-        _display_detected_config(platform, project_name, tooling, stack)
+        if not existing_config_files:
+            _display_detected_config(platform, project_name, tooling, stack)
 
-        if not args.yes:
-            response = console.input('\n[bold]Proceed with this configuration?[/bold] [Y/n] ')
-            if response.strip().lower() in ('n', 'no'):
-                print_warning('Initialization cancelled')
-                return 1
+            if not args.yes:
+                response = console.input('\n[bold]Proceed with this configuration?[/bold] [Y/n] ')
+                if response.strip().lower() in ('n', 'no'):
+                    print_warning('Initialization cancelled')
+                    return 1
 
         with Progress(
             SpinnerColumn(),
@@ -181,10 +170,17 @@ def run(args: Namespace) -> int:
             register_all_tools(mcp)
 
             files_written, commands_count, agents_count = generate_templates(
-                orchestrator, project_path, platform_type, mcp=mcp, tooling=tooling or None, stack=stack
+                orchestrator, project_path, platform_type, mcp=mcp
             )
 
             progress.update(task, description='Creating configuration...')
+
+            config_dir = project_path / '.respec-ai' / 'config'
+            if config_dir.exists():
+                print_info('Config files exist at .respec-ai/config/ — not modified')
+            else:
+                config_files = write_config_files(project_path, stack, tooling or {})
+                files_written.extend(config_files)
 
             config = {
                 'project_name': project_name,
@@ -192,9 +188,6 @@ def run(args: Namespace) -> int:
                 'created_at': datetime.now().isoformat(),
                 'version': get_package_version(),
             }
-            if tooling:
-                config['tooling'] = {lang: t.model_dump() for lang, t in tooling.items()}
-            config['stack'] = stack.model_dump()
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
 
             mcp_registered = False

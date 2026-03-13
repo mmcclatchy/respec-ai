@@ -62,8 +62,8 @@ EXCEPT:
 """
 
     @property
-    def coding_standards_location(self) -> str:
-        return '.respec-ai/coding-standards.md (in repository)'
+    def config_directory(self) -> str:
+        return '.respec-ai/config'
 
     @property
     def phase_location_hint(self) -> str:
@@ -103,19 +103,6 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
     @property
     def task_location_hint(self) -> str:
         return 'GitHub repo: {PLAN_NAME}, milestone: {PHASE_NAME}'
-
-    @property
-    def coding_standards_read_instruction(self) -> str:
-        return """Read coding standards from .respec-ai/coding-standards.md in repository.
-
-**If file exists in repo**:
-- Apply ALL rules from coding-standards.md to generated code
-
-**If file does not exist**:
-- Use Phase Code Standards section as fallback
-- Apply general Python best practices (PEP 8)
-- Minimal comments, self-documenting code
-- Full type hints on all functions"""
 
     @property
     def create_plan_tool(self) -> str:

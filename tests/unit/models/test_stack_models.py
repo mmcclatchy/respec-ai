@@ -1,4 +1,4 @@
-from src.platform.models import ProjectStack, _render_stack_section
+from src.platform.models import ProjectStack
 
 
 class TestProjectStack:
@@ -57,37 +57,3 @@ class TestProjectStack:
             assert False, 'Should have raised'
         except Exception:
             pass
-
-
-class TestRenderStackSection:
-    def test_with_full_stack(self) -> None:
-        stack = ProjectStack(
-            language='python',
-            backend_framework='fastapi',
-            frontend_framework='react',
-            package_manager='uv',
-            runtime_version='3.13',
-            api_style='rest',
-        )
-        result = _render_stack_section(stack)
-        assert '**Language**: python' in result
-        assert '**Backend Framework**: fastapi' in result
-        assert '**Frontend Framework**: react' in result
-        assert '**Package Manager**: uv' in result
-        assert '**Runtime Version**: 3.13' in result
-        assert '**API Style**: rest' in result
-        assert 'respec-ai init' in result
-
-    def test_with_partial_stack(self) -> None:
-        stack = ProjectStack(language='python', package_manager='uv')
-        result = _render_stack_section(stack)
-        assert '**Language**: python' in result
-        assert '**Package Manager**: uv' in result
-        assert 'Backend Framework' not in result
-        assert 'Database' not in result
-
-    def test_with_empty_stack(self) -> None:
-        stack = ProjectStack()
-        result = _render_stack_section(stack)
-        assert 'No project stack profile configured' in result
-        assert 'respec-ai init' in result

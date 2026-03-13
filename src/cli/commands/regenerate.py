@@ -9,11 +9,9 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from src.cli.config.package_info import get_package_version
 from src.cli.ui.console import console, print_error, print_info, print_success, print_warning
 from src.mcp.tools import register_all_tools
-from src.platform.models import LanguageTooling, ProjectStack
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
-from src.platform.tooling_defaults import detect_project_stack, detect_project_tooling
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -50,20 +48,6 @@ def run(args: Namespace) -> int:
             print_info('Use --force to regenerate anyway')
             return 0
 
-        raw_tooling = config.get('tooling', {})
-        tooling: dict[str, LanguageTooling] | None = None
-        if raw_tooling:
-            tooling = {lang: LanguageTooling(**tools) for lang, tools in raw_tooling.items()}
-        else:
-            detected = detect_project_tooling(project_path)
-            if detected:
-                tooling = detected
-                config['tooling'] = {lang: t.model_dump() for lang, t in tooling.items()}
-
-        raw_stack = config.get('stack')
-        stack = ProjectStack(**raw_stack) if raw_stack else detect_project_stack(project_path)
-        config['stack'] = stack.model_dump()
-
         platform_type = PlatformType(platform)
         orchestrator = PlatformOrchestrator.create_with_default_config()
 
@@ -78,7 +62,7 @@ def run(args: Namespace) -> int:
             register_all_tools(mcp)
 
             files_written, commands_count, agents_count = generate_templates(
-                orchestrator, project_path, platform_type, mcp=mcp, tooling=tooling, stack=stack
+                orchestrator, project_path, platform_type, mcp=mcp
             )
 
             progress.update(task, description='Updating configuration...')
