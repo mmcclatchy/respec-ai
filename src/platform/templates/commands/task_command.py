@@ -184,8 +184,9 @@ Wait for agent completion before proceeding.
 ```text
 LOOP_DECISION_RESPONSE = {tools.decide_loop_action}
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
+LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
+LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
 
-Note: No need to retrieve feedback or score - MCP handles internally.
 Decision options: "complete", "refine", "user_input"
 ```
 
@@ -195,7 +196,7 @@ Decision options: "complete", "refine", "user_input"
 
 ```text
 IF LOOP_DECISION == "refine":
-  Display: "⟳ Refining Task - task-planner will address critic feedback"
+  Display: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining task"
   Return to Step 4.1 (task-planner will retrieve feedback from MCP itself)
 
 ELIF LOOP_DECISION == "user_input":
@@ -226,6 +227,7 @@ ELIF LOOP_DECISION == "user_input":
     Return to Step 4.1 with user guidance
 
 ELIF LOOP_DECISION == "complete":
+  Display: "✅ Score: {{LOOP_SCORE}}/100 — task approved"
   Proceed to Step 6.
 ```
 

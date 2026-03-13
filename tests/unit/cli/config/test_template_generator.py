@@ -128,6 +128,37 @@ class TestGenerateTemplates:
             assert commands_count == 7
             assert agents_count == 23
 
+    def test_removes_stale_respec_files_before_writing(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+        commands_dir.mkdir(parents=True)
+        agents_dir.mkdir(parents=True)
+
+        stale_agent = agents_dir / 'respec-task-coder.md'
+        stale_command = commands_dir / 'respec-old-command.md'
+        non_respec_agent = agents_dir / 'my-custom-agent.md'
+        stale_agent.write_text('stale')
+        stale_command.write_text('stale')
+        non_respec_agent.write_text('keep me')
+
+        mocker.patch(
+            'src.platform.template_generator.get_commands_dir',
+            return_value=commands_dir,
+        )
+        mocker.patch(
+            'src.platform.template_generator.get_agents_dir',
+            return_value=agents_dir,
+        )
+
+        mock_orchestrator = mocker.MagicMock()
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+
+        generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR)
+
+        assert not stale_agent.exists()
+        assert not stale_command.exists()
+        assert non_respec_agent.exists()
+
     def test_templates_include_project_configuration(self, mocker: MockerFixture, tmp_path: Path) -> None:
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'

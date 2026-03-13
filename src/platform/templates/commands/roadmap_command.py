@@ -141,8 +141,9 @@ Wait for agent completion before proceeding.
 ```text
 LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
+LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
+LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
 
-Note: No need to retrieve feedback or score - MCP handles internally.
 Decision options: "complete", "refine", "user_input"
 ```
 
@@ -152,7 +153,7 @@ Decision options: "complete", "refine", "user_input"
 
 ```text
 IF LOOP_DECISION == "refine":
-  Display: "⟳ Refining roadmap - roadmap-analyst will address critic feedback"
+  Display: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining roadmap"
   Return to Step 3.1 (roadmap-analyst will retrieve feedback from MCP itself)
 
 ELIF LOOP_DECISION == "user_input":
@@ -183,6 +184,7 @@ ELIF LOOP_DECISION == "user_input":
     Return to Step 3.1 with user guidance
 
 ELIF LOOP_DECISION == "complete":
+  Display: "✅ Score: {{LOOP_SCORE}}/100 — roadmap approved"
   Proceed to Step 5.
   Note: Roadmap contains sparse Phase objects (iteration=0) with 4 Overview fields only.
 ```

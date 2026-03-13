@@ -155,6 +155,8 @@ Expected: CriticFeedback stored in MCP planning loop
 ```text
 PLANNING_DECISION_RESPONSE = {tools.decide_planning_action}
 PLANNING_DECISION = PLANNING_DECISION_RESPONSE.status
+PLANNING_SCORE = PLANNING_DECISION_RESPONSE.current_score
+PLANNING_ITERATION = PLANNING_DECISION_RESPONSE.iteration
 
 Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```
@@ -163,11 +165,13 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 ```text
 IF PLANNING_DECISION == "refine":
+  Display: "⟳ Iteration {{PLANNING_ITERATION}} · Score: {{PLANNING_SCORE}}/100 — refining amendment task"
   Re-invoke patch-planner agent (same parameters).
   Re-invoke task-plan-critic agent (same parameters).
   Call MCP decision again.
 
 ELIF PLANNING_DECISION == "complete":
+  Display: "✅ Score: {{PLANNING_SCORE}}/100 — amendment task approved"
   Proceed to Step 4.
 
 ELIF PLANNING_DECISION == "user_input":
@@ -326,6 +330,8 @@ Expected: Single CriticFeedback with Overall Score stored in MCP coding loop
 ```text
 CODING_DECISION_RESPONSE = {tools.decide_coding_action}
 CODING_DECISION = CODING_DECISION_RESPONSE.status
+CODING_SCORE = CODING_DECISION_RESPONSE.current_score
+CODING_ITERATION = CODING_DECISION_RESPONSE.iteration
 
 Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```
@@ -336,11 +342,13 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 ```text
 IF CODING_DECISION == "refine":
+  Display: "⟳ Iteration {{CODING_ITERATION}} · Score: {{CODING_SCORE}}/100 — refining implementation"
   Re-invoke coder agent (same parameters).
   Re-invoke review team (Step 5.4: quality-checker -> spec-alignment -> specialists -> consolidator).
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
+  Display: "✅ Score: {{CODING_SCORE}}/100 — code quality threshold reached"
   Proceed to Step 7.
 
 ELIF CODING_DECISION == "user_input":
