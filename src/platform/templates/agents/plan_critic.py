@@ -48,6 +48,7 @@ def generate_plan_critic_template(tools: PlanCriticAgentTools) -> str:
 name: respec-plan-critic
 description: Evaluate strategic plans using FSDD framework
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

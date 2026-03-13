@@ -6,6 +6,7 @@ def generate_research_synthesis_orchestrator_template(tools: ResearchSynthesisOr
 name: respec-research-synthesis-orchestrator
 description: Orchestrate research synthesis for Phase research requirements
 model: sonnet
+color: cyan
 tools: {tools.tools_yaml}
 ---
 

@@ -66,6 +66,7 @@ def generate_patch_planner_template(tools: PatchPlannerAgentTools) -> str:
 name: respec-patch-planner
 description: Create targeted amendment tasks from change descriptions by exploring existing codebase
 model: sonnet
+color: green
 tools: {tools.tools_yaml}
 ---
 

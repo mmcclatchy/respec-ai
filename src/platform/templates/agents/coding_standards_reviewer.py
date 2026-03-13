@@ -6,6 +6,7 @@ def generate_coding_standards_reviewer_template(tools: CodingStandardsReviewerAg
 name: respec-coding-standards-reviewer
 description: Review code adherence to project coding standards
 model: sonnet
+color: purple
 tools: {tools.tools_yaml}
 ---
 

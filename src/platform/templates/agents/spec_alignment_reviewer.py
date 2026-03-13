@@ -6,6 +6,7 @@ def generate_spec_alignment_reviewer_template(tools: SpecAlignmentReviewerAgentT
 name: respec-spec-alignment-reviewer
 description: Verify implementation matches Task, Phase, and Plan objectives
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

@@ -53,6 +53,7 @@ def generate_task_plan_critic_template(tools: TaskPlanCriticAgentTools) -> str:
 name: respec-task-plan-critic
 description: Assess Task quality against FSDD criteria
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 
