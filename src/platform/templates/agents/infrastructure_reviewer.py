@@ -6,6 +6,7 @@ def generate_infrastructure_reviewer_template(tools: InfrastructureReviewerAgent
 name: respec-infrastructure-reviewer
 description: Review Docker, CI/CD, deployment config, and environment management
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

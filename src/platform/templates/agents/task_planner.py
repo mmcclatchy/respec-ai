@@ -99,6 +99,7 @@ def generate_task_planner_template(tools: TaskPlannerAgentTools) -> str:
 name: respec-task-planner
 description: Transform Phase into detailed Task with Checklist and Steps
 model: sonnet
+color: green
 tools: {tools.tools_yaml}
 ---
 

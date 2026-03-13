@@ -6,6 +6,7 @@ def generate_automated_quality_checker_template(tools: AutomatedQualityCheckerAg
 name: respec-automated-quality-checker
 description: Run language-agnostic static analysis and produce quality check review section
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

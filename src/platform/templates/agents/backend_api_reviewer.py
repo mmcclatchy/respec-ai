@@ -6,6 +6,7 @@ def generate_backend_api_reviewer_template(tools: BackendApiReviewerAgentTools) 
 name: respec-backend-api-reviewer
 description: Review API design, validation, authentication, and REST conventions
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

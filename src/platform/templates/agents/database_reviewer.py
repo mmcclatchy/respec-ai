@@ -6,6 +6,7 @@ def generate_database_reviewer_template(tools: DatabaseReviewerAgentTools) -> st
 name: respec-database-reviewer
 description: Review schema design, migrations, indexes, and query patterns
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

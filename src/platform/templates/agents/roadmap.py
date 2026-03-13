@@ -54,6 +54,7 @@ def generate_roadmap_template(tools: RoadmapAgentTools) -> str:
 name: respec-roadmap
 description: Transform strategic plans into phased implementation roadmaps
 model: sonnet
+color: blue
 tools: {tools.tools_yaml}
 ---
 

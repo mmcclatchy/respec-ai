@@ -127,6 +127,7 @@ def generate_phase_critic_template(tools: PhaseCriticAgentTools) -> str:
 name: respec-phase-critic
 description: Evaluate Phases against FSDD quality criteria
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

@@ -13,6 +13,7 @@ def generate_create_phase_template(tools: CreatePhaseAgentTools) -> str:
 name: respec-create-phase
 description: Extract sparse Phases from roadmap and save to platform
 model: sonnet
+color: blue
 tools: {tools.tools_yaml}
 ---
 

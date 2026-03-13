@@ -320,12 +320,15 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 ```text
 IF CODING_DECISION == "refine":
+  Display: "🔵 [Phase 1 · Refining] ⟳ Functional quality below threshold — re-running coder and review team"
   Re-invoke coder agent (same parameters).
   Re-invoke review team (Step 7.4.1: quality-checker → spec-alignment → specialists → consolidator).
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
-  Proceed to Step 9.
+  Display: "🔵 [Phase 1 · Complete] ✅ Functional quality threshold reached"
+  IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 7.5
+  ELSE: Proceed to Step 9
 
 ELIF CODING_DECISION == "user_input":
   LATEST_FEEDBACK = {tools.get_feedback}
@@ -352,7 +355,14 @@ Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS (CLAUDE.md detec
 STANDARDS_LOOP_ID = {tools.initialize_standards_loop}
 
 PHASE1_SCORE = [final Overall Score from CODING_LOOP_ID CriticFeedback]
-Display: "✓ Phase 1 complete (score: {{PHASE1_SCORE}}/100). Starting Phase 2: coding standards."
+Display:
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅  PHASE 1 COMPLETE  ·  Functional Quality Score: {{PHASE1_SCORE}}/100
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟣  PHASE 2 STARTING: Coding Standards
+    Focus: naming · imports · type hints · docstrings
+    Completes with a pre-commit hook validated commit.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
 
 #### Step 7.5.2: Standards Review Cycle
@@ -380,7 +390,9 @@ Loop:
 
   IF STANDARDS_DECISION == "complete": exit loop
 
-  IF STANDARDS_DECISION == "refine": continue loop
+  IF STANDARDS_DECISION == "refine":
+    Display: "🟣 [Phase 2 · Refining] ⟳ Standards issues found — re-running standards coder and reviewer"
+    continue loop
 
   IF STANDARDS_DECISION == "user_input":
     STANDARDS_FEEDBACK = {tools.get_standards_feedback}
@@ -406,7 +418,11 @@ Run (without --no-verify):
   git commit -m "feat: implement {{PHASE_NAME}} — coding standards applied"
 
 IF commit succeeds:
-  Display: "✓ Pre-commit hooks passed. Implementation complete."
+  Display:
+  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅  PHASE 2 COMPLETE  ·  Coding Standards Applied
+  ✅  Pre-commit hooks passed — implementation complete
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 IF commit fails (hooks rejected):
   Display hook output

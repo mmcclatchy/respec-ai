@@ -47,6 +47,7 @@ def generate_phase_architect_template(tools: PhaseArchitectAgentTools) -> str:
 name: respec-phase-architect
 description: Design technical architecture from strategic plans
 model: sonnet
+color: cyan
 tools: {tools.tools_yaml}
 ---
 

@@ -6,6 +6,7 @@ def generate_frontend_reviewer_template(tools: FrontendReviewerAgentTools) -> st
 name: respec-frontend-reviewer
 description: Review UI components, accessibility, and frontend framework patterns
 model: sonnet
+color: yellow
 tools: {tools.tools_yaml}
 ---
 

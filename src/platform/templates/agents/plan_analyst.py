@@ -6,6 +6,7 @@ def generate_plan_analyst_template(tools: PlanAnalystAgentTools) -> str:
 name: respec-plan-analyst
 description: Extract structured objectives from strategic plans
 model: sonnet
+color: blue
 tools: {tools.tools_yaml}
 ---
 
