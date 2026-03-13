@@ -296,12 +296,9 @@ Spec-critic will:
 
 ```text
 LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
-(Returns: {{status: "COMPLETE|REFINE|USER_INPUT", loop_id: "abc123", iteration: N}})
-
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
-
-Note: No need to retrieve feedback or score - phase-critic stored feedback in MCP,
-and MCP automatically recorded score and computed loop decision.
+LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
+LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
 ```
 
 ### Step 7: Handle Refinement Decisions
@@ -310,11 +307,11 @@ and MCP automatically recorded score and computed loop decision.
 
 ```text
 IF LOOP_DECISION == "COMPLETE":
-  Display to user: "✓ Phase meets quality standards"
+  Display to user: "✅ Score: {{LOOP_SCORE}}/100 — Phase meets quality standards"
   Proceed to Step 8.
 
 ELIF LOOP_DECISION == "REFINE":
-  Display to user: "⟳ Refining Phase - phase-architect will address critic feedback"
+  Display to user: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining Phase"
   Return to Step 5 (phase-architect will retrieve feedback from MCP itself)
 
 ELIF LOOP_DECISION == "USER_INPUT":

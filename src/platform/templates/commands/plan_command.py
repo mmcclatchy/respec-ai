@@ -449,30 +449,29 @@ Extract ANALYST_SCORE from feedback overall_score field
 
 Use the MCP tool `{tools.decide_loop_action}`:
 - Call `ANALYST_LOOP_RESPONSE = {tools.decide_loop_action}`
-- MCP Server retrieves latest score from analyst-critic feedback internally
-- The MCP Server will determine the next action based on configured criteria
-- Store the returned status as `ANALYST_LOOP_STATUS = ANALYST_LOOP_RESPONSE.status`
-- Display the MCP decision to the user
-
-Note: No need to retrieve or pass score from command - MCP handles internally.
+- Store `ANALYST_LOOP_STATUS = ANALYST_LOOP_RESPONSE.status`
+- Store `ANALYST_SCORE = ANALYST_LOOP_RESPONSE.current_score`
+- Store `ANALYST_ITERATION = ANALYST_LOOP_RESPONSE.iteration`
 
 #### Process the MCP Server decision
 
 #### If status is "refine"
+- Display: "⟳ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — refining analyst validation"
 - Objectives and feedback already stored in MCP by agent
 - Previous feedback available to plan-analyst via MCP tools
 - Re-invoke plan-analyst with ANALYST_LOOP_ID (return to Step 7)
 
 #### If status is "user_input"
+- Display: "⚠ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — user input required"
 - Present current analyst score and request user clarification
 - Wait for user response and incorporate into objectives analysis
 - Continue analyst validation loop (return to Step 7)
 
 #### If status is "completed"
+- Display: "✅ Score: {{ANALYST_SCORE}}/100 — analyst validation complete"
 - Final objectives and feedback already stored in MCP by agent
 - Generate completion report using data from MCP storage
 - Store completion report: `{tools.store_completion_report})`
-- Display completion message with final analyst score
 - Present final output using the stored completion report
 - Create external project using {tools.create_project_tool_interpolated}
 - Create external project completion using {tools.create_completion_tool_interpolated}

@@ -88,6 +88,11 @@ def generate_templates(
     commands_dir.mkdir(parents=True, exist_ok=True)
     agents_dir.mkdir(parents=True, exist_ok=True)
 
+    for stale in commands_dir.glob('respec-*.md'):
+        stale.unlink()
+    for stale in agents_dir.glob('respec-*.md'):
+        stale.unlink()
+
     files_written: list[Path] = []
 
     command_templates = [

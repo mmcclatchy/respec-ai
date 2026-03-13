@@ -18,6 +18,8 @@ class MCPResponse(BaseModel):
     status: LoopStatus
     message: str = ''
     char_length: int | None = None
+    current_score: int = 0
+    iteration: int = 0
 
 
 class OperationResponse(BaseModel):
@@ -41,7 +43,12 @@ class LoopState(BaseModel):
 
     @property
     def mcp_response(self) -> MCPResponse:
-        return MCPResponse(id=self.id, status=self.status)
+        return MCPResponse(
+            id=self.id,
+            status=self.status,
+            current_score=self.current_score,
+            iteration=self.iteration,
+        )
 
     def is_first_iteration(self) -> bool:
         return self.iteration == 1

@@ -309,9 +309,8 @@ Expected: Single CriticFeedback with Overall Score stored in MCP coding loop
 ```text
 CODING_DECISION_RESPONSE = {tools.decide_coding_action}
 CODING_DECISION = CODING_DECISION_RESPONSE.status
-
-Note: MCP Server retrieves latest score from code-reviewer feedback internally.
-No need to retrieve or pass score from command.
+CODING_SCORE = CODING_DECISION_RESPONSE.current_score
+CODING_ITERATION = CODING_DECISION_RESPONSE.iteration
 
 Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```
@@ -322,13 +321,13 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 ```text
 IF CODING_DECISION == "refine":
-  Display: "🔵 [Phase 1 · Refining] ⟳ Functional quality below threshold — re-running coder and review team"
+  Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Score: {{CODING_SCORE}}/100 — refining"
   Re-invoke coder agent (same parameters).
   Re-invoke review team (Step 7.4.1: quality-checker → spec-alignment → specialists → consolidator).
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
-  Display: "🔵 [Phase 1 · Complete] ✅ Functional quality threshold reached"
+  Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached"
   IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 7.5
   ELSE: Proceed to Step 9
 
@@ -388,12 +387,17 @@ Loop:
 
   (No review-consolidator in Phase 2 — coding-standards-reviewer stores CriticFeedback directly)
 
-  STANDARDS_DECISION = {tools.decide_standards_action}
+  STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
+  STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status
+  STANDARDS_SCORE = STANDARDS_DECISION_RESPONSE.current_score
+  STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
 
-  IF STANDARDS_DECISION == "complete": exit loop
+  IF STANDARDS_DECISION == "complete":
+    Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached"
+    exit loop
 
   IF STANDARDS_DECISION == "refine":
-    Display: "🟣 [Phase 2 · Refining] ⟳ Standards issues found — re-running standards coder and reviewer"
+    Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Score: {{STANDARDS_SCORE}}/100 — refining standards"
     continue loop
 
   IF STANDARDS_DECISION == "user_input":
