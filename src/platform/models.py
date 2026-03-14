@@ -534,9 +534,14 @@ class PatchCommandTools(BaseModel):
     link_planning_loop: str = Field(..., description='Link planning loop to phase document')
     decide_planning_action: str = Field(..., description='Decide planning loop action')
 
-    # Coding loop
+    # Coding loop (Phase 1)
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
+
+    # Standards loop (Phase 2)
+    initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
+    decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
+    get_standards_feedback: str = Field(..., description='Get feedback from Phase 2 standards loop')
 
     # Feedback
     store_user_feedback: str = Field(..., description='Store user feedback')

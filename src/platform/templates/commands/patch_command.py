@@ -239,7 +239,16 @@ IF LANGUAGE_FILES is not empty:
 
 ACTIVE_REVIEWERS.append("review-consolidator")
 
+# Loop IDs in this command:
+#   PLANNING_LOOP_ID  — planning loop (amendment task creation)
+#   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
+#   STANDARDS_LOOP_ID — Phase 2 standards loop (coding-standards-reviewer only)
+
+PHASE1_REVIEWERS = ACTIVE_REVIEWERS excluding "coding-standards-reviewer"
+(coding-standards-reviewer runs in Phase 2 only)
+
 Display: "Active reviewers: {{ACTIVE_REVIEWERS}}"
+Display: "Phase 1 reviewers: {{PHASE1_REVIEWERS}}"
 ```
 
 ### 5. Coding Loop (Implementation + Review)
@@ -260,9 +269,13 @@ You now have TWO active loop IDs - DO NOT confuse them:
 - Storage: Task document linked to this loop
 
 **coding_loop_id = {{CODING_LOOP_ID}}**
-- Purpose: Store/retrieve code feedback
+- Purpose: Phase 1 functional feedback
 - Used by: coder (feedback retrieval), review-consolidator (feedback storage)
 - Storage: CriticFeedback for code quality
+
+**STANDARDS_LOOP_ID** (initialized in Step 6.5.1)
+- Purpose: Phase 2 standards feedback
+- Used by: coder (standards-only mode), coding-standards-reviewer (phase2_mode)
 
 Pass BOTH IDs to coding agents. Never swap them.
 
@@ -278,9 +291,9 @@ Invoke coder agent with:
 Expected: Code implementation committed, platform status updated
 ```
 
-#### Step 5.4: Review Team Orchestration
+#### Step 5.4: Phase 1 Review Team Orchestration
 
-Launch ALL review agents (except consolidator) in parallel. Core reviewers always run; optional specialists based on ACTIVE_REVIEWERS from Step 4.3. The review-consolidator MUST run AFTER all other reviewers complete.
+Launch ALL Phase 1 review agents (except consolidator) in parallel. Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 4.3. The review-consolidator MUST run AFTER all other reviewers complete. coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
 
 **Core Reviewers (always active):**
 ```text
@@ -303,9 +316,9 @@ Invoke spec-alignment-reviewer agent with:
 Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-spec-alignment
 ```
 
-**Optional Specialist Reviewers (from ACTIVE_REVIEWERS):**
+**Optional Specialist Reviewers (from PHASE1_REVIEWERS):**
 ```text
-For each REVIEWER in ACTIVE_REVIEWERS where REVIEWER is not core and not consolidator:
+For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core and not consolidator:
   Invoke {{REVIEWER}} agent with:
   - coding_loop_id: {{CODING_LOOP_ID}}
   - task_loop_id: {{PLANNING_LOOP_ID}}
@@ -315,13 +328,13 @@ For each REVIEWER in ACTIVE_REVIEWERS where REVIEWER is not core and not consoli
   Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-{{REVIEWER_SLUG}}
 ```
 
-**Consolidator (always last):**
+**Consolidator (always last, runs over PHASE1_REVIEWERS):**
 ```text
 Invoke review-consolidator agent with:
 - coding_loop_id: {{CODING_LOOP_ID}}
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
-- active_reviewers: {{ACTIVE_REVIEWERS}}
+- active_reviewers: {{PHASE1_REVIEWERS}}
 
 Expected: Single CriticFeedback with Overall Score stored in MCP coding loop
 ```
@@ -342,14 +355,15 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
 ```text
 IF CODING_DECISION == "refine":
-  Display: "⟳ Iteration {{CODING_ITERATION}} · Score: {{CODING_SCORE}}/100 — refining implementation"
+  Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Score: {{CODING_SCORE}}/100 — refining"
   Re-invoke coder agent (same parameters).
   Re-invoke review team (Step 5.4: quality-checker -> spec-alignment -> specialists -> consolidator).
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
-  Display: "✅ Score: {{CODING_SCORE}}/100 — code quality threshold reached"
-  Proceed to Step 7.
+  Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached"
+  IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 6.5
+  ELSE: Proceed to Step 7
 
 ELIF CODING_DECISION == "user_input":
   LATEST_FEEDBACK = {tools.get_feedback}
@@ -364,6 +378,102 @@ ELIF CODING_DECISION == "user_input":
   Re-invoke coder agent (same parameters)
   Re-invoke review team (Step 5.4: quality-checker -> spec-alignment -> specialists -> consolidator)
   Call MCP decision again
+```
+
+### 6.5: Standards Finalization Phase
+
+Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS (language config files detected in Step 4.3).
+
+#### Step 6.5.1: Initialize Standards Loop
+
+```text
+STANDARDS_LOOP_ID = {tools.initialize_standards_loop}
+
+PHASE1_SCORE = [final Overall Score from CODING_LOOP_ID CriticFeedback]
+Display:
+"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅  PHASE 1 COMPLETE  ·  Functional Quality Score: {{PHASE1_SCORE}}/100
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟣  PHASE 2 STARTING: Coding Standards
+    Focus: naming · imports · type hints · docstrings
+    Completes with a pre-commit hook validated commit.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+```
+
+#### Step 6.5.2: Standards Review Cycle
+
+```text
+Loop:
+
+  Invoke coder agent with:
+  - coding_loop_id: STANDARDS_LOOP_ID    (Phase 2 loop, not CODING_LOOP_ID)
+  - task_loop_id:   PLANNING_LOOP_ID
+  - plan_name:      PLAN_NAME
+  - phase_name:     PHASE_NAME
+  - mode:           "standards-only"
+
+  Invoke coding-standards-reviewer agent with:
+  - coding_loop_id: STANDARDS_LOOP_ID
+  - task_loop_id:   PLANNING_LOOP_ID
+  - plan_name:      PLAN_NAME
+  - phase_name:     PHASE_NAME
+  - phase2_mode:    true
+
+  (No review-consolidator in Phase 2 — coding-standards-reviewer stores CriticFeedback directly)
+
+  STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
+  STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status
+  STANDARDS_SCORE = STANDARDS_DECISION_RESPONSE.current_score
+  STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
+
+  IF STANDARDS_DECISION == "complete":
+    Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached"
+    exit loop
+
+  IF STANDARDS_DECISION == "refine":
+    Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Score: {{STANDARDS_SCORE}}/100 — refining standards"
+    continue loop
+
+  IF STANDARDS_DECISION == "user_input":
+    STANDARDS_FEEDBACK = {tools.get_standards_feedback}
+    Display stagnation info with: phase 1 score, phase 2 current score, iterations, key issues
+
+    Use AskUserQuestion with options:
+      1. Continue Phase 2 with more iterations
+      2. Accept current state — finalize with --no-verify
+      3. Finalize now with pre-commit hooks (may fail)
+
+    Store user choice and branch accordingly:
+    - Option 1: continue loop
+    - Option 2: git commit --no-verify -m "fix: {{CHANGE_DESCRIPTION}} [coding standards — hooks bypassed]"
+                EXIT Phase 2 loop
+    - Option 3: proceed to Step 6.5.3
+```
+
+#### Step 6.5.3: Final Commit with Pre-commit Hooks
+
+```text
+Run (without --no-verify):
+  git add -A
+  git commit -m "fix: {{CHANGE_DESCRIPTION}} — coding standards applied"
+
+IF commit succeeds:
+  Display:
+  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅  PHASE 2 COMPLETE  ·  Coding Standards Applied
+  ✅  Pre-commit hooks passed — implementation complete
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+IF commit fails (hooks rejected):
+  Display hook output
+
+  Use AskUserQuestion:
+    "Pre-commit hooks failed. Options:"
+    1. Finalize with --no-verify (address hooks separately)
+    2. Fix failures manually, then re-run
+
+  IF option 1:
+    git commit --no-verify -m "fix: {{CHANGE_DESCRIPTION}} [pre-commit hooks bypassed]"
 ```
 
 ### 7. Update Phase Evolution Log
@@ -478,9 +588,10 @@ IF review team fails:
 ## Coordination Pattern
 
 The command maintains orchestration focus by:
-- **Running BOTH planning and coding loops** sequentially
+- **Running planning, coding, and standards loops** sequentially
 - **Coordinating agent invocations** without defining their behavior
-- **Maintaining dual loop IDs** (planning_loop_id + coding_loop_id)
+- **Maintaining triple loop IDs** (planning_loop_id + coding_loop_id + standards_loop_id)
+- **Separating Phase 1 (functional) from Phase 2 (standards)** reviews
 - **Handling MCP Server responses** without evaluating quality scores
 - **Updating Phase evolution log** for traceability
 - **Storing amendment task** to filesystem for documentation
