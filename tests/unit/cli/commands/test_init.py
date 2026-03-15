@@ -133,17 +133,39 @@ class TestInitCommand:
         assert 'version' in config
         assert 'created_at' in config
 
-    def test_already_initialized(self, mocker: MockerFixture, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_legacy_config_without_config_dir_triggers_migration(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         monkeypatch.chdir(tmp_path)
 
         respec_ai_dir = tmp_path / '.respec-ai'
         respec_ai_dir.mkdir()
         (respec_ai_dir / 'config.json').write_text('{}')
 
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
+        mocker.patch('src.cli.commands.init.DockerManager')
+        mock_detect = mocker.patch(
+            'src.cli.commands.init.detect_project_stack',
+            return_value=ProjectStack(language='python'),
+        )
+
         args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
         result = init.run(args)
 
-        assert result == 1
+        assert result == 0
+        mock_detect.assert_called_once()
+        assert (respec_ai_dir / 'config.json').exists()
 
     def test_skip_mcp_registration(
         self,
