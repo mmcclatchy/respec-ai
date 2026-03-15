@@ -109,10 +109,7 @@ def run(args: Namespace) -> int:
                         existing_config_files = True
                         print_info('Using existing stack configuration (--yes flag)')
                 else:
-                    print_error('respec-ai is already initialized but missing config directory')
-                    print_warning(f'Config found at: {config_path}')
-                    print_warning('Use --force to reinitialize completely')
-                    return 1
+                    print_info('Upgrading from previous config format — detecting stack...')
             else:
                 print_warning('Force flag detected - reinitializing project')
                 if respec_ai_dir.exists():
