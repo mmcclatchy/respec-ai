@@ -1200,6 +1200,7 @@ class InfrastructureReviewerAgentTools(BaseModel):
 class CodingStandardsReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_REVIEW_SECTION,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
@@ -1215,6 +1216,7 @@ class CodingStandardsReviewerAgentTools(BaseModel):
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     store_review_section: str = Field(..., description='Store coding standards review section (Phase 1)')
     store_feedback: str = Field(..., description='Store CriticFeedback directly (Phase 2 mode)')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
 
 
 class ReviewConsolidatorAgentTools(BaseModel):

@@ -878,6 +878,9 @@ def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAge
             loop_id='{CODING_LOOP_ID}',
             feedback_markdown='{CRITIC_FEEDBACK_MARKDOWN}',
         ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
     )
 
 

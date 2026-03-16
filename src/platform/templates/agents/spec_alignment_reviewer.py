@@ -31,6 +31,8 @@ TASKS: Retrieve Specs → Inspect Code → Score Alignment → Store
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
+CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project working directory. Do NOT read files from other repositories or MCP server source code.
+
 ## ASSESSMENT CRITERIA (30 Points Total)
 
 ### 1. Phase Alignment (15 Points)

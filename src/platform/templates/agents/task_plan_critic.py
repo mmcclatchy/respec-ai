@@ -189,12 +189,12 @@ Loop decisions made by MCP Server based on configuration.
 ## CRITICAL: EXACT FEEDBACK FORMAT REQUIRED
 
 The feedback document MUST start with exactly:
-`# Critic Feedback: TASK_CRITIC`
+`# Critic Feedback: TASK-CRITIC`
 
 Do NOT use:
 - `## Critic Feedback` (wrong header level)
 - `# Critic Feedback` (missing colon and agent name)
-- `# CriticFeedback:` (wrong spacing)
+- `# Critic Feedback: TASK_CRITIC` (wrong format - use hyphens)
 - Any other variation
 
 **MCP Validation will REJECT feedback that doesn't have this exact header.**

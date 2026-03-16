@@ -1,4 +1,40 @@
+from textwrap import indent
+
+from src.models.enums import CriticAgent
+from src.models.feedback import CriticFeedback
 from src.platform.models import CodingStandardsReviewerAgentTools
+
+
+csr_feedback_template = CriticFeedback(
+    loop_id='[coding_loop_id from input]',
+    critic_agent=CriticAgent.CODING_STANDARDS_REVIEWER,
+    iteration=0,
+    overall_score=0,
+    assessment_summary='[2-3 sentence summary of coding standards compliance]',
+    detailed_feedback="""### Naming Conventions
+[Assessment with file:line references]
+
+### Import Organization
+[Assessment with file:line references]
+
+### Documentation Standards
+[Over-documentation and missing docs assessment]
+
+### Type Hints
+[Completeness and syntax assessment]
+
+### Code Structure
+[Global variables, nesting depth, test separation]
+
+### Progress Notes
+[Improvement from previous iteration if applicable]""",
+    key_issues=[
+        '**[Category]**: [Description with file:line reference and point deduction]',
+    ],
+    recommendations=[
+        '**[Priority]**: [Fix with standard reference from config file or CLAUDE.md]',
+    ],
+).build_markdown()
 
 
 def generate_coding_standards_reviewer_template(tools: CodingStandardsReviewerAgentTools) -> str:
@@ -31,14 +67,43 @@ TASKS: Read Standards → Inspect Code → Assess Compliance → Store Review
 5. Inspect changed files (Read/Glob)
 6. Assess compliance against standards
 7. IF phase2_mode == true:
+     Retrieve previous feedback (if iteration > 1): {tools.retrieve_feedback}
      Calculate Score = 100 minus deductions plus bonuses (same rules as SCORING IMPACT below)
      Store CriticFeedback directly: {tools.store_feedback}
-     (loop_id=coding_loop_id; feedback_markdown must include overall_score=Score)
+     (loop_id=coding_loop_id; feedback_markdown MUST follow CRITIC FEEDBACK OUTPUT FORMAT below)
      DO NOT call store_review_section
    ELSE:
      Store review section: {tools.store_review_section}
 
-CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands only. All review output goes through MCP tools (store_document). The orchestrating command handles filesystem persistence after quality gates pass.
+CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands only. All review output goes through MCP tools. FILESYSTEM BOUNDARY: Only read files within the target project working directory. Do NOT read files from other repositories, MCP server source code, or ~/.claude/agents/.
+
+## CRITICAL: EXACT FEEDBACK FORMAT REQUIRED (Phase 2 Mode)
+
+When phase2_mode is true, the feedback document MUST start with exactly:
+`# Critic Feedback: CODING-STANDARDS-REVIEWER`
+
+Do NOT use:
+- `## Critic Feedback` (wrong header level)
+- `# Critic Feedback` (missing colon and agent name)
+- `# Critic Feedback: CODING_STANDARDS_REVIEWER` (wrong format - use hyphens)
+- Any other variation
+
+**MCP Validation will REJECT feedback that doesn't have this exact header.**
+
+## CRITIC FEEDBACK OUTPUT FORMAT (Phase 2 Mode)
+
+When phase2_mode is true, generate feedback in CriticFeedback format:
+
+  ```markdown
+{indent(csr_feedback_template, '  ')}
+  ```
+
+### Phase 2 Scoring
+Score = 100 minus deductions plus bonuses:
+- Start from 100 (coding standards are pass/fail deductions from perfect)
+- Apply deductions per SCORING IMPACT section below
+- Apply bonuses per SCORING IMPACT section below
+- Clamp to 0-100 range
 
 ## STANDARDS DISCOVERY
 

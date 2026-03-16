@@ -89,41 +89,7 @@ class CriticFeedback(MCPModel):
         if 'critic_agent' not in fields:
             fields['critic_agent'] = critic_name
 
-        # Parse critic agent enum - map common names to actual enum values
-        agent_name = fields['critic_agent'].upper()
-        agent_mapping = {
-            'ANALYST': CriticAgent.ANALYST_CRITIC,
-            'ANALYST-CRITIC': CriticAgent.ANALYST_CRITIC,
-            'PLAN': CriticAgent.PLAN_CRITIC,
-            'PLAN-CRITIC': CriticAgent.PLAN_CRITIC,
-            'ROADMAP': CriticAgent.ROADMAP_CRITIC,
-            'ROADMAP-CRITIC': CriticAgent.ROADMAP_CRITIC,
-            'PHASE': CriticAgent.PHASE_CRITIC,
-            'PHASE-CRITIC': CriticAgent.PHASE_CRITIC,
-            'BUILD': CriticAgent.TASK_CRITIC,
-            'BUILD-CRITIC': CriticAgent.TASK_CRITIC,
-            'TASK': CriticAgent.TASK_CRITIC,
-            'TASK-CRITIC': CriticAgent.TASK_CRITIC,
-            'BUILD-REVIEWER': CriticAgent.CODE_REVIEWER,
-            'CODE-REVIEWER': CriticAgent.CODE_REVIEWER,
-            'REVIEWER': CriticAgent.CODE_REVIEWER,
-            'AUTOMATED-QUALITY-CHECKER': CriticAgent.AUTOMATED_QUALITY_CHECKER,
-            'QUALITY-CHECKER': CriticAgent.AUTOMATED_QUALITY_CHECKER,
-            'SPEC-ALIGNMENT-REVIEWER': CriticAgent.SPEC_ALIGNMENT_REVIEWER,
-            'SPEC-ALIGNMENT': CriticAgent.SPEC_ALIGNMENT_REVIEWER,
-            'FRONTEND-REVIEWER': CriticAgent.FRONTEND_REVIEWER,
-            'FRONTEND': CriticAgent.FRONTEND_REVIEWER,
-            'BACKEND-API-REVIEWER': CriticAgent.BACKEND_API_REVIEWER,
-            'API-REVIEWER': CriticAgent.BACKEND_API_REVIEWER,
-            'DATABASE-REVIEWER': CriticAgent.DATABASE_REVIEWER,
-            'DATABASE': CriticAgent.DATABASE_REVIEWER,
-            'INFRASTRUCTURE-REVIEWER': CriticAgent.INFRASTRUCTURE_REVIEWER,
-            'INFRASTRUCTURE': CriticAgent.INFRASTRUCTURE_REVIEWER,
-            'REVIEW-CONSOLIDATOR': CriticAgent.REVIEW_CONSOLIDATOR,
-            'CONSOLIDATOR': CriticAgent.REVIEW_CONSOLIDATOR,
-        }
-
-        critic_agent = agent_mapping.get(agent_name, CriticAgent.ANALYST_CRITIC)
+        critic_agent = CriticAgent.from_header(fields['critic_agent'])
 
         # Parse iteration and score
         try:
