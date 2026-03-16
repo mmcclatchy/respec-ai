@@ -276,3 +276,43 @@ Test analysis content.
         # Should default to ANALYST_CRITIC for unknown types
         assert feedback.critic_agent == CriticAgent.ANALYST_CRITIC
         assert feedback.loop_id == 'test-loop-123'
+
+    def test_parse_markdown_recognizes_coding_standards_reviewer(self) -> None:
+        markdown = """# Critic Feedback: CODING-STANDARDS-REVIEWER
+
+## Assessment Summary
+- **Loop ID**: csr-loop-001
+- **Iteration**: 2
+- **Overall Score**: 93
+- **Assessment Summary**: Code adheres well to project standards with minor naming issues.
+
+## Analysis
+
+### Naming Conventions
+All functions use snake_case correctly.
+
+### Import Organization
+Imports properly grouped and ordered.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- Minor naming inconsistency in utils.py:42
+
+### Recommendations
+
+- Rename helper_Func to helper_func in utils.py:42
+
+## Metadata
+- **Critic**: CODING-STANDARDS-REVIEWER
+- **Timestamp**: 2026-03-16T10:00:00Z
+- **Status**: completed
+"""
+
+        feedback = CriticFeedback.parse_markdown(markdown)
+
+        assert feedback.critic_agent == CriticAgent.CODING_STANDARDS_REVIEWER
+        assert feedback.loop_id == 'csr-loop-001'
+        assert feedback.iteration == 2
+        assert feedback.overall_score == 93

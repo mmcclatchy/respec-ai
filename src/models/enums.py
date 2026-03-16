@@ -73,7 +73,39 @@ class CriticAgent(str, Enum):
     BACKEND_API_REVIEWER = 'backend-api-reviewer'
     DATABASE_REVIEWER = 'database-reviewer'
     INFRASTRUCTURE_REVIEWER = 'infrastructure-reviewer'
+    CODING_STANDARDS_REVIEWER = 'coding-standards-reviewer'
     REVIEW_CONSOLIDATOR = 'review-consolidator'
+
+    @classmethod
+    def from_header(cls, name: str) -> 'CriticAgent':
+        normalized = name.upper().strip().replace('_', '-')
+
+        for member in cls:
+            if member.value.upper() == normalized:
+                return member
+
+        aliases = {
+            'ANALYST': cls.ANALYST_CRITIC,
+            'PLAN': cls.PLAN_CRITIC,
+            'ROADMAP': cls.ROADMAP_CRITIC,
+            'PHASE': cls.PHASE_CRITIC,
+            'BUILD': cls.TASK_CRITIC,
+            'BUILD-CRITIC': cls.TASK_CRITIC,
+            'TASK': cls.TASK_CRITIC,
+            'BUILD-REVIEWER': cls.CODE_REVIEWER,
+            'REVIEWER': cls.CODE_REVIEWER,
+            'QUALITY-CHECKER': cls.AUTOMATED_QUALITY_CHECKER,
+            'SPEC-ALIGNMENT': cls.SPEC_ALIGNMENT_REVIEWER,
+            'FRONTEND': cls.FRONTEND_REVIEWER,
+            'API-REVIEWER': cls.BACKEND_API_REVIEWER,
+            'DATABASE': cls.DATABASE_REVIEWER,
+            'INFRASTRUCTURE': cls.INFRASTRUCTURE_REVIEWER,
+            'CODING-STANDARDS': cls.CODING_STANDARDS_REVIEWER,
+            'STANDARDS-REVIEWER': cls.CODING_STANDARDS_REVIEWER,
+            'CONSOLIDATOR': cls.REVIEW_CONSOLIDATOR,
+        }
+
+        return aliases.get(normalized) or cls.ANALYST_CRITIC
 
 
 class StepMode(str, Enum):
