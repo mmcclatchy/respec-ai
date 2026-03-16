@@ -146,6 +146,7 @@ Invoke task-plan-critic agent with:
 - task_loop_id: {{PLANNING_LOOP_ID}}
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
+- change_description: {{CHANGE_DESCRIPTION}}
 
 Expected: CriticFeedback stored in MCP planning loop
 ```
