@@ -20,6 +20,9 @@ task_feedback_template = CriticFeedback(
 #### Deviation Assessment
 - [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description of deviation and rationale for classification]
 
+#### Change Description Alignment
+[If change_description provided: scope coverage and intent preservation analysis. If not provided: "N/A - Phase is sole source of truth"]
+
 ### Implementation Checklist Quality (Score: X/10)
 [Assessment of Checklist structure - are items prioritized, checkable, and verification methods included?]
 
@@ -65,6 +68,7 @@ INPUTS: Loop context for assessment
 - task_loop_id: Loop identifier for Task retrieval
 - plan_name: Plan name for Phase retrieval
 - phase_name: Phase name for retrieval
+- change_description: (OPTIONAL) Original change request from /respec-patch. Empty for /respec-task workflow.
 
 WORKFLOW: Task Assessment → CriticFeedback
 1. Retrieve Task: {tools.retrieve_task}
@@ -111,6 +115,19 @@ The Task document follows this structure:
 - **Improvement**: Deviation adds clarity, fixes ambiguity, or strengthens the plan beyond Phase intent. No penalty.
 - **Neutral**: Reasonable alternative that neither improves nor harms. Minor penalty (1-2 pts max).
 - **Regression**: Drops requirements, contradicts Phase intent, or introduces scope creep. Full penalty.
+
+#### Change Description Alignment (When Provided)
+When change_description is provided as input, ALSO assess Task against the original change request:
+- **Scope Coverage**: Does the Task address ALL key points from change_description? Flag under-scoped or over-scoped Tasks.
+- **Intent Preservation**: Does the Task Goal preserve the user's original intent?
+- **Deviation Classification**: Apply the same Improvement/Neutral/Regression framework:
+  - **Improvement**: Task expands change_description with necessary implementation detail (expected and good).
+  - **Neutral**: Task reframes change_description without changing scope or intent.
+  - **Regression**: Task drops requirements from change_description, addresses wrong area, or adds scope the user didn't request.
+
+Regressions from change_description carry the same penalty weight as Phase regressions.
+
+When change_description is NOT provided, skip this subsection entirely.
 
 **Partial Points (12-17)**: General alignment with minor gaps or neutral deviations
 **Low Points (0-11)**: Regressions from Phase without justification
@@ -180,6 +197,25 @@ When Task contains `(per research: ...)` citations, verify citation integrity:
 **If Hallucination Detected**:
 - Note in Key Issues: "**[Citation Hallucination]**: Citation `(per research: X)` not found in Research Read Log - task-planner fabricated citation without reading file"
 - This indicates task-planner did not follow research protocol
+
+### 8. Change Description Alignment (Informational - Not Scored)
+When change_description is provided as input, document alignment analysis:
+
+**Scope Comparison**:
+- Original request scope: [summary of what change_description asks for]
+- Task scope: [summary of what Task addresses]
+- Coverage: [FULL/PARTIAL/OVER-SCOPED/OFF-TOPIC]
+
+**Intent Check**:
+- Original intent: [what the user wanted to achieve]
+- Task intent: [what the Task will achieve]
+- Alignment: [ALIGNED/DIVERGENT]
+
+**If Misalignment Detected**:
+- Note in Key Issues: "**[Change Description Misalignment]**: Task [specific gap] relative to original change request"
+- Classify severity: MINOR (missing detail) / MAJOR (wrong scope) / CRITICAL (off-topic)
+
+When change_description is NOT provided, skip this section.
 
 ## SCORE CALCULATION
 
