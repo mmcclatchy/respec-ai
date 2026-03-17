@@ -21,6 +21,8 @@ INPUTS: Dual loop context for code implementation
 - phase_name: Phase name for context
 - mode: "standards-only" (optional)
   When set: skip TDD cycle; fix only naming, imports, type syntax, docstring violations
+- stack_config: (OPTIONAL) Project tech stack from .respec-ai/config/stack.md
+- language_configs: (OPTIONAL) Language-specific config from .respec-ai/config/{{language}}.md
 
 ## STANDARDS-ONLY MODE
 
@@ -57,21 +59,25 @@ WORKFLOW: Task + Phase → Production Code
 
 ## PROJECT CONFIGURATION
 
-Read project configuration at workflow start:
-1. Read(.respec-ai/config/stack.md) — project tech stack and architecture context
-2. Glob(.respec-ai/config/*.md) — discover language config files (e.g., python.md)
-3. Read each language config file — extract Commands for test/check/lint
+**Use provided configuration when available:**
 
-**Using Commands:**
+When stack_config and language_configs are provided as inputs, use them directly as your project configuration. These contain the authoritative tech stack, package managers, and commands for this project.
+
+**Using Commands from language config:**
 - Match language config file to the Phase specification language
 - Commands section uses format: `- **Label**: \`command\``
 - Four standard labels: Test, Coverage, Type check, Lint
 
 **Coding Standards Priority (if conflicts):**
-1. .respec-ai/config/{{language}}.md Coding Standards section (highest)
+1. language_configs Coding Standards section (highest)
 2. CLAUDE.md at project root (additive — honored unless conflicts with #1)
 3. Phase Code Standards section
 4. General language best practices (lowest)
+
+**If config inputs are NOT provided (fallback):**
+1. Read(.respec-ai/config/stack.md) — project tech stack and architecture context
+2. Glob(.respec-ai/config/*.md) — discover language config files
+3. Read each language config file — extract Commands for test/check/lint
 
 **If .respec-ai/config/ doesn't exist:**
 - Fall back to Phase Technology Stack section for commands
