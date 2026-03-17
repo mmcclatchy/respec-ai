@@ -196,6 +196,10 @@ LANGUAGE_FILES = CONFIG_FILES excluding stack.md
 IF LANGUAGE_FILES is not empty:
   ACTIVE_REVIEWERS.append("coding-standards-reviewer")
 
+Read config files for coder agent:
+STACK_CONFIG = Read(.respec-ai/config/stack.md) if file exists, else ""
+LANGUAGE_CONFIGS = For each file in LANGUAGE_FILES: Read(file) — concatenated content
+
 ACTIVE_REVIEWERS.append("review-consolidator")
 
 # Loop IDs in this command:
@@ -253,6 +257,8 @@ Invoke coder agent with:
 - task_loop_id: {{TASK_LOOP_ID}} (CRITICAL - for Task retrieval)
 - plan_name: {{PLAN_NAME}}
 - phase_name: {{PHASE_NAME}}
+- stack_config: {{STACK_CONFIG}}
+- language_configs: {{LANGUAGE_CONFIGS}}
 
 Expected: Code implementation committed, platform status updated
 ```
@@ -377,6 +383,8 @@ Loop:
   - plan_name:      PLAN_NAME
   - phase_name:     PHASE_NAME
   - mode:           "standards-only"
+  - stack_config:   STACK_CONFIG
+  - language_configs: LANGUAGE_CONFIGS
 
   Invoke coding-standards-reviewer agent with:
   - coding_loop_id: STANDARDS_LOOP_ID
