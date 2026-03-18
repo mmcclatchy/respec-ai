@@ -100,3 +100,7 @@ tests/e2e/            # pytest end-to-end tests
 - All functions fully typed
 - No business logic in routes
 - Tests cover service layer
+
+## Git
+
+- Never include any attribution line like Co-authored-by: Claude or Generated with Claude. Just write a clean, conventional‑commit‑style message.
