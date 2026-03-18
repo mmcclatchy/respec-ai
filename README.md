@@ -168,7 +168,7 @@ Producer Agent → Generate Content → Critic Agent → Score (0-100) → Decis
 
 ## License
 
-No License
+Source Available
 
 ## Support
 
