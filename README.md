@@ -168,7 +168,7 @@ Producer Agent → Generate Content → Critic Agent → Score (0-100) → Decis
 
 ## License
 
-MIT License
+No License
 
 ## Support
 
