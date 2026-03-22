@@ -38,7 +38,6 @@ dependencies = [
     "docker>=7.1.0,<8.0.0",
     "asyncpg>=0.29.0,<1.0.0",
     "fastmcp>=2.13.3",
-    "best-practices-rag",
 ]
 
 [project.urls]
@@ -235,6 +234,3 @@ invalid-argument-type = "ignore"
 too-many-positional-arguments = "ignore"
 # Ignore unknown-argument in tests (used to test validation)
 unknown-argument = "ignore"
-
-[tool.uv.sources]
-best-practices-rag = { git = "https://github.com/mmcclatchy/best-practices-rag.git" }
