@@ -21,7 +21,6 @@ from .models import (
     PlanCommandTools,
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
-    ResearchSynthesisOrchestratorAgentTools,
     ReviewConsolidatorAgentTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
@@ -90,7 +89,7 @@ def create_phase_command_tools(platform_tools: list[str], platform_type: 'Platfo
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
-    builder.add_bash_script('~/.claude/scripts/research-advisor-archive-scan.sh:*')
+    builder.add_builtin_tool(BuiltInTool.BASH, '')
 
     for tool in PhaseCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -199,7 +198,6 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
     builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
-    builder.add_builtin_tool(BuiltInTool.TASK, 'research-synthesizer')
     builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
@@ -393,29 +391,6 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
-        ),
-    )
-
-
-def create_research_synthesis_orchestrator_agent_tools() -> ResearchSynthesisOrchestratorAgentTools:
-    builder = TemplateToolBuilder()
-
-    for tool in ResearchSynthesisOrchestratorAgentTools.respec_ai_tools:
-        builder.add_respec_ai_tool(tool)
-
-    for builtin_tool, params in ResearchSynthesisOrchestratorAgentTools.builtin_tools:
-        builder.add_builtin_tool(builtin_tool, params)
-
-    return ResearchSynthesisOrchestratorAgentTools(
-        tools_yaml=builder.render_comma_separated_tools(),
-        get_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}', loop_id='{LOOP_ID}'
-        ),
-        update_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.UPDATE_DOCUMENT,
-            doc_type='"phase"',
-            key='{PLAN_NAME}/{PHASE_NAME}',
-            content='{UPDATED_PHASE_MARKDOWN}',
         ),
     )
 

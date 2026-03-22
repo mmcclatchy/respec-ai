@@ -96,8 +96,8 @@ All 37 phase-related tests pass:
 **Scenario 1: Only Existing Documentation**
 ```markdown
 **Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md
-- Read: ~/.claude/best-practices/invalid-path.md
+- Read: .best-practices/react-hooks-2025.md
+- Read: .best-practices/invalid-path.md
 ```
 **Result**: -20 penalty for invalid-path.md ✅
 
@@ -111,7 +111,7 @@ All 37 phase-related tests pass:
 **Scenario 3: Mixed Sections**
 ```markdown
 **Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md
+- Read: .best-practices/react-hooks-2025.md
 
 **External Research Needed**:
 - Synthesize: PostgreSQL optimization in 2025

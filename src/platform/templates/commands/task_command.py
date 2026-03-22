@@ -96,7 +96,7 @@ DOCUMENTATION_PATHS = []
 
 Search PHASE_MARKDOWN for "### Research Requirements" section
 IF section exists:
-  Extract all file paths matching pattern: `~/.claude/best-practices/*.md`
+  Extract all file paths matching pattern: `.best-practices/*.md`
 
   For each path found:
     DOCUMENTATION_PATHS.append(path)

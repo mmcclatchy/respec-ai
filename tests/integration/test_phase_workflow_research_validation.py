@@ -11,8 +11,8 @@ class TestPhaseResearchValidation:
 
     def test_existing_documentation_only(self) -> None:
         research_requirements = """**Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md
-- Read: ~/.claude/best-practices/postgresql-optimization.md
+- Read: .best-practices/react-hooks-2025.md
+- Read: .best-practices/postgresql-optimization.md
 
 No external research needed."""
 
@@ -28,8 +28,8 @@ No external research needed."""
         markdown = phase.build_markdown()
 
         assert '**Existing Documentation**:' in markdown
-        assert 'Read: ~/.claude/best-practices/react-hooks-2025.md' in markdown
-        assert 'Read: ~/.claude/best-practices/postgresql-optimization.md' in markdown
+        assert 'Read: .best-practices/react-hooks-2025.md' in markdown
+        assert 'Read: .best-practices/postgresql-optimization.md' in markdown
 
     def test_external_research_only(self) -> None:
         research_requirements = """**External Research Needed**:
@@ -55,7 +55,7 @@ No existing documentation needed."""
 
     def test_mixed_sections(self) -> None:
         research_requirements = """**Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md
+- Read: .best-practices/react-hooks-2025.md
 
 **External Research Needed**:
 - Synthesize: PostgreSQL optimization in 2025"""
@@ -72,14 +72,14 @@ No existing documentation needed."""
         markdown = phase.build_markdown()
 
         assert '**Existing Documentation**:' in markdown
-        assert 'Read: ~/.claude/best-practices/react-hooks-2025.md' in markdown
+        assert 'Read: .best-practices/react-hooks-2025.md' in markdown
         assert '**External Research Needed**:' in markdown
         assert 'Synthesize: PostgreSQL optimization in 2025' in markdown
 
     def test_invalid_read_path_should_be_flagged(self) -> None:
         research_requirements = """**Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md
-- Read: ~/.claude/best-practices/invalid-path.md
+- Read: .best-practices/react-hooks-2025.md
+- Read: .best-practices/invalid-path.md
 
 **External Research Needed**:
 - Synthesize: WebSocket patterns in 2025"""
@@ -99,10 +99,10 @@ No existing documentation needed."""
 
     def test_backtick_and_plain_format_handling(self) -> None:
         research_requirements_backticks = """**Existing Documentation**:
-- Read: `~/.claude/best-practices/react-hooks-2025.md`"""
+- Read: `.best-practices/react-hooks-2025.md`"""
 
         research_requirements_plain = """**Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md"""
+- Read: .best-practices/react-hooks-2025.md"""
 
         phase_backticks = Phase(
             phase_name='test-phase-backticks',

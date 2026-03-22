@@ -19,12 +19,12 @@ technical_phase_template = Phase(
     development_plan='[Implementation phases - no time estimates, no file names]',
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
     research_requirements=(
-        '**Existing Documentation** (ONLY use actual paths from archive scan):\n'
-        '- Read: `~/.claude/best-practices/2025-MM-DD-topic-name.md`\n'
+        '**Existing Documentation** (ONLY use actual paths from KB query or Glob):\n'
+        '- Read: `.best-practices/topic-name-codegen.md`\n'
         '  - Purpose: [what knowledge it provides]\n'
         '  - Application: [how it applies to this phase]\n\n'
-        '**External Research Needed** (when archive has no matching docs):\n'
-        '- Synthesize: [research prompts with "2025"]'
+        '**External Research Needed** (when KB has no matching docs):\n'
+        '- Synthesize: [research prompts with technology names]'
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
@@ -109,23 +109,27 @@ IF STRATEGIC_PLAN_MARKDOWN not found:
   EXIT: Workflow terminated
 
 STEP 0.6: Execute Archive Scan
-Execute archive scan to identify existing documentation and patterns.
+Query the best-practices knowledge base and local cache for existing documentation.
 
-Keywords to scan: Extract technical topics from strategic plan
+Keywords to query: Extract technical topics from strategic plan
 - Identify key technologies (databases, frameworks, languages)
 - Identify architectural patterns (microservices, event-driven, etc.)
 - Identify integration points (APIs, message queues, etc.)
 
-Combine keywords into single scan query:
-ARCHIVE_KEYWORDS = "[technology1] [technology2] [pattern1] [pattern2] ..."
+Combine technologies and topics:
+TECH = "technology1,technology2"
+TOPICS = "pattern1,pattern2"
 
-Execute scan:
-CALL Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "{{ARCHIVE_KEYWORDS}}"
-→ Store: ARCHIVE_SCAN_RESULTS
-→ Contains: All matching file paths with relevance summaries
+Execute knowledge base query:
+CALL Bash: best-practices-rag query-kb --tech "{{TECH}}" --topics "{{TOPICS}}"
+→ Store: KB_RESULTS (JSON with count, results, staleness info)
 
-IF archive scan fails:
-  → Set: ARCHIVE_SCAN_RESULTS = "Archive unavailable - rely on external research"
+Also check for local cached documents:
+CALL Glob: .best-practices/*.md
+→ Store: LOCAL_DOCS (list of existing local best-practices files)
+
+IF query-kb fails:
+  → Set: KB_RESULTS = "Knowledge base unavailable - rely on external research"
   → Continue with phase generation
   → Note limitation in Research Requirements section
 
@@ -575,50 +579,51 @@ When phase.iteration > 0, prioritize feedback retrieved in STEP 0 via {tools.get
 - Specify optimization strategies
 - Include capacity planning
 
-## ARCHIVE INTEGRATION
+## KNOWLEDGE BASE INTEGRATION
 
 ### CRITICAL: Use ACTUAL File Paths Only
 
 When documenting Research Requirements:
-- **ONLY use exact file paths** returned by archive scan or Glob/Grep commands
-- **NEVER fabricate or guess file names** - archive files have date prefixes and specific naming conventions
-- **Example WRONG**: `~/.claude/best-practices/MCP_Server_Best_Practices.md` (guessed name - WILL FAIL)
-- **Example RIGHT**: `~/.claude/best-practices/2025-08-29-fastmcp-server-best-practices.md` (actual from scan)
+- **ONLY use exact file paths** returned by `best-practices-rag query-kb` or `Glob: .best-practices/*.md`
+- **NEVER fabricate or guess file names** - best-practices files have specific slug-based naming conventions
+- **Example WRONG**: `.best-practices/MCP_Server_Best_Practices.md` (guessed name - WILL FAIL)
+- **Example RIGHT**: `.best-practices/fastmcp-server-best-practices-codegen.md` (actual from query/glob)
 
 **Consequence of Invalid Paths**: Phase-critic will apply a SEVERE -20 point penalty and cap your score at 80. Invalid paths cause downstream task-planner failure.
 
-If archive scan returns no results for a topic, document in "External Research Needed" section instead - do NOT guess file names.
-
-**Note on Date Prefixes**: Date prefixes (2025-08-29) indicate when documentation was created, NOT an expiration date. Documents from weeks/months ago remain valid and relevant unless explicitly superseded.
+If KB query returns no results for a topic, document in "External Research Needed" section instead - do NOT guess file names.
 
 ### Scanning Process
 
 1. **Extract Keywords**: Identify technical topics from strategic plan
-2. **Execute Scans**: Run archive scan for each topic
+2. **Query Knowledge Base**: Run query-kb for technologies and topics
    ```bash
-   Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "React hooks"
-   Bash: ~/.claude/scripts/research-advisor-archive-scan.sh "GraphQL patterns"
+   Bash: best-practices-rag query-kb --tech "react,graphql" --topics "hooks,patterns"
    ```
-3. **Catalog Results**: Document all found documents - USE EXACT PATHS FROM OUTPUT
-4. **Identify Gaps**: Compare required knowledge against existing docs
-5. **Format Requirements**: Create Research Requirements section with ACTUAL paths only
+3. **Check Local Cache**: Scan for existing local documents
+   ```bash
+   Glob: .best-practices/*.md
+   ```
+4. **Catalog Results**: Document all found documents - USE EXACT PATHS FROM OUTPUT
+5. **Identify Gaps**: Compare required knowledge against existing docs
+6. **Format Requirements**: Create Research Requirements section with ACTUAL paths only
 
 ### Pattern Searching
 
 Use Grep and Glob for specific pattern discovery:
 ```bash
-Grep: "microservices" ~/.claude/best-practices/*.md
-Glob: ~/.claude/best-practices/*authentication*.md
+Grep: "microservices" .best-practices/*.md
+Glob: .best-practices/*authentication*.md
 ```
 
 ## ERROR HANDLING
 
-### Archive Access Issues
-If archive scanning fails:
+### Knowledge Base Access Issues
+If `best-practices-rag query-kb` fails:
 1. Note the issue in Phase
 2. Add all topics to "External Research Needed"
 3. Continue with Phase
-4. Flag for manual archive check
+4. Suggest user run `best-practices-rag check` to diagnose
 
 ### Research Identification Challenges
 When unsure about research needs:

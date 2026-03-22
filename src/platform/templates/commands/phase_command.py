@@ -20,9 +20,9 @@ technical_phase_template = Phase(
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
     research_requirements=(
         '**Existing Documentation**:\n'
-        '- Read: [full paths to archive docs]\n\n'
+        '- Read: [paths to .best-practices/ docs]\n\n'
         '**External Research Needed**:\n'
-        '- Synthesize: [research prompts with "2025"]'
+        '- Synthesize: [research prompts with technology names]'
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
@@ -357,23 +357,91 @@ ELIF LOOP_DECISION == "MAX_ITERATIONS":
 
 ### Step 7.5: Synthesize Research Requirements
 
-After quality loop completes, check if research synthesis is needed:
+After quality loop completes, synthesize any "Synthesize:" research prompts using best-practices-rag:
 
 ```text
-Invoke: respec-research-synthesis-orchestrator
-Input:
-  - loop_id: LOOP_ID
-  - plan_name: PLAN_NAME
-  - phase_name: PHASE_NAME
+SUB-STEP 1: Retrieve final phase
+PHASE_RESPONSE = {tools.get_document}
+    doc_type="phase",
+    key="{{PLAN_NAME}}/{{PHASE_NAME}}",
+    loop_id=LOOP_ID
+)
+PHASE_MARKDOWN = PHASE_RESPONSE.message
 
-Agent will:
-1. Retrieve final phase from MCP
-2. Parse research requirements section
-3. Launch research-synthesizer agents for "Synthesize:" prompts
-4. Update phase with synthesized research paths
-5. Return status message
+SUB-STEP 2: Parse Research Requirements
+Extract "### Research Requirements" section from PHASE_MARKDOWN.
+Collect:
+- "Read:" entries → EXISTING_PATHS (keep as-is)
+- "Synthesize:" entries → SYNTHESIZE_PROMPTS
 
-Display agent status to user
+IF no SYNTHESIZE_PROMPTS:
+  Display: "✓ No research synthesis required"
+  Proceed to Step 7.6.
+
+SUB-STEP 3: Pre-compute bp-pipeline parameters for each prompt
+For EACH prompt in SYNTHESIZE_PROMPTS:
+  Extract TECH (technology names) and TOPICS (remaining keywords) from prompt text.
+
+  Bash: best-practices-rag lookup-versions --tech "TECH"
+  → Parse JSON: TECH_VERSIONS_JSON, CUTOFF_DATE
+
+  Bash: best-practices-rag generate-slug --tech "TECH" --topics "TOPICS"
+  → OUTPUT_SLUG = stdout
+  → OUTPUT_FILE = ".best-practices/{{OUTPUT_SLUG}}-codegen.md"
+
+  Bash: best-practices-rag check-file-cache --file "OUTPUT_FILE" --model "<model ID>"
+  → IF hit is true: record OUTPUT_FILE in CACHED_PATHS, skip this prompt
+  → IF hit is false: continue
+
+  Bash: best-practices-rag query-kb --tech "TECH" --topics "TOPICS"
+  → Parse count, staleness, coverage fields
+  → Compute COVERED_TECHS, UNCOVERED_TECHS, STALE_CONTEXT_BODY
+
+  Build PRIMARY_QUERY: versioned query with "official documentation"
+
+  Store computed parameters for this prompt.
+
+SUB-STEP 4: Launch bp-pipeline Tasks IN PARALLEL
+For ALL uncached prompts, launch bp-pipeline agents simultaneously:
+
+  Task(bp-pipeline):
+  MODE: codegen
+  TECH: <comma-separated tech names>
+  QUERY: <original synthesize prompt>
+  TECH_VERSIONS_JSON: <JSON from lookup-versions>
+  CUTOFF_DATE: <from lookup-versions>
+  PRIMARY_QUERY: <versioned query>
+  OUTPUT_FILE: <computed path>
+  TOPICS: <comma-separated topics>
+  STALE_CONTEXT_BODY: <if any stale KB results, omit if none>
+  STALE_TECHNOLOGIES: <if any, omit if none>
+  VERSION_DELTAS: <if any, omit if none>
+  UNCOVERED_TECH: <if partial gap, omit if full gap or full coverage>
+  COVERED_TECHS: <if partial gap or cache hit, omit if full gap>
+  ALL_QUERIED_TECHS: <tech names from prompt>
+
+Wait for ALL tasks to return BP_PIPELINE_COMPLETE signals.
+IF any task does NOT return BP_PIPELINE_COMPLETE:
+  Display error: "bp-pipeline failed for [prompt]. Check output for errors."
+
+SUB-STEP 5: Update Phase with synthesized paths
+SYNTHESIZED_PATHS = paths from BP_PIPELINE_COMPLETE signals + CACHED_PATHS
+COMPLETE_PATHS = EXISTING_PATHS + SYNTHESIZED_PATHS
+
+Reconstruct Research Requirements section with ONLY "Read:" entries:
+For each PATH in COMPLETE_PATHS:
+  "- Read: `{{PATH}}`"
+
+Replace "### Research Requirements" section in PHASE_MARKDOWN with updated content.
+
+SUB-STEP 6: Store updated Phase
+{tools.store_document}
+  doc_type="phase",
+  key="{{PLAN_NAME}}/{{PHASE_NAME}}",
+  content=UPDATED_PHASE_MARKDOWN
+)
+
+Display: "✓ Synthesized {{len(SYNTHESIZED_PATHS)}} research brief(s), {{len(COMPLETE_PATHS)}} total documents"
 
 Proceed to Step 7.6.
 ```
@@ -402,7 +470,7 @@ Critic will:
 IF validation_result shows invalid_count > 0:
     Display warning: "⚠️ Synthesized research paths invalid:"
     List INVALID_PATHS
-    Display: "Check research-synthesizer output logs"
+    Display: "Check bp-pipeline output logs"
     # Non-blocking - user can proceed
 ELSE:
     Display: "✓ All research paths validated successfully"
@@ -453,16 +521,16 @@ Labels: phase, architecture, phase-2
 
 ## Research Integration
 
-### Archive Scanning Process
-Archive scanning performed via `research-advisor-archive-scan.sh` to identify existing documentation and knowledge gaps for research requirements section.
+### Knowledge Base Scanning Process
+Knowledge base scanning performed via `best-practices-rag query-kb` and `Glob: .best-practices/*.md` to identify existing documentation and knowledge gaps for research requirements section.
 
 ### Research Requirements Format
   ```markdown
   ## Research Requirements
 
-  ### Existing Documentation  
-  - Read: ~/.claude/best-practices/react-hooks-patterns.md
-  - Read: ~/.claude/best-practices/postgresql-optimization.md
+  ### Existing Documentation
+  - Read: .best-practices/react-hooks-patterns-codegen.md
+  - Read: .best-practices/postgresql-optimization-codegen.md
 
   ### External Research Needed
   - Synthesize: Best practices for integrating React with GraphQL in 2025
@@ -499,17 +567,17 @@ IF no strategic plan available:
   → Request plan location OR suggest: "Run /respec-plan [plan-name] to create strategic plan first"
 ```
 
-#### 2. Archive Scanning Failure
+#### 2. Knowledge Base Query Failure
 ```text
-IF ~/.claude/scripts/research-advisor-archive-scan.sh fails:
+IF best-practices-rag query-kb fails:
   ERROR_RESPONSE = {{
-    "error_type": "archive_failure",
-    "error_message": "Cannot access best-practices archive for pattern identification",
-    "recovery_action": "Continuing with external research only, noting archive unavailable",
-    "user_guidance": "Archive unavailable - all research will be external. Phase will include comprehensive research requirements.",
+    "error_type": "kb_query_failure",
+    "error_message": "Cannot query best-practices knowledge base",
+    "recovery_action": "Continuing with external research only, noting KB unavailable",
+    "user_guidance": "Knowledge base unavailable - check Docker and Neo4j status via `best-practices-rag check`. Phase will include comprehensive research requirements.",
     "partial_output": "Strategic plan analysis completed"
   }}
-  → Continue with phase-architect but include note: "Archive unavailable - comprehensive external research required"
+  → Continue with phase-architect but include note: "Knowledge base unavailable - comprehensive external research required"
 ```
 
 #### 3. MCP Loop State Errors

@@ -25,7 +25,7 @@ These guidelines focus on the four core agent concerns: inputs, tools, imperativ
 name: respec-phase-architect
 description: Design technical architecture from strategic plans
 model: sonnet
-tools: Read, Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*), Grep, Glob
+tools: Read, Bash, Grep, Glob
 ---
 
 You are a technical architecture specialist focused on system design.
@@ -236,8 +236,8 @@ tools: mcp__respec-ai__get_plan_markdown, mcp__respec-ai__store_critic_feedback
 
 **Content Generation Agents**:
 ```markdown
-tools: Read, Bash(~/.claude/scripts/research-advisor-archive-scan.sh:*)
-# Use for: architects, planners (input-only + research)
+tools: Read, Bash
+# Use for: architects, planners (input-only + research via best-practices-rag CLI)
 ```
 
 **Implementation Agents**:
@@ -538,12 +538,12 @@ Input:
   - phase_name: PHASE_NAME
   - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
   - optional_instructions: USER_INSTRUCTIONS (if provided)
-  - archive_scan_results: ARCHIVE_SCAN_RESULTS
+  - kb_query_results: KB_RESULTS (from best-practices-rag query-kb)
 
 Agent will:
 1. Retrieve current phase from MCP using loop_id
 2. Retrieve previous critic feedback from MCP (if iteration > 1)
-3. Refine phase based on strategic plan, feedback, and archive insights
+3. Refine phase based on strategic plan, feedback, and KB insights
 4. Store updated phase to MCP
 
 No feedback passed as parameter - architect retrieves directly from MCP.

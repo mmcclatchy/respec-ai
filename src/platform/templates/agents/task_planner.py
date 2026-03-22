@@ -70,8 +70,8 @@ Integration testing:
 
 ### Research Read Log
 Documents successfully read and applied:
-- `~/.claude/best-practices/2025-12-13-neo4j-docker-compose-best-practices.md` - Applied: version pinning pattern in Step 1
-- `~/.claude/best-practices/2025-12-13-pydantic-settings-best-practices.md` - Applied: SettingsConfigDict pattern in Step 3
+- `.best-practices/neo4j-docker-compose-best-practices-codegen.md` - Applied: version pinning pattern in Step 1
+- `.best-practices/pydantic-settings-best-practices-codegen.md` - Applied: SettingsConfigDict pattern in Step 3
 
 Documents referenced but unavailable:
 - None
@@ -161,7 +161,7 @@ When research_file_paths is provided:
 
 ### Research Application Example
 
-If research includes `~/.claude/best-practices/2025-12-13-docker-compose-best-practices.md`:
+If research includes `.best-practices/docker-compose-best-practices-codegen.md`:
 - Extract: "Use `neo4j:5-community` image, not `latest`"
 - Apply to Step: "- Base image: neo4j:5-community (per research: version pinning from docker-compose-best-practices.md)"
 
