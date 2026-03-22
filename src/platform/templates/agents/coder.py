@@ -37,7 +37,7 @@ IF mode == "standards-only":
   4. Commit: git commit --no-verify -m "chore: apply coding standards [{{phase_name}}] iter N"
   EXIT — do not proceed to TDD cycle or feature implementation
 
-CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project working directory and ~/.claude/best-practices/. Do NOT read files from other repositories or MCP server source code.
+CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project working directory and .best-practices/. Do NOT read files from other repositories or MCP server source code.
 
 WORKFLOW: Task + Phase → Production Code
 0. **MANDATORY FIRST ACTION - Create TodoList from Checklist**:

@@ -302,7 +302,7 @@ For each line in research_section.split('\\n'):
         in_existing_section = False
         in_external_section = True
     ELIF line.startswith('- Read:') AND in_existing_section:
-        # Extract path from: "- Read: `~/.claude/best-practices/file.md`"
+        # Extract path from: "- Read: `.best-practices/file.md`"
         # Handle both backtick formats: `path` and plain path
         IF '`' in line:
             # Extract from backticks

@@ -315,8 +315,8 @@ GET /api/posts/:id
 
 ### Research Requirements
 **Existing Documentation**:
-- Read: ~/.claude/best-practices/react-hooks-2025.md
-- Read: ~/.claude/best-practices/fastapi-patterns.md
+- Read: .best-practices/react-hooks-2025-codegen.md
+- Read: .best-practices/fastapi-patterns-codegen.md
 
 **External Research Needed**:
 - Synthesize: Real-time notification patterns with WebSockets in 2025

@@ -470,11 +470,11 @@ class CodeCommandTools(BaseModel):
 
     @computed_field
     def research_directory_pattern(self) -> str:
-        return '~/.claude/best-practices/*.md'
+        return '.best-practices/*.md'
 
     @computed_field
     def research_example_path(self) -> str:
-        return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
+        return '.best-practices/htmx-patterns-codegen.md'
 
     @computed_field
     def mcp_tools_reference(self) -> str:
@@ -847,7 +847,7 @@ class PhaseArchitectAgentTools(BaseModel):
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
         (BuiltInTool.READ, ''),
-        (BuiltInTool.BASH, '~/.claude/scripts/research-advisor-archive-scan.sh:*'),
+        (BuiltInTool.BASH, ''),
         (BuiltInTool.GREP, ''),
         (BuiltInTool.GLOB, ''),
     ]
@@ -872,21 +872,6 @@ class PhaseCriticAgentTools(BaseModel):
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     store_feedback: str = Field(..., description='Store critic feedback')
-
-
-class ResearchSynthesisOrchestratorAgentTools(BaseModel):
-    respec_ai_tools: ClassVar[list[RespecAITool]] = [
-        RespecAITool.GET_DOCUMENT,
-        RespecAITool.UPDATE_DOCUMENT,
-    ]
-
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.TASK, 'research-synthesizer'),
-    ]
-
-    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    get_document: str = Field(..., description='Retrieve phase from MCP')
-    update_document: str = Field(..., description='Update phase with synthesized research')
 
 
 class CreatePhaseAgentTools(BaseModel):
@@ -964,11 +949,11 @@ class CoderAgentTools(BaseModel):
 
     @computed_field
     def research_directory_pattern(self) -> str:
-        return '~/.claude/best-practices/*.md'
+        return '.best-practices/*.md'
 
     @computed_field
     def research_example_path(self) -> str:
-        return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
+        return '.best-practices/htmx-patterns-codegen.md'
 
 
 class AnalystCriticAgentTools(BaseModel):
@@ -1079,11 +1064,11 @@ class CodeReviewerAgentTools(BaseModel):
 
     @computed_field
     def research_directory_pattern(self) -> str:
-        return '~/.claude/best-practices/*.md'
+        return '.best-practices/*.md'
 
     @computed_field
     def research_example_path(self) -> str:
-        return '~/.claude/best-practices/2025-12-13-htmx-patterns.md'
+        return '.best-practices/htmx-patterns-codegen.md'
 
 
 class AutomatedQualityCheckerAgentTools(BaseModel):
@@ -1246,7 +1231,7 @@ class TaskPlannerAgentTools(BaseModel):
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, '~/.claude/best-practices/*.md'),
+        (BuiltInTool.READ, '.best-practices/*.md'),
         (BuiltInTool.GREP, ''),
         (BuiltInTool.GLOB, ''),
     ]
