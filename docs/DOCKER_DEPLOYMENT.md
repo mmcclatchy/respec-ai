@@ -5,7 +5,7 @@
 respec-ai provides two distinct Docker deployment configurations:
 
 - **Development**: For contributors working on the codebase
-- **Production**: For end users installing via PyPI or Homebrew
+- **Production**: For end users installing via `uv tool install`
 
 These configurations are completely separate with no crossover.
 
@@ -73,7 +73,7 @@ docker compose -f docker-compose.dev.yml logs -f
 
 ### Purpose
 
-End user deployment via PyPI package or Homebrew installation.
+End user deployment via `uv tool install` from GitHub.
 
 ### Key Features
 
@@ -90,9 +90,7 @@ Production users should use the `respec-ai` CLI commands:
 
 ```bash
 # Install respec-ai
-pip install respec-ai
-# or
-brew install respec-ai
+uv tool install git+https://github.com/mmcclatchy/respec-ai.git
 
 # Register MCP server with Claude Code
 respec-ai register-mcp

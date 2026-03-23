@@ -201,6 +201,69 @@ if [ ! -d "$TARGET_DIR" ]; then
     exit 1
 fi
 
+# Check best-practices-rag dependency (required for phase and code workflows)
+BP_RAG_REPO="https://github.com/mmcclatchy/best-practices-rag.git"
+
+check_bp_rag() {
+    if ! command -v best-practices-rag &> /dev/null; then
+        echo ""
+        print_info "best-practices-rag is not installed (required for phase and code workflows)"
+
+        if [ "$SKIP_PROMPTS" = true ]; then
+            INSTALL_BP="y"
+        else
+            read -rp "  Install best-practices-rag? (y/N): " INSTALL_BP
+        fi
+
+        if [[ "$INSTALL_BP" =~ ^[Yy]$ ]]; then
+            print_info "Installing best-practices-rag..."
+            if uv tool install "git+${BP_RAG_REPO}"; then
+                print_success "best-practices-rag installed"
+                print_info "Run 'best-practices-rag setup' to complete configuration"
+            else
+                print_error "Failed to install best-practices-rag"
+                print_info "You can install manually: uv tool install git+${BP_RAG_REPO}"
+            fi
+        else
+            print_info "Skipping best-practices-rag installation"
+            print_info "Phase and code workflows will have limited functionality without it"
+        fi
+    else
+        INSTALLED_VERSION=$(best-practices-rag version 2>/dev/null | sed 's/best-practices-rag //')
+        LATEST_TAG=$(git ls-remote --tags "$BP_RAG_REPO" 2>/dev/null | sed 's|.*refs/tags/||' | sort -V | tail -1)
+
+        if [ -z "$LATEST_TAG" ]; then
+            print_success "best-practices-rag installed ($INSTALLED_VERSION) — could not check for updates (offline?)"
+        elif [ "$INSTALLED_VERSION" != "$LATEST_TAG" ]; then
+            echo ""
+            print_info "best-practices-rag is outdated"
+            echo "  Installed: $INSTALLED_VERSION"
+            echo "  Latest:    $LATEST_TAG"
+
+            if [ "$SKIP_PROMPTS" = true ]; then
+                UPDATE_BP="y"
+            else
+                read -rp "  Update best-practices-rag to ${LATEST_TAG}? (y/N): " UPDATE_BP
+            fi
+
+            if [[ "$UPDATE_BP" =~ ^[Yy]$ ]]; then
+                print_info "Updating best-practices-rag..."
+                if uv tool install --force "git+${BP_RAG_REPO}"; then
+                    print_success "best-practices-rag updated to ${LATEST_TAG}"
+                else
+                    print_error "Failed to update best-practices-rag"
+                fi
+            else
+                print_info "Keeping current version ($INSTALLED_VERSION)"
+            fi
+        else
+            print_success "best-practices-rag is up to date ($INSTALLED_VERSION)"
+        fi
+    fi
+}
+
+check_bp_rag
+
 # Configure state manager mode
 if [ "$STATE_MANAGER" = "memory" ]; then
     print_info "State Manager: In-Memory (clean slate on restart)"

@@ -154,7 +154,6 @@ def main() -> int:
         print(f'  - Created tag v{new_version}')
         print('  - Pushed to origin')
         print('\n✓ GitHub Actions will now:')
-        print('  - Publish to TestPyPI')
         print('  - Build and push Docker image')
         print('  - Create GitHub release')
 
