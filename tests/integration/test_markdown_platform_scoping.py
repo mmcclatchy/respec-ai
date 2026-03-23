@@ -38,7 +38,6 @@ class TestMarkdownPlatformScoping:
             'update_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
             'comment_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
             'create_plan_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/plan.md)',
-            'create_plan_completion_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/completion-report.md)',
             'retrieve_plan_tool': 'Read(.respec-ai/plans/{PLAN_NAME}/plan.md)',
             'update_plan_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/plan.md)',
             'list_phases_tool': 'Glob(.respec-ai/plans/{PLAN_NAME}/phases/*.md)',
@@ -171,7 +170,7 @@ class TestMarkdownPlatformScoping:
         assert info['platform_capabilities'] == expected_capabilities
 
         # Should include all scoped tools (13 total in adapter pattern)
-        assert len(info['platform_tools']) == 13
+        assert len(info['platform_tools']) == 12
         assert 'create_phase_tool' in info['platform_tools']
         assert (
             info['platform_tools']['create_phase_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)'

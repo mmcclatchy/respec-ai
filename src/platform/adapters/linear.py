@@ -104,10 +104,6 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
         return 'mcp__linear-server__update_document'
 
     @property
-    def create_plan_completion_tool(self) -> str:
-        return 'mcp__linear-server__create_issue'
-
-    @property
     def create_phase_tool(self) -> str:
         return 'mcp__linear-server__create_issue'
 

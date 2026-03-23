@@ -129,7 +129,6 @@ class AbstractOperation(StrEnum):
 
     # Plan Management Operations
     CREATE_PROJECT_EXTERNAL = 'create_project_external'
-    CREATE_PROJECT_COMPLETION_EXTERNAL = 'create_project_completion_external'
 
     # Plan Management Operations
     GET_PROJECT_PLAN_TOOL = 'get_plan_tool'

@@ -65,10 +65,6 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
-    def create_plan_completion_tool(self) -> str: ...
-
-    @property
-    @abstractmethod
     def create_phase_tool(self) -> str: ...
 
     @property

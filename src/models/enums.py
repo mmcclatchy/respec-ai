@@ -124,7 +124,6 @@ class DocumentType(str, Enum):
     PHASE = 'phase'
     TASK = 'task'
     TASK_BREAKDOWN = 'task_breakdown'  # Deprecated: use TASK (kept for backwards compat)
-    COMPLETION_REPORT = 'completion_report'
 
     @property
     def quoted(self) -> str:

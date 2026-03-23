@@ -79,7 +79,6 @@ class PlatformOrchestrator:
             'create_plan_tool': adapter.create_plan_tool,
             'retrieve_plan_tool': adapter.retrieve_plan_tool,
             'update_plan_tool': adapter.update_plan_tool,
-            'create_plan_completion_tool': adapter.create_plan_completion_tool,
             'create_phase_tool': adapter.create_phase_tool,
             'retrieve_phase_tool': adapter.retrieve_phase_tool,
             'update_phase_tool': adapter.update_phase_tool,

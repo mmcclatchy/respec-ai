@@ -14,7 +14,7 @@ class PlanCommandStrategy(CommandStrategy[PlanCommandTools]):
 
     def build_tools(self, platform: PlatformType) -> PlanCommandTools:
         adapter = get_platform_adapter(platform)
-        platform_tools = [adapter.create_plan_tool, adapter.create_plan_completion_tool, adapter.retrieve_plan_tool]
+        platform_tools = [adapter.create_plan_tool, adapter.retrieve_plan_tool]
         return create_plan_command_tools(platform_tools, platform)
 
     def get_template_func(self) -> Callable[[PlanCommandTools], str]:

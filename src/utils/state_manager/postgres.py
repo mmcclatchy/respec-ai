@@ -23,8 +23,6 @@ from src.utils.loop_state import LoopState, MCPResponse
 
 from .base import FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
 
-from src.models.plan_completion_report import PlanCompletionReport
-
 if TYPE_CHECKING:
     from asyncpg.pool import PoolConnectionProxy
 
@@ -790,37 +788,35 @@ class PostgresStateManager(StateManager):
                 normalized_name,
             )
 
-    async def store_completion_report(self, loop_id: str, report: PlanCompletionReport) -> str:
-        raise NotImplementedError(
-            'PostgreSQL Completion Report storage not yet implemented. Use InMemoryStateManager instead.'
-        )
-
-    async def get_completion_report(self, loop_id: str) -> PlanCompletionReport:
-        raise NotImplementedError(
-            'PostgreSQL Completion Report storage not yet implemented. Use InMemoryStateManager instead.'
-        )
-
-    async def list_completion_reports(self) -> list[tuple[str, PlanCompletionReport]]:
-        raise NotImplementedError(
-            'PostgreSQL Completion Report storage not yet implemented. Use InMemoryStateManager instead.'
-        )
-
-    async def delete_completion_report(self, loop_id: str) -> bool:
-        raise NotImplementedError(
-            'PostgreSQL Completion Report storage not yet implemented. Use InMemoryStateManager instead.'
-        )
-
     async def store_review_section(self, key: str, content: str) -> str:
-        raise NotImplementedError(
-            'PostgreSQL Review Section storage not yet implemented. Use InMemoryStateManager instead.'
-        )
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO review_sections (key, content)
+                VALUES ($1, $2)
+                ON CONFLICT (key) DO UPDATE SET
+                    content = $2, updated_at = CURRENT_TIMESTAMP
+                """,
+                key,
+                content,
+            )
+        return f'Stored review section at {key}'
 
     async def get_review_section(self, key: str) -> str:
-        raise NotImplementedError(
-            'PostgreSQL Review Section storage not yet implemented. Use InMemoryStateManager instead.'
-        )
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT content FROM review_sections WHERE key = $1',
+                key,
+            )
+        if row is None:
+            raise ValueError(f'Review section not found: {key}')
+        return row['content']
 
     async def list_review_sections(self, parent_key: str) -> list[str]:
-        raise NotImplementedError(
-            'PostgreSQL Review Section storage not yet implemented. Use InMemoryStateManager instead.'
-        )
+        prefix = parent_key + '/'
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT key FROM review_sections WHERE key LIKE $1 ORDER BY key',
+                prefix + '%',
+            )
+        return [row['key'] for row in rows]

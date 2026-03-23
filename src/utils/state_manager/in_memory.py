@@ -3,7 +3,6 @@ from typing import Generic, TypeVar
 
 from src.models.phase import Phase
 from src.models.plan import Plan
-from src.models.plan_completion_report import PlanCompletionReport
 from src.models.roadmap import Roadmap
 from src.models.task import Task
 from src.utils.errors import (
@@ -59,9 +58,6 @@ class InMemoryStateManager(StateManager):
         # Temporary loop-to-task mapping (for task refinement sessions)
         self._loop_to_task: dict[str, tuple[str, str]] = {}  # loop_id -> (phase_path, task_name)
 
-        # Completion report storage (loop_id -> CompletionReport)
-        self._completion_reports: dict[str, PlanCompletionReport] = {}
-
         # Review section storage (hierarchical key -> raw markdown)
         self._review_sections: dict[str, str] = {}
 
@@ -75,7 +71,6 @@ class InMemoryStateManager(StateManager):
             f'  plans={len(self._plans)}\n'
             f'  projects_with_phases={len(self._phases)}\n'
             f'  tasks={len(self._tasks)}\n'
-            f'  completion_reports={len(self._completion_reports)}\n'
             f'  review_sections={len(self._review_sections)}\n'
             f'  loop_to_phase_mappings={len(self._loop_to_phase)}\n'
             f'  objective_feedback={len(self._objective_feedback)}'
@@ -95,7 +90,6 @@ class InMemoryStateManager(StateManager):
             f'  inactive_phases_by_project={inactive_phases_dict}\n'
             f'  tasks_by_phase={tasks_dict}\n'
             f'  inactive_tasks_by_phase={inactive_tasks_dict}\n'
-            f'  completion_reports={list(self._completion_reports.keys())}\n'
             f'  review_sections={list(self._review_sections.keys())}\n'
             f'  loop_to_phase={dict(self._loop_to_phase)}\n'
             f'  loop_to_task={dict(self._loop_to_task)}\n'
@@ -666,54 +660,6 @@ class InMemoryStateManager(StateManager):
         logger.debug(f'update_task_by_loop: Updating task {task_name} in phase {phase_path}')
         await self.store_task(phase_path, task)
         self._log_state_snapshot('update_task_by_loop', 'EXIT')
-
-    async def store_completion_report(self, loop_id: str, report: PlanCompletionReport) -> str:
-        self._log_state_snapshot('store_completion_report', 'ENTRY')
-        logger.info(f'store_completion_report: loop_id={loop_id}')
-
-        self._completion_reports[loop_id] = report
-
-        logger.info(f'store_completion_report: Stored completion report for loop {loop_id}')
-        self._log_state()
-        self._log_state_snapshot('store_completion_report', 'EXIT')
-        return f'Stored completion report for loop {loop_id}'
-
-    async def get_completion_report(self, loop_id: str) -> PlanCompletionReport:
-        self._log_state_snapshot('get_completion_report', 'ENTRY')
-        logger.debug(f'get_completion_report: loop_id={loop_id}')
-
-        if loop_id not in self._completion_reports:
-            logger.error(f'get_completion_report failed: No completion report found for loop {loop_id}')
-            raise ValueError(f'No completion report found for loop {loop_id}')
-
-        report = self._completion_reports[loop_id]
-        logger.debug(f'get_completion_report: Retrieved completion report for loop {loop_id}')
-        self._log_state_snapshot('get_completion_report', 'EXIT')
-        return report
-
-    async def list_completion_reports(self) -> list[tuple[str, PlanCompletionReport]]:
-        self._log_state_snapshot('list_completion_reports', 'ENTRY')
-        logger.debug(f'list_completion_reports: total={len(self._completion_reports)}')
-
-        reports = [(loop_id, report) for loop_id, report in self._completion_reports.items()]
-        logger.debug(f'list_completion_reports: Returning {len(reports)} reports')
-        self._log_state_snapshot('list_completion_reports', 'EXIT')
-        return reports
-
-    async def delete_completion_report(self, loop_id: str) -> bool:
-        self._log_state_snapshot('delete_completion_report', 'ENTRY')
-        logger.info(f'delete_completion_report: loop_id={loop_id}')
-
-        if loop_id not in self._completion_reports:
-            logger.warning(f'delete_completion_report: No report found for loop {loop_id}')
-            self._log_state_snapshot('delete_completion_report', 'EXIT')
-            return False
-
-        del self._completion_reports[loop_id]
-        logger.info(f'delete_completion_report: Deleted completion report for loop {loop_id}')
-        self._log_state()
-        self._log_state_snapshot('delete_completion_report', 'EXIT')
-        return True
 
     async def store_review_section(self, key: str, content: str) -> str:
         self._review_sections[key] = content

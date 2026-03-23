@@ -151,8 +151,7 @@ def create_plan_command_tools(platform_tools: list[str], platform_type: 'Platfor
     return PlanCommandTools(
         tools_yaml=builder.render_comma_separated_tools(),
         create_project_external=platform_tools[0],
-        create_project_completion_external=platform_tools[1],
-        get_plan_tool=platform_tools[2],
+        get_plan_tool=platform_tools[1],
         platform=platform_type,
         initialize_analyst_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"analyst"'
@@ -174,12 +173,6 @@ def create_plan_command_tools(platform_tools: list[str], platform_type: 'Platfor
         ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{ANALYST_LOOP_ID}'
-        ),
-        store_completion_report=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type='"completion_report"',
-            key='{ANALYST_LOOP_ID}',
-            content='{COMPLETION_REPORT_MARKDOWN}',
         ),
     )
 

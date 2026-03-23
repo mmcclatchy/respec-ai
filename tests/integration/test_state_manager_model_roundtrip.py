@@ -15,11 +15,9 @@ from typing import AsyncGenerator, Callable
 
 import pytest
 
-from src.mcp.tools.plan_completion_report_tools import PlanCompletionReportTools
 from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
 from src.models.phase import Phase
 from src.models.plan import Plan
-from src.models.plan_completion_report import PlanCompletionReport
 from src.models.roadmap import Roadmap
 from src.models.task import Task
 from src.utils.database_pool import db_pool
@@ -216,22 +214,6 @@ Implement login and token refresh endpoints.""",
         version='1.0',
     )
     return Task.parse_markdown(markdown)
-
-
-@pytest.fixture
-def sample_completion_report(markdown_builder: Callable) -> PlanCompletionReport:
-    markdown = markdown_builder(
-        PlanCompletionReport,
-        report_title='Strategic Plan Output',
-        final_plan_score='92',
-        completion_summary='Successfully delivered authentication service with OAuth2 and MFA',
-        achievements='Implemented all core features, Passed security audit, Deployed to production',
-        remaining_work='Performance optimization, Additional OAuth providers',
-        quality_assessment='High code quality, Good test coverage (89%), Well documented',
-        recommendations='Monitor performance metrics, Schedule monthly security reviews',
-        lessons_learned='Early security review saved time, Staging environment critical for testing',
-    )
-    return PlanCompletionReport.parse_markdown(markdown)
 
 
 # ============================================================================
@@ -440,39 +422,6 @@ async def test_task_store_retrieve_preserves_all_fields(state_manager: StateMana
     retrieved_data = retrieved.model_dump()
 
     assert original_data == retrieved_data, 'Task round-trip changed field values'
-
-
-# ============================================================================
-# PlanCompletionReport Round-Trip Tests
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_completion_report_store_retrieve_preserves_all_fields(
-    state_manager: StateManager, sample_completion_report: PlanCompletionReport, request: pytest.FixtureRequest
-) -> None:
-    """Verify storing and retrieving PlanCompletionReport preserves all field values."""
-    # Skip for postgres until completion report storage is implemented
-    if isinstance(state_manager, PostgresStateManager):
-        pytest.skip('PostgreSQL Completion Report storage not yet implemented')
-
-    # Create loop for completion report
-    loop = LoopState(loop_type=LoopType.PLAN)
-    await state_manager.add_loop(loop, 'test-project')
-
-    # Store completion report via standardized interface
-    tools = PlanCompletionReportTools(state_manager)
-    await tools.store(loop.id, sample_completion_report.build_markdown())
-
-    # Retrieve completion report via standardized interface
-    get_result = await tools.get(key=loop.id)
-    retrieved = PlanCompletionReport.parse_markdown(get_result.message)
-
-    # Compare all fields
-    original_data = sample_completion_report.model_dump()
-    retrieved_data = retrieved.model_dump()
-
-    assert original_data == retrieved_data, 'PlanCompletionReport round-trip changed field values'
 
 
 # ============================================================================

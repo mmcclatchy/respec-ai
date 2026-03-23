@@ -91,10 +91,6 @@ TASK_MATCHES = Glob(pattern=TASK_GLOB_PATTERN)"""
         return f'Edit({self.base_path}/plans/{{PLAN_NAME}}/plan.md)'
 
     @property
-    def create_plan_completion_tool(self) -> str:
-        return f'Write({self.base_path}/plans/{{PLAN_NAME}}/completion-report.md)'
-
-    @property
     def create_phase_tool(self) -> str:
         return f'Write({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}.md)'
 

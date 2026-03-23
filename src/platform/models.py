@@ -308,9 +308,6 @@ class PlanCommandTools(BaseModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     create_project_external: str = Field(..., description='Platform-specific tool for creating external project')
-    create_project_completion_external: str = Field(
-        ..., description='Platform-specific tool for creating external project completion'
-    )
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     platform: PlatformType = Field(..., description='Selected platform type')
 
@@ -321,7 +318,6 @@ class PlanCommandTools(BaseModel):
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')
     decide_loop_action: str = Field(..., description='Decide next loop action')
-    store_completion_report: str = Field(..., description='Store plan completion report')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -338,12 +334,6 @@ class PlanCommandTools(BaseModel):
         if '*' not in self.create_project_external:
             return self.create_project_external
         return self.create_project_external.replace('*', '{plan_name}')
-
-    @computed_field
-    def create_completion_tool_interpolated(self) -> str:
-        if '*' not in self.create_project_completion_external:
-            return self.create_project_completion_external
-        return self.create_project_completion_external.replace('*', '{plan_name}')
 
     @computed_field
     def get_plan_tool_interpolated(self) -> str:
@@ -366,7 +356,6 @@ class PlanCommandTools(BaseModel):
             'store_plan',
             'get_plan_markdown',
             'get_previous_analysis',
-            'store_plan_completion_report',
         ]
 
         try:
