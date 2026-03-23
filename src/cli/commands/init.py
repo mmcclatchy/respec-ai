@@ -142,12 +142,12 @@ def run(args: Namespace) -> int:
 
                 progress.update(task, description='Detection complete!')
 
-                if not args.yes:
-                    stack = prompt_stack_profile(stack)
-
-                tooling = apply_stack_to_tooling(tooling, stack)
+        if not existing_config_files and not args.yes:
+            stack = prompt_stack_profile(stack)
 
         if not existing_config_files:
+            tooling = apply_stack_to_tooling(tooling, stack)
+
             _display_detected_config(platform, project_name, tooling, stack)
 
             if not args.yes:
