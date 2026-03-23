@@ -1,11 +1,12 @@
 import pytest
 
-from src.mcp.tools.loop_tools import loop_tools
+from src.mcp.tools.loop_tools import LoopTools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus
 from src.utils.errors import LoopStateError, LoopValidationError
 from src.utils.loop_state import MCPResponse
+from src.utils.state_manager import InMemoryStateManager
 
 
 @pytest.fixture
@@ -15,8 +16,10 @@ def project_path() -> str:
 
 class TestLoopManagement:
     @pytest.mark.asyncio
-    async def test_initialize_refinement_loop_valid_inputs(self, project_path: str) -> None:
-        result = await loop_tools.initialize_refinement_loop(project_path, 'plan')
+    async def test_initialize_refinement_loop_valid_inputs(
+        self, isolated_loop_tools: LoopTools, project_path: str
+    ) -> None:
+        result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'plan')
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.INITIALIZED
@@ -24,37 +27,39 @@ class TestLoopManagement:
         assert len(result.id) > 0
 
     @pytest.mark.asyncio
-    async def test_initialize_refinement_loop_invalid_loop_type(self, project_path: str) -> None:
+    async def test_initialize_refinement_loop_invalid_loop_type(
+        self, isolated_loop_tools: LoopTools, project_path: str
+    ) -> None:
         with pytest.raises(LoopValidationError):
-            await loop_tools.initialize_refinement_loop(project_path, 'invalid_type')
+            await isolated_loop_tools.initialize_refinement_loop(project_path, 'invalid_type')
 
     @pytest.mark.asyncio
-    async def test_get_loop_status_existing_loop(self, project_path: str) -> None:
-        init_result = await loop_tools.initialize_refinement_loop(project_path, 'task')
+    async def test_get_loop_status_existing_loop(self, isolated_loop_tools: LoopTools, project_path: str) -> None:
+        init_result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'task')
         loop_id = init_result.id
 
-        status_result = await loop_tools.get_loop_status(loop_id)
+        status_result = await isolated_loop_tools.get_loop_status(loop_id)
 
         assert isinstance(status_result, MCPResponse)
         assert status_result.id == loop_id
         assert status_result.status == LoopStatus.INITIALIZED
 
     @pytest.mark.asyncio
-    async def test_get_loop_status_nonexistent_loop(self) -> None:
+    async def test_get_loop_status_nonexistent_loop(self, isolated_loop_tools: LoopTools) -> None:
         with pytest.raises(LoopStateError):
-            await loop_tools.get_loop_status('nonexistent-loop-id')
+            await isolated_loop_tools.get_loop_status('nonexistent-loop-id')
 
     @pytest.mark.asyncio
-    async def test_list_active_loops_empty_initially(self, project_path: str) -> None:
-        result = await loop_tools.list_active_loops(project_path)
+    async def test_list_active_loops_empty_initially(self, isolated_loop_tools: LoopTools, project_path: str) -> None:
+        result = await isolated_loop_tools.list_active_loops(project_path)
         assert isinstance(result, list)
 
     @pytest.mark.asyncio
-    async def test_list_active_loops_with_loops(self, project_path: str) -> None:
-        init1 = await loop_tools.initialize_refinement_loop(project_path, 'plan')
-        init2 = await loop_tools.initialize_refinement_loop(project_path, 'phase')
+    async def test_list_active_loops_with_loops(self, isolated_loop_tools: LoopTools, project_path: str) -> None:
+        init1 = await isolated_loop_tools.initialize_refinement_loop(project_path, 'plan')
+        init2 = await isolated_loop_tools.initialize_refinement_loop(project_path, 'phase')
 
-        result = await loop_tools.list_active_loops(project_path)
+        result = await isolated_loop_tools.list_active_loops(project_path)
 
         assert isinstance(result, list)
         assert len(result) >= 2
@@ -64,25 +69,26 @@ class TestLoopManagement:
         assert init2.id in loop_ids
 
     @pytest.mark.asyncio
-    async def test_concurrent_loop_management(self, project_path: str) -> None:
-        loop1 = await loop_tools.initialize_refinement_loop(project_path, 'plan')
-        loop2 = await loop_tools.initialize_refinement_loop(project_path, 'phase')
+    async def test_concurrent_loop_management(self, isolated_loop_tools: LoopTools, project_path: str) -> None:
+        loop1 = await isolated_loop_tools.initialize_refinement_loop(project_path, 'plan')
+        loop2 = await isolated_loop_tools.initialize_refinement_loop(project_path, 'phase')
 
-        status1 = await loop_tools.get_loop_status(loop1.id)
-        status2 = await loop_tools.get_loop_status(loop2.id)
+        status1 = await isolated_loop_tools.get_loop_status(loop1.id)
+        status2 = await isolated_loop_tools.get_loop_status(loop2.id)
 
         assert status1.id != status2.id
         assert status1.status == LoopStatus.INITIALIZED
         assert status2.status == LoopStatus.INITIALIZED
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_functionality(self, project_path: str) -> None:
-        init_result = await loop_tools.initialize_refinement_loop(project_path, 'task')
+    async def test_decide_loop_next_action_functionality(
+        self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, project_path: str
+    ) -> None:
+        init_result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'task')
         loop_id = init_result.id
 
         # Add feedback with high score
-        state_manager = loop_tools.state
-        loop_state = await state_manager.get_loop(loop_id)
+        loop_state = await isolated_state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
             critic_agent=CriticAgent.CODE_REVIEWER,
@@ -96,15 +102,15 @@ class TestLoopManagement:
         loop_state.add_feedback(feedback)
 
         # Test decision with high score (should complete)
-        decision_result = await loop_tools.decide_loop_next_action(loop_id)
+        decision_result = await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(decision_result, MCPResponse)
         assert decision_result.id == loop_id
 
     @pytest.mark.asyncio
-    async def test_loop_id_generation_uniqueness(self, project_path: str) -> None:
-        loop1 = await loop_tools.initialize_refinement_loop(project_path, 'plan')
-        loop2 = await loop_tools.initialize_refinement_loop(project_path, 'plan')
+    async def test_loop_id_generation_uniqueness(self, isolated_loop_tools: LoopTools, project_path: str) -> None:
+        loop1 = await isolated_loop_tools.initialize_refinement_loop(project_path, 'plan')
+        loop2 = await isolated_loop_tools.initialize_refinement_loop(project_path, 'plan')
 
         assert loop1.id != loop2.id
         assert isinstance(loop1.id, str)

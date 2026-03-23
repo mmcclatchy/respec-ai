@@ -1,10 +1,13 @@
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 
-from src.shared import state_manager
+from src.utils.state_manager import StateManager
 
 
 def register_review_section_tools(mcp: FastMCP) -> None:
+    def _get_state(ctx: Context) -> StateManager:
+        return ctx.lifespan_context['state_manager']
+
     @mcp.tool()
     async def store_review_section(key: str, content: str, ctx: Context) -> str:
         """Store a review section as raw markdown at a hierarchical key.
@@ -23,7 +26,7 @@ def register_review_section_tools(mcp: FastMCP) -> None:
             raise ToolError('key and content cannot be empty')
 
         await ctx.info(f'Storing review section at {key}')
-        result = await state_manager.store_review_section(key, content)
+        result = await _get_state(ctx).store_review_section(key, content)
         await ctx.info(f'Stored review section at {key}')
         return result
 
@@ -42,7 +45,7 @@ def register_review_section_tools(mcp: FastMCP) -> None:
 
         await ctx.info(f'Retrieving review section at {key}')
         try:
-            result = await state_manager.get_review_section(key)
+            result = await _get_state(ctx).get_review_section(key)
             await ctx.info(f'Retrieved review section at {key}')
             return result
         except ValueError as e:
@@ -63,7 +66,7 @@ def register_review_section_tools(mcp: FastMCP) -> None:
             raise ToolError('parent_key cannot be empty')
 
         await ctx.info(f'Listing review sections under {parent_key}')
-        keys = await state_manager.list_review_sections(parent_key)
+        keys = await _get_state(ctx).list_review_sections(parent_key)
         await ctx.info(f'Found {len(keys)} review sections under {parent_key}')
         if not keys:
             return f'No review sections found under {parent_key}'

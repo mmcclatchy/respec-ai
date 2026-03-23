@@ -1,6 +1,6 @@
 import pytest
 
-from src.mcp.tools.loop_tools import LoopTools, loop_tools
+from src.mcp.tools.loop_tools import LoopTools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus, LoopType
@@ -16,14 +16,15 @@ def plan_name() -> str:
 
 class TestLoopToolsMCP:
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_complete_decision(self, plan_name: str) -> None:
+    async def test_decide_loop_next_action_complete_decision(
+        self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
         # Initialize a build_code loop (threshold 95%)
-        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'task')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')
         loop_id = init_result.id
 
         # Add feedback with high score
-        state_manager = loop_tools.state
-        loop_state = await state_manager.get_loop(loop_id)
+        loop_state = await isolated_state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
             critic_agent=CriticAgent.CODE_REVIEWER,
@@ -37,20 +38,21 @@ class TestLoopToolsMCP:
         loop_state.add_feedback(feedback)
 
         # High score should complete
-        result = await loop_tools.decide_loop_next_action(loop_id)
+        result = await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_refine_decision(self, plan_name: str) -> None:
+    async def test_decide_loop_next_action_refine_decision(
+        self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
         # Initialize a phase loop (threshold 85%)
-        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Add feedback with score below threshold
-        state_manager = loop_tools.state
-        loop_state = await state_manager.get_loop(loop_id)
+        loop_state = await isolated_state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
             critic_agent=CriticAgent.PHASE_CRITIC,
@@ -64,19 +66,20 @@ class TestLoopToolsMCP:
         loop_state.add_feedback(feedback)
 
         # Score below threshold should refine
-        result = await loop_tools.decide_loop_next_action(loop_id)
+        result = await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.REFINE
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_user_input_decision(self, plan_name: str) -> None:
+    async def test_decide_loop_next_action_user_input_decision(
+        self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
         # Initialize a plan loop
-        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')
         loop_id = init_result.id
 
-        state_manager = loop_tools.state
-        loop_state = await state_manager.get_loop(loop_id)
+        loop_state = await isolated_state_manager.get_loop(loop_id)
 
         # Add multiple low improvement scores to trigger stagnation
         for i, score in enumerate([60, 61, 62], start=1):
@@ -91,7 +94,7 @@ class TestLoopToolsMCP:
                 recommendations=[],
             )
             loop_state.add_feedback(feedback)
-            await loop_tools.decide_loop_next_action(loop_id)
+            await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         # Add fourth score to trigger stagnation
         feedback = CriticFeedback(
@@ -107,36 +110,39 @@ class TestLoopToolsMCP:
         loop_state.add_feedback(feedback)
 
         # Should detect stagnation and request user input
-        result = await loop_tools.decide_loop_next_action(loop_id)
+        result = await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.USER_INPUT
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_invalid_loop_id(self) -> None:
+    async def test_decide_loop_next_action_invalid_loop_id(self, isolated_loop_tools: LoopTools) -> None:
         with pytest.raises(LoopStateError):
-            await loop_tools.decide_loop_next_action('nonexistent-loop-id')
+            await isolated_loop_tools.decide_loop_next_action('nonexistent-loop-id')
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_no_feedback_error(self, plan_name: str) -> None:
+    async def test_decide_loop_next_action_no_feedback_error(
+        self, isolated_loop_tools: LoopTools, plan_name: str
+    ) -> None:
         # Test that decide_loop_next_action requires feedback to be present
-        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')
         loop_id = init_result.id
 
         # Should raise error when no feedback available
         with pytest.raises(LoopStateError) as exc_info:
-            await loop_tools.decide_loop_next_action(loop_id)
+            await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         assert 'No feedback available' in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_decide_loop_next_action_checkpoint_frequency(self, plan_name: str) -> None:
+    async def test_decide_loop_next_action_checkpoint_frequency(
+        self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
         # Initialize a plan loop to test checkpoint frequency
-        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')
         loop_id = init_result.id
 
-        state_manager = loop_tools.state
-        loop_state = await state_manager.get_loop(loop_id)
+        loop_state = await isolated_state_manager.get_loop(loop_id)
 
         # Add scores until we hit checkpoint frequency (5 for plan loops)
         for i, score in enumerate([60, 61, 62, 63, 64], start=1):
@@ -151,37 +157,37 @@ class TestLoopToolsMCP:
                 recommendations=[],
             )
             loop_state.add_feedback(feedback)
-            result = await loop_tools.decide_loop_next_action(loop_id)
+            result = await isolated_loop_tools.decide_loop_next_action(loop_id)
 
         # Should request user input at checkpoint frequency
         assert result.status == LoopStatus.USER_INPUT
 
     @pytest.mark.asyncio
-    async def test_initialize_refinement_loop_integration(self, plan_name: str) -> None:
-        result = await loop_tools.initialize_refinement_loop(plan_name, 'task')
+    async def test_initialize_refinement_loop_integration(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
+        result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.INITIALIZED
         assert len(result.id) > 0
 
     @pytest.mark.asyncio
-    async def test_get_loop_status_integration(self, plan_name: str) -> None:
-        init_result = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
+    async def test_get_loop_status_integration(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
-        status = await loop_tools.get_loop_status(loop_id)
+        status = await isolated_loop_tools.get_loop_status(loop_id)
 
         assert isinstance(status, MCPResponse)
         assert status.id == loop_id
         assert status.status == LoopStatus.INITIALIZED
 
     @pytest.mark.asyncio
-    async def test_list_active_loops_integration(self, plan_name: str) -> None:
+    async def test_list_active_loops_integration(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
         # Create multiple loops
-        loop1 = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
-        loop2 = await loop_tools.initialize_refinement_loop(plan_name, 'phase')
+        loop1 = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')
+        loop2 = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')
 
-        active_loops = await loop_tools.list_active_loops(plan_name)
+        active_loops = await isolated_loop_tools.list_active_loops(plan_name)
 
         assert isinstance(active_loops, list)
         assert len(active_loops) >= 2

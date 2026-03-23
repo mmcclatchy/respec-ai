@@ -7,7 +7,6 @@ from src.mcp.tools.plan_tools import PlanTools
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.mcp.tools.task_tools import TaskTools
 from src.models.enums import DocumentType
-from src.shared import state_manager
 from src.utils.loop_state import MCPResponse
 from src.utils.state_manager import StateManager
 
@@ -88,13 +87,19 @@ class DocumentTools:
 
 
 def register_document_tools(mcp: FastMCP) -> None:
-    doc_tools = DocumentTools(state_manager)
+    _tools: DocumentTools | None = None
+
+    def _get_tools(ctx: Context) -> DocumentTools:
+        nonlocal _tools
+        if _tools is None:
+            _tools = DocumentTools(ctx.lifespan_context['state_manager'])
+        return _tools
 
     @mcp.tool()
     async def store_document(doc_type: DocumentType, key: str, content: str, ctx: Context) -> str:
         """Store document with hierarchical key.
 
-        Generic document storage for Phase, Task, and CompletionReport documents.
+        Generic document storage for Plan, Roadmap, Phase, and Task documents.
         Uses hierarchical keys for organization (e.g., plan-name/phase-name/task-name).
 
         Parameters:
@@ -107,7 +112,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Storing {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.store_document(doc_type, key, content)
+            result = await _get_tools(ctx).store_document(doc_type, key, content)
             await ctx.info(f'Stored {doc_type.value} document at {key}')
             return result
         except Exception as e:
@@ -132,7 +137,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Retrieving {doc_type.value} document')
         try:
-            result = await doc_tools.get_document(doc_type, key, loop_id)
+            result = await _get_tools(ctx).get_document(doc_type, key, loop_id)
             await ctx.info(f'Retrieved {doc_type.value} document')
             return result
         except Exception as e:
@@ -158,7 +163,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         parent_msg = f' under {parent_key}' if parent_key else ''
         await ctx.info(f'Listing {doc_type.value} documents{parent_msg}')
         try:
-            result = await doc_tools.list_documents(doc_type, parent_key)
+            result = await _get_tools(ctx).list_documents(doc_type, parent_key)
             await ctx.info(f'Listed {doc_type.value} documents')
             return result
         except Exception as e:
@@ -181,7 +186,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Updating {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.update_document(doc_type, key, content)
+            result = await _get_tools(ctx).update_document(doc_type, key, content)
             await ctx.info(f'Updated {doc_type.value} document at {key}')
             return result
         except Exception as e:
@@ -201,7 +206,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Deleting {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.delete_document(doc_type, key)
+            result = await _get_tools(ctx).delete_document(doc_type, key)
             await ctx.info(f'Deleted {doc_type.value} document at {key}')
             return result
         except Exception as e:
@@ -225,7 +230,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Linking loop {loop_id} to {doc_type.value} document at {key}')
         try:
-            result = await doc_tools.link_loop_to_document(loop_id, doc_type, key)
+            result = await _get_tools(ctx).link_loop_to_document(loop_id, doc_type, key)
             await ctx.info(f'Linked loop {loop_id} to document')
             return result
         except Exception as e:
@@ -245,7 +250,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Retrieving roadmap for plan: {plan_name}')
         try:
-            result = await doc_tools.get_document(DocumentType.ROADMAP, key=plan_name, loop_id=None)
+            result = await _get_tools(ctx).get_document(DocumentType.ROADMAP, key=plan_name, loop_id=None)
             await ctx.info(f'Retrieved roadmap for plan: {plan_name}')
             return result
         except Exception as e:
@@ -265,7 +270,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Creating roadmap for plan: {plan_name}')
         try:
-            result = await doc_tools.store_document(DocumentType.ROADMAP, key=plan_name, content=roadmap_data)
+            result = await _get_tools(ctx).store_document(DocumentType.ROADMAP, key=plan_name, content=roadmap_data)
             await ctx.info(f'Created roadmap for plan: {plan_name}')
             return result
         except Exception as e:

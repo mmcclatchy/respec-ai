@@ -12,7 +12,7 @@ services:
     networks:
       - respec-dev-network
     environment:
-      - STATE_MANAGER=database
+      - MCP_STATE_MANAGER=database
       - DATABASE_URL=postgresql://respec:respec_dev@db:5432/respec_dev
       - MCP_LOG_LEVEL=DEBUG
       - MCP_DEBUG=true
