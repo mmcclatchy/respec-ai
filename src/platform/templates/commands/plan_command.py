@@ -1,12 +1,9 @@
 from textwrap import indent
 
 from src.models.plan import Plan
-
-from src.models.plan_completion_report import PlanCompletionReport
 from src.platform.models import PlanCommandTools
 
 
-# Create template instance with instructional placeholders
 plan_template = Plan(
     plan_name='[Project Name from conversation]',
     project_vision='[High-level project vision from conversation]',
@@ -38,19 +35,6 @@ plan_template = Plan(
     reporting_structure='[Reporting needs from stakeholder discussion]',
     meeting_schedule='[Communication cadence from project management discussion]',
     documentation_standards='[Documentation requirements from quality standards]',
-).build_markdown()
-
-# Create completion report template instance with instructional placeholders
-plan_completion_template = PlanCompletionReport(
-    final_plan_score='${QUALITY_SCORE}',
-    user_decision='${USER_DECISION}',
-    final_analyst_score='${ANALYST_SCORE}',
-    analyst_completion_status='${ANALYST_LOOP_STATUS}',
-    analyst_loop_result='${ANALYST_LOOP_STATUS}',
-    strategic_plan_document='${CURRENT_PLAN}',
-    structured_objectives='${STRUCTURED_OBJECTIVES}',
-    analyst_loop_id='${ANALYST_LOOP_ID}',
-    completion_timestamp='[current date/time]',
 ).build_markdown()
 
 
@@ -470,14 +454,8 @@ Use the MCP tool `{tools.decide_loop_action}`:
 #### If status is "completed"
 - Display: "✅ Score: {{ANALYST_SCORE}}/100 — analyst validation complete"
 - Final objectives and feedback already stored in MCP by agent
-- Generate completion report using data from MCP storage
-- Store completion report: `{tools.store_completion_report})`
-- Present final output using the stored completion report
 - Create external project using {tools.create_project_tool_interpolated}
-- Create external project completion using {tools.create_completion_tool_interpolated}
-
-## Final Output Format
-```markdown
-{plan_completion_template}
-```
+- Present final summary:
+  - Plan quality score and analyst validation score
+  - Next steps: Review the plan, then proceed with `/respec-roadmap` or `/respec-phase`
 """

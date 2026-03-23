@@ -117,10 +117,6 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
         return 'mcp__github__update_file'
 
     @property
-    def create_plan_completion_tool(self) -> str:
-        return 'mcp__github__create_issue'
-
-    @property
     def create_phase_tool(self) -> str:
         return 'mcp__github__create_milestone'
 

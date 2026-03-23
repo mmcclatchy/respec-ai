@@ -5,7 +5,6 @@ from typing import TypeVar
 
 from src.models.phase import Phase
 from src.models.plan import Plan
-from src.models.plan_completion_report import PlanCompletionReport
 from src.models.roadmap import Roadmap
 from src.models.task import Task
 from src.utils.loop_state import LoopState, MCPResponse
@@ -161,19 +160,6 @@ class StateManager(ABC):
 
     @abstractmethod
     async def update_task_by_loop(self, loop_id: str, task: Task) -> None: ...
-
-    # Completion Report Management
-    @abstractmethod
-    async def store_completion_report(self, loop_id: str, report: PlanCompletionReport) -> str: ...
-
-    @abstractmethod
-    async def get_completion_report(self, loop_id: str) -> PlanCompletionReport: ...
-
-    @abstractmethod
-    async def list_completion_reports(self) -> list[tuple[str, PlanCompletionReport]]: ...
-
-    @abstractmethod
-    async def delete_completion_report(self, loop_id: str) -> bool: ...
 
     # Review Section Management (raw markdown key-value storage for code review workflow)
     @abstractmethod

@@ -158,19 +158,6 @@ def _generate_realistic_content(field_name: str) -> str:
         'plan_status': 'draft',
         'build_status': 'planning',
         'requirements_status': 'draft',
-        'report_title': 'Completion Report',
-        'final_plan_score': '85',
-        'completion_summary': 'Project completed successfully',
-        'achievements': 'Met all objectives',
-        'remaining_work': 'Minor polish',
-        'quality_assessment': 'High quality',
-        'recommendations': 'Continue monitoring',
-        'lessons_learned': 'Good teamwork',
-        'plan_completion_status': 'User-accepted (human-driven decision)',
-        'user_decision': 'accept_plan',
-        'final_analyst_score': '90',
-        'analyst_completion_status': 'completed',
-        'analyst_loop_result': 'completed',
     }
 
     content = realistic_defaults.get(field_name)

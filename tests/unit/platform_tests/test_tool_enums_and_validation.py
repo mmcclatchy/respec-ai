@@ -127,4 +127,4 @@ class TestStartupValidation:
         assert 'issues' in result
         assert result['adapters_count'] == 3
         assert 'adapters' in result
-        assert result['properties_per_adapter'] == 21
+        assert result['properties_per_adapter'] == 20
