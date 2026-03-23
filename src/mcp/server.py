@@ -7,6 +7,7 @@ from fastmcp.server.middleware import MiddlewareContext
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.server.middleware.logging import LoggingMiddleware
 
+from src.mcp.lifespan import mcp_lifespan
 from src.mcp.tools import register_all_tools
 from src.utils.enums import HealthState
 from src.utils.loop_state import HealthStatus
@@ -116,7 +117,7 @@ def create_mcp_server() -> FastMCP:
     tool_logger = _configure_logging()
     log_level = getattr(logging, mcp_settings.log_level.upper(), logging.INFO)
 
-    mcp = FastMCP(mcp_settings.server_name)
+    mcp = FastMCP(mcp_settings.server_name, lifespan=mcp_lifespan)
     error_logger = logging.getLogger('mcp_errors')
 
     def handle_error(error: Exception, context: MiddlewareContext) -> None:

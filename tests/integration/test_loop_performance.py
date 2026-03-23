@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from src.mcp.tools.loop_tools import loop_tools
+from src.mcp.tools.loop_tools import LoopTools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus
@@ -14,7 +14,9 @@ def plan_name() -> str:
     return 'test-project'
 
 
-async def add_feedback_and_decide(loop_id: str, score: int, iteration: int, agent: CriticAgent) -> MCPResponse:
+async def add_feedback_and_decide(
+    loop_tools: LoopTools, loop_id: str, score: int, iteration: int, agent: CriticAgent
+) -> MCPResponse:
     state_manager = loop_tools.state
     loop_state = await state_manager.get_loop(loop_id)
     feedback = CriticFeedback(
@@ -33,15 +35,17 @@ async def add_feedback_and_decide(loop_id: str, score: int, iteration: int, agen
 
 class TestLoopPerformance:
     @pytest.mark.asyncio
-    async def test_decision_engine_performance_with_large_iteration_counts(self, plan_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'plan')).id
+    async def test_decision_engine_performance_with_large_iteration_counts(
+        self, isolated_loop_tools: LoopTools, plan_name: str
+    ) -> None:
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')).id
 
         start_time = time.perf_counter()
 
         # Simulate 50 iterations with varying scores
         for i in range(50):
             score = 60 + (i % 10)  # Scores between 60-69 to avoid completion
-            result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.PLAN_CRITIC)
+            result = await add_feedback_and_decide(isolated_loop_tools, loop_id, score, i + 1, CriticAgent.PLAN_CRITIC)
             assert isinstance(result, MCPResponse)
 
         end_time = time.perf_counter()
@@ -56,14 +60,14 @@ class TestLoopPerformance:
         )
 
     @pytest.mark.asyncio
-    async def test_configuration_loading_performance(self, plan_name: str) -> None:
+    async def test_configuration_loading_performance(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
         start_time = time.perf_counter()
 
         # Create multiple loops to test configuration access
         loops = []
         for _ in range(20):
             for loop_type in ['plan', 'phase', 'task']:
-                loop = await loop_tools.initialize_refinement_loop(plan_name, loop_type)
+                loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, loop_type)
                 loops.append(loop)
 
         end_time = time.perf_counter()
@@ -74,34 +78,36 @@ class TestLoopPerformance:
         assert len(loops) == 60
 
     @pytest.mark.asyncio
-    async def test_memory_usage_patterns_during_long_loops(self, plan_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
+    async def test_memory_usage_patterns_during_long_loops(
+        self, isolated_loop_tools: LoopTools, plan_name: str
+    ) -> None:
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
 
         # Track loop operations without completion
-        initial_active_loops = len(await loop_tools.list_active_loops(plan_name))
+        initial_active_loops = len(await isolated_loop_tools.list_active_loops(plan_name))
 
         # Run 100 score decisions on same loop
         for i in range(100):
             score = 70 + (i % 5)  # Scores 70-74 to stay below threshold
-            result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.PHASE_CRITIC)
+            result = await add_feedback_and_decide(isolated_loop_tools, loop_id, score, i + 1, CriticAgent.PHASE_CRITIC)
             assert result.status in [LoopStatus.REFINE, LoopStatus.USER_INPUT]
 
         # Verify memory doesn't grow unbounded
-        final_active_loops = len(await loop_tools.list_active_loops(plan_name))
+        final_active_loops = len(await isolated_loop_tools.list_active_loops(plan_name))
 
         # Should not create additional loops
         assert final_active_loops == initial_active_loops
 
         # Verify loop still functions correctly
-        status = await loop_tools.get_loop_status(loop_id)
+        status = await isolated_loop_tools.get_loop_status(loop_id)
         assert status.id == loop_id
 
     @pytest.mark.asyncio
-    async def test_concurrent_access_performance(self, plan_name: str) -> None:
+    async def test_concurrent_access_performance(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
         # Create multiple loops for concurrent access
         loops = []
         for i in range(10):
-            loop = await loop_tools.initialize_refinement_loop(plan_name, 'plan')
+            loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')
             loops.append(loop)
 
         start_time = time.perf_counter()
@@ -110,7 +116,9 @@ class TestLoopPerformance:
         for iteration in range(5):
             for i, loop in enumerate(loops):
                 score = 60 + (iteration * 2) + (i % 3)
-                result = await add_feedback_and_decide(loop.id, score, iteration + 1, CriticAgent.PLAN_CRITIC)
+                result = await add_feedback_and_decide(
+                    isolated_loop_tools, loop.id, score, iteration + 1, CriticAgent.PLAN_CRITIC
+                )
                 assert isinstance(result, MCPResponse)
 
         end_time = time.perf_counter()
@@ -120,8 +128,8 @@ class TestLoopPerformance:
         assert execution_time < 0.5, f'Concurrent access test took {execution_time:.3f}s, expected < 0.5s'
 
     @pytest.mark.asyncio
-    async def test_stagnation_detection_performance(self, plan_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'task')).id
+    async def test_stagnation_detection_performance(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')).id
 
         start_time = time.perf_counter()
 
@@ -130,7 +138,9 @@ class TestLoopPerformance:
         iteration = 1
         for _ in range(10):
             for score in stagnation_scores:
-                result = await add_feedback_and_decide(loop_id, score, iteration, CriticAgent.TASK_CRITIC)
+                result = await add_feedback_and_decide(
+                    isolated_loop_tools, loop_id, score, iteration, CriticAgent.TASK_CRITIC
+                )
                 iteration += 1
                 if result.status == LoopStatus.USER_INPUT:
                     break
@@ -142,14 +152,16 @@ class TestLoopPerformance:
         assert execution_time < 0.1, f'Stagnation detection took {execution_time:.3f}s, expected < 0.1s'
 
     @pytest.mark.asyncio
-    async def test_score_history_memory_efficiency(self, plan_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
+    async def test_score_history_memory_efficiency(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
 
         # Add many scores to test memory usage
         for i in range(200):
             score = 70 + (i % 10)  # Vary scores to avoid early completion
             try:
-                result = await add_feedback_and_decide(loop_id, score, i + 1, CriticAgent.PHASE_CRITIC)
+                result = await add_feedback_and_decide(
+                    isolated_loop_tools, loop_id, score, i + 1, CriticAgent.PHASE_CRITIC
+                )
                 # Break if loop completes or requests user input
                 if result.status in [LoopStatus.COMPLETED, LoopStatus.USER_INPUT]:
                     break
@@ -158,29 +170,29 @@ class TestLoopPerformance:
                 pytest.fail(f'Loop failed after {i} iterations')
 
         # Verify loop still responds correctly
-        status = await loop_tools.get_loop_status(loop_id)
+        status = await isolated_loop_tools.get_loop_status(loop_id)
         assert status.id == loop_id
 
     @pytest.mark.asyncio
-    async def test_loop_management_scalability(self, plan_name: str) -> None:
+    async def test_loop_management_scalability(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
         start_time = time.perf_counter()
 
         # Create many loops
         created_loops = []
         for i in range(50):
             loop_type = ['plan', 'phase', 'task'][i % 3]
-            loop = await loop_tools.initialize_refinement_loop(plan_name, loop_type)
+            loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, loop_type)
             created_loops.append(loop)
 
         # Test list_active_loops performance
         list_start = time.perf_counter()
-        active_loops = await loop_tools.list_active_loops(plan_name)
+        active_loops = await isolated_loop_tools.list_active_loops(plan_name)
         list_end = time.perf_counter()
 
         # Test individual loop status retrieval
         status_start = time.perf_counter()
         for loop in created_loops[-10:]:  # Test last 10 (which should still be in memory)
-            status = await loop_tools.get_loop_status(loop.id)
+            status = await isolated_loop_tools.get_loop_status(loop.id)
             assert status.id == loop.id
         status_end = time.perf_counter()
 
@@ -199,8 +211,10 @@ class TestLoopPerformance:
         )  # Limited by default history size, but should handle large number of creations efficiently
 
     @pytest.mark.asyncio
-    async def test_repeated_operations_performance_consistency(self, plan_name: str) -> None:
-        loop_id = (await loop_tools.initialize_refinement_loop(plan_name, 'plan')).id
+    async def test_repeated_operations_performance_consistency(
+        self, isolated_loop_tools: LoopTools, plan_name: str
+    ) -> None:
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')).id
 
         times: list[float] = []
 
@@ -209,8 +223,10 @@ class TestLoopPerformance:
             start = time.perf_counter()
 
             # Perform standardized operation
-            result = await add_feedback_and_decide(loop_id, 70 + (i % 5), i + 1, CriticAgent.PLAN_CRITIC)
-            await loop_tools.get_loop_status(loop_id)
+            result = await add_feedback_and_decide(
+                isolated_loop_tools, loop_id, 70 + (i % 5), i + 1, CriticAgent.PLAN_CRITIC
+            )
+            await isolated_loop_tools.get_loop_status(loop_id)
 
             end = time.perf_counter()
             times.append(end - start)

@@ -4,7 +4,6 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
 from src.models.feedback import CriticFeedback
-from src.shared import state_manager
 from src.utils.errors import LoopNotFoundError
 from src.utils.loop_state import MCPResponse
 from src.utils.state_manager import StateManager
@@ -244,7 +243,13 @@ class UnifiedFeedbackTools:
 
 
 def register_unified_feedback_tools(mcp: FastMCP) -> None:
-    feedback_tools = UnifiedFeedbackTools(state_manager)
+    _tools: UnifiedFeedbackTools | None = None
+
+    def _get_tools(ctx: Context) -> UnifiedFeedbackTools:
+        nonlocal _tools
+        if _tools is None:
+            _tools = UnifiedFeedbackTools(ctx.lifespan_context['state_manager'])
+        return _tools
 
     @mcp.tool()
     async def store_critic_feedback(loop_id: str, feedback_markdown: str, ctx: Context) -> MCPResponse:
@@ -262,7 +267,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Storing critic feedback for loop {loop_id}')
         try:
-            result = await feedback_tools.store_critic_feedback(loop_id, feedback_markdown)
+            result = await _get_tools(ctx).store_critic_feedback(loop_id, feedback_markdown)
             await ctx.info(f'Stored critic feedback for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -289,7 +294,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Storing user feedback for loop {loop_id}')
         try:
-            result = await feedback_tools.store_user_feedback(loop_id, feedback_markdown)
+            result = await _get_tools(ctx).store_user_feedback(loop_id, feedback_markdown)
             await ctx.info(f'Stored user feedback for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -316,7 +321,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Retrieving {count} recent feedback(s) for loop {loop_id}')
         try:
-            result = await feedback_tools.get_feedback(loop_id, count)
+            result = await _get_tools(ctx).get_feedback(loop_id, count)
             await ctx.info(f'Retrieved {count} feedback(s) for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -340,7 +345,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Storing analysis for loop {loop_id}')
         try:
-            result = await feedback_tools.store_current_analysis(loop_id, analysis)
+            result = await _get_tools(ctx).store_current_analysis(loop_id, analysis)
             await ctx.info(f'Stored analysis for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:
@@ -364,7 +369,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         """
         await ctx.info(f'Retrieving previous analysis for loop {loop_id}')
         try:
-            result = await feedback_tools.get_previous_analysis(loop_id)
+            result = await _get_tools(ctx).get_previous_analysis(loop_id)
             await ctx.info(f'Retrieved analysis for loop {loop_id}')
             return result
         except (ToolError, ResourceError) as e:

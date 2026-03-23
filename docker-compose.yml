@@ -7,7 +7,7 @@ services:
     container_name: respec-ai-prod
     environment:
       # Use PostgreSQL for persistent state management
-      - STATE_MANAGER=database
+      - MCP_STATE_MANAGER=database
       - DATABASE_URL=postgresql://respec:respec_prod@db:5432/respec_prod
       # Production logging
       - MCP_LOG_LEVEL=INFO

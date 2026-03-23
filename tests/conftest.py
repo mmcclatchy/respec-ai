@@ -39,15 +39,6 @@ def isolated_loop_tools(isolated_state_manager: InMemoryStateManager) -> LoopToo
 
 
 @pytest.fixture(autouse=True)
-def mock_shared_state(
-    mocker: MockerFixture, isolated_state_manager: InMemoryStateManager
-) -> Generator[InMemoryStateManager, None, None]:
-    mocker.patch('src.shared.state_manager', isolated_state_manager)
-    mocker.patch('src.mcp.tools.loop_tools.state_manager', isolated_state_manager)
-    yield isolated_state_manager
-
-
-@pytest.fixture(autouse=True)
 def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, None]:
     """Provide consistent loop configuration for all tests.
 

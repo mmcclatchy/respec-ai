@@ -1,6 +1,5 @@
 from fastmcp import Context, FastMCP
 
-from src.shared import state_manager
 from src.utils.enums import LoopType
 from src.utils.errors import LoopAlreadyExistsError, LoopNotFoundError, LoopStateError, LoopValidationError
 from src.utils.loop_state import LoopState, MCPResponse
@@ -57,7 +56,6 @@ class LoopTools:
         except LoopNotFoundError:
             raise LoopStateError(loop_id, 'decision', 'Loop does not exist')
         except ValueError as e:
-            # Raised when no feedback available for score extraction
             raise LoopStateError(loop_id, 'decision', str(e))
         except Exception as e:
             raise LoopStateError(loop_id, 'decision', f'Unexpected error: {str(e)}')
@@ -80,7 +78,6 @@ class LoopTools:
                     message='No feedback available - loop ready for first assessment',
                 )
 
-            # Build feedback summary for decision context
             feedback_count = len(loop_state.feedback_history)
             current_score = loop_state.current_score
             score_trend = self._calculate_score_trend(loop_state.score_history)
@@ -92,7 +89,6 @@ class LoopTools:
                 f'Recent: {"; ".join(recent_summaries[-2:])}. '
             )
 
-            # Add improvement analysis if enough history
             feedback_history = loop_state.feedback_history
             if len(feedback_history) >= 2:
                 score_improvements = []
@@ -102,7 +98,6 @@ class LoopTools:
                 avg_improvement = sum(score_improvements) / len(score_improvements)
                 last_improvement = score_improvements[-1] if score_improvements else 0
 
-                # Identify recurring issues
                 all_issues = [issue for fb in feedback_history for issue in fb.key_issues]
                 issue_counts: dict[str, int] = {}
                 for issue in all_issues:
@@ -144,6 +139,14 @@ class LoopTools:
 
 
 def register_loop_tools(mcp: FastMCP) -> None:
+    _tools: LoopTools | None = None
+
+    def _get_tools(ctx: Context) -> LoopTools:
+        nonlocal _tools
+        if _tools is None:
+            _tools = LoopTools(ctx.lifespan_context['state_manager'])
+        return _tools
+
     @mcp.tool()
     async def decide_loop_next_action(loop_id: str, ctx: Context) -> MCPResponse:
         """Decide next action for refinement loop progression.
@@ -165,7 +168,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains loop_id and status ('completed', 'refine', 'user_input')
         """
         await ctx.info(f'Processing decision for loop {loop_id} (score retrieved from feedback internally)')
-        result = await loop_tools.decide_loop_next_action(loop_id)
+        result = await _get_tools(ctx).decide_loop_next_action(loop_id)
         await ctx.info(f'Decision result for loop {loop_id}: {result.status}')
         return result
 
@@ -185,7 +188,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains loop_id and status ('initialized')
         """
         await ctx.info(f'Initializing new {loop_type} loop for {plan_name}')
-        result = await loop_tools.initialize_refinement_loop(plan_name, loop_type)
+        result = await _get_tools(ctx).initialize_refinement_loop(plan_name, loop_type)
         await ctx.info(f'Created {loop_type} loop with ID: {result.id}')
         return result
 
@@ -203,7 +206,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Complete loop state with all metadata and history
         """
         await ctx.info(f'Retrieving status for loop {loop_id}')
-        result = await loop_tools.get_loop_status(loop_id)
+        result = await _get_tools(ctx).get_loop_status(loop_id)
         await ctx.info(f'Retrieved status for loop {loop_id}: {result.status}')
         return result
 
@@ -221,7 +224,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - list[MCPResponse]: List of active loops with their current status
         """
         await ctx.info(f'Retrieving list of active loops for {plan_name}')
-        result = await loop_tools.list_active_loops(plan_name)
+        result = await _get_tools(ctx).list_active_loops(plan_name)
         await ctx.info(f'Found {len(result)} active loops')
         return result
 
@@ -240,9 +243,6 @@ def register_loop_tools(mcp: FastMCP) -> None:
         - MCPResponse: Contains feedback summary with metrics, trends, and improvement analysis
         """
         await ctx.info(f'Retrieving feedback summary for loop {loop_id}')
-        result = await loop_tools.get_loop_feedback_summary(loop_id)
+        result = await _get_tools(ctx).get_loop_feedback_summary(loop_id)
         await ctx.info(f'Retrieved feedback summary for loop {loop_id}')
         return result
-
-
-loop_tools = LoopTools(state_manager)
