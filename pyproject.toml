@@ -37,7 +37,7 @@ dependencies = [
     "markdown-it-py>=3.0.0",
     "docker>=7.1.0,<8.0.0",
     "asyncpg>=0.29.0,<1.0.0",
-    "fastmcp>=2.13.3",
+    "fastmcp>=3.0.0,<4.0.0",
 ]
 
 [project.urls]
@@ -53,16 +53,16 @@ dev = [
     "pytest-mock >=3.15.0,<4.0.0",
     "types-pyyaml >=6.0.12.20250809,<7.0.0",
     "types-aiofiles >=24.1.0.20250822,<25.0.0",
-    "autoimport>=1.6.1",
-    "pytest-env>=1.2.0",
-    "twine>=6.2.0",
-    "ruff>=0.14.8",
-    "types-docker>=7.1.0.20251202",
-    "pytest-xdist>=3.8.0",
-    "asyncpg-stubs>=0.31.1",
-    "ty>=0.0.19",
+    "autoimport>=1.6.1,<2.0.0",
+    "pytest-env>=1.2.0,<2.0.0",
+    "twine>=6.2.0,<7.0.0",
+    "ruff>=0.14.8,<1.0.0",
+    "types-docker>=7.1.0.20251202,<8.0.0",
+    "pytest-xdist>=3.8.0,<4.0.0",
+    "asyncpg-stubs>=0.31.1,<1.0.0",
+    "ty>=0.0.19,<1.0.0",
 ]
-server = ["fastmcp>=2.12.2,<3.0.0"]
+server = ["fastmcp>=3.0.0,<4.0.0"]
 
 [build-system]
 requires = ["hatchling"]

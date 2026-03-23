@@ -64,9 +64,10 @@ class ToolDocumentationExtractor:
 
     def _get_tool_function(self, tool_name: str) -> Any:
         try:
-            tools_dict = asyncio.run(self.mcp.get_tools())
-            if tool_name in tools_dict:
-                return tools_dict[tool_name].fn
+            tools = asyncio.run(self.mcp.list_tools())
+            tool = next((t for t in tools if t.name == tool_name), None)
+            if tool is not None:
+                return tool.fn
         except Exception:
             pass
 
@@ -74,8 +75,8 @@ class ToolDocumentationExtractor:
 
     def _list_tool_names(self) -> list[str]:
         try:
-            tools_dict = asyncio.run(self.mcp.get_tools())
-            return list(tools_dict.keys())
+            tools = asyncio.run(self.mcp.list_tools())
+            return [t.name for t in tools]
         except Exception:
             return []
 

@@ -26,7 +26,8 @@ class TestFastMCPServerIntegration:
         server = create_mcp_server()
 
         # Check that all MCP tools are registered (loop + unified document tools)
-        tools = await server.get_tools()
+        tools_list = await server.list_tools()
+        tool_names = {t.name for t in tools_list}
         expected_loop_tools = [
             'decide_loop_next_action',
             'initialize_refinement_loop',
@@ -45,8 +46,7 @@ class TestFastMCPServerIntegration:
         expected_tools = expected_loop_tools + expected_document_tools
 
         for tool_name in expected_tools:
-            assert tool_name in tools
-            assert tools[tool_name].name == tool_name
+            assert tool_name in tool_names
 
     def test_production_server_creation(self) -> None:
         # Test server configuration
@@ -62,10 +62,9 @@ class TestFastMCPServerIntegration:
     @pytest.mark.asyncio
     async def test_mcp_tool_discovery_and_metadata(self) -> None:
         server = create_mcp_server()
-        tools = await server.get_tools()
+        tools_list = await server.list_tools()
 
-        # Find decide_loop_next_action tool
-        decide_tool = tools.get('decide_loop_next_action')
+        decide_tool = next((t for t in tools_list if t.name == 'decide_loop_next_action'), None)
         assert decide_tool is not None
         assert decide_tool.description is not None
         assert decide_tool.name == 'decide_loop_next_action'

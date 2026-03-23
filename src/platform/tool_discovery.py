@@ -1,5 +1,6 @@
 """Tool discovery utilities for validating enum definitions against actual MCP tools."""
 
+import asyncio
 import inspect
 import re
 from types import ModuleType
@@ -23,7 +24,7 @@ def discover_registered_respec_ai_tools() -> set[str]:
     temp_mcp = FastMCP('discovery')
     register_all_tools(temp_mcp)
 
-    tool_names = {f'mcp__respec-ai__{name}' for name in temp_mcp._tool_manager._tools.keys()}
+    tool_names = {f'mcp__respec-ai__{t.name}' for t in asyncio.run(temp_mcp.list_tools())}
     return tool_names
 
 
