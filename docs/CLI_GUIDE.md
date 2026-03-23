@@ -5,8 +5,6 @@
 ## Table of Contents
 
 - [Installation](#installation)
-  - [Option A: uv Tool (Recommended)](#option-a-uv-tool-recommended---all-platforms)
-  - [Option B: Homebrew (macOS and Linux)](#option-b-homebrew-macos-and-linux)
 - [MCP Server Setup](#mcp-server-setup)
 - [Project Initialization](#project-initialization)
 - [Your First Workflow](#your-first-workflow)
@@ -35,8 +33,7 @@
 - **Docker or Docker Desktop** (required for MCP server functionality)
 
 **For package installation:**
-- **uv** (recommended) - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
-- **OR Homebrew** (macOS and Linux)
+- **uv** - [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 **For platform integrations (optional):**
 - **Linear MCP Server** - If using Linear platform
@@ -45,52 +42,21 @@
 
 ---
 
-### Option A: uv Tool (Recommended - All Platforms)
-
-**Best for:** Linux, macOS, Windows (WSL), or anyone preferring uv
-
-**Installation:**
+### Install via uv
 
 ```bash
 # Install respec-ai
-uv tool install respec-ai
+uv tool install git+https://github.com/mmcclatchy/respec-ai.git
 
 # Verify installation
 respec-ai --version
 ```
 
 **What gets installed:**
-- ✅ respec-ai CLI tool in isolated environment
-- ✅ All Python dependencies automatically
-- ✅ Cross-platform compatibility
-- ✅ Docker-based MCP server (registers automatically)
-
----
-
-### Option B: Homebrew (macOS and Linux)
-
-**Best for:** macOS or Linux users who prefer Homebrew
-
-**Installation:**
-
-```bash
-# Add the respec-ai tap
-brew tap mmcclatchy/respec-ai
-
-# Install respec-ai
-brew install respec-ai
-
-# Verify installation
-respec-ai --version
-```
-
-**What gets installed:**
-- ✅ respec-ai CLI tool
-- ✅ All Python dependencies (pydantic, rich, docker, etc.)
-- ✅ Isolated virtualenv (no conflicts with system Python)
-- ✅ Docker-based MCP server (registers automatically)
-
-**Note:** You may see a harmless dylib linkage warning during installation - this can be safely ignored.
+- respec-ai CLI tool in isolated environment
+- All Python dependencies automatically
+- Cross-platform compatibility
+- Docker-based MCP server (registers automatically)
 
 ---
 
@@ -946,11 +912,8 @@ The command will:
 When a new version of respec-ai is released:
 
 ```bash
-# Update the package (uv tool)
-uv tool upgrade respec-ai
-
-# OR update via Homebrew
-brew upgrade respec-ai
+# Update the package
+uv tool install --force git+https://github.com/mmcclatchy/respec-ai.git
 
 # Rebuild your project templates
 cd /path/to/your/project
@@ -1031,11 +994,7 @@ respec-ai supports running multiple projects with explicit project context. Each
 
    If command not found:
    ```bash
-   # For uv tool
-   uv tool install respec-ai
-
-   # For Homebrew
-   brew install respec-ai
+   uv tool install git+https://github.com/mmcclatchy/respec-ai.git
    ```
 
 2. **Verify Docker is running**
@@ -1372,7 +1331,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
    uv --version
 
    # Install respec-ai
-   uv tool install respec-ai
+   uv tool install git+https://github.com/mmcclatchy/respec-ai.git
    ```
 
 2. **Check Python version compatibility**
@@ -1389,19 +1348,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 4. **Clear uv cache if needed**
    ```bash
    uv cache clean
-   uv tool install respec-ai
-   ```
-
-5. **For Homebrew installation:**
-   ```bash
-   # Update Homebrew
-   brew update
-
-   # Ensure tap is added
-   brew tap mmcclatchy/respec-ai
-
-   # Install
-   brew install respec-ai
+   uv tool install git+https://github.com/mmcclatchy/respec-ai.git
    ```
 
 ---

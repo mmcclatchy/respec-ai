@@ -27,10 +27,7 @@ Get up and running in 3 steps:
 
 ```bash
 # 1. Install respec-ai
-uv tool install respec-ai  # Preferred (much faster)
-# OR
-brew tap mmcclatchy/respec-ai
-brew install respec-ai
+uv tool install git+https://github.com/mmcclatchy/respec-ai.git
 
 # 2. Initialize in your project
 cd /path/to/your/project

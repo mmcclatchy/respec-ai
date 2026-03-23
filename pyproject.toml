@@ -55,14 +55,12 @@ dev = [
     "types-aiofiles >=24.1.0.20250822,<25.0.0",
     "autoimport>=1.6.1,<2.0.0",
     "pytest-env>=1.2.0,<2.0.0",
-    "twine>=6.2.0,<7.0.0",
     "ruff>=0.14.8,<1.0.0",
     "types-docker>=7.1.0.20251202,<8.0.0",
     "pytest-xdist>=3.8.0,<4.0.0",
     "asyncpg-stubs>=0.31.1,<1.0.0",
     "ty>=0.0.19,<1.0.0",
 ]
-server = ["fastmcp>=3.0.0,<4.0.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -73,6 +71,7 @@ packages = ["src"]
 
 [project.scripts]
 respec-ai = "src.cli.main:main"
+respec-server = "src.mcp.server:run_local_server"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

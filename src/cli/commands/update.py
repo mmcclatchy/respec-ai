@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
@@ -7,17 +8,10 @@ from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
 
 
+GITHUB_REPO_URL = 'git+https://github.com/mmcclatchy/respec-ai.git'
+
+
 def add_arguments(parser: ArgumentParser) -> None:
-    parser.add_argument(
-        '--index-url',
-        default='https://test.pypi.org/simple/',
-        help='PyPI index URL to check (default: TestPyPI)',
-    )
-    parser.add_argument(
-        '--extra-index-url',
-        default='https://pypi.org/simple/',
-        help='Additional index URL for dependencies (default: PyPI)',
-    )
     parser.add_argument(
         '--skip-docker',
         action='store_true',
@@ -25,32 +19,19 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
 
 
+def _parse_installed_version(uv_output: str) -> str | None:
+    match = re.search(r'respec-ai==([^\s(]+)', uv_output)
+    return match.group(1) if match else None
+
+
 def run(args: Namespace) -> int:
-    """Update respec-ai CLI and Docker image to latest version.
-
-    Args:
-        args: Command arguments
-
-    Returns:
-        Exit code (0 for success, 1 for failure)
-    """
     try:
         current_version = get_package_version()
         print_info(f'Current version: {current_version}')
         print_info('Checking for updates...')
 
-        # Update CLI package
         result = subprocess.run(
-            [
-                'uv',
-                'tool',
-                'upgrade',
-                '--index-url',
-                args.index_url,
-                '--extra-index-url',
-                args.extra_index_url,
-                'respec-ai',
-            ],
+            ['uv', 'tool', 'install', '--force', GITHUB_REPO_URL],
             capture_output=True,
             text=True,
         )
@@ -60,8 +41,9 @@ def run(args: Namespace) -> int:
             print_error(result.stderr)
             return 1
 
-        # Check if version changed
-        new_version = get_package_version()
+        combined_output = result.stdout + result.stderr
+        new_version = _parse_installed_version(combined_output) or current_version
+
         if new_version == current_version:
             print_info(f'Already on latest version: {current_version}')
             if not args.skip_docker:
@@ -69,12 +51,10 @@ def run(args: Namespace) -> int:
         else:
             print_success(f'Updated CLI: {current_version} → {new_version}')
 
-        # Update Docker image
         if not args.skip_docker:
             try:
                 docker_manager = DockerManager()
 
-                # Stop old container if running
                 old_status = docker_manager.get_container_status()
                 was_running = old_status.get('running', False)
 
@@ -82,13 +62,11 @@ def run(args: Namespace) -> int:
                     print_info('Stopping old container...')
                     docker_manager.stop_container()
 
-                # Pull new image (auto-cleans old versions)
                 print_info('Pulling Docker image...')
                 docker_manager.cleanup_old_versions()
-                docker_manager.pull_image()
+                docker_manager.pull_image(version=new_version)
                 print_success('Docker image updated')
 
-                # Start new container if old one was running
                 if was_running:
                     print_info('Starting new container...')
                     docker_manager.start_container()

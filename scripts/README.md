@@ -4,7 +4,7 @@
 
 **These scripts are for developers who have cloned the respec-ai repository.**
 
-**NOT for end users who installed via PyPI or Homebrew.**
+**NOT for end users who installed via `uv tool install`.**
 
 ## Purpose
 
@@ -12,13 +12,11 @@ The scripts in this directory are development tools for contributors working on 
 
 ## For End Users
 
-If you installed respec-ai via PyPI or Homebrew, use the CLI commands instead:
+If you installed respec-ai via `uv tool install`, use the CLI commands instead:
 
 ```bash
 # Install respec-ai
-pip install respec-ai
-# or
-brew install respec-ai
+uv tool install git+https://github.com/mmcclatchy/respec-ai.git
 
 # Register MCP server with Claude Code
 respec-ai register-mcp
@@ -91,11 +89,11 @@ Clone repo → Run install script → Use docker-compose.dev.yml → Local conta
 ### Production Path (End Users)
 
 ```text
-pip/brew install → respec-ai CLI → docker-compose.yml → Production containers
+uv tool install → respec-ai CLI → docker-compose.yml → Production containers
 ```
 
 - **Who**: End users installing respec-ai for Claude Code
-- **How**: `pip install respec-ai` or `brew install respec-ai`
+- **How**: `uv tool install git+https://github.com/mmcclatchy/respec-ai.git`
 - **Containers**: `respec-ai-server`, `respec-ai-db-prod`
 - **Database**: Internal network only (no external exposure)
 - **Source**: Baked into image (no volumes)
@@ -112,7 +110,7 @@ These two paths are **completely separate**:
 
 ## Excluded from Package
 
-The `scripts/` directory is excluded from the PyPI package via `.dockerignore`. End users installing via PyPI or Homebrew will **never see these scripts** and should use the CLI commands instead.
+The `scripts/` directory is excluded from the package via `.dockerignore`. End users installing via `uv tool install` will **never see these scripts** and should use the CLI commands instead.
 
 ## Contributing
 
