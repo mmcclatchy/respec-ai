@@ -193,7 +193,7 @@ def run_local_server() -> None:
 
 async def health_check(server: FastMCP) -> HealthStatus:
     try:
-        tools = await server.get_tools()
+        tools = await server.list_tools()
         return HealthStatus(status=HealthState.HEALTHY, tools_count=len(tools))
     except Exception as e:
         return HealthStatus(status=HealthState.UNHEALTHY, error=str(e))
