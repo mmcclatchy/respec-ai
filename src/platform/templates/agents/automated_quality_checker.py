@@ -42,7 +42,7 @@ Read project configuration at workflow start:
 3. Read each language config file — extract Commands for test/check/lint/coverage
 
 **Using Commands:**
-- Commands section uses format: `- **Label**: \`command\``
+- Commands section uses format: `- **Label**: `command``
 - Four standard labels: Test, Coverage, Type check, Lint
 - Run each command and capture output for scoring
 
