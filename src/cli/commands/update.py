@@ -60,15 +60,14 @@ def _update_docker(new_version: str) -> bool:
 
     docker_manager.cleanup_old_versions()
 
-    if was_running:
-        print_info('Starting new container...')
-        try:
-            docker_manager.start_container(version=new_version)
-            print_success('Container started')
-        except DockerManagerError as e:
-            print_warning(f'Failed to start new container: {e}')
-            print_info('Start manually: respec-ai docker start')
-            return False
+    print_info('Starting container...')
+    try:
+        docker_manager.start_container(version=new_version)
+        print_success('Container running')
+    except DockerManagerError as e:
+        print_warning(f'Failed to start container: {e}')
+        print_info('Start manually: respec-ai docker start')
+        return False
 
     return True
 

@@ -65,7 +65,7 @@ When stack_config and language_configs are provided as inputs, use them directly
 
 **Using Commands from language config:**
 - Match language config file to the Phase specification language
-- Commands section uses format: `- **Label**: \`command\``
+- Commands section uses format: `- **Label**: `command``
 - Four standard labels: Test, Coverage, Type check, Lint
 
 **Coding Standards Priority (if conflicts):**
