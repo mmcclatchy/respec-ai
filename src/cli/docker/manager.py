@@ -116,7 +116,7 @@ class DockerManager:
         try:
             network = self.client.networks.get(self.DB_NETWORK_NAME)
             network.reload()
-            connected_ids = {c.id for c in network.containers}
+            connected_ids = set((network.attrs.get('Containers') or {}).keys())
             if container.id not in connected_ids:
                 network.connect(container)
         except NotFound:

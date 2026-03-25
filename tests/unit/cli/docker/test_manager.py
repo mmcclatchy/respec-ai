@@ -51,7 +51,7 @@ class TestEnsureDbRunning:
         mock_db.id = 'db-container-id'
         mock_client.containers.get.return_value = mock_db
         mock_network = MagicMock()
-        mock_network.containers = []
+        mock_network.attrs = {'Containers': {}}
         mock_client.networks.get.return_value = mock_network
 
         with patch('src.cli.docker.manager.docker.from_env', return_value=mock_client):
@@ -68,7 +68,7 @@ class TestEnsureDbRunning:
         mock_db.id = 'db-container-id'
         mock_client.containers.get.return_value = mock_db
         mock_network = MagicMock()
-        mock_network.containers = []
+        mock_network.attrs = {'Containers': {}}
         mock_client.networks.get.return_value = mock_network
 
         with patch('src.cli.docker.manager.docker.from_env', return_value=mock_client):
@@ -84,10 +84,8 @@ class TestEnsureDbRunning:
         mock_db.status = 'running'
         mock_db.id = 'db-container-id'
         mock_client.containers.get.return_value = mock_db
-        mock_already_connected = MagicMock()
-        mock_already_connected.id = 'db-container-id'
         mock_network = MagicMock()
-        mock_network.containers = [mock_already_connected]
+        mock_network.attrs = {'Containers': {'db-container-id': {'Name': 'respec-ai-db-prod'}}}
         mock_client.networks.get.return_value = mock_network
 
         with patch('src.cli.docker.manager.docker.from_env', return_value=mock_client):
