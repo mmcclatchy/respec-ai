@@ -12,22 +12,6 @@ from src.utils.state_manager import PostgresStateManager
 
 class TestDatabaseCascadeDeletes:
     @pytest.mark.asyncio
-    async def test_cascade_delete_on_loop_history(self, db_state_manager: PostgresStateManager) -> None:
-        loop = LoopState(loop_type=LoopType.PHASE)
-        await db_state_manager.add_loop(loop, 'test-project')
-
-        async with db_pool.acquire() as conn:
-            count_before = await conn.fetchval('SELECT COUNT(*) FROM loop_history WHERE loop_id = $1', loop.id)
-            assert count_before == 1
-
-        async with db_pool.acquire() as conn:
-            await conn.execute('DELETE FROM loop_states WHERE id = $1', loop.id)
-
-        async with db_pool.acquire() as conn:
-            count_after = await conn.fetchval('SELECT COUNT(*) FROM loop_history WHERE loop_id = $1', loop.id)
-            assert count_after == 0
-
-    @pytest.mark.asyncio
     async def test_cascade_delete_on_objective_feedback(self, db_state_manager: PostgresStateManager) -> None:
         loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
@@ -214,32 +198,3 @@ class TestDatabaseTransactions:
 
         retrieved_phase = await db_state_manager.get_phase('test-project', phase.phase_name)
         assert retrieved_phase.objectives == 'Objectives'
-
-
-class TestDatabaseBoundedQueue:
-    @pytest.mark.asyncio
-    async def test_bounded_queue_enforcement(self, db_state_manager: PostgresStateManager) -> None:
-        loops = [LoopState(loop_type=LoopType.PLAN) for _ in range(5)]
-
-        for loop in loops:
-            await db_state_manager.add_loop(loop, 'test-project')
-
-        async with db_pool.acquire() as conn:
-            count = await conn.fetchval('SELECT COUNT(*) FROM loop_history')
-            assert count == 3
-
-    @pytest.mark.asyncio
-    async def test_bounded_queue_keeps_latest_entries(self, db_state_manager: PostgresStateManager) -> None:
-        loops = [LoopState(loop_type=LoopType.PLAN) for _ in range(5)]
-
-        for loop in loops:
-            await db_state_manager.add_loop(loop, 'test-project')
-
-        async with db_pool.acquire() as conn:
-            loop_ids = await conn.fetch('SELECT loop_id FROM loop_history ORDER BY sequence_number ASC')
-            loop_ids_list = [row['loop_id'] for row in loop_ids]
-
-        assert len(loop_ids_list) == 3
-        assert loop_ids_list[0] == loops[2].id
-        assert loop_ids_list[1] == loops[3].id
-        assert loop_ids_list[2] == loops[4].id

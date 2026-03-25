@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from asyncpg import Record
 
@@ -22,9 +21,6 @@ from src.utils.errors import (
 from src.utils.loop_state import LoopState, MCPResponse
 
 from .base import FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
-
-if TYPE_CHECKING:
-    from asyncpg.pool import PoolConnectionProxy
 
 
 class PostgresStateManager(StateManager):
@@ -94,19 +90,6 @@ class PostgresStateManager(StateManager):
             version=row['version'] or '1.0',
         )
 
-    async def _enforce_loop_history_limit(self, conn: 'PoolConnectionProxy[Record]') -> None:
-        await conn.execute(
-            """
-            DELETE FROM loop_states
-            WHERE id IN (
-                SELECT loop_id FROM loop_history
-                ORDER BY sequence_number DESC
-                OFFSET $1
-            )
-            """,
-            self._max_history_size,
-        )
-
     async def add_loop(self, loop: LoopState, plan_name: str) -> None:
         async with db_pool.acquire() as conn:
             existing = await conn.fetchval('SELECT id FROM loop_states WHERE id = $1', loop.id)
@@ -120,28 +103,24 @@ class PostgresStateManager(StateManager):
                 datetime.fromisoformat(loop.created_at) if isinstance(loop.created_at, str) else loop.created_at
             )
 
-            async with conn.transaction():
-                await conn.execute(
-                    """
-                    INSERT INTO loop_states (
-                        id, plan_name, loop_type, status, current_score,
-                        score_history, iteration, created_at, updated_at, feedback_history
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                    """,
-                    loop.id,
-                    plan_name,
-                    loop.loop_type.value,
-                    loop.status.value,
-                    loop.current_score,
-                    loop.score_history,
-                    loop.iteration,
-                    created_at,
-                    loop.updated_at,
-                    feedback_json,
-                )
-
-                await conn.execute('INSERT INTO loop_history (loop_id) VALUES ($1)', loop.id)
-                await self._enforce_loop_history_limit(conn)
+            await conn.execute(
+                """
+                INSERT INTO loop_states (
+                    id, plan_name, loop_type, status, current_score,
+                    score_history, iteration, created_at, updated_at, feedback_history
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                """,
+                loop.id,
+                plan_name,
+                loop.loop_type.value,
+                loop.status.value,
+                loop.current_score,
+                loop.score_history,
+                loop.iteration,
+                created_at,
+                loop.updated_at,
+                feedback_json,
+            )
 
         logger.info(f'Added loop {loop.id} to project {plan_name}')
 

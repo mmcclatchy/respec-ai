@@ -358,27 +358,6 @@ class TestDatabaseLoopOperations:
         with pytest.raises(LoopNotFoundError):
             await db_state_manager.get_loop('non-existent-loop-id')
 
-    @pytest.mark.asyncio
-    async def test_loop_history_management_respects_max_size(
-        self, db_state_manager: PostgresStateManager, plan_name: str
-    ) -> None:
-        loops = [
-            LoopState(loop_type=LoopType.PLAN),
-            LoopState(loop_type=LoopType.PHASE),
-            LoopState(loop_type=LoopType.TASK),
-            LoopState(loop_type=LoopType.ANALYST),
-        ]
-
-        for loop in loops:
-            await db_state_manager.add_loop(loop, plan_name)
-
-        with pytest.raises(LoopNotFoundError):
-            await db_state_manager.get_loop(loops[0].id)
-
-        for loop in loops[1:]:
-            retrieved = await db_state_manager.get_loop(loop.id)
-            assert retrieved == loop
-
 
 class TestDatabasePlanOperations:
     @pytest.mark.asyncio

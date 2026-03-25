@@ -90,18 +90,11 @@ class TestEnhancedLoopState:
     def test_existing_loop_state_functionality_remains_intact(self) -> None:
         loop_state = LoopState(loop_type=LoopType.PHASE)
 
-        # Test existing functionality still works
-        assert loop_state.is_first_iteration()
         assert loop_state.iteration == 1
-
-        loop_state.increment_iteration()
-        assert loop_state.iteration == 2
-        assert not loop_state.is_first_iteration()
 
         loop_state.add_score(85)
         assert loop_state.current_score == 85
         assert loop_state.score_history == [85]
 
-        # Test decision logic still works
         response = loop_state.decide_next_loop_action()
         assert response.id == loop_state.id

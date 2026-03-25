@@ -55,8 +55,7 @@ async def postgres_manager(check_database_available: bool) -> AsyncGenerator[Sta
         try:
             async with db_pool._pool.acquire() as conn:
                 await conn.execute(
-                    'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                    'phases, plans, loop_to_phase_mappings CASCADE'
+                    'TRUNCATE loop_states, objective_feedback, roadmaps, phases, plans, loop_to_phase_mappings CASCADE'
                 )
         except Exception:
             pass

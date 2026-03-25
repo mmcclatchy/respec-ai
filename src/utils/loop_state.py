@@ -50,13 +50,6 @@ class LoopState(BaseModel):
             iteration=self.iteration,
         )
 
-    def is_first_iteration(self) -> bool:
-        return self.iteration == 1
-
-    def increment_iteration(self) -> int:
-        self.iteration += 1
-        return self.iteration
-
     def add_score(self, score: int) -> None:
         self.score_history.append(score)
         self.current_score = score
