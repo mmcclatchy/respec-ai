@@ -2,8 +2,10 @@ import re
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
 from src.cli.config.package_info import get_package_version
+from src.cli.commands import regenerate
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
 
@@ -102,6 +104,12 @@ def run(args: Namespace) -> int:
 
         if not args.skip_docker:
             _update_docker(old_version=current_version, new_version=new_version)
+
+        config_path = Path.cwd() / '.respec-ai' / 'config.json'
+        if config_path.exists():
+            regenerate.run(Namespace(force=False))
+        elif new_version != current_version:
+            print_info('Run: respec-ai regenerate in your project directory to update templates')
 
         print_success('Update complete!')
         if new_version != current_version:
