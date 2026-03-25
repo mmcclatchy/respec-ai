@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
@@ -18,6 +19,14 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
 
 
+def _get_installed_version() -> str | None:
+    result = subprocess.run(['uv', 'tool', 'list'], capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    match = re.search(r'respec-ai\s+v([0-9]+\.[0-9]+\.[0-9]+)', result.stdout)
+    return match.group(1) if match else None
+
+
 def _update_docker(old_version: str, new_version: str) -> bool:
     try:
         docker_manager = DockerManager()
@@ -26,12 +35,12 @@ def _update_docker(old_version: str, new_version: str) -> bool:
         print_info('Skip Docker update with: respec-ai update --skip-docker')
         return False
 
-    old_status = docker_manager.get_container_status()
+    old_status = docker_manager.get_container_status(version=old_version)
     was_running = old_status.get('running', False)
 
     if was_running:
         print_info('Stopping container...')
-        docker_manager.stop_container()
+        docker_manager.stop_container(version=old_version)
 
     print_info(f'Pulling Docker image v{new_version}...')
     try:
@@ -45,7 +54,7 @@ def _update_docker(old_version: str, new_version: str) -> bool:
         if was_running:
             print_info('Restarting previous container...')
             try:
-                docker_manager.ensure_running()
+                docker_manager.ensure_running(version=old_version)
                 print_success('Previous container restored')
             except DockerManagerError:
                 print_warning('Could not restart previous container')
@@ -84,7 +93,7 @@ def run(args: Namespace) -> int:
             print_error(result.stderr)
             return 1
 
-        new_version = get_package_version()
+        new_version = _get_installed_version() or get_package_version()
 
         if new_version == current_version:
             print_info(f'Already on latest version: {current_version}')
