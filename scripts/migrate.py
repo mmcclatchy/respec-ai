@@ -14,6 +14,12 @@ MIGRATIONS_DIR = Path(__file__).parent.parent / 'migrations'
 _MIGRATION_LOCK_KEY = 7274938  # stable advisory lock key for migration serialization
 
 
+def _has_executable_sql(sql: str) -> bool:
+    no_line_comments = re.sub(r'--[^\n]*', '', sql)
+    no_block_comments = re.sub(r'/\*.*?\*/', '', no_line_comments, flags=re.DOTALL)
+    return bool(no_block_comments.strip())
+
+
 async def _connect_with_retry(database_url: str, attempts: int = 30) -> asyncpg.Connection:
     for i in range(attempts):
         try:
@@ -66,7 +72,8 @@ async def run() -> None:
                 logger.info(f'Applying {sql_file.name}')
                 sql = sql_file.read_text()
                 async with conn.transaction():
-                    await conn.execute(sql)
+                    if _has_executable_sql(sql):
+                        await conn.execute(sql)
                     await conn.execute(
                         'INSERT INTO schema_migrations (version, description) VALUES ($1, $2) ON CONFLICT DO NOTHING',
                         version,
