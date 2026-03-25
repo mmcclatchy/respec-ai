@@ -275,17 +275,10 @@ class DockerManager:
         except DockerException as e:
             raise DockerManagerError(f'Failed to list containers: {e}') from e
 
-    def cleanup_old_versions(self) -> int:
-        """Remove old respec-ai containers and images.
-
-        Keeps only the current version matching the CLI.
-
-        Returns:
-            Number of items removed (containers + images)
-        """
-        current_version = self.get_image_version()
-        current_container_name = self.get_container_name()
-        current_image_tag = self.get_image_tag()
+    def cleanup_old_versions(self, version: str | None = None) -> int:
+        current_version = version or self.get_image_version()
+        current_container_name = self.get_container_name(current_version)
+        current_image_tag = self.get_image_tag(current_version)
         removed_count = 0
 
         try:

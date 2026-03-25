@@ -1,4 +1,3 @@
-import re
 import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
@@ -17,11 +16,6 @@ def add_arguments(parser: ArgumentParser) -> None:
         action='store_true',
         help='Skip Docker image update',
     )
-
-
-def _parse_installed_version(uv_output: str) -> str | None:
-    match = re.search(r'respec-ai==([^\s(]+)', uv_output)
-    return match.group(1) if match else None
 
 
 def _update_docker(new_version: str) -> bool:
@@ -58,7 +52,7 @@ def _update_docker(new_version: str) -> bool:
                 print_info('Start manually when image is ready: respec-ai docker start')
         return False
 
-    docker_manager.cleanup_old_versions()
+    docker_manager.cleanup_old_versions(version=new_version)
 
     print_info('Starting container...')
     try:
@@ -89,8 +83,7 @@ def run(args: Namespace) -> int:
             print_error(result.stderr)
             return 1
 
-        combined_output = result.stdout + result.stderr
-        new_version = _parse_installed_version(combined_output) or current_version
+        new_version = get_package_version()
 
         if new_version == current_version:
             print_info(f'Already on latest version: {current_version}')
