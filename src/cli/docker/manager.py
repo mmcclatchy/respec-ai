@@ -27,6 +27,12 @@ class DockerManager:
         'MCP_LOG_LEVEL': 'INFO',
         'MCP_DEBUG': 'false',
     }
+    DB_IMAGE = 'postgres:16-alpine'
+    DB_ENV = {
+        'POSTGRES_DB': 'respec_prod',
+        'POSTGRES_USER': 'respec',
+        'POSTGRES_PASSWORD': 'respec_prod',
+    }
 
     def __init__(self) -> None:
         try:
@@ -106,12 +112,59 @@ class DockerManager:
         except DockerException as e:
             raise DockerManagerError(f'Failed to build image: {e}') from e
 
+    def _connect_to_network(self, container: Container) -> None:
+        try:
+            network = self.client.networks.get(self.DB_NETWORK_NAME)
+            network.reload()
+            connected_ids = {c.id for c in network.containers}
+            if container.id not in connected_ids:
+                network.connect(container)
+        except NotFound:
+            pass
+        except DockerException as e:
+            raise DockerManagerError(f'Failed to connect container to network: {e}') from e
+
+    def ensure_db_running(self) -> None:
+        try:
+            self.client.networks.get(self.DB_NETWORK_NAME)
+        except NotFound:
+            self.client.networks.create(self.DB_NETWORK_NAME, driver='bridge')
+
+        container = self.get_database_container()
+
+        if not container:
+            print(f'Starting database container {self.DB_CONTAINER_NAME}...')
+            try:
+                self.client.containers.run(  # type: ignore
+                    image=self.DB_IMAGE,
+                    name=self.DB_CONTAINER_NAME,
+                    detach=True,
+                    remove=False,
+                    restart_policy={'Name': 'unless-stopped'},
+                    environment=self.DB_ENV,
+                    volumes={self.DB_VOLUME_NAME: {'bind': '/var/lib/postgresql/data', 'mode': 'rw'}},
+                    network=self.DB_NETWORK_NAME,
+                )
+                print(f'✓ Database container {self.DB_CONTAINER_NAME} started')
+            except DockerException as e:
+                raise DockerManagerError(f'Failed to start database: {e}') from e
+            return
+
+        if container.status != 'running':
+            try:
+                container.start()
+            except DockerException as e:
+                raise DockerManagerError(f'Failed to start database: {e}') from e
+
+        self._connect_to_network(container)
+
     def start_container(self, version: str | None = None, detach: bool = True) -> Container:
         version = version or self.get_image_version()
         image_tag = self.get_image_tag(version)
         container_name = self.get_container_name(version)
 
-        # Check if container already exists
+        self.ensure_db_running()
+
         existing = self.get_container(version)
         if existing:
             if existing.status == 'running':
@@ -122,16 +175,10 @@ class DockerManager:
                 existing.start()
                 return existing
 
-        # Verify image exists
         if not self.verify_image_exists(version):
             raise DockerManagerError(f'Image {image_tag} not found. Run: respec-ai docker pull')
 
         try:
-            try:
-                self.client.networks.get(self.DB_NETWORK_NAME)
-            except NotFound:
-                self.client.networks.create(self.DB_NETWORK_NAME, driver='bridge')
-
             print(f'Creating container {container_name}...')
             container: Container = self.client.containers.run(  # type: ignore
                 image=image_tag,
