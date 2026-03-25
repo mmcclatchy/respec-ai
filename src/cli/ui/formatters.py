@@ -12,19 +12,9 @@ def format_project_config_table(
     version: str,
     package_version: str,
     mcp_registered: bool,
+    mcp_container_name: str | None = None,
+    mcp_container_running: bool = False,
 ) -> Table:
-    """Format project configuration as a Rich table.
-
-    Args:
-        project_path: Path to project directory
-        platform: Platform name (linear, github, markdown)
-        version: Plan config version
-        package_version: Installed package version
-        mcp_registered: Whether MCP server is registered
-
-    Returns:
-        Rich Table object
-    """
     table = Table(title='Project Configuration', show_header=False, box=None)
     table.add_column('Setting', style='cyan', no_wrap=True)
     table.add_column('Value', style='white')
@@ -36,6 +26,10 @@ def format_project_config_table(
 
     mcp_status = '[green]✓ Registered[/green]' if mcp_registered else '[red]✗ Not Registered[/red]'
     table.add_row('MCP Server', f'respec-ai ({mcp_status})')
+
+    if mcp_container_name:
+        run_status = '[green]✓ running[/green]' if mcp_container_running else '[red]✗ stopped[/red]'
+        table.add_row('MCP Transport', f'Docker / {mcp_container_name} ({run_status})')
 
     return table
 

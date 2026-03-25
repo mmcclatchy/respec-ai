@@ -8,6 +8,15 @@ from pytest_mock import MockerFixture
 from src.cli.commands import status
 
 
+def _mock_container_status(mocker: MockerFixture, name: str, running: bool) -> None:
+    mock_docker = mocker.patch('src.cli.commands.status.DockerManager')
+    mock_docker.return_value.get_container_status.return_value = {
+        'exists': True,
+        'running': running,
+        'name': name,
+    }
+
+
 class TestStatusCommand:
     def test_successful_status_display(
         self,
@@ -36,6 +45,7 @@ class TestStatusCommand:
         mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=True)
+        _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
         result = status.run(args)
@@ -72,6 +82,7 @@ class TestStatusCommand:
         mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=True)
+        _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
         result = status.run(args)
@@ -117,3 +128,32 @@ class TestStatusCommand:
         result = status.run(args)
 
         assert result == 1
+
+    def test_mcp_shows_docker_container_transport(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        config_data = {'platform': 'linear', 'version': '0.2.0', 'plan_name': 'test'}
+        (respec_ai_dir / 'config.json').write_text(json.dumps(config_data))
+
+        commands_dir = tmp_path / 'commands'
+        agents_dir = tmp_path / 'agents'
+        commands_dir.mkdir()
+        agents_dir.mkdir()
+
+        mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
+        mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
+        mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=True)
+        _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
+
+        args = Namespace()
+        result = status.run(args)
+
+        assert result == 0
