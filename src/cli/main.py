@@ -7,7 +7,6 @@ Provides commands for:
 - Status checking (status)
 - Validation (validate)
 - Template regeneration (regenerate)
-- Plan rebuild (rebuild)
 - Package updates (update)
 - MCP registration (register-mcp)
 - MCP unregistration (unregister-mcp)
@@ -24,7 +23,6 @@ from src.cli.commands import (
     init,
     mcp_server,
     platform,
-    rebuild,
     regenerate,
     register_mcp,
     status,
@@ -93,13 +91,6 @@ def main() -> int:
 
     regenerate.add_arguments(regenerate_parser)
 
-    rebuild_parser = subparsers.add_parser(
-        'rebuild',
-        help='Rebuild project configuration with current package version',
-    )
-
-    rebuild.add_arguments(rebuild_parser)
-
     update_parser = subparsers.add_parser(
         'update',
         help='Update respec-ai CLI and Docker image to latest version',
@@ -155,8 +146,6 @@ def main() -> int:
             return validate.run(args)
         case 'regenerate':
             return regenerate.run(args)
-        case 'rebuild':
-            return rebuild.run(args)
         case 'update':
             return update.run(args)
         case 'register-mcp':

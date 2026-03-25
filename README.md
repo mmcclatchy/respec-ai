@@ -23,7 +23,7 @@ Using LLMs for development requires critical evaluation—you can't just trust t
 
 ## Quick Start
 
-Get up and running in 3 steps:
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) running, [uv](https://docs.astral.sh/uv/) installed
 
 ```bash
 # 1. Install respec-ai
@@ -33,7 +33,10 @@ uv tool install git+https://github.com/mmcclatchy/respec-ai.git
 cd /path/to/your/project
 respec-ai init -p markdown
 
-# 3. Restart Claude Code and start planning
+# 3. Verify setup
+respec-ai status
+
+# 4. Restart Claude Code and start planning
 claude
 /respec-plan my-first-project
 ```

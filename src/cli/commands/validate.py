@@ -7,6 +7,7 @@ from src.cli.config.claude_config import is_mcp_server_registered
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import get_package_version
 from src.cli.ui.formatters import print_validation_report
+from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -65,20 +66,20 @@ def run(args: Namespace) -> int:
     commands_dir = get_commands_dir(project_path)
     if commands_dir.exists():
         commands_count = len(list(commands_dir.glob('*.md')))
-        if commands_count == 5:
+        if commands_count == EXPECTED_COMMANDS_COUNT:
             checks['Commands Directory'] = (True, f'{commands_count} commands found')
         else:
-            checks['Commands Directory'] = (False, f'{commands_count} commands (expected 5)')
+            checks['Commands Directory'] = (False, f'{commands_count} commands (expected {EXPECTED_COMMANDS_COUNT})')
     else:
         checks['Commands Directory'] = (False, 'Directory missing')
 
     agents_dir = get_agents_dir(project_path)
     if agents_dir.exists():
         agents_count = len(list(agents_dir.glob('*.md')))
-        if agents_count == 12:
+        if agents_count == EXPECTED_AGENTS_COUNT:
             checks['Agents Directory'] = (True, f'{agents_count} agents found')
         else:
-            checks['Agents Directory'] = (False, f'{agents_count} agents (expected 12)')
+            checks['Agents Directory'] = (False, f'{agents_count} agents (expected {EXPECTED_AGENTS_COUNT})')
     else:
         checks['Agents Directory'] = (False, 'Directory missing')
 

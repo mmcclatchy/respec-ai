@@ -6,6 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from src.cli.commands import validate
+from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
 
 
 class TestValidateCommand:
@@ -27,9 +28,9 @@ class TestValidateCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        for i in range(5):
+        for i in range(EXPECTED_COMMANDS_COUNT):
             (commands_dir / f'cmd{i}.md').touch()
-        for i in range(12):
+        for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
@@ -80,9 +81,9 @@ class TestValidateCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        for i in range(5):
+        for i in range(EXPECTED_COMMANDS_COUNT):
             (commands_dir / f'cmd{i}.md').touch()
-        for i in range(12):
+        for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
@@ -146,9 +147,9 @@ class TestValidateCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        for i in range(5):
+        for i in range(EXPECTED_COMMANDS_COUNT):
             (commands_dir / f'cmd{i}.md').touch()
-        for i in range(12):
+        for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
@@ -179,9 +180,9 @@ class TestValidateCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        for i in range(5):
+        for i in range(EXPECTED_COMMANDS_COUNT):
             (commands_dir / f'cmd{i}.md').touch()
-        for i in range(12):
+        for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)

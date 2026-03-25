@@ -297,42 +297,44 @@ respec-ai init -p linear -f
 
 ---
 
-#### `respec-ai rebuild`
+#### `respec-ai update`
 
-Rebuild project configuration and templates (useful after respec-ai updates).
+Update the respec-ai CLI and Docker image to the latest version.
 
 **Usage:**
 ```bash
-respec-ai rebuild [OPTIONS]
+respec-ai update [OPTIONS]
 ```
 
 **Options:**
-- `--skip-mcp-registration` (optional) - Skip MCP server re-registration
+- `--skip-docker` (optional) - Skip Docker image update
 
 **Example:**
 ```bash
-# Rebuild configuration and re-register MCP server
-respec-ai rebuild
+# Update CLI and Docker image
+respec-ai update
 
-# Rebuild without MCP re-registration
-respec-ai rebuild --skip-mcp-registration
+# Update CLI only, skip Docker
+respec-ai update --skip-docker
 ```
 
 **Output:**
 ```text
-Project rebuilt successfully
-Platform: markdown
-Project: my-project
-Version: 0.6.3
-Regenerated 5 commands and 12 agents
-
-⚠ Restart Claude Code to activate the updated MCP server
+ℹ Current version: 0.6.3
+ℹ Checking for updates...
+✔ Updated CLI: 0.6.3 → 0.7.0
+ℹ Pulling Docker image v0.7.0...
+✔ Docker image updated
+ℹ Starting container...
+✔ Container running
+✔ Templates updated: 0.6.3 → 0.7.0
+✔ Update complete!
 ```
 
 **When to use:**
-- After updating respec-ai package
-- When templates are out of sync with package version
-- To refresh MCP server registration
+- To upgrade to the latest respec-ai release
+- When templates are out of sync with the package version
+- After pulling a new Docker image manually
 
 ---
 
@@ -912,15 +914,11 @@ The command will:
 When a new version of respec-ai is released:
 
 ```bash
-# Update the package
-uv tool install --force git+https://github.com/mmcclatchy/respec-ai.git
-
-# Rebuild your project templates
-cd /path/to/your/project
-respec-ai rebuild
+# Update the CLI, Docker image, and templates in one step
+respec-ai update
 ```
 
-This preserves your platform choice while updating templates to the latest version.
+This updates the CLI package, pulls the latest Docker image, and regenerates templates while preserving your platform choice.
 
 ---
 
@@ -1062,7 +1060,7 @@ respec-ai supports running multiple projects with explicit project context. Each
    respec-ai docker logs
    ```
 
-4. **If container fails to start, rebuild**
+4. **If container fails to start, re-pull the image**
    ```bash
    # Pull latest image
    respec-ai docker pull
@@ -1853,10 +1851,10 @@ A: Yes, use `respec-ai platform <new-platform>`. Existing work won't migrate aut
 A: Yes, agents work together in refinement loops. Removing agents may break workflows.
 
 **Q: Can I customize the templates?**
-A: Templates are regenerated on init/rebuild. Customization requires modifying source code.
+A: Templates are regenerated on init/regenerate/update. Customization requires modifying source code.
 
 **Q: How do I update respec-ai?**
-A: Run `uv tool upgrade respec-ai` or `brew upgrade respec-ai`, then `respec-ai rebuild` in your projects.
+A: Run `respec-ai update` — it updates the CLI, Docker image, and regenerates templates automatically.
 
 **Q: Does the MCP server require Docker?**
 A: Yes, the production MCP server runs in Docker. For local development, you can run directly with `uv run python -m src.mcp`.
