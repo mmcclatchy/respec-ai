@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pytest_mock import MockerFixture
 
 from src.cli.config.claude_config import (
+    EXPECTED_MCP_CONFIG,
     MCP_SERVER_NAME,
     ClaudeConfigError,
     get_mcp_server_config,
@@ -14,6 +14,7 @@ from src.cli.config.claude_config import (
     register_mcp_server,
     restore_backup,
     save_claude_config,
+    unregister_all_respec_servers,
     unregister_mcp_server,
 )
 
@@ -78,94 +79,155 @@ class TestSaveClaudeConfig:
 
 
 class TestIsMcpServerRegistered:
-    def test_server_registered(self, tmp_path: Path) -> None:
+    def test_server_registered_with_correct_config(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
-        config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'uv'}}}
+        config_data = {'mcpServers': {MCP_SERVER_NAME: EXPECTED_MCP_CONFIG.copy()}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
-        result = is_mcp_server_registered(config_file)
-        assert result is True
+        assert is_mcp_server_registered(config_file) is True
 
     def test_server_not_registered(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
         config_data: dict[str, Any] = {'mcpServers': {}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
-        result = is_mcp_server_registered(config_file)
-        assert result is False
+        assert is_mcp_server_registered(config_file) is False
+
+    def test_misconfigured_with_state_manager_memory(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {
+            'mcpServers': {
+                MCP_SERVER_NAME: {
+                    'command': 'uv',
+                    'args': ['run', 'respec-server'],
+                    'env': {'STATE_MANAGER': 'memory'},
+                }
+            }
+        }
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        assert is_mcp_server_registered(config_file) is False
+
+    def test_misconfigured_with_cwd(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {
+            'mcpServers': {
+                MCP_SERVER_NAME: {
+                    'command': 'uv',
+                    'args': ['run', 'respec-server'],
+                    'cwd': '/Users/someone/coding/respec-ai',
+                }
+            }
+        }
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        assert is_mcp_server_registered(config_file) is False
+
+    def test_misconfigured_wrong_command(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {
+            'mcpServers': {
+                MCP_SERVER_NAME: {
+                    'command': 'uv',
+                    'args': ['run', 'respec-server'],
+                }
+            }
+        }
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        assert is_mcp_server_registered(config_file) is False
 
     def test_error_returns_false(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'nonexistent' / 'config.json'
-        result = is_mcp_server_registered(config_file)
-        assert result is False
+        assert is_mcp_server_registered(config_file) is False
 
 
 class TestRegisterMcpServer:
-    def test_new_registration(self, mocker: MockerFixture, tmp_path: Path) -> None:
+    def test_new_registration(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
         config_file.write_text('{}', encoding='utf-8')
-
-        # Mock subprocess.run to simulate successful claude mcp add
-        mock_run = mocker.patch('subprocess.run')
-        mock_run.return_value = mocker.Mock(returncode=0, stderr='', stdout='')
 
         result = register_mcp_server(force=False, config_path=config_file)
         assert result is True
 
-        # Verify subprocess was called with correct arguments
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]
-        assert call_args[0:3] == ['claude', 'mcp', 'add']
-        assert MCP_SERVER_NAME in call_args
-        assert 'respec-ai' in call_args
-        assert 'mcp-server' in call_args
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
 
-    def test_already_registered_without_force(self, mocker: MockerFixture, tmp_path: Path) -> None:
+    def test_already_registered_without_force(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
-        config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'docker'}}}
+        config_data = {'mcpServers': {MCP_SERVER_NAME: EXPECTED_MCP_CONFIG.copy()}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
         result = register_mcp_server(force=False, config_path=config_file)
         assert result is False
 
-    def test_force_reregister(self, mocker: MockerFixture, tmp_path: Path) -> None:
+    def test_force_reregister(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'old'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
 
-        # Mock subprocess.run to simulate successful claude mcp commands
-        mock_run = mocker.patch('subprocess.run')
-        mock_run.return_value = mocker.Mock(returncode=0, stderr='', stdout='')
-
         result = register_mcp_server(force=True, config_path=config_file)
         assert result is True
 
-        # Verify subprocess was called (remove then add)
-        assert mock_run.call_count == 2  # remove + add
-        # First call should be remove
-        assert mock_run.call_args_list[0][0][0][:3] == ['claude', 'mcp', 'remove']
-        # Second call should be add
-        assert mock_run.call_args_list[1][0][0][:3] == ['claude', 'mcp', 'add']
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
+
+    def test_auto_fixes_misconfigured_entry(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        bad_config = {
+            'mcpServers': {
+                MCP_SERVER_NAME: {
+                    'command': 'uv',
+                    'args': ['run', 'respec-server'],
+                    'cwd': '/Users/someone/respec-ai',
+                    'env': {'STATE_MANAGER': 'memory'},
+                }
+            }
+        }
+        config_file.write_text(json.dumps(bad_config), encoding='utf-8')
+
+        result = register_mcp_server(force=False, config_path=config_file)
+        assert result is True
+
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        server = config['mcpServers'][MCP_SERVER_NAME]
+        assert server == EXPECTED_MCP_CONFIG
+        assert 'cwd' not in server
+        assert 'env' not in server
+
+    def test_preserves_other_mcp_servers(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {'mcpServers': {'other-server': {'command': 'other'}}}
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        register_mcp_server(force=False, config_path=config_file)
+
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert config['mcpServers']['other-server'] == {'command': 'other'}
+        assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
+
+    def test_config_file_does_not_exist(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+
+        result = register_mcp_server(force=False, config_path=config_file)
+        assert result is True
+        assert config_file.exists()
+
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
 
 
 class TestUnregisterMcpServer:
-    def test_successful_unregister(self, mocker: MockerFixture, tmp_path: Path) -> None:
+    def test_successful_unregister(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
-        config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'uv'}}}
+        config_data = {'mcpServers': {MCP_SERVER_NAME: EXPECTED_MCP_CONFIG.copy()}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
-
-        # Mock subprocess.run to simulate successful claude mcp remove
-        mock_run = mocker.patch('subprocess.run')
-        mock_run.return_value = mocker.Mock(returncode=0, stderr='', stdout='')
 
         result = unregister_mcp_server(config_file)
         assert result is True
 
-        # Verify subprocess was called with correct arguments
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]
-        assert call_args[:3] == ['claude', 'mcp', 'remove']
-        assert MCP_SERVER_NAME in call_args
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert MCP_SERVER_NAME not in config['mcpServers']
 
     def test_not_registered(self, tmp_path: Path) -> None:
         config_file = tmp_path / 'config.json'
@@ -174,6 +236,70 @@ class TestUnregisterMcpServer:
 
         result = unregister_mcp_server(config_file)
         assert result is False
+
+    def test_removes_misconfigured_entry(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {
+            'mcpServers': {
+                MCP_SERVER_NAME: {
+                    'command': 'uv',
+                    'cwd': '/bad/path',
+                    'env': {'STATE_MANAGER': 'memory'},
+                }
+            }
+        }
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        result = unregister_mcp_server(config_file)
+        assert result is True
+
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert MCP_SERVER_NAME not in config['mcpServers']
+
+    def test_preserves_other_servers(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {
+            'mcpServers': {
+                MCP_SERVER_NAME: EXPECTED_MCP_CONFIG.copy(),
+                'other-server': {'command': 'other'},
+            }
+        }
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        unregister_mcp_server(config_file)
+
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert 'other-server' in config['mcpServers']
+        assert MCP_SERVER_NAME not in config['mcpServers']
+
+
+class TestUnregisterAllRespecServers:
+    def test_removes_all_variants(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data = {
+            'mcpServers': {
+                'respec-ai': {'command': 'a'},
+                'respec_ai': {'command': 'b'},
+                'other-server': {'command': 'c'},
+            }
+        }
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        result = unregister_all_respec_servers(config_file)
+        assert result == 2
+
+        config = json.loads(config_file.read_text(encoding='utf-8'))
+        assert 'respec-ai' not in config['mcpServers']
+        assert 'respec_ai' not in config['mcpServers']
+        assert 'other-server' in config['mcpServers']
+
+    def test_no_servers_to_remove(self, tmp_path: Path) -> None:
+        config_file = tmp_path / 'config.json'
+        config_data: dict[str, Any] = {'mcpServers': {}}
+        config_file.write_text(json.dumps(config_data), encoding='utf-8')
+
+        result = unregister_all_respec_servers(config_file)
+        assert result == 0
 
 
 class TestRestoreBackup:
