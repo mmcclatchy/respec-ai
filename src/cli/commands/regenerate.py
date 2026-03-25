@@ -23,7 +23,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
 
 
-def run(args: Namespace) -> int:
+def run(args: Namespace, version_override: str | None = None) -> int:
     try:
         project_path = Path.cwd().resolve()
         config_path = project_path / '.respec-ai' / 'config.json'
@@ -35,7 +35,7 @@ def run(args: Namespace) -> int:
 
         config = json.loads(config_path.read_text(encoding='utf-8'))
         current_version = config.get('version', 'unknown')
-        package_version = get_package_version()
+        package_version = version_override or get_package_version()
         platform = config.get('platform')
 
         if not platform:

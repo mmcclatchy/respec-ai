@@ -107,7 +107,7 @@ def run(args: Namespace) -> int:
 
         config_path = Path.cwd() / '.respec-ai' / 'config.json'
         if config_path.exists():
-            regenerate.run(Namespace(force=False))
+            regenerate.run(Namespace(force=False), version_override=new_version)
         elif new_version != current_version:
             print_info('Run: respec-ai regenerate in your project directory to update templates')
 
