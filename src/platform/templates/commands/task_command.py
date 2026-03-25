@@ -108,6 +108,30 @@ ELSE:
   Display to user: "✓ Found {{len(DOCUMENTATION_PATHS)}} research document(s) to guide task planning"
 ```
 
+#### Step 2.2: Parse Implementation Plan References
+
+```text
+IMPL_PLAN_PATHS = []
+
+Search PHASE_MARKDOWN for "### Implementation Plan References" section:
+  IF section found:
+    For each line matching "- Constraint: `<path>`":
+      Extract path from backtick-quoted value, append to IMPL_PLAN_PATHS
+      Display to user: "📌 Implementation constraint: {{path}}"
+
+Also scan full PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
+  For each directive found:
+    Extract file_path from backtick-quoted value after "read"
+    IF path not already in IMPL_PLAN_PATHS:
+      IMPL_PLAN_PATHS.append(path)
+      Display to user: "📌 Implementation constraint (inline): {{path}}"
+
+IF IMPL_PLAN_PATHS is empty:
+  Display to user: "ℹ️ No implementation plan references in Phase"
+ELSE:
+  Display to user: "✓ Found {{len(IMPL_PLAN_PATHS)}} implementation constraint(s)"
+```
+
 ### 3. Initialize Task Planning Loop
 
 Set up MCP-managed quality refinement loop:
@@ -139,7 +163,8 @@ Pass the following information to the agent:
 - task_loop_id: TASK_LOOP_ID
 - plan_name: PLAN_NAME
 - phase_name: PHASE_NAME
-- research_file_paths: DOCUMENTATION_PATHS (from Step 2, or empty list)
+- research_file_paths: DOCUMENTATION_PATHS (from Step 2.1, or empty list)
+- impl_plan_paths: IMPL_PLAN_PATHS (from Step 2.2, or empty list)
 
 The agent will:
 1. Retrieve Phase from MCP

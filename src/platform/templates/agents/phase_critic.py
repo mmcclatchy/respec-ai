@@ -345,6 +345,34 @@ ELSE:
 
 # Note: "Synthesize:" prompts are NOT validated - converted to files in Step 7.5
 
+STEP 2.7: Verify Implementation Plan Reference Paths
+
+Search PHASE_MARKDOWN for "### Implementation Plan References" section.
+IF section not found:
+  IMPL_PLAN_PATH_PENALTY = 0
+  Skip to STEP 3
+
+Extract all paths from "- Constraint: `<path>`" lines within the section.
+VALID_IMPL_PATHS = []
+INVALID_IMPL_PATHS = []
+
+For each extracted path:
+  Strip any § section qualifier (take only the file path before §)
+  result = Glob(pattern=path)
+  IF result contains matching file:
+    VALID_IMPL_PATHS.append(path)
+  ELSE:
+    INVALID_IMPL_PATHS.append(path)
+
+IF len(INVALID_IMPL_PATHS) > 0:
+  IMPL_PLAN_PATH_PENALTY = -20  # Blocking penalty — same severity as research paths
+  Add to key_issues for each invalid path:
+    "[Implementation Plan Reference Invalid - BLOCKING]: Path `{{path}}` does not exist"
+ELSE:
+  IMPL_PLAN_PATH_PENALTY = 0
+
+# Apply alongside RESEARCH_PATH_PENALTY. Either invalid path type caps score at 80.
+
 STEP 3: Evaluate Phase Structure
 Assess Phase against FSDD quality framework criteria
 → Technical completeness and clarity
@@ -517,6 +545,13 @@ Phases vary by project type. Evaluate based on project context:
 - All invalid "Read:" paths MUST be corrected before phase is considered ready
 - List each invalid path in Key Issues section
 
+**SEVERE PENALTY FOR INVALID IMPLEMENTATION PLAN REFERENCE PATHS**:
+- If ANY invalid "- Constraint: `<path>`" paths found: Apply IMPL_PLAN_PATH_PENALTY (-20 points)
+- This is a BLOCKING issue - invalid paths prevent task-planner from loading hard constraints
+- Phase CANNOT score above 80 with any invalid implementation plan reference paths
+- All invalid constraint paths MUST be corrected before phase is considered ready
+- List each invalid path in Key Issues section (from STEP 2.7 validation)
+
 **Root Cause**: Phase author likely guessed filename instead of using actual archive scan output.
 **Solution**: Re-run archive scan and use exact file paths returned.
 
@@ -624,7 +659,7 @@ Assess phase for implementation details that belong in Phase:
 
 ### Overall Score Calculation
 
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty - Research Path Penalty**
+**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty - Research Path Penalty - Impl Plan Path Penalty**
 
 **Core Sections (70 points)**:
 - Required sections (Objectives, Scope, Architecture, Testing): 40 points

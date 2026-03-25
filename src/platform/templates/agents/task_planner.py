@@ -112,9 +112,25 @@ INPUTS: Loop context, Phase information, and research documents
 - project_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for retrieval
 - research_file_paths: List of best-practice document paths from Phase (may be empty)
+- impl_plan_paths: List of implementation plan reference paths — HARD CONSTRAINTS (may be empty)
 
 WORKFLOW: Phase + Research → Task with Checklist and Steps
 1. Retrieve Phase: {tools.retrieve_phase}
+1.5. Read Implementation Plan Constraints (BEFORE generating task):
+   FOR EACH path in impl_plan_paths:
+     a. Call Read(file_path=path)
+     b. If Read SUCCEEDS: append file content to IMPL_PLAN_CONSTRAINTS list
+     c. If Read FAILS: note as "unavailable — proceeding without constraint from {{path}}"
+
+   ALSO scan PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
+     For each directive found, extract file_path and Read if not already in impl_plan_paths
+
+   PRECEDENCE — IMPL_PLAN_CONSTRAINTS are HARD CONSTRAINTS:
+   → They override general knowledge AND research document guidance
+   → Do NOT deviate from technology choices documented in IMPL_PLAN_CONSTRAINTS
+   → Do NOT suggest alternatives to explicitly rejected approaches
+   → Research documents (from research_file_paths) are GUIDANCE only —
+     the agent may deviate from guidance if justified, NEVER from constraints
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
 4. Read research documents (if research_file_paths provided):

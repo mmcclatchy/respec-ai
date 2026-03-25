@@ -102,17 +102,62 @@ Automated analyst phase (Steps 6-9):
 - Initialize variables for state management throughout the human-driven process
 - Note: No refinement loop needed for human-driven plan generation phase
 
+## Step 1.5: Detect Claude Plan File
+
+Check for pre-resolved architecture decisions in a Claude Plan file:
+
+```text
+CLAUDE_PLAN_FILE = None
+CLAUDE_PLAN_CONTEXT = None
+
+Check remaining arguments (after PLAN_NAME) for a file path argument
+(contains ~/.claude/plans/ or ends in .md with a path separator):
+  IF found: CLAUDE_PLAN_FILE = extracted path
+
+IF CLAUDE_PLAN_FILE is None:
+  Bash: find ~/.claude/plans -name "*.md" -mtime -7 -type f 2>/dev/null | head -5
+  IF results found:
+    Use AskUserQuestion:
+      Question: "I found recently modified Claude Plan file(s). Use one as a starting point?"
+      Header: "Select Claude Plan"
+      multiSelect: false
+      Options: [each file path found, plus "No, proceed without a Claude Plan"]
+    IF user selects a file: CLAUDE_PLAN_FILE = selected path
+    IF user declines: CLAUDE_PLAN_FILE = None
+
+IF CLAUDE_PLAN_FILE is not None:
+  CALL Read(CLAUDE_PLAN_FILE)
+  CLAUDE_PLAN_CONTEXT = [content read from file]
+  Display: "✓ Using Claude Plan: {{CLAUDE_PLAN_FILE}}"
+ELSE:
+  Display: "ℹ️ No Claude Plan file detected — proceeding with standard workflow"
+```
+
 ## Step 2: Conversational Requirements Gathering
 
 ### Use the /respec-plan-conversation command to conduct conversational discovery
 
 Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PLAN_NAME) as the initial conversation context:
 
-```bash
-/respec-plan-conversation [arguments from $ARGUMENTS after PLAN_NAME, or "I need help creating a strategic plan for my project"]
+```text
+IF CLAUDE_PLAN_CONTEXT is not None:
+  CONVERSATION_INITIAL_CONTEXT = (
+    "Context from Claude Plan ({{CLAUDE_PLAN_FILE}}): key technology decisions, "
+    "architecture constraints, and rejected alternatives are pre-resolved. "
+    "These decisions are already settled — focus the conversation on project "
+    "goals, requirements, and areas not covered by the Claude Plan. "
+    + [remaining arguments after PLAN_NAME, if any]
+  )
+ELSE:
+  CONVERSATION_INITIAL_CONTEXT = [remaining arguments after PLAN_NAME, or
+    "I need help creating a strategic plan for my project"]
 ```
 
-The plan-conversation command will conduct the three-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
+```bash
+/respec-plan-conversation [CONVERSATION_INITIAL_CONTEXT]
+```
+
+The plan-conversation command will conduct the multi-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
 
 Expected structured format from plan-conversation (markdown document):
 ```markdown
@@ -172,8 +217,13 @@ Expected structured format from plan-conversation (markdown document):
 ### Nice-to-Have Features
 - [Desirable features]
 
+## Technology Context
+
+### Preferred Stack
+[Technology preferences and decisions from discussion]
+
 ## Conversation Summary
-- **Total Stages Completed**: 3
+- **Total Stages Completed**: 4
 - **Key Insights**: [Main discoveries]
 - **Areas of Emphasis**: [Topics focused on]
 - **User Engagement Level**: [High/Medium/Low]
@@ -194,8 +244,13 @@ Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
-4. **Store in variable** as CURRENT_PLAN for next steps
-5. **Store in MCP** using: `{tools.store_plan}`
+4. **If CLAUDE_PLAN_FILE is not None**: Append to technology_requirements field:
+   ```text
+   Claude Plan: `{{CLAUDE_PLAN_FILE}}` (pre-resolved architecture decisions —
+   phase-architect will read this file as hard constraints)
+   ```
+5. **Store in variable** as CURRENT_PLAN for next steps
+6. **Store in MCP** using: `{tools.store_plan}`
 
 ## Step 3.2: Write Plan to External File/Platform
 

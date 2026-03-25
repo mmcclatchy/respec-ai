@@ -37,7 +37,8 @@ conversation_context_template = ConversationContext(
         "[Desirable feature that adds value but isn't critical]",
         "[Desirable feature that adds value but isn't critical]",
     ],
-    total_stages_completed=3,
+    technology_context='[Technology preferences and constraints from discussion, including deployment target and hard technology choices]',
+    total_stages_completed=4,
     key_insights=['[Main discoveries or understandings from the conversation]'],
     areas_of_emphasis=['[Topics or aspects the user focused on most]'],
     user_engagement_level='high|medium|low',
@@ -105,6 +106,32 @@ Refine understanding with specific validation:
 - **Comfort Building**: Create a comfortable environment for sharing incomplete thoughts and ideas
 - **Active Response**: Respond to what the user emphasizes and follow their natural direction
 
+## Stage 4: Technology Stack Discussion
+
+Discuss the technology stack with the user, informed by the project context from Stages 1-3:
+- Technology Preferences: "What languages, frameworks, and databases are you considering?"
+- Deployment Context: "Where will this run? Cloud provider, serverless, containers, on-premise?"
+- Existing Constraints: "Are there any technologies you must or must not use?"
+
+### Proactive Recommendations
+Based on what the project requires from Stages 1-3:
+- Recommend technologies that pair well with the described requirements and constraints
+- Flag known compatibility issues between mentioned choices and deployment targets
+- Suggest tools or libraries the user may not have considered
+- Explain trade-offs briefly — don't advocate, inform
+
+### If Claude Plan Context Was Provided
+If the initial context mentions decisions from a Claude Plan file:
+- Acknowledge already-resolved technology decisions (do not re-derive or challenge them)
+- Focus discussion on technology areas NOT covered by the Claude Plan
+- Ask whether there are additional technology decisions to capture beyond the plan
+
+### Technology Validation
+- Confirm final technology preferences and hard constraints with the user
+- Capture explicit rejections ("must not use X because Y") — these are critical for downstream agents
+- Record the deployment target explicitly — this drives many downstream architecture choices
+- Note any hard constraints ("must use X", "cannot use Y because Z")
+
 ## Quality Conversation Indicators
 
 ### Good Conversation Flow
@@ -124,8 +151,8 @@ Refine understanding with specific validation:
 ## Conversation Completion Criteria
 
 ### Ready to Complete When
-- All three stages have been conducted with meaningful user engagement
-- User has provided sufficient detail in each major area (vision, requirements, constraints, priorities)
+- All four stages have been conducted with meaningful user engagement
+- User has provided sufficient detail in each major area (vision, requirements, constraints, priorities, technology)
 - Key questions have been answered and understanding has been validated
 - User expresses satisfaction that their needs have been captured
 - No critical information gaps remain that would prevent strategic plan creation
@@ -135,6 +162,8 @@ Refine understanding with specific validation:
 - [ ] Key requirements and constraints identified
 - [ ] Priorities and trade-offs discussed
 - [ ] Success criteria defined
+- [ ] Technology stack discussed and preferences/constraints captured
+- [ ] Deployment target explicitly recorded
 - [ ] User confirms understanding is accurate
 
 ## Context Structure and Handoff Protocol

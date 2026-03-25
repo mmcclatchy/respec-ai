@@ -23,6 +23,7 @@ class Phase(MCPModel):
         'development_plan': ('Implementation', 'Development Plan'),
         'testing_strategy': ('Implementation', 'Testing Strategy'),
         'task_breakdown': ('Implementation', 'Task Breakdown'),
+        'implementation_plan_references': ('Additional Details', 'Implementation Plan References'),
         'research_requirements': ('Additional Details', 'Research Requirements'),
         'success_criteria': ('Additional Details', 'Success Criteria'),
         'integration_context': ('Additional Details', 'Integration Context'),
@@ -49,6 +50,7 @@ class Phase(MCPModel):
     development_plan: str | None = None
     testing_strategy: str | None = None
     task_breakdown: str | None = None
+    implementation_plan_references: str | None = None
     research_requirements: str | None = None
     success_criteria: str | None = None
     integration_context: str | None = None
@@ -97,8 +99,15 @@ class Phase(MCPModel):
             if self.task_breakdown:
                 sections.append(f'\n### Task Breakdown\n{self.task_breakdown}')
 
-        if self.research_requirements or self.success_criteria or self.integration_context:
+        if (
+            self.implementation_plan_references
+            or self.research_requirements
+            or self.success_criteria
+            or self.integration_context
+        ):
             sections.append('\n## Additional Details')
+            if self.implementation_plan_references:
+                sections.append(f'\n### Implementation Plan References\n{self.implementation_plan_references}')
             if self.research_requirements:
                 sections.append(f'\n### Research Requirements\n{self.research_requirements}')
             if self.success_criteria:

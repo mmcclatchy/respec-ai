@@ -18,6 +18,11 @@ technical_phase_template = Phase(
     non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
     development_plan='[Implementation phases - no time estimates, no file names]',
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
+    implementation_plan_references=(
+        'Pre-resolved architecture decisions that MUST be honored.\n\n'
+        '- Constraint: `~/.claude/plans/<plan-name>.md` § "Section Name"\n'
+        '  (brief rationale for why this constraint exists)'
+    ),
     research_requirements=(
         '**Existing Documentation** (ONLY use actual paths from KB query or Glob):\n'
         '- Read: `.best-practices/topic-name-codegen.md`\n'
@@ -141,6 +146,53 @@ CALL mcp__respec-ai__get_document(
 )
 → Verify: Phase markdown received
 → Expected error: "not found" if new phase (iteration=0)
+→ Store: CURRENT_PHASE_MARKDOWN
+
+STEP 1.5: Read Implementation Plan Constraints
+Scan for pre-resolved architecture decisions that MUST be honored as hard constraints.
+
+SOURCE 1 — Strategic Plan Reference (uses STRATEGIC_PLAN_MARKDOWN from STEP 0.5):
+  Search STRATEGIC_PLAN_MARKDOWN for Claude Plan file paths.
+  Look in the Technology Requirements and Project Constraints sections for lines like:
+    "Claude Plan: `<file-path>`" or any path containing ~/.claude/plans/ ending in .md
+  For each path found:
+    CALL Read(file_path)
+    IF Read succeeds: Append file content to IMPL_PLAN_CONSTRAINTS list
+    ELSE: Note warning — "Could not read {{file_path}} from strategic plan"
+
+SOURCE 2 — Formal section in current phase (primary):
+  Search CURRENT_PHASE_MARKDOWN for "### Implementation Plan References"
+  For each "- Constraint: `<file-path>`" line found:
+    PARSE file_path from backtick-quoted value after "Constraint:"
+    IF "§" appears in the line:
+      PARSE section_name from the quoted string after §
+      CALL Read(file_path)
+      IF Read succeeds: Extract only the content under section_name heading, append to IMPL_PLAN_CONSTRAINTS
+    ELSE:
+      CALL Read(file_path)
+      IF Read succeeds: Append full file content to IMPL_PLAN_CONSTRAINTS
+    IF Read fails: Note warning — "Could not read {{file_path}}"
+
+SOURCE 3 — Ad-hoc directives (backward compatibility):
+  Search CURRENT_PHASE_MARKDOWN for lines containing "→ before implementing, read"
+  For each directive found:
+    PARSE file_path from backtick-quoted value after "read"
+    IF file_path not already read in SOURCE 1 or SOURCE 2:
+      CALL Read(file_path)
+      IF Read succeeds: Append to IMPL_PLAN_CONSTRAINTS
+
+IF IMPL_PLAN_CONSTRAINTS is non-empty:
+  → In STEP 3, treat IMPL_PLAN_CONSTRAINTS as HARD CONSTRAINTS — not guidance.
+  → Do NOT re-derive decisions documented here.
+  → Do NOT suggest alternatives to technologies explicitly rejected in IMPL_PLAN_CONSTRAINTS.
+
+  IF CURRENT_PHASE_MARKDOWN does NOT contain "### Implementation Plan References":
+    → In STEP 3 output, auto-create "### Implementation Plan References" under "## Additional Details"
+    → List each file path read as a "- Constraint: `{{file_path}}`" entry
+    → This ensures /respec-task can extract the paths downstream
+
+  IF CURRENT_PHASE_MARKDOWN DOES contain "### Implementation Plan References":
+    → In STEP 3 output, preserve this section VERBATIM — do not modify, reword, or drop any entries
 
 STEP 2: Incorporate Feedback (if refinement iteration)
 IF PREVIOUS_FEEDBACK exists (from STEP 0):
@@ -521,6 +573,10 @@ type Resource {{
 - [ ] Scope with boundaries and constraints defined
 - [ ] Architecture components and interactions well-defined
 - [ ] Testing strategy comprehensive and actionable
+
+**Implementation Plan References** (Preserve if present):
+- [ ] If phase has "### Implementation Plan References": copied VERBATIM into output
+- [ ] If no section but Claude Plan found in strategic plan: auto-created in output
 
 **Optional Core Sections** (Include if relevant):
 - [ ] Dependencies identified with versions

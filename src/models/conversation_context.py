@@ -21,7 +21,8 @@ class ConversationContext(MCPModel):
     business_constraints: list[str] = Field(default_factory=list)
     must_have_features: list[str] = Field(default_factory=list)
     nice_to_have_features: list[str] = Field(default_factory=list)
-    total_stages_completed: int = 3
+    technology_context: str = ''
+    total_stages_completed: int = 4
     key_insights: list[str] = Field(default_factory=list)
     areas_of_emphasis: list[str] = Field(default_factory=list)
     user_engagement_level: str = 'medium'
@@ -153,6 +154,11 @@ class ConversationContext(MCPModel):
 
 ### Nice-to-Have Features
 {nice_to_have_md}
+
+## Technology Context
+
+### Preferred Stack
+{self.technology_context if self.technology_context else '[Technology preferences and decisions from discussion]'}
 
 ## Conversation Summary
 

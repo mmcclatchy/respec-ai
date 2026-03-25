@@ -46,6 +46,11 @@ Unit tests, integration tests, security testing
 
 ## Additional Details
 
+### Implementation Plan References
+Pre-resolved architecture decisions.
+
+- Constraint: `~/.claude/plans/test-plan.md` § "Architecture Decision Log"
+
 ### Research Requirements
 OAuth integration patterns, JWT best practices
 
@@ -144,6 +149,8 @@ class TestPhaseParsing:
         assert phase.success_criteria == '100% test coverage, security audit passed'
         assert phase.integration_context == 'Connects to user service, notification service'
         assert phase.phase_status == PhaseStatus.IN_DEVELOPMENT
+        assert phase.implementation_plan_references is not None
+        assert '~/.claude/plans/test-plan.md' in phase.implementation_plan_references
 
     def test_parse_markdown_handles_missing_sections(self, minimal_phase_markdown: str) -> None:
         phase = Phase.parse_markdown(minimal_phase_markdown)
@@ -234,3 +241,68 @@ class TestPhaseMarkdownBuilding:
         assert original_phase.success_criteria == reparsed_phase.success_criteria
         assert original_phase.integration_context == reparsed_phase.integration_context
         assert original_phase.phase_status == reparsed_phase.phase_status
+
+    def test_parse_markdown_extracts_implementation_plan_references(self) -> None:
+        markdown = """# Phase: test-phase
+
+## Overview
+
+### Objectives
+Test objectives
+
+## Additional Details
+
+### Implementation Plan References
+Pre-resolved architecture decisions.
+
+- Constraint: `~/.claude/plans/my-plan.md` § "Technology Decisions"
+  (fpdf2 chosen over WeasyPrint due to DigitalOcean Functions constraints)
+"""
+        phase = Phase.parse_markdown(markdown)
+
+        assert phase.implementation_plan_references is not None
+        assert '~/.claude/plans/my-plan.md' in phase.implementation_plan_references
+        assert 'Technology Decisions' in phase.implementation_plan_references
+
+    def test_build_markdown_includes_implementation_plan_references(self) -> None:
+        phase = Phase(
+            phase_name='test-phase',
+            objectives='Test objectives',
+            scope='Test scope',
+            dependencies='None',
+            deliverables='Test deliverables',
+            implementation_plan_references='- Constraint: `~/.claude/plans/test.md`',
+        )
+
+        markdown = phase.build_markdown()
+
+        assert '### Implementation Plan References' in markdown
+        assert '~/.claude/plans/test.md' in markdown
+        impl_pos = markdown.index('### Implementation Plan References')
+        research_pos = (
+            markdown.index('### Research Requirements') if '### Research Requirements' in markdown else len(markdown)
+        )
+        assert impl_pos < research_pos
+
+    def test_build_markdown_omits_implementation_plan_references_when_none(self) -> None:
+        phase = Phase(
+            phase_name='test-phase',
+            objectives='Test objectives',
+            scope='Test scope',
+            dependencies='None',
+            deliverables='Test deliverables',
+        )
+
+        markdown = phase.build_markdown()
+
+        assert '### Implementation Plan References' not in markdown
+
+    def test_round_trip_with_implementation_plan_references(self, complete_phase_markdown: str) -> None:
+        phase = Phase.parse_markdown(complete_phase_markdown)
+
+        rebuilt = phase.build_markdown()
+
+        reparsed = Phase.parse_markdown(rebuilt)
+
+        assert reparsed.implementation_plan_references == phase.implementation_plan_references
+        assert reparsed.research_requirements == phase.research_requirements

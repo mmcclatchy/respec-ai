@@ -18,6 +18,11 @@ technical_phase_template = Phase(
     non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
     development_plan='[Implementation phases - no time estimates, no file names]',
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
+    implementation_plan_references=(
+        'Pre-resolved architecture decisions that MUST be honored.\n\n'
+        '- Constraint: `~/.claude/plans/<plan-name>.md` § "Section Name"\n'
+        '  (brief rationale for why this constraint exists)'
+    ),
     research_requirements=(
         '**Existing Documentation**:\n'
         '- Read: [paths to .best-practices/ docs]\n\n'
