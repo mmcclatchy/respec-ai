@@ -18,7 +18,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
 
 
-def _update_docker(new_version: str) -> bool:
+def _update_docker(old_version: str, new_version: str) -> bool:
     try:
         docker_manager = DockerManager()
     except DockerManagerError as e:
@@ -52,7 +52,8 @@ def _update_docker(new_version: str) -> bool:
                 print_info('Start manually when image is ready: respec-ai docker start')
         return False
 
-    docker_manager.cleanup_old_versions(version=new_version)
+    if old_version != new_version:
+        docker_manager.cleanup_old_versions(version=new_version)
 
     print_info('Starting container...')
     try:
@@ -91,7 +92,7 @@ def run(args: Namespace) -> int:
             print_success(f'Updated CLI: {current_version} → {new_version}')
 
         if not args.skip_docker:
-            _update_docker(new_version)
+            _update_docker(old_version=current_version, new_version=new_version)
 
         print_success('Update complete!')
         if new_version != current_version:

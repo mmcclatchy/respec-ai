@@ -127,6 +127,11 @@ class DockerManager:
             raise DockerManagerError(f'Image {image_tag} not found. Run: respec-ai docker pull')
 
         try:
+            try:
+                self.client.networks.get(self.DB_NETWORK_NAME)
+            except NotFound:
+                self.client.networks.create(self.DB_NETWORK_NAME, driver='bridge')
+
             print(f'Creating container {container_name}...')
             container: Container = self.client.containers.run(  # type: ignore
                 image=image_tag,
