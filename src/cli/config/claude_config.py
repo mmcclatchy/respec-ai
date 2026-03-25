@@ -1,5 +1,4 @@
 import json
-import subprocess
 from pathlib import Path
 
 
@@ -7,6 +6,10 @@ CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
 CLAUDE_SETTINGS_PATH = Path.home() / '.claude' / 'settings.json'
 CLAUDE_SETTINGS_LOCAL_PATH = Path.home() / '.claude' / 'settings.local.json'
 MCP_SERVER_NAME = 'respec-ai'
+EXPECTED_MCP_CONFIG = {
+    'command': 'respec-ai',
+    'args': ['mcp-server'],
+}
 
 
 class ClaudeConfigError(Exception):
@@ -124,18 +127,20 @@ def save_claude_config(
 
 
 def is_mcp_server_registered(config_path: Path = CLAUDE_CONFIG_PATH) -> bool:
-    """Check if respec-ai MCP server is registered.
-
-    Args:
-        config_path: Path to config file (defaults to ~/.claude/config.json)
-
-    Returns:
-        True if registered, False otherwise
-    """
     try:
         config = load_claude_config(config_path)
-        mcp_servers = config.get('mcpServers', {})
-        return MCP_SERVER_NAME in mcp_servers
+        server_config = config.get('mcpServers', {}).get(MCP_SERVER_NAME)
+        if server_config is None:
+            return False
+        if server_config.get('env', {}).get('STATE_MANAGER') == 'memory':
+            return False
+        if 'cwd' in server_config:
+            return False
+        if server_config.get('command') != EXPECTED_MCP_CONFIG['command']:
+            return False
+        if server_config.get('args') != EXPECTED_MCP_CONFIG['args']:
+            return False
+        return True
     except ClaudeConfigError:
         return False
 
@@ -144,129 +149,55 @@ def register_mcp_server(
     force: bool = False,
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
-    """Register respec-ai MCP server in Claude Code config using Claude CLI.
-
-    Args:
-        force: Overwrite existing registration
-        config_path: Path to config file (defaults to ~/.claude/config.json)
-
-    Returns:
-        True if registered (new or updated), False if already registered
-
-    Raises:
-        ClaudeConfigError: If Claude Code not installed or registration fails
-    """
-    # Check if already registered
     if is_mcp_server_registered(config_path) and not force:
         return False
 
-    # Remove existing registration if present (for force re-registration)
-    if force:
-        subprocess.run(
-            ['claude', 'mcp', 'remove', MCP_SERVER_NAME],
-            capture_output=True,
-            check=False,
-        )
-
-    # Register using Claude CLI with clean command
-    try:
-        subprocess.run(
-            [
-                'claude',
-                'mcp',
-                'add',
-                '-s',
-                'user',
-                '-t',
-                'stdio',
-                MCP_SERVER_NAME,
-                'respec-ai',
-                'mcp-server',
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return True
-    except subprocess.CalledProcessError as e:
-        raise ClaudeConfigError(f'Failed to register MCP server: {e.stderr}') from e
-    except FileNotFoundError as e:
-        raise ClaudeConfigError(
-            'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
-        ) from e
+    config = load_claude_config(config_path)
+    config.setdefault('mcpServers', {})[MCP_SERVER_NAME] = EXPECTED_MCP_CONFIG.copy()
+    save_claude_config(config, config_path)
+    return True
 
 
 def unregister_mcp_server(
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
-    """Remove respec-ai MCP server from Claude Code config using Claude CLI.
+    config = load_claude_config(config_path)
+    mcp_servers = config.get('mcpServers', {})
 
-    Args:
-        config_path: Path to config file (defaults to ~/.claude/config.json)
-
-    Returns:
-        True if removed, False if not registered
-
-    Raises:
-        ClaudeConfigError: If removal fails
-    """
-    # Check if registered
-    if not is_mcp_server_registered(config_path):
+    if MCP_SERVER_NAME not in mcp_servers:
         return False
 
-    # Remove using Claude CLI
-    try:
-        subprocess.run(
-            ['claude', 'mcp', 'remove', MCP_SERVER_NAME],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return True
-    except subprocess.CalledProcessError as e:
-        raise ClaudeConfigError(f'Failed to unregister MCP server: {e.stderr}') from e
-    except FileNotFoundError as e:
-        raise ClaudeConfigError(
-            'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
-        ) from e
+    del mcp_servers[MCP_SERVER_NAME]
+    save_claude_config(config, config_path)
+    return True
 
 
 def unregister_all_respec_servers(config_path: Path = CLAUDE_CONFIG_PATH) -> int:
     """Remove all respec-ai MCP server entries (handles old and new names).
 
-    This function removes all variations of respec-ai MCP server names that may
-    exist from different versions, including 'respec-ai', 'respec-ai', and 'respec_ai'.
+    Removes all variations of respec-ai MCP server names that may exist from
+    different versions, including 'respec-ai', 'respec-ai', and 'respec_ai'.
 
     Args:
         config_path: Path to config file (defaults to ~/.claude/config.json)
 
     Returns:
-        Number of MCP server entries successfully removed
+        Number of MCP server entries removed
 
     Raises:
-        ClaudeConfigError: If Claude CLI is not available
+        ClaudeConfigError: If Claude Code is not installed or save fails
     """
+    config = load_claude_config(config_path)
+    mcp_servers = config.get('mcpServers', {})
+
     removed_count = 0
-    server_names = ['respec-ai', 'respec-ai', 'respec_ai']
+    for name in ['respec-ai', 'respec-ai', 'respec_ai']:
+        if name in mcp_servers:
+            del mcp_servers[name]
+            removed_count += 1
 
-    for name in server_names:
-        try:
-            result = subprocess.run(
-                ['claude', 'mcp', 'remove', name],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            if result.returncode == 0:
-                removed_count += 1
-
-        except FileNotFoundError as e:
-            raise ClaudeConfigError(
-                'Claude Code CLI not found. Ensure Claude Code is installed and the "claude" command is in PATH.'
-            ) from e
-        except Exception:
-            continue
+    if removed_count > 0:
+        save_claude_config(config, config_path)
 
     return removed_count
 
