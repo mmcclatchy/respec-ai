@@ -224,7 +224,7 @@ class TestProductionMCPServer:
     def test_concurrent_tool_access_safety(self) -> None:
         server = create_mcp_server()
 
-        async def list_tools_multiple() -> list[list[Any]]:
+        async def list_tools_multiple() -> list[Any]:
             tasks = [server.list_tools() for _ in range(5)]
             results = await asyncio.gather(*tasks)
             return results

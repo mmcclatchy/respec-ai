@@ -20,10 +20,10 @@ class TestLanguageTooling:
 
     def test_all_fields_required(self) -> None:
         with pytest.raises(ValidationError):
-            LanguageTooling(
+            LanguageTooling(  # type: ignore[call-arg]  # ty: ignore[missing-argument]
                 test_runner='pytest',
                 test_command='pytest',
-            )  # type: ignore[call-arg]
+            )
 
     def test_immutable(self) -> None:
         tooling = LanguageTooling(

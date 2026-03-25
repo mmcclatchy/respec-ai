@@ -21,6 +21,12 @@ class DockerManager:
     REGISTRIES = [
         'ghcr.io/mmcclatchy/respec-ai-server',
     ]
+    CONTAINER_ENV = {
+        'MCP_STATE_MANAGER': 'database',
+        'DATABASE_URL': 'postgresql://respec:respec_prod@respec-ai-db-prod:5432/respec_prod',
+        'MCP_LOG_LEVEL': 'INFO',
+        'MCP_DEBUG': 'false',
+    }
 
     def __init__(self) -> None:
         try:
@@ -126,8 +132,10 @@ class DockerManager:
                 image=image_tag,
                 name=container_name,
                 detach=detach,
-                remove=False,  # Don't auto-remove on stop
+                remove=False,
                 restart_policy={'Name': 'unless-stopped'},
+                environment=self.CONTAINER_ENV,
+                network=self.DB_NETWORK_NAME,
             )
             print(f'✓ Container {container_name} started')
             return container
