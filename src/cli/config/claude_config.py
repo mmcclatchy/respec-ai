@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 
@@ -6,9 +7,11 @@ CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
 CLAUDE_SETTINGS_PATH = Path.home() / '.claude' / 'settings.json'
 CLAUDE_SETTINGS_LOCAL_PATH = Path.home() / '.claude' / 'settings.local.json'
 MCP_SERVER_NAME = 'respec-ai'
+MCP_COMMAND: str = 'respec-ai'
+MCP_ARGS: list[str] = ['mcp-server']
 EXPECTED_MCP_CONFIG = {
-    'command': 'respec-ai',
-    'args': ['mcp-server'],
+    'command': MCP_COMMAND,
+    'args': MCP_ARGS,
 }
 
 
@@ -145,12 +148,27 @@ def is_mcp_server_registered(config_path: Path = CLAUDE_CONFIG_PATH) -> bool:
         return False
 
 
+def _claude_mcp_remove(name: str) -> None:
+    subprocess.run(['claude', 'mcp', 'remove', name], capture_output=True)
+
+
+def _claude_mcp_add_user(name: str, command: str, args: list[str]) -> bool:
+    result = subprocess.run(
+        ['claude', 'mcp', 'add', '-s', 'user', '-t', 'stdio', name, '--', command, *args],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
 def register_mcp_server(
     force: bool = False,
     config_path: Path = CLAUDE_CONFIG_PATH,
 ) -> bool:
     if is_mcp_server_registered(config_path) and not force:
         return False
+
+    _claude_mcp_remove(MCP_SERVER_NAME)
+    _claude_mcp_add_user(MCP_SERVER_NAME, MCP_COMMAND, MCP_ARGS)
 
     config = load_claude_config(config_path)
     config.setdefault('mcpServers', {})[MCP_SERVER_NAME] = EXPECTED_MCP_CONFIG.copy()
@@ -167,6 +185,7 @@ def unregister_mcp_server(
     if MCP_SERVER_NAME not in mcp_servers:
         return False
 
+    _claude_mcp_remove(MCP_SERVER_NAME)
     del mcp_servers[MCP_SERVER_NAME]
     save_claude_config(config, config_path)
     return True

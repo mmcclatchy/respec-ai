@@ -1,8 +1,10 @@
 import json
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
+from pytest_mock import MockerFixture
 
 from src.cli.config.claude_config import (
     EXPECTED_MCP_CONFIG,
@@ -143,7 +145,8 @@ class TestIsMcpServerRegistered:
 
 
 class TestRegisterMcpServer:
-    def test_new_registration(self, tmp_path: Path) -> None:
+    def test_new_registration(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         config_file.write_text('{}', encoding='utf-8')
 
@@ -161,7 +164,8 @@ class TestRegisterMcpServer:
         result = register_mcp_server(force=False, config_path=config_file)
         assert result is False
 
-    def test_force_reregister(self, tmp_path: Path) -> None:
+    def test_force_reregister(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {MCP_SERVER_NAME: {'command': 'old'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
@@ -172,7 +176,8 @@ class TestRegisterMcpServer:
         config = json.loads(config_file.read_text(encoding='utf-8'))
         assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
 
-    def test_auto_fixes_misconfigured_entry(self, tmp_path: Path) -> None:
+    def test_auto_fixes_misconfigured_entry(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         bad_config = {
             'mcpServers': {
@@ -195,7 +200,8 @@ class TestRegisterMcpServer:
         assert 'cwd' not in server
         assert 'env' not in server
 
-    def test_preserves_other_mcp_servers(self, tmp_path: Path) -> None:
+    def test_preserves_other_mcp_servers(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {'other-server': {'command': 'other'}}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
@@ -206,7 +212,8 @@ class TestRegisterMcpServer:
         assert config['mcpServers']['other-server'] == {'command': 'other'}
         assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
 
-    def test_config_file_does_not_exist(self, tmp_path: Path) -> None:
+    def test_config_file_does_not_exist(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
 
         result = register_mcp_server(force=False, config_path=config_file)
@@ -216,9 +223,21 @@ class TestRegisterMcpServer:
         config = json.loads(config_file.read_text(encoding='utf-8'))
         assert config['mcpServers'][MCP_SERVER_NAME] == EXPECTED_MCP_CONFIG
 
+    def test_calls_claude_mcp_add(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mock_run = mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
+        config_file = tmp_path / 'config.json'
+        config_file.write_text('{}', encoding='utf-8')
+
+        register_mcp_server(force=False, config_path=config_file)
+
+        calls = [call.args[0] for call in mock_run.call_args_list]
+        assert any('remove' in cmd for cmd in calls)
+        assert any('add' in cmd for cmd in calls)
+
 
 class TestUnregisterMcpServer:
-    def test_successful_unregister(self, tmp_path: Path) -> None:
+    def test_successful_unregister(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         config_data = {'mcpServers': {MCP_SERVER_NAME: EXPECTED_MCP_CONFIG.copy()}}
         config_file.write_text(json.dumps(config_data), encoding='utf-8')
@@ -237,7 +256,8 @@ class TestUnregisterMcpServer:
         result = unregister_mcp_server(config_file)
         assert result is False
 
-    def test_removes_misconfigured_entry(self, tmp_path: Path) -> None:
+    def test_removes_misconfigured_entry(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         config_data = {
             'mcpServers': {
@@ -256,7 +276,8 @@ class TestUnregisterMcpServer:
         config = json.loads(config_file.read_text(encoding='utf-8'))
         assert MCP_SERVER_NAME not in config['mcpServers']
 
-    def test_preserves_other_servers(self, tmp_path: Path) -> None:
+    def test_preserves_other_servers(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.config.claude_config.subprocess.run', return_value=MagicMock(returncode=0))
         config_file = tmp_path / 'config.json'
         config_data = {
             'mcpServers': {
