@@ -40,7 +40,6 @@ docs/
 Thumbs.db
 
 # Project specific
-scripts/
 .respec/
 .respec-ai/
 .claude/

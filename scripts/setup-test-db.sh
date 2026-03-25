@@ -11,9 +11,9 @@ sleep 5
 echo "Creating respec_test database..."
 docker exec respec-ai-db-dev psql -U respec -d postgres -c "CREATE DATABASE respec_test WITH OWNER = respec;" 2>/dev/null || echo "Database already exists"
 
-# Apply migrations to test database
+# Apply migrations to test database via the migration runner
 echo "Applying migrations to respec_test..."
-docker exec respec-ai-db-dev bash -c 'for f in /docker-entrypoint-initdb.d/*.sql; do [ -e "$f" ] && echo "Applying $(basename $f)..." && psql -U respec -d respec_test -f "$f"; done'
+docker exec respec-ai-dev env DATABASE_URL=postgresql://respec:respec@db:5432/respec_test uv run python scripts/migrate.py
 
 echo ""
 echo "Test database ready!"
