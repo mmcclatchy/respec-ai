@@ -442,6 +442,118 @@ class TestPhaseOperations(TestInMemoryStateManager):
             assert name in remaining_names
 
 
+class TestUpdatePhaseFrozenFields(TestInMemoryStateManager):
+    @pytest.mark.asyncio
+    async def test_update_phase_preserves_frozen_fields_with_real_content(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
+    ) -> None:
+        plan_name = 'test-project'
+        await state_manager.store_phase(plan_name, sample_phase)
+
+        updated = Phase(
+            phase_name=sample_phase.phase_name,
+            objectives='CHANGED objectives',
+            scope='CHANGED scope',
+            dependencies='CHANGED dependencies',
+            deliverables='CHANGED deliverables',
+            architecture='New architecture content',
+            phase_status=PhaseStatus.DRAFT,
+        )
+        await state_manager.update_phase(plan_name, sample_phase.phase_name, updated)
+
+        retrieved = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+        assert retrieved.objectives == 'Test objectives'
+        assert retrieved.scope == 'Test scope'
+        assert retrieved.dependencies == 'Test dependencies'
+        assert retrieved.deliverables == 'Test deliverables'
+        assert retrieved.architecture == 'New architecture content'
+
+    @pytest.mark.asyncio
+    async def test_update_phase_allows_populating_placeholder_fields(self, state_manager: InMemoryStateManager) -> None:
+        plan_name = 'test-project'
+        placeholder_phase = Phase(phase_name='placeholder-phase', phase_status=PhaseStatus.DRAFT)
+        await state_manager.store_phase(plan_name, placeholder_phase)
+
+        populated = Phase(
+            phase_name='placeholder-phase',
+            objectives='Real objectives from architect',
+            scope='Real scope from architect',
+            dependencies='Real dependencies from architect',
+            deliverables='Real deliverables from architect',
+            architecture='Architecture content',
+            phase_status=PhaseStatus.DRAFT,
+        )
+        await state_manager.update_phase(plan_name, 'placeholder-phase', populated)
+
+        retrieved = await state_manager.get_phase(plan_name, 'placeholder-phase')
+        assert retrieved.objectives == 'Real objectives from architect'
+        assert retrieved.scope == 'Real scope from architect'
+        assert retrieved.dependencies == 'Real dependencies from architect'
+        assert retrieved.deliverables == 'Real deliverables from architect'
+
+    @pytest.mark.asyncio
+    async def test_update_phase_handles_mixed_placeholder_and_real_content(
+        self, state_manager: InMemoryStateManager
+    ) -> None:
+        plan_name = 'test-project'
+        partial_phase = Phase(
+            phase_name='partial-phase',
+            objectives='Real objectives from roadmap',
+            phase_status=PhaseStatus.DRAFT,
+        )
+        await state_manager.store_phase(plan_name, partial_phase)
+
+        updated = Phase(
+            phase_name='partial-phase',
+            objectives='CHANGED objectives',
+            scope='Real scope from architect',
+            dependencies='Real dependencies from architect',
+            deliverables='Real deliverables from architect',
+            phase_status=PhaseStatus.DRAFT,
+        )
+        await state_manager.update_phase(plan_name, 'partial-phase', updated)
+
+        retrieved = await state_manager.get_phase(plan_name, 'partial-phase')
+        assert retrieved.objectives == 'Real objectives from roadmap'
+        assert retrieved.scope == 'Real scope from architect'
+        assert retrieved.dependencies == 'Real dependencies from architect'
+        assert retrieved.deliverables == 'Real deliverables from architect'
+
+    @pytest.mark.asyncio
+    async def test_update_phase_freezes_newly_populated_fields_on_second_iteration(
+        self, state_manager: InMemoryStateManager
+    ) -> None:
+        plan_name = 'test-project'
+        placeholder_phase = Phase(phase_name='evolving-phase', phase_status=PhaseStatus.DRAFT)
+        await state_manager.store_phase(plan_name, placeholder_phase)
+
+        first_update = Phase(
+            phase_name='evolving-phase',
+            objectives='Objectives set in iteration 1',
+            scope='Scope set in iteration 1',
+            dependencies='Dependencies set in iteration 1',
+            deliverables='Deliverables set in iteration 1',
+            phase_status=PhaseStatus.DRAFT,
+        )
+        await state_manager.update_phase(plan_name, 'evolving-phase', first_update)
+
+        second_update = Phase(
+            phase_name='evolving-phase',
+            objectives='Trying to change in iteration 2',
+            scope='Trying to change in iteration 2',
+            dependencies='Trying to change in iteration 2',
+            deliverables='Trying to change in iteration 2',
+            architecture='Refined architecture',
+            phase_status=PhaseStatus.DRAFT,
+        )
+        await state_manager.update_phase(plan_name, 'evolving-phase', second_update)
+
+        retrieved = await state_manager.get_phase(plan_name, 'evolving-phase')
+        assert retrieved.objectives == 'Objectives set in iteration 1'
+        assert retrieved.scope == 'Scope set in iteration 1'
+        assert retrieved.architecture == 'Refined architecture'
+
+
 class TestLoopOperations(TestInMemoryStateManager):
     @pytest.mark.asyncio
     async def test_add_loop_stores_loop_state(

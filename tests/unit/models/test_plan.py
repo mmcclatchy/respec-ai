@@ -335,3 +335,88 @@ class TestPlanMarkdownBuilding:
 
         # Should be identical
         assert original_markdown == rebuilt_markdown
+
+
+class TestPlanAdditionalSections:
+    def test_parse_markdown_captures_additional_sections(self) -> None:
+        markdown = """# Plan: Test Plan
+
+## Executive Summary
+
+### Vision
+Test vision
+
+### Mission
+Test mission
+
+### Timeline
+Test timeline
+
+### Budget
+Test budget
+
+## Security and Secrets Management
+
+All secrets stored in DO Functions encrypted env vars.
+Rotation cadence: quarterly.
+
+## Dependency Lifecycle Management
+
+Uses uv lock. Monthly audits. Minor version pinning.
+
+## Metadata
+
+### Status
+draft
+"""
+        plan = Plan.parse_markdown(markdown)
+
+        assert plan.additional_sections is not None
+        assert 'Security and Secrets Management' in plan.additional_sections
+        assert 'encrypted env vars' in plan.additional_sections['Security and Secrets Management']
+        assert 'Dependency Lifecycle Management' in plan.additional_sections
+        assert 'uv lock' in plan.additional_sections['Dependency Lifecycle Management']
+
+    def test_build_markdown_renders_additional_sections(self) -> None:
+        plan = Plan(
+            plan_name='Test Plan',
+            additional_sections={
+                'Security': 'Secrets in encrypted env vars',
+                'Scalability': 'Single-user architecture by design',
+            },
+        )
+        markdown = plan.build_markdown()
+
+        assert '## Security\nSecrets in encrypted env vars' in markdown
+        assert '## Scalability\nSingle-user architecture by design' in markdown
+        security_pos = markdown.index('## Security')
+        metadata_pos = markdown.index('## Metadata')
+        assert security_pos < metadata_pos
+
+    def test_build_markdown_without_additional_sections(self) -> None:
+        plan = Plan(plan_name='Test Plan')
+        markdown = plan.build_markdown()
+
+        assert '## Metadata' in markdown
+        sections = [line for line in markdown.split('\n') if line.startswith('## ')]
+        assert sections[-1] == '## Metadata'
+
+    def test_round_trip_preserves_additional_sections(self) -> None:
+        plan = Plan(
+            plan_name='Roundtrip Test',
+            additional_sections={
+                'Security and Secrets Management': 'DO Functions encrypted env vars\nRotation: quarterly',
+                'Dependency Lifecycle': 'uv lock, monthly audits',
+            },
+        )
+
+        markdown = plan.build_markdown()
+        parsed = Plan.parse_markdown(markdown)
+
+        assert parsed.additional_sections is not None
+        assert 'Security and Secrets Management' in parsed.additional_sections
+        assert 'Dependency Lifecycle' in parsed.additional_sections
+        assert 'encrypted env vars' in parsed.additional_sections['Security and Secrets Management']
+
+        rebuilt = parsed.build_markdown()
+        assert markdown == rebuilt

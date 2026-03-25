@@ -16,6 +16,13 @@ T = TypeVar('T')
 
 FROZEN_PHASES_FIELDS = ('objectives', 'scope', 'dependencies', 'deliverables')
 
+FROZEN_FIELD_DEFAULTS = {
+    'objectives': 'Objectives not specified',
+    'scope': 'Scope not specified',
+    'dependencies': 'Dependencies not specified',
+    'deliverables': 'Deliverables not specified',
+}
+
 
 def normalize_phase_name(phase_name: str) -> str:
     """

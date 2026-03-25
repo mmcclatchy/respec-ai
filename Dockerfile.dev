@@ -8,6 +8,10 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml .
 COPY README.md .
 COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY scripts/ ./scripts/
+
+RUN chmod +x scripts/entrypoint.sh
 
 # Install all dependencies including dev/test
 RUN uv sync --all-extras
@@ -19,6 +23,5 @@ ENV MCP_LOG_LEVEL=DEBUG
 # Expose debug port (uncommon port to avoid conflicts)
 EXPOSE 9876
 
-# Container runs in daemon mode, waiting for docker exec commands
-# Keeps container alive and maintains DB connections
+ENTRYPOINT ["scripts/entrypoint.sh"]
 CMD ["tail", "-f", "/dev/null"]

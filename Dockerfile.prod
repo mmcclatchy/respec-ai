@@ -8,10 +8,13 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml .
 COPY README.md .
 COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY scripts/ ./scripts/
+
+RUN chmod +x scripts/entrypoint.sh
 
 # Install MCP server dependencies (generates lock file from pyproject.toml)
 RUN uv sync --no-dev
 
-# Container runs in daemon mode, waiting for docker exec commands
-# Keeps container alive and maintains DB connections (for future PostgresStateManager)
+ENTRYPOINT ["scripts/entrypoint.sh"]
 CMD ["tail", "-f", "/dev/null"]
