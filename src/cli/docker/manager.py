@@ -135,7 +135,7 @@ class DockerManager:
         if not container:
             print(f'Starting database container {self.DB_CONTAINER_NAME}...')
             try:
-                self.client.containers.run(  # type: ignore
+                self.client.containers.run(  # ty: ignore[no-matching-overload]
                     image=self.DB_IMAGE,
                     name=self.DB_CONTAINER_NAME,
                     detach=True,
@@ -180,7 +180,7 @@ class DockerManager:
 
         try:
             print(f'Creating container {container_name}...')
-            container: Container = self.client.containers.run(  # type: ignore
+            container: Container = self.client.containers.run(  # ty: ignore[no-matching-overload]
                 image=image_tag,
                 name=container_name,
                 detach=detach,
