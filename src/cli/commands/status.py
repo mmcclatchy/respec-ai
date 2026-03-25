@@ -9,6 +9,7 @@ from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_warning
 from src.cli.ui.formatters import format_file_counts_table, format_project_config_table
+from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -79,6 +80,8 @@ def run(args: Namespace) -> int:
         files_table = format_file_counts_table(
             commands_count=commands_count,
             agents_count=agents_count,
+            expected_commands=EXPECTED_COMMANDS_COUNT,
+            expected_agents=EXPECTED_AGENTS_COUNT,
         )
         console.print(files_table)
 

@@ -63,8 +63,8 @@ def format_validation_table(
 def format_file_counts_table(
     commands_count: int,
     agents_count: int,
-    expected_commands: int = 7,
-    expected_agents: int = 22,
+    expected_commands: int,
+    expected_agents: int,
 ) -> Table:
     """Format file counts as a Rich table.
 
