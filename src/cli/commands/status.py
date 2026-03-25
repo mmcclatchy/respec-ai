@@ -6,6 +6,7 @@ from pathlib import Path
 from src.cli.config.claude_config import is_mcp_server_registered
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import get_package_version
+from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_warning
 from src.cli.ui.formatters import format_file_counts_table, format_project_config_table
 
@@ -44,6 +45,17 @@ def run(args: Namespace) -> int:
         package_version = get_package_version()
 
         mcp_registered = is_mcp_server_registered()
+        mcp_container_name = None
+        mcp_container_running = False
+
+        if mcp_registered:
+            try:
+                container_status = DockerManager().get_container_status()
+                if container_status['exists']:
+                    mcp_container_name = container_status['name']
+                    mcp_container_running = container_status['running']
+            except DockerManagerError:
+                pass
 
         commands_dir = get_commands_dir(project_path)
         agents_dir = get_agents_dir(project_path)
@@ -58,6 +70,8 @@ def run(args: Namespace) -> int:
             version=version,
             package_version=package_version,
             mcp_registered=mcp_registered,
+            mcp_container_name=mcp_container_name,
+            mcp_container_running=mcp_container_running,
         )
         console.print(config_table)
 
