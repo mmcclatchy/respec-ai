@@ -14,7 +14,7 @@ from src.utils.errors import (
 )
 from src.utils.loop_state import LoopState, MCPResponse
 
-from .base import FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
+from .base import FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
 
 
 T = TypeVar('T')
@@ -313,7 +313,11 @@ class InMemoryStateManager(StateManager):
         existing_data = existing_phase.model_dump()
         new_data = updated_phase.model_dump()
 
-        frozen_fields = {field: existing_data[field] for field in FROZEN_PHASES_FIELDS}
+        frozen_fields = {
+            field: existing_data[field]
+            for field in FROZEN_PHASES_FIELDS
+            if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
+        }
 
         final_phase = Phase(
             **{

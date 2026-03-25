@@ -72,10 +72,12 @@ class Plan(MCPModel):
     reporting_structure: str = 'Reporting Structure not specified'
     meeting_schedule: str = 'Meeting Schedule not specified'
     documentation_standards: str = 'Documentation Standards not specified'
+    additional_sections: dict[str, str] | None = None
     plan_status: PlanStatus = PlanStatus.DRAFT
 
     def build_markdown(self) -> str:
-        return f"""{self.TITLE_PATTERN}: {self.plan_name}
+        sections = [
+            f"""{self.TITLE_PATTERN}: {self.plan_name}
 
 ## Executive Summary
 
@@ -180,10 +182,13 @@ class Plan(MCPModel):
 {self.meeting_schedule}
 
 ### Documentation Standards
-{self.documentation_standards}
+{self.documentation_standards}"""
+        ]
 
-## Metadata
+        if self.additional_sections:
+            for section_name, content in self.additional_sections.items():
+                sections.append(f'\n## {section_name}\n{content}')
 
-### Status
-{self.plan_status.value}
-"""
+        sections.append(f'\n## Metadata\n\n### Status\n{self.plan_status.value}')
+
+        return '\n'.join(sections) + '\n'

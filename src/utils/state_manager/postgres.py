@@ -21,7 +21,7 @@ from src.utils.errors import (
 )
 from src.utils.loop_state import LoopState, MCPResponse
 
-from .base import FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
+from .base import FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS, StateManager, logger, normalize_phase_name
 
 if TYPE_CHECKING:
     from asyncpg.pool import PoolConnectionProxy
@@ -406,7 +406,11 @@ class PostgresStateManager(StateManager):
         existing_data = existing_phase.model_dump()
         new_data = updated_phase.model_dump()
 
-        frozen_fields = {field: existing_data[field] for field in FROZEN_PHASES_FIELDS}
+        frozen_fields = {
+            field: existing_data[field]
+            for field in FROZEN_PHASES_FIELDS
+            if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
+        }
 
         final_phase = Phase(
             **{
@@ -541,8 +545,8 @@ class PostgresStateManager(StateManager):
                     identified_risks, mitigation_strategies, contingency_plans,
                     quality_standards, testing_strategy, acceptance_criteria,
                     reporting_structure, meeting_schedule, documentation_standards,
-                    plan_status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+                    plan_status, additional_sections
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
                 ON CONFLICT (plan_name) DO UPDATE SET
                     project_vision = $2, project_mission = $3, project_timeline = $4, project_budget = $5,
                     primary_objectives = $6, success_metrics = $7, key_performance_indicators = $8,
@@ -553,7 +557,7 @@ class PostgresStateManager(StateManager):
                     identified_risks = $22, mitigation_strategies = $23, contingency_plans = $24,
                     quality_standards = $25, testing_strategy = $26, acceptance_criteria = $27,
                     reporting_structure = $28, meeting_schedule = $29, documentation_standards = $30,
-                    plan_status = $31, updated_at = CURRENT_TIMESTAMP
+                    plan_status = $31, additional_sections = $32, updated_at = CURRENT_TIMESTAMP
                 """,
                 plan_name,
                 plan.project_vision,
@@ -586,6 +590,7 @@ class PostgresStateManager(StateManager):
                 plan.meeting_schedule,
                 plan.documentation_standards,
                 plan.plan_status.value,
+                json.dumps(plan.additional_sections) if plan.additional_sections else None,
             )
 
         return plan_name
@@ -596,6 +601,14 @@ class PostgresStateManager(StateManager):
 
             if not row:
                 raise PlanNotFoundError(f'Project plan not found for project: {plan_name}')
+
+            additional_sections_data = None
+            if row['additional_sections']:
+                additional_sections_data = (
+                    json.loads(row['additional_sections'])
+                    if isinstance(row['additional_sections'], str)
+                    else row['additional_sections']
+                )
 
             return Plan(
                 plan_name=row['plan_name'],
@@ -628,6 +641,7 @@ class PostgresStateManager(StateManager):
                 reporting_structure=row['reporting_structure'],
                 meeting_schedule=row['meeting_schedule'],
                 documentation_standards=row['documentation_standards'],
+                additional_sections=additional_sections_data,
                 plan_status=PlanStatus(row['plan_status']),
             )
 
