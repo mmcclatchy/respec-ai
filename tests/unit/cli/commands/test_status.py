@@ -36,9 +36,9 @@ class TestStatusCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        for i in range(5):
+        for i in range(7):
             (commands_dir / f'cmd{i}.md').touch()
-        for i in range(12):
+        for i in range(22):
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
