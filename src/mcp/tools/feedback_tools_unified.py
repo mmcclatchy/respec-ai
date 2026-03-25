@@ -53,6 +53,7 @@ class UnifiedFeedbackTools:
 
         # Add to loop state (updates score, adds to feedback_history)
         loop_state.add_feedback(feedback)
+        await self.state.save_loop(loop_state)
 
         return MCPResponse(
             id=loop_id,

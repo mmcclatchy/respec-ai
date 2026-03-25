@@ -120,6 +120,11 @@ class InMemoryStateManager(StateManager):
         logger.error(f'get_loop failed: Loop not found: {loop_id}')
         raise LoopNotFoundError(f'Loop not found: {loop_id}')
 
+    async def save_loop(self, loop_state: LoopState) -> None:
+        if loop_state.id not in self._active_loops:
+            raise LoopNotFoundError(f'Loop not found: {loop_state.id}')
+        self._active_loops[loop_state.id] = loop_state
+
     async def get_loop_status(self, loop_id: str) -> MCPResponse:
         self._log_state_snapshot('get_loop_status', 'ENTRY')
         logger.debug(f'get_loop_status: loop_id={loop_id}')
@@ -131,24 +136,16 @@ class InMemoryStateManager(StateManager):
 
     async def decide_loop_next_action(self, loop_id: str) -> MCPResponse:
         self._log_state_snapshot('decide_loop_next_action', 'ENTRY')
-        logger.info(f'decide_loop_next_action: loop_id={loop_id} (retrieving score from feedback internally)')
+        logger.info(f'decide_loop_next_action: loop_id={loop_id}')
         loop_state = await self.get_loop(loop_id)
 
-        # Retrieve latest score from stored critic feedback
         if not loop_state.feedback_history:
             raise ValueError(
                 f'No feedback available for loop {loop_id} - cannot make decision without quality assessment'
             )
 
-        latest_feedback = loop_state.feedback_history[-1]
-        current_score = latest_feedback.overall_score
-        logger.info(
-            f'decide_loop_next_action: extracted score {current_score} from latest feedback (iteration {latest_feedback.iteration})'
-        )
-
-        loop_state.add_score(current_score)
         response = loop_state.decide_next_loop_action()
-        logger.info(f'decide_loop_next_action: decision={response.status}, message={response.message[:100]}')
+        logger.info(f'decide_loop_next_action: decision={response.status}')
         self._log_state_snapshot('decide_loop_next_action', 'EXIT')
         return response
 

@@ -145,6 +145,25 @@ class PostgresStateManager(StateManager):
 
         logger.info(f'Added loop {loop.id} to project {plan_name}')
 
+    async def save_loop(self, loop_state: LoopState) -> None:
+        feedback_json = json.dumps([fb.model_dump(mode='json') for fb in loop_state.feedback_history])
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE loop_states SET
+                    status = $1, current_score = $2, score_history = $3,
+                    iteration = $4, feedback_history = $5, updated_at = $6
+                WHERE id = $7
+                """,
+                loop_state.status.value,
+                loop_state.current_score,
+                loop_state.score_history,
+                loop_state.iteration,
+                feedback_json,
+                loop_state.updated_at,
+                loop_state.id,
+            )
+
     async def get_loop(self, loop_id: str) -> LoopState:
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -190,27 +209,13 @@ class PostgresStateManager(StateManager):
     async def decide_loop_next_action(self, loop_id: str) -> MCPResponse:
         loop_state = await self.get_loop(loop_id)
 
-        # Retrieve latest score from stored critic feedback
         if not loop_state.feedback_history:
             raise ValueError(
                 f'No feedback available for loop {loop_id} - cannot make decision without quality assessment'
             )
 
-        latest_feedback = loop_state.feedback_history[-1]
-        current_score = latest_feedback.overall_score
-
-        loop_state.add_score(current_score)
         response = loop_state.decide_next_loop_action()
-
-        async with db_pool.acquire() as conn:
-            await conn.execute(
-                'UPDATE loop_states SET current_score = $1, score_history = $2, status = $3 WHERE id = $4',
-                loop_state.current_score,
-                loop_state.score_history,
-                loop_state.status.value,
-                loop_id,
-            )
-
+        await self.save_loop(loop_state)
         return response
 
     async def list_active_loops(self, plan_name: str) -> list[MCPResponse]:

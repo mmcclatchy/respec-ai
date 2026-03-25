@@ -1,4 +1,5 @@
 #!/bin/bash
 set -e
 uv run python scripts/migrate.py
-exec "$@"
+mkdir -p /app/logs && touch /app/logs/mcp-server.log
+exec tail -F /app/logs/mcp-server.log

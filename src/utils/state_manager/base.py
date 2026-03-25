@@ -62,6 +62,9 @@ class StateManager(ABC):
     async def get_loop(self, loop_id: str) -> LoopState: ...
 
     @abstractmethod
+    async def save_loop(self, loop_state: LoopState) -> None: ...
+
+    @abstractmethod
     async def get_loop_status(self, loop_id: str) -> MCPResponse: ...
 
     @abstractmethod
