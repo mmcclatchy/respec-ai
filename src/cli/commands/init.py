@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastmcp import FastMCP
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 
 from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
@@ -26,11 +26,6 @@ from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project
 
 
 def add_arguments(parser: ArgumentParser) -> None:
-    """Add command-specific arguments.
-
-    Args:
-        parser: Argument parser for this command
-    """
     parser.add_argument(
         '-p',
         '--platform',
@@ -63,14 +58,6 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def run(args: Namespace) -> int:
-    """Initialize respec-ai in current project.
-
-    Args:
-        args: Command arguments
-
-    Returns:
-        Exit code (0 for success, 1 for failure)
-    """
     try:
         project_path = Path.cwd().resolve()
         platform = args.platform
@@ -82,38 +69,14 @@ def run(args: Namespace) -> int:
         existing_config_files = False
 
         if config_path.exists():
-            if not args.force:
-                config_dir = project_path / '.respec-ai' / 'config'
-                if config_dir.exists():
-                    print_info('Stack configuration already exists')
-
-                    if not args.yes:
-                        console.print()
-                        console.print('[bold cyan]Choose an option:[/bold cyan]')
-                        console.print('  [bold]1)[/bold] Keep existing stack configuration (regenerate templates only)')
-                        console.print('  [bold]2)[/bold] Reconfigure stack (full setup)')
-                        console.print()
-
-                        choice = console.input('[bold]Enter choice (1 or 2):[/bold] ').strip()
-
-                        if choice == '1':
-                            existing_config_files = True
-                            print_info('Using existing stack configuration')
-                        elif choice == '2':
-                            shutil.rmtree(config_dir)
-                            print_info('Reconfiguring stack...')
-                        else:
-                            print_error('Invalid choice. Exiting.')
-                            return 1
-                    else:
-                        existing_config_files = True
-                        print_info('Using existing stack configuration (--yes flag)')
-                else:
-                    print_info('Upgrading from previous config format — detecting stack...')
-            else:
+            if args.force:
                 print_warning('Force flag detected - reinitializing project')
-                if respec_ai_dir.exists():
-                    shutil.rmtree(respec_ai_dir)
+                shutil.rmtree(respec_ai_dir)
+            else:
+                result = _handle_existing_config(args, project_path)
+                if result is None:
+                    return 1
+                existing_config_files = result
 
         platform_type = PlatformType(platform)
         orchestrator = PlatformOrchestrator.create_with_default_config()
@@ -147,7 +110,6 @@ def run(args: Namespace) -> int:
 
         if not existing_config_files:
             tooling = apply_stack_to_tooling(tooling, stack)
-
             _display_detected_config(platform, project_name, tooling, stack)
 
             if not args.yes:
@@ -173,11 +135,11 @@ def run(args: Namespace) -> int:
             progress.update(task, description='Creating configuration...')
 
             config_dir = project_path / '.respec-ai' / 'config'
-            if config_dir.exists():
-                print_info('Config files exist at .respec-ai/config/ — not modified')
-            else:
+            if not config_dir.exists():
                 config_files = write_config_files(project_path, stack, tooling or {})
                 files_written.extend(config_files)
+            else:
+                print_info('Config files exist at .respec-ai/config/ — not modified')
 
             config = {
                 'project_name': project_name,
@@ -187,52 +149,14 @@ def run(args: Namespace) -> int:
             }
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
 
-            mcp_registered = False
-            if not args.skip_mcp_registration:
-                progress.update(task, description='Verifying Docker installation...')
-                try:
-                    docker_manager = DockerManager()
-                except DockerManagerError as e:
-                    print_warning(f'Docker check failed: {e}')
-                    print_warning('MCP server requires Docker. Install Docker and try again.')
-                    print_warning('Run respec-ai register-mcp to register manually later')
-                else:
-                    try:
-                        progress.update(task, description='Checking Docker image...')
-                        if not docker_manager.verify_image_exists():
-                            progress.update(task, description='Pulling Docker image...')
-                            try:
-                                docker_manager.pull_image()
-                            except DockerManagerError:
-                                print_warning('Failed to pull image from registry')
-                                print_info('Run: respec-ai docker build')
-                                print_info('Then: respec-ai register-mcp')
-
-                        if docker_manager.verify_image_exists():
-                            progress.update(task, description='Starting MCP container...')
-                            docker_manager.ensure_running()
-
-                            progress.update(task, description='Registering MCP server...')
-                            try:
-                                mcp_registered = register_mcp_server()
-                                add_mcp_permissions()
-                            except (ClaudeConfigError, PackageInfoError) as e:
-                                print_warning(f'MCP registration failed: {e}')
-                                print_warning('Run respec-ai register-mcp to register manually')
-
-                    except DockerManagerError as e:
-                        print_warning(f'Docker setup failed: {e}')
-                        print_warning('Run respec-ai docker pull or respec-ai docker build')
-                        print_warning('Then: respec-ai register-mcp')
+            mcp_registered = _setup_mcp_server(args, progress, task)
 
             progress.update(task, description='Complete!', completed=True)
-
-        files_created = len(files_written) + 1
 
         print_setup_complete(
             project_path=project_path,
             platform=platform,
-            files_created=files_created,
+            files_created=len(files_written) + 1,
             mcp_registered=mcp_registered,
         )
 
@@ -245,6 +169,86 @@ def run(args: Namespace) -> int:
     except Exception as e:
         print_error(f'Initialization failed: {e}')
         return 1
+
+
+def _handle_existing_config(args: Namespace, project_path: Path) -> bool | None:
+    config_dir = project_path / '.respec-ai' / 'config'
+
+    if not config_dir.exists():
+        print_info('Upgrading from previous config format — detecting stack...')
+        return False
+
+    print_info('Stack configuration already exists')
+
+    if args.yes:
+        print_info('Using existing stack configuration (--yes flag)')
+        return True
+
+    console.print()
+    console.print('[bold cyan]Choose an option:[/bold cyan]')
+    console.print('  [bold]1)[/bold] Keep existing stack configuration (regenerate templates only)')
+    console.print('  [bold]2)[/bold] Reconfigure stack (full setup)')
+    console.print()
+
+    choice = console.input('[bold]Enter choice (1 or 2):[/bold] ').strip()
+
+    if choice == '1':
+        print_info('Using existing stack configuration')
+        return True
+    if choice == '2':
+        shutil.rmtree(config_dir)
+        print_info('Reconfiguring stack...')
+        return False
+
+    print_error('Invalid choice. Exiting.')
+    return None
+
+
+def _setup_mcp_server(args: Namespace, progress: Progress, task: TaskID) -> bool:
+    if args.skip_mcp_registration:
+        return False
+
+    progress.update(task, description='Verifying Docker installation...')
+    try:
+        docker_manager = DockerManager()
+    except DockerManagerError as e:
+        print_warning(f'Docker check failed: {e}')
+        print_warning('MCP server requires Docker. Install Docker and try again.')
+        print_warning('Run respec-ai register-mcp to register manually later')
+        return False
+
+    try:
+        progress.update(task, description='Checking Docker image...')
+        if not docker_manager.verify_image_exists():
+            progress.update(task, description='Pulling Docker image...')
+            try:
+                docker_manager.pull_image()
+            except DockerManagerError:
+                print_warning('Failed to pull image from registry')
+                print_info('Run: respec-ai docker build')
+                print_info('Then: respec-ai register-mcp')
+
+        if not docker_manager.verify_image_exists():
+            return False
+
+        progress.update(task, description='Starting MCP container...')
+        docker_manager.ensure_running()
+
+        progress.update(task, description='Registering MCP server...')
+        try:
+            mcp_registered = register_mcp_server()
+            add_mcp_permissions()
+            return mcp_registered
+        except (ClaudeConfigError, PackageInfoError) as e:
+            print_warning(f'MCP registration failed: {e}')
+            print_warning('Run respec-ai register-mcp to register manually')
+            return False
+
+    except DockerManagerError as e:
+        print_warning(f'Docker setup failed: {e}')
+        print_warning('Run respec-ai docker pull or respec-ai docker build')
+        print_warning('Then: respec-ai register-mcp')
+        return False
 
 
 def _display_detected_config(
