@@ -66,6 +66,45 @@ from src.platform.tool_enums import RespecAICommand
 from src.utils.setting_configs import loop_config
 
 
+_COMMAND_TEMPLATES = [
+    RespecAICommand.PLAN,
+    RespecAICommand.PHASE,
+    RespecAICommand.TASK,
+    RespecAICommand.CODE,
+    RespecAICommand.PATCH,
+    RespecAICommand.ROADMAP,
+    RespecAICommand.PLAN_CONVERSATION,
+]
+
+_AGENT_NAMES = [
+    'respec-plan-analyst',
+    'respec-plan-critic',
+    'respec-analyst-critic',
+    'respec-roadmap',
+    'respec-roadmap-critic',
+    'respec-create-phase',
+    'respec-phase-architect',
+    'respec-phase-critic',
+    'respec-task-planner',
+    'respec-task-plan-critic',
+    'respec-patch-planner',
+    'respec-task-critic',
+    'respec-coder',
+    'respec-code-reviewer',
+    'respec-automated-quality-checker',
+    'respec-spec-alignment-reviewer',
+    'respec-frontend-reviewer',
+    'respec-backend-api-reviewer',
+    'respec-database-reviewer',
+    'respec-infrastructure-reviewer',
+    'respec-coding-standards-reviewer',
+    'respec-review-consolidator',
+]
+
+EXPECTED_COMMANDS_COUNT = len(_COMMAND_TEMPLATES)
+EXPECTED_AGENTS_COUNT = len(_AGENT_NAMES)
+
+
 def generate_templates(
     orchestrator: PlatformOrchestrator,
     project_path: Path,
@@ -93,17 +132,7 @@ def generate_templates(
 
     files_written: list[Path] = []
 
-    command_templates = [
-        RespecAICommand.PLAN,
-        RespecAICommand.PHASE,
-        RespecAICommand.TASK,
-        RespecAICommand.CODE,
-        RespecAICommand.PATCH,
-        RespecAICommand.ROADMAP,
-        RespecAICommand.PLAN_CONVERSATION,
-    ]
-
-    for cmd in command_templates:
+    for cmd in _COMMAND_TEMPLATES:
         content = orchestrator.template_coordinator.generate_command_template(cmd, platform_type)
         file_path = commands_dir / f'{cmd.value}.md'
         file_path.write_text(content, encoding='utf-8')
@@ -116,7 +145,7 @@ def generate_templates(
         file_path.write_text(content, encoding='utf-8')
         files_written.append(file_path)
 
-    commands_count = len(command_templates)
+    commands_count = len(_COMMAND_TEMPLATES)
     agents_count = len(agent_generators)
 
     return files_written, commands_count, agents_count
