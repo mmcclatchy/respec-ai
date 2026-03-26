@@ -290,6 +290,12 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 - Each Phase has ONLY 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
 - Do NOT add System Design, Implementation, or Additional Details sections
 
+**DOCUMENT STRUCTURE CONSTRAINTS — Violating these causes silent data loss**:
+- Roadmap metadata: Use ONLY the H2 > H3 headers shown in the template. Do NOT add custom H3 headers under Plan Details, Risk Assessment, Resource Planning, or Success Metrics.
+- Sparse Phases: Use ONLY ## Overview with ### Objectives, ### Scope, ### Dependencies, ### Deliverables. Do NOT add extra H3 sections.
+- Put any additional context WITHIN existing H3 sections, not as new H3 headers.
+- Do NOT add H2 headers not in the template (they will be silently dropped).
+
 ### Part 1: Roadmap Metadata
 
 Use this exact format (generated from Roadmap model):

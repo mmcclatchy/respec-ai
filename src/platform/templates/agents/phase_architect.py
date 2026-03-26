@@ -529,6 +529,12 @@ Choose sections based on project needs. Examples:
 
 Both are preserved, but structure differs for parser compatibility.
 
+**CRITICAL CONSTRAINTS — Violating these causes silent data loss**:
+- Do NOT add custom H3 headers under mapped H2 sections (Overview, System Design, Implementation, Additional Details). Only the H3 headers shown in the template are parsed. Custom H3 headers under these H2s are silently dropped during storage.
+- Put custom sub-structure WITHIN existing H3 sections using H4-H6 headers, bullet lists, code blocks, or tables.
+- Put genuinely new sections as standalone H2 headers (captured as additional_sections).
+- Do NOT rename or remove any core H3 header.
+
 ---
 
 ### Domain-Specific Section Examples

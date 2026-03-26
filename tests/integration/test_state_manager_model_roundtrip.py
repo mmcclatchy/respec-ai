@@ -159,32 +159,16 @@ def sample_plan(markdown_builder: Callable) -> Plan:
     markdown = markdown_builder(
         Plan,
         plan_name='Enterprise Portal Modernization',
-        project_vision='Transform legacy portal into modern cloud-native platform',
-        project_mission='Deliver scalable, maintainable portal with improved UX',
-        project_timeline='18 months',
-        project_budget='$2.5M',
-        primary_objectives='Migrate to microservices, Improve performance 10x',
-        success_metrics='User satisfaction >4.5/5, Page load time <1s',
-        key_performance_indicators='Daily active users, API response times, Error rates',
-        included_features='User dashboard, Analytics, Reporting, Admin tools',
-        excluded_features='Legacy system maintenance, Custom integrations',
-        project_assumptions='Infrastructure team available, Cloud budget approved',
-        project_constraints='Must maintain 99.9% uptime during migration',
-        project_sponsor='VP Engineering Jane Smith',
-        key_stakeholders='Product, Engineering, Customer Success, Security',
-        end_users='50,000+ enterprise customers',
-        work_breakdown='Phase 1: Backend, Phase 2: Frontend, Phase 3: Migration',
-        phases_overview='Discovery (2mo), Development (12mo), Rollout (4mo)',
-        project_dependencies='Design system library, CI/CD pipeline',
-        team_structure='2 PMs, 8 Engineers, 2 QA, 1 DevOps',
-        technology_requirements='Kubernetes, PostgreSQL, React, FastAPI',
-        infrastructure_needs='3 Kubernetes clusters, CDN, Monitoring stack',
-        identified_risks='Data migration errors, Performance degradation',
-        mitigation_strategies='Staged rollout, Comprehensive testing, Rollback plan',
-        contingency_plans='Extended timeline, Reduced scope, Additional resources',
-        quality_standards='WCAG 2.1 AA, SOC 2 compliance',
-        testing_strategy='Unit, Integration, E2E, Load testing',
-        documentation_standards='OpenAPI phases, Architecture decision records',
+        executive_summary='### Vision\nTransform legacy portal into modern cloud-native platform\n\n### Mission\nDeliver scalable, maintainable portal with improved UX\n\n### Timeline\n18 months\n\n### Budget\n$2.5M',
+        business_objectives='### Primary Objectives\nMigrate to microservices, Improve performance 10x\n\n### Success Metrics\nUser satisfaction >4.5/5, Page load time <1s\n\n### Key Performance Indicators\nDaily active users, API response times, Error rates',
+        plan_scope='### Included Features\nUser dashboard, Analytics, Reporting, Admin tools\n\n### Anti-Requirements\nLegacy system maintenance, Custom integrations\n\n### Assumptions\nInfrastructure team available, Cloud budget approved\n\n### Constraints\nMust maintain 99.9% uptime during migration',
+        stakeholders='### Plan Sponsor\nVP Engineering Jane Smith\n\n### Key Stakeholders\nProduct, Engineering, Customer Success, Security\n\n### End Users\n50,000+ enterprise customers',
+        architecture_direction='### Architecture Overview\nKubernetes microservices with API gateway\n\n### Data Flow\nClient → API Gateway → Services → PostgreSQL',
+        technology_decisions='### Chosen Technologies\nKubernetes, PostgreSQL, React, FastAPI\n\n### Rejected Technologies\nMonolith approach rejected for scalability',
+        plan_structure='### Work Breakdown\nPhase 1: Backend, Phase 2: Frontend, Phase 3: Migration\n\n### Phases Overview\nDiscovery (2mo), Development (12mo), Rollout (4mo)\n\n### Dependencies\nDesign system library, CI/CD pipeline',
+        resource_requirements='### Team Structure\n2 PMs, 8 Engineers, 2 QA, 1 DevOps\n\n### Technology Requirements\nKubernetes, PostgreSQL, React, FastAPI\n\n### Infrastructure Needs\n3 Kubernetes clusters, CDN, Monitoring stack',
+        risk_management='### Identified Risks\nData migration errors, Performance degradation\n\n### Mitigation Strategies\nStaged rollout, Comprehensive testing, Rollback plan\n\n### Contingency Plans\nExtended timeline, Reduced scope, Additional resources',
+        quality_assurance='### Quality Bar\nWCAG 2.1 AA, SOC 2 compliance\n\n### Testing Strategy\nUnit, Integration, E2E, Load testing\n\n### Acceptance Criteria\nAll tests pass, Performance targets met',
         plan_status=PlanStatus.ACTIVE,
     )
     return Plan.parse_markdown(markdown)
@@ -389,8 +373,8 @@ async def test_plan_update_overwrites_completely(state_manager: StateManager, sa
     # Create updated version with different values
     updated_plan = sample_plan.model_copy()
     updated_plan.plan_status = PlanStatus.COMPLETED
-    updated_plan.project_budget = '$3M'
-    updated_plan.team_structure = '3 PMs, 12 Engineers'
+    updated_plan.executive_summary = '### Vision\nUpdated vision\n\n### Budget\n$3M'
+    updated_plan.resource_requirements = '### Team Structure\n3 PMs, 12 Engineers'
 
     await state_manager.store_plan(plan_name, updated_plan)
 
@@ -398,8 +382,8 @@ async def test_plan_update_overwrites_completely(state_manager: StateManager, sa
     retrieved = await state_manager.get_plan(plan_name)
 
     assert retrieved.plan_status == PlanStatus.COMPLETED
-    assert retrieved.project_budget == '$3M'
-    assert retrieved.team_structure == '3 PMs, 12 Engineers'
+    assert '$3M' in retrieved.executive_summary
+    assert '3 PMs, 12 Engineers' in retrieved.resource_requirements
 
 
 # ============================================================================

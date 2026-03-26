@@ -6,36 +6,56 @@ from src.platform.models import PlanCommandTools
 
 plan_template = Plan(
     plan_name='[Project Name from conversation]',
-    project_vision='[High-level project vision from conversation]',
-    project_mission='[Project mission statement from conversation]',
-    project_timeline='[Phased approach from timeline constraints]',
-    project_budget='[Budget considerations from resource constraints]',
-    primary_objectives='[Specific, measurable goals extracted from conversation]',
-    success_metrics='[Quantitative metrics and qualitative goals from success_metrics]',
-    key_performance_indicators='[Key metrics to track project success]',
-    included_features='[Core features and capabilities from requirements section]',
-    anti_requirements='[From conversation.anti_requirements — things system must NOT do]',
-    project_assumptions='[Key assumptions underlying the project plan]',
-    project_constraints='[Integration and technology limitations from constraints]',
-    project_sponsor='[Project sponsor identified from stakeholder discussion]',
-    key_stakeholders='[Primary stakeholders from conversation context]',
-    end_users='[Target users and user groups from requirements]',
-    architecture_overview='[From conversation.architecture_direction — component structure, integration points, deployment model]',
-    data_flow='[Data movement and transformation from architecture discussion]',
-    technology_decisions='[From conversation.technology_decisions — chosen technologies with justification]',
-    technology_rejections='[From conversation.technology_rejections — rejected technologies with specific reasons]',
-    work_breakdown='[High-level work breakdown from project structure discussion]',
-    phases_overview='[Project phases from timeline and scope conversation]',
-    project_dependencies='[Dependencies identified from requirements and constraints]',
-    team_structure='[Team composition from resource requirements discussion]',
-    technology_requirements='[Technology stack from technical constraints — include Claude Plan reference if applicable]',
-    infrastructure_needs='[Infrastructure requirements from resource discussion]',
-    identified_risks='[From conversation.risk_assessment — technical risks with severity and mitigation]',
-    mitigation_strategies='[Risk mitigation approaches from risk discussion]',
-    contingency_plans='[Backup plans for major risks identified]',
-    quality_bar='[From conversation.quality_bar + conversation.performance_targets — quantified quality thresholds]',
-    testing_strategy='[Testing approach from quality requirements]',
-    acceptance_criteria='[Acceptance criteria from success metrics discussion]',
+    executive_summary=(
+        '### Vision\n[High-level project vision from conversation]\n\n'
+        '### Mission\n[Project mission statement from conversation]\n\n'
+        '### Timeline\n[Phased approach from timeline constraints]\n\n'
+        '### Budget\n[Budget considerations from resource constraints]'
+    ),
+    business_objectives=(
+        '### Primary Objectives\n[Specific, measurable goals extracted from conversation]\n\n'
+        '### Success Metrics\n[Quantitative metrics and qualitative goals]\n\n'
+        '### Key Performance Indicators\n[Key metrics to track project success]'
+    ),
+    plan_scope=(
+        '### Included Features\n[Core features and capabilities from requirements]\n\n'
+        '### Anti-Requirements\n[From conversation — things system must NOT do]\n\n'
+        '### Assumptions\n[Key assumptions underlying the project plan]\n\n'
+        '### Constraints\n[Integration and technology limitations]'
+    ),
+    stakeholders=(
+        '### Plan Sponsor\n[Project sponsor from stakeholder discussion]\n\n'
+        '### Key Stakeholders\n[Primary stakeholders from conversation context]\n\n'
+        '### End Users\n[Target users and user groups from requirements]'
+    ),
+    architecture_direction=(
+        '### Architecture Overview\n[Component structure, integration points, deployment model]\n\n'
+        '### Data Flow\n[Data movement and transformation from architecture discussion]'
+    ),
+    technology_decisions=(
+        '### Chosen Technologies\n[Chosen technologies with justification]\n\n'
+        '### Rejected Technologies\n[Rejected technologies with specific reasons]'
+    ),
+    plan_structure=(
+        '### Work Breakdown\n[High-level work breakdown from project structure]\n\n'
+        '### Phases Overview\n[Project phases from timeline and scope conversation]\n\n'
+        '### Dependencies\n[Dependencies identified from requirements and constraints]'
+    ),
+    resource_requirements=(
+        '### Team Structure\n[Team composition from resource requirements]\n\n'
+        '### Technology Requirements\n[Technology stack — include Claude Plan reference if applicable]\n\n'
+        '### Infrastructure Needs\n[Infrastructure requirements from resource discussion]'
+    ),
+    risk_management=(
+        '### Identified Risks\n[Technical risks with severity and mitigation]\n\n'
+        '### Mitigation Strategies\n[Risk mitigation approaches]\n\n'
+        '### Contingency Plans\n[Backup plans for major risks identified]'
+    ),
+    quality_assurance=(
+        '### Quality Bar\n[Quantified quality thresholds and performance targets]\n\n'
+        '### Testing Strategy\n[Testing approach from quality requirements]\n\n'
+        '### Acceptance Criteria\n[Acceptance criteria from success metrics discussion]'
+    ),
 ).build_markdown()
 
 
@@ -73,16 +93,19 @@ Example usage: `{tools.initialize_analyst_loop}`
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
 - **USER_DECISION**: String from user choice - values: "continue_conversation", "refine_plan", "accept_plan"
+- **PLAN_LOOP_ID**: String returned from MCP `{tools.initialize_plan_loop}` - used for feedback storage during human-driven plan refinement (Steps 3-5)
 - **ANALYST_LOOP_ID**: String returned from MCP `{tools.initialize_analyst_loop}` - required for MCP loop management during analyst validation (Steps 6-9)
 - **ANALYST_SCORE**: Integer from analyst-critic feedback retrieval - needed for MCP loop decisions
 
 ### Data Storage Pattern
 
 Human-driven phase (Steps 1-5):
+- Initializes plan quality loop with PLAN_LOOP_ID for feedback tracking
 - Uses variables for orchestration state (CONVERSATION_CONTEXT, CURRENT_PLAN, CRITIC_FEEDBACK)
 - Stores plan in MCP using PLAN_NAME: `{tools.store_plan}`
 - Writes plan to external file/platform using platform-specific tools
 - Plan-critic returns feedback to Main Agent (not stored in MCP during human phase)
+- User feedback stored via `{tools.store_user_feedback}` when user provides guidance
 
 Automated analyst phase (Steps 6-9):
 - Initializes MCP refinement loop with ANALYST_LOOP_ID
@@ -101,7 +124,6 @@ Automated analyst phase (Steps 6-9):
 - Use remaining arguments as initial conversation context
 - If no conversation context provided, start with: "I need help creating a strategic plan for my project"
 - Initialize variables for state management throughout the human-driven process
-- Note: No refinement loop needed for human-driven plan generation phase
 
 ## Step 1.5: Detect Claude Plan File
 
@@ -255,6 +277,13 @@ Expected structured format from plan-conversation (markdown document):
 
 ## Step 3: Create Strategic Plan Document
 
+### Initialize plan quality loop (once only)
+
+If PLAN_LOOP_ID does not yet exist, initialize the plan quality loop:
+- Call `{tools.initialize_plan_loop}`
+- Store the returned loop ID as `PLAN_LOOP_ID`
+- This enables user feedback storage during plan refinement
+
 ### Transform conversation context into a strategic plan document
 
 Use the CONVERSATION_CONTEXT variable returned from Step 2 to create the strategic plan:
@@ -264,11 +293,27 @@ Use the CONVERSATION_CONTEXT variable returned from Step 2 to create the strateg
 {indent(plan_template, '   ')}
    ```
 
+### DOCUMENT STRUCTURE CONSTRAINTS (MANDATORY)
+
+The Plan model enforces H2 headers as its schema. Violating these constraints causes silent data loss.
+
+**DO**:
+- Use ONLY these H2 sections: Executive Summary, Business Objectives, Plan Scope, Stakeholders, Architecture Direction, Technology Decisions, Plan Structure, Resource Requirements, Risk Management, Quality Assurance
+- Structure content freely within each H2 using H3-H6 sub-headers, bullet lists, code blocks, tables
+- Keep all content within the defined H2 sections
+
+**DO NOT**:
+- Add H2 headers not in the list above (they will be lost on subsequent retrievals)
+- Remove or rename any of the defined H2 headers
+- Add a Metadata section (the system manages this automatically)
+
+The H3 headers shown in the template (### Vision, ### Mission, etc.) are suggested structure, not enforced. You may add, rename, or reorganize H3+ headers within any H2 section.
+
 Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
-4. **If CLAUDE_PLAN_FILE is not None**: Append to technology_requirements field:
+4. **If CLAUDE_PLAN_FILE is not None**: Append to resource_requirements field:
    ```text
    Claude Plan: `{{CLAUDE_PLAN_FILE}}` (pre-resolved architecture decisions —
    phase-architect will read this file as hard constraints)
@@ -357,6 +402,10 @@ Present options to user:
 ### Wait for user response and process decision
 
 ```text
+IF user provides feedback along with their choice:
+  Store user feedback: {tools.store_user_feedback}
+  This preserves user guidance for subsequent plan/critic iterations
+
 IF user chooses "1" (Continue conversation):
   Set USER_DECISION = "continue_conversation"
   CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables

@@ -607,90 +607,39 @@ class TestLoopOperations(TestInMemoryStateManager):
 
 
 class TestPlanOperations(TestInMemoryStateManager):
-    @pytest.mark.asyncio
-    async def test_store_plan_returns_plan_name(self, state_manager: InMemoryStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Feature A, Feature B',
-            excluded_features='Feature C',
-            project_assumptions='Test assumptions',
-            project_constraints='Test constraints',
-            project_sponsor='Test sponsor',
-            key_stakeholders='Stakeholder A, Stakeholder B',
-            end_users='End users',
-            work_breakdown='Phase 1, Phase 2',
-            phases_overview='2 phases',
-            project_dependencies='Dependency A',
-            team_structure='3 developers',
-            technology_requirements='Python, FastAPI',
-            infrastructure_needs='Cloud hosting',
-            identified_risks='Risk A',
-            mitigation_strategies='Strategy A',
-            contingency_plans='Plan A',
-            quality_standards='High quality',
-            testing_strategy='Unit and integration tests',
-            acceptance_criteria='All tests pass',
-            reporting_structure='Weekly updates',
-            meeting_schedule='Daily standups',
-            documentation_standards='Standard docs',
-            plan_status=PlanStatus.DRAFT,
+    @staticmethod
+    def _make_plan(name: str = 'test-project', suffix: str = '', status: PlanStatus = PlanStatus.DRAFT) -> Plan:
+        s = suffix
+        return Plan(
+            plan_name=name,
+            executive_summary=f'### Vision\nVision{s}\n\n### Budget\n$100K{s}',
+            business_objectives=f'### Primary Objectives\nObjectives{s}',
+            plan_scope=f'### Included Features\nFeatures{s}\n\n### Constraints\nConstraints{s}',
+            stakeholders=f'### Plan Sponsor\nSponsor{s}\n\n### End Users\nUsers{s}',
+            architecture_direction=f'### Architecture Overview\nArchitecture{s}',
+            technology_decisions=f'### Chosen Technologies\nTech{s}',
+            plan_structure=f'### Work Breakdown\nBreakdown{s}',
+            resource_requirements=f'### Team Structure\nTeam{s}',
+            risk_management=f'### Identified Risks\nRisks{s}',
+            quality_assurance=f'### Quality Bar\nStandards{s}',
+            plan_status=status,
         )
 
-        result = await state_manager.store_plan(plan_name, plan)
-
-        assert result == plan_name
+    @pytest.mark.asyncio
+    async def test_store_plan_returns_plan_name(self, state_manager: InMemoryStateManager) -> None:
+        plan = self._make_plan()
+        result = await state_manager.store_plan('test-project', plan)
+        assert result == 'test-project'
 
     @pytest.mark.asyncio
     async def test_store_plan_makes_retrievable(self, state_manager: InMemoryStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Feature A',
-            excluded_features='Feature B',
-            project_assumptions='Test assumptions',
-            project_constraints='Test constraints',
-            project_sponsor='Test sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Phases',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-
-        await state_manager.store_plan(plan_name, plan)
-        retrieved_plan = await state_manager.get_plan(plan_name)
+        plan = self._make_plan()
+        await state_manager.store_plan('test-project', plan)
+        retrieved_plan = await state_manager.get_plan('test-project')
 
         assert retrieved_plan == plan
-        assert retrieved_plan.plan_name == plan_name
-        assert retrieved_plan.project_vision == 'Test vision'
+        assert retrieved_plan.plan_name == 'test-project'
+        assert 'Vision' in retrieved_plan.executive_summary
 
     @pytest.mark.asyncio
     async def test_get_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
@@ -702,157 +651,27 @@ class TestPlanOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_store_plan_overwrites_existing(self, state_manager: InMemoryStateManager) -> None:
-        plan_name = 'same-project'
-        original_plan = Plan(
-            plan_name='Original Plan',
-            project_vision='Original vision',
-            project_mission='Original mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Original objectives',
-            success_metrics='Original metrics',
-            key_performance_indicators='Original KPIs',
-            included_features='Feature A',
-            excluded_features='Feature B',
-            project_assumptions='Assumptions',
-            project_constraints='Constraints',
-            project_sponsor='Sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Breakdown',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-        updated_plan = Plan(
-            plan_name='Updated Plan',
-            project_vision='Updated vision',
-            project_mission='Updated mission',
-            project_timeline='Q2 2024',
-            project_budget='$200K',
-            primary_objectives='Updated objectives',
-            success_metrics='Updated metrics',
-            key_performance_indicators='Updated KPIs',
-            included_features='Feature C',
-            excluded_features='Feature D',
-            project_assumptions='Updated assumptions',
-            project_constraints='Updated constraints',
-            project_sponsor='Updated sponsor',
-            key_stakeholders='Updated stakeholders',
-            end_users='Updated users',
-            work_breakdown='Updated breakdown',
-            phases_overview='Updated overview',
-            project_dependencies='Updated dependencies',
-            team_structure='Updated team',
-            technology_requirements='Updated tech',
-            infrastructure_needs='Updated infrastructure',
-            identified_risks='Updated risks',
-            mitigation_strategies='Updated strategies',
-            contingency_plans='Updated plans',
-            quality_standards='Updated standards',
-            testing_strategy='Updated testing',
-            acceptance_criteria='Updated criteria',
-            reporting_structure='Updated reporting',
-            meeting_schedule='Updated meetings',
-            documentation_standards='Updated docs',
-            plan_status=PlanStatus.ACTIVE,
-        )
+        original = self._make_plan(name='Original Plan')
+        updated = self._make_plan(name='Updated Plan', suffix=' updated', status=PlanStatus.ACTIVE)
 
-        await state_manager.store_plan(plan_name, original_plan)
-        await state_manager.store_plan(plan_name, updated_plan)
-        retrieved_plan = await state_manager.get_plan(plan_name)
+        await state_manager.store_plan('same-project', original)
+        await state_manager.store_plan('same-project', updated)
+        retrieved_plan = await state_manager.get_plan('same-project')
 
-        assert retrieved_plan == updated_plan
+        assert retrieved_plan == updated
         assert retrieved_plan.plan_name == 'Updated Plan'
-        assert retrieved_plan.project_vision == 'Updated vision'
+        assert 'Vision updated' in retrieved_plan.executive_summary
         assert retrieved_plan.plan_status == PlanStatus.ACTIVE
 
     @pytest.mark.asyncio
     async def test_list_plans_returns_empty_for_no_plans(self, state_manager: InMemoryStateManager) -> None:
         result = await state_manager.list_plans()
-
         assert result == []
 
     @pytest.mark.asyncio
     async def test_list_plans_returns_all_plan_names(self, state_manager: InMemoryStateManager) -> None:
-        plan1 = Plan(
-            plan_name='Plan 1',
-            project_vision='Vision 1',
-            project_mission='Mission 1',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Objectives 1',
-            success_metrics='Metrics 1',
-            key_performance_indicators='KPIs 1',
-            included_features='Features 1',
-            excluded_features='Excluded 1',
-            project_assumptions='Assumptions 1',
-            project_constraints='Constraints 1',
-            project_sponsor='Sponsor 1',
-            key_stakeholders='Stakeholders 1',
-            end_users='Users 1',
-            work_breakdown='Breakdown 1',
-            phases_overview='Overview 1',
-            project_dependencies='Dependencies 1',
-            team_structure='Team 1',
-            technology_requirements='Tech 1',
-            infrastructure_needs='Infrastructure 1',
-            identified_risks='Risks 1',
-            mitigation_strategies='Strategies 1',
-            contingency_plans='Plans 1',
-            quality_standards='Standards 1',
-            testing_strategy='Testing 1',
-            acceptance_criteria='Criteria 1',
-            reporting_structure='Reporting 1',
-            meeting_schedule='Meetings 1',
-            documentation_standards='Docs 1',
-            plan_status=PlanStatus.DRAFT,
-        )
-        plan2 = Plan(
-            plan_name='Plan 2',
-            project_vision='Vision 2',
-            project_mission='Mission 2',
-            project_timeline='Q2 2024',
-            project_budget='$200K',
-            primary_objectives='Objectives 2',
-            success_metrics='Metrics 2',
-            key_performance_indicators='KPIs 2',
-            included_features='Features 2',
-            excluded_features='Excluded 2',
-            project_assumptions='Assumptions 2',
-            project_constraints='Constraints 2',
-            project_sponsor='Sponsor 2',
-            key_stakeholders='Stakeholders 2',
-            end_users='Users 2',
-            work_breakdown='Breakdown 2',
-            phases_overview='Overview 2',
-            project_dependencies='Dependencies 2',
-            team_structure='Team 2',
-            technology_requirements='Tech 2',
-            infrastructure_needs='Infrastructure 2',
-            identified_risks='Risks 2',
-            mitigation_strategies='Strategies 2',
-            contingency_plans='Plans 2',
-            quality_standards='Standards 2',
-            testing_strategy='Testing 2',
-            acceptance_criteria='Criteria 2',
-            reporting_structure='Reporting 2',
-            meeting_schedule='Meetings 2',
-            documentation_standards='Docs 2',
-            plan_status=PlanStatus.ACTIVE,
-        )
+        plan1 = self._make_plan(name='Plan 1', suffix=' 1')
+        plan2 = self._make_plan(name='Plan 2', suffix=' 2', status=PlanStatus.ACTIVE)
 
         await state_manager.store_plan('project-1', plan1)
         await state_manager.store_plan('project-2', plan2)
@@ -864,88 +683,19 @@ class TestPlanOperations(TestInMemoryStateManager):
 
     @pytest.mark.asyncio
     async def test_delete_plan_returns_true_when_plan_exists(self, state_manager: InMemoryStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Features',
-            excluded_features='Excluded',
-            project_assumptions='Assumptions',
-            project_constraints='Constraints',
-            project_sponsor='Sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Breakdown',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-
-        await state_manager.store_plan(plan_name, plan)
-        result = await state_manager.delete_plan(plan_name)
-
+        plan = self._make_plan()
+        await state_manager.store_plan('test-project', plan)
+        result = await state_manager.delete_plan('test-project')
         assert result is True
 
     @pytest.mark.asyncio
     async def test_delete_plan_removes_plan(self, state_manager: InMemoryStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Features',
-            excluded_features='Excluded',
-            project_assumptions='Assumptions',
-            project_constraints='Constraints',
-            project_sponsor='Sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Breakdown',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-
-        await state_manager.store_plan(plan_name, plan)
-        await state_manager.delete_plan(plan_name)
+        plan = self._make_plan()
+        await state_manager.store_plan('test-project', plan)
+        await state_manager.delete_plan('test-project')
 
         with pytest.raises(PlanNotFoundError):
-            await state_manager.get_plan(plan_name)
+            await state_manager.get_plan('test-project')
 
     @pytest.mark.asyncio
     async def test_delete_plan_raises_error_when_not_found(self, state_manager: InMemoryStateManager) -> None:
@@ -967,54 +717,19 @@ class TestPlanOperations(TestInMemoryStateManager):
     async def test_plan_operations_with_multiple_plans(
         self, state_manager: InMemoryStateManager, plan_names: list[str]
     ) -> None:
-        # Store multiple plans
         for i, plan_name in enumerate(plan_names):
-            plan = Plan(
-                plan_name=f'Plan {i}',
-                project_vision=f'Vision {i}',
-                project_mission=f'Mission {i}',
-                project_timeline='Q1 2024',
-                project_budget='$100K',
-                primary_objectives=f'Objectives {i}',
-                success_metrics=f'Metrics {i}',
-                key_performance_indicators=f'KPIs {i}',
-                included_features=f'Features {i}',
-                excluded_features=f'Excluded {i}',
-                project_assumptions=f'Assumptions {i}',
-                project_constraints=f'Constraints {i}',
-                project_sponsor=f'Sponsor {i}',
-                key_stakeholders=f'Stakeholders {i}',
-                end_users=f'Users {i}',
-                work_breakdown=f'Breakdown {i}',
-                phases_overview=f'Overview {i}',
-                project_dependencies=f'Dependencies {i}',
-                team_structure=f'Team {i}',
-                technology_requirements=f'Tech {i}',
-                infrastructure_needs=f'Infrastructure {i}',
-                identified_risks=f'Risks {i}',
-                mitigation_strategies=f'Strategies {i}',
-                contingency_plans=f'Plans {i}',
-                quality_standards=f'Standards {i}',
-                testing_strategy=f'Testing {i}',
-                acceptance_criteria=f'Criteria {i}',
-                reporting_structure=f'Reporting {i}',
-                meeting_schedule=f'Meetings {i}',
-                documentation_standards=f'Docs {i}',
-                plan_status=PlanStatus.DRAFT,
-            )
+            plan = self._make_plan(name=f'Plan {i}', suffix=f' {i}')
             await state_manager.store_plan(plan_name, plan)
 
-        # Verify all plans are stored
         all_plans = await state_manager.list_plans()
         assert len(all_plans) == len(plan_names)
         for plan_name in plan_names:
             assert plan_name in all_plans
 
-        # Verify each plan can be retrieved
         for i, plan_name in enumerate(plan_names):
             plan = await state_manager.get_plan(plan_name)
             assert plan.plan_name == f'Plan {i}'
-            assert plan.project_vision == f'Vision {i}'
+            assert f'Vision {i}' in plan.executive_summary
 
 
 class TestCrossOperationIntegration(TestInMemoryStateManager):

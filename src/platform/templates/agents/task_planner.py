@@ -154,7 +154,14 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 - Headers must match exactly: `## Identity`, `### Phase Path`, etc.
 - Section order must be preserved
 - Do NOT use bold labels like `**Goal**:` - use headers like `### Goal`
-- Do NOT add extra sections or rename headers
+
+**DOCUMENT STRUCTURE CONSTRAINTS — Violating these causes silent data loss**:
+- Use ONLY the H2 sections shown: Identity, Overview, Implementation, Quality, Research, Status, Metadata
+- Use ONLY the H3 headers shown under each H2 (e.g., ### Goal, ### Acceptance Criteria under ## Overview)
+- Do NOT add custom H3 headers under any mapped H2 section — they will be silently dropped during storage
+- Put additional detail WITHIN existing H3 sections using H4+ headers, bullet lists, or code blocks
+- Do NOT add H2 headers not in the template
+- Do NOT rename or reorder any header
 
 **MCP Validation will REJECT documents that don't match this structure.**
 

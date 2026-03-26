@@ -303,6 +303,7 @@ class PlanCommandTools(BaseModel):
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_CRITIC_FEEDBACK,
+        RespecAITool.STORE_USER_FEEDBACK,
         RespecAITool.GET_FEEDBACK,
     ]
 
@@ -312,12 +313,14 @@ class PlanCommandTools(BaseModel):
     platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
+    initialize_plan_loop: str = Field(..., description='Initialize plan quality loop')
     initialize_analyst_loop: str = Field(..., description='Initialize analyst refinement loop')
     store_plan: str = Field(..., description='Store strategic plan in MCP')
     store_plan_in_loop: str = Field(..., description='Store plan in analyst loop')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')
     decide_loop_action: str = Field(..., description='Decide next loop action')
+    store_user_feedback: str = Field(..., description='Store user feedback during plan refinement')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

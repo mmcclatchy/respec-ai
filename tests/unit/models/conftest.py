@@ -61,17 +61,19 @@ def markdown_builder() -> Callable:
                 lines.append(f'\n## {h2}')
                 current_h2 = h2
 
-            if h3:
-                if field_name in field_values:
-                    value = field_values[field_name]
-                    if isinstance(value, Enum):
-                        content = value.value
-                    else:
-                        content = str(value)
+            if field_name in field_values:
+                value = field_values[field_name]
+                if isinstance(value, Enum):
+                    content = value.value
                 else:
-                    content = _generate_realistic_content(field_name)
+                    content = str(value)
+            else:
+                content = _generate_realistic_content(field_name)
 
+            if h3:
                 lines.append(f'\n### {h3}\n{content}')
+            else:
+                lines.append(f'\n{content}')
 
         return '\n'.join(lines) + '\n'
 
@@ -99,37 +101,20 @@ def _generate_realistic_content(field_name: str) -> str:
         'success_criteria': 'All tests passing',
         'integration_context': 'Service integration',
         'project_goal': 'Deliver project successfully',
-        'project_vision': 'Transform user experience',
-        'project_mission': 'Build quality solution',
-        'project_timeline': '6 months',
-        'project_budget': '$100,000',
         'total_duration': '6 months',
         'team_size': '4 developers',
         'roadmap_budget': '$100,000',
-        'primary_objectives': 'Achieve business goals',
-        'success_metrics': 'Key performance indicators',
-        'key_performance_indicators': 'Measurable outcomes',
-        'included_features': 'Core capabilities',
-        'excluded_features': 'Out of scope items',
-        'project_assumptions': 'Planning assumptions',
-        'project_constraints': 'Budget and timeline limits',
-        'project_sponsor': 'Executive sponsor',
-        'key_stakeholders': 'Project team',
-        'end_users': 'Target users',
-        'work_breakdown': 'Project phases',
-        'phases_overview': 'Implementation stages',
-        'project_dependencies': 'External dependencies',
-        'team_structure': 'Team composition',
-        'technology_requirements': 'Technical stack',
-        'infrastructure_needs': 'Infrastructure requirements',
-        'identified_risks': 'Project risks',
-        'mitigation_strategies': 'Risk mitigation',
-        'contingency_plans': 'Backup plans',
-        'quality_standards': 'Quality requirements',
         'acceptance_criteria': 'Acceptance criteria',
-        'reporting_structure': 'Status reporting',
-        'meeting_schedule': 'Regular meetings',
-        'documentation_standards': 'Documentation requirements',
+        'executive_summary': '### Vision\nTransform user experience\n\n### Mission\nBuild quality solution\n\n### Timeline\n6 months\n\n### Budget\n$100,000',
+        'business_objectives': '### Primary Objectives\nAchieve business goals\n\n### Success Metrics\nKey performance indicators\n\n### Key Performance Indicators\nMeasurable outcomes',
+        'plan_scope': '### Included Features\nCore capabilities\n\n### Anti-Requirements\nOut of scope items\n\n### Assumptions\nPlanning assumptions\n\n### Constraints\nBudget and timeline limits',
+        'stakeholders': '### Plan Sponsor\nExecutive sponsor\n\n### Key Stakeholders\nProject team\n\n### End Users\nTarget users',
+        'architecture_direction': '### Architecture Overview\nMicroservice architecture\n\n### Data Flow\nAPI-driven data flow',
+        'technology_decisions': '### Chosen Technologies\nPython FastAPI\n\n### Rejected Technologies\nNone rejected',
+        'plan_structure': '### Work Breakdown\nProject phases\n\n### Phases Overview\nImplementation stages\n\n### Dependencies\nExternal dependencies',
+        'resource_requirements': '### Team Structure\nTeam composition\n\n### Technology Requirements\nTechnical stack\n\n### Infrastructure Needs\nInfrastructure requirements',
+        'risk_management': '### Identified Risks\nProject risks\n\n### Mitigation Strategies\nRisk mitigation\n\n### Contingency Plans\nBackup plans',
+        'quality_assurance': '### Quality Bar\nQuality requirements\n\n### Testing Strategy\nUnit and integration tests\n\n### Acceptance Criteria\nAcceptance criteria',
         'primary_language': 'Python',
         'framework': 'FastAPI',
         'database': 'PostgreSQL',

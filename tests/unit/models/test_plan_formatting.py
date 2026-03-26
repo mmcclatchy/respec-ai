@@ -1,10 +1,5 @@
-"""Format preservation tests for Plan model.
-
-These tests verify that complex markdown formatting (bullet lists, code blocks,
-nested lists, etc.) is preserved through parse → build → parse cycles.
-"""
-
 import pytest
+
 from src.models.plan import Plan
 
 
@@ -56,7 +51,7 @@ $400,000 total project cost
 - Account management tools
 - Notification system
 
-### Excluded Features
+### Anti-Requirements
 - Legacy system migration
 - Third-party integrations
 - Advanced analytics dashboard
@@ -161,7 +156,7 @@ Sequential implementation phases:
 
 ## Quality Assurance
 
-### Quality Standards
+### Quality Bar
 - WCAG 2.1 AA accessibility compliance
 - Mobile-first responsive design
 - 99.9% uptime requirement
@@ -180,17 +175,6 @@ Project completion criteria:
 - Performance benchmarks met
 - Security audit passed
 - User acceptance tests passed
-
-## Communication Plan
-
-### Reporting Structure
-Weekly status reports to stakeholders
-
-### Meeting Schedule
-Regular team and stakeholder meetings
-
-### Documentation Standards
-Comprehensive project documentation
 
 ## Metadata
 
@@ -246,7 +230,7 @@ Core platform capabilities:
 
 Additional features will be considered for future phases.
 
-### Excluded Features
+### Anti-Requirements
 Out of scope items
 
 ### Assumptions
@@ -301,7 +285,7 @@ Backup plans
 
 ## Quality Assurance
 
-### Quality Standards
+### Quality Bar
 Quality requirements
 
 ### Testing Strategy
@@ -318,69 +302,59 @@ draft
 
 
 def test_bullet_list_content_preserved_in_objectives(plan_with_bullet_lists: str) -> None:
-    original_markdown = plan_with_bullet_lists
+    plan = Plan.parse_markdown(plan_with_bullet_lists)
 
-    plan = Plan.parse_markdown(original_markdown)
-
-    assert 'Improve customer satisfaction scores by 30%' in plan.primary_objectives
-    assert 'Reduce support tickets by 25%' in plan.primary_objectives
-    assert 'Increase portal usage by 50%' in plan.primary_objectives
+    assert 'Improve customer satisfaction scores by 30%' in plan.business_objectives
+    assert 'Reduce support tickets by 25%' in plan.business_objectives
+    assert 'Increase portal usage by 50%' in plan.business_objectives
 
     rebuilt_markdown = plan.build_markdown()
     reparsed_plan = Plan.parse_markdown(rebuilt_markdown)
 
-    assert plan.primary_objectives == reparsed_plan.primary_objectives, (
-        'Primary Objectives content changed during round-trip'
+    assert plan.business_objectives == reparsed_plan.business_objectives, (
+        'Business Objectives content changed during round-trip'
     )
 
 
 def test_bullet_list_content_preserved_in_success_metrics(plan_with_bullet_lists: str) -> None:
-    original_markdown = plan_with_bullet_lists
-
-    plan = Plan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(plan_with_bullet_lists)
     rebuilt = plan.build_markdown()
     reparsed = Plan.parse_markdown(rebuilt)
 
-    assert 'Customer satisfaction score >4.5/5' in plan.success_metrics
-    assert 'Support ticket reduction >25%' in plan.success_metrics
-    assert 'User engagement increase >50%' in plan.success_metrics
+    assert 'Customer satisfaction score >4.5/5' in plan.business_objectives
+    assert 'Support ticket reduction >25%' in plan.business_objectives
 
-    assert plan.success_metrics == reparsed.success_metrics, 'Success Metrics content changed during round-trip'
+    assert plan.business_objectives == reparsed.business_objectives, (
+        'Business Objectives content changed during round-trip'
+    )
 
 
 def test_bullet_list_content_preserved_in_included_features(plan_with_bullet_lists: str) -> None:
-    original_markdown = plan_with_bullet_lists
-
-    plan = Plan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(plan_with_bullet_lists)
     rebuilt = plan.build_markdown()
     reparsed = Plan.parse_markdown(rebuilt)
 
-    assert 'User dashboard redesign' in plan.included_features
-    assert 'Mobile responsive design' in plan.included_features
-    assert 'Self-service features' in plan.included_features
+    assert 'User dashboard redesign' in plan.plan_scope
+    assert 'Mobile responsive design' in plan.plan_scope
+    assert 'Self-service features' in plan.plan_scope
 
-    assert plan.included_features == reparsed.included_features, 'Included Features content changed during round-trip'
+    assert plan.plan_scope == reparsed.plan_scope, 'Plan Scope content changed during round-trip'
 
 
 def test_mixed_content_format_preserved(plan_with_mixed_content: str) -> None:
-    original_markdown = plan_with_mixed_content
-
-    plan = Plan.parse_markdown(original_markdown)
+    plan = Plan.parse_markdown(plan_with_mixed_content)
     rebuilt = plan.build_markdown()
     reparsed = Plan.parse_markdown(rebuilt)
 
-    assert 'world-class API platform' in plan.project_vision
-    assert 'REST and GraphQL protocols' in plan.project_vision
+    assert 'world-class API platform' in plan.executive_summary
+    assert 'REST and GraphQL protocols' in plan.executive_summary
 
-    assert 'Increase API adoption by 200%' in plan.primary_objectives
-    assert 'Reduce integration time by 50%' in plan.primary_objectives
-    assert (
-        'reach these goals within 6 months' in plan.primary_objectives or 'expect to reach' in plan.primary_objectives
-    )
+    assert 'Increase API adoption by 200%' in plan.business_objectives
+    assert 'Reduce integration time by 50%' in plan.business_objectives
 
-    assert plan.project_vision == reparsed.project_vision, 'Vision content changed during round-trip'
-    assert plan.primary_objectives == reparsed.primary_objectives, (
-        'Primary Objectives content changed during round-trip'
+    assert plan.executive_summary == reparsed.executive_summary, 'Executive Summary content changed during round-trip'
+    assert plan.business_objectives == reparsed.business_objectives, (
+        'Business Objectives content changed during round-trip'
     )
 
 
@@ -422,14 +396,12 @@ active
     rebuilt = plan.build_markdown()
     reparsed = Plan.parse_markdown(rebuilt)
 
-    assert plan.primary_objectives == 'Deliver on time'
-    assert plan.primary_objectives == reparsed.primary_objectives
+    assert 'Deliver on time' in plan.business_objectives
+    assert plan.business_objectives == reparsed.business_objectives
 
 
 def test_character_for_character_round_trip(plan_with_bullet_lists: str) -> None:
-    original_markdown = plan_with_bullet_lists
-
-    first_parse = Plan.parse_markdown(original_markdown)
+    first_parse = Plan.parse_markdown(plan_with_bullet_lists)
     first_build = first_parse.build_markdown()
     second_parse = Plan.parse_markdown(first_build)
     second_build = second_parse.build_markdown()
@@ -477,7 +449,7 @@ Milestone completion tracking
 3. Third feature: Reporting dashboard
 4. Fourth feature: Admin panel
 
-### Excluded Features
+### Anti-Requirements
 Out of scope items
 
 ### Assumptions
@@ -496,15 +468,15 @@ draft
     rebuilt = plan.build_markdown()
     reparsed = Plan.parse_markdown(rebuilt)
 
-    assert 'Phase 1: Complete foundation' in plan.primary_objectives
-    assert 'Phase 2: Deliver core features' in plan.primary_objectives
-    assert 'Phase 3: Launch full platform' in plan.primary_objectives
+    assert 'Phase 1: Complete foundation' in plan.business_objectives
+    assert 'Phase 2: Deliver core features' in plan.business_objectives
+    assert 'Phase 3: Launch full platform' in plan.business_objectives
 
-    assert 'First feature: User authentication' in plan.included_features
-    assert 'Second feature: Data processing' in plan.included_features
+    assert 'First feature: User authentication' in plan.plan_scope
+    assert 'Second feature: Data processing' in plan.plan_scope
 
-    assert plan.primary_objectives == reparsed.primary_objectives, 'Ordered list content changed during round-trip'
-    assert plan.included_features == reparsed.included_features, 'Features list changed during round-trip'
+    assert plan.business_objectives == reparsed.business_objectives, 'Ordered list content changed during round-trip'
+    assert plan.plan_scope == reparsed.plan_scope, 'Features list changed during round-trip'
 
 
 def test_nested_bullet_lists_preserved() -> None:
@@ -552,7 +524,7 @@ Performance tracking
   - Component: Analytics dashboard
   - Component: Reporting tools
 
-### Excluded Features
+### Anti-Requirements
 Out of scope
 
 ### Assumptions
@@ -571,15 +543,15 @@ draft
     rebuilt = plan.build_markdown()
     reparsed = Plan.parse_markdown(rebuilt)
 
-    assert 'Strategic Objective A: Market Expansion' in plan.primary_objectives
-    assert 'Sub-goal A1: Enter EMEA market' in plan.primary_objectives
+    assert 'Strategic Objective A: Market Expansion' in plan.business_objectives
+    assert 'Sub-goal A1: Enter EMEA market' in plan.business_objectives
     assert (
-        'Detail: Research market requirements' in plan.primary_objectives
-        or 'Research market requirements' in plan.primary_objectives
+        'Detail: Research market requirements' in plan.business_objectives
+        or 'Research market requirements' in plan.business_objectives
     )
 
-    assert 'Feature Category 1: Core Platform' in plan.included_features
-    assert 'Component: Authentication system' in plan.included_features
+    assert 'Feature Category 1: Core Platform' in plan.plan_scope
+    assert 'Component: Authentication system' in plan.plan_scope
 
-    assert plan.primary_objectives == reparsed.primary_objectives, 'Nested objectives changed during round-trip'
-    assert plan.included_features == reparsed.included_features, 'Nested features changed during round-trip'
+    assert plan.business_objectives == reparsed.business_objectives, 'Nested objectives changed during round-trip'
+    assert plan.plan_scope == reparsed.plan_scope, 'Nested features changed during round-trip'

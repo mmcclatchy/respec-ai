@@ -360,90 +360,39 @@ class TestDatabaseLoopOperations:
 
 
 class TestDatabasePlanOperations:
-    @pytest.mark.asyncio
-    async def test_store_plan_returns_plan_name(self, db_state_manager: PostgresStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Feature A, Feature B',
-            excluded_features='Feature C',
-            project_assumptions='Test assumptions',
-            project_constraints='Test constraints',
-            project_sponsor='Test sponsor',
-            key_stakeholders='Stakeholder A, Stakeholder B',
-            end_users='End users',
-            work_breakdown='Phase 1, Phase 2',
-            phases_overview='2 phases',
-            project_dependencies='Dependency A',
-            team_structure='3 developers',
-            technology_requirements='Python, FastAPI',
-            infrastructure_needs='Cloud hosting',
-            identified_risks='Risk A',
-            mitigation_strategies='Strategy A',
-            contingency_plans='Plan A',
-            quality_standards='High quality',
-            testing_strategy='Unit and integration tests',
-            acceptance_criteria='All tests pass',
-            reporting_structure='Weekly updates',
-            meeting_schedule='Daily standups',
-            documentation_standards='Standard docs',
-            plan_status=PlanStatus.DRAFT,
+    @staticmethod
+    def _make_plan(name: str = 'test-project', suffix: str = '', status: PlanStatus = PlanStatus.DRAFT) -> Plan:
+        s = suffix
+        return Plan(
+            plan_name=name,
+            executive_summary=f'### Vision\nVision{s}\n\n### Budget\n$100K{s}',
+            business_objectives=f'### Primary Objectives\nObjectives{s}',
+            plan_scope=f'### Included Features\nFeatures{s}\n\n### Constraints\nConstraints{s}',
+            stakeholders=f'### Plan Sponsor\nSponsor{s}\n\n### End Users\nUsers{s}',
+            architecture_direction=f'### Architecture Overview\nArchitecture{s}',
+            technology_decisions=f'### Chosen Technologies\nTech{s}',
+            plan_structure=f'### Work Breakdown\nBreakdown{s}',
+            resource_requirements=f'### Team Structure\nTeam{s}',
+            risk_management=f'### Identified Risks\nRisks{s}',
+            quality_assurance=f'### Quality Bar\nStandards{s}',
+            plan_status=status,
         )
 
-        result = await db_state_manager.store_plan(plan_name, plan)
-
-        assert result == plan_name
+    @pytest.mark.asyncio
+    async def test_store_plan_returns_plan_name(self, db_state_manager: PostgresStateManager) -> None:
+        plan = self._make_plan()
+        result = await db_state_manager.store_plan('test-project', plan)
+        assert result == 'test-project'
 
     @pytest.mark.asyncio
     async def test_store_plan_makes_retrievable(self, db_state_manager: PostgresStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Feature A',
-            excluded_features='Feature B',
-            project_assumptions='Test assumptions',
-            project_constraints='Test constraints',
-            project_sponsor='Test sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Phases',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-
-        await db_state_manager.store_plan(plan_name, plan)
-        retrieved_plan = await db_state_manager.get_plan(plan_name)
+        plan = self._make_plan()
+        await db_state_manager.store_plan('test-project', plan)
+        retrieved_plan = await db_state_manager.get_plan('test-project')
 
         assert retrieved_plan == plan
-        assert retrieved_plan.plan_name == plan_name
-        assert retrieved_plan.project_vision == 'Test vision'
+        assert retrieved_plan.plan_name == 'test-project'
+        assert 'Vision' in retrieved_plan.executive_summary
 
     @pytest.mark.asyncio
     async def test_get_plan_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
@@ -456,93 +405,23 @@ class TestDatabasePlanOperations:
     @pytest.mark.asyncio
     async def test_list_plans_returns_empty_for_no_plans(self, db_state_manager: PostgresStateManager) -> None:
         result = await db_state_manager.list_plans()
-
         assert result == []
 
     @pytest.mark.asyncio
     async def test_delete_plan_returns_true_when_plan_exists(self, db_state_manager: PostgresStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Features',
-            excluded_features='Excluded',
-            project_assumptions='Assumptions',
-            project_constraints='Constraints',
-            project_sponsor='Sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Breakdown',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-
-        await db_state_manager.store_plan(plan_name, plan)
-        result = await db_state_manager.delete_plan(plan_name)
-
+        plan = self._make_plan()
+        await db_state_manager.store_plan('test-project', plan)
+        result = await db_state_manager.delete_plan('test-project')
         assert result is True
 
     @pytest.mark.asyncio
     async def test_delete_plan_removes_plan(self, db_state_manager: PostgresStateManager) -> None:
-        plan_name = 'test-project'
-        plan = Plan(
-            plan_name=plan_name,
-            project_vision='Test vision',
-            project_mission='Test mission',
-            project_timeline='Q1 2024',
-            project_budget='$100K',
-            primary_objectives='Test objectives',
-            success_metrics='Test metrics',
-            key_performance_indicators='Test KPIs',
-            included_features='Features',
-            excluded_features='Excluded',
-            project_assumptions='Assumptions',
-            project_constraints='Constraints',
-            project_sponsor='Sponsor',
-            key_stakeholders='Stakeholders',
-            end_users='Users',
-            work_breakdown='Breakdown',
-            phases_overview='Overview',
-            project_dependencies='Dependencies',
-            team_structure='Team',
-            technology_requirements='Tech',
-            infrastructure_needs='Infrastructure',
-            identified_risks='Risks',
-            mitigation_strategies='Strategies',
-            contingency_plans='Plans',
-            quality_standards='Standards',
-            testing_strategy='Testing',
-            acceptance_criteria='Criteria',
-            reporting_structure='Reporting',
-            meeting_schedule='Meetings',
-            documentation_standards='Docs',
-            plan_status=PlanStatus.DRAFT,
-        )
-
-        await db_state_manager.store_plan(plan_name, plan)
-        await db_state_manager.delete_plan(plan_name)
+        plan = self._make_plan()
+        await db_state_manager.store_plan('test-project', plan)
+        await db_state_manager.delete_plan('test-project')
 
         with pytest.raises(PlanNotFoundError):
-            await db_state_manager.get_plan(plan_name)
+            await db_state_manager.get_plan('test-project')
 
     @pytest.mark.asyncio
     async def test_delete_plan_raises_error_when_not_found(self, db_state_manager: PostgresStateManager) -> None:
