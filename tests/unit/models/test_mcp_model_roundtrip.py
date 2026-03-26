@@ -13,7 +13,7 @@ from typing import Callable, Type
 import pytest
 
 from src.models.base import MCPModel
-from src.models.enums import BuildStatus, PhaseStatus, PlanStatus, RequirementsStatus, RoadmapStatus
+from src.models.enums import PhaseStatus, PlanStatus, RequirementsStatus, RoadmapStatus
 from src.models.feature_requirements import FeatureRequirements
 from src.models.phase import Phase
 from src.models.plan import Plan
@@ -92,24 +92,15 @@ def sample_plan_markdown(markdown_builder: Callable) -> str:
 def sample_task_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         Task,
-        plan_name='Test Platform',
-        project_goal='Build scalable platform',
-        total_duration='6 months',
-        team_size='5 developers',
-        primary_language='Python',
-        framework='FastAPI',
-        database='PostgreSQL',
-        development_environment='Docker-based development',
-        database_schema='User tables',
-        api_architecture='RESTful API',
-        frontend_architecture='React SPA',
-        core_features='User authentication',
-        integration_points='Payment gateway',
-        testing_strategy='Unit tests',
-        code_standards='PEP 8',
-        performance_requirements='Sub-2s page loads',
-        security_implementation='HTTPS and JWT',
-        build_status=BuildStatus.PLANNING,
+        name='task-1-auth',
+        identity='### Phase Path\ntest-platform/phase-1-foundation',
+        overview='### Goal\nImplement OAuth2 authentication\n\n### Acceptance Criteria\nUsers can login\n\n### Technology Stack Reference\nFastAPI, JWT',
+        implementation='### Checklist\n- [ ] Setup OAuth2\n- [ ] Create endpoints\n\n### Steps\n#### Step 1: Setup\nInstall packages',
+        quality='### Testing Strategy\nUnit tests for auth logic',
+        research='### Research Read Log\nNo research provided',
+        status='pending',
+        active='true',
+        version='1.0',
     )
 
 
