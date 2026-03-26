@@ -79,11 +79,12 @@ class PostgresStateManager(StateManager):
             id=row['id'],
             name=row['name'],
             phase_path=row['phase_path'],
-            identity=row['identity'] or 'Identity not specified',
-            overview=row['overview'] or 'Overview not specified',
-            implementation=row['implementation'] or 'Implementation not specified',
-            quality=row['quality'] or 'Quality not specified',
-            research=row['research'] or 'Research not specified',
+            goal=row['goal'] or 'Goal not specified',
+            acceptance_criteria=row['acceptance_criteria'] or 'Acceptance criteria not specified',
+            tech_stack_reference=row['tech_stack_reference'] or 'Technology stack reference not specified',
+            implementation_checklist=row['implementation_checklist'] or 'Implementation checklist not specified',
+            implementation_steps=row['implementation_steps'] or 'Implementation steps not specified',
+            testing_strategy=row['testing_strategy'] or 'Testing strategy not specified',
             status=row['status'] or 'pending',
             active=active_value,
             version=row['version'] or '1.0',
@@ -608,18 +609,19 @@ class PostgresStateManager(StateManager):
                 await conn.execute(
                     """
                     UPDATE tasks SET
-                        id = $1, name = $2, identity = $3, overview = $4,
-                        implementation = $5, quality = $6, research = $7,
-                        status = $8, active = $9, version = $10, updated_at = CURRENT_TIMESTAMP
-                    WHERE phase_path = $11 AND LOWER(name) = LOWER($2)
+                        id = $1, name = $2, goal = $3, acceptance_criteria = $4, tech_stack_reference = $5,
+                        implementation_checklist = $6, implementation_steps = $7, testing_strategy = $8,
+                        status = $9, active = $10, version = $11, updated_at = CURRENT_TIMESTAMP
+                    WHERE phase_path = $12 AND LOWER(name) = LOWER($2)
                     """,
                     task.id,
                     task.name,
-                    task.identity,
-                    task.overview,
-                    task.implementation,
-                    task.quality,
-                    task.research,
+                    task.goal,
+                    task.acceptance_criteria,
+                    task.tech_stack_reference,
+                    task.implementation_checklist,
+                    task.implementation_steps,
+                    task.testing_strategy,
                     task.status,
                     task.active,
                     task.version,
@@ -629,18 +631,19 @@ class PostgresStateManager(StateManager):
                 await conn.execute(
                     """
                     INSERT INTO tasks (
-                        id, name, phase_path, identity, overview,
-                        implementation, quality, research, status, active, version
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                        id, name, phase_path, goal, acceptance_criteria, tech_stack_reference,
+                        implementation_checklist, implementation_steps, testing_strategy, status, active, version
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                     """,
                     task.id,
                     task.name,
                     phase_path,
-                    task.identity,
-                    task.overview,
-                    task.implementation,
-                    task.quality,
-                    task.research,
+                    task.goal,
+                    task.acceptance_criteria,
+                    task.tech_stack_reference,
+                    task.implementation_checklist,
+                    task.implementation_steps,
+                    task.testing_strategy,
                     task.status,
                     task.active,
                     task.version,

@@ -179,11 +179,19 @@ def sample_task(markdown_builder: Callable) -> Task:
     markdown = markdown_builder(
         Task,
         name='Implement User Authentication',
-        identity='### Phase Path\nmicroservices-platform/phase-1-foundation',
-        overview='### Goal\nImplement OAuth2 authentication with JWT tokens\n\n### Acceptance Criteria\nUsers can register, login, and access protected endpoints\n\n### Technology Stack Reference\nFastAPI, Python 3.13+, JWT, OAuth2',
-        implementation='### Checklist\n- [ ] Setup OAuth2 dependencies\n- [ ] Implement JWT handler\n- [ ] Create auth endpoints\n\n### Steps\n#### Step 1: Setup OAuth2 Dependencies\nInstall required packages and configure OAuth2PasswordBearer.\n\n#### Step 2: Implement JWT Token Handler\nCreate JWT token generation and validation logic.\n\n#### Step 3: Create Auth Endpoints\nImplement login and token refresh endpoints.',
-        quality='### Testing Strategy\nUnit tests for auth logic, integration tests for endpoints',
-        research='### Research Read Log\nNo research documentation provided for this task.',
+        phase_path='microservices-platform/phase-1-foundation',
+        goal='Implement OAuth2 authentication with JWT tokens',
+        acceptance_criteria='Users can register, login, and access protected endpoints',
+        tech_stack_reference='FastAPI, Python 3.13+, JWT, OAuth2',
+        implementation_steps="""#### Step 1: Setup OAuth2 Dependencies
+Install required packages and configure OAuth2PasswordBearer.
+
+#### Step 2: Implement JWT Token Handler
+Create JWT token generation and validation logic.
+
+#### Step 3: Create Auth Endpoints
+Implement login and token refresh endpoints.""",
+        testing_strategy='Unit tests for auth logic, integration tests for endpoints',
         status='in_progress',
         active='true',
         version='1.0',
