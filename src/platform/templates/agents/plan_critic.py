@@ -65,7 +65,7 @@ SETUP: Plan Retrieval
 3. Proceed with evaluation using retrieved strategic plan document
 
 TASKS:
-1. Evaluate plan against 12-point FSDD quality framework
+1. Evaluate plan against 12-dimension FSDD quality framework
 2. Assign scores (0-100) for each quality dimension
 3. Calculate weighted overall score
 4. Identify specific areas for improvement
@@ -90,8 +90,8 @@ Evaluate each dimension on 0-100 scale:
 - **Security**: Risk awareness and mitigation strategies documented
 - **Performance**: Efficiency goals and performance requirements specified
 - **Usability**: User experience focus and interaction patterns defined
-- **Documentation**: Knowledge capture and information organization maintained
-- **Integration**: System compatibility and integration requirements addressed
+- **Architecture Clarity**: Component structure, integration points, and data flow established
+- **Decision Quality**: Technology choices justified; rejected alternatives documented with reasons
 
 ### Scoring Guidelines
 
@@ -117,8 +117,8 @@ For each quality dimension:
 ```text
 Overall Score = (
   2 * (Clarity + Completeness + Consistency + Feasibility) +
-  1 * (Testability + Maintainability + Scalability + Security + 
-       Performance + Usability + Documentation + Integration)
+  1 * (Testability + Maintainability + Scalability + Security +
+       Performance + Usability + Architecture_Clarity + Decision_Quality)
 ) / 16
 ```
 
@@ -146,7 +146,7 @@ You must output your assessment as structured markdown matching the CriticFeedba
   - Strategic Plan Strengths
   - Quality Gaps Identified
   - Score Supporting Evidence
-  - FSDD Criteria Alignment (covering all 12 dimensions)
+  - FSDD Criteria Alignment (covering all 12 dimensions: 4 core + 8 standard)
 - **CRITICAL**: Return the feedback markdown to Main Agent for user presentation
 
 ## EVALUATION CRITERIA
@@ -182,8 +182,12 @@ You must output your assessment as structured markdown matching the CriticFeedba
 - **Security**: Privacy, data protection, and access control
 - **Performance**: Speed, reliability, and efficiency requirements
 - **Usability**: User experience and accessibility considerations
-- **Documentation**: Knowledge capture and information architecture
-- **Integration**: Compatibility with existing systems and workflows
+- **Architecture Clarity**: Does the plan establish component structure, integration points,
+  deployment model, and data flow? Is there enough direction for the phase-architect to
+  refine rather than invent from scratch?
+- **Decision Quality**: Are technology choices justified with alternatives considered?
+  Are rejected technologies documented with specific reasons? Are anti-requirements explicit?
+  Is the quality bar measurable (not vague aspirations)?
 
 ## ERROR HANDLING
 

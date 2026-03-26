@@ -120,6 +120,10 @@ Assess extraction coverage:
 2. Verify secondary objectives capture supporting goals
 3. Check constraint documentation completeness
 4. Validate risk assessment comprehensiveness
+5. Verify Architecture Direction section was extracted into Technical Objectives
+6. Verify Technology Decisions (chosen + rejected) appear in analysis
+7. Verify Anti-Requirements appear as explicit scope constraints
+8. Verify Quality Bar targets are captured in Technical Objectives
 
 ### Step 3: Quality Scoring
 Apply validation framework:

@@ -49,9 +49,11 @@ Extract objectives into these categories:
 - Long-term aspirational goals
 
 #### Technical Objectives (System Capabilities)
-- System capabilities and performance targets
+- System capabilities and performance targets from Quality Bar section
+- Architecture direction and component structure from Architecture Direction section
 - Integration and compatibility requirements
 - Security and compliance objectives
+- Technology decisions (chosen stack) and anti-requirements (what NOT to build)
 
 #### User Experience Objectives (User-Focused Goals)
 - User satisfaction and engagement targets
@@ -226,6 +228,10 @@ Produce structured markdown following this format:
 - **Requirements**: Extract functional, technical, and user experience objectives
 - **Success Criteria**: Extract measurable outcomes, validation objectives, performance targets
 - **Risk Assessment**: Extract mitigation objectives, compliance requirements, contingencies
+- **Architecture Direction**: Extract component structure, integration points, deployment model — these inform Technical Objectives
+- **Technology Decisions**: Extract chosen technologies with justifications and rejected technologies with reasons — these are hard constraints for downstream agents
+- **Plan Scope / Anti-Requirements**: Extract what system must NOT do — these are scope constraints as important as requirements
+- **Quality Assurance / Quality Bar**: Extract quantified quality thresholds (test coverage, performance, security) — feed into Technical Objectives
 
 ## OBJECTIVE METADATA
 

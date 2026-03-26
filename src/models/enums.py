@@ -74,6 +74,7 @@ class CriticAgent(str, Enum):
     DATABASE_REVIEWER = 'database-reviewer'
     INFRASTRUCTURE_REVIEWER = 'infrastructure-reviewer'
     CODING_STANDARDS_REVIEWER = 'coding-standards-reviewer'
+    CODE_QUALITY_REVIEWER = 'code-quality-reviewer'
     REVIEW_CONSOLIDATOR = 'review-consolidator'
 
     @classmethod

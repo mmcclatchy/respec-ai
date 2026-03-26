@@ -713,5 +713,37 @@ Maintain conversation flow while processing complex backend refinement:
 - **Implementation Ready**: Sufficient detail for development teams
 - **Integration**: Seamless storage and retrieval
 
-The Phase is ready for implementation planning. Recommend `/respec-code` command for next phase.
+## Step 9: Automatic Task Generation
+
+After Phase storage completes, automatically generate the Task document:
+
+```text
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Display: "✅  PHASE COMPLETE — generating Task document"
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+```
+
+Invoke the task command to generate the Task with full quality loop:
+
+```bash
+/respec-task {{PLAN_NAME}} {{PHASE_NAME}}
+```
+
+The `/respec-task` command will:
+1. Locate the Phase file on disk
+2. Initialize a task quality loop
+3. Run task-planner → task-plan-critic refinement cycle
+4. Store the Task document to MCP and platform
+
+**If /respec-task fails**: The Phase is already stored and valid. Display:
+```text
+"⚠ Task generation failed. Phase is saved. Run /respec-task {{PLAN_NAME}} {{PHASE_NAME}} manually."
+```
+
+**After /respec-task completes**: Display next steps:
+```text
+"✅ Phase and Task complete. Next: /respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
+```
+
+The Phase and Task are ready for implementation. Recommend `/respec-code` command for next step.
 """

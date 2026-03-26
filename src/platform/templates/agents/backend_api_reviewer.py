@@ -59,6 +59,17 @@ TASKS: Retrieve Specs → Inspect API Code → Assess Quality → Store
 - Endpoints delegate to service layer
 - Dependency injection patterns
 
+### Security Posture
+- Raw SQL without parameterization → -5, mark [BLOCKING] in key issues
+- Missing authorization checks on protected endpoints → -3
+- Information leakage in error responses (stack traces, internal IDs) → -2
+- Hardcoded secrets/credentials → -5, mark [BLOCKING] in key issues
+
+### Response Efficiency
+- Unnecessary database calls in request handlers → -2
+- Missing pagination on list endpoints → -2
+- Synchronous operations that should be async → -2
+
 ## REVIEW SECTION OUTPUT FORMAT
 
 Store the following markdown as review section:
@@ -80,6 +91,17 @@ Store the following markdown as review section:
 
 #### Authentication
 - [Auth implementation status]
+
+#### Security Posture
+- [SQL parameterization assessment]
+- [Authorization check coverage]
+- [Error response information leakage]
+- [Secrets/credentials handling]
+
+#### Response Efficiency
+- [Database call optimization]
+- [Pagination on list endpoints]
+- [Async usage for I/O operations]
 
 #### Key Issues
 - [List API issues with file:line references]

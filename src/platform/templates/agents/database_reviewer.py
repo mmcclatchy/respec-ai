@@ -58,6 +58,11 @@ CONSTRAINT: Do NOT write files to the filesystem. Bash is for migration state ch
 - Transaction boundaries for multi-step operations
 - Connection pooling configuration
 
+### Query Complexity
+- `SELECT *` without column specification → -2 (fetch only needed columns)
+- Missing LIMIT on unbounded queries → -2 (all SELECT queries returning multiple rows must be bounded)
+- Unbounded JOINs without WHERE clauses → -3 (JOINs must include filtering to prevent cartesian-scale results)
+
 ## REVIEW SECTION OUTPUT FORMAT
 
 Store the following markdown as review section:
@@ -81,6 +86,11 @@ Store the following markdown as review section:
 #### Query Patterns
 - [N+1 detection results]
 - [Transaction handling assessment]
+
+#### Query Complexity
+- [SELECT * usage detected (files and locations)]
+- [Unbounded queries missing LIMIT]
+- [Unbounded JOINs without WHERE clauses]
 
 #### Key Issues
 - [List database issues with file:line references]

@@ -83,6 +83,7 @@ TASKS: Retrieve Sections → Calculate Score → Merge → Store CriticFeedback
 Expected review sections:
 - review-quality-check (core: 70 points)
 - review-spec-alignment (core: 30 points)
+- review-code-quality (always active: -15 to +5)
 - review-frontend (specialist: -10 to +5)
 - review-backend-api (specialist: -10 to +5)
 - review-database (specialist: -10 to +5)
@@ -120,11 +121,32 @@ For "review-spec-alignment" section:
 
 SPECIALIST_ADJUSTMENTS = 0
 
+For "review-code-quality" section (always active):
+  IF section exists:
+    Parse "### Code Quality (Adjustment: X/[-15 to +5])"
+    SPECIALIST_ADJUSTMENTS += X  (capped: deduction max -15, bonus max +5)
+
 For each specialist section (review-frontend, review-backend-api, review-database, review-infrastructure, review-coding-standards):
   IF section exists:
     Parse deductions and bonuses from Key Issues and Recommendations
     Look for "Deduction: -N points" or "Bonus: +N points" patterns
     SPECIALIST_ADJUSTMENTS += net adjustment (capped: deductions max -10, bonus max +5 per specialist)
+```
+
+### Step 2.5: Check for BLOCKING Issues
+
+Scan all review sections for critical issues that must block code from passing review,
+regardless of aggregate score.
+
+```text
+BLOCKING_FLAG = False
+BLOCKING_SOURCES = []
+
+For each section in REVIEW_SECTIONS:
+  Search for "[BLOCKING]" in section content (Key Issues, flagged items, etc.)
+  IF any "[BLOCKING]" markers found:
+    BLOCKING_FLAG = True
+    BLOCKING_SOURCES.append(section_reviewer_name)
 ```
 
 ### Step 3: Calculate Overall Score
@@ -134,6 +156,9 @@ BASE_SCORE = CORE_SCORES["quality_check"] + CORE_SCORES["spec_alignment"]
   (quality_check out of 70 + spec_alignment out of 30 = base out of 100)
 
 OVERALL_SCORE = clamp(BASE_SCORE + SPECIALIST_ADJUSTMENTS, 0, 100)
+
+IF BLOCKING_FLAG:
+  OVERALL_SCORE = min(OVERALL_SCORE, 79)
 ```
 
 ### Step 4: Merge Sections
@@ -173,7 +198,11 @@ For each review section:
   For REGRESSION items: add to KEY_ISSUES with **[DEVIATION-REGRESSION]** prefix
   For IMPROVEMENT items: note in Progress Notes as positive signals
 
-Sort KEY_ISSUES by severity (critical first, deviation-regressions grouped)
+IF BLOCKING_FLAG:
+  Insert at top of KEY_ISSUES:
+    "**[SCORE CAPPED - BLOCKING]**: Score capped at 79 due to blocking issues from: {{BLOCKING_SOURCES}}. These MUST be resolved before passing review."
+
+Sort KEY_ISSUES by severity (BLOCKING first, then critical, deviation-regressions grouped)
 Sort RECOMMENDATIONS by expected point impact (highest first)
 ```
 

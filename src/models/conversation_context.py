@@ -22,7 +22,14 @@ class ConversationContext(MCPModel):
     must_have_features: list[str] = Field(default_factory=list)
     nice_to_have_features: list[str] = Field(default_factory=list)
     technology_context: str = ''
-    total_stages_completed: int = 4
+    technology_decisions: list[str] = Field(default_factory=list)
+    technology_rejections: list[str] = Field(default_factory=list)
+    architecture_direction: str = ''
+    anti_requirements: list[str] = Field(default_factory=list)
+    performance_targets: list[str] = Field(default_factory=list)
+    risk_assessment: list[str] = Field(default_factory=list)
+    quality_bar: str = ''
+    total_stages_completed: int = 6
     key_insights: list[str] = Field(default_factory=list)
     areas_of_emphasis: list[str] = Field(default_factory=list)
     user_engagement_level: str = 'medium'
@@ -82,6 +89,31 @@ class ConversationContext(MCPModel):
             '\n'.join([f'- {feature}' for feature in self.nice_to_have_features])
             if self.nice_to_have_features
             else "- [Desirable feature that adds value but isn't critical]"
+        )
+        technology_decisions_md = (
+            '\n'.join([f'- {d}' for d in self.technology_decisions])
+            if self.technology_decisions
+            else '- [Technology chosen with justification tied to project requirements]'
+        )
+        technology_rejections_md = (
+            '\n'.join([f'- {r}' for r in self.technology_rejections])
+            if self.technology_rejections
+            else '- [Technology rejected with specific reason — prevents downstream re-derivation]'
+        )
+        anti_requirements_md = (
+            '\n'.join([f'- {r}' for r in self.anti_requirements])
+            if self.anti_requirements
+            else '- [Thing the system must NOT do or build]'
+        )
+        performance_targets_md = (
+            '\n'.join([f'- {t}' for t in self.performance_targets])
+            if self.performance_targets
+            else '- [Quantified performance or scale target]'
+        )
+        risk_assessment_md = (
+            '\n'.join([f'- {r}' for r in self.risk_assessment])
+            if self.risk_assessment
+            else '- [Technical risk with severity, likelihood, and mitigation]'
         )
         key_insights_md = (
             '\n'.join([f'- {insight}' for insight in self.key_insights])
@@ -159,6 +191,29 @@ class ConversationContext(MCPModel):
 
 ### Preferred Stack
 {self.technology_context if self.technology_context else '[Technology preferences and decisions from discussion]'}
+
+### Technology Decisions
+{technology_decisions_md}
+
+### Rejected Technologies
+{technology_rejections_md}
+
+## Architecture Direction
+{self.architecture_direction if self.architecture_direction else '[High-level component structure, integration points, deployment model, and data flow]'}
+
+## Scope Boundaries
+
+### Anti-Requirements
+{anti_requirements_md}
+
+### Performance Targets
+{performance_targets_md}
+
+## Risk Assessment
+{risk_assessment_md}
+
+## Quality Bar
+{self.quality_bar if self.quality_bar else '[Test coverage minimum, security requirements, accessibility standards, and other quality thresholds]'}
 
 ## Conversation Summary
 

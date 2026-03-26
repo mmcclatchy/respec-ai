@@ -14,27 +14,28 @@ plan_template = Plan(
     success_metrics='[Quantitative metrics and qualitative goals from success_metrics]',
     key_performance_indicators='[Key metrics to track project success]',
     included_features='[Core features and capabilities from requirements section]',
-    excluded_features='[Features explicitly excluded from scope]',
+    anti_requirements='[From conversation.anti_requirements — things system must NOT do]',
     project_assumptions='[Key assumptions underlying the project plan]',
     project_constraints='[Integration and technology limitations from constraints]',
     project_sponsor='[Project sponsor identified from stakeholder discussion]',
     key_stakeholders='[Primary stakeholders from conversation context]',
     end_users='[Target users and user groups from requirements]',
+    architecture_overview='[From conversation.architecture_direction — component structure, integration points, deployment model]',
+    data_flow='[Data movement and transformation from architecture discussion]',
+    technology_decisions='[From conversation.technology_decisions — chosen technologies with justification]',
+    technology_rejections='[From conversation.technology_rejections — rejected technologies with specific reasons]',
     work_breakdown='[High-level work breakdown from project structure discussion]',
     phases_overview='[Project phases from timeline and scope conversation]',
     project_dependencies='[Dependencies identified from requirements and constraints]',
     team_structure='[Team composition from resource requirements discussion]',
-    technology_requirements='[Technology stack from technical constraints]',
+    technology_requirements='[Technology stack from technical constraints — include Claude Plan reference if applicable]',
     infrastructure_needs='[Infrastructure requirements from resource discussion]',
-    identified_risks='[Potential challenges and risks from conversation]',
-    mitigation_strategies='[Risk mitigation approaches from discussion]',
+    identified_risks='[From conversation.risk_assessment — technical risks with severity and mitigation]',
+    mitigation_strategies='[Risk mitigation approaches from risk discussion]',
     contingency_plans='[Backup plans for major risks identified]',
-    quality_standards='[Quality requirements from success criteria discussion]',
+    quality_bar='[From conversation.quality_bar + conversation.performance_targets — quantified quality thresholds]',
     testing_strategy='[Testing approach from quality requirements]',
     acceptance_criteria='[Acceptance criteria from success metrics discussion]',
-    reporting_structure='[Reporting needs from stakeholder discussion]',
-    meeting_schedule='[Communication cadence from project management discussion]',
-    documentation_standards='[Documentation requirements from quality standards]',
 ).build_markdown()
 
 
@@ -220,10 +221,33 @@ Expected structured format from plan-conversation (markdown document):
 ## Technology Context
 
 ### Preferred Stack
-[Technology preferences and decisions from discussion]
+[Deployment target and general technology preferences]
+
+### Technology Decisions
+- [Technology chosen — justification]
+
+### Rejected Technologies
+- [Technology rejected — specific reason]
+
+## Architecture Direction
+[High-level component structure, integration points, deployment model, data flow]
+
+## Scope Boundaries
+
+### Anti-Requirements
+- [Thing system must NOT do]
+
+### Performance Targets
+- [Quantified performance/scale target]
+
+## Risk Assessment
+- [Technical risk with severity/likelihood/mitigation]
+
+## Quality Bar
+[Test coverage minimum, security requirements, accessibility standards]
 
 ## Conversation Summary
-- **Total Stages Completed**: 4
+- **Total Stages Completed**: 6
 - **Key Insights**: [Main discoveries]
 - **Areas of Emphasis**: [Topics focused on]
 - **User Engagement Level**: [High/Medium/Low]
@@ -510,7 +534,48 @@ Use the MCP tool `{tools.decide_loop_action}`:
 - Display: "✅ Score: {{ANALYST_SCORE}}/100 — analyst validation complete"
 - Final objectives and feedback already stored in MCP by agent
 - Create external project using {tools.create_project_tool_interpolated}
-- Present final summary:
-  - Plan quality score and analyst validation score
-  - Next steps: Review the plan, then proceed with `/respec-roadmap` or `/respec-phase`
+- Proceed to Step 10.
+
+## Step 10: Automatic Roadmap Generation
+
+After analyst validation completes, automatically generate the roadmap:
+
+```text
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Display: "✅  PLAN COMPLETE — generating roadmap"
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+```
+
+Invoke the roadmap command to decompose the plan into phases:
+
+```bash
+/respec-roadmap {{PLAN_NAME}}
+```
+
+The `/respec-roadmap` command will:
+1. Retrieve the strategic plan from MCP
+2. Initialize a roadmap quality loop
+3. Run roadmap agent → roadmap-critic refinement cycle
+4. Create sparse phase files for each phase in the roadmap
+
+**If /respec-roadmap fails**: The plan is already stored and valid. Display:
+```text
+"⚠ Roadmap generation failed. Plan is saved. Run /respec-roadmap {{PLAN_NAME}} manually."
+```
+
+**After /respec-roadmap completes**: Present final summary:
+
+```text
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Display: "✅  PLAN AND ROADMAP COMPLETE"
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+**Summary**:
+- Plan quality score: [score]
+- Analyst validation score: [score]
+- Phases generated: [list phase names from roadmap]
+
+**Next Steps**:
+Run `/respec-phase {{PLAN_NAME}} [phase-name]` to expand a phase with architecture detail.
+```
 """

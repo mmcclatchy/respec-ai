@@ -25,6 +25,7 @@ from src.platform.template_helpers import (
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
     create_patch_planner_agent_tools,
+    create_code_quality_reviewer_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
     create_plan_analyst_agent_tools,
@@ -41,6 +42,7 @@ from src.platform.templates.agents import (
     generate_analyst_critic_template,
     generate_automated_quality_checker_template,
     generate_backend_api_reviewer_template,
+    generate_code_quality_reviewer_template,
     generate_code_reviewer_template,
     generate_coder_template,
     generate_coding_standards_reviewer_template,
@@ -92,6 +94,7 @@ _AGENT_NAMES = [
     'respec-coder',
     'respec-code-reviewer',
     'respec-automated-quality-checker',
+    'respec-code-quality-reviewer',
     'respec-spec-alignment-reviewer',
     'respec-frontend-reviewer',
     'respec-backend-api-reviewer',
@@ -182,6 +185,7 @@ def _get_agent_generators(
     coder_tools = create_coder_agent_tools(coder_platform_tools)
     code_reviewer_tools = create_code_reviewer_agent_tools()
     automated_quality_checker_tools = create_automated_quality_checker_agent_tools()
+    code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools()
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
     frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
     backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()
@@ -209,6 +213,7 @@ def _get_agent_generators(
             'respec-automated-quality-checker',
             generate_automated_quality_checker_template(automated_quality_checker_tools),
         ),
+        ('respec-code-quality-reviewer', generate_code_quality_reviewer_template(code_quality_reviewer_tools)),
         ('respec-spec-alignment-reviewer', generate_spec_alignment_reviewer_template(spec_alignment_reviewer_tools)),
         ('respec-frontend-reviewer', generate_frontend_reviewer_template(frontend_reviewer_tools)),
         ('respec-backend-api-reviewer', generate_backend_api_reviewer_template(backend_api_reviewer_tools)),

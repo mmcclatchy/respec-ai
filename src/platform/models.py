@@ -1100,6 +1100,31 @@ class SpecAlignmentReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store spec alignment review section')
 
 
+class CodeQualityReviewerAgentTools(BaseModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_REVIEW_SECTION,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, ''),
+        (BuiltInTool.GLOB, ''),
+        (BuiltInTool.GREP, ''),
+        (BuiltInTool.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
+    store_review_section: str = Field(..., description='Store code quality review section')
+
+    @computed_field
+    def research_directory_pattern(self) -> str:
+        return '.best-practices/*.md'
+
+
 class FrontendReviewerAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,

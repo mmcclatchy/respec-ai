@@ -1468,6 +1468,125 @@ Agents that operate as isolated processing units with clear boundaries create pr
 
 These guidelines provide the foundation for creating specialized agents that deliver consistent quality while maintaining architectural flexibility for future system enhancements.
 
+## Review-Team Coordination Pattern
+
+### Overview
+
+The code review workflow uses a **review-team pattern** where multiple specialized reviewer agents
+run in parallel, each producing a partial review section, with a consolidator agent merging all
+sections into a single CriticFeedback document.
+
+This pattern differs from standalone agent workflows in several ways:
+
+### Storage: Review Sections vs CriticFeedback
+
+**Standalone agents** (phase-architect, task-planner, plan-analyst) store complete documents or
+CriticFeedback directly via `store_critic_feedback` or `store_document`.
+
+**Review-team agents** store partial **review sections** via `store_review_section`. Each section
+is stored under a unique key within the shared loop scope. Only the review-consolidator produces
+the final CriticFeedback.
+
+```text
+Reviewer Agent → store_review_section(key="plan/phase/review-{slug}", content=section_markdown)
+Consolidator   → list_review_sections → get_review_section (each) → store_critic_feedback (merged)
+```
+
+### Section Key Naming
+
+Each reviewer stores its output under a unique section key following the pattern:
+
+```text
+{PLAN_NAME}/{PHASE_NAME}/review-{reviewer-slug}
+```
+
+Current section keys:
+
+- `review-quality-check` — automated-quality-checker (core, 70 pts)
+- `review-spec-alignment` — spec-alignment-reviewer (core, 30 pts)
+- `review-code-quality` — code-quality-reviewer (always active, -15 to +5)
+- `review-frontend` — frontend-reviewer (specialist, -10 to +5)
+- `review-backend-api` — backend-api-reviewer (specialist, -10 to +5)
+- `review-database` — database-reviewer (specialist, -10 to +5)
+- `review-infrastructure` — infrastructure-reviewer (specialist, -10 to +5)
+- `review-coding-standards` — coding-standards-reviewer (specialist, -10 to +5)
+
+### Parallel Execution
+
+The orchestrating command (code_command.py Step 7.4.1) launches all Phase 1 review agents in
+parallel. Each reviewer operates independently — no reviewer references or depends on another
+reviewer's output. The review-consolidator runs **after** all other reviewers complete.
+
+```text
+Phase 1 Parallel:  AQC + spec-alignment + code-quality + [optional specialists]
+Phase 1 Sequential: review-consolidator (merges all sections)
+Phase 2 Standalone: coding-standards-reviewer (separate loop, stores CriticFeedback directly)
+```
+
+### Shared Loop ID
+
+All Phase 1 review-team agents share the same `coding_loop_id`. Each agent uses this ID for:
+
+- Retrieving previous feedback (progress tracking across iterations)
+- Storing its review section (via the section key, not the loop ID directly)
+
+The consolidator uses the same `coding_loop_id` to store the merged CriticFeedback.
+
+### Consolidator Role
+
+The review-consolidator is a meta-agent that reads other reviewers' outputs. It knows:
+
+- Which section keys to look for (via `list_review_sections`)
+- How to parse scores from each section's markdown headers
+- How to calculate the weighted overall score (core + specialist adjustments)
+- How to merge all issues and recommendations with source attribution
+
+This is a pragmatic exception to strict agent isolation — the consolidator needs to know the
+output format of other reviewers to merge them. However, it has no knowledge of reviewer
+behavior, workflow orchestration, or quality gates.
+
+### Reviewer Agent Template Pattern
+
+```markdown
+---
+name: respec-{reviewer-name}
+description: {single responsibility description}
+model: sonnet
+tools: {MCP tools for retrieval + storage, builtin tools for code inspection}
+---
+
+You are a {specialty} specialist focused on {evaluation area}.
+
+INPUTS: Dual loop context for assessment
+- coding_loop_id: Loop identifier for feedback retrieval and review section storage
+- task_loop_id: Loop identifier for Task retrieval (different from coding_loop_id)
+- plan_name: Project name
+- phase_name: Phase name for context
+
+TASKS:
+1. Retrieve Task (via task_loop_id)
+2. Retrieve Phase (via plan_name/phase_name)
+3. Retrieve previous feedback (via coding_loop_id) — progress tracking
+4. Inspect codebase (Read/Glob/Grep)
+5. Assess against criteria
+6. Store review section: store_review_section(key="{plan}/{phase}/review-{slug}")
+
+OUTPUTS: Review section in structured markdown with scored subsections
+```
+
+### Adding a New Reviewer
+
+1. Create agent template in `src/platform/templates/agents/{name}_reviewer.py`
+2. Add tools model class to `src/platform/models.py` (pattern from existing reviewers)
+3. Add factory function to `src/platform/template_helpers.py`
+4. Register in `src/platform/templates/agents/__init__.py`
+5. Register in `src/platform/template_generator.py` (agent name list + generator function)
+6. Add enum value to `CriticAgent` in `src/models/enums.py`
+7. Update `review_consolidator.py` to include the new section in merge format
+8. Update `code_command.py` to add the reviewer to `ACTIVE_REVIEWERS`
+9. Update test counts in `test_template_generator.py` and `test_feedback_enums.py`
+10. Regenerate templates
+
 ## Related Documentation
 
 - [Architecture Guide](ARCHITECTURE.md) - System architecture overview

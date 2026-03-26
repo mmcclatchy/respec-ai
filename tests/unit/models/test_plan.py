@@ -38,8 +38,8 @@ Daily active users, session duration, task completion rates, customer feedback s
 ### Included Features
 User dashboard redesign, mobile responsive design, self-service features, account management tools
 
-### Excluded Features
-Legacy system migration, third-party integrations, advanced analytics dashboard
+### Anti-Requirements
+No legacy system migration, no third-party integrations, no advanced analytics dashboard
 
 ### Assumptions
 Existing infrastructure can support new portal, customers will adopt new design, no major security changes needed
@@ -57,6 +57,22 @@ Customer Success team, IT Operations, Security team, Executive leadership, Custo
 
 ### End Users
 Existing customers (5000+ active users), customer support representatives, account managers
+
+## Architecture Direction
+
+### Architecture Overview
+React SPA frontend, Node.js API backend, PostgreSQL database with Redis cache layer
+
+### Data Flow
+Client requests → API Gateway → Node.js handlers → PostgreSQL/Redis → JSON response
+
+## Technology Decisions
+
+### Chosen Technologies
+React.js chosen for component reuse, Node.js chosen for team familiarity, PostgreSQL for ACID compliance
+
+### Rejected Technologies
+Vue.js rejected due to smaller team familiarity, MongoDB rejected due to relational data requirements
 
 ## Plan Structure
 
@@ -93,25 +109,14 @@ Simplified design fallback, manual processes for critical features, extended sup
 
 ## Quality Assurance
 
-### Quality Standards
-WCAG 2.1 AA accessibility compliance, mobile-first responsive design, 99.9% uptime requirement
+### Quality Bar
+WCAG 2.1 AA accessibility compliance, mobile-first responsive design, 99.9% uptime requirement, 90% test coverage
 
 ### Testing Strategy
 Unit testing (90% coverage), integration testing, user acceptance testing, performance testing, security testing
 
 ### Acceptance Criteria
 All user stories complete, performance benchmarks met, security scan passed, stakeholder sign-off received
-
-## Communication Plan
-
-### Reporting Structure
-Weekly status reports to sponsor, bi-weekly stakeholder updates, monthly executive briefings
-
-### Meeting Schedule
-Daily standups, weekly team meetings, bi-weekly stakeholder reviews, monthly steering committee
-
-### Documentation Standards
-Confluence for project docs, Jira for task tracking, GitHub for code documentation, shared drive for assets
 
 ## Metadata
 
@@ -146,7 +151,7 @@ approved
 
         # Plan scope
         assert 'User dashboard redesign, mobile responsive design' in plan.included_features
-        assert 'Legacy system migration, third-party integrations' in plan.excluded_features
+        assert 'No legacy system migration' in plan.anti_requirements
         assert 'Existing infrastructure can support new portal' in plan.project_assumptions
         assert 'Must maintain 99.9% uptime during migration' in plan.project_constraints
 
@@ -154,6 +159,14 @@ approved
         assert 'Chief Technology Officer - Sarah Johnson' in plan.project_sponsor
         assert 'Customer Success team, IT Operations' in plan.key_stakeholders
         assert 'Existing customers (5000+ active users)' in plan.end_users
+
+        # Architecture Direction
+        assert 'React SPA frontend' in plan.architecture_overview
+        assert 'Client requests → API Gateway' in plan.data_flow
+
+        # Technology Decisions
+        assert 'React.js chosen for component reuse' in plan.technology_decisions
+        assert 'Vue.js rejected due to smaller team familiarity' in plan.technology_rejections
 
         # Plan structure
         assert 'Phase 1: Research & Design (2 months)' in plan.work_breakdown
@@ -171,14 +184,9 @@ approved
         assert 'Simplified design fallback, manual processes' in plan.contingency_plans
 
         # Quality assurance
-        assert 'WCAG 2.1 AA accessibility compliance' in plan.quality_standards
+        assert 'WCAG 2.1 AA accessibility compliance' in plan.quality_bar
         assert 'Unit testing (90% coverage), integration testing' in plan.testing_strategy
         assert 'All user stories complete, performance benchmarks met' in plan.acceptance_criteria
-
-        # Communication plan
-        assert 'Weekly status reports to sponsor' in plan.reporting_structure
-        assert 'Daily standups, weekly team meetings' in plan.meeting_schedule
-        assert 'Confluence for project docs, Jira for task tracking' in plan.documentation_standards
 
         # Metadata
         assert plan.plan_status == PlanStatus.APPROVED
@@ -244,12 +252,16 @@ class TestPlanMarkdownBuilding:
             success_metrics='User engagement >70%, course completion >90%, customer satisfaction >4.8/5',
             key_performance_indicators='Monthly active users, course completion rates, user retention, revenue growth',
             included_features='Video streaming, interactive quizzes, progress tracking, certificates, mobile app',
-            excluded_features='Live streaming, social features, advanced analytics, third-party integrations',
+            anti_requirements='No live streaming, no social features, no advanced analytics, no third-party LMS integrations',
             project_assumptions='Market demand exists, content creators available, technology infrastructure scalable',
             project_constraints='Budget limit $750k, 12-month timeline, existing team size, regulatory compliance',
             project_sponsor='Chief Learning Officer - Dr. Emily Chen, oversees educational strategy and budget',
             key_stakeholders='Learning & Development team, IT department, Content creators, Executive leadership',
             end_users='Corporate learners, HR administrators, learning coordinators, subject matter experts',
+            architecture_overview='React frontend, Django REST API, PostgreSQL, S3 for video storage, CloudFront CDN',
+            data_flow='Learner → React SPA → Django API → PostgreSQL/S3 → CloudFront video delivery',
+            technology_decisions='React chosen for rich UI, Django chosen for team expertise, PostgreSQL for relational data',
+            technology_rejections='Vue.js rejected (team unfamiliar), MongoDB rejected (relational data model required)',
             work_breakdown='Planning (1 month), Development (8 months), Content creation (6 months), Testing (2 months)',
             phases_overview='Requirements gathering, platform development, content integration, testing, launch',
             project_dependencies='Content creation timeline, video hosting service, payment gateway integration',
@@ -259,12 +271,9 @@ class TestPlanMarkdownBuilding:
             identified_risks='Content creation delays, technical complexity, user adoption challenges, competition',
             mitigation_strategies='Early content planning, agile development, user testing, market research',
             contingency_plans='Reduced feature set, extended timeline, additional resources, alternative vendors',
-            quality_standards='SCORM compliance, accessibility standards, mobile optimization, security best practices',
+            quality_bar='90% test coverage, SCORM compliance, WCAG 2.1 AA accessibility, sub-3s page loads',
             testing_strategy='Automated testing, user acceptance testing, performance testing, security audits',
             acceptance_criteria='All features functional, performance targets met, security approval, content uploaded',
-            reporting_structure='Weekly team updates, bi-weekly sponsor reviews, monthly board presentations',
-            meeting_schedule='Daily standups, weekly planning, bi-weekly demos, monthly stakeholder meetings',
-            documentation_standards='Technical docs in GitBook, project tracking in Asana, code docs in GitHub',
             plan_status=PlanStatus.ACTIVE,
         )
 
@@ -278,11 +287,15 @@ class TestPlanMarkdownBuilding:
         assert '## Business Objectives' in markdown
         assert '### Primary Objectives' in markdown
         assert 'Launch platform with 100+ courses, achieve 1000+ active learners, 90% completion rate' in markdown
+        assert '## Architecture Direction' in markdown
+        assert '### Architecture Overview' in markdown
+        assert '## Technology Decisions' in markdown
+        assert '### Chosen Technologies' in markdown
         assert '## Resource Requirements' in markdown
         assert '### Team Structure' in markdown
         assert '1 PM, 3 Developers, 1 Designer, 2 QA, 1 DevOps, 2 Content specialists' in markdown
         assert '## Quality Assurance' in markdown
-        assert '### Quality Standards' in markdown
+        assert '### Quality Bar' in markdown
         assert '### Status\nactive' in markdown
 
     def test_round_trip_parsing_maintains_data_integrity(self, sample_plan: Plan) -> None:
@@ -302,12 +315,16 @@ class TestPlanMarkdownBuilding:
         assert parsed_plan.success_metrics == sample_plan.success_metrics
         assert parsed_plan.key_performance_indicators == sample_plan.key_performance_indicators
         assert parsed_plan.included_features == sample_plan.included_features
-        assert parsed_plan.excluded_features == sample_plan.excluded_features
+        assert parsed_plan.anti_requirements == sample_plan.anti_requirements
         assert parsed_plan.project_assumptions == sample_plan.project_assumptions
         assert parsed_plan.project_constraints == sample_plan.project_constraints
         assert parsed_plan.project_sponsor == sample_plan.project_sponsor
         assert parsed_plan.key_stakeholders == sample_plan.key_stakeholders
         assert parsed_plan.end_users == sample_plan.end_users
+        assert parsed_plan.architecture_overview == sample_plan.architecture_overview
+        assert parsed_plan.data_flow == sample_plan.data_flow
+        assert parsed_plan.technology_decisions == sample_plan.technology_decisions
+        assert parsed_plan.technology_rejections == sample_plan.technology_rejections
         assert parsed_plan.work_breakdown == sample_plan.work_breakdown
         assert parsed_plan.phases_overview == sample_plan.phases_overview
         assert parsed_plan.project_dependencies == sample_plan.project_dependencies
@@ -317,12 +334,9 @@ class TestPlanMarkdownBuilding:
         assert parsed_plan.identified_risks == sample_plan.identified_risks
         assert parsed_plan.mitigation_strategies == sample_plan.mitigation_strategies
         assert parsed_plan.contingency_plans == sample_plan.contingency_plans
-        assert parsed_plan.quality_standards == sample_plan.quality_standards
+        assert parsed_plan.quality_bar == sample_plan.quality_bar
         assert parsed_plan.testing_strategy == sample_plan.testing_strategy
         assert parsed_plan.acceptance_criteria == sample_plan.acceptance_criteria
-        assert parsed_plan.reporting_structure == sample_plan.reporting_structure
-        assert parsed_plan.meeting_schedule == sample_plan.meeting_schedule
-        assert parsed_plan.documentation_standards == sample_plan.documentation_standards
         assert parsed_plan.plan_status == sample_plan.plan_status
 
     def test_character_for_character_round_trip_validation(self, sample_plan: Plan) -> None:

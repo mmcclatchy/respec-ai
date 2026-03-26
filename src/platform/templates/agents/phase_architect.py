@@ -113,6 +113,32 @@ IF STRATEGIC_PLAN_MARKDOWN not found:
   SUGGEST: "Run '/respec-plan [PLAN_NAME]' to create strategic plan first"
   EXIT: Workflow terminated
 
+STEP 0.55: Extract Plan Context Variables
+Extract and store key sections from STRATEGIC_PLAN_MARKDOWN as named context variables.
+These sections drive architecture decisions — do NOT re-derive decisions they document.
+
+```text
+PLAN_ARCHITECTURE = extract content of "## Architecture Direction" section
+  (starting point for Phase Architecture — refine, don't reinvent)
+  IF section missing: PLAN_ARCHITECTURE = None
+
+PLAN_TECHNOLOGY_DECISIONS = extract content of "### Chosen Technologies" section
+  (hard constraints alongside Claude Plan refs — technologies already decided)
+  IF section missing: PLAN_TECHNOLOGY_DECISIONS = None
+
+PLAN_TECHNOLOGY_REJECTIONS = extract content of "### Rejected Technologies" section
+  (technologies to NEVER suggest — rejections are documented for a reason)
+  IF section missing: PLAN_TECHNOLOGY_REJECTIONS = None
+
+PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
+  (scope boundaries — things NOT to build, propagate into Phase scope)
+  IF section missing: PLAN_ANTI_REQUIREMENTS = None
+
+PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
+  (performance targets, security reqs, test coverage minimum — reference in Testing Strategy)
+  IF section missing: PLAN_QUALITY_BAR = None
+```
+
 STEP 0.6: Execute Archive Scan
 Query the best-practices knowledge base and local cache for existing documentation.
 
@@ -202,8 +228,33 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Focus improvements on areas critic flagged as deficient
 
 STEP 3: Expand Phase
-Develop comprehensive Phase based on strategic plan (from STEP 0.5)
-→ Apply optional_instructions if provided
+Develop comprehensive Phase based on strategic plan (from STEP 0.5) and plan context variables
+(from STEP 0.55). Apply optional_instructions if provided.
+
+**Plan context usage in phase generation**:
+```text
+IF PLAN_ARCHITECTURE is not None:
+  → Use as the starting point for the Architecture section — refine and elaborate, don't reinvent
+  → Do NOT produce an architecture that contradicts PLAN_ARCHITECTURE
+
+IF PLAN_TECHNOLOGY_DECISIONS is not None:
+  → Honor all technology choices in Phase Technology Stack section
+  → Treat as hard constraints (same precedence as IMPL_PLAN_CONSTRAINTS)
+  → Do NOT suggest alternatives to technologies already decided
+
+IF PLAN_TECHNOLOGY_REJECTIONS is not None:
+  → NEVER suggest rejected technologies — even if you would normally recommend them
+  → If a rejected technology seems obviously relevant, note why it was rejected instead
+
+IF PLAN_ANTI_REQUIREMENTS is not None:
+  → Propagate into Phase Scope "what's excluded" section
+  → Coder must see these boundaries — they prevent over-building
+
+IF PLAN_QUALITY_BAR is not None:
+  → Reference in Testing Strategy section (test coverage minimum, performance targets)
+  → Reference in Non-Functional Requirements (security, accessibility thresholds)
+```
+
 → Integrate ARCHIVE_SCAN_RESULTS (from STEP 0.6) for research requirements
 → Follow OUTPUT FORMAT below
 
@@ -577,6 +628,13 @@ type Resource {{
 **Implementation Plan References** (Preserve if present):
 - [ ] If phase has "### Implementation Plan References": copied VERBATIM into output
 - [ ] If no section but Claude Plan found in strategic plan: auto-created in output
+
+**Plan Context Propagation** (from STEP 0.55):
+- [ ] If PLAN_ARCHITECTURE present: Architecture section refines it, does not contradict it
+- [ ] If PLAN_TECHNOLOGY_DECISIONS present: Technology Stack honors all choices
+- [ ] If PLAN_TECHNOLOGY_REJECTIONS present: No rejected technologies appear in output
+- [ ] If PLAN_ANTI_REQUIREMENTS present: Phase Scope includes them as exclusions
+- [ ] If PLAN_QUALITY_BAR present: Testing Strategy and NFRs reference the targets
 
 **Optional Core Sections** (Include if relevant):
 - [ ] Dependencies identified with versions

@@ -179,7 +179,7 @@ Display: "✓ Detected step modes: {{STEP_MODES}}"
 Determine which review agents to invoke based on detected modes:
 
 ```text
-ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer"]
+ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer", "code-quality-reviewer"]
 
 IF "frontend" in STEP_MODES:
   ACTIVE_REVIEWERS.append("frontend-reviewer")
@@ -286,6 +286,16 @@ Invoke spec-alignment-reviewer agent with:
 - phase_name: {{PHASE_NAME}}
 
 Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-spec-alignment
+```
+
+```text
+Invoke code-quality-reviewer agent with:
+- coding_loop_id: {{CODING_LOOP_ID}}
+- task_loop_id: {{TASK_LOOP_ID}}
+- plan_name: {{PLAN_NAME}}
+- phase_name: {{PHASE_NAME}}
+
+Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-code-quality
 ```
 
 **Optional Specialist Reviewers (from PHASE1_REVIEWERS):**
@@ -528,7 +538,7 @@ Ready for deployment."
 
 ### Quality Assessment
 - **Phase Evaluation**: Assessed by task-critic agent
-- **Code Quality Evaluation**: Assessed by review team (automated-quality-checker, spec-alignment-reviewer, optional specialists, review-consolidator)
+- **Code Quality Evaluation**: Assessed by review team (automated-quality-checker, spec-alignment-reviewer, code-quality-reviewer, optional specialists, review-consolidator)
 - **Loop Decisions**: Made by MCP Server based on configuration
 - **Thresholds and Limits**: Managed by MCP Server
 
@@ -600,6 +610,7 @@ All specialized work delegated to appropriate agents:
 - **coder**: TDD code implementation (MCP access + platform tools)
 - **automated-quality-checker**: Static analysis (tests, types, lint, coverage)
 - **spec-alignment-reviewer**: Task/Phase/Plan alignment verification
+- **code-quality-reviewer**: Structural quality, correctness patterns, research compliance, design assessment
 - **specialist reviewers**: Domain-specific review (frontend, API, database, infrastructure)
 - **review-consolidator**: Merges all review sections into single CriticFeedback
 - **MCP Server**: Decision logic, threshold management, state storage

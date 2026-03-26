@@ -6,6 +6,7 @@ from .models import (
     BackendApiReviewerAgentTools,
     CodeCommandTools,
     CoderAgentTools,
+    CodeQualityReviewerAgentTools,
     CodeReviewerAgentTools,
     CodingStandardsReviewerAgentTools,
     CreatePhaseAgentTools,
@@ -714,6 +715,34 @@ def create_spec_alignment_reviewer_agent_tools() -> SpecAlignmentReviewerAgentTo
         store_review_section=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_REVIEW_SECTION,
             key='{PLAN_NAME}/{PHASE_NAME}/review-spec-alignment',
+            content='{REVIEW_SECTION_MARKDOWN}',
+        ),
+    )
+
+
+def create_code_quality_reviewer_agent_tools() -> CodeQualityReviewerAgentTools:
+    builder = TemplateToolBuilder()
+
+    for tool in CodeQualityReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in CodeQualityReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return CodeQualityReviewerAgentTools(
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+        ),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
+        store_review_section=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEW_SECTION,
+            key='{PLAN_NAME}/{PHASE_NAME}/review-code-quality',
             content='{REVIEW_SECTION_MARKDOWN}',
         ),
     )

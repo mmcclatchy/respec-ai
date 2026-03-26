@@ -414,7 +414,7 @@ Cap at -10 points maximum.
 
 IF TEST_PRODUCTION_BLOCKING == True:
   Add to key_issues:
-  - "**BLOCKING: Test Code in Production**: Production files import from tests/"
+  - "**[BLOCKING] Test Code in Production**: Production files import from tests/"
   - List each file:line with exact import statement
   - "Fix: Move shared code to src/utils/ or remove test dependency"
 
@@ -426,7 +426,7 @@ IF POINTLESS_TESTS_COUNT > 0:
 
 IF MOCKING_PRODUCTION_BLOCKING == True:
   Add to key_issues:
-  - "**BLOCKING: Mocking Code Under Test** ([count] tests): Tests mock the exact code they're testing"
+  - "**[BLOCKING] Mocking Code Under Test** ([count] tests): Tests mock the exact code they're testing"
   - List each test with patch target
   - "Fix: Remove mock. Test actual behavior or refactor to use dependency injection."
 

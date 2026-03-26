@@ -26,6 +26,9 @@ csr_feedback_template = CriticFeedback(
 ### Code Structure
 [Global variables, nesting depth, test separation]
 
+### Hardcoded Secrets
+[Secrets detection assessment]
+
 ### Progress Notes
 [Improvement from previous iteration if applicable]""",
     key_issues=[
@@ -202,6 +205,33 @@ Focus review on files changed by coder in recent commits.
 - Verify test file naming follows convention
 - Check test file location (should be in tests/ directory)
 
+### 7. Hardcoded Secrets Detection
+- No hardcoded passwords, API keys, tokens, secrets, or private keys in source code
+- Environment variables or config references are acceptable
+- Test fixtures with obviously fake values are acceptable
+
+**Check**:
+```bash
+grep -rn "password\|secret\|api_key\|token\|private_key" src/ --include="*.py"
+```
+
+**Evaluate each match with context** — NOT every match is a violation:
+
+Acceptable (NOT violations):
+- Variable/field names referencing secrets: `password_field = StringField()`
+- Configuration key names: `SECRET_KEY_ENV = "SECRET_KEY"`
+- Environment variable lookups: `os.environ["API_KEY"]`, `os.getenv("TOKEN")`
+- Type hints or model fields: `password: str | None = None`
+- Test fixtures with fake values: `token = "fake-token-for-testing"`
+- Documentation strings describing secret handling
+- Pydantic settings fields: `api_key: str = Field(default=...)`
+
+Violations (ACTUAL hardcoded secrets):
+- Literal credential values: `password = "my_real_password123"`
+- Embedded API keys: `api_key = "sk-abc123def456"`
+- Inline tokens: `token = "ghp_xxxxxxxxxxxxxxxxxxxx"`
+- Private key content: `private_key = "[PEM-encoded RSA private key content]"`
+
 ## REVIEW SECTION OUTPUT FORMAT
 
 Store the following markdown as review section:
@@ -239,6 +269,10 @@ Store the following markdown as review section:
 - [Nesting depth issues]
 - [Test code in production violations]
 
+#### Hardcoded Secrets
+- [Secrets scan results]
+- [Actual violations vs acceptable references]
+
 #### Key Issues
 - **[Issue 1]**: [Description with file:line reference]
 - **[Issue 2]**: [Description with file:line reference]
@@ -261,6 +295,7 @@ Specialist reviewers do not contribute to the base 100-point score directly. Ins
 
 **Deductions** (up to -10 points):
 - Critical violations (test code in production, no type hints): -10 points
+- Hardcoded secrets (actual credentials in source code): -5 points, mark [BLOCKING] in key issues
 - Major violations (global variables, inline imports, obvious docstrings): -5 to -7 points
 - Minor violations (naming inconsistencies, import ordering): -2 to -4 points
 
@@ -285,6 +320,13 @@ def function_name(param):  # ❌ No type hints
 # Global variables
 GLOBAL_VAR = {{}}  # ❌ Mutable global (not UPPER_CASE constant)
 → Each occurrence: -3 points
+
+# Hardcoded secrets
+grep -rn "password\|secret\|api_key\|token\|private_key" src/ --include="*.py"
+→ Evaluate each match in context:
+  ✅ SKIP: variable names, field definitions, env lookups, config keys, test fakes
+  ❌ FLAG: literal credential values, embedded keys, inline tokens
+→ If actual hardcoded secrets found: -5 points, mark [BLOCKING] in key issues
 ```
 
 ### Major Violations
@@ -327,9 +369,10 @@ import local_module  # ❌ Should be after stdlib/third-party
    - Scan for documentation violations
    - Check type hints on all functions
    - Verify code structure (no globals, nesting depth)
-4. **Calculate Deductions/Bonus**
-5. **Generate Review Section Markdown**
-6. **Store via store_review_section tool**
+4. **Scan for Hardcoded Secrets**: Run grep across src/, evaluate matches in context, flag only actual credentials
+5. **Calculate Deductions/Bonus**
+6. **Generate Review Section Markdown**
+7. **Store via store_review_section tool**
 
 ## EDGE CASES
 

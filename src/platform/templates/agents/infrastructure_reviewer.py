@@ -35,9 +35,11 @@ CONSTRAINT: Do NOT write files to the filesystem. Bash is for configuration vali
 ### Container Configuration
 - Dockerfile uses multi-stage builds (where appropriate)
 - Base images are pinned to specific versions
+- Container images do not use `:latest` tag (-2 if found)
 - Non-root user configured
 - .dockerignore present and comprehensive
 - Health checks defined
+- Port exposure is minimal and justified (-1 if overly permissive without justification)
 
 ### Docker Compose (if applicable)
 - Service dependencies properly defined
@@ -72,6 +74,8 @@ Store the following markdown as review section:
 #### Container Configuration
 - [Dockerfile quality assessment]
 - [Image security assessment]
+- [`:latest` tag usage — flag any container images not pinned to a specific version]
+- [Port exposure review — flag overly permissive bindings without justification]
 
 #### Compose/Orchestration
 - [Service configuration assessment]
@@ -95,7 +99,7 @@ Store the following markdown as review section:
 ## SCORING IMPACT
 
 Specialist reviewers do not contribute to the base 100-point score directly. Instead:
-- **Deductions**: Up to -10 points for critical issues (secrets in source, no health checks, root user in container)
+- **Deductions**: Up to -10 points for critical issues (secrets in source, no health checks, root user in container, `:latest` tags [-2], overly permissive ports [-1])
 - **Bonus**: Up to +5 points for exceptional quality (multi-stage builds, comprehensive CI/CD, proper secret management)
 - Report deductions/bonus clearly for the consolidator to apply
 """
