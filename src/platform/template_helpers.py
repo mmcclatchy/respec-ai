@@ -380,6 +380,9 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
     return PhaseCriticAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
         phase_length_soft_cap=phase_length_soft_cap,
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
+        ),
         get_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='None', loop_id='{LOOP_ID}'
         ),
@@ -487,6 +490,9 @@ def create_roadmap_critic_agent_tools() -> RoadmapCriticAgentTools:
 
     return RoadmapCriticAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
+        ),
         get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, plan_name='{PLAN_NAME}'),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'

@@ -49,6 +49,18 @@ WORKFLOW: Task + Phase → Production Code
 1. Read project configuration (see PROJECT CONFIGURATION below)
 2. Retrieve Task: {tools.retrieve_task}
 3. Retrieve Phase: {tools.retrieve_phase}
+3.5. Read Implementation Plan Constraints from Phase:
+   Search PHASE_MARKDOWN for "### Implementation Plan References" section
+   IF section found:
+     For each "- Constraint: `<path>`" line:
+       CALL Read(file_path=path)
+       IF Read succeeds: append to IMPL_PLAN_CONSTRAINTS list
+       IF Read fails: note as "unavailable — {{path}}"
+
+   IMPL_PLAN_CONSTRAINTS are HARD CONSTRAINTS:
+   → Override general knowledge AND research guidance
+   → Do NOT deviate from technology choices in constraints
+   → Do NOT suggest alternatives to explicitly rejected approaches
 4. Retrieve all feedback: {tools.retrieve_feedback}
 5. Use Commands from language config for test/check/lint
 6. Assess current implementation state (Read/Glob)
@@ -279,6 +291,12 @@ Update TodoList using TodoWrite as you progress:
 - Follow Task Steps in order (Step 1, Step 2, Step 3, etc.)
 - Complete each Step fully before moving to next
 - Reference Phase for architectural context when Steps lack detail
+
+### Implementation Plan Constraints
+- If IMPL_PLAN_CONSTRAINTS loaded (step 3.5), they take highest precedence
+- Technology choices in constraints override Phase suggestions if conflict
+- Architecture patterns in constraints are non-negotiable
+- Check constraints before choosing implementation approach
 
 ### Code Quality Standards
 - Apply coding standards from .respec-ai/config/{{language}}.md (or Phase fallback)

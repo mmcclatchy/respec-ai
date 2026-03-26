@@ -859,6 +859,7 @@ class PhaseCriticAgentTools(BaseModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
+    get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     store_feedback: str = Field(..., description='Store critic feedback')
 
@@ -1005,13 +1006,15 @@ class RoadmapAgentTools(BaseModel):
 
 class RoadmapCriticAgentTools(BaseModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
-        RespecAITool.GET_ROADMAP,  # Dedicated roadmap retrieval (no loop_id parameter)
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_ROADMAP,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_roadmap: str = Field(..., description='Retrieve roadmap from MCP')
     store_feedback: str = Field(..., description='Store critic feedback')
 

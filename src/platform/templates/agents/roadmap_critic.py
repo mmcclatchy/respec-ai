@@ -40,7 +40,13 @@ Analysis of complexity distribution, timeline realism, and resource consideratio
 
 Assessment of cross-phase communication, handoff procedures, and overall workflow coherence.
 
-[Analysis of how phases connect, data flow between phases, and overall roadmap coherence]""",
+[Analysis of how phases connect, data flow between phases, and overall roadmap coherence]
+
+### Plan Constraint Alignment
+
+Assessment of whether roadmap phases respect plan-level architecture, technology, scope, and quality constraints.
+
+[Validation that phases collectively implement Architecture Direction, honor Chosen Technologies, exclude Anti-Requirements, and reflect Quality Bar. Note any rejected technologies that appear in phase scope. Skip if plan not available.]""",
     key_issues=[
         '**[Category]**: [Specific roadmap problem with phase or section reference]',
         '**[Category]**: [Implementation readiness gap with technical focus area citation]',
@@ -92,6 +98,19 @@ STEP 1: Retrieve Roadmap
 CALL {tools.get_roadmap}
 → Verify: Roadmap markdown received
 → If failed: Request orchestrator provide roadmap directly
+
+STEP 1.5: Retrieve Strategic Plan
+CALL {tools.get_plan}
+→ If failed: Set PLAN_AVAILABLE = False, skip Plan Constraint Alignment in scoring
+
+STEP 1.6: Extract Plan Constraint Sections (if plan available)
+IF PLAN_AVAILABLE:
+  PLAN_ARCHITECTURE = extract content of "## Architecture Direction" section
+  PLAN_TECHNOLOGY_DECISIONS = extract content of "### Chosen Technologies" section
+  PLAN_TECHNOLOGY_REJECTIONS = extract content of "### Rejected Technologies" section
+  PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
+  PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
+  IF any section missing: set variable = None
 
 STEP 2: Evaluate Roadmap Structure
 Assess roadmap against FSDD quality framework criteria
@@ -157,6 +176,13 @@ Evaluate each dimension systematically:
 - Evaluate success measurement and tracking approach
 - Validate handoff procedures between phases
 
+**6. Plan Constraint Alignment** (only scored if plan retrieved in STEP 1.5)
+- Verify phases collectively implement Architecture Direction
+- Check phase technology references match Chosen Technologies
+- Validate no phase includes work covered by Anti-Requirements
+- Confirm Quality Bar targets reflected in phase quality plans
+- Check rejected technologies do not appear in any phase scope
+
 ### FSDD Framework Application
 
 #### Phase Integrity Criteria
@@ -197,6 +223,10 @@ Generate assessment in structured CriticFeedback format with consistent heading 
 
 Calculate roadmap quality score using weighted assessment across five dimensions:
 
+**IF plan retrieved in STEP 1.5:**
+**Score = (Phase_Scoping x 20%) + (Dependencies x 15%) + (Implementation_Readiness x 20%) + (Balance_Feasibility x 15%) + (Integration_Strategy x 10%) + (Plan_Alignment x 20%)**
+
+**IF plan NOT available:**
 **Score = (Phase_Scoping x 25%) + (Dependencies x 20%) + (Implementation_Readiness x 25%) + (Balance_Feasibility x 20%) + (Integration_Strategy x 10%)**
 
 ### Dimension Scoring (0-100 points each)
@@ -234,6 +264,14 @@ Calculate roadmap quality score using weighted assessment across five dimensions
 - Testing approach defined: +30 points
 - Handoff procedures clear: +30 points
 - **Deductions**: Missing integration plan (-40)
+
+#### Plan Constraint Alignment (20% weight — only if plan available)
+- Architecture Direction reflected in phase decomposition: +30 points
+- Chosen Technologies referenced correctly in relevant phases: +25 points
+- Anti-Requirements respected (no excluded work in phases): +20 points
+- Quality Bar targets accounted for in phase planning: +15 points
+- No rejected technologies appear in any phase: +10 points
+- **Deductions**: Architecture contradiction (-30), rejected tech included (-20), anti-requirement violated (-20)
 
 ### Score Interpretation
 - **90-100**: Exceptional - Ready for immediate implementation

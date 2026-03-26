@@ -152,6 +152,18 @@ STEP 1: Retrieve Strategic Plan
 CALL {tools.get_plan}
 → Verify strategic plan received
 
+STEP 1.5: Extract Plan Constraint Sections
+Extract key constraint sections from STRATEGIC_PLAN to guide phase decomposition.
+These are HARD CONSTRAINTS — phases MUST reflect them.
+
+PLAN_ARCHITECTURE = extract content of "## Architecture Direction" section
+PLAN_TECHNOLOGY_DECISIONS = extract content of "### Chosen Technologies" section
+PLAN_TECHNOLOGY_REJECTIONS = extract content of "### Rejected Technologies" section
+PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
+PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
+
+IF any section missing: set variable = None (plan may predate these sections)
+
 STEP 2: Incorporate Feedback (if refinement iteration)
 IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Analyze specific issues identified by critic
@@ -169,6 +181,11 @@ Break requirements into appropriately-sized implementation phases
 → If adding timeline estimates, that's acceptable, but scope by work complexity, not hours
 → Ensure clear phase boundaries
 → Validate dependency relationships
+→ IF PLAN_ARCHITECTURE exists: Phases MUST collectively implement this architecture
+→ IF PLAN_TECHNOLOGY_DECISIONS exists: Phases touching decided tech MUST use it
+→ IF PLAN_TECHNOLOGY_REJECTIONS exists: No phase may include rejected technologies
+→ IF PLAN_ANTI_REQUIREMENTS exists: No phase may include explicitly excluded work
+→ IF PLAN_QUALITY_BAR exists: Quality targets inform phase sizing (budget testing time)
 
 STEP 4: Generate Roadmap
 Create comprehensive roadmap markdown following OUTPUT FORMAT below
@@ -300,6 +317,7 @@ Use this exact format (generated from Phase model):
 - **Dependency Logic**: Sensible sequencing without circular dependencies
 - **Balance**: Even complexity distribution across phases
 - **Completeness**: All strategic plan requirements addressed
+- **Plan Constraint Compliance**: Phases respect Architecture Direction, use Chosen Technologies, avoid Rejected Technologies, exclude Anti-Requirements, account for Quality Bar
 
 ### Implementation Readiness
 - **Phase Preparation**: Sufficient context for targeted /respec-phase command execution

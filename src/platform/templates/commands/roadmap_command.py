@@ -50,6 +50,26 @@ IF STRATEGIC_PLAN not found:
 STRUCTURED_OBJECTIVES = [Extract from strategic plan Business Objectives analysis]
 ```
 
+#### Validate Plan Constraint Sections
+```text
+PLAN_HAS_ARCHITECTURE = STRATEGIC_PLAN contains "## Architecture Direction" section
+PLAN_HAS_TECH_DECISIONS = STRATEGIC_PLAN contains "### Chosen Technologies" section
+PLAN_HAS_ANTI_REQUIREMENTS = STRATEGIC_PLAN contains "### Anti-Requirements" section
+PLAN_HAS_QUALITY_BAR = STRATEGIC_PLAN contains "### Quality Bar" section
+CONSTRAINT_SECTIONS_FOUND = count of True values above
+
+IF CONSTRAINT_SECTIONS_FOUND == 0:
+  Display: "⚠️ Plan has no constraint sections (Architecture Direction, Technology Decisions, Anti-Requirements, Quality Bar)"
+  Display: "Roadmap will proceed but phases may lack constraint guidance"
+  Display: "Consider running '/respec-plan' to add these sections"
+ELSE:
+  Display: "✓ Found {{CONSTRAINT_SECTIONS_FOUND}}/4 plan constraint sections"
+  IF not PLAN_HAS_ARCHITECTURE: Display: "  ⚠️ Missing: Architecture Direction"
+  IF not PLAN_HAS_TECH_DECISIONS: Display: "  ⚠️ Missing: Technology Decisions"
+  IF not PLAN_HAS_ANTI_REQUIREMENTS: Display: "  ⚠️ Missing: Anti-Requirements"
+  IF not PLAN_HAS_QUALITY_BAR: Display: "  ⚠️ Missing: Quality Bar"
+```
+
 Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.1.
 
 ### 2. Initialize Roadmap Generation Loop

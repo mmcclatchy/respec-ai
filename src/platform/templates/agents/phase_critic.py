@@ -102,6 +102,13 @@ phase_feedback_template = CriticFeedback(
 
 **Total Irrelevant Section Penalty**: X points (-2 per irrelevant section)
 
+### Plan Constraint Alignment
+
+**Architecture Alignment**: [Does Phase refine plan's Architecture Direction without contradiction?]
+**Technology Compliance**: [Are Chosen Technologies honored? Any Rejected technologies used?]
+**Scope Boundaries**: [Are Anti-Requirements excluded from Phase scope?]
+**Quality Targets**: [Does Testing Strategy reference Quality Bar targets?]
+
 ### Key Strengths
 - [Standout element with specific reference]
 - [Standout element with specific reference]
@@ -112,6 +119,7 @@ phase_feedback_template = CriticFeedback(
         '**[Category]**: [Technical concern]',
         '**[Category]**: [Missing detail]',
         '**[Research Path Invalid - BLOCKING]**: Path `[path]` does not exist - phase-architect must use actual file paths from archive scan output, not guessed names',
+        '**[Plan Constraint Violation - BLOCKING]**: Phase [contradicts Architecture Direction / uses rejected technology [name] / includes anti-requirement work] — plan constraint must be respected',
     ],
     recommendations=[
         '**[Priority Level - Critical/Important/Nice-to-Have]**: [Specific improvement action]',
@@ -373,12 +381,32 @@ ELSE:
 
 # Apply alongside RESEARCH_PATH_PENALTY. Either invalid path type caps score at 80.
 
+STEP 2.8: Retrieve Plan for Constraint Validation
+CALL {tools.get_plan}
+→ Store: STRATEGIC_PLAN_MARKDOWN
+→ If failed: Set PLAN_CONSTRAINTS_AVAILABLE = False, skip constraint checks in STEP 3
+
+IF STRATEGIC_PLAN_MARKDOWN received:
+  PLAN_CONSTRAINTS_AVAILABLE = True
+  PLAN_ARCHITECTURE = extract content of "## Architecture Direction" section
+  PLAN_TECHNOLOGY_DECISIONS = extract content of "### Chosen Technologies" section
+  PLAN_TECHNOLOGY_REJECTIONS = extract content of "### Rejected Technologies" section
+  PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
+  PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
+  (IF any section missing: set variable = None)
+
 STEP 3: Evaluate Phase Structure
 Assess Phase against FSDD quality framework criteria
 → Technical completeness and clarity
 → Architecture design quality
 → Implementation readiness
 → Research requirements adequacy
+→ Plan Constraint Alignment (if PLAN_CONSTRAINTS_AVAILABLE):
+  → IF PLAN_ARCHITECTURE: Verify Phase architecture refines it, does not contradict
+  → IF PLAN_TECHNOLOGY_DECISIONS: Verify Phase Technology Stack honors chosen technologies
+  → IF PLAN_TECHNOLOGY_REJECTIONS: Verify no rejected technologies appear in Phase
+  → IF PLAN_ANTI_REQUIREMENTS: Verify Phase scope excludes anti-requirements
+  → IF PLAN_QUALITY_BAR: Verify Testing Strategy and NFRs reference quality targets
 
 STEP 4: Calculate Quality Score
 Use objective assessment criteria to calculate numerical score (0-100)
@@ -659,7 +687,7 @@ Assess phase for implementation details that belong in Phase:
 
 ### Overall Score Calculation
 
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty - Research Path Penalty - Impl Plan Path Penalty**
+**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty - Research Path Penalty - Impl Plan Path Penalty - Plan Constraint Penalty**
 
 **Core Sections (70 points)**:
 - Required sections (Objectives, Scope, Architecture, Testing): 40 points
@@ -670,6 +698,11 @@ Assess phase for implementation details that belong in Phase:
 - If ANY invalid research file paths found: -20 points (from STEP 2.6)
 - Caps maximum score at 80 until all paths are corrected
 
+**Plan Constraint Penalty (BLOCKING)**:
+- If PLAN_CONSTRAINTS_AVAILABLE AND phase contradicts plan architecture OR uses rejected technology OR includes anti-requirement: -20 points
+- Caps maximum score at 80 until violations are corrected
+- If PLAN_CONSTRAINTS_AVAILABLE is False: 0 points (graceful degradation)
+
 **Domain-Specific Sections (30 points)**:
 - Section presence: 15 points (3 points each x 5 RELEVANT sections only)
 - Section substance: 15 points (3 points each x 5 RELEVANT sections only)
@@ -679,21 +712,24 @@ Assess phase for implementation details that belong in Phase:
 - Over-detailing penalty: Up to -10 points for implementation details
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
 - **Research path penalty: -20 points if ANY invalid research file paths (BLOCKING)**
+- **Plan constraint penalty: -20 points if phase contradicts plan constraints (BLOCKING)**
 
 **Maximum possible: 105 points** (base 100 + 5 structure bonus)
 **Minimum possible: 0 points** (penalties can reduce to 0 but not below)
 
 **Convert to 0-100 scale**:
 1. Calculate Raw Score by adding all positive scores (Core Sections + Domain-Specific Sections + Structure Bonus)
-2. Subtract all penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty + Research Path Penalty)
+2. Subtract all penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty + Research Path Penalty + Plan Constraint Penalty)
 3. Ensure Overall Score stays between 0 and 100 by capping at maximum 100 and minimum 0
 4. **BLOCKING**: If Research Path Penalty applied, cap score at 80 maximum
+5. **BLOCKING**: If Plan Constraint Penalty applied, cap score at 80 maximum
 
 **Note**:
 - Structure bonus allows phases to reach 100/100 even with minor gaps in optional sections
 - Length penalty escalates dramatically for oversized phases (0, -5, -15, -30, -50 points)
 - Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
 - **Research path penalty is BLOCKING** - invalid paths cause downstream task-planner failure
+- **Plan constraint penalty is BLOCKING** - contradicting plan architecture/technology decisions causes downstream failures
 - Score cannot go below 0 or above 100
 
 ### Score Interpretation
