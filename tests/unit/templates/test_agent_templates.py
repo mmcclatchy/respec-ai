@@ -22,7 +22,7 @@ class TestPlanRoadmapTemplate:
         assert '---' in template
         assert 'name: respec-roadmap' in template
         assert 'description:' in template
-        assert 'model: sonnet' in template
+        assert 'model: opus' in template
         assert 'tools:' in template
 
         # Check MCP tools section - roadmap agent only retrieves plan, doesn't create phases
@@ -157,19 +157,21 @@ class TestCreatePhaseTemplate:
 
 
 class TestTemplateConsistency:
-    def test_all_templates_use_sonnet(self) -> None:
+    def test_template_models(self) -> None:
         roadmap_tools = create_roadmap_agent_tools()
         critic_tools = create_roadmap_critic_agent_tools()
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
         create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
 
-        templates = [
-            generate_roadmap_template(roadmap_tools),
+        # Roadmap uses opus (creative synthesis — architectural decomposition)
+        assert 'model: opus' in generate_roadmap_template(roadmap_tools)
+
+        # Critic and create-phase use sonnet (structured evaluation / extraction)
+        sonnet_templates = [
             generate_roadmap_critic_template(critic_tools),
             generate_create_phase_template(create_phase_tools),
         ]
-
-        for template in templates:
+        for template in sonnet_templates:
             assert 'model: sonnet' in template
 
     def test_all_templates_have_required_sections(self) -> None:
