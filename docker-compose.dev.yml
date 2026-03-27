@@ -38,7 +38,7 @@ services:
       - respec-dev-network
     volumes:
       - respec_ai_dev_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - ./migrations/000_init_test_db.sql:/docker-entrypoint-initdb.d/000_init_test_db.sql:ro
     ports:
       - "5433:5432"
     healthcheck:

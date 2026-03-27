@@ -1,64 +1,46 @@
+from textwrap import indent
+
+from src.models.task import Task
 from src.platform.models import PatchPlannerAgentTools
 
 
-amendment_task_example = """# Task: patch-fix-jwt-expiry
-
-## Identity
-
-### Phase Path
-plan-name/phase-name
-
-## Overview
-
-### Goal
-Fix JWT token expiry calculation that uses seconds instead of milliseconds,
-causing tokens to expire 1000x too quickly.
-
-### Acceptance Criteria
-- Token expiry uses milliseconds consistently
-- Existing tests updated to verify correct expiry timing
-- No regression in token validation logic
-
-### Technology Stack Reference
-PyJWT 2.x, Python 3.13+
-
-## Implementation
-
-### Checklist
-- [ ] Fix expiry calculation in jwt_service.py (Step 1) (verify: pytest tests/auth/test_jwt.py)
-- [ ] Update expiry-related tests (Step 1) (verify: pytest tests/auth/test_jwt.py -v)
-
-### Steps
-
-#### Step 1: Fix Token Expiry Calculation
-**Objective**: Correct the time unit mismatch in JWT expiry.
-**Actions**:
-- Read src/auth/jwt_service.py to identify expiry calculation
-- Fix seconds-to-milliseconds conversion
-- Update related tests to verify correct timing
-- Run full auth test suite
-
-## Quality
-
-### Testing Strategy
-Unit testing:
-- Verify token expires at correct time (not 1000x too fast)
-- Verify existing token validation still works
-- Edge case: token created at exact boundary
-
-## Status
-
-### Current Status
-pending
-
-## Metadata
-
-### Active
-true
-
-### Version
-1.0
-"""
+amendment_task_example = Task(
+    name='patch-fix-jwt-expiry',
+    phase_path='plan-name/phase-name',
+    goal=(
+        'Fix JWT token expiry calculation that uses seconds instead of milliseconds,\n'
+        'causing tokens to expire 1000x too quickly.'
+    ),
+    acceptance_criteria=(
+        '- Token expiry uses milliseconds consistently\n'
+        '- Existing tests updated to verify correct expiry timing\n'
+        '- No regression in token validation logic'
+    ),
+    tech_stack_reference='PyJWT 2.x, Python 3.13+',
+    implementation_checklist=(
+        '- [ ] Fix expiry calculation in jwt_service.py (Step 1) (verify: pytest tests/auth/test_jwt.py)\n'
+        '- [ ] Update expiry-related tests (Step 1) (verify: pytest tests/auth/test_jwt.py -v)'
+    ),
+    implementation_steps=(
+        '#### Step 1: Fix Token Expiry Calculation\n'
+        '**Objective**: Correct the time unit mismatch in JWT expiry.\n'
+        '**Actions**:\n'
+        '- Read src/auth/jwt_service.py to identify expiry calculation\n'
+        '- Fix seconds-to-milliseconds conversion\n'
+        '- Update related tests to verify correct timing\n'
+        '- Run full auth test suite'
+    ),
+    testing_strategy=(
+        'Unit testing:\n'
+        '- Verify token expires at correct time (not 1000x too fast)\n'
+        '- Verify existing token validation still works\n'
+        '- Edge case: token created at exact boundary'
+    ),
+    research='No research documentation provided for this task.',
+    status='pending',
+    active=True,
+    version='1.0',
+).build_markdown()
 
 
 def generate_patch_planner_template(tools: PatchPlannerAgentTools) -> str:
@@ -138,9 +120,9 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 
 Copy this structure exactly, replacing example values with actual content:
 
-```markdown
-{amendment_task_example}
-```
+  ```markdown
+{indent(amendment_task_example, '  ')}
+  ```
 
 ## CODEBASE EXPLORATION STRATEGY
 

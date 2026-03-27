@@ -1,14 +1,23 @@
+from textwrap import indent
+
+from src.models.enums import PhaseStatus
+from src.models.phase import Phase
 from src.platform.models import CreatePhaseAgentTools
 
 
+sparse_phase_example = Phase(
+    phase_name='[phase-name-in-kebab-case]',
+    objectives='[What this phase aims to achieve - clear, measurable goals]',
+    scope='[What IS included and what is NOT included - clear boundaries]',
+    dependencies='[Prerequisites and blocking relationships]',
+    deliverables='[Specific, measurable outputs with acceptance criteria]',
+    iteration=0,
+    version=1,
+    phase_status=PhaseStatus.DRAFT,
+).build_markdown()
+
+
 def generate_create_phase_template(tools: CreatePhaseAgentTools) -> str:
-    """Generate create-phase agent template for extracting sparse Phases from roadmap.
-
-    Extracts existing Phase objects (iteration=0) from roadmap and saves to platform.
-
-    Args:
-        tools: CreatePhaseAgentTools containing platform-specific tool names
-    """
     return f"""---
 name: respec-create-phase
 description: Extract sparse Phases from roadmap and save to platform
@@ -121,34 +130,9 @@ If platform storage fails, report partial success with MCP storage complete but 
 
 The Phase you retrieve from the roadmap should have this structure (created by roadmap agent):
 
-```markdown
-# Phase: [Phase Name]
-
-## Overview
-
-### Objectives
-[What this phase aims to achieve - clear, measurable goals]
-
-### Scope
-[What IS included and what is NOT included - clear boundaries]
-
-### Dependencies
-[Prerequisites and blocking relationships]
-
-### Deliverables
-[Specific, measurable outputs with acceptance criteria]
-
-## Metadata
-
-### Iteration
-0
-
-### Version
-1
-
-### Status
-draft
-```
+  ```markdown
+{indent(sparse_phase_example, '  ')}
+  ```
 
 **Validation**: Before saving, verify all 4 Overview fields have meaningful content (not "not specified" or empty).
 If fields are incomplete, this indicates a roadmap generation issue - report it rather than saving incomplete phase.

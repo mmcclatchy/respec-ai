@@ -63,11 +63,15 @@ class PostgresStateManager(StateManager):
             non_functional_requirements=row['non_functional_requirements'],
             development_plan=row['development_plan'],
             testing_strategy=row['testing_strategy'],
+            implementation_plan_references=row.get('implementation_plan_references'),
             research_requirements=row['research_requirements'],
             success_criteria=row['success_criteria'],
             integration_context=row['integration_context'],
             task_breakdown=row['task_breakdown'],
             additional_sections=additional_sections_data,
+            system_design_additional=row.get('system_design_additional'),
+            implementation_additional=row.get('implementation_additional'),
+            additional_details_additional=row.get('additional_details_additional'),
             iteration=row['iteration'],
             version=row['version'],
             phase_status=PhaseStatus(row['phase_status']),
@@ -75,6 +79,13 @@ class PostgresStateManager(StateManager):
 
     def _row_to_task(self, row: Record) -> 'Task':
         active_value = row['active'] if row['active'] is not None else True
+        additional_sections_data = None
+        if row.get('additional_sections'):
+            additional_sections_data = (
+                json.loads(row['additional_sections'])
+                if isinstance(row['additional_sections'], str)
+                else row['additional_sections']
+            )
         return Task(
             id=row['id'],
             name=row['name'],
@@ -85,6 +96,8 @@ class PostgresStateManager(StateManager):
             implementation_checklist=row['implementation_checklist'] or 'Implementation checklist not specified',
             implementation_steps=row['implementation_steps'] or 'Implementation steps not specified',
             testing_strategy=row['testing_strategy'] or 'Testing strategy not specified',
+            research=row.get('research') or 'Research not specified',
+            additional_sections=additional_sections_data,
             status=row['status'] or 'pending',
             active=active_value,
             version=row['version'] or '1.0',
@@ -240,14 +253,14 @@ class PostgresStateManager(StateManager):
                     critical_path_analysis, key_risks, mitigation_plans, buffer_time,
                     development_resources, infrastructure_requirements, external_dependencies,
                     quality_assurance_plan, technical_milestones, business_milestones,
-                    quality_gates, performance_targets, roadmap_status
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                    quality_gates, performance_targets, roadmap_status, additional_sections
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
                 ON CONFLICT (plan_name) DO UPDATE SET
                     roadmap_title = $2, project_goal = $3, total_duration = $4, team_size = $5, roadmap_budget = $6,
                     critical_path_analysis = $7, key_risks = $8, mitigation_plans = $9, buffer_time = $10,
                     development_resources = $11, infrastructure_requirements = $12, external_dependencies = $13,
                     quality_assurance_plan = $14, technical_milestones = $15, business_milestones = $16,
-                    quality_gates = $17, performance_targets = $18, roadmap_status = $19,
+                    quality_gates = $17, performance_targets = $18, roadmap_status = $19, additional_sections = $20,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 plan_name,
@@ -269,6 +282,7 @@ class PostgresStateManager(StateManager):
                 roadmap.quality_gates,
                 roadmap.performance_targets,
                 roadmap.roadmap_status.value,
+                json.dumps(roadmap.additional_sections) if roadmap.additional_sections else None,
             )
 
         return plan_name
@@ -279,6 +293,14 @@ class PostgresStateManager(StateManager):
 
             if not row:
                 raise RoadmapNotFoundError(f'Roadmap not found for project: {plan_name}')
+
+            additional_sections_data = None
+            if row.get('additional_sections'):
+                additional_sections_data = (
+                    json.loads(row['additional_sections'])
+                    if isinstance(row['additional_sections'], str)
+                    else row['additional_sections']
+                )
 
             return Roadmap(
                 plan_name=row['roadmap_title'],
@@ -298,6 +320,7 @@ class PostgresStateManager(StateManager):
                 business_milestones=row['business_milestones'],
                 quality_gates=row['quality_gates'],
                 performance_targets=row['performance_targets'],
+                additional_sections=additional_sections_data,
                 roadmap_status=RoadmapStatus(row['roadmap_status']),
             )
 
@@ -347,16 +370,20 @@ class PostgresStateManager(StateManager):
                 INSERT INTO phases (
                     id, plan_name, phase_name, objectives, scope, dependencies, deliverables,
                     architecture, technology_stack, functional_requirements, non_functional_requirements,
-                    development_plan, testing_strategy, research_requirements, success_criteria,
-                    integration_context, task_breakdown, additional_sections, iteration, version, phase_status, active
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                    development_plan, testing_strategy, implementation_plan_references, research_requirements,
+                    success_criteria, integration_context, task_breakdown, additional_sections,
+                    system_design_additional, implementation_additional, additional_details_additional,
+                    iteration, version, phase_status, active
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
                 ON CONFLICT (plan_name, phase_name) DO UPDATE SET
                     id = $1, objectives = $4, scope = $5, dependencies = $6, deliverables = $7,
                     architecture = $8, technology_stack = $9,
                     functional_requirements = $10, non_functional_requirements = $11,
-                    development_plan = $12, testing_strategy = $13, research_requirements = $14,
-                    success_criteria = $15, integration_context = $16, task_breakdown = $17,
-                    additional_sections = $18, iteration = $19, version = $20, phase_status = $21, active = $22,
+                    development_plan = $12, testing_strategy = $13, implementation_plan_references = $14,
+                    research_requirements = $15, success_criteria = $16, integration_context = $17,
+                    task_breakdown = $18, additional_sections = $19,
+                    system_design_additional = $20, implementation_additional = $21, additional_details_additional = $22,
+                    iteration = $23, version = $24, phase_status = $25, active = $26,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 phase.id,
@@ -372,11 +399,15 @@ class PostgresStateManager(StateManager):
                 phase.non_functional_requirements,
                 phase.development_plan,
                 phase.testing_strategy,
+                phase.implementation_plan_references,
                 phase.research_requirements,
                 phase.success_criteria,
                 phase.integration_context,
                 phase.task_breakdown,
                 additional_sections_json,
+                phase.system_design_additional,
+                phase.implementation_additional,
+                phase.additional_details_additional,
                 phase.iteration,
                 phase.version,
                 phase.phase_status.value,
@@ -605,14 +636,17 @@ class PostgresStateManager(StateManager):
                 task.name,
             )
 
+            additional_sections_json = json.dumps(task.additional_sections) if task.additional_sections else None
+
             if existing:
                 await conn.execute(
                     """
                     UPDATE tasks SET
                         id = $1, name = $2, goal = $3, acceptance_criteria = $4, tech_stack_reference = $5,
                         implementation_checklist = $6, implementation_steps = $7, testing_strategy = $8,
-                        status = $9, active = $10, version = $11, updated_at = CURRENT_TIMESTAMP
-                    WHERE phase_path = $12 AND LOWER(name) = LOWER($2)
+                        research = $9, additional_sections = $10,
+                        status = $11, active = $12, version = $13, updated_at = CURRENT_TIMESTAMP
+                    WHERE phase_path = $14 AND LOWER(name) = LOWER($2)
                     """,
                     task.id,
                     task.name,
@@ -622,6 +656,8 @@ class PostgresStateManager(StateManager):
                     task.implementation_checklist,
                     task.implementation_steps,
                     task.testing_strategy,
+                    task.research,
+                    additional_sections_json,
                     task.status,
                     task.active,
                     task.version,
@@ -632,8 +668,9 @@ class PostgresStateManager(StateManager):
                     """
                     INSERT INTO tasks (
                         id, name, phase_path, goal, acceptance_criteria, tech_stack_reference,
-                        implementation_checklist, implementation_steps, testing_strategy, status, active, version
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        implementation_checklist, implementation_steps, testing_strategy,
+                        research, additional_sections, status, active, version
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                     """,
                     task.id,
                     task.name,
@@ -644,6 +681,8 @@ class PostgresStateManager(StateManager):
                     task.implementation_checklist,
                     task.implementation_steps,
                     task.testing_strategy,
+                    task.research,
+                    additional_sections_json,
                     task.status,
                     task.active,
                     task.version,

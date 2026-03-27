@@ -33,6 +33,7 @@ class Task(MCPModel):
         'implementation_checklist': ('Implementation', 'Checklist'),
         'implementation_steps': ('Implementation', 'Steps'),
         'testing_strategy': ('Quality', 'Testing Strategy'),
+        'research': ('Research', 'Research Read Log'),
         'status': ('Status', 'Current Status'),
         'active': ('Metadata', 'Active'),
         'version': ('Metadata', 'Version'),
@@ -54,6 +55,9 @@ class Task(MCPModel):
 
     # Quality assurance
     testing_strategy: str = 'Testing strategy not specified'
+
+    research: str = 'Research not specified'
+    additional_sections: dict[str, str] | None = None
 
     # Status management
     status: str = 'pending'  # "pending" | "in_progress" | "completed"
@@ -91,11 +95,34 @@ class Task(MCPModel):
             if extracted_content:
                 fields[field_name] = extracted_content
 
-        # Post-process specific fields for type conversion
-        # Convert active string to bool
         if 'active' in fields:
             active_str = fields['active'].strip().lower()
             fields['active'] = active_str in ('true', 'yes', '1')
+
+        if 'identity' in fields:
+            identity_lines = fields['identity'].split('\n')
+            for i, line in enumerate(identity_lines):
+                if '### Phase Path' in line:
+                    for j in range(i + 1, len(identity_lines)):
+                        stripped = identity_lines[j].strip()
+                        if stripped:
+                            fields['phase_path'] = stripped
+                            break
+                    break
+
+        mapped_h2_headers = {header_path[0] for header_path in cls.HEADER_FIELD_MAPPING.values()}
+        additional_sections: dict[str, str] = {}
+        for node in cls._find_nodes_by_type(tree, 'heading'):
+            if node.tag != 'h2':
+                continue
+            h2_text = cls._extract_text_content(node).strip()
+            if h2_text in mapped_h2_headers or h2_text == 'Metadata':
+                continue
+            content = cls._extract_content_from_raw_markdown(markdown, (h2_text,))
+            if content:
+                additional_sections[h2_text] = content
+        if additional_sections:
+            fields['additional_sections'] = additional_sections
 
         return cls(**fields)
 
@@ -116,6 +143,13 @@ class Task(MCPModel):
 
         sections.append('\n## Quality')
         sections.append(f'\n### Testing Strategy\n{self.testing_strategy}')
+
+        sections.append('\n## Research')
+        sections.append(f'\n### Research Read Log\n{self.research}')
+
+        if self.additional_sections:
+            for section_name, content in self.additional_sections.items():
+                sections.append(f'\n## {section_name}\n{content}')
 
         sections.append('\n## Status')
         sections.append(f'\n### Current Status\n{self.status}')

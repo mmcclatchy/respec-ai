@@ -18,15 +18,18 @@ class Phase(MCPModel):
         'deliverables': ('Overview', 'Deliverables'),
         'architecture': ('System Design', 'Architecture'),
         'technology_stack': ('System Design', 'Technology Stack'),
+        'system_design_additional': ('System Design', 'System Design - Additional Sections'),
         'functional_requirements': ('Implementation', 'Functional Requirements'),
         'non_functional_requirements': ('Implementation', 'Non-Functional Requirements'),
         'development_plan': ('Implementation', 'Development Plan'),
         'testing_strategy': ('Implementation', 'Testing Strategy'),
         'task_breakdown': ('Implementation', 'Task Breakdown'),
+        'implementation_additional': ('Implementation', 'Implementation - Additional Sections'),
         'implementation_plan_references': ('Additional Details', 'Implementation Plan References'),
         'research_requirements': ('Additional Details', 'Research Requirements'),
         'success_criteria': ('Additional Details', 'Success Criteria'),
         'integration_context': ('Additional Details', 'Integration Context'),
+        'additional_details_additional': ('Additional Details', 'Additional Details - Additional Sections'),
         'iteration': ('Metadata', 'Iteration'),
         'version': ('Metadata', 'Version'),
         'phase_status': ('Metadata', 'Status'),
@@ -55,6 +58,10 @@ class Phase(MCPModel):
     success_criteria: str | None = None
     integration_context: str | None = None
 
+    system_design_additional: str | None = None
+    implementation_additional: str | None = None
+    additional_details_additional: str | None = None
+
     # Flexible storage for domain-specific sections
     # Examples: {"Data Models": "content", "API Design": "content", "CLI Commands": "content"}
     additional_sections: dict[str, str] | None = None
@@ -73,12 +80,14 @@ class Phase(MCPModel):
         sections.append(f'\n### Dependencies\n{self.dependencies}')
         sections.append(f'\n### Deliverables\n{self.deliverables}')
 
-        if self.architecture or self.technology_stack:
+        if self.architecture or self.technology_stack or self.system_design_additional:
             sections.append('\n## System Design')
             if self.architecture:
                 sections.append(f'\n### Architecture\n{self.architecture}')
             if self.technology_stack:
                 sections.append(f'\n### Technology Stack\n{self.technology_stack}')
+            if self.system_design_additional:
+                sections.append(f'\n### System Design - Additional Sections\n{self.system_design_additional}')
 
         if (
             self.functional_requirements
@@ -86,6 +95,7 @@ class Phase(MCPModel):
             or self.development_plan
             or self.testing_strategy
             or self.task_breakdown
+            or self.implementation_additional
         ):
             sections.append('\n## Implementation')
             if self.functional_requirements:
@@ -98,12 +108,15 @@ class Phase(MCPModel):
                 sections.append(f'\n### Testing Strategy\n{self.testing_strategy}')
             if self.task_breakdown:
                 sections.append(f'\n### Task Breakdown\n{self.task_breakdown}')
+            if self.implementation_additional:
+                sections.append(f'\n### Implementation - Additional Sections\n{self.implementation_additional}')
 
         if (
             self.implementation_plan_references
             or self.research_requirements
             or self.success_criteria
             or self.integration_context
+            or self.additional_details_additional
         ):
             sections.append('\n## Additional Details')
             if self.implementation_plan_references:
@@ -114,6 +127,8 @@ class Phase(MCPModel):
                 sections.append(f'\n### Success Criteria\n{self.success_criteria}')
             if self.integration_context:
                 sections.append(f'\n### Integration Context\n{self.integration_context}')
+            if self.additional_details_additional:
+                sections.append(f'\n### Additional Details - Additional Sections\n{self.additional_details_additional}')
 
         # Include additional sections before metadata
         if self.additional_sections:

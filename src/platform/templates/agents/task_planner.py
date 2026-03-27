@@ -1,97 +1,69 @@
+from textwrap import indent
+
+from src.models.task import Task
 from src.platform.models import TaskPlannerAgentTools
 
 
-# Concrete task example - exact format required for MCP validation
-task_example = """# Task: task-1-foundation-and-infrastructure
-
-## Identity
-
-### Phase Path
-plan-name/phase-name
-
-## Overview
-
-### Goal
-Establish Docker infrastructure with Neo4j container and health checks.
-
-### Acceptance Criteria
-- Docker container starts successfully
-- Health checks pass within 60 seconds
-- Neo4j web interface accessible at localhost:7474
-- Python environment configured with dependencies
-
-### Technology Stack Reference
-Docker 24+, Docker Compose v2, Neo4j 5.x, Python 3.13+
-
-## Implementation
-
-### Checklist
-- [ ] Create Dockerfile with multi-stage build (Step 1) (verify: docker build .)
-- [ ] Configure docker-compose.yml with health checks (Step 1) (verify: docker compose up -d)
-- [ ] Add Python environment configuration (Step 2) (verify: python --version)
-- [ ] Implement configuration management (Step 3) (verify: python -c "from config import settings")
-
-### Steps
-
-#### Step 1: Docker Infrastructure
-**Objective**: Create containerized Neo4j environment with health monitoring.
-**Actions**:
-- Create Dockerfile with multi-stage build for optimized image size
-- Configure docker-compose.yml with Neo4j service and health checks
-- Add volume mounts for data persistence
-- Verify container startup and connectivity (per research: docker-health-checks.md)
-
-#### Step 2: Python Environment
-**Objective**: Configure Python runtime with required dependencies.
-**Actions**:
-- Create pyproject.toml with project dependencies
-- Configure uv virtual environment
-- Add development dependencies for testing
-- Verify Python installation and imports
-
-#### Step 3: Configuration Management
-**Objective**: Implement centralized configuration using Pydantic Settings.
-**Actions**:
-- Create settings module with environment variable support
-- Add configuration validation
-- Document required environment variables
-- Verify configuration loading
-
-## Quality
-
-### Testing Strategy
-Integration testing:
-- Container orchestration: verify all services start together
-- Network connectivity: test Neo4j connection from Python container
-- Failure recovery: test restart behavior after container crash
-- Configuration validation: test with missing/invalid env vars
-
-## Research
-
-### Research Read Log
-Documents successfully read and applied:
-- `.best-practices/neo4j-docker-compose-best-practices-codegen.md` - Applied: version pinning pattern in Step 1
-- `.best-practices/pydantic-settings-best-practices-codegen.md` - Applied: SettingsConfigDict pattern in Step 3
-
-Documents referenced but unavailable:
-- None
-
-No research provided:
-- [If research_file_paths was empty, note: "No research documentation provided for this task."]
-
-## Status
-
-### Current Status
-pending
-
-## Metadata
-
-### Active
-true
-
-### Version
-1.0
-"""
+task_example = Task(
+    name='task-1-foundation-and-infrastructure',
+    phase_path='plan-name/phase-name',
+    goal=('Establish Docker infrastructure with Neo4j container and health checks.'),
+    acceptance_criteria=(
+        '- Docker container starts successfully\n'
+        '- Health checks pass within 60 seconds\n'
+        '- Neo4j web interface accessible at localhost:7474\n'
+        '- Python environment configured with dependencies'
+    ),
+    tech_stack_reference='Docker 24+, Docker Compose v2, Neo4j 5.x, Python 3.13+',
+    implementation_checklist=(
+        '- [ ] Create Dockerfile with multi-stage build (Step 1) (verify: docker build .)\n'
+        '- [ ] Configure docker-compose.yml with health checks (Step 1) (verify: docker compose up -d)\n'
+        '- [ ] Add Python environment configuration (Step 2) (verify: python --version)\n'
+        '- [ ] Implement configuration management (Step 3) (verify: python -c "from config import settings")'
+    ),
+    implementation_steps=(
+        '#### Step 1: Docker Infrastructure\n'
+        '**Objective**: Create containerized Neo4j environment with health monitoring.\n'
+        '**Actions**:\n'
+        '- Create Dockerfile with multi-stage build for optimized image size\n'
+        '- Configure docker-compose.yml with Neo4j service and health checks\n'
+        '- Add volume mounts for data persistence\n'
+        '- Verify container startup and connectivity (per research: docker-health-checks.md)\n\n'
+        '#### Step 2: Python Environment\n'
+        '**Objective**: Configure Python runtime with required dependencies.\n'
+        '**Actions**:\n'
+        '- Create pyproject.toml with project dependencies\n'
+        '- Configure uv virtual environment\n'
+        '- Add development dependencies for testing\n'
+        '- Verify Python installation and imports\n\n'
+        '#### Step 3: Configuration Management\n'
+        '**Objective**: Implement centralized configuration using Pydantic Settings.\n'
+        '**Actions**:\n'
+        '- Create settings module with environment variable support\n'
+        '- Add configuration validation\n'
+        '- Document required environment variables\n'
+        '- Verify configuration loading'
+    ),
+    testing_strategy=(
+        'Integration testing:\n'
+        '- Container orchestration: verify all services start together\n'
+        '- Network connectivity: test Neo4j connection from Python container\n'
+        '- Failure recovery: test restart behavior after container crash\n'
+        '- Configuration validation: test with missing/invalid env vars'
+    ),
+    research=(
+        'Documents successfully read and applied:\n'
+        '- `.best-practices/neo4j-docker-compose-best-practices-codegen.md` - Applied: version pinning pattern in Step 1\n'
+        '- `.best-practices/pydantic-settings-best-practices-codegen.md` - Applied: SettingsConfigDict pattern in Step 3\n\n'
+        'Documents referenced but unavailable:\n'
+        '- None\n\n'
+        'No research provided:\n'
+        '- [If research_file_paths was empty, note: "No research documentation provided for this task."]'
+    ),
+    status='pending',
+    active=True,
+    version='1.0',
+).build_markdown()
 
 
 def generate_task_planner_template(tools: TaskPlannerAgentTools) -> str:
@@ -169,9 +141,9 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 
 Copy this structure exactly, replacing example values with actual content:
 
-```markdown
-{task_example}
-```
+  ```markdown
+{indent(task_example, '  ')}
+  ```
 
 ## RESEARCH DOCUMENT INTEGRATION
 

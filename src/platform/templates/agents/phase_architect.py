@@ -33,6 +33,9 @@ technical_phase_template = Phase(
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
+    system_design_additional='[Custom architecture content using H4+ sub-headers — e.g., #### Data Model, #### Cost Monitoring]',
+    implementation_additional='[Custom implementation content using H4+ sub-headers — e.g., #### CI/CD Pipeline, #### Migration Strategy]',
+    additional_details_additional='[Custom detail content using H4+ sub-headers — e.g., #### Compliance Notes, #### Performance Baselines]',
     additional_sections={
         'Data Models': '[High-level schema, validation rules - ONLY for data-heavy projects]',
         'API Design': '[Interface contracts, behavior - ONLY for web services]',
@@ -531,7 +534,7 @@ Both are preserved, but structure differs for parser compatibility.
 
 **CRITICAL CONSTRAINTS — Violating these causes silent data loss**:
 - Do NOT add custom H3 headers under mapped H2 sections (Overview, System Design, Implementation, Additional Details). Only the H3 headers shown in the template are parsed. Custom H3 headers under these H2s are silently dropped during storage.
-- Put custom sub-structure WITHIN existing H3 sections using H4-H6 headers, bullet lists, code blocks, or tables.
+- For custom content within System Design, Implementation, or Additional Details: use the designated `### {{H2 Name}} - Additional Sections` header and structure content using H4+ sub-headers underneath it.
 - Put genuinely new sections as standalone H2 headers (captured as additional_sections).
 - Do NOT rename or remove any core H3 header.
 

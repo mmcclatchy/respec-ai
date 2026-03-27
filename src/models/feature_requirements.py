@@ -48,10 +48,12 @@ class FeatureRequirements(MCPModel):
     should_have_features: str = 'Should Have Features not specified'
     could_have_features: str = 'Could Have Features not specified'
     wont_have_features: str = "Won't Have Features not specified"
+    additional_sections: dict[str, str] | None = None
     requirements_status: RequirementsStatus = RequirementsStatus.DRAFT
 
     def build_markdown(self) -> str:
-        return f"""{self.TITLE_PATTERN}: {self.plan_name}
+        sections = [
+            f"""{self.TITLE_PATTERN}: {self.plan_name}
 
 ## Overview
 
@@ -112,10 +114,13 @@ class FeatureRequirements(MCPModel):
 {self.could_have_features}
 
 ### Won't Have
-{self.wont_have_features}
+{self.wont_have_features}"""
+        ]
 
-## Metadata
+        if self.additional_sections:
+            for section_name, content in self.additional_sections.items():
+                sections.append(f'\n## {section_name}\n{content}')
 
-### Status
-{self.requirements_status.value}
-"""
+        sections.append(f'\n## Metadata\n\n### Status\n{self.requirements_status.value}')
+
+        return '\n'.join(sections) + '\n'

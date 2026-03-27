@@ -47,6 +47,7 @@ class Roadmap(MCPModel):
     business_milestones: str = 'Business Milestones not specified'
     quality_gates: str = 'Quality Gates not specified'
     performance_targets: str = 'Performance Targets not specified'
+    additional_sections: dict[str, str] | None = None
     roadmap_status: RoadmapStatus = RoadmapStatus.DRAFT
 
     def build_markdown(self, phases: list[Phase] | None = None) -> str:
@@ -117,6 +118,10 @@ class Roadmap(MCPModel):
 ### Phase Count
 {phase_count}
 """
+        if self.additional_sections:
+            extra = '\n'.join(f'\n## {name}\n{content}' for name, content in self.additional_sections.items())
+            roadmap_metadata = roadmap_metadata.rstrip() + '\n' + extra + '\n'
+
         # Append full Phase markdown for round-trip consistency
         if phases:
             phases_markdown = '\n\n'.join(phase.build_markdown() for phase in phases)
