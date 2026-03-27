@@ -19,15 +19,12 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
         args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
@@ -49,15 +46,12 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
         mocker.patch('src.cli.commands.init.console')
 
@@ -80,15 +74,12 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
         mock_prompt = mocker.patch('src.cli.commands.init.prompt_stack_profile')
@@ -107,15 +98,12 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
         mocker.patch(
             'src.cli.commands.init.detect_project_stack',
@@ -145,15 +133,12 @@ class TestInitCommand:
         respec_ai_dir.mkdir()
         (respec_ai_dir / 'config.json').write_text('{}')
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
         mock_detect = mocker.patch(
             'src.cli.commands.init.detect_project_stack',
@@ -175,21 +160,17 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mock_register = mocker.patch('src.cli.commands.init.register_mcp_server')
 
         args = Namespace(platform='linear', project_name='MyProject', skip_mcp_registration=True, yes=True, force=False)
         result = init.run(args)
 
         assert result == 0
-        mock_register.assert_not_called()
+        mock_adapter.register_mcp_server.assert_not_called()
 
     def test_custom_plan_name(
         self,
@@ -199,15 +180,12 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
         args = Namespace(
@@ -229,17 +207,12 @@ class TestInitCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.side_effect = ClaudeConfigError('MCP registration failed')
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch(
-            'src.cli.commands.init.register_mcp_server', side_effect=ClaudeConfigError('MCP registration failed')
-        )
         mock_docker = mocker.patch('src.cli.commands.init.DockerManager')
         mock_docker.return_value.verify_image_exists.return_value = True
 
@@ -272,15 +245,12 @@ class TestInitCommand:
         (config_dir / 'stack.md').write_text('# Project Stack\n\n## Languages\n- Python 3.13')
         (config_dir / 'python.md').write_text('# Python\n\n## Commands\n- **Test**: `pytest`')
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
         mock_detect = mocker.patch('src.cli.commands.init.detect_project_stack')
@@ -319,15 +289,12 @@ class TestInitCommand:
         (config_dir / 'stack.md').write_text('# Project Stack')
         (config_dir / 'python.md').write_text('# Python')
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
         mock_console = mocker.patch('src.cli.commands.init.console')
@@ -369,15 +336,12 @@ class TestInitCommand:
         config_dir.mkdir()
         (config_dir / 'stack.md').write_text('# Old Stack')
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.init.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
         mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.register_mcp_server', return_value=True)
         mocker.patch('src.cli.commands.init.DockerManager')
 
         mock_console = mocker.patch('src.cli.commands.init.console')

@@ -13,17 +13,19 @@
 
 ---
 
-**Agentic Reflection-Driven Development Platform for Claude Code**
+**Agentic Reflection-Driven Development Platform for Claude Code and OpenCode**
 
 Using LLMs for development requires critical evaluation—you can't just trust the output. But manually checking if generated content matches your intent is frustrating and feels like spinning tires. Writing specifications helps keep LLMs on track, but maintaining them during development becomes more time-consuming than generating code. Overlapping responsibilities across documents create sync hell. Developers end up spending more time iterating with LLMs and syncing documents than actually building.
 
-`respec-ai` is a meta MCP server for Claude Code that automates critical evaluation through **agentic reflection loops**. Producer agents (plan-analyst, phase-architect, task-planner, coder) generate content while specialized critic agents (plan-critic, phase-critic, task-critic, code-reviewer) autonomously evaluate, score, and provide feedback until 0-100 quality thresholds are met. The system follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Phase, Task, Code. You determine the target, agents iteratively refine through producer-critic cycles, and the system only escalates to you when autonomous improvement plateaus—removing 60-70% of manual iteration burden. Works with Linear, GitHub, or local Markdown files.
+`respec-ai` is a meta MCP server for Claude Code and OpenCode that automates critical evaluation through **agentic reflection loops**. Producer agents (plan-analyst, phase-architect, task-planner, coder) generate content while specialized critic agents (plan-critic, phase-critic, task-critic, code-reviewer) autonomously evaluate, score, and provide feedback until 0-100 quality thresholds are met. The system follows standard enterprise workflow (PM → Architect → Senior Eng → Dev) with clear separation of responsibilities at each stage—Plan, Roadmap, Phase, Task, Code. You determine the target, agents iteratively refine through producer-critic cycles, and the system only escalates to you when autonomous improvement plateaus—removing 60-70% of manual iteration burden. Works with Linear, GitHub, or local Markdown files.
 
 ---
 
 ## Quick Start
 
 **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) running, [uv](https://docs.astral.sh/uv/) installed
+
+### Claude Code
 
 ```bash
 # 1. Install respec-ai
@@ -41,11 +43,31 @@ claude
 /respec-plan my-first-project
 ```
 
+### OpenCode
+
+```bash
+# 1. Install respec-ai
+uv tool install git+https://github.com/mmcclatchy/respec-ai.git
+
+# 2. Initialize in your project (generates opencode.json + .opencode/prompts/)
+cd /path/to/your/project
+respec-ai init -p markdown --tui opencode
+
+# 3. Verify setup
+respec-ai status
+
+# 4. Restart OpenCode and start planning
+opencode
+/respec-plan my-first-project
+```
+
 That's it! `respec-ai` will guide you through strategic planning, technical phases, and implementation.
 
 **[Full Installation Guide →](docs/CLI_GUIDE.md#installation)**
 
 ## Key Features
+
+- **TUI Abstraction** - Generate native workflow files for Claude Code (`.claude/agents/`, `.claude/commands/`) or OpenCode (`opencode.json`, `.opencode/prompts/`) from a single install. Switch TUIs with `--tui opencode`.
 
 - **Platform Abstraction** - Work with Linear, GitHub, or Markdown files through a unified interface. Switch platforms without changing workflows.
 
@@ -59,7 +81,14 @@ That's it! `respec-ai` will guide you through strategic planning, technical phas
 
 - **Docker-Based MCP Server** - Containerized deployment with 38 MCP tools across 7 modules. Optional PostgreSQL persistence for multi-project workflows.
 
-- **Type-Safe Architecture** - Enterprise-grade platform orchestrator with strategy pattern, Pydantic models, and comprehensive validation (595 tests passing).
+- **Type-Safe Architecture** - Enterprise-grade platform orchestrator with strategy pattern, Pydantic models, and comprehensive validation (798 tests passing).
+
+## TUI Options
+
+| TUI              | Flag                  | Agent Files                        | Config File      |
+|------------------|-----------------------|------------------------------------|------------------|
+| **Claude Code**  | *(default)*           | `.claude/agents/*.md`              | —                |
+| **OpenCode**     | `--tui opencode`      | `.opencode/prompts/*.txt`          | `opencode.json`  |
 
 ## Platform Options
 
@@ -130,8 +159,8 @@ Producer Agent → Generate Content → Critic Agent → Score (0-100) → Decis
 
 ## Plan Status
 
-**Version:** 0.6.3 (Beta)
-**Test Coverage:** 595 passing tests
+**Version:** 0.11.2 (Beta)
+**Test Coverage:** 798 passing tests
 **MCP Tools:** 38 tools across 7 modules
 **Maturity:** Production-ready core, beta workflows
 
@@ -142,25 +171,24 @@ Producer Agent → Generate Content → Critic Agent → Score (0-100) → Decis
 - ✅ Template generation system
 - ✅ Docker deployment (dev and production)
 - ✅ CLI with 13 commands
-- ✅ Comprehensive test suite (595 passing tests)
+- ✅ Comprehensive test suite (798 passing tests)
 - ✅ Plan workflow with agentic reflection loops
 - ✅ Roadmap workflow with phase breakdown
 - ✅ Phase workflow with technical specifications
 - ✅ Task workflow with implementation planning
 - ✅ Code workflow with TDD-driven implementation and review
+- ✅ OpenCode TUI support (`--tui opencode`)
 
 ### In Progress
 - 🚧 Refinements and enhancements based on production usage
 
 ### Planned Enhancements
-- 🔮 Specialized coding agents (frontend, backend, database, infrastructure reviewers)
-- 🔮 Support for Cursor and OpenCode IDEs
 - 🔮 Advanced analytics and reporting dashboards
 - 🔮 Multi-language support beyond Python
 
 ## Requirements
 
-- **Claude Code CLI** - For MCP server integration
+- **Claude Code or OpenCode** - Terminal IDE for MCP server integration
 - **Python 3.11+** - Runtime environment
 - **Docker/Docker Desktop** - For containerized deployments
 - **uv** - Package and version manager

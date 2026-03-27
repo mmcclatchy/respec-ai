@@ -9,10 +9,10 @@ from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 
-from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
-from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
+from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_selector import TuiType
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
@@ -99,8 +99,8 @@ def run(args: Namespace) -> int:
             task = progress.add_task('Creating directories...', total=None)
 
             respec_ai_dir.mkdir(parents=True, exist_ok=True)
-            get_commands_dir(project_path).mkdir(parents=True, exist_ok=True)
-            get_agents_dir(project_path).mkdir(parents=True, exist_ok=True)
+            tui_adapter.commands_dir(project_path).mkdir(parents=True, exist_ok=True)
+            tui_adapter.prompts_dir(project_path).mkdir(parents=True, exist_ok=True)
 
             if existing_config_files:
                 progress.update(task, description='Using existing stack configuration...')
@@ -160,7 +160,7 @@ def run(args: Namespace) -> int:
             }
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
 
-            mcp_registered = _setup_mcp_server(args, progress, task)
+            mcp_registered = _setup_mcp_server(args, progress, task, tui_adapter, project_path)
 
             progress.update(task, description='Complete!', completed=True)
 
@@ -215,7 +215,13 @@ def _handle_existing_config(args: Namespace, project_path: Path) -> bool | None:
     return None
 
 
-def _setup_mcp_server(args: Namespace, progress: Progress, task: TaskID) -> bool:
+def _setup_mcp_server(
+    args: Namespace,
+    progress: Progress,
+    task: TaskID,
+    tui_adapter: TuiAdapter,
+    project_path: Path,
+) -> bool:
     if args.skip_mcp_registration:
         return False
 
@@ -247,8 +253,8 @@ def _setup_mcp_server(args: Namespace, progress: Progress, task: TaskID) -> bool
 
         progress.update(task, description='Registering MCP server...')
         try:
-            mcp_registered = register_mcp_server()
-            add_mcp_permissions()
+            mcp_registered = tui_adapter.register_mcp_server(project_path)
+            tui_adapter.add_mcp_permissions()
             return mcp_registered
         except (ClaudeConfigError, PackageInfoError) as e:
             print_warning(f'MCP registration failed: {e}')
