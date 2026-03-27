@@ -1,0 +1,87 @@
+from pathlib import Path
+
+from src.cli.config.claude_config import (
+    add_mcp_permissions as _add_mcp_permissions,
+    is_mcp_server_registered,
+    register_mcp_server as _register_mcp_server,
+)
+from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
+
+
+class ClaudeCodeAdapter(TuiAdapter):
+    def commands_dir(self, project_path: Path) -> Path:
+        return project_path / '.claude' / 'commands'
+
+    def prompts_dir(self, project_path: Path) -> Path:
+        return project_path / '.claude' / 'agents'
+
+    def render_agent(self, spec: AgentSpec) -> str:
+        parts = [
+            '---',
+            f'name: {spec.name}',
+            f'description: {spec.description}',
+            f'model: {self.model_name(spec.model)}',
+        ]
+        if spec.color:
+            parts.append(f'color: {spec.color}')
+        parts.append(f'tools: {", ".join(spec.tools)}')
+        parts.append('---')
+        return '\n'.join(parts) + '\n\n' + spec.body
+
+    def render_command(self, spec: CommandSpec) -> str:
+        parts = [
+            '---',
+            f'allowed-tools: {", ".join(spec.tools)}',
+            f'argument-hint: {spec.argument_hint}',
+            f'description: {spec.description}',
+            '---',
+        ]
+        return '\n'.join(parts) + '\n\n' + spec.body
+
+    def write_all(
+        self,
+        project_path: Path,
+        agents: list[AgentSpec],
+        commands: list[CommandSpec],
+    ) -> list[Path]:
+        commands_dir = self.commands_dir(project_path)
+        agents_dir = self.prompts_dir(project_path)
+
+        commands_dir.mkdir(parents=True, exist_ok=True)
+        agents_dir.mkdir(parents=True, exist_ok=True)
+
+        for stale in commands_dir.glob('respec-*.md'):
+            stale.unlink()
+        for stale in agents_dir.glob('respec-*.md'):
+            stale.unlink()
+
+        files_written: list[Path] = []
+
+        for cmd_spec in commands:
+            content = self.render_command(cmd_spec)
+            file_path = commands_dir / f'{cmd_spec.name}.md'
+            file_path.write_text(content, encoding='utf-8')
+            files_written.append(file_path)
+
+        for agent_spec in agents:
+            content = self.render_agent(agent_spec)
+            file_path = agents_dir / f'{agent_spec.name}.md'
+            file_path.write_text(content, encoding='utf-8')
+            files_written.append(file_path)
+
+        return files_written
+
+    def model_name(self, short_name: str) -> str:
+        return short_name
+
+    def register_mcp_server(self, project_path: Path) -> bool:
+        return _register_mcp_server()
+
+    def add_mcp_permissions(self) -> bool:
+        return _add_mcp_permissions()
+
+    def is_mcp_registered(self, project_path: Path) -> bool:
+        return is_mcp_server_registered()
+
+    def config_dir_name(self) -> str:
+        return '.claude'

@@ -11,6 +11,8 @@ from src.mcp.tools import register_all_tools
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -46,6 +48,7 @@ def run(args: Namespace) -> int:
 
         config = json.loads(config_path.read_text(encoding='utf-8'))
         current_platform = config.get('platform')
+        tui = config.get('tui', 'claude-code')
         new_platform = args.platform
 
         if current_platform == new_platform:
@@ -54,6 +57,7 @@ def run(args: Namespace) -> int:
             return 0
 
         platform_type = PlatformType(new_platform)
+        tui_adapter = get_tui_adapter(TuiType(tui))
         orchestrator = PlatformOrchestrator.create_with_default_config()
 
         with Progress(
@@ -67,7 +71,7 @@ def run(args: Namespace) -> int:
             register_all_tools(mcp)
 
             files_written, commands_count, agents_count = generate_templates(
-                orchestrator, project_path, platform_type, mcp=mcp
+                orchestrator, project_path, platform_type, mcp=mcp, tui_adapter=tui_adapter
             )
 
             progress.update(task, description='Updating configuration...')

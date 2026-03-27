@@ -6,95 +6,46 @@ from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
 
 
+_MOCK_COMMAND_CONTENT = '---\nallowed-tools: Read\nargument-hint: [plan-name]\ndescription: A command\n---\n\n# Command'
+
+
 class TestGenerateTemplates:
     def test_creates_directories(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR)
 
-        assert commands_dir.exists()
-        assert agents_dir.exists()
+        assert (tmp_path / '.claude' / 'commands').exists()
+        assert (tmp_path / '.claude' / 'agents').exists()
 
     def test_generates_five_commands(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-        commands_dir.mkdir(parents=True)
-        agents_dir.mkdir(parents=True)
-
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         files_written, commands_count, agents_count = generate_templates(
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
+        commands_dir = tmp_path / '.claude' / 'commands'
         assert commands_count == 7
         assert len(list(commands_dir.glob('*.md'))) == 7
 
     def test_generates_thirteen_agents(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-        commands_dir.mkdir(parents=True)
-        agents_dir.mkdir(parents=True)
-
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         files_written, commands_count, agents_count = generate_templates(
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
+        agents_dir = tmp_path / '.claude' / 'agents'
         assert agents_count == 23
         assert len(list(agents_dir.glob('*.md'))) == 23
 
     def test_returns_file_paths(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-        commands_dir.mkdir(parents=True)
-        agents_dir.mkdir(parents=True)
-
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         files_written, commands_count, agents_count = generate_templates(
             mock_orchestrator, tmp_path, PlatformType.LINEAR
@@ -105,22 +56,8 @@ class TestGenerateTemplates:
         assert all(f.suffix == '.md' for f in files_written)
 
     def test_works_with_different_platforms(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-        commands_dir.mkdir(parents=True)
-        agents_dir.mkdir(parents=True)
-
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         for platform in [PlatformType.LINEAR, PlatformType.GITHUB, PlatformType.MARKDOWN]:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
@@ -129,8 +66,8 @@ class TestGenerateTemplates:
             assert agents_count == 23
 
     def test_removes_stale_respec_files_before_writing(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
+        commands_dir = tmp_path / '.claude' / 'commands'
+        agents_dir = tmp_path / '.claude' / 'agents'
         commands_dir.mkdir(parents=True)
         agents_dir.mkdir(parents=True)
 
@@ -141,17 +78,8 @@ class TestGenerateTemplates:
         stale_command.write_text('stale')
         non_respec_agent.write_text('keep me')
 
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR)
 
@@ -160,25 +88,12 @@ class TestGenerateTemplates:
         assert non_respec_agent.exists()
 
     def test_templates_include_project_configuration(self, mocker: MockerFixture, tmp_path: Path) -> None:
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
-        commands_dir.mkdir(parents=True)
-        agents_dir.mkdir(parents=True)
-
-        mocker.patch(
-            'src.platform.template_generator.get_commands_dir',
-            return_value=commands_dir,
-        )
-        mocker.patch(
-            'src.platform.template_generator.get_agents_dir',
-            return_value=agents_dir,
-        )
-
         mock_orchestrator = mocker.MagicMock()
-        mock_orchestrator.template_coordinator.generate_command_template.return_value = '# Command'
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
         generate_templates(mock_orchestrator, tmp_path, PlatformType.MARKDOWN)
 
+        agents_dir = tmp_path / '.claude' / 'agents'
         coder_content = (agents_dir / 'respec-coder.md').read_text()
         quality_checker_content = (agents_dir / 'respec-automated-quality-checker.md').read_text()
 

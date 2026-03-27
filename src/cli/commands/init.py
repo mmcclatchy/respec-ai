@@ -12,6 +12,8 @@ from rich.table import Table
 from src.cli.config.claude_config import ClaudeConfigError, add_mcp_permissions, register_mcp_server
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import PackageInfoError, get_package_version
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
@@ -55,6 +57,12 @@ def add_arguments(parser: ArgumentParser) -> None:
         action='store_true',
         help='Skip confirmation prompt and accept detected configuration',
     )
+    parser.add_argument(
+        '--tui',
+        choices=['claude-code', 'opencode'],
+        default='claude-code',
+        help='Terminal UI to generate files for (default: claude-code)',
+    )
 
 
 def run(args: Namespace) -> int:
@@ -78,7 +86,9 @@ def run(args: Namespace) -> int:
                     return 1
                 existing_config_files = result
 
+        tui = getattr(args, 'tui', 'claude-code')
         platform_type = PlatformType(platform)
+        tui_adapter = get_tui_adapter(TuiType(tui))
         orchestrator = PlatformOrchestrator.create_with_default_config()
 
         with Progress(
@@ -129,7 +139,7 @@ def run(args: Namespace) -> int:
             register_all_tools(mcp)
 
             files_written, commands_count, agents_count = generate_templates(
-                orchestrator, project_path, platform_type, mcp=mcp
+                orchestrator, project_path, platform_type, mcp=mcp, tui_adapter=tui_adapter
             )
 
             progress.update(task, description='Creating configuration...')
@@ -144,6 +154,7 @@ def run(args: Namespace) -> int:
             config = {
                 'project_name': project_name,
                 'platform': platform,
+                'tui': tui,
                 'created_at': datetime.now().isoformat(),
                 'version': get_package_version(),
             }
