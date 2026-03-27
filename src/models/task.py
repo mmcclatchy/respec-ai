@@ -1,28 +1,12 @@
-from typing import Any, ClassVar
+from typing import ClassVar
 from uuid import uuid4
 
 from pydantic import Field
 
 from .base import MCPModel
 
-from markdown_it import MarkdownIt
-from markdown_it.tree import SyntaxTreeNode
-
 
 class Task(MCPModel):
-    """Unified Task model - a complete implementation document with Checklist and Steps.
-
-    This model consolidates the previous TaskBreakdown and Task models into
-    a single document that contains:
-    - Overview: goal, acceptance criteria, tech stack
-    - Implementation: checklist (prioritized todos) + steps (### Step N: sections)
-    - Quality: testing strategy
-    - Status and metadata
-
-    Steps are stored as raw markdown within the implementation_steps field,
-    preserving all formatting and structure.
-    """
-
     TITLE_PATTERN: ClassVar[str] = '# Task'
     TITLE_FIELD: ClassVar[str] = 'name'
     HEADER_FIELD_MAPPING: ClassVar[dict[str, tuple[str, ...]]] = {
@@ -65,66 +49,6 @@ class Task(MCPModel):
 
     # Metadata
     version: str = '1.0'
-
-    @classmethod
-    def parse_markdown(cls, markdown: str) -> 'Task':
-        if cls.TITLE_PATTERN not in markdown:
-            raise ValueError('Invalid task format: missing title')
-
-        md = MarkdownIt('commonmark')
-        tree = SyntaxTreeNode(md.parse(markdown))
-
-        fields: dict[str, Any] = {}
-
-        # Extract title
-        title_pattern_text = cls.TITLE_PATTERN.replace('# ', '')
-        for node in cls._find_nodes_by_type(tree, 'heading'):
-            if node.tag != 'h1':
-                continue
-            title_text = cls._extract_text_content(node)
-            if title_pattern_text in title_text or title_text.startswith(title_pattern_text):
-                if ':' in title_text:
-                    fields[cls.TITLE_FIELD] = title_text.split(':', 1)[1].strip()
-                else:
-                    fields[cls.TITLE_FIELD] = title_text.replace(title_pattern_text, '').strip()
-                break
-
-        # Extract fields using header path mapping
-        for field_name, header_path in cls.HEADER_FIELD_MAPPING.items():
-            extracted_content = cls._extract_content_from_raw_markdown(markdown, header_path)
-            if extracted_content:
-                fields[field_name] = extracted_content
-
-        if 'active' in fields:
-            active_str = fields['active'].strip().lower()
-            fields['active'] = active_str in ('true', 'yes', '1')
-
-        if 'identity' in fields:
-            identity_lines = fields['identity'].split('\n')
-            for i, line in enumerate(identity_lines):
-                if '### Phase Path' in line:
-                    for j in range(i + 1, len(identity_lines)):
-                        stripped = identity_lines[j].strip()
-                        if stripped:
-                            fields['phase_path'] = stripped
-                            break
-                    break
-
-        mapped_h2_headers = {header_path[0] for header_path in cls.HEADER_FIELD_MAPPING.values()}
-        additional_sections: dict[str, str] = {}
-        for node in cls._find_nodes_by_type(tree, 'heading'):
-            if node.tag != 'h2':
-                continue
-            h2_text = cls._extract_text_content(node).strip()
-            if h2_text in mapped_h2_headers or h2_text == 'Metadata':
-                continue
-            content = cls._extract_content_from_raw_markdown(markdown, (h2_text,))
-            if content:
-                additional_sections[h2_text] = content
-        if additional_sections:
-            fields['additional_sections'] = additional_sections
-
-        return cls(**fields)
 
     def build_markdown(self) -> str:
         sections = [f'{self.TITLE_PATTERN}: {self.name}']

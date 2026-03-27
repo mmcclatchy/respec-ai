@@ -109,7 +109,12 @@ class Roadmap(MCPModel):
 
 ### Performance Targets
 {self.performance_targets}
+"""
+        if self.additional_sections:
+            for name, content in self.additional_sections.items():
+                roadmap_metadata += f'\n## {name}\n{content}\n'
 
+        roadmap_metadata += f"""
 ## Metadata
 
 ### Status
@@ -118,10 +123,6 @@ class Roadmap(MCPModel):
 ### Phase Count
 {phase_count}
 """
-        if self.additional_sections:
-            extra = '\n'.join(f'\n## {name}\n{content}' for name, content in self.additional_sections.items())
-            roadmap_metadata = roadmap_metadata.rstrip() + '\n' + extra + '\n'
-
         # Append full Phase markdown for round-trip consistency
         if phases:
             phases_markdown = '\n\n'.join(phase.build_markdown() for phase in phases)

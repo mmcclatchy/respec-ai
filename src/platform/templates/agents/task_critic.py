@@ -79,6 +79,26 @@ WORKFLOW: Phase Assessment → CriticFeedback
 6. Generate CriticFeedback markdown
 7. Store feedback: {tools.store_feedback}
 
+## STRUCTURE VALIDATION (Pre-Assessment)
+
+Before scoring content, verify the Task document structure. Flag violations in feedback.
+
+**Required H2 sections**: Identity, Overview, Implementation, Quality, Research, Status, Metadata
+
+**Required H3 headers per section**:
+- Identity: Phase Path
+- Overview: Goal, Acceptance Criteria, Technology Stack Reference
+- Implementation: Checklist, Steps
+- Quality: Testing Strategy
+- Research: Research Read Log
+- Status: Current Status
+- Metadata: Active, Version
+
+**Violations to flag**:
+- Missing required H2 or H3 header: "Missing required section: ### X under ## Y"
+- Custom H3 header under a mapped H2: "Custom H3 '### X' under ## Y will be lost on storage — move content into the existing ### section using H4+ sub-headers"
+- Extra H2 headers not in the required set: acceptable (captured by additional_sections) but note in feedback
+
 ## ASSESSMENT CRITERIA (100 Points Total)
 
 ### 1. Plan Completeness (20 Points)

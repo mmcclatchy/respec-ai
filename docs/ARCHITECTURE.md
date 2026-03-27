@@ -43,7 +43,7 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │           MCP Tools & State Management                   │   │
 │  │  • 29 Production MCP Tools (7 modules, 1,300+ lines)     │   │
-│  │  • 8 Document Models with MCPModel base (198 lines)      │   │
+│  │  • 6 Document Models with MCPModel base (305 lines)      │   │
 │  │  • Functional Loop Management (refinement cycles)        │   │
 │  │  • Session-Scoped State (in-memory persistence)          │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -368,41 +368,48 @@ mcp__respec-ai__list_feedback
 
 ### MCPModel Base Class
 
-**Sophisticated markdown parsing** with 198 lines of code:
+**Markdown parsing and round-trip support** (305 lines):
 
 ```python
 class MCPModel(BaseModel, ABC):
+    TITLE_PATTERN: ClassVar[str]           # e.g., '# Phase'
+    TITLE_FIELD: ClassVar[str]             # e.g., 'phase_name'
+    HEADER_FIELD_MAPPING: ClassVar[dict]   # field -> (H2,) or (H2, H3) path
+
     @classmethod
     def parse_markdown(cls, markdown: str) -> Self
 
+    @abstractmethod
     def build_markdown(self) -> str
 
     @classmethod
-    def _extract_header_content(cls, tokens, field_name: str) -> str
+    def _extract_content_from_raw_markdown(cls, markdown: str, path: tuple[str, ...]) -> str
 
     @classmethod
-    def _extract_list_items(cls, tokens, field_name: str) -> list[str]
+    def _extract_list_items_by_header_path(cls, tree: SyntaxTreeNode, path: tuple[str, ...]) -> list[str]
 ```
 
-**Features:**
-- Recursive AST traversal with markdown-it
-- Header-based field mapping
-- Content and list extraction
-- Round-trip markdown support
-- Comprehensive error handling
+**Parsing Architecture:**
+- `HEADER_FIELD_MAPPING` maps field names to markdown header paths: `('H2',)` for H2-level fields, `('H2', 'H3')` for H3-level fields
+- Raw markdown extraction preserves all formatting (code blocks, lists, nested headers)
+- Unmapped H2 sections captured in `additional_sections: dict[str, str]` safety net
+- Character-for-character round-trip: `parse_markdown(build_markdown(model))` produces identical output
 
-### 8 Document Models
+**Model Schema Philosophy:**
+- H2 headers define the required document sections
+- H3 headers under mapped H2s are individually parsed into Pydantic fields (structural enforcement)
+- Custom agent content goes in `### {H2 Name} - Additional Sections` H3 fields (Phase) or `additional_sections` H2 dict (all models)
+- Plan uses H2-level fields only (agents structure freely within sections)
+- All other models use H3-level fields (downstream agents depend on the structure)
 
-**Production-ready models** with 133 total fields:
+### Document Models
 
-1. **Plan** (31 fields) - Strategic planning
-2. **FeatureRequirements** (19 fields) - Technical translation
-3. **Task** (18 fields) - Implementation planning
-4. **Roadmap** (20 fields) - Phase management
-5. **Phase** (17 fields) - Technical design
-6. **PlanCompletionReport** (12 fields) - Completion docs
-7. **CriticFeedback** (9 fields) - Quality feedback
-8. **InitialPhase** (7 fields) - Initial scaffolding
+1. **Plan** (13 fields) - Strategic planning, H2-level schema
+2. **Phase** (23 fields) - Technical design, H3-level with per-H2 additional sections
+3. **FeatureRequirements** (20 fields) - Technical translation
+4. **Roadmap** (19 fields) - Phase management
+5. **Task** (13 fields) - Implementation planning
+6. **CriticFeedback** (9 fields) - Quality feedback, custom parser
 
 ## Deployment System
 
@@ -494,7 +501,7 @@ project/
 
 **Production-ready test suite:**
 
-- **742 total tests passing**
+- **712+ total tests passing**
 - **37 platform tests** - Platform orchestrator functionality
 - **10 unit tests** - Template generation tools
 - **9 integration tests** - End-to-end deployment workflows
@@ -591,7 +598,7 @@ project/
 
 ### Test Coverage Summary
 
-**742 total tests passing:**
+**712+ total tests passing:**
 - 37 platform tests (Platform orchestrator functionality)
 - 10 unit tests (Template generation tools)
 - 9 integration tests (End-to-end deployment workflows)
@@ -603,7 +610,7 @@ project/
 | Aspect | Documentation Claim | Actual Implementation | Assessment |
 |--------|-------------------|---------------------|------------|
 | MCP Tools | 30 tools, 1,264+ lines | 29 tools, 1,300+ lines | ✅ **Matches claims** |
-| Document Models | 7 models, 193-line base | 8 models, 198-line base | ✅ **Exceeds claims** |
+| Document Models | 7 models, 193-line base | 6 models, 305-line base | ✅ **Exceeds claims** |
 | Platform System | Not documented | 11-file enterprise system | ✅ **Missing from docs** |
 | State Management | "Sophisticated" | Good basic implementation | ⚠️ **Claims overstated** |
 | Template System | Platform injection | Full implementation + CLI | ✅ **Exceeds claims** |

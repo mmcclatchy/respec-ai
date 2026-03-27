@@ -154,6 +154,7 @@ def _generate_realistic_content(field_name: str) -> str:
         'sequence': '1',
         'effort_estimate': '5 days',
         'priority': 'high',
+        'active': 'true',
         'phase_count': '1',
         'roadmap_status': 'draft',
         'phase_status': 'draft',

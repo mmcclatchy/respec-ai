@@ -444,6 +444,17 @@ Phases vary by project type. Evaluate based on project context:
 - Check that Architecture, Testing Strategy, Research Requirements exist as H3 under their respective H2
 - Award 5 bonus points if structure is correct, 0 if any core section uses wrong header level
 
+**Custom H3 Detection (data loss prevention)**
+- Scan each mapped H2 section (Overview, System Design, Implementation, Additional Details) for H3 headers
+- Required H3 headers per section:
+  - Overview: Objectives, Scope, Dependencies, Deliverables
+  - System Design: Architecture, Technology Stack, System Design - Additional Sections
+  - Implementation: Functional Requirements, Non-Functional Requirements, Development Plan, Testing Strategy, Task Breakdown, Implementation - Additional Sections
+  - Additional Details: Implementation Plan References, Research Requirements, Success Criteria, Integration Context, Additional Details - Additional Sections
+- Any H3 header under a mapped H2 that is NOT in the required set above will be silently dropped on storage
+- Flag each violation: "Custom H3 '### X' under ## Y will be lost — move content into '### Y - Additional Sections' using H4+ sub-headers"
+- Deduct 2 points per violation (from the 5 bonus points, minimum 0)
+
 **If Structure Issues Found**:
 - Note in feedback which sections use wrong header levels
 - Recommend: "Section X should be nested under H2 'Y' as '### X' not standalone '## X'"
