@@ -48,18 +48,18 @@ class OpenCodeAdapter(TuiAdapter):
         prompts_dir = self.prompts_dir(project_path)
         prompts_dir.mkdir(parents=True, exist_ok=True)
 
-        for stale in prompts_dir.glob('respec-*.txt'):
+        for stale in prompts_dir.glob('respec-*.md'):
             stale.unlink()
 
         files_written: list[Path] = []
 
         for agent_spec in agents:
-            file_path = prompts_dir / f'{agent_spec.name}.txt'
+            file_path = prompts_dir / f'{agent_spec.name}.md'
             file_path.write_text(self.render_agent(agent_spec), encoding='utf-8')
             files_written.append(file_path)
 
         for cmd_spec in commands:
-            file_path = prompts_dir / f'{cmd_spec.name}.txt'
+            file_path = prompts_dir / f'{cmd_spec.name}.md'
             file_path.write_text(self.render_command(cmd_spec), encoding='utf-8')
             files_written.append(file_path)
 
@@ -114,7 +114,7 @@ class OpenCodeAdapter(TuiAdapter):
                 'description': spec.description,
                 'mode': 'primary' if spec.is_orchestrator else 'subagent',
                 'model': self.model_name(spec.model),
-                'prompt': f'{{file:.opencode/prompts/{spec.name}.txt}}',
+                'prompt': f'{{file:.opencode/prompts/{spec.name}.md}}',
                 **self._build_tools_block(spec.tools),
             }
 

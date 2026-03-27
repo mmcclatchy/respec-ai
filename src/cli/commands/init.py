@@ -99,8 +99,6 @@ def run(args: Namespace) -> int:
             task = progress.add_task('Creating directories...', total=None)
 
             respec_ai_dir.mkdir(parents=True, exist_ok=True)
-            tui_adapter.commands_dir(project_path).mkdir(parents=True, exist_ok=True)
-            tui_adapter.prompts_dir(project_path).mkdir(parents=True, exist_ok=True)
 
             if existing_config_files:
                 progress.update(task, description='Using existing stack configuration...')

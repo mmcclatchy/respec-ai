@@ -201,8 +201,8 @@ class TestOpenCodeAdapter:
     ) -> None:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
 
-        agent_file = project_path / '.opencode' / 'prompts' / 'respec-plan-analyst.txt'
-        command_file = project_path / '.opencode' / 'prompts' / 'respec-plan.txt'
+        agent_file = project_path / '.opencode' / 'prompts' / 'respec-plan-analyst.md'
+        command_file = project_path / '.opencode' / 'prompts' / 'respec-plan.md'
         assert agent_file.exists()
         assert command_file.exists()
 
@@ -263,7 +263,7 @@ class TestOpenCodeAdapter:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
         prompt = config['agent']['respec-plan-analyst']['prompt']
-        assert 'respec-plan-analyst.txt' in prompt
+        assert 'respec-plan-analyst.md' in prompt
 
     def test_opencode_json_model_mapped(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
@@ -306,7 +306,7 @@ class TestOpenCodeAdapter:
     ) -> None:
         prompts_dir = project_path / '.opencode' / 'prompts'
         prompts_dir.mkdir(parents=True)
-        stale = prompts_dir / 'respec-old-agent.txt'
+        stale = prompts_dir / 'respec-old-agent.md'
         stale.write_text('old')
 
         self.adapter.write_all(project_path, [agent_spec], [command_spec])

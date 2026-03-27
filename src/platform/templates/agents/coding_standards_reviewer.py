@@ -212,7 +212,7 @@ Focus review on files changed by coder in recent commits.
 
 **Check**:
 ```bash
-grep -rn "password\|secret\|api_key\|token\|private_key" src/ --include="*.py"
+grep -rn "password\\|secret\\|api_key\\|token\\|private_key" src/ --include="*.py"
 ```
 
 **Evaluate each match with context** — NOT every match is a violation:
@@ -322,7 +322,7 @@ GLOBAL_VAR = {{}}  # ❌ Mutable global (not UPPER_CASE constant)
 → Each occurrence: -3 points
 
 # Hardcoded secrets
-grep -rn "password\|secret\|api_key\|token\|private_key" src/ --include="*.py"
+grep -rn "password\\|secret\\|api_key\\|token\\|private_key" src/ --include="*.py"
 → Evaluate each match in context:
   ✅ SKIP: variable names, field definitions, env lookups, config keys, test fakes
   ❌ FLAG: literal credential values, embedded keys, inline tokens
