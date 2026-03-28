@@ -128,7 +128,7 @@ class OpenCodeAdapter(TuiAdapter):
                 'description': cmd_spec.description,
                 'mode': 'primary',
                 'model': self.model_name(cmd_spec.model),
-                'prompt': f'{{file:.opencode/prompts/{cmd_spec.name}.txt}}',
+                'prompt': f'{{file:.opencode/prompts/{cmd_spec.name}.md}}',
                 **self._build_tools_block(cmd_spec.tools),
             }
             if task_agents:
