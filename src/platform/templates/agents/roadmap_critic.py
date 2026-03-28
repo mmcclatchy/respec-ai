@@ -66,7 +66,7 @@ def generate_roadmap_critic_template(tools: RoadmapCriticAgentTools) -> str:
     return f"""---
 name: respec-roadmap-critic
 description: Evaluate implementation roadmaps against quality criteria and FSDD framework
-model: sonnet
+model: {tools.tui_adapter.task_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

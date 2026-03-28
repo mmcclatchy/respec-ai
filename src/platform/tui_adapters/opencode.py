@@ -6,12 +6,6 @@ from src.cli.config.global_config import load_global_models
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
-_MODEL_MAP = {
-    'opus': 'anthropic/claude-opus-4-6',
-    'sonnet': 'anthropic/claude-sonnet-4-6',
-    'haiku': 'anthropic/claude-haiku-4-5',
-}
-
 _BUILTIN_TOOL_MAP = {
     'Read': 'read',
     'Write': 'write',
@@ -71,11 +65,19 @@ class OpenCodeAdapter(TuiAdapter):
 
         return files_written
 
-    def model_name(self, short_name: str) -> str:
-        overrides = load_global_models()
-        if short_name in overrides:
-            return overrides[short_name]
-        return _MODEL_MAP.get(short_name, f'anthropic/claude-{short_name}')
+    @property
+    def reasoning_model(self) -> str:
+        models = load_global_models()
+        if 'reasoning' not in models:
+            raise RuntimeError("OpenCode reasoning model not configured. Run 'respec-ai opencode-sync' first.")
+        return models['reasoning']
+
+    @property
+    def task_model(self) -> str:
+        models = load_global_models()
+        if 'task' not in models:
+            raise RuntimeError("OpenCode task model not configured. Run 'respec-ai opencode-sync' first.")
+        return models['task']
 
     def register_mcp_server(self, project_path: Path) -> bool:
         opencode_json_path = project_path / 'opencode.json'
@@ -120,7 +122,7 @@ class OpenCodeAdapter(TuiAdapter):
             agent_block[spec.name] = {
                 'description': spec.description,
                 'mode': 'primary' if spec.is_orchestrator else 'subagent',
-                'model': self.model_name(spec.model),
+                'model': spec.model,
                 'prompt': f'{{file:.opencode/prompts/{spec.name}.md}}',
                 **self._build_tools_block(spec.tools),
             }
@@ -130,7 +132,7 @@ class OpenCodeAdapter(TuiAdapter):
             agent_entry: dict[str, Any] = {
                 'description': cmd_spec.description,
                 'mode': 'primary',
-                'model': self.model_name(cmd_spec.model),
+                'model': cmd_spec.model,
                 'prompt': f'{{file:.opencode/prompts/{cmd_spec.name}.md}}',
                 **self._build_tools_block(cmd_spec.tools),
             }

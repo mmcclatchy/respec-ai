@@ -1,3 +1,4 @@
+from src.platform.tui_adapters import ClaudeCodeAdapter
 from src.platform.template_helpers import (
     create_automated_quality_checker_agent_tools,
     create_backend_api_reviewer_agent_tools,
@@ -20,9 +21,12 @@ from src.platform.templates.agents import (
 )
 
 
+_adapter = ClaudeCodeAdapter()
+
+
 class TestAutomatedQualityCheckerTemplate:
     def test_template_structure(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
+        tools = create_automated_quality_checker_agent_tools(_adapter)
         template = generate_automated_quality_checker_template(tools)
 
         assert '---' in template
@@ -33,7 +37,7 @@ class TestAutomatedQualityCheckerTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_project_configuration(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
+        tools = create_automated_quality_checker_agent_tools(_adapter)
         template = generate_automated_quality_checker_template(tools)
 
         assert 'PROJECT CONFIGURATION' in template
@@ -41,7 +45,7 @@ class TestAutomatedQualityCheckerTemplate:
         assert '.respec-ai/config/*.md' in template
 
     def test_template_includes_scoring(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
+        tools = create_automated_quality_checker_agent_tools(_adapter)
         template = generate_automated_quality_checker_template(tools)
 
         assert 'Tests Passing' in template
@@ -51,14 +55,14 @@ class TestAutomatedQualityCheckerTemplate:
         assert '70' in template  # 70 points total
 
     def test_template_has_mcp_tools(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
+        tools = create_automated_quality_checker_agent_tools(_adapter)
         template = generate_automated_quality_checker_template(tools)
 
         assert 'mcp__respec-ai__get_document' in template
         assert 'mcp__respec-ai__store_review_section' in template
 
     def test_template_no_hardcoded_python_tools(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
+        tools = create_automated_quality_checker_agent_tools(_adapter)
         template = generate_automated_quality_checker_template(tools)
 
         # Should not contain hardcoded tool names as commands
@@ -69,7 +73,7 @@ class TestAutomatedQualityCheckerTemplate:
 
 class TestSpecAlignmentReviewerTemplate:
     def test_template_structure(self) -> None:
-        tools = create_spec_alignment_reviewer_agent_tools()
+        tools = create_spec_alignment_reviewer_agent_tools(_adapter)
         template = generate_spec_alignment_reviewer_template(tools)
 
         assert '---' in template
@@ -79,7 +83,7 @@ class TestSpecAlignmentReviewerTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_alignment_scoring(self) -> None:
-        tools = create_spec_alignment_reviewer_agent_tools()
+        tools = create_spec_alignment_reviewer_agent_tools(_adapter)
         template = generate_spec_alignment_reviewer_template(tools)
 
         assert 'Phase Alignment' in template
@@ -89,7 +93,7 @@ class TestSpecAlignmentReviewerTemplate:
 
 class TestFrontendReviewerTemplate:
     def test_template_structure(self) -> None:
-        tools = create_frontend_reviewer_agent_tools()
+        tools = create_frontend_reviewer_agent_tools(_adapter)
         template = generate_frontend_reviewer_template(tools)
 
         assert '---' in template
@@ -99,7 +103,7 @@ class TestFrontendReviewerTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_accessibility(self) -> None:
-        tools = create_frontend_reviewer_agent_tools()
+        tools = create_frontend_reviewer_agent_tools(_adapter)
         template = generate_frontend_reviewer_template(tools)
 
         assert 'accessibility' in template.lower() or 'Accessibility' in template
@@ -107,7 +111,7 @@ class TestFrontendReviewerTemplate:
 
 class TestBackendApiReviewerTemplate:
     def test_template_structure(self) -> None:
-        tools = create_backend_api_reviewer_agent_tools()
+        tools = create_backend_api_reviewer_agent_tools(_adapter)
         template = generate_backend_api_reviewer_template(tools)
 
         assert '---' in template
@@ -117,7 +121,7 @@ class TestBackendApiReviewerTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_api_design(self) -> None:
-        tools = create_backend_api_reviewer_agent_tools()
+        tools = create_backend_api_reviewer_agent_tools(_adapter)
         template = generate_backend_api_reviewer_template(tools)
 
         assert 'API' in template
@@ -126,7 +130,7 @@ class TestBackendApiReviewerTemplate:
 
 class TestDatabaseReviewerTemplate:
     def test_template_structure(self) -> None:
-        tools = create_database_reviewer_agent_tools()
+        tools = create_database_reviewer_agent_tools(_adapter)
         template = generate_database_reviewer_template(tools)
 
         assert '---' in template
@@ -136,7 +140,7 @@ class TestDatabaseReviewerTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_schema_review(self) -> None:
-        tools = create_database_reviewer_agent_tools()
+        tools = create_database_reviewer_agent_tools(_adapter)
         template = generate_database_reviewer_template(tools)
 
         assert 'Schema' in template or 'schema' in template
@@ -145,7 +149,7 @@ class TestDatabaseReviewerTemplate:
 
 class TestInfrastructureReviewerTemplate:
     def test_template_structure(self) -> None:
-        tools = create_infrastructure_reviewer_agent_tools()
+        tools = create_infrastructure_reviewer_agent_tools(_adapter)
         template = generate_infrastructure_reviewer_template(tools)
 
         assert '---' in template
@@ -155,7 +159,7 @@ class TestInfrastructureReviewerTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_container_review(self) -> None:
-        tools = create_infrastructure_reviewer_agent_tools()
+        tools = create_infrastructure_reviewer_agent_tools(_adapter)
         template = generate_infrastructure_reviewer_template(tools)
 
         assert 'Docker' in template or 'container' in template.lower()
@@ -163,7 +167,7 @@ class TestInfrastructureReviewerTemplate:
 
 class TestReviewConsolidatorTemplate:
     def test_template_structure(self) -> None:
-        tools = create_review_consolidator_agent_tools()
+        tools = create_review_consolidator_agent_tools(_adapter)
         template = generate_review_consolidator_template(tools)
 
         assert '---' in template
@@ -173,14 +177,14 @@ class TestReviewConsolidatorTemplate:
         assert 'TASKS:' in template
 
     def test_template_includes_consolidation_workflow(self) -> None:
-        tools = create_review_consolidator_agent_tools()
+        tools = create_review_consolidator_agent_tools(_adapter)
         template = generate_review_consolidator_template(tools)
 
         assert 'CONSOLIDATION WORKFLOW' in template
         assert 'SCORING RULES' in template
 
     def test_template_includes_critic_feedback_format(self) -> None:
-        tools = create_review_consolidator_agent_tools()
+        tools = create_review_consolidator_agent_tools(_adapter)
         template = generate_review_consolidator_template(tools)
 
         assert '# Critic Feedback: REVIEW-CONSOLIDATOR' in template
@@ -188,7 +192,7 @@ class TestReviewConsolidatorTemplate:
         assert 'Assessment Summary' in template
 
     def test_template_has_mcp_tools(self) -> None:
-        tools = create_review_consolidator_agent_tools()
+        tools = create_review_consolidator_agent_tools(_adapter)
         template = generate_review_consolidator_template(tools)
 
         assert 'mcp__respec-ai__store_critic_feedback' in template
@@ -198,13 +202,13 @@ class TestReviewConsolidatorTemplate:
 class TestReviewAgentConsistency:
     def test_all_review_agents_use_sonnet(self) -> None:
         templates = [
-            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools()),
-            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools()),
-            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools()),
-            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools()),
-            generate_database_reviewer_template(create_database_reviewer_agent_tools()),
-            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools()),
-            generate_review_consolidator_template(create_review_consolidator_agent_tools()),
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_review_consolidator_template(create_review_consolidator_agent_tools(_adapter)),
         ]
 
         for template in templates:
@@ -212,13 +216,13 @@ class TestReviewAgentConsistency:
 
     def test_all_review_agents_have_required_sections(self) -> None:
         templates = [
-            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools()),
-            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools()),
-            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools()),
-            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools()),
-            generate_database_reviewer_template(create_database_reviewer_agent_tools()),
-            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools()),
-            generate_review_consolidator_template(create_review_consolidator_agent_tools()),
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_review_consolidator_template(create_review_consolidator_agent_tools(_adapter)),
         ]
 
         for template in templates:
@@ -229,13 +233,13 @@ class TestReviewAgentConsistency:
 
     def test_no_review_agent_contains_behavioral_descriptions(self) -> None:
         templates = [
-            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools()),
-            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools()),
-            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools()),
-            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools()),
-            generate_database_reviewer_template(create_database_reviewer_agent_tools()),
-            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools()),
-            generate_review_consolidator_template(create_review_consolidator_agent_tools()),
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_review_consolidator_template(create_review_consolidator_agent_tools(_adapter)),
         ]
 
         behavioral_patterns = [
@@ -254,6 +258,7 @@ class TestReviewAgentConsistency:
 class TestCoderTemplateConfig:
     def test_coder_template_has_project_configuration(self) -> None:
         tools = create_coder_agent_tools(
+            _adapter,
             platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
         )
         template = generate_coder_template(tools)
@@ -264,6 +269,7 @@ class TestCoderTemplateConfig:
 
     def test_coder_template_no_pseudocode_remains(self) -> None:
         tools = create_coder_agent_tools(
+            _adapter,
             platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
         )
         template = generate_coder_template(tools)
@@ -274,7 +280,7 @@ class TestCoderTemplateConfig:
         assert 'TOOLING[LANGUAGE]' not in template
 
     def test_quality_checker_template_no_pseudocode_remains(self) -> None:
-        tools = create_automated_quality_checker_agent_tools()
+        tools = create_automated_quality_checker_agent_tools(_adapter)
         template = generate_automated_quality_checker_template(tools)
 
         assert 'TOOLS.test_runner' not in template

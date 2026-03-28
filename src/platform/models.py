@@ -16,6 +16,12 @@ from .tool_enums import (
     RespecAITool,
     ToolEnums,
 )
+from .tui_adapters.base import TuiAdapter
+
+
+class AgentToolsModel(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    tui_adapter: TuiAdapter = Field(..., description='TUI adapter for model resolution')
 
 
 class PlatformModel(BaseModel):
@@ -832,7 +838,7 @@ class PlanRoadmapAgentTools(BaseModel):
         return self.create_phase_external.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
 
 
-class PhaseArchitectAgentTools(BaseModel):
+class PhaseArchitectAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.UPDATE_DOCUMENT,
@@ -855,7 +861,7 @@ class PhaseArchitectAgentTools(BaseModel):
     update_document: str = Field(..., description='Store complete specification')
 
 
-class PhaseCriticAgentTools(BaseModel):
+class PhaseCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -871,7 +877,7 @@ class PhaseCriticAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store critic feedback')
 
 
-class CreatePhaseAgentTools(BaseModel):
+class CreatePhaseAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.GET_DOCUMENT,
@@ -917,7 +923,7 @@ class CreatePhaseAgentTools(BaseModel):
         return self._adapter.platform_tool_documentation
 
 
-class CoderAgentTools(BaseModel):
+class CoderAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -953,7 +959,7 @@ class CoderAgentTools(BaseModel):
         return '.best-practices/htmx-patterns-codegen.md'
 
 
-class AnalystCriticAgentTools(BaseModel):
+class AnalystCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_PREVIOUS_ANALYSIS,
@@ -968,7 +974,7 @@ class AnalystCriticAgentTools(BaseModel):
     store_current_analysis: str = Field(..., description='Store current analysis results')
 
 
-class PlanAnalystAgentTools(BaseModel):
+class PlanAnalystAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_PREVIOUS_ANALYSIS,
@@ -983,7 +989,7 @@ class PlanAnalystAgentTools(BaseModel):
     store_current_analysis: str = Field(..., description='Store current analysis results')
 
 
-class PlanCriticAgentTools(BaseModel):
+class PlanCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
     ]
@@ -994,7 +1000,7 @@ class PlanCriticAgentTools(BaseModel):
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
 
 
-class RoadmapAgentTools(BaseModel):
+class RoadmapAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,  # For plan retrieval
         RespecAITool.GET_LOOP_STATUS,
@@ -1012,7 +1018,7 @@ class RoadmapAgentTools(BaseModel):
     create_roadmap: str = Field(..., description='Store roadmap to MCP')
 
 
-class RoadmapCriticAgentTools(BaseModel):
+class RoadmapCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_ROADMAP,
@@ -1027,7 +1033,7 @@ class RoadmapCriticAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store critic feedback')
 
 
-class TaskCriticAgentTools(BaseModel):
+class TaskCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1043,7 +1049,7 @@ class TaskCriticAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store critic feedback in planning loop')
 
 
-class CodeReviewerAgentTools(BaseModel):
+class CodeReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1071,7 +1077,7 @@ class CodeReviewerAgentTools(BaseModel):
         return '.best-practices/htmx-patterns-codegen.md'
 
 
-class AutomatedQualityCheckerAgentTools(BaseModel):
+class AutomatedQualityCheckerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1092,7 +1098,7 @@ class AutomatedQualityCheckerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store quality check review section')
 
 
-class SpecAlignmentReviewerAgentTools(BaseModel):
+class SpecAlignmentReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1111,7 +1117,7 @@ class SpecAlignmentReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store spec alignment review section')
 
 
-class CodeQualityReviewerAgentTools(BaseModel):
+class CodeQualityReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1136,7 +1142,7 @@ class CodeQualityReviewerAgentTools(BaseModel):
         return '.best-practices/*.md'
 
 
-class FrontendReviewerAgentTools(BaseModel):
+class FrontendReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_REVIEW_SECTION,
@@ -1154,7 +1160,7 @@ class FrontendReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store frontend review section')
 
 
-class BackendApiReviewerAgentTools(BaseModel):
+class BackendApiReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_REVIEW_SECTION,
@@ -1171,7 +1177,7 @@ class BackendApiReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store backend API review section')
 
 
-class DatabaseReviewerAgentTools(BaseModel):
+class DatabaseReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_REVIEW_SECTION,
@@ -1189,7 +1195,7 @@ class DatabaseReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store database review section')
 
 
-class InfrastructureReviewerAgentTools(BaseModel):
+class InfrastructureReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_REVIEW_SECTION,
@@ -1207,7 +1213,7 @@ class InfrastructureReviewerAgentTools(BaseModel):
     store_review_section: str = Field(..., description='Store infrastructure review section')
 
 
-class CodingStandardsReviewerAgentTools(BaseModel):
+class CodingStandardsReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1229,7 +1235,7 @@ class CodingStandardsReviewerAgentTools(BaseModel):
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
 
 
-class ReviewConsolidatorAgentTools(BaseModel):
+class ReviewConsolidatorAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_REVIEW_SECTION,
         RespecAITool.LIST_REVIEW_SECTIONS,
@@ -1246,7 +1252,7 @@ class ReviewConsolidatorAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store consolidated CriticFeedback')
 
 
-class TaskPlannerAgentTools(BaseModel):
+class TaskPlannerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
@@ -1270,7 +1276,7 @@ class TaskPlannerAgentTools(BaseModel):
     get_loop_status: str = Field(..., description='Get loop status for iteration check')
 
 
-class TaskPlanCriticAgentTools(BaseModel):
+class TaskPlanCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -1286,7 +1292,7 @@ class TaskPlanCriticAgentTools(BaseModel):
     store_feedback: str = Field(..., description='Store critic feedback via store_critic_feedback')
 
 
-class PatchPlannerAgentTools(BaseModel):
+class PatchPlannerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,

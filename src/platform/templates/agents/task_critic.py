@@ -56,7 +56,7 @@ def generate_task_critic_template(tools: TaskCriticAgentTools) -> str:
     return f"""---
 name: respec-task-critic
 description: Assess Phase quality against FSDD criteria
-model: sonnet
+model: {tools.tui_adapter.task_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

@@ -62,6 +62,7 @@ from src.platform.templates.agents import (
 )
 from src.platform.tool_enums import RespecAICommand
 from src.platform.adapters import get_platform_adapter
+from src.platform.tui_adapters.claude_code import ClaudeCodeAdapter
 from src.utils.setting_configs import loop_config
 
 
@@ -175,27 +176,28 @@ def _get_agent_generators(
     ]
 
     coder_platform_tools = [adapter.update_phase_tool]
+    _tui_adapter = ClaudeCodeAdapter()
 
-    plan_analyst_tools = create_plan_analyst_agent_tools()
-    plan_critic_tools = create_plan_critic_agent_tools()
-    analyst_critic_tools = create_analyst_critic_agent_tools()
-    roadmap_tools = create_roadmap_agent_tools()
-    roadmap_critic_tools = create_roadmap_critic_agent_tools()
-    create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
-    phase_architect_tools = create_phase_architect_agent_tools()
-    phase_critic_tools = create_phase_critic_agent_tools(phase_length_soft_cap=loop_config.phase_length_soft_cap)
-    task_planner_tools = create_task_planner_agent_tools()
-    task_plan_critic_tools = create_task_plan_critic_agent_tools()
-    task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools)
-    code_reviewer_tools = create_code_reviewer_agent_tools()
-    automated_quality_checker_tools = create_automated_quality_checker_agent_tools()
-    spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
-    frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
-    backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()
-    database_reviewer_tools = create_database_reviewer_agent_tools()
-    infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools()
-    review_consolidator_tools = create_review_consolidator_agent_tools()
+    plan_analyst_tools = create_plan_analyst_agent_tools(_tui_adapter)
+    plan_critic_tools = create_plan_critic_agent_tools(_tui_adapter)
+    analyst_critic_tools = create_analyst_critic_agent_tools(_tui_adapter)
+    roadmap_tools = create_roadmap_agent_tools(_tui_adapter)
+    roadmap_critic_tools = create_roadmap_critic_agent_tools(_tui_adapter)
+    create_phase_tools = create_create_phase_agent_tools(_tui_adapter, create_phase_platform_tools, platform_type)
+    phase_architect_tools = create_phase_architect_agent_tools(_tui_adapter)
+    phase_critic_tools = create_phase_critic_agent_tools(_tui_adapter, loop_config.phase_length_soft_cap)
+    task_planner_tools = create_task_planner_agent_tools(_tui_adapter)
+    task_plan_critic_tools = create_task_plan_critic_agent_tools(_tui_adapter)
+    task_critic_tools = create_task_critic_agent_tools(_tui_adapter)
+    coder_tools = create_coder_agent_tools(_tui_adapter, coder_platform_tools)
+    code_reviewer_tools = create_code_reviewer_agent_tools(_tui_adapter)
+    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(_tui_adapter)
+    spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools(_tui_adapter)
+    frontend_reviewer_tools = create_frontend_reviewer_agent_tools(_tui_adapter)
+    backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools(_tui_adapter)
+    database_reviewer_tools = create_database_reviewer_agent_tools(_tui_adapter)
+    infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools(_tui_adapter)
+    review_consolidator_tools = create_review_consolidator_agent_tools(_tui_adapter)
 
     return [
         ('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),

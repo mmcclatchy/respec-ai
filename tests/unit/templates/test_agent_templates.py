@@ -1,6 +1,8 @@
 """Tests for agent template generation functions."""
 
 from src.platform.models import PlatformType
+from src.platform.tui_adapters import ClaudeCodeAdapter
+
 from src.platform.template_helpers import (
     create_create_phase_agent_tools,
     create_roadmap_agent_tools,
@@ -13,9 +15,12 @@ from src.platform.templates.agents import (
 )
 
 
+_adapter = ClaudeCodeAdapter()
+
+
 class TestPlanRoadmapTemplate:
     def test_template_structure(self) -> None:
-        tools = create_roadmap_agent_tools()
+        tools = create_roadmap_agent_tools(_adapter)
         template = generate_roadmap_template(tools)
 
         # Check YAML frontmatter
@@ -41,7 +46,7 @@ class TestPlanRoadmapTemplate:
         assert 'OUTPUTS:' in template or 'OUTPUT FORMAT' in template
 
     def test_template_follows_imperative_pattern(self) -> None:
-        tools = create_roadmap_agent_tools()
+        tools = create_roadmap_agent_tools(_adapter)
         template = generate_roadmap_template(tools)
 
         # Should contain imperative verbs
@@ -50,7 +55,7 @@ class TestPlanRoadmapTemplate:
         assert has_imperative, 'Template should contain imperative instructions'
 
     def test_template_no_threshold_references(self) -> None:
-        tools = create_roadmap_agent_tools()
+        tools = create_roadmap_agent_tools(_adapter)
         template = generate_roadmap_template(tools)
 
         # Should not contain hardcoded loop decision thresholds
@@ -60,7 +65,7 @@ class TestPlanRoadmapTemplate:
             assert term not in template, f'Template should not contain loop decision threshold: {term}'
 
     def test_template_includes_error_handling(self) -> None:
-        tools = create_roadmap_agent_tools()
+        tools = create_roadmap_agent_tools(_adapter)
         template = generate_roadmap_template(tools)
 
         assert 'ERROR HANDLING' in template or 'Error Handling' in template
@@ -68,7 +73,7 @@ class TestPlanRoadmapTemplate:
 
 class TestRoadmapCriticTemplate:
     def test_template_structure(self) -> None:
-        tools = create_roadmap_critic_agent_tools()
+        tools = create_roadmap_critic_agent_tools(_adapter)
         template = generate_roadmap_critic_template(tools)
 
         # Check YAML frontmatter
@@ -83,7 +88,7 @@ class TestRoadmapCriticTemplate:
         assert 'mcp__respec-ai__store_critic_feedback' in template
 
     def test_template_includes_critic_feedback_format(self) -> None:
-        tools = create_roadmap_critic_agent_tools()
+        tools = create_roadmap_critic_agent_tools(_adapter)
         template = generate_roadmap_critic_template(tools)
 
         # Should include CriticFeedback structure
@@ -93,7 +98,7 @@ class TestRoadmapCriticTemplate:
         assert 'Issues and Recommendations' in template
 
     def test_template_includes_fsdd_criteria(self) -> None:
-        tools = create_roadmap_critic_agent_tools()
+        tools = create_roadmap_critic_agent_tools(_adapter)
         template = generate_roadmap_critic_template(tools)
 
         # Should reference FSDD framework
@@ -105,7 +110,7 @@ class TestRoadmapCriticTemplate:
             assert area in template or area.lower() in template.lower()
 
     def test_template_no_threshold_references(self) -> None:
-        tools = create_roadmap_critic_agent_tools()
+        tools = create_roadmap_critic_agent_tools(_adapter)
         template = generate_roadmap_critic_template(tools)
 
         # Should not contain specific threshold values
@@ -117,7 +122,7 @@ class TestRoadmapCriticTemplate:
 class TestCreatePhaseTemplate:
     def test_template_structure(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Check YAML frontmatter
@@ -129,7 +134,7 @@ class TestCreatePhaseTemplate:
 
     def test_template_includes_mcp_tools(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Should include MCP tools
@@ -139,7 +144,7 @@ class TestCreatePhaseTemplate:
 
     def test_template_supports_parallel_execution(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Should mention individual phase creation (not multiple)
@@ -149,7 +154,7 @@ class TestCreatePhaseTemplate:
 
     def test_template_includes_initialphase_creation(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
         # Should reference Phase
@@ -158,10 +163,10 @@ class TestCreatePhaseTemplate:
 
 class TestTemplateConsistency:
     def test_template_models(self) -> None:
-        roadmap_tools = create_roadmap_agent_tools()
-        critic_tools = create_roadmap_critic_agent_tools()
+        roadmap_tools = create_roadmap_agent_tools(_adapter)
+        critic_tools = create_roadmap_critic_agent_tools(_adapter)
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        create_phase_tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
 
         # Roadmap uses opus (creative synthesis — architectural decomposition)
         assert 'model: opus' in generate_roadmap_template(roadmap_tools)
@@ -175,10 +180,10 @@ class TestTemplateConsistency:
             assert 'model: sonnet' in template
 
     def test_all_templates_have_required_sections(self) -> None:
-        roadmap_tools = create_roadmap_agent_tools()
-        critic_tools = create_roadmap_critic_agent_tools()
+        roadmap_tools = create_roadmap_agent_tools(_adapter)
+        critic_tools = create_roadmap_critic_agent_tools(_adapter)
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        create_phase_tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
 
         templates = [
             generate_roadmap_template(roadmap_tools),
@@ -193,10 +198,10 @@ class TestTemplateConsistency:
                 assert section in template, f'Template missing required section: {section}'
 
     def test_no_template_contains_behavioral_descriptions(self) -> None:
-        roadmap_tools = create_roadmap_agent_tools()
-        critic_tools = create_roadmap_critic_agent_tools()
+        roadmap_tools = create_roadmap_agent_tools(_adapter)
+        critic_tools = create_roadmap_critic_agent_tools(_adapter)
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
-        create_phase_tools = create_create_phase_agent_tools(platform_tools, PlatformType.MARKDOWN)
+        create_phase_tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
 
         templates = [
             generate_roadmap_template(roadmap_tools),

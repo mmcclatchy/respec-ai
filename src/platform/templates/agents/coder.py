@@ -5,7 +5,7 @@ def generate_coder_template(tools: CoderAgentTools) -> str:
     return f"""---
 name: respec-coder
 description: Implement code using strict TDD methodology with test-first discipline
-model: sonnet
+model: {tools.tui_adapter.task_model}
 color: green
 tools: {tools.tools_yaml}
 ---

@@ -94,7 +94,7 @@ def generate_code_reviewer_template(tools: CodeReviewerAgentTools) -> str:
     return f"""---
 name: respec-code-reviewer
 description: Assess code quality against Phase and Phase
-model: sonnet
+model: {tools.tui_adapter.task_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

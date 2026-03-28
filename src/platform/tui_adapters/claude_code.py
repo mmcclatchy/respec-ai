@@ -20,7 +20,7 @@ class ClaudeCodeAdapter(TuiAdapter):
             '---',
             f'name: {spec.name}',
             f'description: {spec.description}',
-            f'model: {self.model_name(spec.model)}',
+            f'model: {spec.model}',
         ]
         if spec.color:
             parts.append(f'color: {spec.color}')
@@ -71,8 +71,13 @@ class ClaudeCodeAdapter(TuiAdapter):
 
         return files_written
 
-    def model_name(self, short_name: str) -> str:
-        return short_name
+    @property
+    def reasoning_model(self) -> str:
+        return 'opus'
+
+    @property
+    def task_model(self) -> str:
+        return 'sonnet'
 
     def register_mcp_server(self, project_path: Path) -> bool:
         return _register_mcp_server()

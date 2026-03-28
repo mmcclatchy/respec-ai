@@ -35,6 +35,7 @@ from .models import (
 from .platform_selector import PlatformType
 from .tool_doc_generator import ToolDocGenerator
 from .tool_enums import BuiltInTool, RespecAIAgent, RespecAITool
+from .tui_adapters.base import TuiAdapter
 
 
 class TemplateToolBuilder:
@@ -353,7 +354,9 @@ def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') 
     )
 
 
-def create_phase_architect_agent_tools(plans_dir: str = '~/.claude/plans') -> PhaseArchitectAgentTools:
+def create_phase_architect_agent_tools(
+    tui_adapter: TuiAdapter, plans_dir: str = '~/.claude/plans'
+) -> PhaseArchitectAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PhaseArchitectAgentTools.respec_ai_tools:
@@ -363,6 +366,7 @@ def create_phase_architect_agent_tools(plans_dir: str = '~/.claude/plans') -> Ph
         builder.add_builtin_tool(builtin_tool, params)
 
     return PhaseArchitectAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         plans_dir=plans_dir,
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
@@ -381,7 +385,7 @@ def create_phase_architect_agent_tools(plans_dir: str = '~/.claude/plans') -> Ph
     )
 
 
-def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAgentTools:
+def create_phase_critic_agent_tools(tui_adapter: TuiAdapter, phase_length_soft_cap: int) -> PhaseCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PhaseCriticAgentTools.respec_ai_tools:
@@ -391,6 +395,7 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
         builder.add_builtin_tool(builtin_tool, params)
 
     return PhaseCriticAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         phase_length_soft_cap=phase_length_soft_cap,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
@@ -405,7 +410,7 @@ def create_phase_critic_agent_tools(phase_length_soft_cap: int) -> PhaseCriticAg
     )
 
 
-def create_analyst_critic_agent_tools() -> AnalystCriticAgentTools:
+def create_analyst_critic_agent_tools(tui_adapter: TuiAdapter) -> AnalystCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in AnalystCriticAgentTools.respec_ai_tools:
@@ -415,6 +420,7 @@ def create_analyst_critic_agent_tools() -> AnalystCriticAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return AnalystCriticAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{LOOP_ID}'
@@ -428,7 +434,7 @@ def create_analyst_critic_agent_tools() -> AnalystCriticAgentTools:
     )
 
 
-def create_plan_analyst_agent_tools() -> PlanAnalystAgentTools:
+def create_plan_analyst_agent_tools(tui_adapter: TuiAdapter) -> PlanAnalystAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PlanAnalystAgentTools.respec_ai_tools:
@@ -438,6 +444,7 @@ def create_plan_analyst_agent_tools() -> PlanAnalystAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return PlanAnalystAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{LOOP_ID}'
@@ -451,7 +458,7 @@ def create_plan_analyst_agent_tools() -> PlanAnalystAgentTools:
     )
 
 
-def create_plan_critic_agent_tools() -> PlanCriticAgentTools:
+def create_plan_critic_agent_tools(tui_adapter: TuiAdapter) -> PlanCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PlanCriticAgentTools.respec_ai_tools:
@@ -461,6 +468,7 @@ def create_plan_critic_agent_tools() -> PlanCriticAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return PlanCriticAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
@@ -468,7 +476,7 @@ def create_plan_critic_agent_tools() -> PlanCriticAgentTools:
     )
 
 
-def create_roadmap_agent_tools(plans_dir: str = '~/.claude/plans') -> RoadmapAgentTools:
+def create_roadmap_agent_tools(tui_adapter: TuiAdapter, plans_dir: str = '~/.claude/plans') -> RoadmapAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in RoadmapAgentTools.respec_ai_tools:
@@ -478,6 +486,7 @@ def create_roadmap_agent_tools(plans_dir: str = '~/.claude/plans') -> RoadmapAge
         builder.add_builtin_tool(builtin_tool, params)
 
     return RoadmapAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         plans_dir=plans_dir,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
@@ -493,7 +502,7 @@ def create_roadmap_agent_tools(plans_dir: str = '~/.claude/plans') -> RoadmapAge
     )
 
 
-def create_roadmap_critic_agent_tools() -> RoadmapCriticAgentTools:
+def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in RoadmapCriticAgentTools.respec_ai_tools:
@@ -503,6 +512,7 @@ def create_roadmap_critic_agent_tools() -> RoadmapCriticAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return RoadmapCriticAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
@@ -514,7 +524,7 @@ def create_roadmap_critic_agent_tools() -> RoadmapCriticAgentTools:
     )
 
 
-def create_task_critic_agent_tools() -> TaskCriticAgentTools:
+def create_task_critic_agent_tools(tui_adapter: TuiAdapter) -> TaskCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in TaskCriticAgentTools.respec_ai_tools:
@@ -524,6 +534,7 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return TaskCriticAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -540,7 +551,7 @@ def create_task_critic_agent_tools() -> TaskCriticAgentTools:
     )
 
 
-def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
+def create_code_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CodeReviewerAgentTools.respec_ai_tools:
@@ -550,6 +561,7 @@ def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return CodeReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -566,7 +578,7 @@ def create_code_reviewer_agent_tools() -> CodeReviewerAgentTools:
     )
 
 
-def create_task_planner_agent_tools() -> TaskPlannerAgentTools:
+def create_task_planner_agent_tools(tui_adapter: TuiAdapter) -> TaskPlannerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in TaskPlannerAgentTools.respec_ai_tools:
@@ -576,6 +588,7 @@ def create_task_planner_agent_tools() -> TaskPlannerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return TaskPlannerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -604,7 +617,7 @@ def create_task_planner_agent_tools() -> TaskPlannerAgentTools:
     )
 
 
-def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
+def create_task_plan_critic_agent_tools(tui_adapter: TuiAdapter) -> TaskPlanCriticAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in TaskPlanCriticAgentTools.respec_ai_tools:
@@ -614,6 +627,7 @@ def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return TaskPlanCriticAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
@@ -631,6 +645,7 @@ def create_task_plan_critic_agent_tools() -> TaskPlanCriticAgentTools:
 
 
 def create_coder_agent_tools(
+    tui_adapter: TuiAdapter,
     platform_tools: list[str],
 ) -> CoderAgentTools:
     builder = TemplateToolBuilder()
@@ -644,6 +659,7 @@ def create_coder_agent_tools(
     builder.add_platform_tools(platform_tools)
 
     return CoderAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         update_task_status=platform_tools[0],
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
@@ -658,7 +674,9 @@ def create_coder_agent_tools(
     )
 
 
-def create_create_phase_agent_tools(platform_tools: list[str], platform: PlatformType) -> CreatePhaseAgentTools:
+def create_create_phase_agent_tools(
+    tui_adapter: TuiAdapter, platform_tools: list[str], platform: PlatformType
+) -> CreatePhaseAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CreatePhaseAgentTools.respec_ai_tools:
@@ -667,6 +685,7 @@ def create_create_phase_agent_tools(platform_tools: list[str], platform: Platfor
     builder.add_platform_tools(platform_tools)
 
     return CreatePhaseAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         create_phase_tool=platform_tools[0],
         get_phase_tool=platform_tools[1],
@@ -684,7 +703,7 @@ def create_create_phase_agent_tools(platform_tools: list[str], platform: Platfor
     )
 
 
-def create_automated_quality_checker_agent_tools() -> AutomatedQualityCheckerAgentTools:
+def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> AutomatedQualityCheckerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in AutomatedQualityCheckerAgentTools.respec_ai_tools:
@@ -694,6 +713,7 @@ def create_automated_quality_checker_agent_tools() -> AutomatedQualityCheckerAge
         builder.add_builtin_tool(builtin_tool, params)
 
     return AutomatedQualityCheckerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -712,7 +732,7 @@ def create_automated_quality_checker_agent_tools() -> AutomatedQualityCheckerAge
     )
 
 
-def create_spec_alignment_reviewer_agent_tools() -> SpecAlignmentReviewerAgentTools:
+def create_spec_alignment_reviewer_agent_tools(tui_adapter: TuiAdapter) -> SpecAlignmentReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in SpecAlignmentReviewerAgentTools.respec_ai_tools:
@@ -722,6 +742,7 @@ def create_spec_alignment_reviewer_agent_tools() -> SpecAlignmentReviewerAgentTo
         builder.add_builtin_tool(builtin_tool, params)
 
     return SpecAlignmentReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -740,7 +761,7 @@ def create_spec_alignment_reviewer_agent_tools() -> SpecAlignmentReviewerAgentTo
     )
 
 
-def create_code_quality_reviewer_agent_tools() -> CodeQualityReviewerAgentTools:
+def create_code_quality_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeQualityReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CodeQualityReviewerAgentTools.respec_ai_tools:
@@ -750,6 +771,7 @@ def create_code_quality_reviewer_agent_tools() -> CodeQualityReviewerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return CodeQualityReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -768,7 +790,7 @@ def create_code_quality_reviewer_agent_tools() -> CodeQualityReviewerAgentTools:
     )
 
 
-def create_frontend_reviewer_agent_tools() -> FrontendReviewerAgentTools:
+def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in FrontendReviewerAgentTools.respec_ai_tools:
@@ -778,6 +800,7 @@ def create_frontend_reviewer_agent_tools() -> FrontendReviewerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return FrontendReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -793,7 +816,7 @@ def create_frontend_reviewer_agent_tools() -> FrontendReviewerAgentTools:
     )
 
 
-def create_backend_api_reviewer_agent_tools() -> BackendApiReviewerAgentTools:
+def create_backend_api_reviewer_agent_tools(tui_adapter: TuiAdapter) -> BackendApiReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in BackendApiReviewerAgentTools.respec_ai_tools:
@@ -803,6 +826,7 @@ def create_backend_api_reviewer_agent_tools() -> BackendApiReviewerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return BackendApiReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -818,7 +842,7 @@ def create_backend_api_reviewer_agent_tools() -> BackendApiReviewerAgentTools:
     )
 
 
-def create_database_reviewer_agent_tools() -> DatabaseReviewerAgentTools:
+def create_database_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DatabaseReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in DatabaseReviewerAgentTools.respec_ai_tools:
@@ -828,6 +852,7 @@ def create_database_reviewer_agent_tools() -> DatabaseReviewerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return DatabaseReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -843,7 +868,7 @@ def create_database_reviewer_agent_tools() -> DatabaseReviewerAgentTools:
     )
 
 
-def create_infrastructure_reviewer_agent_tools() -> InfrastructureReviewerAgentTools:
+def create_infrastructure_reviewer_agent_tools(tui_adapter: TuiAdapter) -> InfrastructureReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in InfrastructureReviewerAgentTools.respec_ai_tools:
@@ -853,6 +878,7 @@ def create_infrastructure_reviewer_agent_tools() -> InfrastructureReviewerAgentT
         builder.add_builtin_tool(builtin_tool, params)
 
     return InfrastructureReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -868,7 +894,7 @@ def create_infrastructure_reviewer_agent_tools() -> InfrastructureReviewerAgentT
     )
 
 
-def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAgentTools:
+def create_coding_standards_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodingStandardsReviewerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in CodingStandardsReviewerAgentTools.respec_ai_tools:
@@ -878,6 +904,7 @@ def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAge
         builder.add_builtin_tool(builtin_tool, params)
 
     return CodingStandardsReviewerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
@@ -901,7 +928,7 @@ def create_coding_standards_reviewer_agent_tools() -> CodingStandardsReviewerAge
     )
 
 
-def create_review_consolidator_agent_tools() -> ReviewConsolidatorAgentTools:
+def create_review_consolidator_agent_tools(tui_adapter: TuiAdapter) -> ReviewConsolidatorAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in ReviewConsolidatorAgentTools.respec_ai_tools:
@@ -911,6 +938,7 @@ def create_review_consolidator_agent_tools() -> ReviewConsolidatorAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return ReviewConsolidatorAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_review_sections=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.LIST_REVIEW_SECTIONS,
@@ -929,7 +957,7 @@ def create_review_consolidator_agent_tools() -> ReviewConsolidatorAgentTools:
     )
 
 
-def create_patch_planner_agent_tools() -> PatchPlannerAgentTools:
+def create_patch_planner_agent_tools(tui_adapter: TuiAdapter) -> PatchPlannerAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PatchPlannerAgentTools.respec_ai_tools:
@@ -939,6 +967,7 @@ def create_patch_planner_agent_tools() -> PatchPlannerAgentTools:
         builder.add_builtin_tool(builtin_tool, params)
 
     return PatchPlannerAgentTools(
+        tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'

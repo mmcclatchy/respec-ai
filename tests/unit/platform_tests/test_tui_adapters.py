@@ -2,6 +2,7 @@ import json
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -79,10 +80,11 @@ class TestClaudeCodeAdapter:
     def test_config_dir_name(self) -> None:
         assert self.adapter.config_dir_name() == '.claude'
 
-    def test_model_name_passthrough(self) -> None:
-        assert self.adapter.model_name('sonnet') == 'sonnet'
-        assert self.adapter.model_name('opus') == 'opus'
-        assert self.adapter.model_name('haiku') == 'haiku'
+    def test_reasoning_model(self) -> None:
+        assert self.adapter.reasoning_model == 'opus'
+
+    def test_task_model(self) -> None:
+        assert self.adapter.task_model == 'sonnet'
 
     def test_render_agent_frontmatter(self, agent_spec: AgentSpec) -> None:
         result = self.adapter.render_agent(agent_spec)
@@ -173,18 +175,33 @@ class TestOpenCodeAdapter:
     def test_config_dir_name(self) -> None:
         assert self.adapter.config_dir_name() == '.opencode'
 
-    def test_model_name_sonnet(self) -> None:
-        assert self.adapter.model_name('sonnet') == 'anthropic/claude-sonnet-4-6'
+    def test_reasoning_model_returns_configured_value(self, tmp_path: Path) -> None:
+        models_path = tmp_path / 'models.json'
+        models_path.write_text(
+            json.dumps({'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'}}),
+            encoding='utf-8',
+        )
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
+            assert self.adapter.reasoning_model == 'opencode-go/kimi-k2.5'
 
-    def test_model_name_opus(self) -> None:
-        assert self.adapter.model_name('opus') == 'anthropic/claude-opus-4-6'
+    def test_task_model_returns_configured_value(self, tmp_path: Path) -> None:
+        models_path = tmp_path / 'models.json'
+        models_path.write_text(
+            json.dumps({'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'}}),
+            encoding='utf-8',
+        )
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
+            assert self.adapter.task_model == 'opencode-go/minimax-m2.7'
 
-    def test_model_name_haiku(self) -> None:
-        assert self.adapter.model_name('haiku') == 'anthropic/claude-haiku-4-5'
+    def test_reasoning_model_raises_when_not_configured(self, tmp_path: Path) -> None:
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
+            with pytest.raises(RuntimeError, match='opencode-sync'):
+                _ = self.adapter.reasoning_model
 
-    def test_model_name_unknown_falls_back(self) -> None:
-        result = self.adapter.model_name('custom-model')
-        assert result == 'anthropic/claude-custom-model'
+    def test_task_model_raises_when_not_configured(self, tmp_path: Path) -> None:
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
+            with pytest.raises(RuntimeError, match='opencode-sync'):
+                _ = self.adapter.task_model
 
     def test_render_agent_returns_body(self, agent_spec: AgentSpec) -> None:
         result = self.adapter.render_agent(agent_spec)
@@ -265,12 +282,12 @@ class TestOpenCodeAdapter:
         prompt = config['agent']['respec-plan-analyst']['prompt']
         assert 'respec-plan-analyst.md' in prompt
 
-    def test_opencode_json_model_mapped(
+    def test_opencode_json_model_is_spec_model(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
     ) -> None:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
-        assert config['agent']['respec-plan-analyst']['model'] == 'anthropic/claude-sonnet-4-6'
+        assert config['agent']['respec-plan-analyst']['model'] == agent_spec.model
 
     def test_opencode_json_builtin_tools_mapped(self, project_path: Path, command_spec: CommandSpec) -> None:
         spec = AgentSpec(

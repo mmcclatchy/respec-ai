@@ -136,7 +136,7 @@ def generate_templates(
         for cmd in _COMMAND_TEMPLATES
     ]
 
-    agents: list[AgentSpec] = _get_agent_specs(platform_type, plans_dir=plans_dir)
+    agents: list[AgentSpec] = _get_agent_specs(adapter, platform_type, plans_dir=plans_dir)
 
     files_written = adapter.write_all(project_path, agents, commands)
 
@@ -187,7 +187,9 @@ def _parse_command_spec(cmd: RespecAICommand, content: str) -> CommandSpec:
     )
 
 
-def _get_agent_specs(platform_type: PlatformType, plans_dir: str = '~/.claude/plans') -> list[AgentSpec]:
+def _get_agent_specs(
+    tui_adapter: TuiAdapter, platform_type: PlatformType, plans_dir: str = '~/.claude/plans'
+) -> list[AgentSpec]:
     platform_adapter = get_platform_adapter(platform_type)
 
     create_phase_platform_tools = [
@@ -200,29 +202,29 @@ def _get_agent_specs(platform_type: PlatformType, plans_dir: str = '~/.claude/pl
         platform_adapter.update_phase_tool,
     ]
 
-    plan_analyst_tools = create_plan_analyst_agent_tools()
-    plan_critic_tools = create_plan_critic_agent_tools()
-    analyst_critic_tools = create_analyst_critic_agent_tools()
-    roadmap_tools = create_roadmap_agent_tools(plans_dir=plans_dir)
-    roadmap_critic_tools = create_roadmap_critic_agent_tools()
-    create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
-    phase_architect_tools = create_phase_architect_agent_tools(plans_dir=plans_dir)
-    phase_critic_tools = create_phase_critic_agent_tools(loop_config.phase_length_soft_cap)
-    task_planner_tools = create_task_planner_agent_tools()
-    task_plan_critic_tools = create_task_plan_critic_agent_tools()
-    patch_planner_tools = create_patch_planner_agent_tools()
-    task_critic_tools = create_task_critic_agent_tools()
-    coder_tools = create_coder_agent_tools(coder_platform_tools)
-    code_reviewer_tools = create_code_reviewer_agent_tools()
-    automated_quality_checker_tools = create_automated_quality_checker_agent_tools()
-    code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools()
-    spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools()
-    frontend_reviewer_tools = create_frontend_reviewer_agent_tools()
-    backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools()
-    database_reviewer_tools = create_database_reviewer_agent_tools()
-    infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools()
-    coding_standards_reviewer_tools = create_coding_standards_reviewer_agent_tools()
-    review_consolidator_tools = create_review_consolidator_agent_tools()
+    plan_analyst_tools = create_plan_analyst_agent_tools(tui_adapter)
+    plan_critic_tools = create_plan_critic_agent_tools(tui_adapter)
+    analyst_critic_tools = create_analyst_critic_agent_tools(tui_adapter)
+    roadmap_tools = create_roadmap_agent_tools(tui_adapter, plans_dir=plans_dir)
+    roadmap_critic_tools = create_roadmap_critic_agent_tools(tui_adapter)
+    create_phase_tools = create_create_phase_agent_tools(tui_adapter, create_phase_platform_tools, platform_type)
+    phase_architect_tools = create_phase_architect_agent_tools(tui_adapter, plans_dir=plans_dir)
+    phase_critic_tools = create_phase_critic_agent_tools(tui_adapter, loop_config.phase_length_soft_cap)
+    task_planner_tools = create_task_planner_agent_tools(tui_adapter)
+    task_plan_critic_tools = create_task_plan_critic_agent_tools(tui_adapter)
+    patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)
+    task_critic_tools = create_task_critic_agent_tools(tui_adapter)
+    coder_tools = create_coder_agent_tools(tui_adapter, coder_platform_tools)
+    code_reviewer_tools = create_code_reviewer_agent_tools(tui_adapter)
+    automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tui_adapter)
+    code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools(tui_adapter)
+    spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools(tui_adapter)
+    frontend_reviewer_tools = create_frontend_reviewer_agent_tools(tui_adapter)
+    backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools(tui_adapter)
+    database_reviewer_tools = create_database_reviewer_agent_tools(tui_adapter)
+    infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools(tui_adapter)
+    coding_standards_reviewer_tools = create_coding_standards_reviewer_agent_tools(tui_adapter)
+    review_consolidator_tools = create_review_consolidator_agent_tools(tui_adapter)
 
     return [
         _parse_agent_spec('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
