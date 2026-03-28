@@ -12,7 +12,7 @@ class CodeCommandStrategy(CommandStrategy[CodeCommandTools]):
     def get_required_operations(self) -> list[str]:
         return []
 
-    def build_tools(self, platform: PlatformType) -> CodeCommandTools:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> CodeCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [adapter.retrieve_phase_tool, adapter.comment_phase_tool]
         return create_code_command_tools(platform_tools, platform)

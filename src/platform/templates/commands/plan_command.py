@@ -134,11 +134,11 @@ CLAUDE_PLAN_FILE = None
 CLAUDE_PLAN_CONTEXT = None
 
 Check remaining arguments (after PLAN_NAME) for a file path argument
-(contains ~/.claude/plans/ or ends in .md with a path separator):
+(contains {tools.plans_dir}/ or ends in .md with a path separator):
   IF found: CLAUDE_PLAN_FILE = extracted path
 
 IF CLAUDE_PLAN_FILE is None:
-  Bash: find ~/.claude/plans -name "*.md" -mtime -7 -type f 2>/dev/null | head -5
+  Bash: find {tools.plans_dir} -name "*.md" -mtime -7 -type f 2>/dev/null | head -5
   IF results found:
     Use AskUserQuestion:
       Question: "I found recently modified Claude Plan file(s). Use one as a starting point?"
@@ -313,11 +313,9 @@ Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
-4. **If CLAUDE_PLAN_FILE is not None**: Append to resource_requirements field:
-   ```text
-   Claude Plan: `{{CLAUDE_PLAN_FILE}}` (pre-resolved architecture decisions —
-   phase-architect will read this file as hard constraints)
-   ```
+4. **If CLAUDE_PLAN_FILE is not None**: You MUST append this exact line to the resource_requirements section:
+   `Claude Plan: {{CLAUDE_PLAN_FILE}}` — phase-architect reads this as hard constraints.
+   Do NOT inline the decisions and omit the file path. The path is how downstream agents access the full implementation details.
 5. **Store in variable** as CURRENT_PLAN for next steps
 6. **Store in MCP** using: `{tools.store_plan}`
 

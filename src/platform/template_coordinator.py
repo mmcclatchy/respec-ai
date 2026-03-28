@@ -28,7 +28,12 @@ class TemplateCoordinator:
             RespecAICommand.PLAN_CONVERSATION: PlanConversationCommandStrategy(),
         }
 
-    def generate_command_template(self, command_name: str | RespecAICommand, platform: PlatformType) -> str:
+    def generate_command_template(
+        self,
+        command_name: str | RespecAICommand,
+        platform: PlatformType,
+        plans_dir: str = '~/.claude/plans',
+    ) -> str:
         if isinstance(command_name, str):
             try:
                 command_name = RespecAICommand(command_name)
@@ -40,7 +45,7 @@ class TemplateCoordinator:
             raise ValueError(f'Unknown command template: {command_enum.value}')
 
         strategy = self._strategies[command_enum]
-        return strategy.generate_template(platform)
+        return strategy.generate_template(platform, plans_dir=plans_dir)
 
     def validate_template_generation(self, command_name: str | RespecAICommand, platform: PlatformType) -> bool:
         if isinstance(command_name, str):

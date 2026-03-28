@@ -85,3 +85,6 @@ class ClaudeCodeAdapter(TuiAdapter):
 
     def config_dir_name(self) -> str:
         return '.claude'
+
+    def plans_dir(self) -> str:
+        return '~/.claude/plans'

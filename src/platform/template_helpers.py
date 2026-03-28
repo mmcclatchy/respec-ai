@@ -86,7 +86,9 @@ class TemplateToolBuilder:
         return ', '.join(tool_strings)
 
 
-def create_phase_command_tools(platform_tools: list[str], platform_type: 'PlatformType') -> 'PhaseCommandTools':
+def create_phase_command_tools(
+    platform_tools: list[str], platform_type: 'PlatformType', plans_dir: str = '~/.claude/plans'
+) -> 'PhaseCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
@@ -103,6 +105,7 @@ def create_phase_command_tools(platform_tools: list[str], platform_type: 'Platfo
         get_phase_tool=platform_tools[1],
         update_phase_tool=platform_tools[2],
         platform=platform_type,
+        plans_dir=plans_dir,
         store_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{STRATEGIC_PLAN_MARKDOWN}'
         ),
@@ -137,7 +140,9 @@ def create_phase_command_tools(platform_tools: list[str], platform_type: 'Platfo
     )
 
 
-def create_plan_command_tools(platform_tools: list[str], platform_type: 'PlatformType') -> 'PlanCommandTools':
+def create_plan_command_tools(
+    platform_tools: list[str], platform_type: 'PlatformType', plans_dir: str = '~/.claude/plans'
+) -> 'PlanCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PLAN_CONVERSATION)
     builder.add_task_agent(RespecAIAgent.PLAN_CRITIC)
@@ -154,6 +159,7 @@ def create_plan_command_tools(platform_tools: list[str], platform_type: 'Platfor
         create_project_external=platform_tools[0],
         get_plan_tool=platform_tools[1],
         platform=platform_type,
+        plans_dir=plans_dir,
         initialize_plan_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"plan"'
         ),
@@ -198,7 +204,7 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
     builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
-    builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
+    builder.add_bash_script('scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -347,7 +353,7 @@ def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') 
     )
 
 
-def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
+def create_phase_architect_agent_tools(plans_dir: str = '~/.claude/plans') -> PhaseArchitectAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in PhaseArchitectAgentTools.respec_ai_tools:
@@ -358,6 +364,7 @@ def create_phase_architect_agent_tools() -> PhaseArchitectAgentTools:
 
     return PhaseArchitectAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
+        plans_dir=plans_dir,
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
@@ -461,7 +468,7 @@ def create_plan_critic_agent_tools() -> PlanCriticAgentTools:
     )
 
 
-def create_roadmap_agent_tools() -> RoadmapAgentTools:
+def create_roadmap_agent_tools(plans_dir: str = '~/.claude/plans') -> RoadmapAgentTools:
     builder = TemplateToolBuilder()
 
     for tool in RoadmapAgentTools.respec_ai_tools:
@@ -472,6 +479,7 @@ def create_roadmap_agent_tools() -> RoadmapAgentTools:
 
     return RoadmapAgentTools(
         tools_yaml=builder.render_comma_separated_tools(),
+        plans_dir=plans_dir,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
@@ -959,7 +967,9 @@ def create_patch_planner_agent_tools() -> PatchPlannerAgentTools:
     )
 
 
-def create_patch_command_tools(platform_tools: list[str], platform_type: 'PlatformType') -> PatchCommandTools:
+def create_patch_command_tools(
+    platform_tools: list[str], platform_type: 'PlatformType', plans_dir: str = '~/.claude/plans'
+) -> PatchCommandTools:
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
@@ -977,7 +987,7 @@ def create_patch_command_tools(platform_tools: list[str], platform_type: 'Platfo
     builder.add_builtin_tool(BuiltInTool.GLOB)
     builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md')
     builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/phases/*/tasks/*.md')
-    builder.add_bash_script('~/.claude/scripts/detect-packages.sh:*')
+    builder.add_bash_script('scripts/detect-packages.sh:*')
 
     for tool in PatchCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -987,6 +997,7 @@ def create_patch_command_tools(platform_tools: list[str], platform_type: 'Platfo
     return PatchCommandTools(
         tools_yaml=builder.render_comma_separated_tools(),
         platform=platform_type,
+        plans_dir=plans_dir,
         store_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',

@@ -12,10 +12,10 @@ class PatchCommandStrategy(CommandStrategy[PatchCommandTools]):
     def get_required_operations(self) -> list[str]:
         return []
 
-    def build_tools(self, platform: PlatformType) -> PatchCommandTools:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> PatchCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [adapter.retrieve_phase_tool, adapter.comment_phase_tool]
-        return create_patch_command_tools(platform_tools, platform)
+        return create_patch_command_tools(platform_tools, platform, plans_dir=plans_dir)
 
     def get_template_func(self) -> Callable[[PatchCommandTools], str]:
         return generate_patch_command_template

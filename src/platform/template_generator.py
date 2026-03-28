@@ -126,16 +126,17 @@ def generate_templates(
         PlanRoadmapCommandTools.initialize_tool_docs(mcp)
 
     adapter = tui_adapter or get_tui_adapter(TuiType.CLAUDE_CODE)
+    plans_dir = adapter.plans_dir()
 
     commands: list[CommandSpec] = [
         _parse_command_spec(
             cmd,
-            orchestrator.template_coordinator.generate_command_template(cmd, platform_type),
+            orchestrator.template_coordinator.generate_command_template(cmd, platform_type, plans_dir=plans_dir),
         )
         for cmd in _COMMAND_TEMPLATES
     ]
 
-    agents: list[AgentSpec] = _get_agent_specs(platform_type)
+    agents: list[AgentSpec] = _get_agent_specs(platform_type, plans_dir=plans_dir)
 
     files_written = adapter.write_all(project_path, agents, commands)
 
@@ -186,7 +187,7 @@ def _parse_command_spec(cmd: RespecAICommand, content: str) -> CommandSpec:
     )
 
 
-def _get_agent_specs(platform_type: PlatformType) -> list[AgentSpec]:
+def _get_agent_specs(platform_type: PlatformType, plans_dir: str = '~/.claude/plans') -> list[AgentSpec]:
     platform_adapter = get_platform_adapter(platform_type)
 
     create_phase_platform_tools = [
@@ -202,10 +203,10 @@ def _get_agent_specs(platform_type: PlatformType) -> list[AgentSpec]:
     plan_analyst_tools = create_plan_analyst_agent_tools()
     plan_critic_tools = create_plan_critic_agent_tools()
     analyst_critic_tools = create_analyst_critic_agent_tools()
-    roadmap_tools = create_roadmap_agent_tools()
+    roadmap_tools = create_roadmap_agent_tools(plans_dir=plans_dir)
     roadmap_critic_tools = create_roadmap_critic_agent_tools()
     create_phase_tools = create_create_phase_agent_tools(create_phase_platform_tools, platform_type)
-    phase_architect_tools = create_phase_architect_agent_tools()
+    phase_architect_tools = create_phase_architect_agent_tools(plans_dir=plans_dir)
     phase_critic_tools = create_phase_critic_agent_tools(loop_config.phase_length_soft_cap)
     task_planner_tools = create_task_planner_agent_tools()
     task_plan_critic_tools = create_task_plan_critic_agent_tools()

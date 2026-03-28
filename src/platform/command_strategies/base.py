@@ -19,14 +19,14 @@ class CommandStrategy(ABC, Generic[T]):
         pass
 
     @abstractmethod
-    def build_tools(self, platform: PlatformType) -> T:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> T:
         pass
 
     @abstractmethod
     def get_template_func(self) -> Callable[[T], str]:
         pass
 
-    def generate_template(self, platform: PlatformType) -> str:
-        tools = self.build_tools(platform)
+    def generate_template(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> str:
+        tools = self.build_tools(platform, plans_dir=plans_dir)
         template_func = self.get_template_func()
         return template_func(tools)

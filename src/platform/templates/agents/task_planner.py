@@ -94,6 +94,13 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
      b. If Read SUCCEEDS: append file content to IMPL_PLAN_CONSTRAINTS list
      c. If Read FAILS: note as "unavailable — proceeding without constraint from {{path}}"
 
+   ALSO scan PHASE_MARKDOWN for "### Implementation Plan References" section:
+     For each "- Constraint: `<file-path>`" line found:
+       IF file_path not already in impl_plan_paths:
+         a. Call Read(file_path=file_path)
+         b. If Read SUCCEEDS: append to IMPL_PLAN_CONSTRAINTS
+         c. If Read FAILS: note as unavailable in Research Read Log
+
    ALSO scan PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
      For each directive found, extract file_path and Read if not already in impl_plan_paths
 

@@ -105,6 +105,9 @@ class OpenCodeAdapter(TuiAdapter):
     def config_dir_name(self) -> str:
         return '.opencode'
 
+    def plans_dir(self) -> str:
+        return '.opencode/plans'
+
     def _build_opencode_config(
         self,
         project_path: Path,

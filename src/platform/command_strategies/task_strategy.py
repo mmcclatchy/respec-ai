@@ -12,7 +12,7 @@ class TaskCommandStrategy(CommandStrategy[TaskCommandTools]):
     def get_required_operations(self) -> list[str]:
         return []
 
-    def build_tools(self, platform: PlatformType) -> TaskCommandTools:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> TaskCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [
             adapter.retrieve_phase_tool,

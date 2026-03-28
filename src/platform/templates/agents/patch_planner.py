@@ -76,6 +76,18 @@ INPUTS: Loop context, Phase information, and change description
 
 TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
 1. Retrieve Phase: {tools.retrieve_phase}
+1.5. Read Implementation Plan Constraints (if present in Phase):
+   Search PHASE_MARKDOWN for "### Implementation Plan References"
+   For each "- Constraint: `<file-path>`" line found:
+     CALL Read(file_path)
+     IF Read succeeds: append to IMPL_PLAN_CONSTRAINTS — treat as HARD CONSTRAINTS
+     IF Read fails: note as "unavailable — proceeding without constraint from {{file_path}}"
+
+   ALSO scan PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
+     For each directive found, extract file_path and Read if not already processed
+
+   IF IMPL_PLAN_CONSTRAINTS is non-empty:
+     Treat as HARD CONSTRAINTS in amendment task — do NOT deviate from technology choices documented here
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
 4. Explore affected codebase:

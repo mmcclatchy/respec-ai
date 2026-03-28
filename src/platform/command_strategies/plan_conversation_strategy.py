@@ -9,7 +9,7 @@ class PlanConversationCommandStrategy(CommandStrategy[None]):
     def get_required_operations(self) -> list[str]:
         return []
 
-    def build_tools(self, platform: PlatformType) -> None:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> None:
         return None
 
     def get_template_func(self) -> Callable[[None], str]:

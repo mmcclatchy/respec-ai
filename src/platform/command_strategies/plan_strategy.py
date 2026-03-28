@@ -12,10 +12,10 @@ class PlanCommandStrategy(CommandStrategy[PlanCommandTools]):
     def get_required_operations(self) -> list[str]:
         return []
 
-    def build_tools(self, platform: PlatformType) -> PlanCommandTools:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> PlanCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [adapter.create_plan_tool, adapter.retrieve_plan_tool]
-        return create_plan_command_tools(platform_tools, platform)
+        return create_plan_command_tools(platform_tools, platform, plans_dir=plans_dir)
 
     def get_template_func(self) -> Callable[[PlanCommandTools], str]:
         return generate_plan_command_template

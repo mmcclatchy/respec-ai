@@ -12,10 +12,10 @@ class PhaseCommandStrategy(CommandStrategy[PhaseCommandTools]):
     def get_required_operations(self) -> list[str]:
         return []
 
-    def build_tools(self, platform: PlatformType) -> PhaseCommandTools:
+    def build_tools(self, platform: PlatformType, plans_dir: str = '~/.claude/plans') -> PhaseCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [adapter.create_phase_tool, adapter.retrieve_phase_tool, adapter.update_phase_tool]
-        return create_phase_command_tools(platform_tools, platform)
+        return create_phase_command_tools(platform_tools, platform, plans_dir=plans_dir)
 
     def get_template_func(self) -> Callable[[PhaseCommandTools], str]:
         return generate_phase_command_template

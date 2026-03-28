@@ -28,11 +28,11 @@ CHANGE_DESCRIPTION = [all remaining arguments - description of the change needed
 
 ```text
 IF CHANGE_DESCRIPTION references an active plan (e.g., "use the active plan",
-   "from plan mode", or contains a path to a .md file in ~/.claude/plans/):
+   "from plan mode", or contains a path to a .md file in {tools.plans_dir}/):
 
   PLAN_FILE_PATH = [extract or infer path from CHANGE_DESCRIPTION]
   IF PLAN_FILE_PATH not explicitly provided:
-    PLAN_FILE_PATH = Glob(~/.claude/plans/*.md) → select most recently modified
+    PLAN_FILE_PATH = Glob({tools.plans_dir}/*.md) → select most recently modified
 
   PLAN_CONTENT = Read(PLAN_FILE_PATH)
 

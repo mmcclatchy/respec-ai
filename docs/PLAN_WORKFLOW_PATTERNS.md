@@ -466,7 +466,7 @@ allowed-tools:
   - Task(plan-generator)
   - Task(plan-critic)
   - Task(plan-analyst)
-  - Bash(~/.claude/scripts/detect-packages.sh)
+  - Bash(scripts/detect-packages.sh)
 argument-hint: [plan-name] [starting-prompt]
 description: Create strategic plans through conversational discovery
 ---

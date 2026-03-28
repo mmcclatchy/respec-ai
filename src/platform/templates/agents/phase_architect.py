@@ -20,7 +20,7 @@ technical_phase_template = Phase(
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
     implementation_plan_references=(
         'Pre-resolved architecture decisions that MUST be honored.\n\n'
-        '- Constraint: `~/.claude/plans/<plan-name>.md` § "Section Name"\n'
+        '- Constraint: `<plans-dir>/<plan-name>.md` § "Section Name"\n'
         '  (brief rationale for why this constraint exists)'
     ),
     research_requirements=(
@@ -183,7 +183,7 @@ Scan for pre-resolved architecture decisions that MUST be honored as hard constr
 SOURCE 1 — Strategic Plan Reference (uses STRATEGIC_PLAN_MARKDOWN from STEP 0.5):
   Search STRATEGIC_PLAN_MARKDOWN for Claude Plan file paths.
   Look in the Technology Requirements and Project Constraints sections for lines like:
-    "Claude Plan: `<file-path>`" or any path containing ~/.claude/plans/ ending in .md
+    "Claude Plan: `<file-path>`" or any path containing {tools.plans_dir}/ ending in .md
   For each path found:
     CALL Read(file_path)
     IF Read succeeds: Append file content to IMPL_PLAN_CONSTRAINTS list

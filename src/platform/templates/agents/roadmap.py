@@ -187,6 +187,14 @@ Break requirements into appropriately-sized implementation phases
 → IF PLAN_ANTI_REQUIREMENTS exists: No phase may include explicitly excluded work
 → IF PLAN_QUALITY_BAR exists: Quality targets inform phase sizing (budget testing time)
 
+STEP 3.5: Propagate Plan References to Sparse Phases
+If the strategic plan contains a line matching "Claude Plan: `<path>`" or any path
+containing {tools.plans_dir}/ ending in .md:
+  Include `### Implementation Plan References` in each sparse phase under ## Additional Details:
+  - Constraint: `<path>` (propagated from strategic plan)
+
+This ensures every sparse phase carries the reference so phase-architect's SOURCE 2 finds it.
+
 STEP 4: Generate Roadmap
 Create comprehensive roadmap markdown following OUTPUT FORMAT below
 → Include all roadmap metadata fields

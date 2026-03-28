@@ -164,6 +164,7 @@ class PhaseCommandTools(BaseModel):
     get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
     update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     platform: PlatformType = Field(..., description='Selected platform type')
+    plans_dir: str = Field(..., description='TUI-specific plans directory path')
 
     # Parameterized MCP tool invocations
     store_plan: str = Field(..., description='Store strategic plan')
@@ -311,6 +312,7 @@ class PlanCommandTools(BaseModel):
     create_project_external: str = Field(..., description='Platform-specific tool for creating external project')
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     platform: PlatformType = Field(..., description='Selected platform type')
+    plans_dir: str = Field(..., description='TUI-specific plans directory path')
 
     # Parameterized MCP tool invocations
     initialize_plan_loop: str = Field(..., description='Initialize plan quality loop')
@@ -515,6 +517,7 @@ class PatchCommandTools(BaseModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     platform: PlatformType = Field(..., description='Selected platform type')
+    plans_dir: str = Field(..., description='TUI-specific plans directory path')
 
     # Phase operations
     store_phase_document: str = Field(..., description='Store phase specification in MCP')
@@ -845,6 +848,7 @@ class PhaseArchitectAgentTools(BaseModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    plans_dir: str = Field(..., description='TUI-specific plans directory path')
     get_loop_status: str = Field(..., description='Get loop status for iteration check')
     get_feedback: str = Field(..., description='Retrieve previous critic feedback')
     get_document: str = Field(..., description='Retrieve current specification')
@@ -1001,6 +1005,7 @@ class RoadmapAgentTools(BaseModel):
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    plans_dir: str = Field(..., description='TUI-specific plans directory path')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_loop_status: str = Field(..., description='Get loop status for iteration check')
     get_feedback: str = Field(..., description='Retrieve previous critic feedback')

@@ -60,3 +60,6 @@ class TuiAdapter(ABC):
 
     @abstractmethod
     def config_dir_name(self) -> str: ...
+
+    @abstractmethod
+    def plans_dir(self) -> str: ...
