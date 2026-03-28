@@ -20,6 +20,7 @@ from argparse import ArgumentParser
 from src.cli.commands import (
     cleanup,
     docker,
+    fetch_models,
     init,
     mcp_server,
     platform,
@@ -133,6 +134,13 @@ def main() -> int:
 
     mcp_server.add_arguments(mcp_server_parser)
 
+    fetch_models_parser = subparsers.add_parser(
+        'fetch-models',
+        help='Fetch Go Plan models from OpenCode docs and set tier mapping using recent benchmarks',
+    )
+
+    fetch_models.add_arguments(fetch_models_parser)
+
     args = parser.parse_args()
 
     match args.command:
@@ -158,6 +166,8 @@ def main() -> int:
             return docker.run(args)
         case 'mcp-server':
             return mcp_server.run(args)
+        case 'fetch-models':
+            return fetch_models.run(args)
         case _:
             parser.print_help()
             return 1

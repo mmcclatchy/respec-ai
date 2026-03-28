@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from src.cli.config.global_config import load_global_models
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
@@ -71,6 +72,9 @@ class OpenCodeAdapter(TuiAdapter):
         return files_written
 
     def model_name(self, short_name: str) -> str:
+        overrides = load_global_models()
+        if short_name in overrides:
+            return overrides[short_name]
         return _MODEL_MAP.get(short_name, f'anthropic/claude-{short_name}')
 
     def register_mcp_server(self, project_path: Path) -> bool:

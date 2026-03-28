@@ -1,0 +1,29 @@
+import json
+from pathlib import Path
+from typing import Any
+
+
+GLOBAL_CONFIG_DIR = Path.home() / '.config' / 'respec-ai'
+GLOBAL_MODELS_PATH = GLOBAL_CONFIG_DIR / 'models.json'
+
+
+def load_global_models() -> dict[str, str]:
+    if not GLOBAL_MODELS_PATH.exists():
+        return {}
+    try:
+        data: dict[str, Any] = json.loads(GLOBAL_MODELS_PATH.read_text(encoding='utf-8'))
+        return data.get('opencode', {})
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_global_models(models: dict[str, str]) -> None:
+    GLOBAL_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    existing: dict[str, Any] = {}
+    if GLOBAL_MODELS_PATH.exists():
+        try:
+            existing = json.loads(GLOBAL_MODELS_PATH.read_text(encoding='utf-8'))
+        except (json.JSONDecodeError, OSError):
+            pass
+    existing['opencode'] = models
+    GLOBAL_MODELS_PATH.write_text(json.dumps(existing, indent=2), encoding='utf-8')
