@@ -138,6 +138,7 @@ class OpenCodeAdapter(TuiAdapter):
         command_block: dict[str, Any] = {
             cmd_spec.name: {
                 'description': cmd_spec.description,
+                'template': f'{{file:.opencode/prompts/{cmd_spec.name}.md}}',
                 'agent': cmd_spec.name,
             }
             for cmd_spec in commands
