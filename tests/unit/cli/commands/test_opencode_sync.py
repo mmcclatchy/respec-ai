@@ -25,9 +25,14 @@ class TestDetectProvider:
         return result
 
     def test_returns_provider_from_opencode_output(self) -> None:
-        stdout = '┌  Credentials ~/.local/share/opencode/auth.json\n│\n●  opencode-go api\n│\n└  1 credentials\n'
+        stdout = '┌  Credentials ~/.local/share/opencode/auth.json\n│\n●  OpenCode Go api\n│\n└  1 credentials\n'
         with patch('subprocess.run', return_value=self._make_result(stdout)):
             assert _detect_provider() == 'opencode-go'
+
+    def test_returns_provider_for_zen_plan(self) -> None:
+        stdout = '┌  Credentials\n│\n●  OpenCode Zen api\n│\n└  1 credentials\n'
+        with patch('subprocess.run', return_value=self._make_result(stdout)):
+            assert _detect_provider() == 'opencode-zen'
 
     def test_returns_empty_when_opencode_not_installed(self) -> None:
         with patch('subprocess.run', side_effect=FileNotFoundError):

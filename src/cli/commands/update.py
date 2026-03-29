@@ -106,7 +106,15 @@ def run(args: Namespace) -> int:
 
         config_path = Path.cwd() / '.respec-ai' / 'config.json'
         if config_path.exists():
-            subprocess.run(['respec-ai', 'regenerate'], check=False)
+            regen_result = subprocess.run(
+                ['respec-ai', 'regenerate'],
+                capture_output=True,
+                text=True,
+            )
+            if regen_result.returncode == 0:
+                print_success('Templates regenerated')
+            else:
+                print_warning('Template regeneration skipped — run `respec-ai regenerate` in your project')
         elif new_version != current_version:
             print_info('Run: respec-ai regenerate in your project directory to update templates')
 

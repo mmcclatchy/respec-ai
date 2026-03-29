@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -89,17 +90,12 @@ def _detect_provider() -> str:
             timeout=10,
         )
         for line in result.stdout.splitlines():
-            stripped = line.strip().lstrip('●').strip()
-            if (
-                stripped
-                and not stripped.startswith('Credentials')
-                and not stripped.startswith('└')
-                and not stripped.startswith('│')
-                and not stripped.startswith('┌')
-            ):
-                parts = stripped.split()
-                if parts:
-                    return parts[0]
+            if '●' not in line:
+                continue
+            name_part = line.split('●', 1)[1].strip()
+            name_part = re.split(r'\s+api\b', name_part, flags=re.IGNORECASE)[0].strip()
+            if name_part:
+                return name_part.lower().replace(' ', '-')
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         pass
     return ''
