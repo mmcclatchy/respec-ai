@@ -15,6 +15,7 @@ from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
 _AA_MODELS_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
+_ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
 _QUALITY_FIELDS = ('coding_index', 'reasoning_index', 'math_index', 'intelligence_index')
 
@@ -89,7 +90,8 @@ def _detect_provider() -> str:
             text=True,
             timeout=10,
         )
-        for line in result.stdout.splitlines():
+        clean = _ANSI_ESCAPE.sub('', result.stdout)
+        for line in clean.splitlines():
             if '●' not in line:
                 continue
             name_part = line.split('●', 1)[1].strip()

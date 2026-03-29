@@ -24,13 +24,18 @@ class TestDetectProvider:
         result.stdout = stdout
         return result
 
-    def test_returns_provider_from_opencode_output(self) -> None:
-        stdout = '┌  Credentials ~/.local/share/opencode/auth.json\n│\n●  OpenCode Go api\n│\n└  1 credentials\n'
+    def test_returns_provider_from_opencode_output_with_ansi(self) -> None:
+        stdout = '┌  Credentials \x1b[90m~/.local/share/opencode/auth.json\n│\n●  OpenCode Go \x1b[90mapi\n│\n└  1 credentials\n'
+        with patch('subprocess.run', return_value=self._make_result(stdout)):
+            assert _detect_provider() == 'opencode-go'
+
+    def test_returns_provider_without_ansi(self) -> None:
+        stdout = '┌  Credentials\n│\n●  OpenCode Go api\n│\n└  1 credentials\n'
         with patch('subprocess.run', return_value=self._make_result(stdout)):
             assert _detect_provider() == 'opencode-go'
 
     def test_returns_provider_for_zen_plan(self) -> None:
-        stdout = '┌  Credentials\n│\n●  OpenCode Zen api\n│\n└  1 credentials\n'
+        stdout = '┌  Credentials\n│\n●  OpenCode Zen \x1b[90mapi\n│\n└  1 credentials\n'
         with patch('subprocess.run', return_value=self._make_result(stdout)):
             assert _detect_provider() == 'opencode-zen'
 
