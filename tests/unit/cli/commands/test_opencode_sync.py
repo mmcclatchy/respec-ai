@@ -2,6 +2,7 @@ import json
 import subprocess
 import urllib.error
 from argparse import Namespace
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,7 +15,6 @@ from src.cli.commands.opencode_sync import (
     _parse_rate_limits_table,
     _score_models_by_tier,
     _suggest_tiers,
-    _weighted_score,
 )
 
 
@@ -96,63 +96,54 @@ class TestFindAaMatch:
         assert _find_aa_match('kimi-k2.5', aa_data) == ''
 
 
-class TestWeightedScore:
-    def test_applies_weights(self) -> None:
-        scores = {'a': 100.0, 'b': 50.0}
-        weights = {'a': 0.6, 'b': 0.4}
-        assert _weighted_score(scores, weights) == pytest.approx(80.0)
-
-    def test_missing_fields_treated_as_zero(self) -> None:
-        scores = {'a': 100.0}
-        weights = {'a': 0.5, 'b': 0.5}
-        assert _weighted_score(scores, weights) == pytest.approx(50.0)
-
-    def test_empty_scores_returns_zero(self) -> None:
-        assert _weighted_score({}, {'a': 0.5, 'b': 0.5}) == pytest.approx(0.0)
-
-
 class TestScoreModelsByTier:
     def _aa_data(self) -> dict[str, dict[str, float]]:
         return {
             'glm 5 (reasoning)': {
                 'artificial_analysis_intelligence_index': 95.0,
-                'artificial_analysis_coding_index': 70.0,
-                'artificial_analysis_math_index': 92.0,
             },
             'minimax-m2.7': {
                 'artificial_analysis_intelligence_index': 80.0,
-                'artificial_analysis_coding_index': 95.0,
-                'artificial_analysis_math_index': 75.0,
             },
         }
 
-    def test_reasoning_scores_weight_intelligence_highest(self) -> None:
-        models = ['opencode-go/glm-5', 'opencode-go/minimax-m2.7']
-        result = _score_models_by_tier(models, self._aa_data())
-        reasoning = dict(result['reasoning'])
-        assert reasoning['opencode-go/glm-5'] > reasoning['opencode-go/minimax-m2.7']
+    def _rate_limits(self) -> dict[str, str]:
+        return {
+            'opencode-go/glm-5': '1,150',
+            'opencode-go/minimax-m2.7': '14,000',
+        }
 
-    def test_task_scores_weight_coding_highest(self) -> None:
-        models = ['opencode-go/glm-5', 'opencode-go/minimax-m2.7']
-        result = _score_models_by_tier(models, self._aa_data())
-        task = dict(result['task'])
-        assert task['opencode-go/minimax-m2.7'] > task['opencode-go/glm-5']
-
-    def test_different_top_models_per_tier(self) -> None:
+    def test_reasoning_uses_intelligence_index(self) -> None:
         models = ['opencode-go/glm-5', 'opencode-go/minimax-m2.7']
         result = _score_models_by_tier(models, self._aa_data())
         assert result['reasoning'][0][0] == 'opencode-go/glm-5'
+        assert result['reasoning'][0][1] == pytest.approx(95.0)
+
+    def test_task_uses_throughput(self) -> None:
+        models = ['opencode-go/glm-5', 'opencode-go/minimax-m2.7']
+        result = _score_models_by_tier(models, self._aa_data(), rate_limits=self._rate_limits())
+        assert result['task'][0][0] == 'opencode-go/minimax-m2.7'
+        assert result['task'][0][1] == pytest.approx(14000.0)
+
+    def test_different_top_models_per_tier(self) -> None:
+        models = ['opencode-go/glm-5', 'opencode-go/minimax-m2.7']
+        result = _score_models_by_tier(models, self._aa_data(), rate_limits=self._rate_limits())
+        assert result['reasoning'][0][0] == 'opencode-go/glm-5'
         assert result['task'][0][0] == 'opencode-go/minimax-m2.7'
 
-    def test_zero_scores_when_no_aa_data(self) -> None:
+    def test_task_zero_without_rate_limits(self) -> None:
+        models = ['opencode-go/glm-5']
+        result = _score_models_by_tier(models, self._aa_data())
+        assert result['task'][0][1] == 0.0
+
+    def test_zero_reasoning_when_no_aa_data(self) -> None:
         models = ['opencode-go/unknown']
         result = _score_models_by_tier(models, {})
         assert result['reasoning'][0][1] == 0.0
-        assert result['task'][0][1] == 0.0
 
-    def test_returns_sorted_descending_per_tier(self) -> None:
+    def test_returns_sorted_descending(self) -> None:
         models = ['opencode-go/minimax-m2.7', 'opencode-go/glm-5']
-        result = _score_models_by_tier(models, self._aa_data())
+        result = _score_models_by_tier(models, self._aa_data(), rate_limits=self._rate_limits())
         reasoning_scores = [s for _, s in result['reasoning']]
         task_scores = [s for _, s in result['task']]
         assert reasoning_scores == sorted(reasoning_scores, reverse=True)
@@ -162,17 +153,26 @@ class TestScoreModelsByTier:
 class TestSuggestTiers:
     def test_picks_top_from_each_tier(self) -> None:
         scored = {
-            'reasoning': [('opencode-go/glm-5', 90.0), ('opencode-go/minimax-m2.7', 80.0)],
-            'task': [('opencode-go/minimax-m2.7', 87.0), ('opencode-go/glm-5', 80.0)],
+            'reasoning': [('opencode-go/glm-5', 95.0), ('opencode-go/minimax-m2.7', 80.0)],
+            'task': [('opencode-go/minimax-m2.7', 14000.0), ('opencode-go/glm-5', 1150.0)],
         }
         result = _suggest_tiers(scored)
         assert result['reasoning'] == 'opencode-go/glm-5'
         assert result['task'] == 'opencode-go/minimax-m2.7'
 
-    def test_same_model_can_top_both(self) -> None:
+    def test_falls_back_to_second_reasoning_when_no_throughput(self) -> None:
         scored = {
-            'reasoning': [('opencode-go/glm-5', 90.0)],
-            'task': [('opencode-go/glm-5', 85.0)],
+            'reasoning': [('opencode-go/glm-5', 95.0), ('opencode-go/minimax-m2.7', 80.0)],
+            'task': [('opencode-go/glm-5', 0.0), ('opencode-go/minimax-m2.7', 0.0)],
+        }
+        result = _suggest_tiers(scored)
+        assert result['reasoning'] == 'opencode-go/glm-5'
+        assert result['task'] == 'opencode-go/minimax-m2.7'
+
+    def test_single_model_assigned_to_both(self) -> None:
+        scored = {
+            'reasoning': [('opencode-go/glm-5', 95.0)],
+            'task': [('opencode-go/glm-5', 0.0)],
         }
         result = _suggest_tiers(scored)
         assert result['reasoning'] == 'opencode-go/glm-5'
@@ -206,38 +206,47 @@ class TestParseRateLimitsTable:
 
 
 class TestFetchRateLimits:
-    def _make_resp(self, data: object) -> MagicMock:
-        mock_resp = MagicMock()
-        mock_resp.__enter__ = lambda s: s
-        mock_resp.__exit__ = MagicMock(return_value=False)
-        mock_resp.read.return_value = json.dumps(data).encode('utf-8')
-        return mock_resp
+    @pytest.fixture(autouse=True)
+    def _bypass_cache(self) -> Generator[None, None, None]:
+        with patch('src.cli.commands.opencode_sync._read_cache', return_value=None):
+            yield
+
+    def _mock_exa(self, text: str) -> MagicMock:
+        mock_result = MagicMock()
+        mock_result.text = text
+        mock_response = MagicMock()
+        mock_response.results = [mock_result]
+        mock_client = MagicMock()
+        mock_client.get_contents.return_value = mock_response
+        return mock_client
 
     def test_fetches_and_parses_exa_response(self) -> None:
-        exa_data = {
-            'results': [
-                {
-                    'text': ('| | GLM-5 | Kimi K2.5 |\n| --- | --- | --- |\n| requests per 5 hour | 1,150 | 1,850 |\n'),
-                },
-            ],
-        }
-        with patch('urllib.request.urlopen', return_value=self._make_resp(exa_data)):
+        text = '| | GLM-5 | Kimi K2.5 |\n| --- | --- | --- |\n| requests per 5 hour | 1,150 | 1,850 |\n'
+        mock_client = self._mock_exa(text)
+        with patch('src.cli.commands.opencode_sync.Exa', return_value=mock_client):
             result = opencode_sync._fetch_rate_limits('test-key', 'opencode-go')
         assert result['opencode-go/glm-5'] == '1,150'
         assert result['opencode-go/kimi-k2.5'] == '1,850'
 
-    def test_returns_empty_on_network_error(self) -> None:
-        with patch('urllib.request.urlopen', side_effect=urllib.error.URLError('err')):
+    def test_returns_empty_on_error(self) -> None:
+        with patch('src.cli.commands.opencode_sync.Exa', side_effect=Exception('connection failed')):
             result = opencode_sync._fetch_rate_limits('test-key', 'opencode-go')
         assert result == {}
 
     def test_returns_empty_when_no_results(self) -> None:
-        with patch('urllib.request.urlopen', return_value=self._make_resp({'results': []})):
+        mock_client = MagicMock()
+        mock_client.get_contents.return_value = MagicMock(results=[])
+        with patch('src.cli.commands.opencode_sync.Exa', return_value=mock_client):
             result = opencode_sync._fetch_rate_limits('test-key', 'opencode-go')
         assert result == {}
 
 
 class TestFetchAaData:
+    @pytest.fixture(autouse=True)
+    def _bypass_cache(self) -> Generator[None, None, None]:
+        with patch('src.cli.commands.opencode_sync._read_cache', return_value=None):
+            yield
+
     def _make_resp(self, data: object) -> MagicMock:
         mock_resp = MagicMock()
         mock_resp.__enter__ = lambda s: s
@@ -250,7 +259,6 @@ class TestFetchAaData:
             {
                 'name': 'Kimi K2.5',
                 'evaluations': {
-                    'artificial_analysis_coding_index': 80.0,
                     'artificial_analysis_intelligence_index': 75.0,
                 },
             },
@@ -258,7 +266,7 @@ class TestFetchAaData:
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
             result = opencode_sync._fetch_aa_data('test-key')
         assert 'kimi k2.5' in result
-        assert result['kimi k2.5']['artificial_analysis_coding_index'] == pytest.approx(80.0)
+        assert result['kimi k2.5']['artificial_analysis_intelligence_index'] == pytest.approx(75.0)
 
     def test_parses_dict_response_with_models_key(self) -> None:
         data = {
@@ -274,7 +282,7 @@ class TestFetchAaData:
         assert 'kimi k2.5' in result
 
     def test_uses_slug_when_name_missing(self) -> None:
-        data = [{'slug': 'kimi-k2-5', 'evaluations': {'artificial_analysis_coding_index': 80.0}}]
+        data = [{'slug': 'kimi-k2-5', 'evaluations': {'artificial_analysis_intelligence_index': 80.0}}]
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
             result = opencode_sync._fetch_aa_data('test-key')
         assert 'kimi-k2-5' in result
@@ -301,33 +309,33 @@ class TestInteractiveOverride:
     def _suggestion(self) -> dict[str, str]:
         return {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/minimax-m2.7'}
 
-    def test_enter_accepts_defaults(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['', '', 'y']):
+    def test_number_selects_model(self) -> None:
+        with patch.object(opencode_sync.console, 'input', side_effect=['1', '2', 'y']):
             with patch.object(opencode_sync.console, 'print'):
                 result = opencode_sync._interactive_override(self._suggestion(), self._scored())
-        assert result == {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/minimax-m2.7'}
-
-    def test_number_selects_different_model(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['2', '1', 'y']):
-            with patch.object(opencode_sync.console, 'print'):
-                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
-        assert result == {'reasoning': 'opencode-go/minimax-m2.7', 'task': 'opencode-go/minimax-m2.7'}
+        assert result == {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/glm-5'}
 
     def test_invalid_number_reprompts(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['99', '1', '', 'y']):
+        with patch.object(opencode_sync.console, 'input', side_effect=['99', '1', '1', 'y']):
             with patch.object(opencode_sync.console, 'print'):
                 result = opencode_sync._interactive_override(self._suggestion(), self._scored())
         assert result is not None
         assert result['reasoning'] == 'opencode-go/glm-5'
 
     def test_n_cancels_mapping(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['', '', 'n']):
+        with patch.object(opencode_sync.console, 'input', side_effect=['1', '1', 'n']):
             with patch.object(opencode_sync.console, 'print'):
                 result = opencode_sync._interactive_override(self._suggestion(), self._scored())
         assert result is None
 
+    def test_empty_input_reprompts(self) -> None:
+        with patch.object(opencode_sync.console, 'input', side_effect=['', '1', '1', 'y']):
+            with patch.object(opencode_sync.console, 'print'):
+                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
+        assert result is not None
+
     def test_non_digit_reprompts(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['abc', '1', '', 'y']):
+        with patch.object(opencode_sync.console, 'input', side_effect=['abc', '1', '1', 'y']):
             with patch.object(opencode_sync.console, 'print'):
                 result = opencode_sync._interactive_override(self._suggestion(), self._scored())
         assert result is not None
@@ -336,7 +344,7 @@ class TestInteractiveOverride:
 class TestRunCommand:
     def test_returns_1_when_no_models_found(self) -> None:
         with patch('src.cli.commands.opencode_sync._discover_models', return_value=('', [])):
-            result = opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None))
+            result = opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         assert result == 1
 
     def test_saves_mapping_with_yes_flag(self) -> None:
@@ -345,9 +353,8 @@ class TestRunCommand:
             patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
             patch('src.cli.commands.opencode_sync._fetch_aa_data', return_value={}),
             patch('src.cli.commands.opencode_sync.save_global_models') as mock_save,
-            patch('src.cli.commands.opencode_sync._display_suggestion_table'),
         ):
-            result = opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None))
+            result = opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         assert result == 0
         mock_save.assert_called_once()
         saved = mock_save.call_args[0][0]
@@ -361,10 +368,9 @@ class TestRunCommand:
             patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
             patch('src.cli.commands.opencode_sync._fetch_aa_data', return_value={}) as mock_aa,
             patch('src.cli.commands.opencode_sync.save_global_models'),
-            patch('src.cli.commands.opencode_sync._display_suggestion_table'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None))
-        mock_aa.assert_called_once_with('env-key')
+            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
+        mock_aa.assert_called_once_with('env-key', debug=False)
 
     def test_cli_key_overrides_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv('ARTIFICIAL_ANALYSIS_API_KEY', 'env-key')
@@ -373,10 +379,9 @@ class TestRunCommand:
             patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
             patch('src.cli.commands.opencode_sync._fetch_aa_data', return_value={}) as mock_aa,
             patch('src.cli.commands.opencode_sync.save_global_models'),
-            patch('src.cli.commands.opencode_sync._display_suggestion_table'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key='cli-key', exa_key=None))
-        mock_aa.assert_called_once_with('cli-key')
+            opencode_sync.run(Namespace(yes=True, aa_key='cli-key', exa_key=None, debug=False, no_cache=True))
+        mock_aa.assert_called_once_with('cli-key', debug=False)
 
     def test_skips_aa_when_no_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv('ARTIFICIAL_ANALYSIS_API_KEY', raising=False)
@@ -385,9 +390,8 @@ class TestRunCommand:
             patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
             patch('src.cli.commands.opencode_sync._fetch_aa_data') as mock_aa,
             patch('src.cli.commands.opencode_sync.save_global_models'),
-            patch('src.cli.commands.opencode_sync._display_suggestion_table'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None))
+            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         mock_aa.assert_not_called()
 
     def test_fetches_rate_limits_when_exa_key_provided(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -399,8 +403,7 @@ class TestRunCommand:
             patch('src.cli.commands.opencode_sync._fetch_aa_data') as mock_aa,
             patch('src.cli.commands.opencode_sync._fetch_rate_limits', return_value={}) as mock_rl,
             patch('src.cli.commands.opencode_sync.save_global_models'),
-            patch('src.cli.commands.opencode_sync._display_suggestion_table'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key='exa-test'))
+            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key='exa-test', debug=False, no_cache=True))
         mock_aa.assert_not_called()
-        mock_rl.assert_called_once_with('exa-test', 'opencode-go')
+        mock_rl.assert_called_once_with('exa-test', 'opencode-go', debug=False)

@@ -3,10 +3,13 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+
+from exa_py import Exa
 
 from rich.table import Table
 
@@ -15,21 +18,42 @@ from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
 _AA_MODELS_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
-_EXA_CONTENTS_URL = 'https://api.exa.ai/contents'
 _OPENCODE_GO_DOCS_URL = 'https://opencode.ai/docs/go/'
 _ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
+_CACHE_DIR = Path.home() / '.config' / 'respec-ai' / 'cache'
+_CACHE_TTL_SECONDS = 12 * 60 * 60
 
-_REASONING_WEIGHTS: dict[str, float] = {
-    'artificial_analysis_intelligence_index': 0.50,
-    'artificial_analysis_math_index': 0.35,
-    'artificial_analysis_coding_index': 0.15,
-}
 
-_TASK_WEIGHTS: dict[str, float] = {
-    'artificial_analysis_coding_index': 0.55,
-    'artificial_analysis_intelligence_index': 0.25,
-    'artificial_analysis_math_index': 0.20,
-}
+def _read_cache(name: str) -> dict | None:
+    path = _CACHE_DIR / f'{name}.json'
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+        if time.time() - data.get('_cached_at', 0) > _CACHE_TTL_SECONDS:
+            return None
+        return data.get('payload')
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _write_cache(name: str, payload: object) -> None:
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        data = {'_cached_at': time.time(), 'payload': payload}
+        (_CACHE_DIR / f'{name}.json').write_text(json.dumps(data), encoding='utf-8')
+    except OSError:
+        pass
+
+
+def _clear_cache() -> None:
+    if not _CACHE_DIR.exists():
+        return
+    for f in _CACHE_DIR.glob('*.json'):
+        f.unlink(missing_ok=True)
+
+
+_REASONING_INDEX = 'artificial_analysis_intelligence_index'
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -47,11 +71,24 @@ def add_arguments(parser: ArgumentParser) -> None:
         '--exa-key',
         help='Exa API key for rate limit lookup (overrides EXA_API_KEY env var)',
     )
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Print debug info for API calls',
+    )
+    parser.add_argument(
+        '--no-cache',
+        action='store_true',
+        help='Bypass cached API responses',
+    )
 
 
 def run(args: Namespace) -> int:
     aa_key = getattr(args, 'aa_key', None) or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
     exa_key = getattr(args, 'exa_key', None) or os.environ.get('EXA_API_KEY', '')
+    if getattr(args, 'no_cache', False):
+        _clear_cache()
+    debug = getattr(args, 'debug', False)
 
     provider, models = _discover_models()
     if not models:
@@ -63,7 +100,7 @@ def run(args: Namespace) -> int:
 
     if aa_key:
         print_info('Fetching benchmark data from Artificial Analysis...')
-        aa_data = _fetch_aa_data(aa_key)
+        aa_data = _fetch_aa_data(aa_key, debug=debug)
     else:
         print_warning('ARTIFICIAL_ANALYSIS_API_KEY not set — skipping benchmark lookup')
         print_warning('Set ARTIFICIAL_ANALYSIS_API_KEY or use --aa-key for benchmark-backed recommendations')
@@ -71,16 +108,19 @@ def run(args: Namespace) -> int:
 
     rate_limits: dict[str, str] = {}
     if exa_key:
-        rate_limits = _fetch_rate_limits(exa_key, provider)
+        rate_limits = _fetch_rate_limits(exa_key, provider, debug=debug)
 
-    scored_by_tier = _score_models_by_tier(models, aa_data)
+    scored_by_tier = _score_models_by_tier(models, aa_data, rate_limits=rate_limits, debug=debug)
 
-    if aa_data:
-        _display_tier_table('Reasoning Scores', scored_by_tier['reasoning'], rate_limits)
-        _display_tier_table('Task Scores', scored_by_tier['task'], rate_limits)
+    if aa_data or rate_limits:
+        intelligence_by_model = dict(scored_by_tier['reasoning'])
+        task_with_intelligence = [
+            (model_id, intelligence_by_model.get(model_id, 0.0)) for model_id, _ in scored_by_tier['task']
+        ]
+        _display_tier_table('Reasoning Scores', scored_by_tier['reasoning'], 'Intelligence', rate_limits)
+        _display_tier_table('Task Scores', task_with_intelligence, 'Intelligence', rate_limits)
 
     suggestion = _suggest_tiers(scored_by_tier)
-    _display_suggestion_table(suggestion, scored_by_tier)
 
     if getattr(args, 'yes', False):
         mapping = suggestion
@@ -143,7 +183,12 @@ def _list_models(provider: str) -> list[str]:
         return []
 
 
-def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
+def _fetch_aa_data(aa_key: str, *, debug: bool = False) -> dict[str, dict[str, float]]:
+    cached = _read_cache('aa_data')
+    if cached is not None:
+        if debug:
+            console.print(f'[dim]  AA using cached data ({len(cached)} models)[/dim]')
+        return cached
     req = urllib.request.Request(
         _AA_MODELS_URL,
         headers={'x-api-key': aa_key, 'Accept': 'application/json'},
@@ -152,8 +197,11 @@ def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode('utf-8'))
         result: dict[str, dict[str, float]] = {}
-        all_fields = set(_REASONING_WEIGHTS) | set(_TASK_WEIGHTS)
+        all_fields = {_REASONING_INDEX}
         models_list = data if isinstance(data, list) else data.get('models', data.get('data', []))
+        if debug:
+            console.print(f'[dim]  AA response type: {type(data).__name__}, models: {len(models_list)}[/dim]')
+        with_evals = 0
         for model in models_list:
             name = (model.get('name') or model.get('slug') or '').lower()
             if not name:
@@ -166,38 +214,46 @@ def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
                     scores[field] = float(val)
             if scores:
                 result[name] = scores
+                with_evals += 1
+        if debug:
+            console.print(f'[dim]  AA models with scores: {with_evals}/{len(models_list)}[/dim]')
+        _write_cache('aa_data', result)
         return result
-    except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError):
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError) as exc:
+        if debug:
+            console.print(f'[red]  AA error: {type(exc).__name__}: {exc}[/red]')
         print_warning('Could not fetch Artificial Analysis data — falling back to interactive selection')
         return {}
 
 
-def _fetch_rate_limits(exa_key: str, provider: str) -> dict[str, str]:
-    payload = json.dumps(
-        {
-            'ids': [_OPENCODE_GO_DOCS_URL],
-            'text': True,
-        }
-    ).encode()
-    req = urllib.request.Request(
-        _EXA_CONTENTS_URL,
-        data=payload,
-        headers={
-            'x-api-key': exa_key,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        },
-        method='POST',
-    )
+def _fetch_rate_limits(exa_key: str, provider: str, *, debug: bool = False) -> dict[str, str]:
+    cached = _read_cache('rate_limits')
+    if cached is not None:
+        if debug:
+            console.print(f'[dim]  Exa using cached rate limits ({len(cached)} models)[/dim]')
+        return cached
+    if debug:
+        console.print(f'[dim]  Exa get_contents({_OPENCODE_GO_DOCS_URL})[/dim]')
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-        results = data.get('results', [])
-        if not results:
+        exa = Exa(api_key=exa_key)
+        response = exa.get_contents(urls=[_OPENCODE_GO_DOCS_URL], text=True)
+        if not response.results:
+            if debug:
+                console.print('[dim]  Exa returned no results[/dim]')
             return {}
-        text = results[0].get('text', '')
-        return _parse_rate_limits_table(text, provider)
-    except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError, IndexError):
+        text = response.results[0].text or ''
+        if debug:
+            console.print(f'[dim]  Exa text length: {len(text)} chars[/dim]')
+            console.print(f'[dim]  Exa text preview: {text[:300]!r}[/dim]')
+        parsed = _parse_rate_limits_table(text, provider)
+        if debug:
+            console.print(f'[dim]  Parsed rate limits: {parsed}[/dim]')
+        if parsed:
+            _write_cache('rate_limits', parsed)
+        return parsed
+    except Exception as exc:
+        if debug:
+            console.print(f'[red]  Exa error: {type(exc).__name__}: {exc}[/red]')
         print_warning('Could not fetch rate limits — skipping')
         return {}
 
@@ -232,26 +288,37 @@ def _parse_rate_limits_table(text: str, provider: str) -> dict[str, str]:
     return result
 
 
-def _weighted_score(scores: dict[str, float], weights: dict[str, float]) -> float:
-    return sum(scores.get(field, 0.0) * weight for field, weight in weights.items())
+def _parse_rate_limit_value(val: str) -> int:
+    return int(val.replace(',', '').strip())
 
 
 def _score_models_by_tier(
     models: list[str],
     aa_data: dict[str, dict[str, float]],
+    rate_limits: dict[str, str] | None = None,
+    *,
+    debug: bool = False,
 ) -> dict[str, list[tuple[str, float]]]:
     reasoning_scored: list[tuple[str, float]] = []
     task_scored: list[tuple[str, float]] = []
+
+    parsed_rates: dict[str, int] = {}
+    if rate_limits:
+        parsed_rates = {m: _parse_rate_limit_value(v) for m, v in rate_limits.items()}
+
     for model_id in models:
         short = model_id.split('/', 1)[-1].lower()
         match = _find_aa_match(short, aa_data)
-        if match:
-            scores = aa_data[match]
-            reasoning_scored.append((model_id, _weighted_score(scores, _REASONING_WEIGHTS)))
-            task_scored.append((model_id, _weighted_score(scores, _TASK_WEIGHTS)))
-        else:
-            reasoning_scored.append((model_id, 0.0))
-            task_scored.append((model_id, 0.0))
+        if debug:
+            status = f'matched "{match}"' if match else 'no match'
+            console.print(f'[dim]  {model_id} -> {status}[/dim]')
+
+        intelligence = aa_data[match].get(_REASONING_INDEX, 0.0) if match else 0.0
+        reasoning_scored.append((model_id, intelligence))
+
+        throughput = float(parsed_rates.get(model_id, 0))
+        task_scored.append((model_id, throughput))
+
     return {
         'reasoning': sorted(reasoning_scored, key=lambda x: x[1], reverse=True),
         'task': sorted(task_scored, key=lambda x: x[1], reverse=True),
@@ -283,8 +350,11 @@ def _suggest_tiers(scored_by_tier: dict[str, list[tuple[str, float]]]) -> dict[s
     task = scored_by_tier.get('task', [])
     if reasoning:
         mapping['reasoning'] = reasoning[0][0]
-    if task:
+    has_throughput = any(score > 0 for _, score in task)
+    if has_throughput:
         mapping['task'] = task[0][0]
+    elif len(reasoning) >= 2:
+        mapping['task'] = reasoning[1][0]
     elif reasoning:
         mapping['task'] = reasoning[0][0]
     return mapping
@@ -293,38 +363,32 @@ def _suggest_tiers(scored_by_tier: dict[str, list[tuple[str, float]]]) -> dict[s
 def _display_tier_table(
     title: str,
     scored: list[tuple[str, float]],
+    score_label: str,
     rate_limits: dict[str, str],
+    extra_scores: dict[str, float] | None = None,
+    extra_label: str = '',
+    format_int: bool = False,
 ) -> None:
     table = Table(title=title, show_header=True, header_style='bold cyan')
     table.add_column('Model')
-    table.add_column('Score', justify='right')
+    table.add_column(score_label, justify='right')
+    if extra_scores:
+        table.add_column(extra_label, justify='right')
     if rate_limits:
         table.add_column('Reqs/5hr', justify='right')
     for model_id, score in scored:
         short = model_id.split('/', 1)[-1]
-        score_text = f'{score:.1f}' if score else '[dim]no data[/dim]'
-        if rate_limits:
-            rate = rate_limits.get(model_id, '\u2014')
-            table.add_row(short, score_text, rate)
+        if format_int:
+            score_text = f'{int(score):,}' if score else '[dim]no data[/dim]'
         else:
-            table.add_row(short, score_text)
-    console.print()
-    console.print(table)
-
-
-def _display_suggestion_table(
-    suggestion: dict[str, str],
-    scored_by_tier: dict[str, list[tuple[str, float]]],
-) -> None:
-    table = Table(title='Recommended Tier Mapping', show_header=True, header_style='bold cyan')
-    table.add_column('Tier')
-    table.add_column('Model')
-    table.add_column('Basis')
-    for tier, model_id in suggestion.items():
-        tier_scores = dict(scored_by_tier.get(tier, []))
-        score = tier_scores.get(model_id, 0.0)
-        basis = f'score {score:.1f}' if score else 'position'
-        table.add_row(tier, model_id, basis)
+            score_text = f'{score:.1f}' if score else '[dim]no data[/dim]'
+        row: list[str] = [short, score_text]
+        if extra_scores:
+            extra = extra_scores.get(model_id, 0.0)
+            row.append(f'{extra:.1f}' if extra else '[dim]no data[/dim]')
+        if rate_limits:
+            row.append(rate_limits.get(model_id, '\u2014'))
+        table.add_row(*row)
     console.print()
     console.print(table)
 
@@ -337,30 +401,20 @@ def _interactive_override(
 
     for tier in ('reasoning', 'task'):
         options = scored_by_tier.get(tier, [])
-        suggested = suggestion.get(tier, '')
 
         console.print(f'\n[bold]{tier.title()} model:[/bold]')
-        default_num = 1
         for i, (model_id, score) in enumerate(options, 1):
-            suffix = '  [cyan]\u2190 suggested[/cyan]' if model_id == suggested else ''
             score_text = f'({score:.1f})' if score else ''
-            console.print(f'  [bold][{i}][/bold] {model_id}  {score_text}{suffix}')
-            if model_id == suggested:
-                default_num = i
+            console.print(f'  [bold][{i}][/bold] {model_id}  {score_text}')
 
         while True:
-            raw = console.input(f'  Select [{default_num}]: ').strip()
-            if not raw:
-                mapping[tier] = options[default_num - 1][0] if options else suggested
-                break
+            raw = console.input(f'  Select [1-{len(options)}]: ').strip()
             if raw.isdigit():
                 index = int(raw)
                 if 1 <= index <= len(options):
                     mapping[tier] = options[index - 1][0]
                     break
-                console.print(f'  [red]Invalid number. Enter 1-{len(options)}.[/red]')
-                continue
-            console.print(f'  [red]Invalid number. Enter 1-{len(options)}.[/red]')
+            console.print(f'  [red]Enter a number 1-{len(options)}.[/red]')
 
     response = console.input('\nAccept this mapping? [Y/n] ').strip().lower()
     if response in ('n', 'no'):
