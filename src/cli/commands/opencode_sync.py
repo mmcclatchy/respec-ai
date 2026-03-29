@@ -15,13 +15,21 @@ from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
 _AA_MODELS_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
+_EXA_CONTENTS_URL = 'https://api.exa.ai/contents'
+_OPENCODE_GO_DOCS_URL = 'https://opencode.ai/docs/go/'
 _ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
-_QUALITY_FIELDS = (
-    'artificial_analysis_intelligence_index',
-    'artificial_analysis_coding_index',
-    'artificial_analysis_math_index',
-)
+_REASONING_WEIGHTS: dict[str, float] = {
+    'artificial_analysis_intelligence_index': 0.50,
+    'artificial_analysis_math_index': 0.35,
+    'artificial_analysis_coding_index': 0.15,
+}
+
+_TASK_WEIGHTS: dict[str, float] = {
+    'artificial_analysis_coding_index': 0.55,
+    'artificial_analysis_intelligence_index': 0.25,
+    'artificial_analysis_math_index': 0.20,
+}
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -35,10 +43,15 @@ def add_arguments(parser: ArgumentParser) -> None:
         '--aa-key',
         help='Artificial Analysis API key (overrides ARTIFICIAL_ANALYSIS_API_KEY env var)',
     )
+    parser.add_argument(
+        '--exa-key',
+        help='Exa API key for rate limit lookup (overrides EXA_API_KEY env var)',
+    )
 
 
 def run(args: Namespace) -> int:
     aa_key = getattr(args, 'aa_key', None) or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
+    exa_key = getattr(args, 'exa_key', None) or os.environ.get('EXA_API_KEY', '')
 
     provider, models = _discover_models()
     if not models:
@@ -56,18 +69,23 @@ def run(args: Namespace) -> int:
         print_warning('Set ARTIFICIAL_ANALYSIS_API_KEY or use --aa-key for benchmark-backed recommendations')
         aa_data = {}
 
-    scored = _score_models(models, aa_data)
+    rate_limits: dict[str, str] = {}
+    if exa_key:
+        rate_limits = _fetch_rate_limits(exa_key, provider)
+
+    scored_by_tier = _score_models_by_tier(models, aa_data)
 
     if aa_data:
-        _display_benchmark_table(scored)
+        _display_tier_table('Reasoning Scores', scored_by_tier['reasoning'], rate_limits)
+        _display_tier_table('Task Scores', scored_by_tier['task'], rate_limits)
 
-    suggestion = _suggest_tiers(scored)
-    _display_suggestion_table(suggestion, scored)
+    suggestion = _suggest_tiers(scored_by_tier)
+    _display_suggestion_table(suggestion, scored_by_tier)
 
     if getattr(args, 'yes', False):
         mapping = suggestion
     else:
-        mapping = _interactive_override(suggestion, models)
+        mapping = _interactive_override(suggestion, scored_by_tier)
         if mapping is None:
             print_warning('Mapping not saved')
             return 1
@@ -134,6 +152,7 @@ def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode('utf-8'))
         result: dict[str, dict[str, float]] = {}
+        all_fields = set(_REASONING_WEIGHTS) | set(_TASK_WEIGHTS)
         models_list = data if isinstance(data, list) else data.get('models', data.get('data', []))
         for model in models_list:
             name = (model.get('name') or model.get('slug') or '').lower()
@@ -141,7 +160,7 @@ def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
                 continue
             evals = model.get('evaluations') or {}
             scores: dict[str, float] = {}
-            for field in _QUALITY_FIELDS:
+            for field in all_fields:
                 val = evals.get(field)
                 if val is not None:
                     scores[field] = float(val)
@@ -153,21 +172,90 @@ def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
         return {}
 
 
-def _score_models(
+def _fetch_rate_limits(exa_key: str, provider: str) -> dict[str, str]:
+    payload = json.dumps(
+        {
+            'ids': [_OPENCODE_GO_DOCS_URL],
+            'text': True,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        _EXA_CONTENTS_URL,
+        data=payload,
+        headers={
+            'x-api-key': exa_key,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+        results = data.get('results', [])
+        if not results:
+            return {}
+        text = results[0].get('text', '')
+        return _parse_rate_limits_table(text, provider)
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError, IndexError):
+        print_warning('Could not fetch rate limits — skipping')
+        return {}
+
+
+def _parse_rate_limits_table(text: str, provider: str) -> dict[str, str]:
+    lines = text.splitlines()
+    header_line = ''
+    data_line = ''
+    for i, line in enumerate(lines):
+        if 'requests per 5 hour' in line.lower():
+            data_line = line
+            for j in range(i - 1, -1, -1):
+                candidate = lines[j].strip()
+                if candidate.startswith('|') and '---' not in candidate:
+                    header_line = candidate
+                    break
+            break
+
+    if not header_line or not data_line:
+        return {}
+
+    headers = [h.strip() for h in header_line.split('|') if h.strip()]
+    values = [v.strip() for v in data_line.split('|') if v.strip()]
+
+    if values and values[0].lower().startswith('requests'):
+        values = values[1:]
+
+    result: dict[str, str] = {}
+    for name, val in zip(headers, values):
+        model_id = f'{provider}/{name.lower().replace(" ", "-")}'
+        result[model_id] = val
+    return result
+
+
+def _weighted_score(scores: dict[str, float], weights: dict[str, float]) -> float:
+    return sum(scores.get(field, 0.0) * weight for field, weight in weights.items())
+
+
+def _score_models_by_tier(
     models: list[str],
     aa_data: dict[str, dict[str, float]],
-) -> list[tuple[str, float]]:
-    scored: list[tuple[str, float]] = []
+) -> dict[str, list[tuple[str, float]]]:
+    reasoning_scored: list[tuple[str, float]] = []
+    task_scored: list[tuple[str, float]] = []
     for model_id in models:
         short = model_id.split('/', 1)[-1].lower()
         match = _find_aa_match(short, aa_data)
         if match:
             scores = aa_data[match]
-            total = sum(scores.get(f, 0.0) for f in _QUALITY_FIELDS)
-            scored.append((model_id, total))
+            reasoning_scored.append((model_id, _weighted_score(scores, _REASONING_WEIGHTS)))
+            task_scored.append((model_id, _weighted_score(scores, _TASK_WEIGHTS)))
         else:
-            scored.append((model_id, 0.0))
-    return sorted(scored, key=lambda x: x[1], reverse=True)
+            reasoning_scored.append((model_id, 0.0))
+            task_scored.append((model_id, 0.0))
+    return {
+        'reasoning': sorted(reasoning_scored, key=lambda x: x[1], reverse=True),
+        'task': sorted(task_scored, key=lambda x: x[1], reverse=True),
+    }
 
 
 def _normalize_name(name: str) -> str:
@@ -189,36 +277,52 @@ def _find_aa_match(short_name: str, aa_data: dict[str, dict[str, float]]) -> str
     return ''
 
 
-def _suggest_tiers(scored: list[tuple[str, float]]) -> dict[str, str]:
+def _suggest_tiers(scored_by_tier: dict[str, list[tuple[str, float]]]) -> dict[str, str]:
     mapping: dict[str, str] = {}
-    if scored:
-        mapping['reasoning'] = scored[0][0]
-    if len(scored) >= 2:
-        mapping['task'] = scored[1][0]
-    elif scored:
-        mapping['task'] = scored[0][0]
+    reasoning = scored_by_tier.get('reasoning', [])
+    task = scored_by_tier.get('task', [])
+    if reasoning:
+        mapping['reasoning'] = reasoning[0][0]
+    if task:
+        mapping['task'] = task[0][0]
+    elif reasoning:
+        mapping['task'] = reasoning[0][0]
     return mapping
 
 
-def _display_benchmark_table(scored: list[tuple[str, float]]) -> None:
-    table = Table(title='Benchmark Scores', show_header=True, header_style='bold cyan')
+def _display_tier_table(
+    title: str,
+    scored: list[tuple[str, float]],
+    rate_limits: dict[str, str],
+) -> None:
+    table = Table(title=title, show_header=True, header_style='bold cyan')
     table.add_column('Model')
-    table.add_column('Total Score', justify='right')
+    table.add_column('Score', justify='right')
+    if rate_limits:
+        table.add_column('Reqs/5hr', justify='right')
     for model_id, score in scored:
         short = model_id.split('/', 1)[-1]
-        table.add_row(short, f'{score:.1f}' if score else '[dim]no data[/dim]')
+        score_text = f'{score:.1f}' if score else '[dim]no data[/dim]'
+        if rate_limits:
+            rate = rate_limits.get(model_id, '\u2014')
+            table.add_row(short, score_text, rate)
+        else:
+            table.add_row(short, score_text)
     console.print()
     console.print(table)
 
 
-def _display_suggestion_table(suggestion: dict[str, str], scored: list[tuple[str, float]]) -> None:
+def _display_suggestion_table(
+    suggestion: dict[str, str],
+    scored_by_tier: dict[str, list[tuple[str, float]]],
+) -> None:
     table = Table(title='Recommended Tier Mapping', show_header=True, header_style='bold cyan')
     table.add_column('Tier')
     table.add_column('Model')
     table.add_column('Basis')
-    scores_map = dict(scored)
     for tier, model_id in suggestion.items():
-        score = scores_map.get(model_id, 0.0)
+        tier_scores = dict(scored_by_tier.get(tier, []))
+        score = tier_scores.get(model_id, 0.0)
         basis = f'score {score:.1f}' if score else 'position'
         table.add_row(tier, model_id, basis)
     console.print()
@@ -227,15 +331,36 @@ def _display_suggestion_table(suggestion: dict[str, str], scored: list[tuple[str
 
 def _interactive_override(
     suggestion: dict[str, str],
-    models: list[str],
+    scored_by_tier: dict[str, list[tuple[str, float]]],
 ) -> dict[str, str] | None:
-    console.print('\n[bold]Confirm or override the suggested mapping:[/bold]')
-
     mapping: dict[str, str] = {}
+
     for tier in ('reasoning', 'task'):
-        current = suggestion.get(tier, models[0] if models else '')
-        response = console.input(f'  {tier} model [{current}]: ').strip()
-        mapping[tier] = response if response else current
+        options = scored_by_tier.get(tier, [])
+        suggested = suggestion.get(tier, '')
+
+        console.print(f'\n[bold]{tier.title()} model:[/bold]')
+        default_num = 1
+        for i, (model_id, score) in enumerate(options, 1):
+            suffix = '  [cyan]\u2190 suggested[/cyan]' if model_id == suggested else ''
+            score_text = f'({score:.1f})' if score else ''
+            console.print(f'  [bold][{i}][/bold] {model_id}  {score_text}{suffix}')
+            if model_id == suggested:
+                default_num = i
+
+        while True:
+            raw = console.input(f'  Select [{default_num}]: ').strip()
+            if not raw:
+                mapping[tier] = options[default_num - 1][0] if options else suggested
+                break
+            if raw.isdigit():
+                index = int(raw)
+                if 1 <= index <= len(options):
+                    mapping[tier] = options[index - 1][0]
+                    break
+                console.print(f'  [red]Invalid number. Enter 1-{len(options)}.[/red]')
+                continue
+            console.print(f'  [red]Invalid number. Enter 1-{len(options)}.[/red]')
 
     response = console.input('\nAccept this mapping? [Y/n] ').strip().lower()
     if response in ('n', 'no'):
