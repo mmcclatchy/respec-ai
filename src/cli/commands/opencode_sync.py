@@ -17,7 +17,11 @@ from src.cli.ui.console import console, print_error, print_info, print_warning
 _AA_MODELS_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
 _ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 
-_QUALITY_FIELDS = ('coding_index', 'reasoning_index', 'math_index', 'intelligence_index')
+_QUALITY_FIELDS = (
+    'artificial_analysis_intelligence_index',
+    'artificial_analysis_coding_index',
+    'artificial_analysis_math_index',
+)
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -130,13 +134,15 @@ def _fetch_aa_data(aa_key: str) -> dict[str, dict[str, float]]:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode('utf-8'))
         result: dict[str, dict[str, float]] = {}
-        for model in data if isinstance(data, list) else data.get('models', []):
-            name = (model.get('model_name') or model.get('name') or '').lower()
+        models_list = data if isinstance(data, list) else data.get('models', data.get('data', []))
+        for model in models_list:
+            name = (model.get('name') or model.get('slug') or '').lower()
             if not name:
                 continue
+            evals = model.get('evaluations') or {}
             scores: dict[str, float] = {}
             for field in _QUALITY_FIELDS:
-                val = model.get(field)
+                val = evals.get(field)
                 if val is not None:
                     scores[field] = float(val)
             if scores:
@@ -164,10 +170,22 @@ def _score_models(
     return sorted(scored, key=lambda x: x[1], reverse=True)
 
 
+def _normalize_name(name: str) -> str:
+    return name.lower().replace('-', ' ').replace('_', ' ').strip()
+
+
 def _find_aa_match(short_name: str, aa_data: dict[str, dict[str, float]]) -> str:
+    normalized = _normalize_name(short_name)
+    candidates: list[tuple[int, str]] = []
     for key in aa_data:
-        if short_name in key or key in short_name:
+        norm_key = _normalize_name(key)
+        if norm_key == normalized:
             return key
+        if norm_key.startswith(normalized + ' ('):
+            candidates.append((len(norm_key), key))
+    if candidates:
+        candidates.sort()
+        return candidates[0][1]
     return ''
 
 

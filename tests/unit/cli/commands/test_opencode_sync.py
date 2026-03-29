@@ -72,23 +72,40 @@ class TestListModels:
 
 
 class TestFindAaMatch:
-    def test_matches_substring(self) -> None:
-        aa_data = {'kimi-k2.5': {'coding_index': 80.0}}
-        assert _find_aa_match('kimi-k2.5', aa_data) == 'kimi-k2.5'
+    def test_exact_match(self) -> None:
+        aa_data = {'kimi k2.5': {'artificial_analysis_coding_index': 80.0}}
+        assert _find_aa_match('kimi-k2.5', aa_data) == 'kimi k2.5'
 
-    def test_matches_partial(self) -> None:
-        aa_data = {'kimi k2.5 model': {'coding_index': 80.0}}
-        assert _find_aa_match('kimi', aa_data) == 'kimi k2.5 model'
+    def test_matches_reasoning_variant(self) -> None:
+        aa_data = {
+            'glm-5 (reasoning)': {'artificial_analysis_coding_index': 90.0},
+            'glm-5 (non-reasoning)': {'artificial_analysis_coding_index': 50.0},
+            'glm-5-turbo': {'artificial_analysis_coding_index': 70.0},
+        }
+        assert _find_aa_match('glm-5', aa_data) == 'glm-5 (reasoning)'
+
+    def test_rejects_substring_false_positive(self) -> None:
+        aa_data = {
+            'minimax-m2': {'artificial_analysis_coding_index': 30.0},
+            'minimax-m2.5': {'artificial_analysis_coding_index': 80.0},
+        }
+        assert _find_aa_match('minimax-m2.5', aa_data) == 'minimax-m2.5'
 
     def test_returns_empty_when_no_match(self) -> None:
-        aa_data = {'gpt-4o': {'coding_index': 80.0}}
+        aa_data = {'gpt-4o': {'artificial_analysis_coding_index': 80.0}}
         assert _find_aa_match('kimi-k2.5', aa_data) == ''
 
 
 class TestScoreModels:
     def test_sums_quality_fields(self) -> None:
         models = ['opencode-go/kimi-k2.5']
-        aa_data = {'kimi-k2.5': {'coding_index': 80.0, 'reasoning_index': 75.0, 'math_index': 70.0}}
+        aa_data = {
+            'kimi k2.5': {
+                'artificial_analysis_coding_index': 80.0,
+                'artificial_analysis_intelligence_index': 75.0,
+                'artificial_analysis_math_index': 70.0,
+            },
+        }
         scored = _score_models(models, aa_data)
         assert scored[0][0] == 'opencode-go/kimi-k2.5'
         assert scored[0][1] == pytest.approx(225.0)
@@ -101,8 +118,8 @@ class TestScoreModels:
     def test_returns_sorted_descending(self) -> None:
         models = ['opencode-go/model-a', 'opencode-go/model-b']
         aa_data = {
-            'model-a': {'coding_index': 50.0},
-            'model-b': {'coding_index': 90.0},
+            'model a': {'artificial_analysis_coding_index': 50.0},
+            'model b': {'artificial_analysis_coding_index': 90.0},
         }
         scored = _score_models(models, aa_data)
         assert scored[0][0] == 'opencode-go/model-b'
@@ -134,18 +151,39 @@ class TestFetchAaData:
         mock_resp.read.return_value = json.dumps(data).encode('utf-8')
         return mock_resp
 
-    def test_parses_list_response(self) -> None:
-        data = [{'model_name': 'Kimi K2.5', 'coding_index': 80.0, 'reasoning_index': 75.0}]
+    def test_parses_list_response_with_evaluations(self) -> None:
+        data = [
+            {
+                'name': 'Kimi K2.5',
+                'evaluations': {
+                    'artificial_analysis_coding_index': 80.0,
+                    'artificial_analysis_intelligence_index': 75.0,
+                },
+            },
+        ]
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
             result = opencode_sync._fetch_aa_data('test-key')
         assert 'kimi k2.5' in result
-        assert result['kimi k2.5']['coding_index'] == pytest.approx(80.0)
+        assert result['kimi k2.5']['artificial_analysis_coding_index'] == pytest.approx(80.0)
 
     def test_parses_dict_response_with_models_key(self) -> None:
-        data = {'models': [{'model_name': 'Kimi K2.5', 'intelligence_index': 90.0}]}
+        data = {
+            'models': [
+                {
+                    'name': 'Kimi K2.5',
+                    'evaluations': {'artificial_analysis_intelligence_index': 90.0},
+                },
+            ],
+        }
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
             result = opencode_sync._fetch_aa_data('test-key')
         assert 'kimi k2.5' in result
+
+    def test_uses_slug_when_name_missing(self) -> None:
+        data = [{'slug': 'kimi-k2-5', 'evaluations': {'artificial_analysis_coding_index': 80.0}}]
+        with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
+            result = opencode_sync._fetch_aa_data('test-key')
+        assert 'kimi-k2-5' in result
 
     def test_returns_empty_on_network_error(self) -> None:
         with patch('urllib.request.urlopen', side_effect=urllib.error.URLError('err')):
@@ -153,7 +191,7 @@ class TestFetchAaData:
         assert result == {}
 
     def test_skips_models_without_scores(self) -> None:
-        data = [{'model_name': 'Some Model'}]
+        data = [{'name': 'Some Model', 'evaluations': {}}]
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
             result = opencode_sync._fetch_aa_data('test-key')
         assert result == {}
