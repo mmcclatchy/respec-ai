@@ -1,9 +1,13 @@
+import json
 from pathlib import Path
+from unittest.mock import patch
 
 from pytest_mock import MockerFixture
 
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 _MOCK_COMMAND_CONTENT = '---\nallowed-tools: Read\nargument-hint: [plan-name]\ndescription: A command\n---\n\n# Command'
@@ -86,6 +90,36 @@ class TestGenerateTemplates:
         assert not stale_agent.exists()
         assert not stale_command.exists()
         assert non_respec_agent.exists()
+
+    def test_reasoning_commands_get_reasoning_model_in_opencode_json(
+        self, mocker: MockerFixture, tmp_path: Path
+    ) -> None:
+        mock_orchestrator = mocker.MagicMock()
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
+        adapter = get_tui_adapter(TuiType.OPENCODE)
+        models_data = {'opencode': {'reasoning': 'provider/reasoning-model', 'task': 'provider/task-model'}}
+
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
+            (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
+            generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter)
+
+        config = json.loads((tmp_path / 'opencode.json').read_text())
+        assert config['agent']['respec-plan']['model'] == 'provider/reasoning-model'
+        assert config['agent']['respec-plan-conversation']['model'] == 'provider/reasoning-model'
+
+    def test_task_commands_get_task_model_in_opencode_json(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        mock_orchestrator = mocker.MagicMock()
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
+        adapter = get_tui_adapter(TuiType.OPENCODE)
+        models_data = {'opencode': {'reasoning': 'provider/reasoning-model', 'task': 'provider/task-model'}}
+
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
+            (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
+            generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter)
+
+        config = json.loads((tmp_path / 'opencode.json').read_text())
+        for name in ('respec-phase', 'respec-task', 'respec-code', 'respec-patch', 'respec-roadmap'):
+            assert config['agent'][name]['model'] == 'provider/task-model'
 
     def test_templates_include_project_configuration(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()

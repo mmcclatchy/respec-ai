@@ -289,6 +289,20 @@ class TestOpenCodeAdapter:
         config = json.loads((project_path / 'opencode.json').read_text())
         assert config['agent']['respec-plan-analyst']['model'] == agent_spec.model
 
+    def test_opencode_json_command_model_is_spec_model(self, project_path: Path, agent_spec: AgentSpec) -> None:
+        cmd_spec = CommandSpec(
+            name='respec-plan',
+            description='Orchestrate strategic planning workflow',
+            argument_hint='[plan-name]',
+            tools=['Task(respec-plan-analyst)'],
+            body='# Plan',
+            delegated_agents=['respec-plan-analyst'],
+            model='provider/custom-model',
+        )
+        self.adapter.write_all(project_path, [agent_spec], [cmd_spec])
+        config = json.loads((project_path / 'opencode.json').read_text())
+        assert config['agent']['respec-plan']['model'] == 'provider/custom-model'
+
     def test_opencode_json_builtin_tools_mapped(self, project_path: Path, command_spec: CommandSpec) -> None:
         spec = AgentSpec(
             name='respec-coder',
