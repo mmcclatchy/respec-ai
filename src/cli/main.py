@@ -12,7 +12,7 @@ Provides commands for:
 - MCP unregistration (unregister-mcp)
 - Cleanup (cleanup)
 - Docker container management (docker)
-- OpenCode model sync (opencode-sync)
+- OpenCode model sync (opencode-models)
 """
 
 import sys
@@ -23,7 +23,7 @@ from src.cli.commands import (
     docker,
     init,
     mcp_server,
-    opencode_sync,
+    opencode_model,
     platform,
     regenerate,
     register_mcp,
@@ -135,12 +135,12 @@ def main() -> int:
 
     mcp_server.add_arguments(mcp_server_parser)
 
-    opencode_sync_parser = subparsers.add_parser(
-        'opencode-sync',
+    opencode_model_parser = subparsers.add_parser(
+        'opencode-models',
         help='Sync OpenCode model tier mapping using Artificial Analysis benchmarks',
     )
 
-    opencode_sync.add_arguments(opencode_sync_parser)
+    opencode_model.add_arguments(opencode_model_parser)
 
     args = parser.parse_args()
 
@@ -167,8 +167,8 @@ def main() -> int:
             return docker.run(args)
         case 'mcp-server':
             return mcp_server.run(args)
-        case 'opencode-sync':
-            return opencode_sync.run(args)
+        case 'opencode-models':
+            return opencode_model.run(args)
         case _:
             parser.print_help()
             return 1

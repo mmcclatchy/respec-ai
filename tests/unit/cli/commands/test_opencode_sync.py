@@ -6,9 +6,7 @@ from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from src.cli.commands import opencode_sync
-from src.cli.commands.opencode_sync import (
+from src.cli.commands.opencode_model import (
     _detect_provider,
     _find_aa_match,
     _list_models,
@@ -16,6 +14,8 @@ from src.cli.commands.opencode_sync import (
     _score_models_by_tier,
     _suggest_tiers,
 )
+
+from src.cli.commands import opencode_model
 
 
 class TestDetectProvider:
@@ -208,7 +208,7 @@ class TestParseRateLimitsTable:
 class TestFetchRateLimits:
     @pytest.fixture(autouse=True)
     def _bypass_cache(self) -> Generator[None, None, None]:
-        with patch('src.cli.commands.opencode_sync._read_cache', return_value=None):
+        with patch('src.cli.commands.opencode_model._read_cache', return_value=None):
             yield
 
     def _mock_exa(self, text: str) -> MagicMock:
@@ -223,28 +223,28 @@ class TestFetchRateLimits:
     def test_fetches_and_parses_exa_response(self) -> None:
         text = '| | GLM-5 | Kimi K2.5 |\n| --- | --- | --- |\n| requests per 5 hour | 1,150 | 1,850 |\n'
         mock_client = self._mock_exa(text)
-        with patch('src.cli.commands.opencode_sync.Exa', return_value=mock_client):
-            result = opencode_sync._fetch_rate_limits('test-key', 'opencode-go')
+        with patch('src.cli.commands.opencode_model.Exa', return_value=mock_client):
+            result = opencode_model._fetch_rate_limits('test-key', 'opencode-go')
         assert result['opencode-go/glm-5'] == '1,150'
         assert result['opencode-go/kimi-k2.5'] == '1,850'
 
     def test_returns_empty_on_error(self) -> None:
-        with patch('src.cli.commands.opencode_sync.Exa', side_effect=Exception('connection failed')):
-            result = opencode_sync._fetch_rate_limits('test-key', 'opencode-go')
+        with patch('src.cli.commands.opencode_model.Exa', side_effect=Exception('connection failed')):
+            result = opencode_model._fetch_rate_limits('test-key', 'opencode-go')
         assert result == {}
 
     def test_returns_empty_when_no_results(self) -> None:
         mock_client = MagicMock()
         mock_client.get_contents.return_value = MagicMock(results=[])
-        with patch('src.cli.commands.opencode_sync.Exa', return_value=mock_client):
-            result = opencode_sync._fetch_rate_limits('test-key', 'opencode-go')
+        with patch('src.cli.commands.opencode_model.Exa', return_value=mock_client):
+            result = opencode_model._fetch_rate_limits('test-key', 'opencode-go')
         assert result == {}
 
 
 class TestFetchAaData:
     @pytest.fixture(autouse=True)
     def _bypass_cache(self) -> Generator[None, None, None]:
-        with patch('src.cli.commands.opencode_sync._read_cache', return_value=None):
+        with patch('src.cli.commands.opencode_model._read_cache', return_value=None):
             yield
 
     def _make_resp(self, data: object) -> MagicMock:
@@ -264,7 +264,7 @@ class TestFetchAaData:
             },
         ]
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
-            result = opencode_sync._fetch_aa_data('test-key')
+            result = opencode_model._fetch_aa_data('test-key')
         assert 'kimi k2.5' in result
         assert result['kimi k2.5']['artificial_analysis_intelligence_index'] == pytest.approx(75.0)
 
@@ -278,24 +278,24 @@ class TestFetchAaData:
             ],
         }
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
-            result = opencode_sync._fetch_aa_data('test-key')
+            result = opencode_model._fetch_aa_data('test-key')
         assert 'kimi k2.5' in result
 
     def test_uses_slug_when_name_missing(self) -> None:
         data = [{'slug': 'kimi-k2-5', 'evaluations': {'artificial_analysis_intelligence_index': 80.0}}]
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
-            result = opencode_sync._fetch_aa_data('test-key')
+            result = opencode_model._fetch_aa_data('test-key')
         assert 'kimi-k2-5' in result
 
     def test_returns_empty_on_network_error(self) -> None:
         with patch('urllib.request.urlopen', side_effect=urllib.error.URLError('err')):
-            result = opencode_sync._fetch_aa_data('test-key')
+            result = opencode_model._fetch_aa_data('test-key')
         assert result == {}
 
     def test_skips_models_without_scores(self) -> None:
         data = [{'name': 'Some Model', 'evaluations': {}}]
         with patch('urllib.request.urlopen', return_value=self._make_resp(data)):
-            result = opencode_sync._fetch_aa_data('test-key')
+            result = opencode_model._fetch_aa_data('test-key')
         assert result == {}
 
 
@@ -310,51 +310,51 @@ class TestInteractiveOverride:
         return {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/minimax-m2.7'}
 
     def test_number_selects_model(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['1', '2', 'y']):
-            with patch.object(opencode_sync.console, 'print'):
-                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
+        with patch.object(opencode_model.console, 'input', side_effect=['1', '2', 'y']):
+            with patch.object(opencode_model.console, 'print'):
+                result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result == {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/glm-5'}
 
     def test_invalid_number_reprompts(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['99', '1', '1', 'y']):
-            with patch.object(opencode_sync.console, 'print'):
-                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
+        with patch.object(opencode_model.console, 'input', side_effect=['99', '1', '1', 'y']):
+            with patch.object(opencode_model.console, 'print'):
+                result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is not None
         assert result['reasoning'] == 'opencode-go/glm-5'
 
     def test_n_cancels_mapping(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['1', '1', 'n']):
-            with patch.object(opencode_sync.console, 'print'):
-                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
+        with patch.object(opencode_model.console, 'input', side_effect=['1', '1', 'n']):
+            with patch.object(opencode_model.console, 'print'):
+                result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is None
 
     def test_empty_input_reprompts(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['', '1', '1', 'y']):
-            with patch.object(opencode_sync.console, 'print'):
-                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
+        with patch.object(opencode_model.console, 'input', side_effect=['', '1', '1', 'y']):
+            with patch.object(opencode_model.console, 'print'):
+                result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is not None
 
     def test_non_digit_reprompts(self) -> None:
-        with patch.object(opencode_sync.console, 'input', side_effect=['abc', '1', '1', 'y']):
-            with patch.object(opencode_sync.console, 'print'):
-                result = opencode_sync._interactive_override(self._suggestion(), self._scored())
+        with patch.object(opencode_model.console, 'input', side_effect=['abc', '1', '1', 'y']):
+            with patch.object(opencode_model.console, 'print'):
+                result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is not None
 
 
 class TestRunCommand:
     def test_returns_1_when_no_models_found(self) -> None:
-        with patch('src.cli.commands.opencode_sync._discover_models', return_value=('', [])):
-            result = opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
+        with patch('src.cli.commands.opencode_model._discover_models', return_value=('', [])):
+            result = opencode_model.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         assert result == 1
 
     def test_saves_mapping_with_yes_flag(self) -> None:
         models = ['opencode-go/kimi-k2.5', 'opencode-go/minimax-m2.7']
         with (
-            patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
-            patch('src.cli.commands.opencode_sync._fetch_aa_data', return_value={}),
-            patch('src.cli.commands.opencode_sync.save_global_models') as mock_save,
+            patch('src.cli.commands.opencode_model._discover_models', return_value=('opencode-go', models)),
+            patch('src.cli.commands.opencode_model._fetch_aa_data', return_value={}),
+            patch('src.cli.commands.opencode_model.save_global_models') as mock_save,
         ):
-            result = opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
+            result = opencode_model.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         assert result == 0
         mock_save.assert_called_once()
         saved = mock_save.call_args[0][0]
@@ -365,33 +365,35 @@ class TestRunCommand:
         monkeypatch.setenv('ARTIFICIAL_ANALYSIS_API_KEY', 'env-key')
         models = ['opencode-go/kimi-k2.5']
         with (
-            patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
-            patch('src.cli.commands.opencode_sync._fetch_aa_data', return_value={}) as mock_aa,
-            patch('src.cli.commands.opencode_sync.save_global_models'),
+            patch('src.cli.commands.opencode_model._discover_models', return_value=('opencode-go', models)),
+            patch('src.cli.commands.opencode_model._fetch_aa_data', return_value={}) as mock_aa,
+            patch('src.cli.commands.opencode_model.save_global_models'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
+            opencode_model.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         mock_aa.assert_called_once_with('env-key', debug=False)
 
     def test_cli_key_overrides_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv('ARTIFICIAL_ANALYSIS_API_KEY', 'env-key')
         models = ['opencode-go/kimi-k2.5']
         with (
-            patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
-            patch('src.cli.commands.opencode_sync._fetch_aa_data', return_value={}) as mock_aa,
-            patch('src.cli.commands.opencode_sync.save_global_models'),
+            patch('src.cli.commands.opencode_model._discover_models', return_value=('opencode-go', models)),
+            patch('src.cli.commands.opencode_model._fetch_aa_data', return_value={}) as mock_aa,
+            patch('src.cli.commands.opencode_model.save_global_models'),
+            patch('src.cli.commands.opencode_model.save_api_key'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key='cli-key', exa_key=None, debug=False, no_cache=True))
+            opencode_model.run(Namespace(yes=True, aa_key='cli-key', exa_key=None, debug=False, no_cache=True))
         mock_aa.assert_called_once_with('cli-key', debug=False)
 
     def test_skips_aa_when_no_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv('ARTIFICIAL_ANALYSIS_API_KEY', raising=False)
         models = ['opencode-go/kimi-k2.5']
         with (
-            patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
-            patch('src.cli.commands.opencode_sync._fetch_aa_data') as mock_aa,
-            patch('src.cli.commands.opencode_sync.save_global_models'),
+            patch('src.cli.commands.opencode_model._discover_models', return_value=('opencode-go', models)),
+            patch('src.cli.commands.opencode_model._fetch_aa_data') as mock_aa,
+            patch('src.cli.commands.opencode_model.save_global_models'),
+            patch('src.cli.commands.opencode_model.load_api_key', return_value=None),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
+            opencode_model.run(Namespace(yes=True, aa_key=None, exa_key=None, debug=False, no_cache=True))
         mock_aa.assert_not_called()
 
     def test_fetches_rate_limits_when_exa_key_provided(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -399,11 +401,13 @@ class TestRunCommand:
         monkeypatch.delenv('EXA_API_KEY', raising=False)
         models = ['opencode-go/kimi-k2.5']
         with (
-            patch('src.cli.commands.opencode_sync._discover_models', return_value=('opencode-go', models)),
-            patch('src.cli.commands.opencode_sync._fetch_aa_data') as mock_aa,
-            patch('src.cli.commands.opencode_sync._fetch_rate_limits', return_value={}) as mock_rl,
-            patch('src.cli.commands.opencode_sync.save_global_models'),
+            patch('src.cli.commands.opencode_model._discover_models', return_value=('opencode-go', models)),
+            patch('src.cli.commands.opencode_model._fetch_aa_data') as mock_aa,
+            patch('src.cli.commands.opencode_model._fetch_rate_limits', return_value={}) as mock_rl,
+            patch('src.cli.commands.opencode_model.save_global_models'),
+            patch('src.cli.commands.opencode_model.load_api_key', return_value=None),
+            patch('src.cli.commands.opencode_model.save_api_key'),
         ):
-            opencode_sync.run(Namespace(yes=True, aa_key=None, exa_key='exa-test', debug=False, no_cache=True))
+            opencode_model.run(Namespace(yes=True, aa_key=None, exa_key='exa-test', debug=False, no_cache=True))
         mock_aa.assert_not_called()
         mock_rl.assert_called_once_with('exa-test', 'opencode-go', debug=False)

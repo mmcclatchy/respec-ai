@@ -13,7 +13,7 @@ from exa_py import Exa
 
 from rich.table import Table
 
-from src.cli.config.global_config import save_global_models
+from src.cli.config.global_config import load_api_key, save_api_key, save_global_models
 from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
@@ -84,8 +84,17 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def run(args: Namespace) -> int:
-    aa_key = getattr(args, 'aa_key', None) or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
-    exa_key = getattr(args, 'exa_key', None) or os.environ.get('EXA_API_KEY', '')
+    aa_key = (
+        getattr(args, 'aa_key', None)
+        or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
+        or load_api_key('artificial_analysis')
+        or ''
+    )
+    exa_key = getattr(args, 'exa_key', None) or os.environ.get('EXA_API_KEY', '') or load_api_key('exa') or ''
+    if aa_key and getattr(args, 'aa_key', None):
+        save_api_key('artificial_analysis', aa_key)
+    if exa_key and getattr(args, 'exa_key', None):
+        save_api_key('exa', exa_key)
     if getattr(args, 'no_cache', False):
         _clear_cache()
     debug = getattr(args, 'debug', False)

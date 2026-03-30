@@ -69,14 +69,14 @@ class OpenCodeAdapter(TuiAdapter):
     def reasoning_model(self) -> str:
         models = load_global_models()
         if 'reasoning' not in models:
-            raise RuntimeError("OpenCode reasoning model not configured. Run 'respec-ai opencode-sync' first.")
+            raise RuntimeError("OpenCode reasoning model not configured. Run 'respec-ai opencode-models' first.")
         return models['reasoning']
 
     @property
     def task_model(self) -> str:
         models = load_global_models()
         if 'task' not in models:
-            raise RuntimeError("OpenCode task model not configured. Run 'respec-ai opencode-sync' first.")
+            raise RuntimeError("OpenCode task model not configured. Run 'respec-ai opencode-models' first.")
         return models['task']
 
     def register_mcp_server(self, project_path: Path) -> bool:

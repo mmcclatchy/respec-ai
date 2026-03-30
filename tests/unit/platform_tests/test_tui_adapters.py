@@ -195,12 +195,12 @@ class TestOpenCodeAdapter:
 
     def test_reasoning_model_raises_when_not_configured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
-            with pytest.raises(RuntimeError, match='opencode-sync'):
+            with pytest.raises(RuntimeError, match='opencode-models'):
                 _ = self.adapter.reasoning_model
 
     def test_task_model_raises_when_not_configured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
-            with pytest.raises(RuntimeError, match='opencode-sync'):
+            with pytest.raises(RuntimeError, match='opencode-models'):
                 _ = self.adapter.task_model
 
     def test_render_agent_returns_body(self, agent_spec: AgentSpec) -> None:

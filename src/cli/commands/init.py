@@ -9,11 +9,9 @@ from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 
+from src.cli.commands import opencode_model
 from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.package_info import PackageInfoError, get_package_version
-from src.platform.tui_adapters import get_tui_adapter
-from src.platform.tui_adapters.base import TuiAdapter
-from src.platform.tui_selector import TuiType
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
@@ -25,6 +23,9 @@ from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
 from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, detect_project_tooling
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_adapters.base import TuiAdapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -62,6 +63,14 @@ def add_arguments(parser: ArgumentParser) -> None:
         choices=['claude-code', 'opencode'],
         default='claude-code',
         help='Terminal UI to generate files for (default: claude-code)',
+    )
+    parser.add_argument(
+        '--aa-key',
+        help='Artificial Analysis API key for OpenCode model benchmarks',
+    )
+    parser.add_argument(
+        '--exa-key',
+        help='Exa API key for OpenCode rate limit lookup',
     )
 
 
@@ -125,6 +134,11 @@ def run(args: Namespace) -> int:
                 if response.strip().lower() in ('n', 'no'):
                     print_warning('Initialization cancelled')
                     return 1
+
+        if tui == 'opencode':
+            result = _run_opencode_models(args)
+            if result != 0:
+                return result
 
         with Progress(
             SpinnerColumn(),
@@ -264,6 +278,18 @@ def _setup_mcp_server(
         print_warning('Run respec-ai docker pull or respec-ai docker build')
         print_warning('Then: respec-ai register-mcp')
         return False
+
+
+def _run_opencode_models(args: Namespace) -> int:
+    sync_args = Namespace(
+        aa_key=getattr(args, 'aa_key', None),
+        exa_key=getattr(args, 'exa_key', None),
+        yes=getattr(args, 'yes', False),
+        debug=False,
+        no_cache=False,
+    )
+    console.print('\n[bold cyan]Configuring OpenCode model tiers...[/bold cyan]\n')
+    return opencode_model.run(sync_args)
 
 
 def _display_detected_config(
