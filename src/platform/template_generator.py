@@ -140,7 +140,9 @@ def generate_templates(
     commands: list[CommandSpec] = [
         _parse_command_spec(
             cmd,
-            orchestrator.template_coordinator.generate_command_template(cmd, platform_type, plans_dir=plans_dir),
+            orchestrator.template_coordinator.generate_command_template(
+                cmd, platform_type, plans_dir=plans_dir, tui_adapter=adapter
+            ),
             model=reasoning_model if cmd in _REASONING_COMMANDS else task_model,
         )
         for cmd in _COMMAND_TEMPLATES

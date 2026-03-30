@@ -176,11 +176,9 @@ ELSE:
     "I need help creating a strategic plan for my project"]
 ```
 
-```bash
-/respec-plan-conversation [CONVERSATION_INITIAL_CONTEXT]
-```
+{tools.conversation_invocation}
 
-The plan-conversation command will conduct the multi-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
+{tools.conversation_workflow_name.capitalize()} will conduct the multi-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
 
 Expected structured format from plan-conversation (markdown document):
 ```markdown
@@ -337,10 +335,7 @@ The user can now review the plan file before making their decision.
 
 Invoke the plan-critic agent with project name for plan retrieval:
 
-```text
-Invoke: respec-plan-critic
-Input: PLAN_NAME
-```
+{tools.invoke_plan_critic}
 
 ### Plan-critic workflow
 1. **Agent retrieves strategic plan** from MCP using `{tools.get_plan}`
@@ -382,7 +377,7 @@ Present options to user:
 
    #### Your Options
 
-   1. **Continue conversation** - Add more details through additional /respec-plan-conversation
+   1. **Continue conversation** - Add more details via {tools.conversation_workflow_name}
       - Best if: Missing requirements, unclear scope, or need more context
       - Action: Return to conversational discovery for specific areas
 
@@ -407,7 +402,7 @@ IF user provides feedback along with their choice:
 IF user chooses "1" (Continue conversation):
   Set USER_DECISION = "continue_conversation"
   CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
-  Return to Step 2 to add more details via /respec-plan-conversation
+  Return to Step 2 to add more details via {tools.conversation_workflow_name}
 
 ELIF user chooses "2" (Refine plan):
   Set USER_DECISION = "refine_plan"
@@ -428,7 +423,7 @@ ELIF user chooses "3" (Accept plan):
 
 **strategic plan creation failures:**
 1. **Empty or Invalid Context**: If CONVERSATION_CONTEXT is empty or malformed:
-   - Retry /respec-plan-conversation command with same initial context
+   - Retry {tools.conversation_workflow_name} with same initial context
    - If second attempt fails, continue with placeholder: "Plan creation failed - proceeding with basic template"
    - Update CURRENT_PLAN with failure notification for critic evaluation
 
@@ -521,10 +516,7 @@ Use the MCP tool `{tools.initialize_analyst_loop}`:
 
 After plan acceptance, invoke the plan-analyst agent with analyst loop ID:
 
-```text
-Invoke: plan-analyst
-Input: ANALYST_LOOP_ID
-```
+{tools.invoke_plan_analyst}
 
 ### Plan-analyst workflow
 1. **Agent retrieves strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
@@ -536,10 +528,7 @@ Input: ANALYST_LOOP_ID
 
 Invoke the analyst-critic agent with loop ID:
 
-```text
-Invoke: analyst-critic
-Input: ANALYST_LOOP_ID
-```
+{tools.invoke_analyst_critic}
 
 ### Analyst-critic workflow
 1. **Agent retrieves business objectives analysis** from MCP using get_previous_analysis(ANALYST_LOOP_ID)

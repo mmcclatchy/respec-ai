@@ -156,25 +156,7 @@ Coordinate task-planner → task-plan-critic → MCP decision cycle:
 
 Use the Task tool to launch the respec-task-planner agent:
 
-```text
-Invoke the respec-task-planner agent to generate Task document.
-
-Pass the following information to the agent:
-- task_loop_id: TASK_LOOP_ID
-- plan_name: PLAN_NAME
-- phase_name: PHASE_NAME
-- research_file_paths: DOCUMENTATION_PATHS (from Step 2.1, or empty list)
-- impl_plan_paths: IMPL_PLAN_PATHS (from Step 2.2, or empty list)
-
-The agent will:
-1. Retrieve Phase from MCP
-2. Retrieve previous feedback from MCP (if iteration > 1)
-3. Read research briefs from DOCUMENTATION_PATHS (if provided)
-4. Generate Task with inline Steps based on Phase and feedback
-5. Store Task to MCP
-
-Wait for agent completion before proceeding.
-```
+{tools.invoke_task_planner}
 
 Expected: Task document with:
 - Goal and Acceptance Criteria from Phase objectives
@@ -187,22 +169,7 @@ Expected: Task document with:
 
 Use the Task tool to launch the respec-task-plan-critic agent:
 
-```text
-Invoke the respec-task-plan-critic agent to evaluate Task quality.
-
-Pass the following information to the agent:
-- task_loop_id: TASK_LOOP_ID
-- plan_name: PLAN_NAME
-- phase_name: PHASE_NAME
-
-The agent will:
-1. Retrieve Task from MCP
-2. Retrieve Phase from MCP
-3. Evaluate against FSDD criteria (100-point scale)
-4. Store feedback in MCP
-
-Wait for agent completion before proceeding.
-```
+{tools.invoke_task_plan_critic}
 
 #### Step 4.3: Get Loop Decision
 

@@ -110,6 +110,40 @@ class OpenCodeAdapter(TuiAdapter):
     def plans_dir(self) -> str:
         return '.opencode/plans'
 
+    def render_agent_invocation(
+        self,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+    ) -> str:
+        lines = [
+            f'Use the Task tool to launch the {agent_name} agent:',
+            '',
+            'CALL task:',
+            f'  subagent_type: "{agent_name}"',
+            '  prompt: |',
+            f'    {description}.',
+            '',
+        ]
+        if params:
+            lines.append('    Parameters:')
+            for name, value in params:
+                lines.append(f'    - {name}: {value}')
+            lines.append('')
+        lines.append('Wait for agent completion before proceeding.')
+        return '\n'.join(lines)
+
+    def render_command_invocation(
+        self,
+        command_name: str,
+        args_template: str,
+        inline_guide: str,
+        requires_user_interaction: bool = False,
+    ) -> str:
+        if requires_user_interaction:
+            return inline_guide
+        return f'Run /{command_name} {args_template} when ready to continue.'
+
     def _build_opencode_config(
         self,
         project_path: Path,

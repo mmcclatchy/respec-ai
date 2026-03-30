@@ -3,6 +3,8 @@
 from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.tool_enums import RespecAICommand
+from src.platform.tui_adapters import ClaudeCodeAdapter
+from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
 
 class TestPlanRoadmapRespecAICommand:
@@ -114,3 +116,88 @@ class TestPlanRoadmapRespecAICommand:
 
         # Should properly inject platform tools
         assert 'mcp__linear-server__' in template  # Should contain Linear tools
+
+
+class TestCrossPlatformInvocationRendering:
+    def test_claude_code_uses_invoke_syntax_for_roadmap(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'Invoke: respec-roadmap' in template
+        assert 'CALL task:' not in template
+
+    def test_opencode_uses_task_call_syntax_for_roadmap(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        assert 'CALL task:' in template
+        assert 'subagent_type: "respec-roadmap"' in template
+        assert 'Invoke: respec-roadmap' not in template
+
+    def test_claude_code_uses_invoke_syntax_for_task(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'Invoke: respec-task-planner' in template
+        assert 'Invoke: respec-task-plan-critic' in template
+
+    def test_opencode_uses_task_call_syntax_for_task(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        assert 'subagent_type: "respec-task-planner"' in template
+        assert 'subagent_type: "respec-task-plan-critic"' in template
+
+    def test_claude_code_patch_uses_planning_loop_id(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'PLANNING_LOOP_ID' in template
+        # Ensure none of the pre-computed invocations reference TASK_LOOP_ID
+        # (patch uses PLANNING_LOOP_ID throughout for task retrieval)
+        invoke_section = template[template.find('#### Step 3.3') :]
+        assert 'task_loop_id: TASK_LOOP_ID' not in invoke_section
+
+    def test_opencode_patch_embeds_planning_loop_id_in_prompt(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        assert 'subagent_type: "respec-patch-planner"' in template
+        assert '- task_loop_id: PLANNING_LOOP_ID' in template
+
+    def test_claude_code_plan_conversation_uses_slash_syntax(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert '/respec-plan-conversation' in template
+
+    def test_opencode_plan_conversation_uses_inline_guide(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        # OpenCode replaces the invocation block with inline conversation guide stages
+        assert 'Stage 1: Vision and Context Discovery' in template
+        # The invocation block should NOT contain bash/slash syntax
+        assert '```bash\n/respec-plan-conversation' not in template
+
+    def test_claude_code_phase_to_task_uses_slash_syntax(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert '/respec-task' in template
+
+    def test_opencode_phase_to_task_uses_suggestion_text(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        assert 'respec-task' in template

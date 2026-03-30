@@ -86,25 +86,7 @@ Coordinate roadmap → roadmap-critic → MCP decision cycle:
 
 Use the Task tool to launch the respec-roadmap agent with these instructions:
 
-```text
-Invoke the respec-roadmap agent to generate implementation roadmap.
-
-Pass the following information to the agent:
-- loop_id: ROADMAP_LOOP_ID
-- plan_name: PLAN_NAME
-- phasing_preferences: PHASING_PREFERENCES
-
-The agent will:
-1. Retrieve strategic plan from MCP using get_plan_markdown
-2. Retrieve previous feedback from MCP using get_feedback (if iteration > 1)
-3. Generate the roadmap based on plan and feedback
-4. Store the roadmap to MCP using create_roadmap
-
-The agent will NOT return the roadmap markdown.
-The agent will report only: completion status and any errors encountered.
-
-Wait for agent completion before proceeding.
-```
+{tools.invoke_roadmap_agent}
 
 Expected: Implementation roadmap with appropriately-sized phases using one of these strategies:
 
@@ -139,23 +121,7 @@ Choose strategy based on project characteristics. Phases should be:
 
 Use the Task tool to launch the respec-roadmap-critic agent with these instructions:
 
-```text
-Invoke the respec-roadmap-critic agent to evaluate roadmap quality.
-
-Pass the following information to the agent:
-- plan_name: PLAN_NAME
-- loop_id: ROADMAP_LOOP_ID
-
-The agent will:
-1. Retrieve roadmap from MCP using get_roadmap
-2. Evaluate against FSDD framework
-3. Store feedback in MCP using store_critic_feedback
-
-The agent will NOT return the roadmap or feedback.
-The agent will report only: completion status and any errors encountered.
-
-Wait for agent completion before proceeding.
-```
+{tools.invoke_roadmap_critic}
 
 #### Step 3.3: Get Loop Decision
 ```text

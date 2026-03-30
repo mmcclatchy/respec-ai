@@ -248,13 +248,7 @@ Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{PHASE_NAME}}"
 Begin technical design:
 
 ```text
-(Invoke phase-architect agent)
-Invoke: respec-phase-architect
-Input:
-  - loop_id: LOOP_ID
-  - plan_name: PLAN_NAME
-  - phase_name: PHASE_NAME
-  - optional_instructions: OPTIONAL_INSTRUCTIONS
+{tools.invoke_phase_architect}
 
 Agent will:
 1. Retrieve strategic plan from MCP using plan_name
@@ -282,18 +276,7 @@ Display to user: "✓ Phase refined by phase-architect"
 
 #### Step 6.1: Invoke Phase-Critic Agent
 
-```text
-Invoke: respec-phase-critic
-Input:
-  - plan_name: PLAN_NAME
-  - loop_id: LOOP_ID
-  - phase_name: PHASE_NAME
-
-Spec-critic will:
-1. Retrieve phase from MCP using plan_name and phase_name
-2. Evaluate against FSDD framework
-3. Store feedback in MCP loop using loop_id
-```
+{tools.invoke_phase_critic}
 
 #### Step 6.2: Get Loop Decision
 
@@ -458,19 +441,7 @@ After research synthesis completes, validate all research paths exist:
 ```text
 Display to user: "🔍 Validating synthesized research paths..."
 
-Invoke: respec-phase-critic
-Input:
-  - plan_name: PLAN_NAME
-  - loop_id: LOOP_ID
-  - phase_name: PHASE_NAME
-  - validation_mode: "post_synthesis"
-
-Critic will:
-  1. Retrieve phase from MCP (now includes synthesized paths)
-  2. Run ONLY path verification (Step 2.6)
-     - This time validates ALL paths (both original and synthesized)
-  3. Store lightweight feedback with path validation results
-  4. Return pass/fail status
+{tools.invoke_phase_critic}
 
 IF validation_result shows invalid_count > 0:
     Display warning: "⚠️ Synthesized research paths invalid:"
@@ -725,9 +696,7 @@ Display: "━━━━━━━━━━━━━━━━━━━━━━━�
 
 Invoke the task command to generate the Task with full quality loop:
 
-```bash
-/respec-task {{PLAN_NAME}} {{PHASE_NAME}}
-```
+{tools.task_command_invocation}
 
 The `/respec-task` command will:
 1. Locate the Phase file on disk

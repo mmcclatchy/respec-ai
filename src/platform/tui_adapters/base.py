@@ -68,3 +68,20 @@ class TuiAdapter(ABC):
 
     @abstractmethod
     def plans_dir(self) -> str: ...
+
+    @abstractmethod
+    def render_agent_invocation(
+        self,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+    ) -> str: ...
+
+    @abstractmethod
+    def render_command_invocation(
+        self,
+        command_name: str,
+        args_template: str,
+        inline_guide: str,
+        requires_user_interaction: bool = False,
+    ) -> str: ...

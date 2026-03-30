@@ -367,3 +367,139 @@ class TestOpenCodeAdapter:
 
     def test_add_mcp_permissions_noop(self) -> None:
         assert self.adapter.add_mcp_permissions() is True
+
+
+class TestClaudeCodeAdapterInvocationRendering:
+    def setup_method(self) -> None:
+        self.adapter = ClaudeCodeAdapter()
+
+    def test_render_agent_invocation_single_param(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            'respec-plan-critic',
+            'evaluate strategic plan quality',
+            [('plan_name', 'PLAN_NAME')],
+        )
+        assert 'Invoke: respec-plan-critic' in result
+        assert '  - plan_name: PLAN_NAME' in result
+
+    def test_render_agent_invocation_multiple_params(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            'respec-phase-architect',
+            'design phase architecture',
+            [('loop_id', 'LOOP_ID'), ('plan_name', 'PLAN_NAME'), ('phase_name', 'PHASE_NAME')],
+        )
+        assert 'Invoke: respec-phase-architect' in result
+        assert 'Input:' in result
+        assert '  - loop_id: LOOP_ID' in result
+        assert '  - plan_name: PLAN_NAME' in result
+        assert '  - phase_name: PHASE_NAME' in result
+
+    def test_render_agent_invocation_no_params(self) -> None:
+        result = self.adapter.render_agent_invocation('respec-plan-analyst', 'analyze plan', [])
+        assert 'Invoke: respec-plan-analyst' in result
+        assert 'Input:' not in result
+
+    def test_render_command_invocation_interactive(self) -> None:
+        result = self.adapter.render_command_invocation(
+            'respec-plan-conversation',
+            '[CONVERSATION_INITIAL_CONTEXT]',
+            'inline guide text',
+            requires_user_interaction=True,
+        )
+        assert result == '/respec-plan-conversation [CONVERSATION_INITIAL_CONTEXT]'
+
+    def test_render_command_invocation_non_interactive(self) -> None:
+        result = self.adapter.render_command_invocation(
+            'respec-task',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        )
+        assert result == '/respec-task {PLAN_NAME} {PHASE_NAME}'
+
+    def test_render_command_invocation_ignores_inline_guide(self) -> None:
+        result = self.adapter.render_command_invocation(
+            'respec-plan-conversation',
+            '[ARGS]',
+            'This guide should be ignored on Claude Code',
+            requires_user_interaction=True,
+        )
+        assert 'This guide should be ignored' not in result
+        assert result.startswith('/')
+
+
+class TestOpenCodeAdapterInvocationRendering:
+    def setup_method(self) -> None:
+        self.adapter = OpenCodeAdapter()
+
+    def test_render_agent_invocation_uses_task_call_syntax(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            'respec-plan-critic',
+            'evaluate strategic plan quality',
+            [('plan_name', 'PLAN_NAME')],
+        )
+        assert 'CALL task:' in result
+        assert 'subagent_type: "respec-plan-critic"' in result
+        assert 'prompt: |' in result
+
+    def test_render_agent_invocation_includes_description(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            'respec-plan-critic',
+            'evaluate strategic plan quality',
+            [],
+        )
+        assert 'evaluate strategic plan quality.' in result
+
+    def test_render_agent_invocation_embeds_params_in_prompt(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            'respec-phase-architect',
+            'design phase architecture',
+            [('loop_id', 'LOOP_ID'), ('plan_name', 'PLAN_NAME'), ('phase_name', 'PHASE_NAME')],
+        )
+        assert '    Parameters:' in result
+        assert '    - loop_id: LOOP_ID' in result
+        assert '    - plan_name: PLAN_NAME' in result
+        assert '    - phase_name: PHASE_NAME' in result
+
+    def test_render_agent_invocation_ends_with_wait(self) -> None:
+        result = self.adapter.render_agent_invocation('respec-plan-critic', 'desc', [])
+        assert result.endswith('Wait for agent completion before proceeding.')
+
+    def test_render_agent_invocation_dynamic_reviewer_placeholder(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            '{{REVIEWER}}',
+            'perform domain-specific code review',
+            [('coding_loop_id', '{{CODING_LOOP_ID}}')],
+        )
+        assert 'subagent_type: "{{REVIEWER}}"' in result
+        assert '{{CODING_LOOP_ID}}' in result
+
+    def test_render_command_invocation_interactive_returns_inline_guide(self) -> None:
+        guide = 'Conduct conversational requirements gathering directly.'
+        result = self.adapter.render_command_invocation(
+            'respec-plan-conversation',
+            '[ARGS]',
+            guide,
+            requires_user_interaction=True,
+        )
+        assert result == guide
+
+    def test_render_command_invocation_non_interactive_returns_suggestion(self) -> None:
+        result = self.adapter.render_command_invocation(
+            'respec-task',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        )
+        assert '/respec-task' in result
+        assert '{PLAN_NAME}' in result
+        assert '{PHASE_NAME}' in result
+
+    def test_render_command_invocation_non_interactive_no_inline_guide(self) -> None:
+        result = self.adapter.render_command_invocation(
+            'respec-task',
+            '{PLAN_NAME} {PHASE_NAME}',
+            'This guide should not appear',
+            requires_user_interaction=False,
+        )
+        assert 'This guide should not appear' not in result

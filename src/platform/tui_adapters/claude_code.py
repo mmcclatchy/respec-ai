@@ -93,3 +93,25 @@ class ClaudeCodeAdapter(TuiAdapter):
 
     def plans_dir(self) -> str:
         return '~/.claude/plans'
+
+    def render_agent_invocation(
+        self,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+    ) -> str:
+        lines = [f'Invoke: {agent_name}']
+        if params:
+            lines.append('Input:')
+            for name, value in params:
+                lines.append(f'  - {name}: {value}')
+        return '\n'.join(lines)
+
+    def render_command_invocation(
+        self,
+        command_name: str,
+        args_template: str,
+        inline_guide: str,
+        requires_user_interaction: bool = False,
+    ) -> str:
+        return f'/{command_name} {args_template}'

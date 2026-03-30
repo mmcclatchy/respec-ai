@@ -1,5 +1,6 @@
 from src.models.enums import DocumentType
 
+from .tui_adapters.claude_code import ClaudeCodeAdapter as _ClaudeCodeAdapter
 from .models import (
     AnalystCriticAgentTools,
     AutomatedQualityCheckerAgentTools,
@@ -87,8 +88,40 @@ class TemplateToolBuilder:
         return ', '.join(tool_strings)
 
 
+PLAN_CONVERSATION_INLINE_GUIDE = """\
+As the primary agent, conduct conversational requirements gathering directly with the user.
+
+Stage 1: Vision and Context Discovery
+- Ask about what they're building, problem statement, success criteria
+
+Stage 2: Progressive Requirement Refinement
+- Clarify scope, user experience, integrations, constraints
+
+Stage 3: Detail and Validation
+- Validate understanding, clarify priorities and timeline
+
+Stage 4: Technology Stack Discussion
+- Languages, frameworks, databases, deployment
+
+Stage 5: Architecture Direction
+- Component structure, integrations, data flow
+
+Stage 6: Scope Boundaries and Risk Assessment
+- Anti-requirements, performance targets, risks
+
+Compile all gathered information into CONVERSATION_CONTEXT variable using structured markdown.\
+"""
+
+
+def _resolve_tui_adapter(tui_adapter: 'TuiAdapter | None') -> 'TuiAdapter':
+    return tui_adapter if tui_adapter is not None else _ClaudeCodeAdapter()
+
+
 def create_phase_command_tools(
-    platform_tools: list[str], platform_type: 'PlatformType', plans_dir: str = '~/.claude/plans'
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    plans_dir: str = '~/.claude/plans',
+    tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PhaseCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
@@ -100,13 +133,36 @@ def create_phase_command_tools(
 
     builder.add_platform_tools(platform_tools)
 
+    adapter = _resolve_tui_adapter(tui_adapter)
     return PhaseCommandTools(
+        tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         create_phase_tool=platform_tools[0],
         get_phase_tool=platform_tools[1],
         update_phase_tool=platform_tools[2],
         platform=platform_type,
         plans_dir=plans_dir,
+        invoke_phase_architect=adapter.render_agent_invocation(
+            'respec-phase-architect',
+            'design technical phase architecture',
+            [
+                ('loop_id', 'LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
+            ],
+        ),
+        invoke_phase_critic=adapter.render_agent_invocation(
+            'respec-phase-critic',
+            'evaluate phase quality against FSDD framework',
+            [('plan_name', 'PLAN_NAME'), ('loop_id', 'LOOP_ID'), ('phase_name', 'PHASE_NAME')],
+        ),
+        task_command_invocation=adapter.render_command_invocation(
+            'respec-task',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
         store_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{STRATEGIC_PLAN_MARKDOWN}'
         ),
@@ -142,7 +198,10 @@ def create_phase_command_tools(
 
 
 def create_plan_command_tools(
-    platform_tools: list[str], platform_type: 'PlatformType', plans_dir: str = '~/.claude/plans'
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    plans_dir: str = '~/.claude/plans',
+    tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PlanCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PLAN_CONVERSATION)
@@ -155,12 +214,37 @@ def create_plan_command_tools(
 
     builder.add_platform_tools(platform_tools)
 
+    adapter = _resolve_tui_adapter(tui_adapter)
+    is_claude_code = isinstance(adapter, _ClaudeCodeAdapter)
     return PlanCommandTools(
+        tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         create_project_external=platform_tools[0],
         get_plan_tool=platform_tools[1],
         platform=platform_type,
         plans_dir=plans_dir,
+        invoke_plan_critic=adapter.render_agent_invocation(
+            'respec-plan-critic',
+            'evaluate strategic plan quality',
+            [('plan_name', 'PLAN_NAME')],
+        ),
+        invoke_plan_analyst=adapter.render_agent_invocation(
+            'respec-plan-analyst',
+            'extract structured objectives from strategic plan',
+            [('loop_id', 'ANALYST_LOOP_ID')],
+        ),
+        invoke_analyst_critic=adapter.render_agent_invocation(
+            'respec-analyst-critic',
+            'validate business objective extraction quality',
+            [('loop_id', 'ANALYST_LOOP_ID')],
+        ),
+        conversation_invocation=adapter.render_command_invocation(
+            'respec-plan-conversation',
+            '[CONVERSATION_INITIAL_CONTEXT]',
+            PLAN_CONVERSATION_INLINE_GUIDE,
+            requires_user_interaction=True,
+        ),
+        conversation_workflow_name=('the plan-conversation command' if is_claude_code else 'the conversation workflow'),
         initialize_plan_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"plan"'
         ),
@@ -191,7 +275,11 @@ def create_plan_command_tools(
     )
 
 
-def create_code_command_tools(platform_tools: list[str], platform_type: 'PlatformType') -> 'CodeCommandTools':
+def create_code_command_tools(
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    tui_adapter: 'TuiAdapter | None' = None,
+) -> 'CodeCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_CRITIC)
@@ -212,11 +300,85 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
 
     builder.add_platform_tools(platform_tools)
 
+    adapter = _resolve_tui_adapter(tui_adapter)
+    _reviewer_params = [
+        ('coding_loop_id', 'CODING_LOOP_ID'),
+        ('task_loop_id', 'TASK_LOOP_ID'),
+        ('plan_name', 'PLAN_NAME'),
+        ('phase_name', 'PHASE_NAME'),
+    ]
     return CodeCommandTools(
+        tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_phase_tool=platform_tools[0],
         comment_phase_tool=platform_tools[1],
         platform=platform_type,
+        invoke_coder=adapter.render_agent_invocation(
+            'respec-coder',
+            'implement code following TDD methodology',
+            [
+                ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('stack_config', 'STACK_CONFIG'),
+                ('language_configs', 'LANGUAGE_CONFIGS'),
+            ],
+        ),
+        invoke_quality_checker=adapter.render_agent_invocation(
+            'respec-automated-quality-checker',
+            'run automated static analysis and quality checks',
+            _reviewer_params,
+        ),
+        invoke_spec_alignment=adapter.render_agent_invocation(
+            'respec-spec-alignment-reviewer',
+            'verify implementation matches Task and Phase objectives',
+            _reviewer_params,
+        ),
+        invoke_code_quality=adapter.render_agent_invocation(
+            'respec-code-quality-reviewer',
+            'assess code structural quality and design principles',
+            _reviewer_params,
+        ),
+        invoke_dynamic_reviewer_pattern=adapter.render_agent_invocation(
+            '{REVIEWER}',
+            'perform domain-specific code review',
+            _reviewer_params,
+        ),
+        invoke_consolidator=adapter.render_agent_invocation(
+            'respec-review-consolidator',
+            'merge all review sections into a single CriticFeedback',
+            [
+                ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('active_reviewers', 'PHASE1_REVIEWERS'),
+            ],
+        ),
+        invoke_coder_standards=adapter.render_agent_invocation(
+            'respec-coder',
+            'apply coding standards fixes',
+            [
+                ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('mode', '"standards-only"'),
+                ('stack_config', 'STACK_CONFIG'),
+                ('language_configs', 'LANGUAGE_CONFIGS'),
+            ],
+        ),
+        invoke_coding_standards_reviewer=adapter.render_agent_invocation(
+            'respec-coding-standards-reviewer',
+            'evaluate code against project coding standards',
+            [
+                ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('phase2_mode', 'true'),
+            ],
+        ),
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"task"',
@@ -265,7 +427,11 @@ def create_code_command_tools(platform_tools: list[str], platform_type: 'Platfor
     )
 
 
-def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType') -> 'PlanRoadmapCommandTools':
+def create_roadmap_tools(
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    tui_adapter: 'TuiAdapter | None' = None,
+) -> 'PlanRoadmapCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.ROADMAP)
     builder.add_task_agent(RespecAIAgent.ROADMAP_CRITIC)
@@ -279,11 +445,27 @@ def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType
 
     builder.add_platform_tools(platform_tools)
 
+    adapter = _resolve_tui_adapter(tui_adapter)
     return PlanRoadmapCommandTools(
+        tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan_tool=platform_tools[0],
         list_project_phases_tool=platform_tools[1],
         platform=platform_type,
+        invoke_roadmap_agent=adapter.render_agent_invocation(
+            'respec-roadmap',
+            'generate implementation roadmap from strategic plan',
+            [
+                ('loop_id', 'ROADMAP_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phasing_preferences', 'PHASING_PREFERENCES'),
+            ],
+        ),
+        invoke_roadmap_critic=adapter.render_agent_invocation(
+            'respec-roadmap-critic',
+            'evaluate roadmap quality against FSDD framework',
+            [('plan_name', 'PLAN_NAME'), ('loop_id', 'ROADMAP_LOOP_ID')],
+        ),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
@@ -305,7 +487,11 @@ def create_roadmap_tools(platform_tools: list[str], platform_type: 'PlatformType
     )
 
 
-def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') -> 'TaskCommandTools':
+def create_task_tools(
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    tui_adapter: 'TuiAdapter | None' = None,
+) -> 'TaskCommandTools':
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.TASK_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
@@ -319,11 +505,29 @@ def create_task_tools(platform_tools: list[str], platform_type: 'PlatformType') 
 
     builder.add_platform_tools(platform_tools)
 
+    adapter = _resolve_tui_adapter(tui_adapter)
     return TaskCommandTools(
+        tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_phase_tool=platform_tools[0],
         list_phase_tasks_tool=platform_tools[1],
         platform=platform_type,
+        invoke_task_planner=adapter.render_agent_invocation(
+            'respec-task-planner',
+            'generate Task document from Phase specification',
+            [
+                ('task_loop_id', 'TASK_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('research_file_paths', 'DOCUMENTATION_PATHS'),
+                ('impl_plan_paths', 'IMPL_PLAN_PATHS'),
+            ],
+        ),
+        invoke_task_plan_critic=adapter.render_agent_invocation(
+            'respec-task-plan-critic',
+            'evaluate Task quality against FSDD criteria',
+            [('task_loop_id', 'TASK_LOOP_ID'), ('plan_name', 'PLAN_NAME'), ('phase_name', 'PHASE_NAME')],
+        ),
         store_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
@@ -997,7 +1201,10 @@ def create_patch_planner_agent_tools(tui_adapter: TuiAdapter) -> PatchPlannerAge
 
 
 def create_patch_command_tools(
-    platform_tools: list[str], platform_type: 'PlatformType', plans_dir: str = '~/.claude/plans'
+    platform_tools: list[str],
+    platform_type: 'PlatformType',
+    plans_dir: str = '~/.claude/plans',
+    tui_adapter: 'TuiAdapter | None' = None,
 ) -> PatchCommandTools:
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
@@ -1023,10 +1230,99 @@ def create_patch_command_tools(
 
     builder.add_platform_tools(platform_tools)
 
+    adapter = _resolve_tui_adapter(tui_adapter)
+    _reviewer_params = [
+        ('coding_loop_id', 'CODING_LOOP_ID'),
+        ('task_loop_id', 'PLANNING_LOOP_ID'),
+        ('plan_name', 'PLAN_NAME'),
+        ('phase_name', 'PHASE_NAME'),
+    ]
     return PatchCommandTools(
+        tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         platform=platform_type,
         plans_dir=plans_dir,
+        invoke_patch_planner=adapter.render_agent_invocation(
+            'respec-patch-planner',
+            'generate amendment task document',
+            [
+                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('change_description', 'CHANGE_DESCRIPTION'),
+            ],
+        ),
+        invoke_task_plan_critic=adapter.render_agent_invocation(
+            'respec-task-plan-critic',
+            'evaluate amendment task quality against FSDD criteria',
+            [
+                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('change_description', 'CHANGE_DESCRIPTION'),
+            ],
+        ),
+        invoke_coder=adapter.render_agent_invocation(
+            'respec-coder',
+            'implement code changes following TDD methodology',
+            [
+                ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('stack_config', 'STACK_CONFIG'),
+                ('language_configs', 'LANGUAGE_CONFIGS'),
+            ],
+        ),
+        invoke_quality_checker=adapter.render_agent_invocation(
+            'respec-automated-quality-checker',
+            'run automated static analysis and quality checks',
+            _reviewer_params,
+        ),
+        invoke_spec_alignment=adapter.render_agent_invocation(
+            'respec-spec-alignment-reviewer',
+            'verify implementation matches Task and Phase objectives',
+            _reviewer_params,
+        ),
+        invoke_dynamic_reviewer_pattern=adapter.render_agent_invocation(
+            '{REVIEWER}',
+            'perform domain-specific code review',
+            _reviewer_params,
+        ),
+        invoke_consolidator=adapter.render_agent_invocation(
+            'respec-review-consolidator',
+            'merge all review sections into a single CriticFeedback',
+            [
+                ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('active_reviewers', 'PHASE1_REVIEWERS'),
+            ],
+        ),
+        invoke_coder_standards=adapter.render_agent_invocation(
+            'respec-coder',
+            'apply coding standards fixes',
+            [
+                ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('mode', '"standards-only"'),
+                ('stack_config', 'STACK_CONFIG'),
+                ('language_configs', 'LANGUAGE_CONFIGS'),
+            ],
+        ),
+        invoke_coding_standards_reviewer=adapter.render_agent_invocation(
+            'respec-coding-standards-reviewer',
+            'evaluate code against project coding standards',
+            [
+                ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('phase2_mode', 'true'),
+            ],
+        ),
         store_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',

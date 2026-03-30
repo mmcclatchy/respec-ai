@@ -24,6 +24,11 @@ class AgentToolsModel(BaseModel):
     tui_adapter: TuiAdapter = Field(..., description='TUI adapter for model resolution')
 
 
+class CommandToolsModel(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    tui_adapter: TuiAdapter = Field(..., description='TUI adapter for platform-specific rendering')
+
+
 class PlatformModel(BaseModel):
     model_config = ConfigDict(
         frozen=True,  # Immutable after creation
@@ -154,7 +159,7 @@ class ToolReference(PlatformModel):
         return v
 
 
-class PhaseCommandTools(BaseModel):
+class PhaseCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
@@ -171,6 +176,11 @@ class PhaseCommandTools(BaseModel):
     update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     platform: PlatformType = Field(..., description='Selected platform type')
     plans_dir: str = Field(..., description='TUI-specific plans directory path')
+
+    # Agent invocations
+    invoke_phase_architect: str = Field(..., description='Invocation text for respec-phase-architect agent')
+    invoke_phase_critic: str = Field(..., description='Invocation text for respec-phase-critic agent')
+    task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
 
     # Parameterized MCP tool invocations
     store_plan: str = Field(..., description='Store strategic plan')
@@ -301,7 +311,7 @@ class PhaseCommandTools(BaseModel):
         return self._adapter.discovery_tool_invocation
 
 
-class PlanCommandTools(BaseModel):
+class PlanCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
@@ -329,6 +339,13 @@ class PlanCommandTools(BaseModel):
     get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')
     decide_loop_action: str = Field(..., description='Decide next loop action')
     store_user_feedback: str = Field(..., description='Store user feedback during plan refinement')
+
+    # Agent and command invocations
+    invoke_plan_critic: str = Field(..., description='Invocation text for respec-plan-critic agent')
+    invoke_plan_analyst: str = Field(..., description='Invocation text for respec-plan-analyst agent')
+    invoke_analyst_critic: str = Field(..., description='Invocation text for respec-analyst-critic agent')
+    conversation_invocation: str = Field(..., description='Invocation text for plan-conversation workflow')
+    conversation_workflow_name: str = Field(..., description='Platform-appropriate name for the conversation workflow')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -394,7 +411,7 @@ class PlanCommandTools(BaseModel):
         return self._adapter.plan_resource_example
 
 
-class CodeCommandTools(BaseModel):
+class CodeCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
@@ -425,6 +442,20 @@ class CodeCommandTools(BaseModel):
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_task_document: str = Field(..., description='Get task document')
+
+    # Agent invocations
+    invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
+    invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
+    invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
+    invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')
+    invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
+    invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
+    invoke_coder_standards: str = Field(
+        ..., description='Invocation text for respec-coder agent (Phase 2 standards-only)'
+    )
+    invoke_coding_standards_reviewer: str = Field(
+        ..., description='Invocation text for respec-coding-standards-reviewer agent'
+    )
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -507,7 +538,7 @@ class CodeCommandTools(BaseModel):
             return ''
 
 
-class PatchCommandTools(BaseModel):
+class PatchCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
@@ -551,6 +582,21 @@ class PatchCommandTools(BaseModel):
     # Task operations
     get_task_document: str = Field(..., description='Get task document')
     store_task_document: str = Field(..., description='Store amendment task document')
+
+    # Agent invocations
+    invoke_patch_planner: str = Field(..., description='Invocation text for respec-patch-planner agent')
+    invoke_task_plan_critic: str = Field(..., description='Invocation text for respec-task-plan-critic agent')
+    invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
+    invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
+    invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
+    invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
+    invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
+    invoke_coder_standards: str = Field(
+        ..., description='Invocation text for respec-coder agent (Phase 2 standards-only)'
+    )
+    invoke_coding_standards_reviewer: str = Field(
+        ..., description='Invocation text for respec-coding-standards-reviewer agent'
+    )
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -625,7 +671,7 @@ class PatchCommandTools(BaseModel):
         return self._adapter.list_phases_tool
 
 
-class PlanRoadmapCommandTools(BaseModel):
+class PlanRoadmapCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
@@ -650,6 +696,10 @@ class PlanRoadmapCommandTools(BaseModel):
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_roadmap: str = Field(..., description='Get final roadmap')
+
+    # Agent invocations
+    invoke_roadmap_agent: str = Field(..., description='Invocation text for respec-roadmap agent')
+    invoke_roadmap_critic: str = Field(..., description='Invocation text for respec-roadmap-critic agent')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -708,7 +758,7 @@ class PlanRoadmapCommandTools(BaseModel):
             return ''
 
 
-class TaskCommandTools(BaseModel):
+class TaskCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
@@ -739,6 +789,10 @@ class TaskCommandTools(BaseModel):
     get_feedback: str = Field(..., description='Get latest feedback')
     get_task: str = Field(..., description='Get Task document')
     store_user_feedback: str = Field(..., description='Store user feedback')
+
+    # Agent invocations
+    invoke_task_planner: str = Field(..., description='Invocation text for respec-task-planner agent')
+    invoke_task_plan_critic: str = Field(..., description='Invocation text for respec-task-plan-critic agent')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .command_strategies import (
     CodeCommandStrategy,
@@ -12,6 +12,9 @@ from .command_strategies import (
 )
 from .platform_selector import PlatformSelector, PlatformType
 from .tool_enums import RespecAICommand
+
+if TYPE_CHECKING:
+    from .tui_adapters.base import TuiAdapter
 
 
 class TemplateCoordinator:
@@ -33,6 +36,7 @@ class TemplateCoordinator:
         command_name: str | RespecAICommand,
         platform: PlatformType,
         plans_dir: str = '~/.claude/plans',
+        tui_adapter: 'TuiAdapter | None' = None,
     ) -> str:
         if isinstance(command_name, str):
             try:
@@ -45,7 +49,7 @@ class TemplateCoordinator:
             raise ValueError(f'Unknown command template: {command_enum.value}')
 
         strategy = self._strategies[command_enum]
-        return strategy.generate_template(platform, plans_dir=plans_dir)
+        return strategy.generate_template(platform, plans_dir=plans_dir, tui_adapter=tui_adapter)
 
     def validate_template_generation(self, command_name: str | RespecAICommand, platform: PlatformType) -> bool:
         if isinstance(command_name, str):

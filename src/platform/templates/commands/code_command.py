@@ -251,75 +251,37 @@ You now have TWO active loop IDs - DO NOT confuse them:
 Pass BOTH IDs to coding agents. Never swap them.
 
 #### Step 7.4: Code Implementation Cycle
-```text
-Invoke coder agent with:
-- coding_loop_id: {{CODING_LOOP_ID}}
-- task_loop_id: {{TASK_LOOP_ID}} (CRITICAL - for Task retrieval)
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
-- stack_config: {{STACK_CONFIG}}
-- language_configs: {{LANGUAGE_CONFIGS}}
+{tools.invoke_coder}
 
 Expected: Code implementation committed, platform status updated
-```
 
 #### Step 7.4.1: Review Team Orchestration
 
 Launch ALL Phase 1 review agents (except consolidator) in parallel. Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 6.6. The review-consolidator MUST run AFTER all other reviewers complete. coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
 
 **Core Reviewers (always active):**
-```text
-Invoke automated-quality-checker agent with:
-- coding_loop_id: {{CODING_LOOP_ID}}
-- task_loop_id: {{TASK_LOOP_ID}}
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
+{tools.invoke_quality_checker}
 
 Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-quality-check
-```
 
-```text
-Invoke spec-alignment-reviewer agent with:
-- coding_loop_id: {{CODING_LOOP_ID}}
-- task_loop_id: {{TASK_LOOP_ID}}
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
+{tools.invoke_spec_alignment}
 
 Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-spec-alignment
-```
 
-```text
-Invoke code-quality-reviewer agent with:
-- coding_loop_id: {{CODING_LOOP_ID}}
-- task_loop_id: {{TASK_LOOP_ID}}
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
+{tools.invoke_code_quality}
 
 Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-code-quality
-```
 
 **Optional Specialist Reviewers (from PHASE1_REVIEWERS):**
-```text
 For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core and not consolidator:
-  Invoke {{REVIEWER}} agent with:
-  - coding_loop_id: {{CODING_LOOP_ID}}
-  - task_loop_id: {{TASK_LOOP_ID}}
-  - plan_name: {{PLAN_NAME}}
-  - phase_name: {{PHASE_NAME}}
+  {tools.invoke_dynamic_reviewer_pattern}
 
   Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-{{REVIEWER_SLUG}}
-```
 
 **Consolidator (always last, runs over PHASE1_REVIEWERS):**
-```text
-Invoke review-consolidator agent with:
-- coding_loop_id: {{CODING_LOOP_ID}}
-- plan_name: {{PLAN_NAME}}
-- phase_name: {{PHASE_NAME}}
-- active_reviewers: {{PHASE1_REVIEWERS}}
+{tools.invoke_consolidator}
 
 Expected: Single CriticFeedback with Overall Score stored in MCP coding loop
-```
 
 #### MCP Coding Decision
 ```text
@@ -387,21 +349,9 @@ Display:
 ```text
 Loop:
 
-  Invoke coder agent with:
-  - coding_loop_id: STANDARDS_LOOP_ID    (Phase 2 loop, not CODING_LOOP_ID)
-  - task_loop_id:   TASK_LOOP_ID
-  - plan_name:      PLAN_NAME
-  - phase_name:     PHASE_NAME
-  - mode:           "standards-only"
-  - stack_config:   STACK_CONFIG
-  - language_configs: LANGUAGE_CONFIGS
+  {tools.invoke_coder_standards}
 
-  Invoke coding-standards-reviewer agent with:
-  - coding_loop_id: STANDARDS_LOOP_ID
-  - task_loop_id:   TASK_LOOP_ID
-  - plan_name:      PLAN_NAME
-  - phase_name:     PHASE_NAME
-  - phase2_mode:    true
+  {tools.invoke_coding_standards_reviewer}
 
   (No review-consolidator in Phase 2 — coding-standards-reviewer stores CriticFeedback directly)
 
