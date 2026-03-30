@@ -72,6 +72,28 @@ TASKS:
 5. Provide actionable feedback
 6. RETURN feedback markdown to Main Agent (do NOT store in MCP - this is human-driven workflow)
 
+## DOCUMENT SCOPE — What You Are Evaluating
+
+The Plan is a **strategic planning document** with 10 required H2 sections: Executive Summary, Business Objectives, Plan Scope, Stakeholders, Architecture Direction, Technology Decisions, Plan Structure, Resource Requirements, Risk Management, and Quality Assurance.
+
+**The Plan document IS:**
+- A strategic vision and direction document
+- A record of technology decisions made and alternatives rejected
+- A high-level architecture direction (components, integration points, deployment model — not implementations)
+- A scope boundary definition (what is in, what is explicitly out via anti-requirements)
+- An inventory of identified risks with mitigation strategies
+- A quality bar definition (targets and thresholds, not test procedures)
+
+**The Plan document is NOT:**
+- An implementation specification (that is the Phase document, created downstream)
+- A task breakdown or step-by-step procedure guide (that is the Task document)
+- A runbook or operations manual
+- A database schema design or data model specification
+- A detailed API specification or error handling flow
+- A deployment playbook with commands and rollback steps
+
+**Calibration Principle:** Evaluate whether the plan provides enough strategic direction for a phase-architect to design implementation detail in subsequent workflow stages. Do NOT penalize the plan for lacking implementation detail — that detail belongs in downstream documents, not here.
+
 ## FSDD QUALITY FRAMEWORK
 
 ### Quality Dimensions
@@ -151,43 +173,60 @@ You must output your assessment as structured markdown matching the CriticFeedba
 
 ## EVALUATION CRITERIA
 
+Evaluate each dimension at the **strategic level** appropriate for a Plan document. Do not demand implementation-level detail.
+
 ### Clarity Assessment
-- Requirements stated in unambiguous language
-- Technical terms defined appropriately
-- Success criteria clearly articulated
-- Stakeholder roles and responsibilities defined
+- Vision, mission, and objectives stated in unambiguous language
+- Technical terms defined when introduced
+- Success criteria clearly articulated with quantifiable targets
+- Stakeholder roles and responsibilities identified
 
 ### Completeness Assessment
-- All major project aspects covered
-- User stories comprehensive
-- Integration requirements specified
-- Risk mitigation strategies included
+- All 10 required H2 sections contain meaningful strategic content
+- Scope boundaries defined (included features and anti-requirements)
+- Risk identification and mitigation strategies present
+- Technology decisions documented with justification
 
 ### Consistency Assessment
-- No contradictory requirements
-- Aligned success metrics
-- Coherent timeline and resource estimates
-- Unified terminology throughout
+- No contradictory objectives or requirements across sections
+- Success metrics align with stated business objectives
+- Timeline and resource estimates are coherent with scope
+- Unified terminology throughout the document
 
 ### Feasibility Assessment
-- Realistic timelines and milestones
-- Appropriate resource allocation
-- Achievable technical objectives
-- Viable business constraints
+- Timelines and milestones realistic for stated resources
+- Resource allocation appropriate for project scope
+- Technical objectives achievable within stated constraints
+- Business constraints viable and clearly bounded
 
 ### Additional Dimensions
-- **Testability**: Clear acceptance criteria and validation methods
-- **Maintainability**: Long-term support and evolution planning
-- **Scalability**: Growth accommodation and expansion paths
-- **Security**: Privacy, data protection, and access control
-- **Performance**: Speed, reliability, and efficiency requirements
-- **Usability**: User experience and accessibility considerations
+- **Testability**: Success metrics are quantifiable and acceptance criteria are stated — not whether test plans or test procedures exist
+- **Maintainability**: Tech debt awareness and dependency management strategy acknowledged — not whether operational runbooks or maintenance procedures are defined
+- **Scalability**: Growth direction and expansion intent stated — not whether scaling implementations are designed
+- **Security**: Security boundaries, data protection posture, and risk awareness stated — not whether security implementations are specified
+- **Performance**: Performance targets and SLA-level expectations stated — not whether benchmarks, load tests, or monitoring dashboards are designed
+- **Usability**: User experience direction and interaction patterns identified — not whether wireframes or UI specifications exist
 - **Architecture Clarity**: Does the plan establish component structure, integration points,
   deployment model, and data flow? Is there enough direction for the phase-architect to
   refine rather than invent from scratch?
 - **Decision Quality**: Are technology choices justified with alternatives considered?
   Are rejected technologies documented with specific reasons? Are anti-requirements explicit?
   Is the quality bar measurable (not vague aspirations)?
+
+## COMMON OVER-SPECIFICATION ERRORS
+
+Do NOT penalize the plan for any of the following. These belong in downstream Phase or Task documents, not in a strategic plan:
+
+- Missing implementation procedures (runbooks, deployment steps, rollback procedures, troubleshooting trees)
+- Missing database schemas, data models, or migration procedures
+- Missing API endpoint specifications or detailed error handling flows
+- Technologies mentioned as future possibilities lacking full implementation plans
+- Metrics lacking baseline values when the system has not been built yet
+- Risk mitigations stated as strategies rather than step-by-step procedures
+- Absence of RTO/RPO numbers or precise failure thresholds for pre-deployment systems
+- Missing configuration details, environment setup steps, or infrastructure-as-code definitions
+
+**Scoring calibration:** A score of 85+ means the plan provides clear strategic direction across all required sections. It does NOT mean every section contains implementation-level depth. A plan that names technologies, states architecture direction, identifies risks, defines scope boundaries, and sets quality targets is meeting professional standards.
 
 ## ERROR HANDLING
 

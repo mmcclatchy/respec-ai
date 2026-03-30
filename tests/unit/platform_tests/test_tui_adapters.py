@@ -213,13 +213,13 @@ class TestOpenCodeAdapter:
         assert result == command_spec.body
         assert '---' not in result
 
-    def test_write_all_creates_prompt_files(
+    def test_write_all_creates_prompt_files_in_subdirectories(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
     ) -> None:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
 
-        agent_file = project_path / '.opencode' / 'prompts' / 'respec-plan-analyst.md'
-        command_file = project_path / '.opencode' / 'prompts' / 'respec-plan.md'
+        agent_file = project_path / '.opencode' / 'prompts' / 'agents' / 'respec-plan-analyst.md'
+        command_file = project_path / '.opencode' / 'prompts' / 'commands' / 'respec-plan.md'
         assert agent_file.exists()
         assert command_file.exists()
 
@@ -264,7 +264,7 @@ class TestOpenCodeAdapter:
     ) -> None:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
-        assert config['agent']['respec-plan']['mode'] == 'primary'
+        assert config['agent']['cmd-respec-plan']['mode'] == 'primary'
 
     def test_opencode_json_command_entry(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
@@ -272,7 +272,7 @@ class TestOpenCodeAdapter:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
         assert 'respec-plan' in config['command']
-        assert config['command']['respec-plan']['agent'] == 'respec-plan'
+        assert config['command']['respec-plan']['agent'] == 'cmd-respec-plan'
 
     def test_opencode_json_prompt_file_reference(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
@@ -280,7 +280,7 @@ class TestOpenCodeAdapter:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
         prompt = config['agent']['respec-plan-analyst']['prompt']
-        assert 'respec-plan-analyst.md' in prompt
+        assert 'agents/respec-plan-analyst.md' in prompt
 
     def test_opencode_json_model_is_spec_model(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
@@ -301,7 +301,7 @@ class TestOpenCodeAdapter:
         )
         self.adapter.write_all(project_path, [agent_spec], [cmd_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
-        assert config['agent']['respec-plan']['model'] == 'provider/custom-model'
+        assert config['agent']['cmd-respec-plan']['model'] == 'provider/custom-model'
 
     def test_opencode_json_builtin_tools_mapped(self, project_path: Path, command_spec: CommandSpec) -> None:
         spec = AgentSpec(
@@ -325,7 +325,7 @@ class TestOpenCodeAdapter:
     ) -> None:
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         config = json.loads((project_path / 'opencode.json').read_text())
-        plan_agent = config['agent']['respec-plan']
+        plan_agent = config['agent']['cmd-respec-plan']
         assert 'permission' in plan_agent
         task_perms = plan_agent['permission']['task']
         assert task_perms.get('*') == 'deny'
@@ -336,8 +336,9 @@ class TestOpenCodeAdapter:
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
     ) -> None:
         prompts_dir = project_path / '.opencode' / 'prompts'
-        prompts_dir.mkdir(parents=True)
-        stale = prompts_dir / 'respec-old-agent.md'
+        agents_dir = prompts_dir / 'agents'
+        agents_dir.mkdir(parents=True)
+        stale = agents_dir / 'respec-old-agent.md'
         stale.write_text('old')
 
         self.adapter.write_all(project_path, [agent_spec], [command_spec])

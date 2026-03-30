@@ -41,20 +41,27 @@ class OpenCodeAdapter(TuiAdapter):
         commands: list[CommandSpec],
     ) -> list[Path]:
         prompts_dir = self.prompts_dir(project_path)
-        prompts_dir.mkdir(parents=True, exist_ok=True)
+        agents_dir = prompts_dir / 'agents'
+        commands_dir = prompts_dir / 'commands'
+        agents_dir.mkdir(parents=True, exist_ok=True)
+        commands_dir.mkdir(parents=True, exist_ok=True)
 
         for stale in prompts_dir.glob('respec-*.md'):
+            stale.unlink()
+        for stale in agents_dir.glob('respec-*.md'):
+            stale.unlink()
+        for stale in commands_dir.glob('respec-*.md'):
             stale.unlink()
 
         files_written: list[Path] = []
 
         for agent_spec in agents:
-            file_path = prompts_dir / f'{agent_spec.name}.md'
+            file_path = agents_dir / f'{agent_spec.name}.md'
             file_path.write_text(self.render_agent(agent_spec), encoding='utf-8')
             files_written.append(file_path)
 
         for cmd_spec in commands:
-            file_path = prompts_dir / f'{cmd_spec.name}.md'
+            file_path = commands_dir / f'{cmd_spec.name}.md'
             file_path.write_text(self.render_command(cmd_spec), encoding='utf-8')
             files_written.append(file_path)
 
@@ -169,28 +176,29 @@ class OpenCodeAdapter(TuiAdapter):
                 'description': spec.description,
                 'mode': 'primary' if spec.is_orchestrator else 'subagent',
                 'model': spec.model,
-                'prompt': f'{{file:.opencode/prompts/{spec.name}.md}}',
+                'prompt': f'{{file:.opencode/prompts/agents/{spec.name}.md}}',
                 **self._build_tools_block(spec.tools),
             }
 
         for cmd_spec in commands:
+            cmd_key = f'cmd-{cmd_spec.name}'
             task_agents = [t[5:-1] for t in cmd_spec.tools if t.startswith('Task(') and t.endswith(')')]
             agent_entry: dict[str, Any] = {
                 'description': cmd_spec.description,
                 'mode': 'primary',
                 'model': cmd_spec.model,
-                'prompt': f'{{file:.opencode/prompts/{cmd_spec.name}.md}}',
+                'prompt': f'{{file:.opencode/prompts/commands/{cmd_spec.name}.md}}',
                 **self._build_tools_block(cmd_spec.tools),
             }
             if task_agents:
                 agent_entry['permission'] = {'task': {'*': 'deny', **{a: 'allow' for a in task_agents}}}
-            agent_block[cmd_spec.name] = agent_entry
+            agent_block[cmd_key] = agent_entry
 
         command_block: dict[str, Any] = {
             cmd_spec.name: {
                 'description': cmd_spec.description,
-                'template': f'{{file:.opencode/prompts/{cmd_spec.name}.md}}',
-                'agent': cmd_spec.name,
+                'template': f'{{file:.opencode/prompts/commands/{cmd_spec.name}.md}}',
+                'agent': f'cmd-{cmd_spec.name}',
             }
             for cmd_spec in commands
         }
