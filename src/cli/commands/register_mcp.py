@@ -1,22 +1,17 @@
+import json
 import sys
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
-from src.cli.config.claude_config import (
-    ClaudeConfigError,
-    get_mcp_server_config,
-    register_mcp_server,
-)
+from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
-    """Add command-specific arguments.
-
-    Args:
-        parser: Argument parser for this command
-    """
     parser.add_argument(
         '-f',
         '--force',
@@ -26,18 +21,20 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 
 def run(args: Namespace) -> int:
-    """Register respec-ai MCP server in Claude Code configuration.
-
-    Args:
-        args: Command arguments
-
-    Returns:
-        Exit code (0 for success, 1 for failure)
-    """
     try:
-        existing_config = get_mcp_server_config()
+        project_path = Path.cwd().resolve()
+        config_path = project_path / '.respec-ai' / 'config.json'
 
-        if existing_config and not args.force:
+        if not config_path.exists():
+            print_error('respec-ai is not initialized in this project')
+            print_warning('Run: respec-ai init --platform [linear|github|markdown]')
+            return 1
+
+        config = json.loads(config_path.read_text(encoding='utf-8'))
+        tui = config.get('tui', 'claude-code')
+        tui_adapter = get_tui_adapter(TuiType(tui))
+
+        if tui_adapter.is_mcp_registered(project_path) and not args.force:
             print_info('respec-ai MCP server is already registered')
             print_info('Use --force to re-register')
             return 0
@@ -57,7 +54,7 @@ def run(args: Namespace) -> int:
             docker_manager.ensure_running()
             print_success('Container started successfully')
 
-        registered = register_mcp_server(force=args.force)
+        registered = tui_adapter.register_mcp_server(project_path)
 
         if registered:
             if args.force:
@@ -67,7 +64,8 @@ def run(args: Namespace) -> int:
 
             print_info(f'Container: respec-ai-{version}')
             print_info('Communication: stdio via docker exec')
-            print_info('Restart Claude Code to activate the MCP server')
+            tui_label = 'OpenCode' if tui == 'opencode' else 'Claude Code'
+            print_info(f'Restart {tui_label} to activate the MCP server')
         else:
             print_info('respec-ai MCP server is already registered')
 

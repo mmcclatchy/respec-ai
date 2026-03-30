@@ -3,13 +3,14 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from src.cli.config.claude_config import is_mcp_server_registered
 from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_warning
 from src.cli.ui.formatters import format_file_counts_table, format_project_config_table
 from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -45,7 +46,9 @@ def run(args: Namespace) -> int:
         version = config.get('version', 'unknown')
         package_version = get_package_version()
 
-        mcp_registered = is_mcp_server_registered()
+        tui = config.get('tui', 'claude-code')
+        tui_adapter = get_tui_adapter(TuiType(tui))
+        mcp_registered = tui_adapter.is_mcp_registered(project_path)
         mcp_container_name = None
         mcp_container_running = False
 

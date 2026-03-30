@@ -64,6 +64,9 @@ class TuiAdapter(ABC):
     def is_mcp_registered(self, project_path: Path) -> bool: ...
 
     @abstractmethod
+    def unregister_mcp_server(self, project_path: Path) -> bool: ...
+
+    @abstractmethod
     def config_dir_name(self) -> str: ...
 
     @abstractmethod

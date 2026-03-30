@@ -1,12 +1,11 @@
+import json
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
-from src.cli.config.claude_config import (
-    MCP_SERVER_NAME,
-    ClaudeConfigError,
-    unregister_all_respec_servers,
-    unregister_mcp_server,
-)
+from src.cli.config.claude_config import ClaudeConfigError, unregister_all_respec_servers
 from src.cli.ui.console import console
+from src.platform.tui_adapters import ClaudeCodeAdapter, get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -19,24 +18,36 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 def run(args: Namespace) -> int:
     try:
-        if args.all:
-            removed_count = unregister_all_respec_servers()
+        project_path = Path.cwd().resolve()
+        config_path = project_path / '.respec-ai' / 'config.json'
 
+        if not config_path.exists():
+            console.print('[red]✗[/red] respec-ai is not initialized in this project')
+            console.print('[yellow]⚠[/yellow] Run: respec-ai init --platform [linear|github|markdown]')
+            return 1
+
+        config = json.loads(config_path.read_text(encoding='utf-8'))
+        tui = config.get('tui', 'claude-code')
+        tui_adapter = get_tui_adapter(TuiType(tui))
+        tui_label = 'OpenCode' if tui == 'opencode' else 'Claude Code'
+
+        if args.all and isinstance(tui_adapter, ClaudeCodeAdapter):
+            removed_count = unregister_all_respec_servers()
             if removed_count == 0:
                 console.print('[yellow]No MCP servers found to unregister[/yellow]')
                 console.print('[dim]Already clean - no respec-ai MCP servers registered[/dim]')
             else:
                 console.print(f'[green]✓[/green] Unregistered {removed_count} MCP server(s)')
-                console.print('[yellow]⚠[/yellow] Restart Claude Code to apply changes')
+                console.print(f'[yellow]⚠[/yellow] Restart {tui_label} to apply changes')
             return 0
+
+        if tui_adapter.unregister_mcp_server(project_path):
+            console.print('[green]✓[/green] MCP server "respec-ai" unregistered successfully')
+            console.print(f'[yellow]⚠[/yellow] Restart {tui_label} to apply changes')
         else:
-            if unregister_mcp_server():
-                console.print(f'[green]✓[/green] MCP server "{MCP_SERVER_NAME}" unregistered successfully')
-                console.print('[yellow]⚠[/yellow] Restart Claude Code to apply changes')
-                return 0
-            else:
-                console.print(f'[yellow]MCP server "{MCP_SERVER_NAME}" was not registered[/yellow]')
-                return 0
+            console.print('[yellow]MCP server "respec-ai" was not registered[/yellow]')
+
+        return 0
 
     except ClaudeConfigError as e:
         console.print(f'[red]✗[/red] Failed to unregister MCP server: {e}')

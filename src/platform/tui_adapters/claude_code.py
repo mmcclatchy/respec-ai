@@ -4,6 +4,7 @@ from src.cli.config.claude_config import (
     add_mcp_permissions as _add_mcp_permissions,
     is_mcp_server_registered,
     register_mcp_server as _register_mcp_server,
+    unregister_mcp_server as _unregister_mcp_server,
 )
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
@@ -80,13 +81,16 @@ class ClaudeCodeAdapter(TuiAdapter):
         return 'sonnet'
 
     def register_mcp_server(self, project_path: Path) -> bool:
-        return _register_mcp_server()
+        return _register_mcp_server(force=True)
 
     def add_mcp_permissions(self) -> bool:
         return _add_mcp_permissions()
 
     def is_mcp_registered(self, project_path: Path) -> bool:
         return is_mcp_server_registered()
+
+    def unregister_mcp_server(self, project_path: Path) -> bool:
+        return _unregister_mcp_server()
 
     def config_dir_name(self) -> str:
         return '.claude'

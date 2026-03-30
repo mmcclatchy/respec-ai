@@ -368,6 +368,32 @@ class TestOpenCodeAdapter:
     def test_add_mcp_permissions_noop(self) -> None:
         assert self.adapter.add_mcp_permissions() is True
 
+    def test_unregister_mcp_server_removes_entry(self, project_path: Path) -> None:
+        self.adapter.register_mcp_server(project_path)
+        assert self.adapter.is_mcp_registered(project_path)
+        result = self.adapter.unregister_mcp_server(project_path)
+        assert result is True
+        assert not self.adapter.is_mcp_registered(project_path)
+
+    def test_unregister_mcp_server_returns_false_when_not_registered(self, project_path: Path) -> None:
+        assert self.adapter.unregister_mcp_server(project_path) is False
+
+    def test_unregister_mcp_server_returns_false_no_file(self, project_path: Path) -> None:
+        assert self.adapter.unregister_mcp_server(project_path) is False
+
+    def test_unregister_mcp_server_preserves_other_config(self, project_path: Path) -> None:
+        self.adapter.register_mcp_server(project_path)
+        opencode_json = project_path / 'opencode.json'
+        config = json.loads(opencode_json.read_text())
+        config['mcp']['other-server'] = {'type': 'local', 'enabled': True}
+        opencode_json.write_text(json.dumps(config))
+
+        self.adapter.unregister_mcp_server(project_path)
+
+        config = json.loads(opencode_json.read_text())
+        assert 'respec-ai' not in config['mcp']
+        assert 'other-server' in config['mcp']
+
 
 class TestClaudeCodeAdapterInvocationRendering:
     def setup_method(self) -> None:

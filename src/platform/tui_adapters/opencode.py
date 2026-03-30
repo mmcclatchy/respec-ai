@@ -104,6 +104,18 @@ class OpenCodeAdapter(TuiAdapter):
         config = json.loads(opencode_json_path.read_text(encoding='utf-8'))
         return 'respec-ai' in config.get('mcp', {})
 
+    def unregister_mcp_server(self, project_path: Path) -> bool:
+        opencode_json_path = project_path / 'opencode.json'
+        if not opencode_json_path.exists():
+            return False
+        config: dict[str, Any] = json.loads(opencode_json_path.read_text(encoding='utf-8'))
+        mcp = config.get('mcp', {})
+        if 'respec-ai' not in mcp:
+            return False
+        del mcp['respec-ai']
+        opencode_json_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
+        return True
+
     def config_dir_name(self) -> str:
         return '.opencode'
 

@@ -1,6 +1,7 @@
 import json
 from argparse import Namespace
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -16,6 +17,13 @@ def _mock_container_status(mocker: MockerFixture, name: str, running: bool) -> N
         'running': running,
         'name': name,
     }
+
+
+def _mock_adapter(mocker: MockerFixture, *, mcp_registered: bool = True) -> MagicMock:
+    adapter = MagicMock()
+    adapter.is_mcp_registered.return_value = mcp_registered
+    mocker.patch('src.cli.commands.status.get_tui_adapter', return_value=adapter)
+    return adapter
 
 
 class TestStatusCommand:
@@ -45,7 +53,7 @@ class TestStatusCommand:
         mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
         mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True)
         _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
@@ -82,7 +90,7 @@ class TestStatusCommand:
         mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
         mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True)
         _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
@@ -111,7 +119,7 @@ class TestStatusCommand:
         mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
         mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=False)
+        _mock_adapter(mocker, mcp_registered=False)
 
         args = Namespace()
         result = status.run(args)
@@ -151,7 +159,7 @@ class TestStatusCommand:
         mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
         mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.status.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True)
         _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
