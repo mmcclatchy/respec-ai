@@ -90,7 +90,7 @@ class TestEnhancedLoopState:
     def test_existing_loop_state_functionality_remains_intact(self) -> None:
         loop_state = LoopState(loop_type=LoopType.PHASE)
 
-        assert loop_state.iteration == 0
+        assert loop_state.iteration == 1
 
         loop_state.add_score(85)
         assert loop_state.current_score == 85

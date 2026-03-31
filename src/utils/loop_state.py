@@ -36,7 +36,7 @@ class LoopState(BaseModel):
     status: LoopStatus = LoopStatus.INITIALIZED
     current_score: int = Field(default=0, ge=0, le=100)
     score_history: list[int] = Field(default_factory=list)
-    iteration: int = Field(default=0, ge=0)
+    iteration: int = Field(default=1, ge=1)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     feedback_history: list[CriticFeedback] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=datetime.now)
