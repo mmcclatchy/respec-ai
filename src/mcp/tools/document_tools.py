@@ -103,7 +103,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         Uses hierarchical keys for organization (e.g., plan-name/phase-name/task-name).
 
         Parameters:
-        - doc_type: Type of document ("phase", "task", "roadmap")
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key (e.g., "plan-name/phase-name" or "plan-name/phase-name/task-name")
         - content: Complete document in markdown format
 
@@ -128,7 +128,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         2. By key: Retrieves document directly from storage
 
         Parameters:
-        - doc_type: Type of document ("phase", "task", "roadmap")
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key (required if not using loop_id)
         - loop_id: Loop identifier (alternative to key)
 
@@ -154,7 +154,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         - list_documents("task", "plan-name/phase-name") → All tasks for phase
 
         Parameters:
-        - doc_type: Type of document ("phase", "task", "roadmap")
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - parent_key: Optional parent key to filter results
 
         Returns:
@@ -177,7 +177,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         Used during refinement loops when agents improve content.
 
         Parameters:
-        - doc_type: Type of document ("phase", "task", "roadmap")
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key to document
         - content: Updated markdown content
 
@@ -198,7 +198,7 @@ def register_document_tools(mcp: FastMCP) -> None:
         """Delete document from storage.
 
         Parameters:
-        - doc_type: Type of document ("phase", "task", "roadmap")
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key to document
 
         Returns:
@@ -222,7 +222,7 @@ def register_document_tools(mcp: FastMCP) -> None:
 
         Parameters:
         - loop_id: Active loop identifier
-        - doc_type: Type of document ("phase", "task", "roadmap")
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key to document
 
         Returns:

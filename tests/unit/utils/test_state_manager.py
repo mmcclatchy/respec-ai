@@ -4,6 +4,7 @@ from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
+from src.models.task import Task
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -887,3 +888,162 @@ class TestReviewSectionManagement(TestInMemoryStateManager):
 
         retrieved = await state_manager.get_review_section(key)
         assert retrieved == 'new content'
+
+
+class TestInMemoryDeletePlanCascade:
+    @pytest.fixture
+    def state_manager(self) -> InMemoryStateManager:
+        return InMemoryStateManager(max_history_size=10)
+
+    @staticmethod
+    def _make_plan(name: str = 'Test Plan') -> Plan:
+        return Plan(
+            plan_name=name,
+            executive_summary='### Vision\nVision',
+            business_objectives='### Primary Objectives\nObjectives',
+            plan_scope='### Included Features\nFeatures',
+            stakeholders='### Plan Sponsor\nSponsor',
+            architecture_direction='### Architecture Overview\nArch',
+            technology_decisions='### Chosen Technologies\nTech',
+            plan_structure='### Work Breakdown\nBreakdown',
+            resource_requirements='### Team Structure\nTeam',
+            risk_management='### Identified Risks\nRisks',
+            quality_assurance='### Quality Bar\nStandards',
+        )
+
+    @staticmethod
+    def _make_phase(name: str = 'phase-1') -> Phase:
+        return Phase(
+            phase_name=name,
+            objectives='Test objectives',
+            scope='Test scope',
+            dependencies='Test dependencies',
+            deliverables='Test deliverables',
+            phase_status=PhaseStatus.DRAFT,
+        )
+
+    @staticmethod
+    def _make_roadmap() -> Roadmap:
+        return Roadmap(
+            plan_name='Test Roadmap',
+            project_goal='Test goal',
+            total_duration='8 weeks',
+            team_size='4 developers',
+            roadmap_budget='$100,000',
+            critical_path_analysis='Test analysis',
+            key_risks='Test risks',
+            mitigation_plans='Test mitigation',
+            buffer_time='1 week',
+            development_resources='4 developers',
+            infrastructure_requirements='Cloud hosting',
+            external_dependencies='None',
+            quality_assurance_plan='Automated testing',
+            technical_milestones='MVP delivery',
+            business_milestones='User acceptance',
+            quality_gates='All tests pass',
+            performance_targets='Fast response',
+            roadmap_status=RoadmapStatus.DRAFT,
+        )
+
+    @staticmethod
+    def _make_task(name: str, phase_path: str) -> Task:
+        return Task(name=name, phase_path=phase_path)
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_roadmap(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        await state_manager.store_roadmap('my-plan', self._make_roadmap())
+
+        await state_manager.delete_plan('my-plan')
+
+        with pytest.raises(RoadmapNotFoundError):
+            await state_manager.get_roadmap('my-plan')
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_phases(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        await state_manager.store_phase('my-plan', self._make_phase('phase-1'))
+        await state_manager.store_phase('my-plan', self._make_phase('phase-2'))
+
+        await state_manager.delete_plan('my-plan')
+
+        assert await state_manager.list_phases('my-plan') == []
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_tasks(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        await state_manager.store_phase('my-plan', self._make_phase('phase-1'))
+        task = self._make_task('task-1', 'my-plan/phase-1')
+        await state_manager.store_task('my-plan/phase-1', task)
+
+        await state_manager.delete_plan('my-plan')
+
+        assert await state_manager.list_tasks('my-plan/phase-1') == []
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_loops(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        loop = LoopState(loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop, 'my-plan')
+
+        await state_manager.delete_plan('my-plan')
+
+        with pytest.raises(Exception):
+            await state_manager.get_loop(loop.id)
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_review_sections(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        await state_manager.store_review_section('my-plan/phase-1/review-quality', 'content')
+        await state_manager.store_review_section('my-plan/phase-1/review-spec', 'content')
+
+        await state_manager.delete_plan('my-plan')
+
+        assert await state_manager.list_review_sections('my-plan/phase-1') == []
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_objective_feedback(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        loop = LoopState(loop_type=LoopType.ANALYST)
+        await state_manager.add_loop(loop, 'my-plan')
+        await state_manager.store_objective_feedback(loop.id, 'feedback')
+
+        await state_manager.delete_plan('my-plan')
+
+        assert loop.id not in state_manager._objective_feedback
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_preserves_other_plans(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('plan-a', self._make_plan('Plan A'))
+        await state_manager.store_plan('plan-b', self._make_plan('Plan B'))
+        await state_manager.store_roadmap('plan-a', self._make_roadmap())
+        await state_manager.store_roadmap('plan-b', self._make_roadmap())
+        await state_manager.store_phase('plan-a', self._make_phase('phase-1'))
+        await state_manager.store_phase('plan-b', self._make_phase('phase-1'))
+        loop_a = LoopState(loop_type=LoopType.PLAN)
+        loop_b = LoopState(loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop_a, 'plan-a')
+        await state_manager.add_loop(loop_b, 'plan-b')
+        await state_manager.store_review_section('plan-a/phase-1/review', 'content-a')
+        await state_manager.store_review_section('plan-b/phase-1/review', 'content-b')
+
+        await state_manager.delete_plan('plan-a')
+
+        retrieved_plan = await state_manager.get_plan('plan-b')
+        assert retrieved_plan.plan_name == 'Plan B'
+        await state_manager.get_roadmap('plan-b')
+        assert await state_manager.list_phases('plan-b') == ['phase-1']
+        await state_manager.get_loop(loop_b.id)
+        assert await state_manager.list_review_sections('plan-b/phase-1') == ['plan-b/phase-1/review']
+
+    @pytest.mark.asyncio
+    async def test_delete_plan_removes_loop_to_phase_mapping(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        await state_manager.store_phase('my-plan', self._make_phase('phase-1'))
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state_manager.add_loop(loop, 'my-plan')
+        await state_manager.link_loop_to_phase(loop.id, 'my-plan', 'phase-1')
+
+        await state_manager.delete_plan('my-plan')
+
+        assert loop.id not in state_manager._loop_to_phase

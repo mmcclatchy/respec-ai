@@ -58,6 +58,9 @@ class InMemoryStateManager(StateManager):
         # Temporary loop-to-task mapping (for task refinement sessions)
         self._loop_to_task: dict[str, tuple[str, str]] = {}  # loop_id -> (phase_path, task_name)
 
+        # Loop-to-plan mapping (for cascading delete)
+        self._loop_to_plan: dict[str, str] = {}  # loop_id -> plan_name
+
         # Review section storage (hierarchical key -> raw markdown)
         self._review_sections: dict[str, str] = {}
 
@@ -73,6 +76,7 @@ class InMemoryStateManager(StateManager):
             f'  tasks={len(self._tasks)}\n'
             f'  review_sections={len(self._review_sections)}\n'
             f'  loop_to_phase_mappings={len(self._loop_to_phase)}\n'
+            f'  loop_to_plan_mappings={len(self._loop_to_plan)}\n'
             f'  objective_feedback={len(self._objective_feedback)}'
         )
 
@@ -93,6 +97,7 @@ class InMemoryStateManager(StateManager):
             f'  review_sections={list(self._review_sections.keys())}\n'
             f'  loop_to_phase={dict(self._loop_to_phase)}\n'
             f'  loop_to_task={dict(self._loop_to_task)}\n'
+            f'  loop_to_plan={dict(self._loop_to_plan)}\n'
             f'  objective_feedback_loops={list(self._objective_feedback.keys())}'
         )
 
@@ -103,10 +108,12 @@ class InMemoryStateManager(StateManager):
             logger.error(f'add_loop failed: Loop already exists: {loop.id}')
             raise LoopAlreadyExistsError(f'Loop already exists: {loop.id}')
         self._active_loops[loop.id] = loop
+        self._loop_to_plan[loop.id] = plan_name
         dropped_loop_id = self._loop_history.append(loop.id)
         if dropped_loop_id:
             logger.info(f'add_loop: Dropped oldest loop from history: {dropped_loop_id}')
             self._active_loops.pop(dropped_loop_id)
+            self._loop_to_plan.pop(dropped_loop_id, None)
         self._log_state()
         self._log_state_snapshot('add_loop', 'EXIT')
 
@@ -506,8 +513,32 @@ class InMemoryStateManager(StateManager):
         if plan_name not in self._plans:
             logger.error(f'delete_plan failed: Plan plan not found for project: {plan_name}')
             raise PlanNotFoundError(f'Project plan not found for project: {plan_name}')
+
+        loop_ids_to_remove = [lid for lid, pn in self._loop_to_plan.items() if pn == plan_name]
+        for lid in loop_ids_to_remove:
+            self._active_loops.pop(lid, None)
+            self._loop_to_plan.pop(lid, None)
+            self._loop_to_phase.pop(lid, None)
+            self._loop_to_task.pop(lid, None)
+            self._objective_feedback.pop(lid, None)
+
+        task_paths = [p for p in self._tasks if p.startswith(f'{plan_name}/')]
+        for path in task_paths:
+            del self._tasks[path]
+        inactive_task_paths = [p for p in self._inactive_tasks if p.startswith(f'{plan_name}/')]
+        for path in inactive_task_paths:
+            del self._inactive_tasks[path]
+
+        review_keys = [k for k in self._review_sections if k.startswith(f'{plan_name}/')]
+        for k in review_keys:
+            del self._review_sections[k]
+
+        self._phases.pop(plan_name, None)
+        self._inactive_phases.pop(plan_name, None)
+        self._roadmaps.pop(plan_name, None)
         del self._plans[plan_name]
-        logger.info(f'delete_plan: Deleted project plan for {plan_name}')
+
+        logger.info(f'delete_plan: Deleted plan and all related data for {plan_name}')
         self._log_state()
         self._log_state_snapshot('delete_plan', 'EXIT')
         return True

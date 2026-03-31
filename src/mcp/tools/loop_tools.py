@@ -22,7 +22,13 @@ class LoopTools:
         except LoopValidationError:
             raise
         except LoopAlreadyExistsError as e:
-            raise LoopStateError('new', 'initialization', f'Failed to create loop: {str(e)}')
+            raise LoopStateError(
+                'new',
+                'initialization',
+                f'Failed to create loop: {str(e)}. '
+                f'A previous plan session may still exist. '
+                f'To start fresh, run: respec-ai db delete-plan {plan_name}',
+            )
         except Exception as e:
             raise LoopStateError('new', 'initialization', f'Unexpected error: {str(e)}')
 

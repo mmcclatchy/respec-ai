@@ -20,6 +20,7 @@ from argparse import ArgumentParser
 
 from src.cli.commands import (
     cleanup,
+    db,
     docker,
     init,
     mcp_server,
@@ -142,6 +143,13 @@ def main() -> int:
 
     opencode_model.add_arguments(opencode_model_parser)
 
+    db_parser = subparsers.add_parser(
+        'db',
+        help='Database management commands',
+    )
+
+    db.add_arguments(db_parser)
+
     args = parser.parse_args()
 
     match args.command:
@@ -169,6 +177,8 @@ def main() -> int:
             return mcp_server.run(args)
         case 'opencode-models':
             return opencode_model.run(args)
+        case 'db':
+            return db.run(args)
         case _:
             parser.print_help()
             return 1

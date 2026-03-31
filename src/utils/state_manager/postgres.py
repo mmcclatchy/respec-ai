@@ -624,7 +624,13 @@ class PostgresStateManager(StateManager):
             if not exists:
                 raise PlanNotFoundError(f'Project plan not found for project: {plan_name}')
 
-            await conn.execute('DELETE FROM plans WHERE plan_name = $1', plan_name)
+            async with conn.transaction():
+                await conn.execute('DELETE FROM loop_states WHERE plan_name = $1', plan_name)
+                await conn.execute("DELETE FROM tasks WHERE phase_path LIKE $1 || '/%'", plan_name)
+                await conn.execute("DELETE FROM review_sections WHERE key LIKE $1 || '/%'", plan_name)
+                await conn.execute('DELETE FROM phases WHERE plan_name = $1', plan_name)
+                await conn.execute('DELETE FROM roadmaps WHERE plan_name = $1', plan_name)
+                await conn.execute('DELETE FROM plans WHERE plan_name = $1', plan_name)
 
         return True
 
