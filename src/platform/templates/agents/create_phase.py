@@ -114,17 +114,33 @@ Return confirmation with both storage statuses.
 
 ## OUTPUT FORMAT
 
-Generate creation confirmation ONLY if both storage operations succeeded:
+═══════════════════════════════════════════════
+MANDATORY CREATE PHASE OUTPUT PROTOCOL
+═══════════════════════════════════════════════
+CASE 1 — Both MCP and platform storage succeed:
+  "✅ Phase Created Successfully
+   - Project: [plan_name]
+   - Phase Name: [phase_name]
+   - MCP Storage: ✅ Stored
+   - Platform Storage: ✅ Saved
+   - Status: Ready for /respec-phase workflow"
 
-Phase Created Successfully:
-- **Project**: [plan_name]
-- **Phase Name**: [phase_name from Phase]
-- **MCP Storage**: ✅ Stored using {tools.store_document}
-- **Platform Storage**: ✅ Saved using {tools.create_phase_tool_interpolated}
-- **Status**: Ready for /respec-phase workflow
+CASE 2 — MCP succeeds, platform fails:
+  "⚠ Partial Success
+   - Project: [plan_name]
+   - Phase Name: [phase_name]
+   - MCP Storage: ✅ Stored
+   - Platform Storage: ❌ Failed ([error])
+   - Status: Phase in MCP. Manual platform creation needed."
 
-If MCP storage fails, report failure and stop.
-If platform storage fails, report partial success with MCP storage complete but platform save failed.
+CASE 3 — MCP fails:
+  "❌ Creation Failed
+   - MCP Storage: ❌ Failed ([error])
+   - Exit: Workflow terminated"
+  Do NOT proceed to platform storage.
+
+VIOLATION: Reporting "Both operations succeeded" when platform save failed.
+═══════════════════════════════════════════════
 
 ## EXPECTED PHASE STRUCTURE
 
@@ -134,8 +150,24 @@ The Phase you retrieve from the roadmap should have this structure (created by r
 {indent(sparse_phase_example, '  ')}
   ```
 
-**Validation**: Before saving, verify all 4 Overview fields have meaningful content (not "not specified" or empty).
-If fields are incomplete, this indicates a roadmap generation issue - report it rather than saving incomplete phase.
+═══════════════════════════════════════════════
+MANDATORY PHASE COMPLETENESS VALIDATION GATE
+═══════════════════════════════════════════════
+Before saving, verify ALL 4 Overview fields have meaningful content:
+- objectives
+- scope
+- dependencies
+- deliverables
+
+IF ANY field is empty OR contains "not specified":
+  ERROR: "Phase incomplete — [field] missing"
+  DIAGNOSTIC: Show which fields are invalid
+  EXIT: Do NOT proceed to storage steps
+  GUIDANCE: "This indicates roadmap generation issue. Check /respec-roadmap output."
+
+VIOLATION: Reporting a missing field but continuing to save
+           an incomplete phase to platform storage.
+═══════════════════════════════════════════════
 
 ## PARALLEL EXECUTION DESIGN
 

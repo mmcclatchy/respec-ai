@@ -182,6 +182,22 @@ INPUTS: Plan name, Loop ID, Phase name, and optional validation mode
 
 ## Validation Mode Behavior
 
+═══════════════════════════════════════════════
+MANDATORY VALIDATION MODE SELECTION PROTOCOL
+═══════════════════════════════════════════════
+validation_mode is set by the CALLING COMMAND, not agent decision.
+
+"full" (default) → Execute ALL steps (Steps 2-6). Full quality assessment.
+"post_synthesis" → Execute ONLY Steps 2, 2.6, and 6. Lightweight path check.
+
+Do NOT override or select an alternative mode.
+Do NOT run full assessment when post_synthesis was specified.
+Do NOT run post_synthesis when full was specified (or defaulted).
+
+VIOLATION: Agent choosing post_synthesis "to save time" when
+           command specified full assessment mode.
+═══════════════════════════════════════════════
+
 IF validation_mode == "post_synthesis":
     EXECUTE ONLY:
     - Step 2: Retrieve Phase from MCP

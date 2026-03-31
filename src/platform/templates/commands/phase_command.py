@@ -258,9 +258,10 @@ Agent will:
 5. Refine phase based on strategic plan, feedback, and archive insights
 6. Store updated phase directly in MCP
 7. **Lifecycle Management**: If phase is being decomposed into sub-phases:
-   - Original phase status should transition to SUPERSEDED (future enhancement)
-   - Each sub-phase follows `phase-{{number}}-{{description}}` naming pattern
-   - Document dependencies between sub-phases in Dependencies section
+   - Original phase status MUST transition to SUPERSEDED
+   - Each sub-phase MUST follow `phase-{{number}}-{{description}}` naming pattern
+   - Dependencies between sub-phases MUST be documented in Dependencies section
+   - VIOLATION: Leaving original phase as DRAFT when decomposed breaks downstream task-planner
 8. Return brief status message (no full markdown)
 
 Verify agent completed successfully:
@@ -420,8 +421,18 @@ For ALL uncached prompts, launch bp-pipeline agents simultaneously:
   ALL_QUERIED_TECHS: <tech names from prompt>
 
 Wait for ALL tasks to return BP_PIPELINE_COMPLETE signals.
+
+═══════════════════════════════════════════════
+MANDATORY BP-PIPELINE VALIDATION GATE
+═══════════════════════════════════════════════
 IF any task does NOT return BP_PIPELINE_COMPLETE:
-  Display error: "bp-pipeline failed for [prompt]. Check output for errors."
+  ERROR: "bp-pipeline failed — research synthesis incomplete"
+  DIAGNOSTIC: Show failed task names and error output
+  EXIT: Do NOT proceed to SUB-STEP 5 with partial research
+
+VIOLATION: Displaying bp-pipeline error but continuing to update
+           the phase with incomplete research paths.
+═══════════════════════════════════════════════
 
 SUB-STEP 5: Update Phase with synthesized paths
 SYNTHESIZED_PATHS = paths from BP_PIPELINE_COMPLETE signals + CACHED_PATHS
@@ -466,6 +477,22 @@ Proceed to Step 8.
 ```
 
 ### Step 8: Phase Storage
+
+═══════════════════════════════════════════════
+MANDATORY PHASE FILE STORAGE RESTRICTION
+═══════════════════════════════════════════════
+Phase storage uses ONLY these two mechanisms:
+1. MCP storage (already completed during refinement loop)
+2. Platform storage (Step 8.2 below)
+
+Do NOT:
+- Write phase.md or any .md file to disk directly
+- Create backup or checkpoint files
+- Store intermediate phases outside MCP/platform
+
+VIOLATION: Writing any phase file outside the designated
+           MCP and platform storage tools.
+═══════════════════════════════════════════════
 
 #### Step 8.1: Retrieve Final Phase from MCP
 Retrieve the Phase from MCP storage:

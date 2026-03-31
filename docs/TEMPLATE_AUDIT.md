@@ -195,3 +195,47 @@ Some critics store feedback to MCP, others return to orchestrator:
 - code_reviewer.py: stores via MCP tool
 
 This is intentional (plan quality loop is human-driven) but not documented clearly enough for agents to understand why they behave differently.
+
+## Phase Workflow Findings (Batch 2)
+
+28 findings across phase_command.py, phase_architect.py, phase_critic.py, and create_phase.py. HIGH severity findings below.
+
+### phase_command.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 260-263 | "should transition" soft language for decomposition status | HIGH | MANDATORY PHASE DECOMPOSITION PROTOCOL block |
+| 423-425 | Non-blocking bp-pipeline error — agent continues with invalid research | HIGH | MANDATORY BP-PIPELINE VALIDATION GATE — workflow MUST stop |
+| (implicit) | No prohibition on unauthorized file writes during phase storage | HIGH | MANDATORY PHASE FILE STORAGE RESTRICTION block |
+| 308-314 | "Proceed to Step 8" soft transition on COMPLETE decision | MEDIUM | Strengthen with "IMMEDIATELY execute Step 8" |
+| 313-314 | "phase-architect will retrieve feedback" soft enforcement | MEDIUM | Coordination issue with phase_architect STEP 0 |
+
+### phase_architect.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 180-224 | Three constraint sources with conflicting priority — agent picks freely | HIGH | MANDATORY CONSTRAINT PRIORITY PROTOCOL — formal > strategic > ad-hoc |
+| 238-260 | Plan context (architecture, tech decisions) stated as recommendations not bindings | HIGH | MANDATORY PLAN CONTEXT ENFORCEMENT — all plan decisions BINDING |
+| 256-260 | Rejected tech loophole: "note why it was rejected instead" opens re-evaluation | HIGH | MANDATORY REJECTED TECHNOLOGY PROTOCOL — absolute prohibition |
+| 88-100 | Feedback retrieval condition `iteration > 1` skips iteration 1 | HIGH | Fix to `iteration >= 1` with MANDATORY FEEDBACK RETRIEVAL PROTOCOL |
+| 269-277 | "brief status message" without exact format specification | MEDIUM | MANDATORY STATUS MESSAGE FORMAT with exact fields |
+| 82 | optional_instructions parameter documented but never referenced in workflow | MEDIUM | Add usage protocol |
+| 765-779 | Idempotency claimed but not enforced | MEDIUM | Add MANDATORY IDEMPOTENCY PROTOCOL |
+
+### phase_critic.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 177-209 | No enforcement on when to use full vs post_synthesis validation mode | HIGH | MANDATORY VALIDATION MODE SELECTION PROTOCOL |
+| 183-209 | post_synthesis mode doesn't specify how to retrieve previous score | MEDIUM | Add explicit CALL instruction for score retrieval |
+| 272-280 | Root cause classification thresholds are arbitrary with no justification | MEDIUM | Document thresholds as mandatory numeric rules |
+| 466-475 | Custom H3 penalty deduction cap unclear for multiple violations | MEDIUM | Explicit max deduction = 5 points |
+| 727-735 | Two BLOCKING penalties both cap at 80 — unclear if additive | MEDIUM | Single cap applies regardless of how many penalties |
+
+### create_phase.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 115-125 | Output says "ONLY if both succeeded" then specifies "partial success" — contradiction | HIGH | MANDATORY CREATE PHASE OUTPUT PROTOCOL — 3 clear cases |
+| 136-138 | Weak validation gate — "report rather than saving" but no STOP/EXIT | HIGH | MANDATORY PHASE COMPLETENESS VALIDATION GATE |
+| 50-70 | Missing "DO NOT write files to disk" restriction | MEDIUM | MANDATORY PHASE EXTRACTION SCOPE RESTRICTION |

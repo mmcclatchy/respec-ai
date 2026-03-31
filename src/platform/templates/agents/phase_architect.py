@@ -85,19 +85,26 @@ WORKFLOW: Strategic Plan Summary → Phase Markdown
 
 TASKS:
 
-STEP 0: Retrieve Previous Critic Feedback (if refinement iteration)
-→ Check if this is a refinement by getting loop status
+STEP 0: Retrieve Previous Critic Feedback
+
 CALL {tools.get_loop_status}
 → Store: LOOP_STATUS
 
-IF LOOP_STATUS.iteration > 1:
-  → This is a refinement iteration - retrieve previous critic feedback
+═══════════════════════════════════════════════
+MANDATORY FEEDBACK RETRIEVAL PROTOCOL
+═══════════════════════════════════════════════
+IF LOOP_STATUS.iteration >= 1:
   CALL {tools.get_feedback}
-  → Store: PREVIOUS_FEEDBACK
-  → Extract key improvement areas from feedback for use in STEP 2
-ELSE:
-  → First iteration (or iteration 1) - no previous feedback exists
-  → Set: PREVIOUS_FEEDBACK = None
+  Store: PREVIOUS_FEEDBACK
+  Extract key improvement areas for use in STEP 2
+
+IF LOOP_STATUS.iteration == 0:
+  Set: PREVIOUS_FEEDBACK = None
+  (First iteration — no prior feedback exists)
+
+VIOLATION: Skipping feedback retrieval on iteration 1 because
+           condition checked for "iteration > 1" instead of ">= 1".
+═══════════════════════════════════════════════
 
 STEP 0.5: Retrieve Strategic Plan
 Retrieve strategic plan from MCP storage for architecture design context.
@@ -180,16 +187,31 @@ CALL mcp__respec-ai__get_document(
 STEP 1.5: Read Implementation Plan Constraints
 Scan for pre-resolved architecture decisions that MUST be honored as hard constraints.
 
-SOURCE 1 — Strategic Plan Reference (uses STRATEGIC_PLAN_MARKDOWN from STEP 0.5):
-  Search STRATEGIC_PLAN_MARKDOWN for Claude Plan file paths.
-  Look in the Technology Requirements and Project Constraints sections for lines like:
-    "Claude Plan: `<file-path>`" or any path containing {tools.plans_dir}/ ending in .md
-  For each path found:
-    CALL Read(file_path)
-    IF Read succeeds: Append file content to IMPL_PLAN_CONSTRAINTS list
-    ELSE: Note warning — "Could not read {{file_path}} from strategic plan"
+═══════════════════════════════════════════════
+MANDATORY CONSTRAINT PRIORITY PROTOCOL
+═══════════════════════════════════════════════
+Read constraints from THREE sources in priority order (HIGHEST to LOWEST):
 
-SOURCE 2 — Formal section in current phase (primary):
+1. FORMAL PHASE SECTION (HIGHEST):
+   "### Implementation Plan References" in CURRENT_PHASE_MARKDOWN
+   If this section exists, it is the authoritative source.
+
+2. STRATEGIC PLAN REFERENCES (MEDIUM):
+   "Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN
+   Read these IF no formal section exists in the phase.
+
+3. AD-HOC DIRECTIVES (LOWEST):
+   "→ before implementing, read `<path>`" in CURRENT_PHASE_MARKDOWN
+   Read ONLY if not already covered by sources 1 or 2.
+
+IF CONFLICTS EXIST between sources:
+  Source 1 overrides sources 2 and 3.
+
+VIOLATION: Merging all three sources without priority
+           causes ambiguous implementation decisions.
+═══════════════════════════════════════════════
+
+SOURCE 1 — Formal section in current phase (HIGHEST PRIORITY):
   Search CURRENT_PHASE_MARKDOWN for "### Implementation Plan References"
   For each "- Constraint: `<file-path>`" line found:
     PARSE file_path from backtick-quoted value after "Constraint:"
@@ -201,6 +223,15 @@ SOURCE 2 — Formal section in current phase (primary):
       CALL Read(file_path)
       IF Read succeeds: Append full file content to IMPL_PLAN_CONSTRAINTS
     IF Read fails: Note warning — "Could not read {{file_path}}"
+
+SOURCE 2 — Strategic Plan Reference (uses STRATEGIC_PLAN_MARKDOWN from STEP 0.5):
+  Search STRATEGIC_PLAN_MARKDOWN for Claude Plan file paths.
+  Look in the Technology Requirements and Project Constraints sections for lines like:
+    "Claude Plan: `<file-path>`" or any path containing {tools.plans_dir}/ ending in .md
+  For each path found:
+    CALL Read(file_path)
+    IF Read succeeds: Append file content to IMPL_PLAN_CONSTRAINTS list
+    ELSE: Note warning — "Could not read {{file_path}} from strategic plan"
 
 SOURCE 3 — Ad-hoc directives (backward compatibility):
   Search CURRENT_PHASE_MARKDOWN for lines containing "→ before implementing, read"
@@ -234,20 +265,52 @@ STEP 3: Expand Phase
 Develop comprehensive Phase based on strategic plan (from STEP 0.5) and plan context variables
 (from STEP 0.55). Apply optional_instructions if provided.
 
-**Plan context usage in phase generation**:
+═══════════════════════════════════════════════
+MANDATORY PLAN CONTEXT ENFORCEMENT
+═══════════════════════════════════════════════
+Plan context variables from STEP 0.55 are BINDING constraints.
+They represent team-level decisions that phase-architect does NOT override.
+
+PLAN_ARCHITECTURE → Architecture section MUST refine and elaborate, MUST NOT contradict
+PLAN_TECHNOLOGY_DECISIONS → Phase MUST honor ALL choices, MUST NOT suggest alternatives
+PLAN_ANTI_REQUIREMENTS → Phase Scope MUST exclude all anti-requirements
+PLAN_QUALITY_BAR → Testing Strategy and NFRs MUST reference these targets
+
+VIOLATION: Suggesting an alternative to a technology in PLAN_TECHNOLOGY_DECISIONS
+           or contradicting PLAN_ARCHITECTURE direction.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
+MANDATORY REJECTED TECHNOLOGY PROTOCOL
+═══════════════════════════════════════════════
+IF PLAN_TECHNOLOGY_REJECTIONS is not None:
+
+ABSOLUTE: Do NOT include any rejected technology in the Phase
+  — even if it seems relevant for this specific phase
+  — even if technical context has changed
+  — even if recommended by best practices
+
+IF rejected tech seems relevant, document in Phase:
+  "Technology X was rejected by plan ([reason]).
+   Considered for [context] but plan decision preserved."
+Do NOT add to Architecture or Technology Stack.
+
+VIOLATION: Including rejected technology in Phase Technology Stack
+           because "it seemed relevant for this specific sub-architecture."
+═══════════════════════════════════════════════
+
 ```text
 IF PLAN_ARCHITECTURE is not None:
   → Use as the starting point for the Architecture section — refine and elaborate, don't reinvent
-  → Do NOT produce an architecture that contradicts PLAN_ARCHITECTURE
+  → MUST NOT produce an architecture that contradicts PLAN_ARCHITECTURE
 
 IF PLAN_TECHNOLOGY_DECISIONS is not None:
   → Honor all technology choices in Phase Technology Stack section
   → Treat as hard constraints (same precedence as IMPL_PLAN_CONSTRAINTS)
-  → Do NOT suggest alternatives to technologies already decided
+  → MUST NOT suggest alternatives to technologies already decided
 
 IF PLAN_TECHNOLOGY_REJECTIONS is not None:
-  → NEVER suggest rejected technologies — even if you would normally recommend them
-  → If a rejected technology seems obviously relevant, note why it was rejected instead
+  → See MANDATORY REJECTED TECHNOLOGY PROTOCOL above
 
 IF PLAN_ANTI_REQUIREMENTS is not None:
   → Propagate into Phase Scope "what's excluded" section
