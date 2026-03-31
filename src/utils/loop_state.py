@@ -36,7 +36,7 @@ class LoopState(BaseModel):
     status: LoopStatus = LoopStatus.INITIALIZED
     current_score: int = Field(default=0, ge=0, le=100)
     score_history: list[int] = Field(default_factory=list)
-    iteration: int = Field(default=1, ge=1)
+    iteration: int = Field(default=0, ge=0)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     feedback_history: list[CriticFeedback] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -88,6 +88,7 @@ class LoopState(BaseModel):
     def add_feedback(self, feedback: CriticFeedback) -> None:
         self.feedback_history.append(feedback)
         self.add_score(feedback.quality_score)
+        self.iteration = len(self.feedback_history)
         self.updated_at = datetime.now()
 
         # Update status to indicate loop is active with feedback

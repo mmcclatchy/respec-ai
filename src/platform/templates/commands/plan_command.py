@@ -546,31 +546,35 @@ Extract ANALYST_SCORE from feedback overall_score field
 
 ### Call the MCP Server for analyst validation decision
 
-Use the MCP tool `{tools.decide_loop_action}`:
-- Call `ANALYST_LOOP_RESPONSE = {tools.decide_loop_action}`
-- Store `ANALYST_LOOP_STATUS = ANALYST_LOOP_RESPONSE.status`
-- Store `ANALYST_SCORE = ANALYST_LOOP_RESPONSE.current_score`
-- Store `ANALYST_ITERATION = ANALYST_LOOP_RESPONSE.iteration`
+```text
+ANALYST_LOOP_RESPONSE = {tools.decide_loop_action}
+ANALYST_LOOP_STATUS = ANALYST_LOOP_RESPONSE.status
+ANALYST_SCORE = ANALYST_LOOP_RESPONSE.current_score
+ANALYST_ITERATION = ANALYST_LOOP_RESPONSE.iteration
 
-#### Process the MCP Server decision
+Decision options: "completed", "refine", "user_input"
+```
 
-#### If status is "refine"
-- Display: "⟳ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — refining analyst validation"
-- Objectives and feedback already stored in MCP by agent
-- Previous feedback available to plan-analyst via MCP tools
-- Re-invoke plan-analyst with ANALYST_LOOP_ID (return to Step 7)
+**Follow ANALYST_LOOP_STATUS exactly. Do not override based on score assessment.**
 
-#### If status is "user_input"
-- Display: "⚠ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — user input required"
-- Present current analyst score and request user clarification
-- Wait for user response and incorporate into objectives analysis
-- Continue analyst validation loop (return to Step 7)
+```text
+IF ANALYST_LOOP_STATUS == "refine":
+  Display: "⟳ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — refining analyst validation"
+  Return to Step 7 (plan-analyst will retrieve feedback from MCP itself)
 
-#### If status is "completed"
-- Display: "✅ Score: {{ANALYST_SCORE}}/100 — analyst validation complete"
-- Final objectives and feedback already stored in MCP by agent
-- Create external project using {tools.create_project_tool_interpolated}
-- Proceed to Step 10.
+ELIF ANALYST_LOOP_STATUS == "user_input":
+  Display: "⚠ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — user input required"
+  LATEST_FEEDBACK = {tools.get_previous_analysis}
+  Present LATEST_FEEDBACK to user with current score and iteration
+  Wait for user response
+  Store user feedback: {tools.store_user_feedback}
+  Return to Step 7
+
+ELIF ANALYST_LOOP_STATUS == "completed":
+  Display: "✅ Score: {{ANALYST_SCORE}}/100 — analyst validation complete"
+  Create external project using {tools.create_project_tool_interpolated}
+  Proceed to Step 10.
+```
 
 ## Step 10: Automatic Roadmap Generation
 

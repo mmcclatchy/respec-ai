@@ -64,15 +64,18 @@ class TestLoopToolsIntegration:
         # Test gradual improvement scenario
         loop1 = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'plan')
 
-        # Gradual improvement that should complete (meets plan threshold)
+        # Gradual improvement that completes at checkpoint boundary
+        # (threshold check wins over checkpoint when both fire at same iteration)
         threshold = stable_loop_config.plan_threshold
-        progression = [65, 70, 75, 80, 85, threshold]
+        checkpoint_freq = stable_loop_config.plan_checkpoint_frequency
+        progression = [65, 70, 75, 80, threshold]
+        assert len(progression) == checkpoint_freq
         for i, score in enumerate(progression, start=1):
             result = await add_feedback_and_decide(isolated_loop_tools, loop1.id, score, i, CriticAgent.PLAN_CRITIC)
-            if i < len(progression):
-                assert result.status == LoopStatus.REFINE
-            else:
+            if score >= threshold:
                 assert result.status == LoopStatus.COMPLETED
+            else:
+                assert result.status == LoopStatus.REFINE
 
     @pytest.mark.asyncio
     async def test_stagnation_detection_in_full_context(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
