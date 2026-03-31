@@ -181,12 +181,30 @@ ELIF LOOP_DECISION == "user_input":
     Return to Step 3.1 with user guidance
 
 ELIF LOOP_DECISION == "complete":
-  Display: "✅ Score: {{LOOP_SCORE}}/100 — roadmap approved"
-  Proceed to Step 5.
-  Note: Roadmap contains sparse Phase objects (iteration=0) with 4 Overview fields only.
+  Display: "✅ Score: {{LOOP_SCORE}}/100 — roadmap approved · extracting phases..."
+  IMMEDIATELY proceed to Step 5. The roadmap is NOT the final output.
 ```
 
-### 5. Phase Extraction Planning
+═══════════════════════════════════════════════
+MANDATORY: PHASE EXTRACTION IS NOT OPTIONAL
+═══════════════════════════════════════════════
+The roadmap is internal working data stored in MCP only.
+
+Do NOT write a roadmap.md file or any roadmap file to disk.
+Do NOT stop here. Do NOT report the roadmap as a final output.
+Do NOT present a completion summary after the quality loop.
+
+The workflow is NOT complete until Steps 5-7 finish:
+  Step 5 → Plan phase extraction from roadmap
+  Step 6 → Launch create-phase agents to extract and save phases
+  Step 7 → Verify phases exist in platform storage
+
+VIOLATION: Stopping after the roadmap quality loop without extracting
+           phases is a workflow violation. The roadmap exists solely to
+           produce Phase documents — it has no value on its own.
+═══════════════════════════════════════════════
+
+### 5. Phase Extraction Planning (MANDATORY)
 Plan extraction of sparse Phases from roadmap before parallel processing:
 
 #### Retrieve Final Roadmap
@@ -215,7 +233,7 @@ SPEC_EXTRACTION_PLAN = Generate plan for extracting phases from roadmap:
 **Remember**: Phases already exist in roadmap - we're just extracting and saving them to MCP.
 ```
 
-### 6. Parallel Phase Extraction
+### 6. Parallel Phase Extraction (MANDATORY)
 Extract sparse Phases from roadmap and save to MCP storage:
 
 **CRITICAL UNDERSTANDING**: The roadmap agent ALREADY CREATED sparse Phase objects (iteration=0) embedded in the roadmap markdown. The create-phase agents DO NOT generate new phases - they extract existing phases from the roadmap and save them to MCP.

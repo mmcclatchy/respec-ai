@@ -102,7 +102,18 @@ def run(args: Namespace) -> int:
             print_success(f'Updated CLI: {current_version} → {new_version}')
 
         if not args.skip_docker:
-            _update_docker(old_version=current_version, new_version=new_version)
+            docker_updated = _update_docker(old_version=current_version, new_version=new_version)
+
+            if docker_updated:
+                reg_result = subprocess.run(
+                    ['respec-ai', 'register-mcp', '--force'],
+                    capture_output=True,
+                    text=True,
+                )
+                if reg_result.returncode == 0:
+                    print_success('MCP server re-registered')
+                else:
+                    print_warning('MCP re-registration skipped — run `respec-ai register-mcp --force`')
 
         config_path = Path.cwd() / '.respec-ai' / 'config.json'
         if config_path.exists():

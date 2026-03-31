@@ -624,7 +624,11 @@ The `/respec-roadmap` command will:
 1. Retrieve the strategic plan from MCP
 2. Initialize a roadmap quality loop
 3. Run roadmap agent → roadmap-critic refinement cycle
-4. Create sparse phase files for each phase in the roadmap
+4. Extract and save sparse phase files for each phase in the roadmap
+
+The roadmap is stored in MCP only — it is internal working data.
+Do NOT write a roadmap.md file or any roadmap file to disk.
+The only user-visible files from this workflow are the plan file and the individual phase files.
 
 **If /respec-roadmap fails**: The plan is already stored and valid. Display:
 ```text
