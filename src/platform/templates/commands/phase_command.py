@@ -291,7 +291,18 @@ LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
 
 ### Step 7: Handle Refinement Decisions
 
-**Follow LOOP_DECISION exactly. Do not override based on score assessment.**
+═══════════════════════════════════════════════
+MANDATORY DECISION PROTOCOL
+═══════════════════════════════════════════════
+The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
+
+"refine"     → Execute refinement. Do NOT ask, confirm, or present options to the user.
+"user_input" → ONLY status that involves the user. Present feedback and wait for response.
+"complete"   → Proceed to next step. Do NOT ask for confirmation.
+
+VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+           is a workflow violation. The decision has already been made by the MCP server.
+═══════════════════════════════════════════════
 
 ```text
 IF LOOP_DECISION == "COMPLETE":
