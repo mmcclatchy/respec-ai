@@ -24,7 +24,7 @@ csr_feedback_template = CriticFeedback(
 [Completeness and syntax assessment]
 
 ### Code Structure
-[Global variables, nesting depth, test separation]
+[Global variables, test separation]
 
 ### Hardcoded Secrets
 [Secrets detection assessment]
@@ -178,22 +178,22 @@ Focus review on files changed by coder in recent commits.
 - Identify over-documentation violations
 
 ### 4. Type Hints
-- Every parameter and return value must be typed
 - Use modern syntax: `str | None` (not `Optional[str]`)
+- Type hint syntax style is YOUR responsibility
+- Missing type annotations are flagged by mypy (Automated Quality Checker) — do not also deduct here for the same functions. Only deduct for functions that HAVE type hints but use wrong syntax (e.g., `Optional[str]` instead of `str | None`)
 
 **Check**:
-- Parse function signatures for missing type hints
 - Flag usage of Optional[] instead of | None syntax
+- Flag `from typing import Optional` imports
 
 ### 5. Code Structure
 - No global variables (except UPPER_CASE constants)
-- Minimal nesting (max 3 levels deep)
 - Services separate from endpoints
 - No test logic in production code
+- Nesting depth is assessed by code-quality-reviewer — do not duplicate that check here
 
 **Check**:
 - Scan for global variable assignments
-- Count nesting depth in functions/methods
 - Check for "from tests" imports in src/
 
 ### 6. Testing Standards
@@ -294,7 +294,7 @@ Store the following markdown as review section:
 Specialist reviewers do not contribute to the base 100-point score directly. Instead:
 
 **Deductions** (up to -10 points):
-- Critical violations (test code in production, no type hints): -10 points
+- Critical violations (test code in production): -10 points
 - Hardcoded secrets (actual credentials in source code): -5 points, mark [BLOCKING] in key issues
 - Major violations (global variables, inline imports, obvious docstrings): -5 to -7 points
 - Minor violations (naming inconsistencies, import ordering): -2 to -4 points
@@ -313,9 +313,10 @@ Report deductions/bonus clearly for the consolidator to apply.
 grep -r "from tests" src/ --include="*.py"
 → If matches: -10 points, block completion
 
-# Missing type hints on functions
-def function_name(param):  # ❌ No type hints
-→ If >3 functions missing hints: -10 points
+# Wrong type hint syntax (mypy handles missing annotations)
+from typing import Optional
+def function_name(param: Optional[str]) -> None:  # ❌ Use str | None
+→ If >3 occurrences of old syntax: -3 points
 
 # Global variables
 GLOBAL_VAR = {{}}  # ❌ Mutable global (not UPPER_CASE constant)
@@ -367,8 +368,8 @@ import local_module  # ❌ Should be after stdlib/third-party
    - Check naming conventions
    - Parse imports (location, ordering)
    - Scan for documentation violations
-   - Check type hints on all functions
-   - Verify code structure (no globals, nesting depth)
+   - Check type hint syntax (Optional vs | None)
+   - Verify code structure (no globals, no test imports in src/)
 4. **Scan for Hardcoded Secrets**: Run grep across src/, evaluate matches in context, flag only actual credentials
 5. **Calculate Deductions/Bonus**
 6. **Generate Review Section Markdown**

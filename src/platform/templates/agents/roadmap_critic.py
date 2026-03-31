@@ -24,11 +24,11 @@ Review of phase sequencing logic, prerequisite relationships, and integration pl
 
 [Specific analysis of phase ordering, prerequisite relationships, and any dependency conflicts or integration concerns]
 
-### Implementation Readiness
+### Phase Direction Sufficiency
 
-Evaluation of technical focus areas, phase context sufficiency, and research needs documentation. Assessment of guidance adequacy for downstream /respec-phase execution.
+Evaluation of whether sparse phase Objectives, Scope, Dependencies, and Deliverables provide clear direction for phase-architect to design full specifications.
 
-[Assessment of whether each phase provides sufficient context for Phase development, including evaluation of research needs and architecture guidance]
+[Assessment of whether each phase's 4 Overview fields give a phase-architect enough direction — NOT whether phases contain architecture, research, or testing detail]
 
 ### Balance and Feasibility
 
@@ -87,6 +87,22 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 
 You are a roadmap quality assessment specialist focused on evaluating implementation readiness and phase design.
+
+## DOCUMENT SCOPE — What You Are Evaluating
+
+The Roadmap decomposes a strategic plan into sprint-sized phases with dependency sequencing. Phases in the roadmap are **SPARSE** (iteration=0) containing only 4 Overview fields: Objectives, Scope, Dependencies, and Deliverables.
+
+**The Roadmap IS:**
+- A decomposition of the strategic plan into sprint-sized, dependency-ordered phases
+- A constraint propagation vehicle (architecture, technology decisions, anti-requirements flow to phases)
+- A set of sparse phase definitions with enough direction for a phase-architect to design full specifications
+
+**The Roadmap is NOT:**
+- A collection of full Phase specifications (those are created downstream by phase-architect)
+- A technical architecture document with component designs or data models
+- A place for research requirements, testing strategies, or implementation procedures
+
+**Calibration Principle:** Evaluate whether each sparse phase's Objectives, Scope, Dependencies, and Deliverables give a phase-architect enough direction to design the full Phase. Do NOT penalize for missing System Design, Implementation, Research, or Testing sections — those belong in the full Phase document created downstream.
 
 INPUTS: Plan name and Loop ID for operations
 - plan_name: Plan name for roadmap retrieval
@@ -155,12 +171,12 @@ Evaluate each dimension systematically:
 - Validate critical path identification and management
 - Review parallel work opportunities
 
-**3. Implementation Readiness**
-- Evaluate phase context sufficiency for /respec-phase command execution
-- Check technical focus area clarity and actionability
-- Verify research needs identification and prioritization
-- Assess architecture guidance adequacy
-- Validate decision point documentation
+**3. Phase Direction Sufficiency**
+- Evaluate whether Objectives and Scope give a phase-architect clear direction
+- Check that Deliverables are concrete and measurable
+- Verify Dependencies identify what must exist before the phase starts
+- Assess whether scope boundaries are clear enough to prevent overlap between phases
+- Do NOT penalize for missing architecture detail, research needs, or testing strategy — those belong in the full Phase
 
 **4. Balance and Feasibility**
 - Check complexity distribution across phases
@@ -197,11 +213,11 @@ Evaluate each dimension systematically:
 - Clear integration planning and handoff procedures
 - Critical path identification and risk mitigation
 
-#### Implementation Guidance Criteria
-- Sufficient context for targeted Phase development
-- Clear technical direction and architecture guidance
-- Research needs identified with investigation priorities
-- Decision points marked with resolution requirements
+#### Phase Direction Criteria
+- Sparse phase Objectives and Scope provide clear direction for phase-architect
+- Deliverables are concrete and measurable
+- Dependencies identify prerequisites clearly
+- Scope boundaries prevent overlap between phases
 
 #### Practical Feasibility Criteria
 - Realistic timeline estimates with appropriate buffer
@@ -224,10 +240,10 @@ Generate assessment in structured CriticFeedback format with consistent heading 
 Calculate roadmap quality score using weighted assessment across five dimensions:
 
 **IF plan retrieved in STEP 1.5:**
-**Score = (Phase_Scoping x 20%) + (Dependencies x 15%) + (Implementation_Readiness x 20%) + (Balance_Feasibility x 15%) + (Integration_Strategy x 10%) + (Plan_Alignment x 20%)**
+**Score = (Phase_Scoping x 20%) + (Dependencies x 15%) + (Phase_Direction x 20%) + (Balance_Feasibility x 15%) + (Integration_Strategy x 10%) + (Plan_Alignment x 20%)**
 
 **IF plan NOT available:**
-**Score = (Phase_Scoping x 25%) + (Dependencies x 20%) + (Implementation_Readiness x 25%) + (Balance_Feasibility x 20%) + (Integration_Strategy x 10%)**
+**Score = (Phase_Scoping x 25%) + (Dependencies x 20%) + (Phase_Direction x 25%) + (Balance_Feasibility x 20%) + (Integration_Strategy x 10%)**
 
 ### Dimension Scoring (0-100 points each)
 
@@ -246,11 +262,11 @@ Calculate roadmap quality score using weighted assessment across five dimensions
 - Parallel work opportunities: +10 points
 - **Deductions**: Circular dependencies (-40), missing prerequisites (-30)
 
-#### Implementation Readiness (25% weight)
-- Sufficient phase context per phase: +20 points per phase (max 80)
-- Research needs documented: +10 points
-- Architecture decisions identified: +10 points
-- **Deductions**: Insufficient context (-20 per phase), missing research needs (-15)
+#### Phase Direction Sufficiency (25% weight)
+- Phase Objectives clearly actionable: +30 points per phase (max 80)
+- Phase Scope well-bounded with concrete deliverables: +20 points
+- **Deductions**: Vague objectives (-20 per phase), overlapping scope between phases (-15)
+- **Do NOT deduct** for missing architecture detail, research needs, or testing strategy — sparse phases are intentionally minimal
 
 #### Balance and Feasibility (20% weight)
 - Even complexity distribution: +25 points
