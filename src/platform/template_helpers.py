@@ -215,6 +215,9 @@ def create_plan_command_tools(
     builder.add_task_agent(RespecAIAgent.PLAN_CRITIC)
     builder.add_task_agent(RespecAIAgent.PLAN_ANALYST)
     builder.add_task_agent(RespecAIAgent.ANALYST_CRITIC)
+    builder.add_builtin_tool(BuiltInTool.READ)
+    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/references/*.md')
+    builder.add_builtin_tool(BuiltInTool.BASH)
 
     for tool in PlanCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)

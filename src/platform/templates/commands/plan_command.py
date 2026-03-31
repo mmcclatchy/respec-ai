@@ -156,6 +156,23 @@ ELSE:
   Display: "ℹ️ No Claude Plan file detected — proceeding with standard workflow"
 ```
 
+## Step 1.7: Copy External Plan File to Repo
+
+If the plan file is external to the project, copy it into the repo so downstream
+agents can reliably Read() it on any machine.
+
+```text
+IF CLAUDE_PLAN_FILE is not None:
+  IF CLAUDE_PLAN_FILE is an absolute path (starts with "/", "~", or a drive letter like "C:\\"):
+    REFERENCE_FILENAME = [basename of CLAUDE_PLAN_FILE]
+    REFERENCE_PATH = .respec-ai/plans/{{PLAN_NAME}}/references/{{REFERENCE_FILENAME}}
+    CALL Write(REFERENCE_PATH, CLAUDE_PLAN_CONTEXT)
+    Display: "✓ Copied plan reference to {{REFERENCE_PATH}}"
+    CLAUDE_PLAN_FILE = REFERENCE_PATH
+  ELSE:
+    Display: "ℹ️ Plan file is project-relative — referencing in place"
+```
+
 ## Step 2: Conversational Requirements Gathering
 
 ### Use the /respec-plan-conversation command to conduct conversational discovery
