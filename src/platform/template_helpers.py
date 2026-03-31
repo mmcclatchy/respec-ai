@@ -91,23 +91,30 @@ class TemplateToolBuilder:
 PLAN_CONVERSATION_INLINE_GUIDE = """\
 As the primary agent, conduct conversational requirements gathering directly with the user.
 
+PACING: Ask 1-2 questions per message. Wait for the user to respond before continuing.
+Do NOT present all questions at once. Cover topics through genuine back-and-forth conversation.
+Spend multiple turns on a topic if it's rich — depth matters more than covering every bullet.
+Move on when the user gives short, confident answers or you can summarize their position back to them.
+
 Stage 1: Vision and Context Discovery
-- Ask about what they're building, problem statement, success criteria
+- Start with: "Tell me about what you're building — what problem are you trying to solve?"
+- Follow up on their answer before introducing new topics
+- Cover: what's driving the project, what success looks like, who's involved
 
 Stage 2: Progressive Requirement Refinement
-- Clarify scope, user experience, integrations, constraints
+- Explore scope, user experience, integrations, and constraints through follow-up
 
 Stage 3: Detail and Validation
-- Validate understanding, clarify priorities and timeline
+- Validate your understanding, clarify priorities and timeline
 
 Stage 4: Technology Stack Discussion
-- Languages, frameworks, databases, deployment
+- Languages, frameworks, databases, deployment — present options when the user is uncertain
 
 Stage 5: Architecture Direction
-- Component structure, integrations, data flow
+- Component structure, integrations, data flow — establish direction, not detailed design
 
 Stage 6: Scope Boundaries and Risk Assessment
-- Anti-requirements, performance targets, risks
+- Anti-requirements, performance targets, risks, quality bar
 
 Compile all gathered information into CONVERSATION_CONTEXT variable using structured markdown.\
 """

@@ -71,27 +71,42 @@ description: Conduct conversational requirements gathering
 
 # Conversational Requirements Discovery
 
-## Command Integration
+## How to Conduct This Conversation
 
-### Purpose
-This command conducts structured conversation with the user to gather comprehensive project
-requirements. It operates as a sub-command called by `/respec-plan` and returns structured
-context for strategic plan generation.
+This is a genuine requirements discovery conversation — NOT a questionnaire.
 
-### Variable Management
-Store all conversation results in the variable `CONVERSATION_CONTEXT` for handoff back to the
-calling command.
+**Pacing:**
+- Ask 1-2 questions per message. Wait for the user to respond before continuing.
+- Spend multiple turns on a topic if it's rich. Move on only when you genuinely understand.
+- The bullet points under each stage are topics to explore, NOT a list to ask all at once.
 
-### Completion Protocol
-This command completes when all six stages have been executed and comprehensive context has
-been gathered in structured format.
+**Depth over breadth:**
+- Follow up on what the user says. Dig into their answers before moving to new topics.
+- If the user mentions something interesting or uncertain, explore it before changing subjects.
+- It's better to deeply understand 3 topics than to superficially cover 6.
+
+**When to move on:**
+- Move on when you can summarize the topic back to the user and they confirm your understanding.
+- Move on when the user gives short, confident answers — they've said what they need to say.
+- Move on if you've asked 2-3 follow-ups on the same point and the user isn't adding new information.
+- If the user signals they want to move forward ("that's about it", "let's move on", "yeah that covers it"), move on immediately.
+
+**Natural flow:**
+- Follow the user's lead — if they jump ahead to technology, go with it.
+- Transitions between stages should be invisible. Don't announce stage numbers.
+- Do NOT present numbered question lists or bullet lists of questions.
+
+**Handoff:** Store all conversation results in the variable `CONVERSATION_CONTEXT` for handoff back to the calling command. The conversation completes when all six stages have been covered with meaningful depth.
 
 ## Stage 1: Vision and Context Discovery
-Begin with broad, open-ended exploration:
-- Vision Understanding: "Tell me about what you're trying to build or achieve"
-- Context Gathering: "What's driving this project? What problem are you solving?"
-- Success Exploration: "How will you know when this is successful?"
-- Stakeholder Context: "Who are the main people involved or affected by this?"
+Start with a single open question and build from there. Explore the user's idea before moving on.
+
+Open with something like: "Tell me about what you're building — what problem are you trying to solve?"
+
+Then follow the thread. Topics to cover through natural follow-up (not all at once):
+- What's driving this project
+- What success looks like
+- Who's involved or affected
 
 ### Conversational Techniques
 - **Follow-up Questions**: Build naturally on user responses with related questions
@@ -102,11 +117,13 @@ Begin with broad, open-ended exploration:
 - **Open Space**: Give user time to add what they think matters
 
 ## Stage 2: Progressive Requirement Refinement
-Guide conversation toward more specific details:
-- Scope Clarification: "Let's talk about what this includes and what it doesn't"
-- User Experience Focus: "Walk me through how someone would use this"
-- Integration Context: "What other systems or tools does this need to work with?"
-- Constraint Exploration: "What limitations or requirements do we need to work within?"
+As the vision becomes clear, naturally explore scope and requirements through follow-up.
+
+Topics to cover through natural follow-up (not all at once):
+- What's included and what's explicitly not
+- How someone would actually use this
+- What other systems or tools it needs to work with
+- What limitations or requirements exist
 
 ### Understanding Validation
 - **Summarization**: "So if I understand correctly, you're looking for..."
@@ -115,11 +132,13 @@ Guide conversation toward more specific details:
 - **Constraint Validation**: "Given what you've told me about [constraint], does that mean...?"
 
 ## Stage 3: Detail and Validation
-Refine understanding with specific validation:
-- Requirement Validation: "Let me make sure I understand correctly..."
-- Priority Clarification: "What's most important if we had to prioritize?"
-- Timeline Context: "What's the timeline you're thinking about?"
-- Success Criteria: "How will we measure if this is working well?"
+Pause to validate your understanding before going deeper. Summarize what you've heard and confirm.
+
+Topics to cover through natural follow-up (not all at once):
+- Validate your understanding: "Let me make sure I've got this right..."
+- Priorities if trade-offs are needed
+- Timeline expectations
+- How success will be measured
 
 ### Conversation Management
 - **Pacing**: Allow natural conversation flow without rushing toward detailed requirements
@@ -150,12 +169,14 @@ considered the key trade-off — then honor their decision and record it with th
 
 ## Stage 4: Technology Stack Discussion
 
-Discuss the technology stack, informed by the project context from Stages 1-3.
+Discuss the technology stack, informed by what you've learned so far.
 
-### Technology Preferences
-- "What languages, frameworks, and databases are you considering?"
-- "Where will this run? Cloud provider, serverless, containers, on-premise?"
-- "Are there any technologies you must or must not use?"
+Start by exploring what the user already has in mind before introducing options.
+
+Topics to cover through natural follow-up (not all at once):
+- What languages, frameworks, or databases they're considering
+- Where this will run (cloud, serverless, containers, on-premise)
+- Any must-use or must-not-use technologies
 
 ### If Claude Plan Context Was Provided
 If the initial context mentions decisions from a Claude Plan file:
@@ -199,73 +220,36 @@ Confirm and record all technology decisions:
 
 ## Stage 5: Architecture Direction
 
-Discuss the high-level system design, informed by technology decisions from Stage 4.
-Goal: establish direction so the phase-architect has a starting point to refine — not to
-produce detailed architecture.
+Discuss the high-level system design. The goal is to establish direction so a phase-architect
+has a starting point to refine — not to produce detailed architecture.
 
-### Component Structure
-- "How do you envision the major pieces of this system working together?"
-- "What are the main components or services you see?"
-- If user is unsure, use the Decision Facilitation Pattern to sketch options:
-  - Monolith with clear module boundaries
-  - Service-oriented with defined API boundaries
-  - Serverless/event-driven
-  (Select context-appropriate options based on the project's requirements)
+If the user is unsure about architecture, use the Decision Facilitation Pattern to sketch
+2-3 options based on what you've learned about their project.
 
-### Integration Landscape
-- "What existing systems does this need to connect to?"
-- "What APIs, databases, or services already exist that this will interact with?"
-- "Are there any systems this explicitly should NOT connect to or replace?"
-
-### Data Flow
-- "Where does data come from, where does it go, and what transforms it?"
-- "What's the primary data store? Are there secondary stores or caches?"
-- "What data format or protocol constraints exist?"
-
-### Deployment Model
-- "How will this be deployed — containers, serverless, VMs, managed services?"
-- "What does the production environment look like?"
-- "What's the scaling model — horizontal, vertical, auto-scaling?"
-- This should confirm/expand on deployment discussion from Stage 4
-
-### Key Technical Challenges
-- "What are the 2-3 hardest technical problems you foresee?"
-- "Are there any technical unknowns that make you nervous?"
-- Note these — they become risk inputs for Stage 6
+Topics to cover through natural follow-up (not all at once):
+- How the major pieces of the system work together (components, services)
+- What existing systems this needs to connect to
+- Where data comes from, where it goes, and what transforms it
+- How this will be deployed
+- The 2-3 hardest technical problems they foresee
 
 ## Stage 6: Scope Boundaries and Risk Assessment
 
-Ground the plan in reality with explicit constraints and risk awareness.
+Ground the plan in reality. This is where you define what the system must NOT do, identify
+risks, and set quality expectations.
 
-### Anti-Requirements
-- "What should this system explicitly NOT do?"
-- "Are there features that seem obvious to build but you want to avoid?"
-- "Any past experiences where scope creep caused problems on similar projects?"
-- Anti-requirements propagate to Phase scope boundaries and prevent over-building
+Topics to cover through natural follow-up (not all at once):
+- What the system should explicitly NOT do (anti-requirements)
+- Expected load and performance targets (offer sensible defaults if user is unsure)
+- What could go wrong technically — surface the challenges from Stage 5 as risks
+- Quality bar: test coverage, security, accessibility expectations
 
-### Performance and Scale Targets
-- "What's the expected load — concurrent users, requests/sec, data volume?"
-- "What are the latency requirements — real-time, near-real-time, batch processing?"
-- "What's the growth trajectory — 10x in a year, or steady state?"
-- If user is unsure, offer sensible defaults based on project type with reasoning
-
-### Risk Assessment
-- "Based on everything we've discussed, what could go wrong technically?"
-- "What would make you consider this project a failure even if it technically ships?"
-- Surface the key technical challenges identified in Stage 5
-- For each risk: severity (High/Medium/Low), likelihood, and a mitigation approach
-- Use the Decision Facilitation Pattern for high-severity risks with multiple mitigations
-
-### Quality Bar
-- "What's the minimum test coverage you'd be comfortable with?"
-- "Are there security or compliance requirements I should know about?"
-- "What's the accessibility requirement for the UI?"
-- If user hasn't thought about these, present sensible defaults with brief reasoning
+For each risk identified: capture severity, likelihood, and a mitigation approach.
+Use the Decision Facilitation Pattern for high-severity risks with multiple mitigations.
 
 ### Final Validation
-- Summarize all 6 stages in a brief recap
-- "Does this capture everything important? Is there anything that changed your thinking?"
-- Ask if anything was missed or if priorities shifted during the conversation
+Before wrapping up, summarize what you've heard across all topics and ask the user to confirm.
+"Does this capture everything important? Is there anything I missed or that changed your thinking?"
 
 ## Quality Conversation Indicators
 
