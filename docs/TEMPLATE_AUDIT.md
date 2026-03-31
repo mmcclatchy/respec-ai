@@ -239,3 +239,44 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 115-125 | Output says "ONLY if both succeeded" then specifies "partial success" — contradiction | HIGH | MANDATORY CREATE PHASE OUTPUT PROTOCOL — 3 clear cases |
 | 136-138 | Weak validation gate — "report rather than saving" but no STOP/EXIT | HIGH | MANDATORY PHASE COMPLETENESS VALIDATION GATE |
 | 50-70 | Missing "DO NOT write files to disk" restriction | MEDIUM | MANDATORY PHASE EXTRACTION SCOPE RESTRICTION |
+
+## Task Workflow Findings (Batch 3)
+
+20 findings across task_command.py, task_planner.py, task_plan_critic.py, and task_critic.py.
+
+### task_command.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 223-224 | User can override MCP decision — contradicts MANDATORY DECISION PROTOCOL | CRITICAL | MANDATORY USER INPUT PROTOCOL — user provides feedback only, MCP controls decision |
+| 250 | Silent TASK_NAME replacement failure if phase lacks "phase-" prefix | HIGH | MANDATORY TASK NAME GENERATION PROTOCOL — error on unexpected format |
+| 98-109 | Research extraction can't distinguish "section missing" from "section empty" | HIGH | MANDATORY RESEARCH EXTRACTION PROTOCOL |
+
+### task_planner.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 91-112 | Constraint hierarchy uses soft language — "HARD CONSTRAINTS" in prose, not protocol block | MEDIUM | MANDATORY CONSTRAINT HIERARCHY block with VIOLATION callouts |
+| 137-145 | Document structure constraints are descriptive warnings, not enforceable | MEDIUM | MANDATORY TASK DOCUMENT STRUCTURE with explicit prohibitions |
+| 173-182 | Research citation format inconsistent between description and example | MEDIUM | Exact citation format specification |
+| 1-130 | Missing TOOL INVOCATION section | HIGH | Add standard block |
+
+### task_plan_critic.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 180-200 | Research citation validation uses passive "Verify/Check" language | HIGH | MANDATORY RESEARCH CITATION VALIDATION with explicit steps |
+| 119-130 | change_description alignment findings have no reporting location | MEDIUM | Specify output location in Phase Alignment section |
+| 270-303 | Score calibration uses subjective language ("adequate", "could be sharper") | MEDIUM | Explicit numeric scoring rules |
+| 1-81 | Missing TOOL INVOCATION section | HIGH | Add standard block |
+
+### task_critic.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 58 | Description says "Assess Phase quality" — should be "Task quality" | HIGH | Fix copy-paste error |
+| 124-127 | Deviation classification uses subjective categories without objective rules | HIGH | MANDATORY DEVIATION CLASSIFICATION PROTOCOL with ALL/ANY criteria |
+| 97-100 | Section validation uses passive warnings, "acceptable" contradicts strict policy | MEDIUM | MANDATORY SECTION VALIDATION block |
+| 82-100 | No structural validation gate — unclear if violations prevent approval | HIGH | MANDATORY STRUCTURE VALIDATION GATE |
+| 143-152 | Phase vocabulary ("features") mixed with Task vocabulary ("Steps") + typo | MEDIUM | Fix terminology |
+| 1-81 | Missing TOOL INVOCATION section | HIGH | Add standard block |

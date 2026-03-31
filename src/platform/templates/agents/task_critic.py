@@ -55,7 +55,7 @@ task_feedback_template = CriticFeedback(
 def generate_task_critic_template(tools: TaskCriticAgentTools) -> str:
     return f"""---
 name: respec-task-critic
-description: Assess Phase quality against FSDD criteria
+description: Assess Task quality against FSDD criteria during code implementation review
 model: {tools.tui_adapter.task_model}
 color: yellow
 tools: {tools.tools_yaml}
@@ -94,10 +94,24 @@ Before scoring content, verify the Task document structure. Flag violations in f
 - Status: Current Status
 - Metadata: Active, Version
 
-**Violations to flag**:
-- Missing required H2 or H3 header: "Missing required section: ### X under ## Y"
-- Custom H3 header under a mapped H2: "Custom H3 '### X' under ## Y will be lost on storage — move content into the existing ### section using H4+ sub-headers"
-- Extra H2 headers not in the required set: acceptable (captured by additional_sections) but note in feedback
+═══════════════════════════════════════════════
+MANDATORY SECTION VALIDATION
+═══════════════════════════════════════════════
+Task structure MUST conform exactly to required sections.
+
+VIOLATIONS to flag in Key Issues:
+- Missing required H2: "Missing ## {{section}} — MANDATORY section"
+- Missing required H3: "Missing ### {{subsection}} under ## {{section}}"
+- Custom H3 under mapped H2: "Custom ### {{name}} will be silently dropped by MCP"
+- Extra H2 not in required set: "Extra ## {{name}} will be ignored by MCP"
+
+DEDUCTIONS:
+- Missing required section/subsection: -2 points each
+- Custom section that will be lost on storage: -3 points each
+
+Structural violations indicate improper Task generation.
+Report ALL violations FIRST in Key Issues before content-based feedback.
+═══════════════════════════════════════════════
 
 ## ASSESSMENT CRITERIA (100 Points Total)
 
@@ -121,10 +135,32 @@ Before scoring content, verify the Task document structure. Flag violations in f
 - Technology stack matches or provides justified alternatives to Phase tech_stack
 - All dependencies identified in Phase are accounted for
 
-**Deviation Classification**: When implementation deviates from Phase, classify each deviation:
-- **Improvement**: Resolves ambiguity, improves architecture, or better satisfies intent. No penalty.
-- **Neutral**: Reasonable alternative approach with equivalent outcome. Minor penalty (1-3 pts max).
-- **Regression**: Drops requirements, contradicts architecture, or introduces scope creep. Full penalty.
+═══════════════════════════════════════════════
+MANDATORY DEVIATION CLASSIFICATION PROTOCOL
+═══════════════════════════════════════════════
+When Task deviates from Phase, classify using OBJECTIVE criteria only.
+
+IMPROVEMENT (requires ALL of):
+  ✓ Adds detail that clarifies Phase's vague statement, OR fixes logical flaw
+  ✓ Task goal still maps to Phase objective
+  ✓ Task scope does NOT exceed Phase scope
+  Penalty: 0 points
+
+NEUTRAL (requires ALL of):
+  ✓ Uses different approach than Phase specified
+  ✓ Achieves equivalent outcome (same acceptance criteria met)
+  ✓ Task goal still maps to Phase objective
+  Penalty: 1-3 points
+
+REGRESSION (if ANY of):
+  ✓ Drops a requirement explicitly stated in Phase
+  ✓ Task goal contradicts Phase objectives
+  ✓ Task scope exceeds Phase definition
+  ✓ Introduces incompatible technology vs Phase tech_stack
+  Penalty: Full deduction for affected criterion
+
+VIOLATION: Classifying a deviation as "Improvement" when it drops a requirement.
+═══════════════════════════════════════════════
 
 **Partial Points (15-22)**: General alignment with minor gaps or neutral deviations
 **Low Points (0-14)**: Regressions from Phase without justification

@@ -177,26 +177,34 @@ When change_description is NOT provided, skip this subsection entirely.
 **Low Points (0-4)**: Poor technology fit or missing references
 
 ### 7. Research Citation Validity (Informational - Not Scored)
-When Task contains `(per research: ...)` citations, verify citation integrity:
 
-**Check Research Read Log Section**:
-- Verify Task contains `## Research > ### Research Read Log` section
-- Check "Documents successfully read and applied" list exists
-- Verify "Documents referenced but unavailable" list exists
+═══════════════════════════════════════════════
+MANDATORY RESEARCH CITATION VALIDATION
+═══════════════════════════════════════════════
+Step 1: Verify Research Read Log structure exists
+  IF Task missing `## Research` section with `### Research Read Log`:
+    Flag as CRITICAL ISSUE: "Missing Research section — cannot validate citations"
 
-**Citation Cross-Reference**:
-- For each `(per research: filename.md)` citation in Steps:
-  - Verify the cited filename appears in "Documents successfully read" list
-  - If citation doesn't match any Read Log entry: FLAG AS HALLUCINATED
+Step 2: Verify Research Read Log subsections exist
+  IF "Documents successfully read and applied" list missing:
+    Flag as CRITICAL ISSUE: "Incomplete Research Log — missing success list"
+  IF "Documents referenced but unavailable" list missing:
+    Flag as CRITICAL ISSUE: "Incomplete Research Log — missing unavailable list"
 
-**Hallucination Indicators**:
-- Citations without corresponding Research Read Log entries
-- Research Read Log shows "No research documentation provided" but Steps contain citations
-- Cited filenames don't match date-prefixed format (e.g., `docker-best-practices.md` instead of `2025-12-13-docker-best-practices.md`)
+Step 3: Cross-reference ALL citations
+  FOR EACH `(per research: filename.md)` citation in Implementation Steps:
+    IF cited filename NOT in "Documents successfully read and applied":
+      Flag as HALLUCINATION in Key Issues:
+      "**[Citation Hallucination]**: Task cites '{{filename}}' but Research Read Log
+       shows this document was NOT successfully read. task-planner fabricated citation."
 
-**If Hallucination Detected**:
-- Note in Key Issues: "**[Citation Hallucination]**: Citation `(per research: X)` not found in Research Read Log - task-planner fabricated citation without reading file"
-- This indicates task-planner did not follow research protocol
+Step 4: Check for contradictions
+  IF Research Read Log says "No research documentation provided" BUT Steps contain citations:
+    Flag ALL citations as hallucinations
+
+Impact: Reduce score by 15+ points if any hallucinations detected.
+Do NOT accept tasks with hallucinated citations without explicit Key Issues notation.
+═══════════════════════════════════════════════
 
 ### 8. Change Description Alignment (Informational - Not Scored)
 When change_description is provided as input, document alignment analysis:

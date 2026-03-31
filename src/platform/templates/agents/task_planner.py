@@ -104,12 +104,17 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    ALSO scan PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
      For each directive found, extract file_path and Read if not already in impl_plan_paths
 
-   PRECEDENCE — IMPL_PLAN_CONSTRAINTS are HARD CONSTRAINTS:
-   → They override general knowledge AND research document guidance
-   → Do NOT deviate from technology choices documented in IMPL_PLAN_CONSTRAINTS
-   → Do NOT suggest alternatives to explicitly rejected approaches
-   → Research documents (from research_file_paths) are GUIDANCE only —
-     the agent may deviate from guidance if justified, NEVER from constraints
+   ═══════════════════════════════════════════════
+   MANDATORY CONSTRAINT HIERARCHY
+   ═══════════════════════════════════════════════
+   Precedence (highest to lowest):
+   1. IMPL_PLAN_CONSTRAINTS — BINDING. No alternatives. No deviations.
+   2. Research documents (research_file_paths) — Guidance. May adapt if justified.
+   3. General knowledge — Lowest priority.
+
+   VIOLATION: Suggesting an alternative to a technology in IMPL_PLAN_CONSTRAINTS.
+   VIOLATION: "Constraint says PostgreSQL but SQLite works better" is prohibited.
+   ═══════════════════════════════════════════════
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
 4. Read research documents (if research_file_paths provided):
@@ -134,15 +139,33 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 - Section order must be preserved
 - Do NOT use bold labels like `**Goal**:` - use headers like `### Goal`
 
-**DOCUMENT STRUCTURE CONSTRAINTS — Violating these causes silent data loss**:
-- Use ONLY the H2 sections shown: Identity, Overview, Implementation, Quality, Research, Status, Metadata
-- Use ONLY the H3 headers shown under each H2 (e.g., ### Goal, ### Acceptance Criteria under ## Overview)
-- Do NOT add custom H3 headers under any mapped H2 section — they will be silently dropped during storage
-- Put additional detail WITHIN existing H3 sections using H4+ headers, bullet lists, or code blocks
-- Do NOT add H2 headers not in the template
-- Do NOT rename or reorder any header
+═══════════════════════════════════════════════
+MANDATORY TASK DOCUMENT STRUCTURE
+═══════════════════════════════════════════════
+The Task document structure is FIXED. Custom headers cause silent data loss.
 
-**MCP Validation will REJECT documents that don't match this structure.**
+REQUIRED H2 sections (in order): Identity, Overview, Implementation, Quality, Research, Status, Metadata
+
+REQUIRED H3 headers per section:
+- ## Identity → ### Phase Path
+- ## Overview → ### Goal, ### Acceptance Criteria, ### Technology Stack Reference
+- ## Implementation → ### Checklist, ### Steps
+- ## Quality → ### Testing Strategy
+- ## Research → ### Research Read Log
+- ## Status → ### Current Status
+- ## Metadata → ### Active, ### Version
+
+ABSOLUTE PROHIBITIONS:
+- Do NOT add custom H3 headers under any H2 — they will be silently dropped by MCP
+- Do NOT add H2 headers not in the required list — they will be ignored
+- Do NOT rename or reorder any required header
+
+To add detail beyond required H3 headers:
+  → Use H4+ sub-headers WITHIN an existing H3 section
+  → Use bullet lists or code blocks within the H3 content
+
+VIOLATION: Adding "### Implementation Notes" under ## Implementation — silently dropped on storage.
+═══════════════════════════════════════════════
 
 ## TASK STRUCTURE (CONCRETE EXAMPLE)
 

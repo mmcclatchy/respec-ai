@@ -91,22 +91,35 @@ The Phase document contains a "Research Requirements" section with file paths to
 
 #### Step 2.1: Parse Phase Research Requirements Section
 
+═══════════════════════════════════════════════
+MANDATORY RESEARCH EXTRACTION PROTOCOL
+═══════════════════════════════════════════════
 ```text
 DOCUMENTATION_PATHS = []
 
 Search PHASE_MARKDOWN for "### Research Requirements" section
-IF section exists:
+
+IF section NOT found:
+  DOCUMENTATION_PATHS = []
+  Display: "ℹ️ No Research Requirements section found in Phase"
+
+IF section found:
   Extract all file paths matching pattern: `.best-practices/*.md`
 
   For each path found:
     DOCUMENTATION_PATHS.append(path)
-    Display to user: "📚 Research document: {{path}}"
+    Display: "📚 Research document: {{path}}"
 
-IF DOCUMENTATION_PATHS is empty:
-  Display to user: "ℹ️ No research documentation referenced in Phase"
-ELSE:
-  Display to user: "✓ Found {{len(DOCUMENTATION_PATHS)}} research document(s) to guide task planning"
+  IF no paths found after scanning entire section:
+    Display: "⚠️ Research Requirements section exists but contains no valid paths"
+    DOCUMENTATION_PATHS = []
+
+IF DOCUMENTATION_PATHS is non-empty:
+  Display: "✓ Found {{len(DOCUMENTATION_PATHS)}} research document(s) to guide task planning"
 ```
+
+Do NOT silently treat "section exists with no paths" as equivalent to "section missing".
+═══════════════════════════════════════════════
 
 #### Step 2.2: Parse Implementation Plan References
 
@@ -213,6 +226,19 @@ ELIF LOOP_DECISION == "user_input":
   - Key issues identified by task-plan-critic
   - Recommendations for improvement
 
+  ═══════════════════════════════════════════════
+  MANDATORY USER INPUT PROTOCOL
+  ═══════════════════════════════════════════════
+  User provides FEEDBACK only. The MCP Server controls the
+  refine/complete decision after receiving user input.
+
+  Do NOT let user override MCP decision.
+  Do NOT proceed to Step 6 based on user choice alone.
+
+  VIOLATION: "User said proceed, so I'll skip refinement"
+             is a workflow violation. MCP decides, not user.
+  ═══════════════════════════════════════════════
+
   Use AskUserQuestion tool to present options:
   Question: "The Task quality is at [SCORE]/100. How would you like to proceed?"
   Options:
@@ -221,13 +247,14 @@ ELIF LOOP_DECISION == "user_input":
     3. "Provide specific guidance for refinement"
 
   IF user selects option 1:
-    Override MCP decision and proceed to Step 6
+    Store user feedback: "User confirmed current quality is acceptable"
   ELIF user selects option 2:
-    Return to Step 4.1 for one more refinement iteration
+    Store user feedback: "User requested one more refinement iteration"
   ELIF user selects option 3:
     Prompt for specific guidance
-    Store as user feedback using store_user_feedback
-    Return to Step 4.1 with user guidance
+    Store user feedback with guidance
+
+  Return to Step 4.1 (MCP Server will decide next action based on feedback)
 
 ELIF LOOP_DECISION == "complete":
   Display: "✅ Score: {{LOOP_SCORE}}/100 — task approved"
@@ -247,8 +274,18 @@ FINAL_TASK = {tools.get_task}
 Write Task to platform file for user review and version control:
 
 ```text
-TASK_NAME = PHASE_NAME.replace("phase-", "task-")
-# Example: phase-1-foundation-and-infrastructure → task-1-foundation-and-infrastructure
+═══════════════════════════════════════════════
+MANDATORY TASK NAME GENERATION PROTOCOL
+═══════════════════════════════════════════════
+IF PHASE_NAME starts with "phase-":
+  TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)
+  Display: "✓ Task name: {{TASK_NAME}}"
+
+ELIF PHASE_NAME does NOT start with "phase-":
+  ERROR: "Phase name format unexpected: '{{PHASE_NAME}}' does not start with 'phase-'"
+  GUIDANCE: "Verify phase follows naming convention: phase-N-descriptive-name"
+  EXIT with error message
+═══════════════════════════════════════════════
 
 TASK_FILE_PATH = {tools.task_resource_pattern}
 
