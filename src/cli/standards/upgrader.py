@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 SEPARATOR = '═══════════════════════════════════════════════'
 UNIVERSAL_FILENAME = 'universal.md'
 SKIP_FILES = {'stack.md'}
@@ -97,11 +98,13 @@ def parse_config_sections(content: str) -> list[dict[str, str]]:
         if current_h3 and current_lines:
             body = '\n'.join(current_lines).strip()
             if body:
-                sections.append({
-                    'h2': current_h2 or '',
-                    'h3': current_h3,
-                    'content': body,
-                })
+                sections.append(
+                    {
+                        'h2': current_h2 or '',
+                        'h3': current_h3,
+                        'content': body,
+                    }
+                )
 
     for line in content.splitlines():
         if line.startswith('## ') and not line.startswith('### '):
@@ -162,7 +165,4 @@ def find_config_files(project_path: Path, language: str | None = None) -> list[P
         target = config_dir / f'{language}.md'
         return [target] if target.exists() else []
 
-    return [
-        f for f in sorted(config_dir.glob('*.md'))
-        if f.name not in SKIP_FILES
-    ]
+    return [f for f in sorted(config_dir.glob('*.md')) if f.name not in SKIP_FILES]

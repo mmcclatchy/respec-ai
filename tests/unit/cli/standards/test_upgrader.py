@@ -1,9 +1,7 @@
 from pathlib import Path
 
-import pytest
 
 from src.cli.standards.upgrader import (
-    EXAMPLE_PLACEHOLDER,
     SEPARATOR,
     find_config_files,
     generate_violations,
@@ -42,10 +40,12 @@ class TestGenerateViolations:
         assert any('inline' in v.lower() for v in violations)
 
     def test_no_duplicates(self) -> None:
-        violations = generate_violations([
-            '- No inline imports',
-            '- All at file top',
-        ])
+        violations = generate_violations(
+            [
+                '- No inline imports',
+                '- All at file top',
+            ]
+        )
         assert len(violations) == len(set(violations))
 
     def test_returns_empty_for_unknown_rules(self) -> None:
@@ -130,12 +130,7 @@ class TestShouldUpgradeSection:
 
 class TestUpgradeConfigContent:
     def test_upgrades_coding_standards_sections(self) -> None:
-        content = (
-            '# Python\n\n'
-            '## Commands\n\n- **Test**: `pytest`\n\n'
-            '## Coding Standards\n\n'
-            '### Naming\n- snake_case\n'
-        )
+        content = '# Python\n\n## Commands\n\n- **Test**: `pytest`\n\n## Coding Standards\n\n### Naming\n- snake_case\n'
         result = upgrade_config_content('python.md', content)
         assert SEPARATOR in result
         assert 'MANDATORY NAMING STANDARDS' in result
