@@ -28,7 +28,6 @@ from .models import (
     RoadmapCriticAgentTools,
     SpecAlignmentReviewerAgentTools,
     TaskCommandTools,
-    TaskCriticAgentTools,
     TaskPlanCriticAgentTools,
     TaskPlannerAgentTools,
     ToolReference,
@@ -734,33 +733,6 @@ def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticA
         get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, plan_name='{PLAN_NAME}'),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
-        ),
-    )
-
-
-def create_task_critic_agent_tools(tui_adapter: TuiAdapter) -> TaskCriticAgentTools:
-    builder = TemplateToolBuilder()
-
-    for tool in TaskCriticAgentTools.respec_ai_tools:
-        builder.add_respec_ai_tool(tool)
-
-    for builtin_tool, params in TaskCriticAgentTools.builtin_tools:
-        builder.add_builtin_tool(builtin_tool, params)
-
-    return TaskCriticAgentTools(
-        tui_adapter=tui_adapter,
-        tools_yaml=builder.render_comma_separated_tools(),
-        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
-        ),
-        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
-        ),
-        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='{PLANNING_LOOP_ID}'
-        ),
-        store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{PLANNING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
     )
 

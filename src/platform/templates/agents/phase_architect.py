@@ -330,7 +330,18 @@ CALL {tools.update_document}
 → Expected error: Storage failure (retry once, then report to command)
 
 STEP 5: Return Status Summary
-Return brief status message to orchestrator (do NOT return full markdown):
+
+═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE
+═══════════════════════════════════════════════
+Your ONLY output to the orchestrator is the status message below.
+Do NOT return the full Phase markdown.
+Do NOT add commentary about the Phase quality.
+The orchestrator will invoke phase-critic for quality assessment.
+
+VIOLATION: Returning full Phase markdown to the orchestrator
+           instead of the brief status message.
+═══════════════════════════════════════════════
 
 ```text
 Phase updated successfully.
@@ -419,7 +430,7 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Sprint-sized: Cohesive set of related work that delivers testable value
 - If adding timeline estimates, that's acceptable, but scope by work complexity, not hours
 
-**Scoping Principle**: Each phase should deliver a cohesive, testable increment of value. If a phase feels like "two different things," split it. If it's "just one function," combine with related work.
+**Scoping Principle**: Each phase MUST deliver a cohesive, testable increment of value. If a phase feels like "two different things," split it. If it's "just one function," combine with related work.
 
 **Examples**:
 

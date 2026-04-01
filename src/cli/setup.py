@@ -34,7 +34,6 @@ from src.platform.template_helpers import (
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
-    create_task_critic_agent_tools,
     create_task_plan_critic_agent_tools,
     create_task_planner_agent_tools,
 )
@@ -56,7 +55,6 @@ from src.platform.templates.agents import (
     generate_roadmap_critic_template,
     generate_roadmap_template,
     generate_spec_alignment_reviewer_template,
-    generate_task_critic_template,
     generate_task_plan_critic_template,
     generate_task_planner_template,
 )
@@ -188,7 +186,6 @@ def _get_agent_generators(
     phase_critic_tools = create_phase_critic_agent_tools(_tui_adapter, loop_config.phase_length_soft_cap)
     task_planner_tools = create_task_planner_agent_tools(_tui_adapter)
     task_plan_critic_tools = create_task_plan_critic_agent_tools(_tui_adapter)
-    task_critic_tools = create_task_critic_agent_tools(_tui_adapter)
     coder_tools = create_coder_agent_tools(_tui_adapter, coder_platform_tools)
     code_reviewer_tools = create_code_reviewer_agent_tools(_tui_adapter)
     automated_quality_checker_tools = create_automated_quality_checker_agent_tools(_tui_adapter)
@@ -210,7 +207,6 @@ def _get_agent_generators(
         ('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
         ('respec-task-planner', generate_task_planner_template(task_planner_tools)),
         ('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
-        ('respec-task-critic', generate_task_critic_template(task_critic_tools)),
         ('respec-coder', generate_coder_template(coder_tools)),
         ('respec-code-reviewer', generate_code_reviewer_template(code_reviewer_tools)),
         (

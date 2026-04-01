@@ -686,8 +686,8 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - ❌ Omitting H2 section header (e.g., just "### Architecture" without "## System Design")
 
 **Notes**:
-- Core sections (Overview, Architecture, Testing Strategy) should always be present
-- Domain-specific sections should only be included if relevant to the project type
+- Core sections (Overview, Architecture, Testing Strategy) MUST always be present
+- Domain-specific sections MUST only be included if relevant to the project type
 - No placeholder content ("TBD", "N/A") - omit sections instead
 - Content can use any markdown format (code blocks, lists, tables, diagrams)
 

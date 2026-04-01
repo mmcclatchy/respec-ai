@@ -194,8 +194,8 @@ Work through workflows one at a time. Each batch must re-audit with open-source 
 | ----- | -------- | ----- | ------ |
 | 1 | Roadmap (command + agents) | roadmap_command.py, plan_command.py Step 10, roadmap.py, create_phase.py | Pending |
 | 2 | Plan + Roadmap (command + agents) | plan_command.py, plan_conversation_command.py, plan_critic.py, plan_analyst.py, analyst_critic.py, roadmap_command.py, roadmap.py, roadmap_critic.py | Complete |
-| 3 | Phase (command + agents) | phase_command.py, phase_architect.py, phase_critic.py | Pending |
-| 4 | Task (command + agents) | task_command.py, task_planner.py, task_plan_critic.py, task_critic.py | Pending |
+| 3 | Phase (command + agents) | phase_command.py, phase_architect.py, phase_critic.py | Complete |
+| 4 | Task (command + agents) | task_command.py, task_planner.py, task_plan_critic.py (task_critic.py removed — orphaned) | Complete |
 | 5 | Code (command + agents) | code_command.py, coder.py, code_reviewer.py, review team agents | Pending |
 | 6 | Patch (command + agents) | patch_command.py, patch_planner.py | Pending |
 | 7 | Cross-cutting patterns | TOOL INVOCATION sections, output scope restrictions, MCP tool naming | Pending |
