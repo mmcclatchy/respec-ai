@@ -28,6 +28,7 @@ from src.cli.commands import (
     platform,
     regenerate,
     register_mcp,
+    standards,
     status,
     unregister_mcp,
     update,
@@ -150,6 +151,13 @@ def main() -> int:
 
     db.add_arguments(db_parser)
 
+    standards_parser = subparsers.add_parser(
+        'standards',
+        help='Upgrade coding standards config files to MANDATORY protocol format',
+    )
+
+    standards.add_arguments(standards_parser)
+
     args = parser.parse_args()
 
     match args.command:
@@ -179,6 +187,8 @@ def main() -> int:
             return opencode_model.run(args)
         case 'db':
             return db.run(args)
+        case 'standards':
+            return standards.run(args)
         case _:
             parser.print_help()
             return 1

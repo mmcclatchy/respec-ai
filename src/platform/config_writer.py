@@ -1,131 +1,98 @@
+import json
 from pathlib import Path
 
 from src.platform.models import LanguageTooling, ProjectStack
 
 
+DATA_DIR = Path(__file__).parent / 'data'
+
 UNIVERSAL_STANDARDS = """# Universal Coding Standards
 
 ## Security
+
+### Secrets
 - No hardcoded secrets (API keys, passwords, tokens, connection strings) in source code
 - No credentials in source code — use environment variables or config references
 - Test fixtures with obviously fake values are acceptable
 
 ## Code Separation
+
+### Production
 - No test logic in production code
 - No production logic in test files
 
 ## Imports
+
+### Organization
 - No inline imports — all imports at file top
 - Exception: circular dependency resolution
+
+## Error Handling
+
+### Patterns
+- Fail fast — validate inputs early, reject invalid state immediately
+- Use specific exceptions — no bare except or catch-all Exception handlers
+- Provide meaningful error messages — include what went wrong and what was expected
+- No silent failures — do not swallow exceptions without logging or re-raising
+
+## Logging
+
+### Hygiene
+- No PII (personally identifiable information) in log output
+- No secrets, tokens, or credentials in log messages
+- Include context in log messages — what operation, what entity, what outcome
+
+## Dependencies
+
+### Management
+- Prefer well-maintained libraries — last commit within 6 months, good documentation
+- Document why a dependency was chosen over alternatives
+- Pin versions for reproducible builds
 """
 
-
-LANGUAGE_CODING_STANDARDS: dict[str, str] = {
-    'python': """## Coding Standards
-
-### Naming
-- Variables/functions: snake_case
-- Classes: PascalCase
-- Constants: UPPER_SNAKE_CASE
-
-### Imports
-- Absolute imports only
-- Group order: stdlib → third-party → local
-- All at file top
-
-### Type Hints
-- Required on all function parameters and return values
-- Use `X | None` not `Optional[X]`
-
-### Documentation
-- Docstrings: public APIs only
-- Comments: non-obvious business logic only""",
-    'javascript': """## Coding Standards
-
-### Naming
-- Variables/functions: camelCase
-- Classes: PascalCase
-- Constants: UPPER_SNAKE_CASE
-
-### Imports
-- Named imports preferred over default
-- Group order: stdlib → third-party → local
-
-### Documentation
-- JSDoc for public APIs only
-- Comments: non-obvious business logic only""",
-    'typescript': """## Coding Standards
-
-### Naming
-- Variables/functions: camelCase
-- Classes/Interfaces: PascalCase
-- Constants: UPPER_SNAKE_CASE
-
-### Imports
-- Named imports preferred over default
-- Group order: stdlib → third-party → local
-
-### Type Annotations
-- Strict mode enabled
-- Avoid `any` type
-
-### Documentation
-- JSDoc/TSDoc for public APIs only
-- Comments: non-obvious business logic only""",
-    'go': """## Coding Standards
-
-### Naming
-- Unexported: camelCase
-- Exported: PascalCase
-- Acronyms: all caps (e.g., HTTPServer)
-
-### Imports
-- Group order: stdlib → third-party → local
-- Use goimports for formatting
-
-### Documentation
-- Package-level comments required
-- Exported functions require doc comments""",
-    'rust': """## Coding Standards
-
-### Naming
-- Variables/functions: snake_case
-- Types/Traits: PascalCase
-- Constants: UPPER_SNAKE_CASE
-
-### Documentation
-- `///` doc comments for public items
-- `//!` for module-level documentation""",
+CODING_STANDARDS_FIELDS: dict[str, str] = {
+    'naming': 'Naming',
+    'imports': 'Imports',
+    'type_system': 'Type System',
+    'documentation': 'Documentation',
+    'error_handling': 'Error Handling',
+    'code_structure': 'Code Structure',
 }
 
-LANGUAGE_TESTING_DEFAULTS: dict[str, str] = {
-    'python': """## Testing
 
-- Framework: pytest with pytest-mock
-- Location: tests/ directory, mirrors src/ structure
-- Naming: test_{function}_{scenario}
-- Prefer integration tests over mocked unit tests for database operations""",
-    'javascript': """## Testing
+def _load_language_standards() -> dict[str, dict]:
+    standards_path = DATA_DIR / 'language_standards.json'
+    return json.loads(standards_path.read_text(encoding='utf-8'))
 
-- Framework: vitest
-- Location: tests/ or __tests__/ directories
-- Naming: describe/it blocks with clear descriptions""",
-    'typescript': """## Testing
 
-- Framework: vitest
-- Location: tests/ or __tests__/ directories
-- Naming: describe/it blocks with clear descriptions""",
-    'go': """## Testing
+def _render_coding_standards(data: dict) -> str:
+    sections: list[str] = []
+    for field, header in CODING_STANDARDS_FIELDS.items():
+        rules = data.get(field, [])
+        if rules:
+            bullets = '\n'.join(f'- {r}' for r in rules)
+            sections.append(f'### {header}\n{bullets}')
 
-- Framework: testing (stdlib)
-- Location: *_test.go files alongside source
-- Naming: TestFunctionName_Scenario""",
-    'rust': """## Testing
+    if not sections:
+        return ''
 
-- Framework: cargo test (built-in)
-- Location: #[cfg(test)] mod tests in source files
-- Integration tests in tests/ directory""",
-}
+    return '## Coding Standards\n\n' + '\n\n'.join(sections)
+
+
+def _render_testing(data: dict) -> str:
+    testing = data.get('testing')
+    if not testing:
+        return ''
+
+    lines = [
+        f'- Framework: {testing["framework"]}',
+        f'- Location: {testing["location"]}',
+        f'- Naming: {testing["naming"]}',
+    ]
+    for extra in testing.get('extras', []):
+        lines.append(f'- {extra}')
+
+    return '## Testing\n\n' + '\n'.join(lines)
 
 
 def format_stack_md(stack: ProjectStack) -> str:
@@ -182,12 +149,18 @@ def format_language_md(lang: str, tooling: LanguageTooling) -> str:
         lines.append('- **Type check**: none')
     lines.append(f'- **Lint**: `{tooling.lint_command}`')
 
-    testing = LANGUAGE_TESTING_DEFAULTS.get(lang, f'## Testing\n\n- Framework: {tooling.test_runner}')
-    lines.extend(['', testing])
+    all_standards = _load_language_standards()
+    lang_data = all_standards.get(lang, {})
 
-    coding_standards = LANGUAGE_CODING_STANDARDS.get(lang)
-    if coding_standards:
-        lines.extend(['', coding_standards])
+    testing_md = _render_testing(lang_data)
+    if testing_md:
+        lines.extend(['', testing_md])
+    else:
+        lines.extend(['', f'## Testing\n\n- Framework: {tooling.test_runner}'])
+
+    coding_md = _render_coding_standards(lang_data)
+    if coding_md:
+        lines.extend(['', coding_md])
 
     lines.append('')
     return '\n'.join(lines)

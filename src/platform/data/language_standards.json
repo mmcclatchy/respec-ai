@@ -1,0 +1,863 @@
+{
+  "python": {
+    "naming": [
+      "Variables/functions: snake_case",
+      "Classes: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "Absolute imports only",
+      "Group order: stdlib → third-party → local",
+      "All at file top"
+    ],
+    "type_system": [
+      "Required on all function parameters and return values",
+      "Use `X | None` not `Optional[X]`"
+    ],
+    "documentation": [
+      "Docstrings: public APIs only",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Fail fast — validate inputs early",
+      "Use specific exceptions — never bare `except:` or `except Exception:`",
+      "Use `async/await` for I/O operations"
+    ],
+    "code_structure": [
+      "No global variables except UPPER_CASE constants",
+      "Max 3 levels of nesting",
+      "Services separate from endpoints"
+    ],
+    "testing": {
+      "framework": "pytest with pytest-mock",
+      "location": "tests/ directory, mirrors src/ structure",
+      "naming": "test_{function}_{scenario}",
+      "extras": [
+        "Prefer integration tests over mocked unit tests for database operations"
+      ]
+    }
+  },
+  "javascript": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Classes: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "Named imports preferred over default",
+      "Group order: stdlib → third-party → local"
+    ],
+    "type_system": [],
+    "documentation": [
+      "JSDoc for public APIs only",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use try/catch with specific error types",
+      "Always handle Promise rejections — no unhandled rejections",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "Prefer const over let — never use var",
+      "Max 3 levels of nesting",
+      "One component per file"
+    ],
+    "testing": {
+      "framework": "vitest",
+      "location": "tests/ or __tests__/ directories",
+      "naming": "describe/it blocks with clear descriptions",
+      "extras": []
+    }
+  },
+  "typescript": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Classes/Interfaces: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "Named imports preferred over default",
+      "Group order: stdlib → third-party → local"
+    ],
+    "type_system": [
+      "Strict mode enabled",
+      "Avoid `any` type",
+      "Use type narrowing over type assertions"
+    ],
+    "documentation": [
+      "JSDoc/TSDoc for public APIs only",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use try/catch with specific error types",
+      "Always handle Promise rejections — no unhandled rejections",
+      "Use Result/Either patterns for expected failures"
+    ],
+    "code_structure": [
+      "Prefer const over let — never use var",
+      "Max 3 levels of nesting",
+      "One component per file"
+    ],
+    "testing": {
+      "framework": "vitest",
+      "location": "tests/ or __tests__/ directories",
+      "naming": "describe/it blocks with clear descriptions",
+      "extras": []
+    }
+  },
+  "java": {
+    "naming": [
+      "Variables/methods: camelCase",
+      "Classes/Interfaces: PascalCase",
+      "Constants: UPPER_SNAKE_CASE",
+      "Packages: lowercase dot-separated"
+    ],
+    "imports": [
+      "No wildcard imports (no `import java.util.*`)",
+      "Group order: java → javax → third-party → local"
+    ],
+    "type_system": [
+      "Use generics instead of raw types",
+      "Prefer `Optional<T>` over null returns for public APIs"
+    ],
+    "documentation": [
+      "Javadoc for public classes and methods",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use specific exception types — avoid catching Exception",
+      "Always close resources with try-with-resources",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "One public class per file",
+      "Max 3 levels of nesting",
+      "Prefer composition over inheritance"
+    ],
+    "testing": {
+      "framework": "JUnit 5 with Mockito",
+      "location": "src/test/java/, mirrors main structure",
+      "naming": "methodName_scenario_expectedResult",
+      "extras": []
+    }
+  },
+  "csharp": {
+    "naming": [
+      "Variables/parameters: camelCase",
+      "Methods/Properties/Classes: PascalCase",
+      "Constants: PascalCase",
+      "Private fields: _camelCase"
+    ],
+    "imports": [
+      "Group order: System → third-party → local",
+      "Remove unused using directives"
+    ],
+    "type_system": [
+      "Enable nullable reference types",
+      "Use `string?` not `string` for nullable"
+    ],
+    "documentation": [
+      "XML doc comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use specific exception types",
+      "Always dispose resources with using statements",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "One class per file",
+      "Max 3 levels of nesting",
+      "Use dependency injection"
+    ],
+    "testing": {
+      "framework": "xUnit with Moq",
+      "location": "ProjectName.Tests/ project",
+      "naming": "MethodName_Scenario_ExpectedResult",
+      "extras": []
+    }
+  },
+  "go": {
+    "naming": [
+      "Unexported: camelCase",
+      "Exported: PascalCase",
+      "Acronyms: all caps (e.g., HTTPServer)"
+    ],
+    "imports": [
+      "Group order: stdlib → third-party → local",
+      "Use goimports for formatting"
+    ],
+    "type_system": [],
+    "documentation": [
+      "Package-level comments required",
+      "Exported functions require doc comments"
+    ],
+    "error_handling": [
+      "Check errors immediately — never ignore returned errors",
+      "Wrap errors with context using fmt.Errorf with %w",
+      "Return errors rather than panicking"
+    ],
+    "code_structure": [
+      "Keep functions short and focused",
+      "Use interfaces for dependency injection",
+      "Prefer composition over inheritance"
+    ],
+    "testing": {
+      "framework": "testing (stdlib)",
+      "location": "*_test.go files alongside source",
+      "naming": "TestFunctionName_Scenario",
+      "extras": []
+    }
+  },
+  "rust": {
+    "naming": [
+      "Variables/functions: snake_case",
+      "Types/Traits: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "Group: std → external crates → local modules",
+      "Use `use` declarations at module top"
+    ],
+    "type_system": [
+      "Leverage the type system to prevent invalid states",
+      "Prefer newtype pattern for domain types"
+    ],
+    "documentation": [
+      "`///` doc comments for public items",
+      "`//!` for module-level documentation"
+    ],
+    "error_handling": [
+      "Use Result<T, E> for recoverable errors — no unwrap() in production code",
+      "Use thiserror for custom error types",
+      "Propagate errors with ? operator"
+    ],
+    "code_structure": [
+      "Keep functions short and focused",
+      "Use traits for abstraction",
+      "Prefer owned types over references when ownership is clear"
+    ],
+    "testing": {
+      "framework": "cargo test (built-in)",
+      "location": "#[cfg(test)] mod tests in source files",
+      "naming": "test_function_name_scenario",
+      "extras": [
+        "Integration tests in tests/ directory"
+      ]
+    }
+  },
+  "cpp": {
+    "naming": [
+      "Variables/functions: snake_case or camelCase (project-consistent)",
+      "Classes/Structs: PascalCase",
+      "Constants/Macros: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "Include guards or #pragma once",
+      "Group order: C stdlib → C++ stdlib → third-party → local",
+      "Prefer forward declarations over includes in headers"
+    ],
+    "type_system": [
+      "Use `auto` for complex types where type is obvious",
+      "Prefer `std::optional` over null pointers"
+    ],
+    "documentation": [
+      "Doxygen comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use exceptions for error handling (not error codes) unless performance-critical",
+      "Use RAII for resource management",
+      "Prefer smart pointers over raw pointers"
+    ],
+    "code_structure": [
+      "Separate header and implementation files",
+      "Use namespaces to avoid name collisions",
+      "Prefer composition over inheritance"
+    ],
+    "testing": {
+      "framework": "Google Test (gtest)",
+      "location": "tests/ directory",
+      "naming": "TEST(SuiteName, TestName)",
+      "extras": []
+    }
+  },
+  "c": {
+    "naming": [
+      "Variables/functions: snake_case",
+      "Macros/Constants: UPPER_SNAKE_CASE",
+      "Types (typedef): PascalCase or snake_case_t"
+    ],
+    "imports": [
+      "Include guards in all headers",
+      "Group order: C stdlib → system → third-party → local"
+    ],
+    "type_system": [],
+    "documentation": [
+      "Doxygen comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Check return values — never ignore error codes",
+      "Use goto for cleanup in error paths",
+      "Document error codes in function headers"
+    ],
+    "code_structure": [
+      "One module per .c/.h pair",
+      "Minimize global state",
+      "Use opaque pointers for encapsulation"
+    ],
+    "testing": {
+      "framework": "Unity or CMocka",
+      "location": "tests/ directory",
+      "naming": "test_function_name_scenario",
+      "extras": []
+    }
+  },
+  "ruby": {
+    "naming": [
+      "Variables/methods: snake_case",
+      "Classes/Modules: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "require statements at file top",
+      "Group order: stdlib → gems → local"
+    ],
+    "type_system": [],
+    "documentation": [
+      "YARD comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use specific exception types — avoid rescuing Exception",
+      "Use ensure for cleanup",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "One class per file",
+      "Max 3 levels of nesting",
+      "Follow Rails conventions if applicable"
+    ],
+    "testing": {
+      "framework": "RSpec",
+      "location": "spec/ directory, mirrors lib/ structure",
+      "naming": "describe/it blocks with clear descriptions",
+      "extras": []
+    }
+  },
+  "php": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Classes: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "Use namespaces and autoloading (PSR-4)",
+      "Group order: PHP → vendor → local"
+    ],
+    "type_system": [
+      "Type declarations on all parameters and return values",
+      "Use union types where appropriate"
+    ],
+    "documentation": [
+      "PHPDoc for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use specific exception types",
+      "Never suppress errors with @",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "One class per file (PSR-1)",
+      "Follow PSR-12 coding style",
+      "Use dependency injection"
+    ],
+    "testing": {
+      "framework": "PHPUnit",
+      "location": "tests/ directory",
+      "naming": "testMethodName_scenario",
+      "extras": []
+    }
+  },
+  "swift": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Types/Protocols: PascalCase",
+      "Constants: camelCase (let)"
+    ],
+    "imports": [
+      "Group order: Foundation → UIKit/SwiftUI → third-party → local",
+      "Import only what you need"
+    ],
+    "type_system": [
+      "Use optionals explicitly — avoid force unwrapping (!)",
+      "Prefer value types (struct) over reference types (class)"
+    ],
+    "documentation": [
+      "/// doc comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use throwing functions with specific error types",
+      "Handle errors with do/catch — avoid try!",
+      "Use Result type for async error handling"
+    ],
+    "code_structure": [
+      "Use extensions to organize code within a file",
+      "Max 3 levels of nesting",
+      "Follow protocol-oriented programming patterns"
+    ],
+    "testing": {
+      "framework": "XCTest",
+      "location": "Tests/ target",
+      "naming": "testMethodName_scenario_expectedResult",
+      "extras": []
+    }
+  },
+  "kotlin": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Classes/Interfaces: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "No wildcard imports",
+      "Group order: kotlin → java → third-party → local"
+    ],
+    "type_system": [
+      "Use nullable types explicitly (T?)",
+      "Prefer data classes for value objects"
+    ],
+    "documentation": [
+      "KDoc for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use specific exception types",
+      "Prefer sealed classes for error hierarchies",
+      "Use runCatching for functional error handling"
+    ],
+    "code_structure": [
+      "Prefer immutability — use val over var",
+      "Use extension functions for utility operations",
+      "Prefer composition over inheritance"
+    ],
+    "testing": {
+      "framework": "JUnit 5 with MockK",
+      "location": "src/test/kotlin/, mirrors main structure",
+      "naming": "methodName_scenario_expectedResult",
+      "extras": []
+    }
+  },
+  "scala": {
+    "naming": [
+      "Variables/methods: camelCase",
+      "Classes/Traits: PascalCase",
+      "Constants: PascalCase"
+    ],
+    "imports": [
+      "No wildcard imports in production code",
+      "Group order: scala → java → third-party → local"
+    ],
+    "type_system": [
+      "Prefer immutable types",
+      "Use sealed traits for ADTs"
+    ],
+    "documentation": [
+      "Scaladoc for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use Either/Try for error handling — avoid throwing exceptions",
+      "Pattern match on error types",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "Prefer val over var — immutability first",
+      "Keep functions pure where possible",
+      "Use companion objects for factory methods"
+    ],
+    "testing": {
+      "framework": "ScalaTest with Mockito",
+      "location": "src/test/scala/",
+      "naming": "describe/it blocks or FunctionName_Scenario",
+      "extras": []
+    }
+  },
+  "dart": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Classes: PascalCase",
+      "Constants: camelCase (with const keyword)",
+      "Files: snake_case.dart"
+    ],
+    "imports": [
+      "Group order: dart → package → relative",
+      "Use package imports for cross-package references"
+    ],
+    "type_system": [
+      "Enable null safety",
+      "Use type annotations on public APIs"
+    ],
+    "documentation": [
+      "/// doc comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use specific exception types",
+      "Handle Future errors — no unhandled async errors",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "One widget per file for Flutter",
+      "Separate business logic from UI",
+      "Use const constructors where possible"
+    ],
+    "testing": {
+      "framework": "flutter_test / test",
+      "location": "test/ directory, mirrors lib/ structure",
+      "naming": "group/test blocks with clear descriptions",
+      "extras": []
+    }
+  },
+  "elixir": {
+    "naming": [
+      "Variables/functions: snake_case",
+      "Modules: PascalCase",
+      "Atoms: snake_case (e.g., :ok, :error)"
+    ],
+    "imports": [
+      "alias/import/use at module top",
+      "Group order: stdlib → deps → local"
+    ],
+    "type_system": [
+      "Use @spec for public functions",
+      "Use Dialyzer for static analysis"
+    ],
+    "documentation": [
+      "@doc for public functions",
+      "@moduledoc for module documentation"
+    ],
+    "error_handling": [
+      "Use {:ok, result} / {:error, reason} tuples",
+      "Use with for chaining operations that may fail",
+      "Let it crash — use supervisors for recovery"
+    ],
+    "code_structure": [
+      "Keep functions short and composable",
+      "Use pattern matching over conditionals",
+      "Separate pure functions from side effects"
+    ],
+    "testing": {
+      "framework": "ExUnit",
+      "location": "test/ directory, mirrors lib/ structure",
+      "naming": "test \"description\" blocks",
+      "extras": []
+    }
+  },
+  "lua": {
+    "naming": [
+      "Variables/functions: snake_case",
+      "Modules: PascalCase",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "require statements at file top",
+      "Use local for all imports"
+    ],
+    "type_system": [],
+    "documentation": [
+      "LuaDoc comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use pcall/xpcall for protected calls",
+      "Return nil, error_message for expected failures",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "Use local variables — minimize globals",
+      "Use metatables for OOP patterns",
+      "Keep modules self-contained"
+    ],
+    "testing": {
+      "framework": "busted",
+      "location": "spec/ directory",
+      "naming": "describe/it blocks",
+      "extras": []
+    }
+  },
+  "perl": {
+    "naming": [
+      "Variables: $snake_case, @snake_case, %snake_case",
+      "Functions: snake_case",
+      "Packages: PascalCase"
+    ],
+    "imports": [
+      "use statements at file top",
+      "use strict and use warnings always"
+    ],
+    "type_system": [],
+    "documentation": [
+      "POD documentation for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use eval/die for exception handling",
+      "Check return values of system calls",
+      "Provide meaningful error messages"
+    ],
+    "code_structure": [
+      "One package per file",
+      "Use Moose/Moo for OOP",
+      "Keep subroutines short and focused"
+    ],
+    "testing": {
+      "framework": "Test::More",
+      "location": "t/ directory",
+      "naming": "t/test_name.t",
+      "extras": []
+    }
+  },
+  "shell": {
+    "naming": [
+      "Variables: UPPER_SNAKE_CASE for exports, lower_snake_case for local",
+      "Functions: snake_case",
+      "Scripts: kebab-case.sh"
+    ],
+    "imports": [
+      "source/. statements at file top",
+      "Check for sourced file existence before sourcing"
+    ],
+    "type_system": [],
+    "documentation": [
+      "Header comment block with usage, description, arguments",
+      "Comments: non-obvious logic only"
+    ],
+    "error_handling": [
+      "Use set -euo pipefail",
+      "Check command exit codes",
+      "Use trap for cleanup"
+    ],
+    "code_structure": [
+      "Quote all variable expansions",
+      "Use functions for reusable logic",
+      "Keep scripts under 200 lines — split into functions/files"
+    ],
+    "testing": {
+      "framework": "bats-core",
+      "location": "tests/ directory",
+      "naming": "@test \"description\" blocks",
+      "extras": []
+    }
+  },
+  "powershell": {
+    "naming": [
+      "Functions: Verb-Noun (PascalCase)",
+      "Variables: $PascalCase",
+      "Parameters: PascalCase"
+    ],
+    "imports": [
+      "Import-Module at script top",
+      "Use #Requires for module dependencies"
+    ],
+    "type_system": [
+      "Use [Parameter()] attributes",
+      "Type-constrain parameters and variables"
+    ],
+    "documentation": [
+      "Comment-based help for functions (.SYNOPSIS, .DESCRIPTION)",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use try/catch/finally",
+      "Set $ErrorActionPreference = 'Stop'",
+      "Use -ErrorAction Stop on critical cmdlets"
+    ],
+    "code_structure": [
+      "Use approved verbs (Get-Verb for list)",
+      "One function per file for modules",
+      "Use parameter sets for overloads"
+    ],
+    "testing": {
+      "framework": "Pester",
+      "location": "Tests/ directory",
+      "naming": "Describe/It blocks with clear descriptions",
+      "extras": []
+    }
+  },
+  "haskell": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Types/Type classes: PascalCase",
+      "Modules: PascalCase dot-separated"
+    ],
+    "imports": [
+      "Qualified imports for ambiguous names",
+      "Group order: base → third-party → local"
+    ],
+    "type_system": [
+      "Add type signatures to all top-level definitions",
+      "Use newtypes for domain concepts"
+    ],
+    "documentation": [
+      "Haddock comments for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use Maybe/Either for error handling — avoid exceptions",
+      "Use MonadError for effectful error handling",
+      "Pattern match exhaustively"
+    ],
+    "code_structure": [
+      "Keep functions pure where possible",
+      "Separate IO from pure logic",
+      "Use where/let for local bindings"
+    ],
+    "testing": {
+      "framework": "Hspec with QuickCheck",
+      "location": "test/ directory",
+      "naming": "describe/it blocks",
+      "extras": []
+    }
+  },
+  "clojure": {
+    "naming": [
+      "Variables/functions: kebab-case",
+      "Namespaces: dot-separated kebab-case",
+      "Constants: *earmuffs* for dynamic vars"
+    ],
+    "imports": [
+      "ns declaration at file top with :require",
+      "Use :as aliases for namespaces"
+    ],
+    "type_system": [
+      "Use spec for data validation",
+      "Type hint for Java interop performance"
+    ],
+    "documentation": [
+      "Docstrings for public functions",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use ex-info for structured exceptions",
+      "Return nil for absence, throw for unexpected failures",
+      "Use try/catch for Java interop"
+    ],
+    "code_structure": [
+      "Prefer pure functions",
+      "Use threading macros (-> ->>) for readability",
+      "Keep namespaces focused and small"
+    ],
+    "testing": {
+      "framework": "clojure.test",
+      "location": "test/ directory, mirrors src/ structure",
+      "naming": "deftest test-function-name",
+      "extras": []
+    }
+  },
+  "zig": {
+    "naming": [
+      "Variables/functions: camelCase",
+      "Types: PascalCase",
+      "Constants: snake_case"
+    ],
+    "imports": [
+      "@import at file top",
+      "Use const for all imports"
+    ],
+    "type_system": [
+      "Use optionals (?T) instead of null pointers",
+      "Use error unions for error handling"
+    ],
+    "documentation": [
+      "/// doc comments for public declarations",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use error unions (T!E) for all fallible functions",
+      "Use errdefer for cleanup on error",
+      "Never silently discard errors"
+    ],
+    "code_structure": [
+      "Minimize allocations — prefer stack over heap",
+      "Use comptime for compile-time computation",
+      "Keep functions short and focused"
+    ],
+    "testing": {
+      "framework": "zig test (built-in)",
+      "location": "test blocks within source files",
+      "naming": "test \"description\" blocks",
+      "extras": []
+    }
+  },
+  "objective-c": {
+    "naming": [
+      "Variables/methods: camelCase",
+      "Classes: PascalCase with prefix (e.g., NSString)",
+      "Constants: kPascalCase or UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "#import at file top",
+      "Use @import for framework modules"
+    ],
+    "type_system": [
+      "Use nullability annotations (nullable, nonnull)",
+      "Use instancetype for factory methods"
+    ],
+    "documentation": [
+      "HeaderDoc/Doxygen for public APIs",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use NSError out-parameter pattern",
+      "Check return values before using NSError",
+      "Provide meaningful error descriptions"
+    ],
+    "code_structure": [
+      "Separate .h (interface) and .m (implementation)",
+      "Use categories for code organization",
+      "Prefer composition over inheritance"
+    ],
+    "testing": {
+      "framework": "XCTest",
+      "location": "Tests/ target",
+      "naming": "testMethodName_scenario_expectedResult",
+      "extras": []
+    }
+  },
+  "r": {
+    "naming": [
+      "Variables: snake_case",
+      "Functions: snake_case",
+      "Constants: UPPER_SNAKE_CASE"
+    ],
+    "imports": [
+      "library() calls at script top",
+      "Use explicit namespace with :: for disambiguation"
+    ],
+    "type_system": [],
+    "documentation": [
+      "roxygen2 comments for package functions",
+      "Comments: non-obvious business logic only"
+    ],
+    "error_handling": [
+      "Use tryCatch for error handling",
+      "Use stop() with meaningful messages",
+      "Use warning() for non-fatal issues"
+    ],
+    "code_structure": [
+      "Vectorize operations — avoid explicit loops",
+      "Use functions for reusable logic",
+      "Keep scripts under 200 lines"
+    ],
+    "testing": {
+      "framework": "testthat",
+      "location": "tests/testthat/ directory",
+      "naming": "test_that(\"description\", ...)",
+      "extras": []
+    }
+  }
+}
