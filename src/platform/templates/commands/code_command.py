@@ -308,6 +308,16 @@ VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 
+═══════════════════════════════════════════════
+MANDATORY CODING LOOP LIMIT
+═══════════════════════════════════════════════
+Maximum coding loop iterations: 8
+
+IF CODING_ITERATION >= 8 AND CODING_DECISION == "refine":
+  Force "user_input" path — present feedback and wait for user guidance
+  Display: "⚠ Coding loop reached iteration limit (8)"
+═══════════════════════════════════════════════
+
 ```text
 IF CODING_DECISION == "refine":
   Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Score: {{CODING_SCORE}}/100 — refining"
@@ -317,8 +327,11 @@ IF CODING_DECISION == "refine":
 
 ELIF CODING_DECISION == "complete":
   Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached"
-  IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 7.5
-  ELSE: Proceed to Step 9
+  IF "coding-standards-reviewer" in ACTIVE_REVIEWERS:
+    → IMMEDIATELY execute Step 7.5 (Standards Finalization Phase)
+  ELSE:
+    → IMMEDIATELY execute Step 9 (Integration & Documentation)
+  DO NOT ask user, DO NOT offer alternatives, DO NOT pause
 
 ELIF CODING_DECISION == "user_input":
   LATEST_FEEDBACK = {tools.get_feedback}
@@ -370,6 +383,16 @@ Loop:
   STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status
   STANDARDS_SCORE = STANDARDS_DECISION_RESPONSE.current_score
   STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
+
+  ═══════════════════════════════════════════════
+  MANDATORY STANDARDS LOOP LIMIT
+  ═══════════════════════════════════════════════
+  Maximum standards loop iterations: 5
+
+  IF STANDARDS_ITERATION >= 5 AND STANDARDS_DECISION == "refine":
+    Force "user_input" path — present feedback and wait for user guidance
+    Display: "⚠ Standards loop reached iteration limit (5)"
+  ═══════════════════════════════════════════════
 
   IF STANDARDS_DECISION == "complete":
     Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached"

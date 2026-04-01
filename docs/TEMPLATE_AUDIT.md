@@ -280,3 +280,47 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 82-100 | No structural validation gate — unclear if violations prevent approval | HIGH | MANDATORY STRUCTURE VALIDATION GATE |
 | 143-152 | Phase vocabulary ("features") mixed with Task vocabulary ("Steps") + typo | MEDIUM | Fix terminology |
 | 1-81 | Missing TOOL INVOCATION section | HIGH | Add standard block |
+
+## Code Workflow Findings (Batch 4)
+
+23 findings across code_command.py, coder.py, code_reviewer.py, automated_quality_checker.py, spec_alignment_reviewer.py, review_consolidator.py, and coding_standards_reviewer.py.
+
+### code_command.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 312-316 | Phase 1 coding loop has no iteration limit | HIGH | MANDATORY CODING LOOP LIMIT (max 8) |
+| 378-396 | Phase 2 standards loop has no iteration limit | HIGH | MANDATORY STANDARDS LOOP LIMIT (max 5) |
+| 318-322 | "Proceed to Step" soft language on COMPLETE decision | MEDIUM | "IMMEDIATELY execute" |
+
+### coder.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 43-48 | TodoList gate has no VIOLATION callout | MEDIUM | MANDATORY TODOLIST GATE |
+| 307-327 | Blocking issue resolution stated as bullets, not enforced | HIGH | MANDATORY BLOCKING ISSUE RESOLUTION |
+
+### code_reviewer.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 126 | "Do NOT write files" is single-line constraint | HIGH | MANDATORY FILESYSTEM BOUNDARY RESTRICTION |
+| 161-181 | Research context extraction has no fallback | HIGH | MANDATORY RESEARCH CONTEXT EXTRACTION |
+
+### review_consolidator.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 160-162 | Blocking score cap stated as calculation, not enforced | HIGH | MANDATORY BLOCKING ISSUE SCORE CAP (hardcap 79) |
+
+### spec_alignment_reviewer.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 107-136 | No output scope definition — no "DO NOT write to disk" | HIGH | MANDATORY OUTPUT SCOPE block |
+
+### coding_standards_reviewer.py
+
+| Lines | Issue | Severity | Fix |
+| ----- | ----- | -------- | --- |
+| 183 | Type hint deduction logic ambiguous — might double-count with mypy | MEDIUM | MANDATORY TYPE HINT DEDUCTION PROTOCOL |

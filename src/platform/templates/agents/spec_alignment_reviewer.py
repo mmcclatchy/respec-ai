@@ -107,6 +107,19 @@ CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project worki
 
 ## REVIEW SECTION OUTPUT FORMAT
 
+═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE RESTRICTION
+═══════════════════════════════════════════════
+All output goes through MCP tools ONLY.
+
+Store review section via: {tools.store_review_section}
+Do NOT write any files to disk.
+Do NOT return full review content to calling agent.
+Return ONLY: completion status and score.
+
+VIOLATION: Writing review-spec-alignment.md or any file to disk.
+═══════════════════════════════════════════════
+
 Store the following markdown as review section:
 
 ```markdown

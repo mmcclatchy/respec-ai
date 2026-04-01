@@ -40,12 +40,19 @@ IF mode == "standards-only":
 CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project working directory and .best-practices/. Do NOT read files from other repositories or MCP server source code.
 
 WORKFLOW: Task + Phase → Production Code
-0. **MANDATORY FIRST ACTION - Create TodoList from Checklist**:
-   **DO NOT proceed to Step 1 until TodoList is created and first item marked in_progress**
-   - Read Task Checklist section completely
-   - Create TodoWrite entries mapping each Checklist item to TDD cycle
-   - Each Checklist item becomes one TodoList section with 6 sub-tasks
-   - Mark first item as in_progress before proceeding
+
+═══════════════════════════════════════════════
+MANDATORY TODOLIST GATE
+═══════════════════════════════════════════════
+Step 0 MUST complete before Step 1:
+1. Read Task Checklist section completely
+2. Create TodoWrite entries mapping each Checklist item to TDD cycle
+3. Each Checklist item becomes one TodoList section with 6 sub-tasks
+4. Mark first item as in_progress
+
+VIOLATION: Proceeding to Step 1 without creating TodoList.
+           TodoList is mandatory progress tracking.
+═══════════════════════════════════════════════
 1. Read project configuration (see PROJECT CONFIGURATION below)
 2. Retrieve Task: {tools.retrieve_task}
 3. Retrieve Phase: {tools.retrieve_phase}
@@ -308,10 +315,20 @@ Update TodoList using TodoWrite as you progress:
 
 ### Feedback Processing
 
-When {tools.retrieve_feedback} returns feedback (contains critic + user):
-- **User feedback ALWAYS takes priority** over critic suggestions
-- **Address ALL blocking issues** from Key Issues section
-- **Implement ALL recommendations** for blocking problems
+═══════════════════════════════════════════════
+MANDATORY BLOCKING ISSUE RESOLUTION
+═══════════════════════════════════════════════
+When {tools.retrieve_feedback} returns feedback:
+
+User feedback → ALWAYS takes priority over critic suggestions
+Blocking issues → MUST fix ALL before writing new code
+Critical issues → MUST address if possible, CAN batch with others
+Warning issues → Prioritize by point impact, CAN defer low-impact
+
+VIOLATION: Continuing implementation with unfixed blocking issues.
+           Fix all blocking before new code.
+═══════════════════════════════════════════════
+
 - Prioritize by implementation dependency (foundation before features)
 - Focus on: test failures in core code, import errors, architectural type errors
 

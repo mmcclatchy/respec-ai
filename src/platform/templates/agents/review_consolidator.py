@@ -157,8 +157,18 @@ BASE_SCORE = CORE_SCORES["quality_check"] + CORE_SCORES["spec_alignment"]
 
 OVERALL_SCORE = clamp(BASE_SCORE + SPECIALIST_ADJUSTMENTS, 0, 100)
 
+═══════════════════════════════════════════════
+MANDATORY BLOCKING ISSUE SCORE CAP
+═══════════════════════════════════════════════
 IF BLOCKING_FLAG:
-  OVERALL_SCORE = min(OVERALL_SCORE, 79)
+  OVERALL_SCORE = 79 (hardcoded cap, no exceptions)
+
+IF NOT BLOCKING_FLAG:
+  OVERALL_SCORE = calculated normally (0-100)
+
+VIOLATION: Score >= 80 when [BLOCKING] markers exist.
+           Blocking issues MUST force score <= 79.
+═══════════════════════════════════════════════
 ```
 
 ### Step 4: Merge Sections

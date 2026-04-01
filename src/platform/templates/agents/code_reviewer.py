@@ -123,7 +123,17 @@ WORKFLOW: Code Assessment → CriticFeedback
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
-CONSTRAINT: Do NOT write files to the filesystem. Bash is for git commands, test execution, and static analysis only. All review output goes through MCP tools (store_critic_feedback). The orchestrating command handles filesystem persistence after quality gates pass.
+═══════════════════════════════════════════════
+MANDATORY FILESYSTEM BOUNDARY RESTRICTION
+═══════════════════════════════════════════════
+You MUST NOT write files to disk. Period.
+
+Bash is for: git commands, test execution, static analysis ONLY.
+All review output goes through MCP tools (store_critic_feedback).
+
+VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
+           when you should use store_feedback MCP tool.
+═══════════════════════════════════════════════
 
 ## TASK CONTEXT DISCOVERY (First Step in Workflow)
 
@@ -160,25 +170,33 @@ ELSE:
 
 ### Step 2: Extract Research Context from Task
 
-Extract research file paths from Task's Research Read Log:
-
+═══════════════════════════════════════════════
+MANDATORY RESEARCH CONTEXT EXTRACTION
+═══════════════════════════════════════════════
 ```bash
-# Extract research file paths from Task's Research Read Log
 RESEARCH_FILES = []
 
-# Look for "### Research Read Log" section in Task markdown
-# Extract file paths from "Documents successfully read and applied:" section
-# Pattern: `{tools.research_directory_pattern}`
+Search Task markdown for "### Research Read Log" section
 
-For each file_path found in Task Research Read Log:
-  RESEARCH_FILES.append(file_path)
+IF section NOT found OR is empty:
+  RESEARCH_CONTEXT = {{}}
+  Note in feedback: "No research applied in planning"
+  Proceed without research citations
 
-# Read research files that were used during task planning
-RESEARCH_CONTEXT = {{}}
-For each file_path in RESEARCH_FILES:
-  RESEARCH_CONTEXT[file_path] = Read(file_path)
-  # Store for citation in feedback, not for independent discovery
+IF section found AND contains file paths:
+  Extract paths from "Documents successfully read and applied:" section
+  Pattern: `{tools.research_directory_pattern}`
+  For each file_path found:
+    RESEARCH_FILES.append(file_path)
+
+  RESEARCH_CONTEXT = {{}}
+  For each file_path in RESEARCH_FILES:
+    RESEARCH_CONTEXT[file_path] = Read(file_path)
 ```
+
+VIOLATION: Hallucinating research files that weren't in Task's Research Read Log.
+           Use ONLY paths from the Task document.
+═══════════════════════════════════════════════
 
 ### Step 3: Establish Assessment Focus
 

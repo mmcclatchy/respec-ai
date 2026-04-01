@@ -180,7 +180,20 @@ Focus review on files changed by coder in recent commits.
 ### 4. Type Hints
 - Use modern syntax: `str | None` (not `Optional[str]`)
 - Type hint syntax style is YOUR responsibility
-- Missing type annotations are flagged by mypy (Automated Quality Checker) — do not also deduct here for the same functions. Only deduct for functions that HAVE type hints but use wrong syntax (e.g., `Optional[str]` instead of `str | None`)
+═══════════════════════════════════════════════
+MANDATORY TYPE HINT DEDUCTION PROTOCOL
+═══════════════════════════════════════════════
+Do NOT penalize missing type hints (mypy handles that).
+ONLY penalize WRONG SYNTAX in functions that HAVE hints.
+
+For each function with type hints:
+  IF uses Optional[X] or Union[X,Y]: DEDUCTION (wrong syntax)
+  IF uses str | None: No deduction (correct syntax)
+  IF has NO hints at all: No deduction (mypy's domain)
+
+VIOLATION: Deducting points for both "missing hints" AND "wrong syntax"
+           double-counts the same issue.
+═══════════════════════════════════════════════
 
 **Check**:
 - Flag usage of Optional[] instead of | None syntax
