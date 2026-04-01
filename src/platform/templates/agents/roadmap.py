@@ -93,7 +93,7 @@ CALL {tools.get_plan}
 STEP 2: Phase Decomposition
 Break strategic plan into appropriately-sized implementation phases
 → Apply phasing_preferences if provided
-→ Consider PREVIOUS_FEEDBACK from STEP 0 if this is a refinement iteration
+→ Use PREVIOUS_FEEDBACK from STEP 0 if this is a refinement iteration
 → **CRITICAL**: Think of each phase as ONE SPRINT'S worth of work
 → **CRITICAL**: Phase sizing based on SCOPE and COHESION, not time estimates
 → Not too large: Avoid combining multiple independent features (split instead)
@@ -124,13 +124,10 @@ Output brief completion message to orchestrator:
 
 **CRITICAL**: Do NOT create phases. Phase creation happens AFTER roadmap is finalized by parallel create-phase agents.
 
-**CRITICAL FILE OPERATION RESTRICTIONS**:
-- NEVER use Read/Write/Edit tools to access roadmap.md or any other files
-- NEVER create or modify files directly on disk
-- ONLY use {tools.get_plan} to retrieve input data
-- ONLY use {tools.create_roadmap} to store roadmap to MCP
-- DO NOT return roadmap markdown to Main Agent - return completion status only
-- File storage is handled exclusively by you using MCP tools
+**STORAGE**: Your ONLY storage mechanism is {tools.create_roadmap}.
+You have NO file system access. You have NO Read, Write, or Edit tools.
+Your ONLY actions to persist work: CALL {tools.get_plan} (read input), CALL {tools.create_roadmap} (store output).
+Do NOT return roadmap markdown to Main Agent — return completion status only.
 
 TASKS:
 
@@ -165,10 +162,24 @@ PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
 IF any section missing: set variable = None (plan may predate these sections)
 
 STEP 2: Incorporate Feedback (if refinement iteration)
-IF PREVIOUS_FEEDBACK exists (from STEP 0):
-  → Analyze specific issues identified by critic
-  → Address ALL items in "Key Issues" section
-  → Implement ALL items in "Recommendations" section
+
+═══════════════════════════════════════════════
+MANDATORY REFINEMENT PROTOCOL
+═══════════════════════════════════════════════
+IF this is a refinement iteration (PREVIOUS_FEEDBACK exists):
+  1. MUST retrieve and read ALL feedback items
+  2. MUST address EVERY item in "Key Issues" section
+  3. MUST implement EVERY item in "Recommendations" section
+  4. Output COMPLETE roadmap (not incremental additions)
+  5. Each phase appears EXACTLY ONCE — remove old/duplicate versions
+  6. Document changes in Feedback Response Summary
+
+IF this is the first iteration (PREVIOUS_FEEDBACK = None):
+  Create roadmap from strategic plan. No feedback to address.
+
+VIOLATION: Outputting a roadmap with duplicate phases (old + new
+           versions) or ignoring feedback items during refinement.
+═══════════════════════════════════════════════
 
 STEP 3: Phase Decomposition
 Break requirements into appropriately-sized implementation phases
@@ -207,10 +218,11 @@ CALL {tools.create_roadmap}
 → If failed: Report error and STOP
 
 STEP 6: Return Completion Status
-Output brief completion message to orchestrator:
-→ "Roadmap generation complete. Stored to MCP."
-→ DO NOT return the roadmap markdown itself
-→ Orchestrator will invoke roadmap-critic for quality assessment
+Your ONLY output to the orchestrator is:
+  "Roadmap generation complete. Stored to MCP."
+Do NOT return the roadmap markdown content.
+Do NOT add commentary about the roadmap quality.
+The orchestrator will invoke roadmap-critic for quality assessment.
 
 ## PHASE DECOMPOSITION STRATEGY
 
@@ -235,10 +247,10 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 - Complex feature set spanning multiple domains
 - Significant integration challenges across systems
 - High technical uncertainty or unknowns
-- Consider splitting into multiple sprint-sized phases
+- Split into multiple sprint-sized phases
 - Example: "Complete e-commerce platform" → Split into checkout, inventory, shipping phases
 
-**Scoping Principle**: Each phase should deliver a cohesive, testable increment of value. If a phase feels like "two different things," split it. If it's "just one function," combine with related work.
+**Scoping Principle**: Each phase MUST deliver a cohesive, testable increment of value. If a phase feels like "two different things," split it. If it's "just one function," combine with related work.
 
 ### Decomposition Patterns
 

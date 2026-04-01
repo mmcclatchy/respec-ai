@@ -61,7 +61,7 @@ CONSTRAINT_SECTIONS_FOUND = count of True values above
 IF CONSTRAINT_SECTIONS_FOUND == 0:
   Display: "⚠️ Plan has no constraint sections (Architecture Direction, Technology Decisions, Anti-Requirements, Quality Bar)"
   Display: "Roadmap will proceed but phases may lack constraint guidance"
-  Display: "Consider running '/respec-plan' to add these sections"
+  Display: "Run '/respec-plan' to add these sections for better phase quality"
 ELSE:
   Display: "✓ Found {{CONSTRAINT_SECTIONS_FOUND}}/4 plan constraint sections"
   IF not PLAN_HAS_ARCHITECTURE: Display: "  ⚠️ Missing: Architecture Direction"
@@ -111,7 +111,7 @@ Strategy 4 - Risk-Based Phases:
 - Later phases build on validated assumptions
 - Useful for innovative or technically challenging projects
 
-Choose strategy based on project characteristics. Phases should be:
+Choose strategy based on project characteristics. Phases MUST be:
 - Complete enough to test and validate independently
 - Small enough to maintain focus and clarity
 - Large enough to deliver meaningful functionality
@@ -270,7 +270,7 @@ Wait for all agents to complete before proceeding to result aggregation.
 After all agents complete, collect results:
 - SUCCESSFUL_PHASES: List of phases created successfully
 - FAILED_PHASES: List of phases that failed with error details
-- TOTAL_PHASES: Should equal PHASE_COUNT
+- TOTAL_PHASES: MUST equal PHASE_COUNT
 
 Validate that each planned phase has a corresponding phase result.
 ```
@@ -288,6 +288,12 @@ EXPECTED_COUNT = length of EXPECTED_PHASE_NAMES
 STEP 2: Query Platform Storage
 STORED_PHASES = {tools.list_project_phases_tool_interpolated}
 ACTUAL_COUNT = length of STORED_PHASES
+
+IF ACTUAL_COUNT == 0:
+  Display: "❌ Zero phases found in platform storage despite agent completion."
+  Display: "Check create-phase agent logs for errors."
+  STOP. Do NOT present completion summary. Do NOT suggest next steps.
+  Report: "Roadmap command failed — 0 of EXPECTED_COUNT phases stored."
 
 STEP 3: Verification Report
 For each phase_name in EXPECTED_PHASE_NAMES:

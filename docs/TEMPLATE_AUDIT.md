@@ -4,19 +4,46 @@ Comprehensive audit of all 30 templates (7 commands + 23 agents) for weak, ambig
 
 ## The Problem
 
-Agents interpret soft language loosely. When templates say "should", "consider", "proceed to", or "recommended", agents treat these as suggestions — substituting their own judgment, adding unauthorized outputs, or stopping workflows early.
+Claude Code (Sonnet/Opus) follows these templates reasonably well even with soft language. Open-source models (Llama, Qwen, DeepSeek, Mistral) do not. They exploit every gap, interpret every "should" as optional, and default to their pretraining distribution when instructions are ambiguous.
 
-Observed failure patterns:
+This is not a capability problem — these models can follow strict instructions. It is an alignment training difference: Claude has heavy RLHF specifically on instruction adherence. Open-source models treat soft language as genuinely optional and default to "helpful assistant" behaviors (asking clarifying questions, adding extra context, writing files proactively) unless explicitly prohibited.
 
-1. **Unauthorized user interaction**: Agent asks the user for confirmation when MCP decision is "refine" (should auto-continue)
+### Observed Failure Patterns
+
+1. **Unauthorized user interaction**: Agent asks the user for confirmation when MCP decision is "refine" (MUST auto-continue)
 2. **Premature workflow termination**: Agent treats intermediate output (roadmap) as final output, never extracting phases
 3. **Unauthorized file creation**: Agent writes `roadmap.md` despite roadmap being MCP-internal only
 4. **Decision override**: Agent sees score is "close enough" and skips the MCP decision workflow entirely
-5. **Scope creep in output**: Agent returns full document content when it should return only a status
+5. **Scope creep in output**: Agent returns full document content when it MUST return only a status
+6. **Pretraining default bleed**: Agent reverts to generic "helpful assistant" patterns — asking questions, offering alternatives, adding commentary — when template doesn't exhaustively specify behavior
+
+## Open-Source Model Behavior Differences
+
+Understanding WHY open-source models drift differently from Claude is critical for writing effective templates.
+
+### How Open-Source Models Process Instructions
+
+| Behavior | Claude (Sonnet/Opus) | Open-Source Models |
+| -------- | -------------------- | ------------------ |
+| "should" / "consider" | Infers intent, usually complies | Takes the literal escape hatch |
+| Prohibition ("DO NOT X") | Reliably avoids X | Sometimes treats as reminder that X exists, then does X |
+| Long-range instruction memory | Strong — constraints from line 20 still active at line 400 | Weak — constraints decay with distance from point of action |
+| System prompt vs user message | Both weighted equally | May deprioritize system prompt relative to user message |
+| Competing instructions | Resolves toward most specific | Resolves toward most recent or most familiar pattern |
+| Ambiguous gaps | Asks or does nothing | Fills with pretraining default (usually "be helpful") |
+| Freeform vs structured output | Follows either | Much more reliable with structured templates to fill in |
+
+### Key Insight
+
+Open-source models don't ignore instructions — they exploit gaps. When the template doesn't exhaustively specify what to do at a given step, the model fills the gap with whatever its pretraining distribution suggests. For most models, that's "be a helpful assistant" — which means asking questions, writing extra files, offering alternatives, and adding commentary.
+
+**The fix is not louder prohibitions. The fix is exhaustive positive instructions that leave no gap to fill.**
 
 ## The Solution Style
 
-Use emphatic, machine-readable enforcement blocks with explicit VIOLATION callouts. This format leaves no room for interpretation:
+### Pattern 1: MANDATORY Enforcement Blocks (Prohibitions)
+
+Use emphatic, machine-readable enforcement blocks with explicit VIOLATION callouts. This format works for behaviors that MUST NOT happen:
 
 ```text
 ═══════════════════════════════════════════════
@@ -32,27 +59,160 @@ VIOLATION: [Specific agent behavior] when [condition]
 ═══════════════════════════════════════════════
 ```
 
-Key principles:
+### Pattern 2: Exhaustive Positive Instructions (Gap Elimination)
 
-- Replace "should/may/can/consider" with "MUST/DO NOT/VIOLATION"
-- State both what to DO and what NOT to do
-- Name the specific deviation as a VIOLATION
-- Use `═══` separator blocks for mandatory protocols
-- Mark non-optional steps with `(MANDATORY)` in headers
+More effective than prohibitions for open-source models. Specify exactly what to do at each step so completely that deviation requires actively ignoring the instruction, not just interpreting ambiguity:
+
+```text
+Step 4: Store roadmap via MCP
+  1. Call create_roadmap with the full roadmap content.
+  2. Capture the returned roadmap_id.
+  3. Report: "Roadmap stored: {roadmap_id}"
+  Your ONLY output for this step is the status line above.
+```
+
+This is better than:
+
+```text
+Step 4: Store roadmap via MCP
+  Call create_roadmap. DO NOT write files. DO NOT ask the user.
+  DO NOT return roadmap content. DO NOT add commentary.
+```
+
+The first version tells the model exactly what to do — no gap to fill. The second version lists prohibitions that open-source models may treat as a menu of options.
+
+### Pattern 3: Inline Constraint Repetition
+
+Open-source models have shorter effective instruction memory. Critical constraints MUST be restated at the point of action, not just in the preamble:
+
+```text
+# Top of template
+MANDATORY: DO NOT write files to disk. All storage is via MCP tools only.
+
+# ... 200 lines later, at the step where file writing actually happens ...
+Step 7: Store phase document
+  Call store_document with phase content.
+  DO NOT write any files to disk. DO NOT create .md files.
+  Your ONLY action is the MCP tool call above.
+```
+
+Redundancy that is noise for Claude is load-bearing for open-source models.
+
+### Pattern 4: Structured Output Anchors
+
+Open-source models are significantly more reliable when filling in a template than generating freeform output:
+
+```text
+Respond with EXACTLY this format, no other text:
+
+STATUS: [complete|refine]
+SCORE: [integer 0-100]
+SUMMARY: [one sentence, max 20 words]
+NEXT_ACTION: [exact tool call or "none"]
+```
+
+### Pattern 5: Positive-First, Prohibit-Second
+
+Lead with what TO do. Follow with what NOT to do. Open-source models anchor on the first instruction they see for a given step:
+
+```text
+# Better — positive instruction first
+Your ONLY output is: "Phase stored: {phase_id}, {phase_name}"
+Do NOT return the phase markdown content.
+
+# Worse — prohibition first (model sees "phase markdown content" and may produce it)
+Do NOT return the phase markdown content.
+Your ONLY output is: "Phase stored: {phase_id}, {phase_name}"
+```
+
+### Pattern 6: Decision Boundaries as Exhaustive Branches
+
+Never leave a decision point with an implicit "else." Open-source models will invent behavior for unhandled cases:
+
+```text
+# Bad — implicit else
+IF decision = "complete": execute Step 8
+IF decision = "refine": execute Step 6
+
+# Good — exhaustive branches, no gap
+IF decision = "complete" → IMMEDIATELY execute Step 8. Do NOT execute any other step.
+IF decision = "refine" → IMMEDIATELY execute Step 6. Do NOT execute any other step.
+IF decision = any other value → STOP. Report error: "Unexpected decision: {value}"
+```
+
+## Application Principles
+
+### Constraint Placement Strategy
+
+1. **First 3 lines**: The single most important behavioral constraint (the one that fails most often)
+2. **Last 3 lines**: The second most important constraint (recency bias)
+3. **Inline at point of action**: Any constraint that governs a specific step — restate it there
+4. **Preamble blocks**: General protocols that apply throughout
+
+### Template Length Tradeoffs
+
+More MANDATORY blocks = more total template length = more attention decay. The solution is NOT "make agents smaller" (that just shifts complexity to orchestration). Instead:
+
+- **Extract shared protocol blocks into composable includes** — TOOL INVOCATION, DECISION PROTOCOL, OUTPUT SCOPE blocks that are near-identical across agents should be defined once and injected
+- **Front-load the 2-3 constraints that actually fail** for each specific agent, rather than adding every possible prohibition
+- **Use orchestrator-side validation** for critical gates — a 3-line check in the command template ("did agent return a file path?" → reject and retry) catches failures that prompt language cannot prevent
+
+### The Prohibition Paradox
+
+For open-source models, mentioning the wrong behavior can increase its probability. "DO NOT ask the user for confirmation" contains the concept "ask the user for confirmation" which the model may latch onto. Where possible, prefer exhaustive positive instructions that never mention the undesired behavior:
+
+```text
+# Risky for open-source models:
+DO NOT ask the user for confirmation. DO NOT wait for user input.
+Proceed directly to the next step.
+
+# Safer:
+Your ONLY action after receiving MCP decision "refine" is:
+IMMEDIATELY execute Step 6 with the feedback content.
+```
+
+### Soft Language Replacement Guide
+
+| Soft (remove) | Hard (replace with) |
+| -------------- | ------------------- |
+| should | MUST |
+| consider | REQUIRED |
+| recommended | MANDATORY |
+| proceed to | IMMEDIATELY execute |
+| you may want to | REQUIRED: |
+| if appropriate | ALWAYS |
+| try to | MUST |
+| ideally | REQUIRED |
+| optionally | (remove entirely, or make MANDATORY) |
+| it would be good to | MUST |
 
 ## Batch Plan
 
-Work through workflows one at a time:
+Work through workflows one at a time. Each batch must re-audit with open-source model patterns in mind.
 
 | Batch | Workflow | Files | Status |
 | ----- | -------- | ----- | ------ |
-| 1 | Roadmap (command + agents) | roadmap_command.py, plan_command.py Step 10, roadmap.py, create_phase.py | In Progress |
-| 2 | Plan (command + agents) | plan_command.py, plan_analyst.py, analyst_critic.py, plan_critic.py | Pending |
+| 1 | Roadmap (command + agents) | roadmap_command.py, plan_command.py Step 10, roadmap.py, create_phase.py | Pending |
+| 2 | Plan + Roadmap (command + agents) | plan_command.py, plan_conversation_command.py, plan_critic.py, plan_analyst.py, analyst_critic.py, roadmap_command.py, roadmap.py, roadmap_critic.py | Complete |
 | 3 | Phase (command + agents) | phase_command.py, phase_architect.py, phase_critic.py | Pending |
 | 4 | Task (command + agents) | task_command.py, task_planner.py, task_plan_critic.py, task_critic.py | Pending |
 | 5 | Code (command + agents) | code_command.py, coder.py, code_reviewer.py, review team agents | Pending |
 | 6 | Patch (command + agents) | patch_command.py, patch_planner.py | Pending |
 | 7 | Cross-cutting patterns | TOOL INVOCATION sections, output scope restrictions, MCP tool naming | Pending |
+
+### Re-Audit Checklist (Apply to Every Template)
+
+For each template in each batch, verify:
+
+- [ ] **Gap audit**: Every step has exhaustive positive instructions (no implicit "else," no undefined behavior)
+- [ ] **Soft language scan**: Zero instances of should/consider/recommended/proceed to/optionally
+- [ ] **Constraint placement**: Top-failure constraints appear in first 3 lines AND inline at point of action
+- [ ] **Output anchoring**: Every agent has a structured output format (not freeform)
+- [ ] **Decision exhaustiveness**: Every IF/ELSE branch is explicit, including error cases
+- [ ] **Prohibition paradox check**: Prohibitions don't inadvertently suggest the wrong behavior
+- [ ] **Tool invocation section**: Present with resolved tool names (not `{tools.*}` placeholders)
+- [ ] **Contradiction scan**: No two instructions in the same template that could be read as conflicting
+- [ ] **Point-of-action repetition**: Critical constraints restated at the step where violation occurs
 
 ## Command Template Findings
 
@@ -123,8 +283,8 @@ Work through workflows one at a time:
 
 | Lines | Issue | Category | Impact |
 | ----- | ----- | -------- | ------ |
-| 127-134 | File restriction says "File storage is handled exclusively by you" — contradicts "do NOT create files" | Contradictory | Agent sees both statements |
-| 64-73 | TOOL INVOCATION section uses `{tools.*}` but agent doesn't see resolved tool names | Unclear tool names | Agent could hallucinate tool names |
+| 127-134 | File restriction says "File storage is handled exclusively by you" — contradicts "do NOT create files" | Contradictory | Agent sees both statements, open-source models pick whichever is most recent |
+| 64-73 | TOOL INVOCATION section uses `{tools.*}` but agent doesn't see resolved tool names | Unclear tool names | Agent hallucinate tool names |
 
 ### create_phase.py (CRITICAL)
 
@@ -324,3 +484,31 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | Lines | Issue | Severity | Fix |
 | ----- | ----- | -------- | --- |
 | 183 | Type hint deduction logic ambiguous — might double-count with mypy | MEDIUM | MANDATORY TYPE HINT DEDUCTION PROTOCOL |
+
+## Open-Source Model Testing Protocol
+
+When applying fixes from this audit, validate against open-source models specifically. Claude compliance does not guarantee open-source compliance.
+
+### Test Matrix
+
+For each fixed template, run the same workflow on:
+
+1. Claude Sonnet (baseline — should pass)
+2. Primary open-source target model (the actual deployment model)
+3. A weaker open-source model (stress test — if it works here, it works everywhere)
+
+### Failure Signature Catalog
+
+Track which failure patterns each model exhibits. This builds a model-specific knowledge base:
+
+| Failure Pattern | Models Affected | Template Fix That Resolved It |
+| --------------- | --------------- | ----------------------------- |
+| (populate during re-audit) | | |
+
+### Regression Indicators
+
+A template fix is working if:
+
+- The specific failure pattern stops occurring on the target model
+- No new failure patterns emerge (prohibition paradox check)
+- Claude compliance is not degraded (stronger instructions should not confuse Claude)

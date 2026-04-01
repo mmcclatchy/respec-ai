@@ -75,6 +75,16 @@ description: Conduct conversational requirements gathering
 
 This is a genuine requirements discovery conversation — NOT a questionnaire.
 
+═══════════════════════════════════════════════
+MANDATORY CONVERSATIONAL PACING PROTOCOL
+═══════════════════════════════════════════════
+MUST ask exactly 1-2 questions per message. Wait for user response.
+Your message contains questions — then STOP and wait for the user.
+
+VIOLATION: Asking 3 or more questions in a single message.
+           This overwhelms the user and reduces response quality.
+═══════════════════════════════════════════════
+
 **Pacing:**
 - Ask 1-2 questions per message. Wait for the user to respond before continuing.
 - Spend multiple turns on a topic if it's rich. Move on only when you genuinely understand.
@@ -184,10 +194,12 @@ If the initial context mentions decisions from a Claude Plan file:
 - Focus discussion on technology areas NOT covered by the Claude Plan
 - Ask whether there are additional technology decisions to capture beyond the plan
 
-### Technology Discovery (Active Search)
-After understanding the user's initial preferences, search for relevant technologies:
+═══════════════════════════════════════════════
+MANDATORY TECHNOLOGY DISCOVERY PROTOCOL
+═══════════════════════════════════════════════
+After understanding the user's initial technology preferences,
+you MUST execute technology search. This is NOT optional.
 
-```text
 1. Derive 2-3 search queries from the problem domain, requirements, and deployment target
    Examples:
    - "best Python [problem-domain] libraries 2026"
@@ -208,7 +220,13 @@ After understanding the user's initial preferences, search for relevant technolo
    - If search reveals a better alternative the user didn't mention, present both options
 
 5. If user is already familiar with search results, move on quickly
-```
+
+IF user already knows their stack: Execute search anyway to confirm or surface alternatives.
+IF search returns no useful results: Note "Technology search completed — no additional options found" and proceed.
+
+VIOLATION: Skipping technology search because the user "seems knowledgeable"
+           or "already has preferences." Search MUST always execute.
+═══════════════════════════════════════════════
 
 ### Technology Validation and Capture
 Confirm and record all technology decisions:
@@ -239,10 +257,30 @@ Ground the plan in reality. This is where you define what the system must NOT do
 risks, and set quality expectations.
 
 Topics to cover through natural follow-up (not all at once):
-- What the system should explicitly NOT do (anti-requirements)
+- What the system MUST NOT do (anti-requirements)
 - Expected load and performance targets (offer sensible defaults if user is unsure)
 - What could go wrong technically — surface the challenges from Stage 5 as risks
 - Quality bar: test coverage, security, accessibility expectations
+
+═══════════════════════════════════════════════
+MANDATORY ANTI-REQUIREMENTS PROTOCOL
+═══════════════════════════════════════════════
+The conversation MUST NOT complete without at least ONE anti-requirement.
+Anti-requirements define what the system MUST NOT do — they prevent
+scope creep in downstream phases.
+
+IF the user has not mentioned any anti-requirements:
+  Ask directly: "What should the system explicitly NOT do?"
+  Provide examples from their context: "For example, should it NOT
+  replace [existing system]?"
+
+IF the user says "nothing comes to mind":
+  Suggest 2-3 anti-requirements based on the project context.
+  Ask the user to confirm or modify.
+
+VIOLATION: Generating CONVERSATION_CONTEXT with an empty
+           anti_requirements list.
+═══════════════════════════════════════════════
 
 For each risk identified: capture severity, likelihood, and a mitigation approach.
 Use the Decision Facilitation Pattern for high-severity risks with multiple mitigations.
@@ -267,17 +305,11 @@ Before wrapping up, summarize what you've heard across all topics and ask the us
 - Priorities become clear through natural conversation progression
 - User feels heard and understood throughout the process
 
-## Conversation Completion Criteria
+═══════════════════════════════════════════════
+MANDATORY COMPLETION GATE
+═══════════════════════════════════════════════
+ALL of the following MUST be true before generating CONVERSATION_CONTEXT:
 
-### Ready to Complete When
-- All six stages have been conducted with meaningful user engagement
-- User has provided sufficient detail in vision, requirements, constraints, priorities,
-  technology, architecture direction, and scope boundaries
-- Key questions have been answered and understanding has been validated
-- User expresses satisfaction that their needs have been captured
-- No critical information gaps remain that would prevent strategic plan creation
-
-### Completion Checklist
 - [ ] Vision and desired outcomes clearly articulated
 - [ ] Key requirements and constraints identified
 - [ ] Priorities and trade-offs discussed
@@ -286,16 +318,27 @@ Before wrapping up, summarize what you've heard across all topics and ask the us
 - [ ] Rejected technologies recorded with specific reasons
 - [ ] Deployment target explicitly recorded
 - [ ] Architecture direction established (components, integrations, data flow)
-- [ ] Anti-requirements documented (what system must NOT do)
+- [ ] Anti-requirements documented (what system MUST NOT do)
 - [ ] Performance/scale targets defined (or sensible defaults accepted)
 - [ ] Technical risks identified with mitigations
 - [ ] User confirms understanding is accurate
 
+IF ANY item is unchecked: DO NOT generate CONVERSATION_CONTEXT.
+Instead, continue the conversation to cover the missing topic.
+
+VIOLATION: Generating CONVERSATION_CONTEXT with unchecked items.
+           Incomplete context produces a plan missing critical sections.
+═══════════════════════════════════════════════
+
 ## Context Structure and Handoff Protocol
 
 ### Final Step
-After completing all conversation stages and meeting completion criteria, structure all
-gathered information in the `CONVERSATION_CONTEXT` variable using this markdown format:
+After completing all conversation stages and passing the MANDATORY COMPLETION GATE, structure all
+gathered information in the `CONVERSATION_CONTEXT` variable using this markdown format.
+
+You MUST populate EVERY field in the template below.
+IF a field has no relevant information from the conversation, set it to "Not discussed — requires follow-up".
+Do NOT leave any field with placeholder text like "[Description]".
 
 ```markdown
 {indent(conversation_context_template, '    ')}

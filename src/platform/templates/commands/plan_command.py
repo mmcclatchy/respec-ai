@@ -324,6 +324,22 @@ The Plan model enforces H2 headers as its schema. Violating these constraints ca
 
 The H3 headers shown in the template (### Vision, ### Mission, etc.) are suggested structure, not enforced. You may add, rename, or reorganize H3+ headers within any H2 section.
 
+═══════════════════════════════════════════════
+MANDATORY DOCUMENT STRUCTURE GATE
+═══════════════════════════════════════════════
+Your strategic plan MUST contain EXACTLY these 10 H2 sections:
+Executive Summary, Business Objectives, Plan Scope, Stakeholders,
+Architecture Direction, Technology Decisions, Plan Structure,
+Resource Requirements, Risk Management, Quality Assurance.
+
+Any content under a non-listed H2 header is silently dropped on
+retrieval. Adding "## Implementation Details" or "## Timeline"
+causes that content to vanish permanently.
+
+VIOLATION: Adding any H2 header not in the list above.
+           Content under unauthorized H2 headers is permanently lost.
+═══════════════════════════════════════════════
+
 Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
@@ -331,8 +347,9 @@ Strategic plan creation process:
 4. **If CLAUDE_PLAN_FILE is not None**: You MUST append this exact line to the resource_requirements section:
    `Claude Plan: {{CLAUDE_PLAN_FILE}}` — phase-architect reads this as hard constraints.
    Do NOT inline the decisions and omit the file path. The path is how downstream agents access the full implementation details.
-5. **Store in variable** as CURRENT_PLAN for next steps
-6. **Store in MCP** using: `{tools.store_plan}`
+5. **MUST store in variable** as CURRENT_PLAN — required for Steps 4 and 5
+6. **MUST store in MCP** using: `{tools.store_plan}` — verify storage succeeds before proceeding
+   IF MCP storage fails: retry once. IF second attempt fails: display error and STOP.
 
 ## Step 3.2: Write Plan to External File/Platform
 
@@ -412,26 +429,34 @@ Present options to user:
 ### Wait for user response and process decision
 
 ```text
-IF user provides feedback along with their choice:
+STEP 1: Check for user feedback
+IF user response contains text beyond just a number (1, 2, or 3):
   Store user feedback: {tools.store_user_feedback}
   This preserves user guidance for subsequent plan/critic iterations
+
+STEP 2: Process user choice (EXHAUSTIVE — every case handled)
 
 IF user chooses "1" (Continue conversation):
   Set USER_DECISION = "continue_conversation"
   CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
-  Return to Step 2 to add more details via {tools.conversation_workflow_name}
+  IMMEDIATELY return to Step 2 to add more details via {tools.conversation_workflow_name}
 
 ELIF user chooses "2" (Refine plan):
   Set USER_DECISION = "refine_plan"
   CRITIC_FEEDBACK now available for refinement guidance
-  Return to Step 3 to generate improved strategic plan incorporating feedback
+  IMMEDIATELY return to Step 3 to generate improved strategic plan incorporating feedback
   Step 3.2 will update the external plan file
 
 ELIF user chooses "3" (Accept plan):
   Set USER_DECISION = "accept_plan"
   Strategic plan already stored in MCP from Step 3
   Plan file already written in Step 3.2
-  Proceed to Step 6 for automated objective extraction
+  IMMEDIATELY proceed to Step 6 for automated objective extraction
+
+ELSE (user response does not match 1, 2, or 3):
+  Display: "Please choose option 1, 2, or 3."
+  Wait for user response again.
+  Return to STEP 1 of this decision block.
 ```
 
 ## Error Recovery and Resilience
@@ -456,7 +481,7 @@ ELIF user chooses "3" (Accept plan):
 
 **plan-critic failures:**
 1. **Score Extraction Failure**: If QUALITY_SCORE cannot be parsed:
-   - Use fallback score for MCP decision processing
+   - Set QUALITY_SCORE = 50 (fallback score indicating critic assessment unavailable)
    - Set CRITIC_FEEDBACK = "Critic assessment failed - manual review required"
    - Continue refinement loop with manual oversight
 
