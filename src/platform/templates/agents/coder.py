@@ -28,13 +28,12 @@ INPUTS: Dual loop context for code implementation
 
 IF mode == "standards-only":
   1. Read feedback from coding_loop_id (standards feedback only): {tools.retrieve_feedback}
-  2. Fix ONLY the following categories of issues from feedback:
-     - Naming conventions (snake_case, PascalCase, UPPER_SNAKE_CASE, camelCase)
-     - Import ordering and inline import violations (move imports to top of file)
-     - Type hint syntax (replace Optional[X] with X | None, add missing hints)
-     - Obvious docstrings and unnecessary comments
-  3. Run: ruff check . && mypy . (or project-specific equivalents) to confirm fixes
-  4. Commit: git commit --no-verify -m "chore: apply coding standards [{{phase_name}}] iter N"
+  2. Read language config files from .respec-ai/config/ (same files the standards reviewer used)
+  3. Fix ONLY the issues identified in the feedback — these map to rules from config files
+     Do NOT apply fixes for rules not in the config files
+     Do NOT apply hardcoded language-specific fixes
+  4. Run project-specific check commands from config (test, lint, type check) to confirm fixes
+  5. Commit: git commit --no-verify -m "chore: apply coding standards [{{phase_name}}] iter N"
   EXIT — do not proceed to TDD cycle or feature implementation
 
 CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project working directory and .best-practices/. Do NOT read files from other repositories or MCP server source code.

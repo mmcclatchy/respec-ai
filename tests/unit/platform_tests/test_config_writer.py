@@ -134,9 +134,10 @@ class TestWriteConfigFiles:
         }
         written = write_config_files(tmp_path, stack, tooling)
 
-        assert len(written) == 2
+        assert len(written) == 3
         config_dir = tmp_path / '.respec-ai' / 'config'
         assert config_dir.exists()
+        assert (config_dir / 'universal.md').exists()
         assert (config_dir / 'stack.md').exists()
         assert (config_dir / 'python.md').exists()
 
@@ -159,13 +160,17 @@ class TestWriteConfigFiles:
 
         written = write_config_files(tmp_path, stack, tooling)
 
-        assert len(written) == 1
-        assert written[0].name == 'python.md'
+        assert len(written) == 2
+        written_names = [w.name for w in written]
+        assert 'universal.md' in written_names
+        assert 'python.md' in written_names
         assert (config_dir / 'stack.md').read_text() == 'existing content'
 
     def test_empty_tooling(self, tmp_path: Path) -> None:
         stack = ProjectStack(language='python')
         written = write_config_files(tmp_path, stack, {})
 
-        assert len(written) == 1
-        assert written[0].name == 'stack.md'
+        assert len(written) == 2
+        written_names = [w.name for w in written]
+        assert 'universal.md' in written_names
+        assert 'stack.md' in written_names

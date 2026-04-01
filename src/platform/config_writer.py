@@ -3,6 +3,23 @@ from pathlib import Path
 from src.platform.models import LanguageTooling, ProjectStack
 
 
+UNIVERSAL_STANDARDS = """# Universal Coding Standards
+
+## Security
+- No hardcoded secrets (API keys, passwords, tokens, connection strings) in source code
+- No credentials in source code — use environment variables or config references
+- Test fixtures with obviously fake values are acceptable
+
+## Code Separation
+- No test logic in production code
+- No production logic in test files
+
+## Imports
+- No inline imports — all imports at file top
+- Exception: circular dependency resolution
+"""
+
+
 LANGUAGE_CODING_STANDARDS: dict[str, str] = {
     'python': """## Coding Standards
 
@@ -185,6 +202,11 @@ def write_config_files(
     config_dir.mkdir(parents=True, exist_ok=True)
 
     written: list[Path] = []
+
+    universal_path = config_dir / 'universal.md'
+    if not universal_path.exists():
+        universal_path.write_text(UNIVERSAL_STANDARDS, encoding='utf-8')
+        written.append(universal_path)
 
     stack_path = config_dir / 'stack.md'
     if not stack_path.exists():

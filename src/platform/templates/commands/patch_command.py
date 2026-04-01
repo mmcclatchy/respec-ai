@@ -356,7 +356,19 @@ ELIF CODING_DECISION == "user_input":
 
 ### 6.5: Standards Finalization Phase
 
-Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS (language config files detected in Step 4.3).
+═══════════════════════════════════════════════
+MANDATORY PHASE 2 ACTIVATION GATE
+═══════════════════════════════════════════════
+Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS
+(language config files detected in Step 4.3).
+
+IF no config files were found in .respec-ai/config/:
+  Skip Phase 2 entirely. Proceed directly to Step 7.
+  Display: "ℹ️ No coding standards configured — skipping Phase 2"
+
+Phase 2 has ZERO built-in rules. Without config files, there is
+nothing to assess. Do NOT apply general coding standards.
+═══════════════════════════════════════════════
 
 #### Step 6.5.1: Initialize Standards Loop
 
