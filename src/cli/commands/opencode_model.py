@@ -10,10 +10,9 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from exa_py import Exa
-
 from rich.table import Table
 
-from src.cli.config.global_config import load_api_key, save_api_key, save_global_models
+from src.cli.config.global_config import GLOBAL_MODELS_PATH, load_api_key, save_api_key, save_global_models
 from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
@@ -432,7 +431,7 @@ def _interactive_override(
 
 
 def _config_path() -> str:
-    return str(Path.home() / '.config' / 'respec-ai' / 'models.json')
+    return str(GLOBAL_MODELS_PATH)
 
 
 if __name__ == '__main__':
