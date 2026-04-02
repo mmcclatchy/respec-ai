@@ -133,7 +133,7 @@ PLAN_ARCHITECTURE = extract content of "## Architecture Direction" section
   IF section missing: PLAN_ARCHITECTURE = None
 
 PLAN_TECHNOLOGY_DECISIONS = extract content of "### Chosen Technologies" section
-  (hard constraints alongside Claude Plan refs — technologies already decided)
+  (hard constraints alongside plan reference paths — technologies already decided)
   IF section missing: PLAN_TECHNOLOGY_DECISIONS = None
 
 PLAN_TECHNOLOGY_REJECTIONS = extract content of "### Rejected Technologies" section
@@ -197,7 +197,8 @@ Read constraints from THREE sources in priority order (HIGHEST to LOWEST):
    If this section exists, it is the authoritative source.
 
 2. STRATEGIC PLAN REFERENCES (MEDIUM):
-   "Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN
+   "Plan Reference: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN
+   "Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN (legacy)
    Read these IF no formal section exists in the phase.
 
 3. AD-HOC DIRECTIVES (LOWEST):
@@ -225,9 +226,10 @@ SOURCE 1 — Formal section in current phase (HIGHEST PRIORITY):
     IF Read fails: Note warning — "Could not read {{file_path}}"
 
 SOURCE 2 — Strategic Plan Reference (uses STRATEGIC_PLAN_MARKDOWN from STEP 0.5):
-  Search STRATEGIC_PLAN_MARKDOWN for Claude Plan file paths.
+  Search STRATEGIC_PLAN_MARKDOWN for plan reference file paths.
   Look in the Technology Requirements and Project Constraints sections for lines like:
-    "Claude Plan: `<file-path>`" or any path containing {tools.plans_dir}/ ending in .md
+    "Plan Reference: `<file-path>`" or "Claude Plan: `<file-path>`" (legacy)
+    or any path containing {tools.plans_dir}/ ending in .md
   For each path found:
     CALL Read(file_path)
     IF Read succeeds: Append file content to IMPL_PLAN_CONSTRAINTS list
@@ -710,7 +712,7 @@ type Resource {{
 
 **Implementation Plan References** (Preserve if present):
 - [ ] If phase has "### Implementation Plan References": copied VERBATIM into output
-- [ ] If no section but Claude Plan found in strategic plan: auto-created in output
+- [ ] If no section but plan reference found in strategic plan (including legacy Claude marker): auto-created in output
 
 **Plan Context Propagation** (from STEP 0.55):
 - [ ] If PLAN_ARCHITECTURE present: Architecture section refines it, does not contradict it

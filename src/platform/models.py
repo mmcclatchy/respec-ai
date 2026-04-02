@@ -346,6 +346,7 @@ class PlanCommandTools(CommandToolsModel):
     invoke_analyst_critic: str = Field(..., description='Invocation text for respec-analyst-critic agent')
     conversation_invocation: str = Field(..., description='Invocation text for plan-conversation workflow')
     conversation_workflow_name: str = Field(..., description='Platform-appropriate name for the conversation workflow')
+    roadmap_command_invocation: str = Field(..., description='Invocation text for roadmap workflow handoff')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

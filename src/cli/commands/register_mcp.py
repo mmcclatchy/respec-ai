@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from src.cli.config.claude_config import ClaudeConfigError
+from src.cli.config.codex_config import CodexConfigError
 from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
@@ -76,7 +77,7 @@ def run(args: Namespace) -> int:
         print_info('Ensure Docker is installed and running')
         return 1
 
-    except ClaudeConfigError as e:
+    except (ClaudeConfigError, CodexConfigError) as e:
         print_error('Failed to register MCP server')
         print_error(str(e))
         return 1

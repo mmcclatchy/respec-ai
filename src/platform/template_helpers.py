@@ -223,7 +223,6 @@ def create_plan_command_tools(
     builder.add_platform_tools(platform_tools)
 
     adapter = _resolve_tui_adapter(tui_adapter)
-    is_claude_code = isinstance(adapter, _ClaudeCodeAdapter)
     return PlanCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
@@ -252,7 +251,13 @@ def create_plan_command_tools(
             PLAN_CONVERSATION_INLINE_GUIDE,
             requires_user_interaction=True,
         ),
-        conversation_workflow_name=('the plan-conversation command' if is_claude_code else 'the conversation workflow'),
+        conversation_workflow_name=adapter.conversation_workflow_name,
+        roadmap_command_invocation=adapter.render_command_invocation(
+            'respec-roadmap',
+            '{PLAN_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
         initialize_plan_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"plan"'
         ),

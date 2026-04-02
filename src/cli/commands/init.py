@@ -10,6 +10,7 @@ from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 
 from src.cli.config.claude_config import ClaudeConfigError
+from src.cli.config.codex_config import CodexConfigError
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_info, print_warning
@@ -267,7 +268,7 @@ def _setup_mcp_server(
             mcp_registered = tui_adapter.register_mcp_server(project_path)
             tui_adapter.add_mcp_permissions(project_path)
             return mcp_registered
-        except (ClaudeConfigError, PackageInfoError) as e:
+        except (ClaudeConfigError, CodexConfigError, PackageInfoError) as e:
             print_warning(f'MCP registration failed: {e}')
             print_warning('Run respec-ai register-mcp to register manually')
             return False

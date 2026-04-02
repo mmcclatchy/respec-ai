@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.platform.tui_adapters import ClaudeCodeAdapter, get_tui_adapter
+from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, get_tui_adapter
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 from src.platform.tui_selector import TuiType
@@ -47,10 +47,12 @@ class TestTuiType:
     def test_values(self) -> None:
         assert TuiType.CLAUDE_CODE == 'claude-code'
         assert TuiType.OPENCODE == 'opencode'
+        assert TuiType.CODEX == 'codex'
 
     def test_from_string(self) -> None:
         assert TuiType('claude-code') == TuiType.CLAUDE_CODE
         assert TuiType('opencode') == TuiType.OPENCODE
+        assert TuiType('codex') == TuiType.CODEX
 
 
 class TestGetTuiAdapter:
@@ -61,6 +63,10 @@ class TestGetTuiAdapter:
     def test_returns_opencode_adapter(self) -> None:
         adapter = get_tui_adapter(TuiType.OPENCODE)
         assert isinstance(adapter, OpenCodeAdapter)
+
+    def test_returns_codex_adapter(self) -> None:
+        adapter = get_tui_adapter(TuiType.CODEX)
+        assert isinstance(adapter, CodexAdapter)
 
     def test_invalid_tui_raises(self) -> None:
         with pytest.raises((ValueError, AttributeError)):
@@ -530,3 +536,107 @@ class TestOpenCodeAdapterInvocationRendering:
             requires_user_interaction=False,
         )
         assert 'This guide should not appear' not in result
+
+
+class TestCodexAdapter:
+    def setup_method(self) -> None:
+        self.adapter = CodexAdapter()
+
+    def test_commands_dir(self, project_path: Path) -> None:
+        assert self.adapter.commands_dir(project_path) == project_path / '.codex' / 'commands'
+
+    def test_prompts_dir(self, project_path: Path) -> None:
+        assert self.adapter.prompts_dir(project_path) == project_path / '.codex' / 'agents'
+
+    def test_config_dir_name(self) -> None:
+        assert self.adapter.config_dir_name() == '.codex'
+
+    def test_plans_dir(self) -> None:
+        assert self.adapter.plans_dir() == '.codex/plans'
+
+    def test_reasoning_model_defaults_when_unconfigured(self, tmp_path: Path) -> None:
+        with patch.dict('os.environ', {'CODEX_HOME': str(tmp_path / '.codex')}, clear=False):
+            assert self.adapter.reasoning_model == 'gpt-5'
+
+    def test_reasoning_model_uses_codex_config(self, tmp_path: Path) -> None:
+        codex_home = tmp_path / '.codex'
+        codex_home.mkdir(parents=True)
+        (codex_home / 'config.toml').write_text('model = "gpt-5.2"\n', encoding='utf-8')
+        with patch.dict('os.environ', {'CODEX_HOME': str(codex_home)}, clear=False):
+            assert self.adapter.reasoning_model == 'gpt-5.2'
+            assert self.adapter.task_model == 'gpt-5.2'
+
+    def test_write_all_creates_docs_and_skills(
+        self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
+    ) -> None:
+        files = self.adapter.write_all(project_path, [agent_spec], [command_spec])
+        assert len(files) == 4
+        assert (project_path / '.codex' / 'commands' / 'respec-plan.md').exists()
+        assert (project_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-agent-plan-analyst' / 'SKILL.md').exists()
+
+    def test_write_all_cleans_stale_skill_dirs(
+        self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
+    ) -> None:
+        stale_dir = project_path / '.codex' / 'skills' / 'respec-old-skill'
+        stale_dir.mkdir(parents=True)
+        (stale_dir / 'SKILL.md').write_text('old', encoding='utf-8')
+
+        self.adapter.write_all(project_path, [agent_spec], [command_spec])
+        assert not stale_dir.exists()
+
+    def test_register_unregister_mcp_server(self, tmp_path: Path, project_path: Path) -> None:
+        codex_home = tmp_path / '.codex'
+        with patch.dict('os.environ', {'CODEX_HOME': str(codex_home)}, clear=False):
+            assert self.adapter.register_mcp_server(project_path) is True
+            assert self.adapter.is_mcp_registered(project_path) is True
+            assert self.adapter.unregister_mcp_server(project_path) is True
+            assert self.adapter.is_mcp_registered(project_path) is False
+
+    def test_unregister_all_mcp_servers(self, tmp_path: Path, project_path: Path) -> None:
+        codex_home = tmp_path / '.codex'
+        codex_home.mkdir(parents=True)
+        config_path = codex_home / 'config.toml'
+        config_path.write_text(
+            '[mcp_servers.respec-ai]\ncommand = "respec-ai"\nargs = ["mcp-server"]\n\n'
+            '[mcp_servers.respec_ai]\ncommand = "respec-ai"\nargs = ["mcp-server"]\n',
+            encoding='utf-8',
+        )
+        with patch.dict('os.environ', {'CODEX_HOME': str(codex_home)}, clear=False):
+            removed = self.adapter.unregister_all_mcp_servers(project_path)
+            assert removed == 2
+            assert 'respec-ai' not in config_path.read_text(encoding='utf-8')
+
+
+class TestCodexAdapterInvocationRendering:
+    def setup_method(self) -> None:
+        self.adapter = CodexAdapter()
+
+    def test_render_agent_invocation_uses_skill_name(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            'respec-plan-critic',
+            'evaluate strategic plan quality',
+            [('plan_name', 'PLAN_NAME')],
+        )
+        assert 'respec-agent-plan-critic' in result
+        assert 'plan_name: PLAN_NAME' in result
+
+    def test_render_command_invocation_interactive_returns_guide(self) -> None:
+        guide = 'inline guide'
+        result = self.adapter.render_command_invocation(
+            'respec-plan-conversation',
+            '[ARGS]',
+            guide,
+            requires_user_interaction=True,
+        )
+        assert result == guide
+
+    def test_render_command_invocation_non_interactive_references_skill(self) -> None:
+        result = self.adapter.render_command_invocation(
+            'respec-roadmap',
+            '{PLAN_NAME}',
+            '',
+            requires_user_interaction=False,
+        )
+        assert 'Invoke the `respec-roadmap` skill' in result

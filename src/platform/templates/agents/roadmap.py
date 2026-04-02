@@ -199,7 +199,8 @@ Break requirements into appropriately-sized implementation phases
 → IF PLAN_QUALITY_BAR exists: Quality targets inform phase sizing (budget testing time)
 
 STEP 3.5: Propagate Plan References to Sparse Phases
-If the strategic plan contains a line matching "Claude Plan: `<path>`" or any path
+If the strategic plan contains a line matching "Plan Reference: `<path>`",
+"Claude Plan: `<path>`" (legacy), or any path
 containing {tools.plans_dir}/ ending in .md:
   Include `### Implementation Plan References` in each sparse phase under ## Additional Details:
   - Constraint: `<path>` (propagated from strategic plan)

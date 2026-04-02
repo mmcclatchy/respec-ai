@@ -5,11 +5,13 @@ from src.platform.tui_adapters import ClaudeCodeAdapter
 
 from src.platform.template_helpers import (
     create_create_phase_agent_tools,
+    create_phase_architect_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_create_phase_template,
+    generate_phase_architect_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
 )
@@ -221,3 +223,15 @@ class TestTemplateConsistency:
         for template in templates:
             for pattern in behavioral_patterns:
                 assert pattern not in template, f'Template contains behavioral description: {pattern}'
+
+    def test_roadmap_template_accepts_legacy_and_new_plan_reference_markers(self) -> None:
+        roadmap_tools = create_roadmap_agent_tools(_adapter)
+        template = generate_roadmap_template(roadmap_tools)
+        assert '"Plan Reference: `<path>`"' in template
+        assert '"Claude Plan: `<path>`" (legacy)' in template
+
+    def test_phase_architect_template_accepts_legacy_and_new_plan_reference_markers(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+        assert '"Plan Reference: `<file-path>`"' in template
+        assert '"Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN (legacy)' in template

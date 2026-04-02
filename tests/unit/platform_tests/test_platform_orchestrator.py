@@ -67,6 +67,28 @@ class TestPlatformOrchestrator:
         assert 'mcp__linear-server__get_issue' in template
         assert 'mcp__linear-server__update_issue' in template
 
+    def test_generate_command_template_uses_configured_codex_tui(self) -> None:
+        self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)
+        self.orchestrator.config_manager.update_project_config(self.test_project_path, {'tui': 'codex'})
+
+        request = TemplateGenerationRequest(
+            project_path=Path(self.test_project_path), command_name=RespecAICommand.PLAN
+        )
+        template = self.orchestrator.generate_command_template(request)
+
+        assert 'Invoke the `respec-roadmap` skill' in template
+
+    def test_generate_command_template_falls_back_to_claude_for_invalid_tui(self) -> None:
+        self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)
+        self.orchestrator.config_manager.update_project_config(self.test_project_path, {'tui': 'not-a-real-tui'})
+
+        request = TemplateGenerationRequest(
+            project_path=Path(self.test_project_path), command_name=RespecAICommand.PLAN
+        )
+        template = self.orchestrator.generate_command_template(request)
+
+        assert '/respec-roadmap {PLAN_NAME}' in template
+
     def test_generate_command_template_no_config(self) -> None:
         request = TemplateGenerationRequest(
             project_path=Path(self.test_project_path), command_name=RespecAICommand.PHASE

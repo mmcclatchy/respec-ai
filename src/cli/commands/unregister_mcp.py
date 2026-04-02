@@ -3,6 +3,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from src.cli.config.claude_config import ClaudeConfigError
+from src.cli.config.codex_config import CodexConfigError
 from src.cli.ui.console import console
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
@@ -48,7 +49,7 @@ def run(args: Namespace) -> int:
 
         return 0
 
-    except ClaudeConfigError as e:
+    except (ClaudeConfigError, CodexConfigError) as e:
         console.print(f'[red]✗[/red] Failed to unregister MCP server: {e}')
         return 1
     except Exception as e:

@@ -3,7 +3,7 @@
 from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.tool_enums import RespecAICommand
-from src.platform.tui_adapters import ClaudeCodeAdapter
+from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
 
@@ -208,6 +208,22 @@ class TestCrossPlatformInvocationRendering:
         # The invocation block should NOT contain bash/slash syntax
         assert '```bash\n/respec-plan-conversation' not in template
 
+    def test_codex_plan_uses_skill_invocation_for_roadmap_handoff(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Invoke the `respec-roadmap` skill' in template
+        assert '```bash\n/respec-roadmap {{PLAN_NAME}}' not in template
+
+    def test_plan_uses_tui_agnostic_plan_reference_marker(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'Plan Reference: {PLAN_REFERENCE_FILE}' in template
+        assert 'Claude Plan: {CLAUDE_PLAN_FILE}' not in template
+
     def test_claude_code_phase_to_task_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -221,3 +237,13 @@ class TestCrossPlatformInvocationRendering:
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
         )
         assert 'respec-task' in template
+
+    def test_plan_conversation_allowed_tools_frontmatter_is_comma_separated(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN_CONVERSATION,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'allowed-tools: mcp__exa__web_search_exa, Read' in template
+        assert 'allowed-tools: [mcp__exa__web_search_exa, Read]' not in template

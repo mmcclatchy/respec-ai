@@ -135,3 +135,19 @@ class TestGenerateTemplates:
         assert '.respec-ai/config/stack.md' in coder_content
         assert 'PROJECT CONFIGURATION' in quality_checker_content
         assert '.respec-ai/config/stack.md' in quality_checker_content
+
+    def test_generates_codex_artifacts(self, mocker: MockerFixture, tmp_path: Path) -> None:
+        mock_orchestrator = mocker.MagicMock()
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
+        adapter = get_tui_adapter(TuiType.CODEX)
+
+        files_written, commands_count, agents_count = generate_templates(
+            mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter
+        )
+
+        assert commands_count == 7
+        assert agents_count == 21
+        assert (tmp_path / '.codex' / 'commands').exists()
+        assert (tmp_path / '.codex' / 'agents').exists()
+        assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
+        assert any('SKILL.md' in str(p) for p in files_written)

@@ -64,7 +64,7 @@ conversation_context_template = ConversationContext(
 
 def generate_plan_conversation_command_template(_tools: Any = None) -> str:
     return f"""---
-allowed-tools: [mcp__exa__web_search_exa, Read]
+allowed-tools: mcp__exa__web_search_exa, Read
 argument-hint: [optional-context]
 description: Conduct conversational requirements gathering
 ---

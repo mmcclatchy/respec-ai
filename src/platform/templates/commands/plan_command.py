@@ -43,7 +43,7 @@ plan_template = Plan(
     ),
     resource_requirements=(
         '### Team Structure\n[Team composition from resource requirements]\n\n'
-        '### Technology Requirements\n[Technology stack — include Claude Plan reference if applicable]\n\n'
+        '### Technology Requirements\n[Technology stack — include plan reference if applicable]\n\n'
         '### Infrastructure Needs\n[Infrastructure requirements from resource discussion]'
     ),
     risk_management=(
@@ -88,7 +88,7 @@ Example usage: `{tools.initialize_analyst_loop}`
 ### Track only essential orchestration state
 
 - **PLAN_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
-- **CONVERSATION_CONTEXT**: Markdown document returned from /respec-plan-conversation - conversation results from Step 2
+- **CONVERSATION_CONTEXT**: Markdown document returned from the conversation workflow - conversation results from Step 2
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
@@ -125,35 +125,35 @@ Automated analyst phase (Steps 6-9):
 - If no conversation context provided, start with: "I need help creating a strategic plan for my project"
 - Initialize variables for state management throughout the human-driven process
 
-## Step 1.5: Detect Claude Plan File
+## Step 1.5: Detect Plan Reference File
 
-Check for pre-resolved architecture decisions in a Claude Plan file:
+Check for pre-resolved architecture decisions in a plan reference file:
 
 ```text
-CLAUDE_PLAN_FILE = None
-CLAUDE_PLAN_CONTEXT = None
+PLAN_REFERENCE_FILE = None
+PLAN_REFERENCE_CONTEXT = None
 
 Check remaining arguments (after PLAN_NAME) for a file path argument
 (contains {tools.plans_dir}/ or ends in .md with a path separator):
-  IF found: CLAUDE_PLAN_FILE = extracted path
+  IF found: PLAN_REFERENCE_FILE = extracted path
 
-IF CLAUDE_PLAN_FILE is None:
+IF PLAN_REFERENCE_FILE is None:
   Bash: find {tools.plans_dir} -name "*.md" -mtime -7 -type f 2>/dev/null | head -5
   IF results found:
     Use AskUserQuestion:
-      Question: "I found recently modified Claude Plan file(s). Use one as a starting point?"
-      Header: "Select Claude Plan"
+      Question: "I found recently modified plan reference file(s). Use one as a starting point?"
+      Header: "Select Plan Reference"
       multiSelect: false
-      Options: [each file path found, plus "No, proceed without a Claude Plan"]
-    IF user selects a file: CLAUDE_PLAN_FILE = selected path
-    IF user declines: CLAUDE_PLAN_FILE = None
+      Options: [each file path found, plus "No, proceed without a plan reference file"]
+    IF user selects a file: PLAN_REFERENCE_FILE = selected path
+    IF user declines: PLAN_REFERENCE_FILE = None
 
-IF CLAUDE_PLAN_FILE is not None:
-  CALL Read(CLAUDE_PLAN_FILE)
-  CLAUDE_PLAN_CONTEXT = [content read from file]
-  Display: "✓ Using Claude Plan: {{CLAUDE_PLAN_FILE}}"
+IF PLAN_REFERENCE_FILE is not None:
+  CALL Read(PLAN_REFERENCE_FILE)
+  PLAN_REFERENCE_CONTEXT = [content read from file]
+  Display: "✓ Using plan reference: {{PLAN_REFERENCE_FILE}}"
 ELSE:
-  Display: "ℹ️ No Claude Plan file detected — proceeding with standard workflow"
+  Display: "ℹ️ No plan reference file detected — proceeding with standard workflow"
 ```
 
 ## Step 1.7: Copy External Plan File to Repo
@@ -162,30 +162,30 @@ If the plan file is external to the project, copy it into the repo so downstream
 agents can reliably Read() it on any machine.
 
 ```text
-IF CLAUDE_PLAN_FILE is not None:
-  IF CLAUDE_PLAN_FILE is an absolute path (starts with "/", "~", or a drive letter like "C:\\"):
-    REFERENCE_FILENAME = [basename of CLAUDE_PLAN_FILE]
+IF PLAN_REFERENCE_FILE is not None:
+  IF PLAN_REFERENCE_FILE is an absolute path (starts with "/", "~", or a drive letter like "C:\\"):
+    REFERENCE_FILENAME = [basename of PLAN_REFERENCE_FILE]
     REFERENCE_PATH = .respec-ai/plans/{{PLAN_NAME}}/references/{{REFERENCE_FILENAME}}
-    CALL Write(REFERENCE_PATH, CLAUDE_PLAN_CONTEXT)
+    CALL Write(REFERENCE_PATH, PLAN_REFERENCE_CONTEXT)
     Display: "✓ Copied plan reference to {{REFERENCE_PATH}}"
-    CLAUDE_PLAN_FILE = REFERENCE_PATH
+    PLAN_REFERENCE_FILE = REFERENCE_PATH
   ELSE:
     Display: "ℹ️ Plan file is project-relative — referencing in place"
 ```
 
 ## Step 2: Conversational Requirements Gathering
 
-### Use the /respec-plan-conversation command to conduct conversational discovery
+### Use the conversation workflow to conduct conversational discovery
 
-Invoke the plan-conversation command with initial context. Pass the remaining arguments (after PLAN_NAME) as the initial conversation context:
+Invoke the conversation workflow with initial context. Pass the remaining arguments (after PLAN_NAME) as the initial conversation context:
 
 ```text
-IF CLAUDE_PLAN_CONTEXT is not None:
+IF PLAN_REFERENCE_CONTEXT is not None:
   CONVERSATION_INITIAL_CONTEXT = (
-    "Context from Claude Plan ({{CLAUDE_PLAN_FILE}}): key technology decisions, "
+    "Context from plan reference ({{PLAN_REFERENCE_FILE}}): key technology decisions, "
     "architecture constraints, and rejected alternatives are pre-resolved. "
     "These decisions are already settled — focus the conversation on project "
-    "goals, requirements, and areas not covered by the Claude Plan. "
+    "goals, requirements, and areas not covered by the plan reference. "
     + [remaining arguments after PLAN_NAME, if any]
   )
 ELSE:
@@ -344,8 +344,8 @@ Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
 3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
-4. **If CLAUDE_PLAN_FILE is not None**: You MUST append this exact line to the resource_requirements section:
-   `Claude Plan: {{CLAUDE_PLAN_FILE}}` — phase-architect reads this as hard constraints.
+4. **If PLAN_REFERENCE_FILE is not None**: You MUST append this exact line to the resource_requirements section:
+   `Plan Reference: {{PLAN_REFERENCE_FILE}}` — phase-architect reads this as hard constraints.
    Do NOT inline the decisions and omit the file path. The path is how downstream agents access the full implementation details.
 5. **MUST store in variable** as CURRENT_PLAN — required for Steps 4 and 5
 6. **MUST store in MCP** using: `{tools.store_plan}` — verify storage succeeds before proceeding
@@ -639,13 +639,11 @@ Display: "✅  PLAN COMPLETE — generating roadmap"
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
 
-Invoke the roadmap command to decompose the plan into phases:
+Invoke the roadmap workflow to decompose the plan into phases:
 
-```bash
-/respec-roadmap {{PLAN_NAME}}
-```
+{tools.roadmap_command_invocation}
 
-The `/respec-roadmap` command will:
+The roadmap workflow will:
 1. Retrieve the strategic plan from MCP
 2. Initialize a roadmap quality loop
 3. Run roadmap agent → roadmap-critic refinement cycle
@@ -655,12 +653,12 @@ The roadmap is stored in MCP only — it is internal working data.
 Do NOT write a roadmap.md file or any roadmap file to disk.
 The only user-visible files from this workflow are the plan file and the individual phase files.
 
-**If /respec-roadmap fails**: The plan is already stored and valid. Display:
+**If roadmap generation fails**: The plan is already stored and valid. Display:
 ```text
-"⚠ Roadmap generation failed. Plan is saved. Run /respec-roadmap {{PLAN_NAME}} manually."
+"⚠ Roadmap generation failed. Plan is saved. Retry roadmap generation with PLAN_NAME={{PLAN_NAME}}."
 ```
 
-**After /respec-roadmap completes**: Present final summary:
+**After roadmap generation completes**: Present final summary:
 
 ```text
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

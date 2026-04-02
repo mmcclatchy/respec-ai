@@ -9,6 +9,7 @@ from pytest_mock import MockerFixture
 from src.cli.commands import register_mcp
 from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.docker.manager import DockerManagerError
+from src.platform.tui_adapters.codex import CodexAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
 
@@ -119,6 +120,21 @@ class TestRegisterMcpCommand:
 
         mock_get_adapter = mocker.patch(
             'src.cli.commands.register_mcp.get_tui_adapter', return_value=MagicMock(spec=OpenCodeAdapter)
+        )
+
+        result = register_mcp.run(Namespace(force=False))
+        assert result == 0
+        mock_get_adapter.assert_called_once()
+
+    def test_codex_tui_uses_codex_adapter(self, tmp_path: Path, mock_docker: MagicMock, mocker: MockerFixture) -> None:
+        config_dir = tmp_path / '.respec-ai'
+        config_dir.mkdir()
+        (config_dir / 'config.json').write_text(json.dumps({'tui': 'codex', 'platform': 'linear'}))
+        mocker.patch('src.cli.commands.register_mcp.Path.cwd', return_value=tmp_path)
+        mocker.patch('src.cli.commands.register_mcp.get_package_version', return_value='0.3.0')
+
+        mock_get_adapter = mocker.patch(
+            'src.cli.commands.register_mcp.get_tui_adapter', return_value=MagicMock(spec=CodexAdapter)
         )
 
         result = register_mcp.run(Namespace(force=False))
