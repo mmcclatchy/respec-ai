@@ -1,12 +1,31 @@
 import json
 from argparse import Namespace
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
 from src.cli.commands import validate
 from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
+
+
+def _mock_adapter(
+    mocker: MockerFixture,
+    *,
+    mcp_registered: bool = True,
+    commands_dir: Path | None = None,
+    agents_dir: Path | None = None,
+) -> MagicMock:
+    adapter = MagicMock()
+    adapter.is_mcp_registered.return_value = mcp_registered
+    adapter.display_name = 'Claude Code'
+    if commands_dir is not None:
+        adapter.commands_dir.return_value = commands_dir
+    if agents_dir is not None:
+        adapter.prompts_dir.return_value = agents_dir
+    mocker.patch('src.cli.commands.validate.get_tui_adapter', return_value=adapter)
+    return adapter
 
 
 class TestValidateCommand:
@@ -33,10 +52,8 @@ class TestValidateCommand:
         for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
-        mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.validate.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.validate.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = validate.run(args)
@@ -53,10 +70,8 @@ class TestValidateCommand:
 
         commands_dir = tmp_path / 'commands'
         agents_dir = tmp_path / 'agents'
-        mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.validate.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.validate.is_mcp_server_registered', return_value=False)
+        _mock_adapter(mocker, mcp_registered=False, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = validate.run(args)
@@ -86,10 +101,8 @@ class TestValidateCommand:
         for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
-        mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.validate.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.validate.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = validate.run(args)
@@ -119,10 +132,8 @@ class TestValidateCommand:
         for i in range(10):
             (agents_dir / f'agent{i}.md').touch()
 
-        mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.validate.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.validate.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = validate.run(args)
@@ -152,10 +163,8 @@ class TestValidateCommand:
         for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
-        mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.validate.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.validate.is_mcp_server_registered', return_value=False)
+        _mock_adapter(mocker, mcp_registered=False, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = validate.run(args)
@@ -185,10 +194,8 @@ class TestValidateCommand:
         for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
-        mocker.patch('src.cli.commands.validate.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.validate.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.validate.is_mcp_server_registered', return_value=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = validate.run(args)

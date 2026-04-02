@@ -25,8 +25,8 @@ class CommandStrategy(ABC, Generic[T]):
     def build_tools(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> T:
         pass
 
@@ -37,9 +37,9 @@ class CommandStrategy(ABC, Generic[T]):
     def generate_template(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> str:
-        tools = self.build_tools(platform, plans_dir=plans_dir, tui_adapter=tui_adapter)
+        tools = self.build_tools(platform, tui_adapter, plans_dir=plans_dir)
         template_func = self.get_template_func()
         return template_func(tools)

@@ -44,8 +44,8 @@ class TestGenerateTemplates:
         )
 
         agents_dir = tmp_path / '.claude' / 'agents'
-        assert agents_count == 22
-        assert len(list(agents_dir.glob('*.md'))) == 22
+        assert agents_count == 21
+        assert len(list(agents_dir.glob('*.md'))) == 21
 
     def test_returns_file_paths(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
@@ -55,7 +55,7 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert len(files_written) == 29  # 7 commands + 22 agents = 29
+        assert len(files_written) == 28  # 7 commands + 21 agents = 28
         assert all(isinstance(f, Path) for f in files_written)
         assert all(f.suffix == '.md' for f in files_written)
 
@@ -67,7 +67,7 @@ class TestGenerateTemplates:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
 
             assert commands_count == 7
-            assert agents_count == 22
+            assert agents_count == 21
 
     def test_removes_stale_respec_files_before_writing(self, mocker: MockerFixture, tmp_path: Path) -> None:
         commands_dir = tmp_path / '.claude' / 'commands'

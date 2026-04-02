@@ -19,9 +19,19 @@ def _mock_container_status(mocker: MockerFixture, name: str, running: bool) -> N
     }
 
 
-def _mock_adapter(mocker: MockerFixture, *, mcp_registered: bool = True) -> MagicMock:
+def _mock_adapter(
+    mocker: MockerFixture,
+    *,
+    mcp_registered: bool = True,
+    commands_dir: Path | None = None,
+    agents_dir: Path | None = None,
+) -> MagicMock:
     adapter = MagicMock()
     adapter.is_mcp_registered.return_value = mcp_registered
+    if commands_dir is not None:
+        adapter.commands_dir.return_value = commands_dir
+    if agents_dir is not None:
+        adapter.prompts_dir.return_value = agents_dir
     mocker.patch('src.cli.commands.status.get_tui_adapter', return_value=adapter)
     return adapter
 
@@ -50,10 +60,8 @@ class TestStatusCommand:
         for i in range(EXPECTED_AGENTS_COUNT):
             (agents_dir / f'agent{i}.md').touch()
 
-        mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
         _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
@@ -87,10 +95,8 @@ class TestStatusCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
         _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()
@@ -116,10 +122,8 @@ class TestStatusCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=False)
+        _mock_adapter(mocker, mcp_registered=False, commands_dir=commands_dir, agents_dir=agents_dir)
 
         args = Namespace()
         result = status.run(args)
@@ -156,10 +160,8 @@ class TestStatusCommand:
         commands_dir.mkdir()
         agents_dir.mkdir()
 
-        mocker.patch('src.cli.commands.status.get_commands_dir', return_value=commands_dir)
-        mocker.patch('src.cli.commands.status.get_agents_dir', return_value=agents_dir)
         mocker.patch('src.cli.commands.status.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True)
+        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
         _mock_container_status(mocker, 'respec-ai-0.2.0', running=True)
 
         args = Namespace()

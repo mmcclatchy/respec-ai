@@ -91,7 +91,7 @@ class TestLoopManagement:
         loop_state = await isolated_state_manager.get_loop(loop_id)
         feedback = CriticFeedback(
             loop_id=loop_id,
-            critic_agent=CriticAgent.CODE_REVIEWER,
+            critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
             iteration=1,
             overall_score=95,
             assessment_summary='High quality code',

@@ -174,7 +174,7 @@ STEP_MODES = set()
 
 For each "#### Step N:" section in TASK_MARKDOWN:
   Scan Step content for mode indicators:
-  IF contains frontend keywords (UI, component, template, CSS, accessibility, HTMX, React, Vue):
+  IF contains frontend keywords (UI, component, template, CSS, accessibility, HTMX, hx-, React, Vue, Svelte, Alpine.js, aria-, semantic HTML, form validation, responsive):
     STEP_MODES.add("frontend")
   IF contains API keywords (endpoint, REST, route, request, response, authentication, middleware):
     STEP_MODES.add("api")

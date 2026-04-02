@@ -64,6 +64,20 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 
 ═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE (Phase 1 Mode)
+═══════════════════════════════════════════════
+Store review section via {tools.store_review_section}.
+Your ONLY output to the orchestrator is:
+  "Review section stored: [plan_name]/[phase_name]/review-coding-standards. Adjustment: [NET_ADJUSTMENT]/[-10 to +5]"
+
+Do NOT return review markdown to the orchestrator.
+Do NOT write files to disk.
+
+VIOLATION: Returning full review section markdown to the orchestrator
+           instead of storing via MCP tool.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
 MANDATORY FILESYSTEM BOUNDARY RESTRICTION
 ═══════════════════════════════════════════════
 You MUST NOT write files to disk. Period.
@@ -198,7 +212,7 @@ When phase2_mode is true, generate feedback in CriticFeedback format:
 Store the following markdown as review section:
 
 ```markdown
-### Coding Standards Review (Active - Optional)
+### Coding Standards Review (Adjustment: {{NET_ADJUSTMENT}}/[-10 to +5])
 
 #### Standards Files Read
 - [List each config file read with path]
@@ -237,7 +251,12 @@ Specialist reviewers do not contribute to the base 100-point score directly. Ins
 - Exceptional adherence to all configured standards: +5 points
 - Above-average compliance: +2 to +3 points
 
-Report deductions/bonus clearly for the consolidator to apply.
+Before storing, calculate:
+```
+NET_ADJUSTMENT = sum(all deductions) + bonus
+Cap deductions at -10 total; cap bonus at +5 total
+```
+Replace {{NET_ADJUSTMENT}} in the section header with the calculated value (e.g. `-5` or `+3`).
 
 ## EDGE CASES
 

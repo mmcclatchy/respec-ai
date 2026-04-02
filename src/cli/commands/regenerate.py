@@ -83,8 +83,7 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             print_success(f'Templates updated: v{current_version} → v{package_version}')
         print_success(f'Regenerated {commands_count} commands and {agents_count} agents')
         console.print()
-        tui_label = 'OpenCode' if tui == 'opencode' else 'Claude Code'
-        print_warning(f'Restart {tui_label} to activate the updated templates')
+        print_warning(f'Restart {tui_adapter.display_name} to activate the updated templates')
         console.print()
 
         return 0

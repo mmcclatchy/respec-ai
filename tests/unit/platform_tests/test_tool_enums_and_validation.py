@@ -103,7 +103,11 @@ class TestTemplateHelpers:
             'mcp__linear-server__update_issue',
         ]
 
-        tools = create_phase_command_tools(platform_tools, PlatformType.LINEAR)
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        tools = create_phase_command_tools(
+            platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
+        )
 
         assert 'Task(respec-phase-architect)' in tools.tools_yaml
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools.tools_yaml

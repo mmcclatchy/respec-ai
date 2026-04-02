@@ -25,7 +25,7 @@ def has_coding_standards_file() -> bool:
 
 
 def resolve_active_reviewers(step_modes: set[StepMode]) -> list[str]:
-    reviewers = ['automated-quality-checker', 'spec-alignment-reviewer']
+    reviewers = ['automated-quality-checker', 'spec-alignment-reviewer', 'code-quality-reviewer']
 
     for mode, reviewer in MODE_TO_REVIEWER.items():
         if mode in step_modes:

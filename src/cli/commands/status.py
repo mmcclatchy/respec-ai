@@ -3,7 +3,6 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_warning
@@ -61,8 +60,8 @@ def run(args: Namespace) -> int:
             except DockerManagerError:
                 pass
 
-        commands_dir = get_commands_dir(project_path)
-        agents_dir = get_agents_dir(project_path)
+        commands_dir = tui_adapter.commands_dir(project_path)
+        agents_dir = tui_adapter.prompts_dir(project_path)
 
         commands_count = len(list(commands_dir.glob('*.md'))) if commands_dir.exists() else 0
         agents_count = len(list(agents_dir.glob('*.md'))) if agents_dir.exists() else 0

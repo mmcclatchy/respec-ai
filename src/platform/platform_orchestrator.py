@@ -13,6 +13,7 @@ from .models import (
 from .platform_selector import PlatformSelector, PlatformType
 from .adapters import get_platform_adapter
 from .template_coordinator import TemplateCoordinator
+from .tui_adapters.claude_code import ClaudeCodeAdapter
 
 
 class PlatformOrchestrator:
@@ -66,7 +67,9 @@ class PlatformOrchestrator:
         if not self.template_coordinator.validate_template_generation(request.command_name, config.platform):
             raise ValueError(f'Platform {config.platform.value} does not support command: {request.command_name}')
 
-        return self.template_coordinator.generate_command_template(request.command_name, config.platform)
+        return self.template_coordinator.generate_command_template(
+            request.command_name, config.platform, tui_adapter=ClaudeCodeAdapter()
+        )
 
     def get_project_platform(self, project_path: str) -> PlatformType:
         return self.config_manager.get_project_platform(project_path)

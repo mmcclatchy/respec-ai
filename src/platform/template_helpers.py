@@ -8,7 +8,6 @@ from .models import (
     CodeCommandTools,
     CoderAgentTools,
     CodeQualityReviewerAgentTools,
-    CodeReviewerAgentTools,
     CodingStandardsReviewerAgentTools,
     CreatePhaseAgentTools,
     DatabaseReviewerAgentTools,
@@ -293,7 +292,6 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.PHASE_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_CRITIC)
     builder.add_task_agent(RespecAIAgent.CODER)
-    builder.add_task_agent(RespecAIAgent.CODE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
     builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
@@ -737,33 +735,6 @@ def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticA
     )
 
 
-def create_code_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeReviewerAgentTools:
-    builder = TemplateToolBuilder()
-
-    for tool in CodeReviewerAgentTools.respec_ai_tools:
-        builder.add_respec_ai_tool(tool)
-
-    for builtin_tool, params in CodeReviewerAgentTools.builtin_tools:
-        builder.add_builtin_tool(builtin_tool, params)
-
-    return CodeReviewerAgentTools(
-        tui_adapter=tui_adapter,
-        tools_yaml=builder.render_comma_separated_tools(),
-        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
-        ),
-        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
-        ),
-        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
-        ),
-        store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
-        ),
-    )
-
-
 def create_task_planner_agent_tools(tui_adapter: TuiAdapter) -> TaskPlannerAgentTools:
     builder = TemplateToolBuilder()
 
@@ -1192,7 +1163,6 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
     builder.add_task_agent(RespecAIAgent.CODER)
-    builder.add_task_agent(RespecAIAgent.CODE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
     builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)

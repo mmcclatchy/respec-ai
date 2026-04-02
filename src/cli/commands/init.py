@@ -9,7 +9,6 @@ from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 
-from src.cli.commands import opencode_model
 from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
@@ -60,7 +59,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         '--tui',
-        choices=['claude-code', 'opencode'],
+        choices=[t.value for t in TuiType],
         default='claude-code',
         help='Terminal UI to generate files for (default: claude-code)',
     )
@@ -135,10 +134,9 @@ def run(args: Namespace) -> int:
                     print_warning('Initialization cancelled')
                     return 1
 
-        if tui == 'opencode':
-            result = _run_opencode_models(args)
-            if result != 0:
-                return result
+        result = tui_adapter.post_init_setup(args)
+        if result != 0:
+            return result
 
         with Progress(
             SpinnerColumn(),
@@ -181,6 +179,7 @@ def run(args: Namespace) -> int:
             platform=platform,
             files_created=len(files_written) + 1,
             mcp_registered=mcp_registered,
+            tui_display_name=tui_adapter.display_name,
         )
 
         return 0
@@ -266,7 +265,7 @@ def _setup_mcp_server(
         progress.update(task, description='Registering MCP server...')
         try:
             mcp_registered = tui_adapter.register_mcp_server(project_path)
-            tui_adapter.add_mcp_permissions()
+            tui_adapter.add_mcp_permissions(project_path)
             return mcp_registered
         except (ClaudeConfigError, PackageInfoError) as e:
             print_warning(f'MCP registration failed: {e}')
@@ -278,18 +277,6 @@ def _setup_mcp_server(
         print_warning('Run respec-ai docker pull or respec-ai docker build')
         print_warning('Then: respec-ai register-mcp')
         return False
-
-
-def _run_opencode_models(args: Namespace) -> int:
-    sync_args = Namespace(
-        aa_key=getattr(args, 'aa_key', None),
-        exa_key=getattr(args, 'exa_key', None),
-        yes=getattr(args, 'yes', False),
-        debug=False,
-        no_cache=False,
-    )
-    console.print('\n[bold cyan]Configuring OpenCode model tiers...[/bold cyan]\n')
-    return opencode_model.run(sync_args)
 
 
 def _display_detected_config(

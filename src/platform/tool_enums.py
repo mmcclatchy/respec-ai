@@ -155,7 +155,6 @@ class RespecAIAgent(StrEnum):
     PHASE_PLANNER = f'{_RESPEC_AGENT_PREFIX}phase-planner'
     TASK_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-critic'
     CODER = f'{_RESPEC_AGENT_PREFIX}coder'
-    CODE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}code-reviewer'
 
     # Review team agents
     AUTOMATED_QUALITY_CHECKER = f'{_RESPEC_AGENT_PREFIX}automated-quality-checker'

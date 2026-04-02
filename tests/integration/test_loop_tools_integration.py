@@ -102,13 +102,13 @@ class TestLoopToolsIntegration:
         threshold = stable_loop_config.task_threshold
         # Score just below build_code threshold should refine
         result = await add_feedback_and_decide(
-            isolated_loop_tools, build_code_loop.id, threshold - 1, 1, CriticAgent.CODE_REVIEWER
+            isolated_loop_tools, build_code_loop.id, threshold - 1, 1, CriticAgent.REVIEW_CONSOLIDATOR
         )
         assert result.status == LoopStatus.REFINE
 
         # Score at threshold should complete
         result = await add_feedback_and_decide(
-            isolated_loop_tools, build_code_loop.id, threshold, 2, CriticAgent.CODE_REVIEWER
+            isolated_loop_tools, build_code_loop.id, threshold, 2, CriticAgent.REVIEW_CONSOLIDATOR
         )
         assert result.status == LoopStatus.COMPLETED
 
@@ -140,7 +140,7 @@ class TestLoopToolsIntegration:
         agents = [
             CriticAgent.PLAN_CRITIC,
             CriticAgent.PHASE_CRITIC,
-            CriticAgent.CODE_REVIEWER,
+            CriticAgent.REVIEW_CONSOLIDATOR,
         ]
         loops = []
         for loop_type in loop_types:

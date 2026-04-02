@@ -46,7 +46,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-frontend"
+  "Review section stored: [plan_name]/[phase_name]/review-frontend. Adjustment: [NET_ADJUSTMENT]/[-10 to +5]"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -109,7 +109,7 @@ Read Phase Technology Stack to identify frontend framework:
 Store the following markdown as review section:
 
 ```markdown
-### Frontend Review (Active - Optional)
+### Frontend Review (Adjustment: {{NET_ADJUSTMENT}}/[-10 to +5])
 
 #### Component Structure
 - [Assessment of component organization]
@@ -135,5 +135,11 @@ Store the following markdown as review section:
 Specialist reviewers do not contribute to the base 100-point score directly. Instead:
 - **Deductions**: Up to -10 points for critical issues (broken accessibility, framework anti-patterns)
 - **Bonus**: Up to +5 points for exceptional quality (comprehensive accessibility, exemplary patterns)
-- Report deductions/bonus clearly for the consolidator to apply
+
+Before storing, calculate:
+```
+NET_ADJUSTMENT = sum(all deductions) + bonus
+Cap deductions at -10 total; cap bonus at +5 total
+```
+Replace {{NET_ADJUSTMENT}} in the section header with the calculated value (e.g. `-5` or `+3`).
 """

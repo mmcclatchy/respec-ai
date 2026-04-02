@@ -19,12 +19,12 @@ class PlanCommandStrategy(CommandStrategy[PlanCommandTools]):
     def build_tools(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> PlanCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [adapter.create_plan_tool, adapter.retrieve_plan_tool]
-        return create_plan_command_tools(platform_tools, platform, plans_dir=plans_dir, tui_adapter=tui_adapter)
+        return create_plan_command_tools(platform_tools, platform, plans_dir, tui_adapter)
 
     def get_template_func(self) -> Callable[[PlanCommandTools], str]:
         return generate_plan_command_template

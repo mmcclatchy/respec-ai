@@ -366,8 +366,8 @@ class TestOpenCodeAdapter:
         self.adapter.register_mcp_server(project_path)
         assert self.adapter.is_mcp_registered(project_path)
 
-    def test_add_mcp_permissions_noop(self) -> None:
-        assert self.adapter.add_mcp_permissions() is True
+    def test_add_mcp_permissions_noop(self, project_path: Path) -> None:
+        assert self.adapter.add_mcp_permissions(project_path) is True
 
     def test_unregister_mcp_server_removes_entry(self, project_path: Path) -> None:
         self.adapter.register_mcp_server(project_path)

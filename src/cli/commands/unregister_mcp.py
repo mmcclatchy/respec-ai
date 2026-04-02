@@ -2,9 +2,9 @@ import json
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from src.cli.config.claude_config import ClaudeConfigError, unregister_all_respec_servers
+from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.ui.console import console
-from src.platform.tui_adapters import ClaudeCodeAdapter, get_tui_adapter
+from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
 
 
@@ -29,21 +29,20 @@ def run(args: Namespace) -> int:
         config = json.loads(config_path.read_text(encoding='utf-8'))
         tui = config.get('tui', 'claude-code')
         tui_adapter = get_tui_adapter(TuiType(tui))
-        tui_label = 'OpenCode' if tui == 'opencode' else 'Claude Code'
 
-        if args.all and isinstance(tui_adapter, ClaudeCodeAdapter):
-            removed_count = unregister_all_respec_servers()
+        if args.all:
+            removed_count = tui_adapter.unregister_all_mcp_servers(project_path)
             if removed_count == 0:
                 console.print('[yellow]No MCP servers found to unregister[/yellow]')
                 console.print('[dim]Already clean - no respec-ai MCP servers registered[/dim]')
             else:
                 console.print(f'[green]✓[/green] Unregistered {removed_count} MCP server(s)')
-                console.print(f'[yellow]⚠[/yellow] Restart {tui_label} to apply changes')
+                console.print(f'[yellow]⚠[/yellow] Restart {tui_adapter.display_name} to apply changes')
             return 0
 
         if tui_adapter.unregister_mcp_server(project_path):
             console.print('[green]✓[/green] MCP server "respec-ai" unregistered successfully')
-            console.print(f'[yellow]⚠[/yellow] Restart {tui_label} to apply changes')
+            console.print(f'[yellow]⚠[/yellow] Restart {tui_adapter.display_name} to apply changes')
         else:
             console.print('[yellow]MCP server "respec-ai" was not registered[/yellow]')
 

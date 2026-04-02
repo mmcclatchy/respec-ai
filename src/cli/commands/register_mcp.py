@@ -64,8 +64,7 @@ def run(args: Namespace) -> int:
 
             print_info(f'Container: respec-ai-{version}')
             print_info('Communication: stdio via docker exec')
-            tui_label = 'OpenCode' if tui == 'opencode' else 'Claude Code'
-            print_info(f'Restart {tui_label} to activate the MCP server')
+            print_info(f'Restart {tui_adapter.display_name} to activate the MCP server')
         else:
             print_info('respec-ai MCP server is already registered')
 

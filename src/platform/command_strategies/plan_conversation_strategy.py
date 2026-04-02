@@ -16,8 +16,8 @@ class PlanConversationCommandStrategy(CommandStrategy[None]):
     def build_tools(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> None:
         return None
 

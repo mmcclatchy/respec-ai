@@ -1,4 +1,5 @@
 import json
+from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,14 @@ _BUILTIN_TOOL_MAP = {
 
 
 class OpenCodeAdapter(TuiAdapter):
+    @property
+    def display_name(self) -> str:
+        return 'OpenCode'
+
+    @property
+    def conversation_workflow_name(self) -> str:
+        return 'the conversation workflow'
+
     def commands_dir(self, project_path: Path) -> Path:
         return project_path / '.opencode' / 'commands'
 
@@ -101,7 +110,7 @@ class OpenCodeAdapter(TuiAdapter):
         opencode_json_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         return True
 
-    def add_mcp_permissions(self) -> bool:
+    def add_mcp_permissions(self, project_path: Path) -> bool:
         return True
 
     def is_mcp_registered(self, project_path: Path) -> bool:
@@ -122,6 +131,21 @@ class OpenCodeAdapter(TuiAdapter):
         del mcp['respec-ai']
         opencode_json_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         return True
+
+    def post_init_setup(self, args: Namespace) -> int:
+        from src.cli.commands import opencode_model
+
+        sync_args = Namespace(
+            aa_key=getattr(args, 'aa_key', None),
+            exa_key=getattr(args, 'exa_key', None),
+            yes=getattr(args, 'yes', False),
+            debug=False,
+            no_cache=False,
+        )
+        from src.cli.ui.console import console
+
+        console.print('\n[bold cyan]Configuring OpenCode model tiers...[/bold cyan]\n')
+        return opencode_model.run(sync_args)
 
     def config_dir_name(self) -> str:
         return '.opencode'

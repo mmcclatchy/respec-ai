@@ -19,8 +19,8 @@ class TaskCommandStrategy(CommandStrategy[TaskCommandTools]):
     def build_tools(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> TaskCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [
@@ -28,7 +28,7 @@ class TaskCommandStrategy(CommandStrategy[TaskCommandTools]):
             adapter.list_tasks_tool,
             adapter.create_task_tool,
         ]
-        return create_task_tools(platform_tools, platform, tui_adapter=tui_adapter)
+        return create_task_tools(platform_tools, platform, tui_adapter)
 
     def get_template_func(self) -> Callable[[TaskCommandTools], str]:
         return generate_task_command_template

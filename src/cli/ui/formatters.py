@@ -103,6 +103,7 @@ def print_setup_complete(
     platform: str,
     files_created: int,
     mcp_registered: bool,
+    tui_display_name: str = 'Claude Code',
 ) -> None:
     """Print setup completion message with Rich formatting.
 
@@ -111,6 +112,7 @@ def print_setup_complete(
         platform: Platform name
         files_created: Number of files created
         mcp_registered: Whether MCP was registered
+        tui_display_name: Display name of the TUI (e.g., 'Claude Code', 'OpenCode')
     """
     console.print()
     console.print('[bold green]✅ respec-ai setup complete![/bold green]')
@@ -139,7 +141,7 @@ def print_setup_complete(
         console.print()
 
     console.print(
-        '[bold]Available Commands:[/bold] (restart Claude Code to activate)',
+        f'[bold]Available Commands:[/bold] (restart {tui_display_name} to activate)',
     )
     console.print('  • [cyan]/respec-plan[/cyan] - Create strategic plans')
     console.print('  • [cyan]/respec-roadmap[/cyan] - Create phased roadmaps')
@@ -147,7 +149,7 @@ def print_setup_complete(
     console.print('  • [cyan]/respec-code[/cyan] - Execute implementation')
     console.print()
     console.print(
-        '[bold yellow]🚀 Ready to begin![/bold yellow] Restart Claude Code to use the respec-ai commands.',
+        f'[bold yellow]🚀 Ready to begin![/bold yellow] Restart {tui_display_name} to use the respec-ai commands.',
     )
     console.print()
 

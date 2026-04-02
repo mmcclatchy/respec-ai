@@ -11,7 +11,17 @@ consolidator_feedback_template = CriticFeedback(
     iteration=0,
     overall_score=0,
     assessment_summary='[2-3 sentence summary merging findings from all active reviewers]',
-    detailed_feedback="""### Automated Quality Check (Score: X/70)
+    detailed_feedback="""### Score Summary
+
+| Component | Score | Max |
+| --------- | ----- | --- |
+| Automated Quality Check | X | 70 |
+| Spec Alignment | X | 30 |
+| Code Quality Adjustment | X | [-15 to +5] |
+| [Specialist] Adjustment (one row per active specialist) | X | [-10 to +5] |
+| **Total** | **X** | **100** |
+
+### Automated Quality Check (Score: X/70)
 
 #### Tests Passing (Score: X/30)
 [Merged from review-quality-check section]
@@ -33,7 +43,7 @@ consolidator_feedback_template = CriticFeedback(
 #### Phase Requirements (Score: X/15)
 [Merged from review-spec-alignment section]
 
-### [Specialist Name] Review (Active - Optional)
+### [Specialist Name] Review (Adjustment: X/[-10 to +5])
 [Merged from specialist review section, if active]
 
 ### Progress Notes
@@ -166,9 +176,12 @@ For "review-code-quality" section (always active):
 
 For each specialist section (review-frontend, review-backend-api, review-database, review-infrastructure, review-coding-standards):
   IF section exists:
-    Parse deductions and bonuses from Key Issues and Recommendations
-    Look for "Deduction: -N points" or "Bonus: +N points" patterns
-    SPECIALIST_ADJUSTMENTS += net adjustment (capped: deductions max -10, bonus max +5 per specialist)
+    Parse "### ... Review (Adjustment: X/[-10 to +5])" structured header → X
+    IF structured header found:
+      SPECIALIST_ADJUSTMENTS += X  (capped: deductions max -10, bonus max +5 per specialist)
+    ELSE (fallback for sections without structured header):
+      Parse "Deduction: -N points" and "Bonus: +N points" prose patterns
+      SPECIALIST_ADJUSTMENTS += net adjustment (capped: deductions max -10, bonus max +5 per specialist)
 ```
 
 ### Step 2.5: Check for BLOCKING Issues
@@ -215,6 +228,16 @@ Combine all review section content into a single detailed_feedback markdown docu
 
 ```text
 DETAILED_FEEDBACK = ""
+
+Build Score Summary table using CORE_SCORES and SPECIALIST_ADJUSTMENTS from Steps 2/3:
+  - Row 1: Automated Quality Check — CORE_SCORES["quality_check"] / 70
+  - Row 2: Spec Alignment — CORE_SCORES["spec_alignment"] / 30
+  - Row 3: Code Quality Adjustment — parsed from review-code-quality (always present)
+  - For each active specialist section retrieved (review-frontend, review-backend-api,
+    review-database, review-infrastructure, review-coding-standards):
+    add one row: [specialist display name] Adjustment / [-10 to +5]
+  - Final row: **Total** — OVERALL_SCORE / 100
+  - Prepend completed table as first section of DETAILED_FEEDBACK
 
 Append quality check section content (preserving markdown structure)
 Append spec alignment section content

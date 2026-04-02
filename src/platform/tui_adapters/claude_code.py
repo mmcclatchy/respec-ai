@@ -4,12 +4,21 @@ from src.cli.config.claude_config import (
     add_mcp_permissions as _add_mcp_permissions,
     is_mcp_server_registered,
     register_mcp_server as _register_mcp_server,
+    unregister_all_respec_servers as _unregister_all_respec_servers,
     unregister_mcp_server as _unregister_mcp_server,
 )
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
 class ClaudeCodeAdapter(TuiAdapter):
+    @property
+    def display_name(self) -> str:
+        return 'Claude Code'
+
+    @property
+    def conversation_workflow_name(self) -> str:
+        return 'the plan-conversation command'
+
     def commands_dir(self, project_path: Path) -> Path:
         return project_path / '.claude' / 'commands'
 
@@ -83,7 +92,7 @@ class ClaudeCodeAdapter(TuiAdapter):
     def register_mcp_server(self, project_path: Path) -> bool:
         return _register_mcp_server(force=True)
 
-    def add_mcp_permissions(self) -> bool:
+    def add_mcp_permissions(self, project_path: Path) -> bool:
         return _add_mcp_permissions()
 
     def is_mcp_registered(self, project_path: Path) -> bool:
@@ -91,6 +100,9 @@ class ClaudeCodeAdapter(TuiAdapter):
 
     def unregister_mcp_server(self, project_path: Path) -> bool:
         return _unregister_mcp_server()
+
+    def unregister_all_mcp_servers(self, project_path: Path) -> int:
+        return _unregister_all_respec_servers()
 
     def config_dir_name(self) -> str:
         return '.claude'

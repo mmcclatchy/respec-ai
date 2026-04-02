@@ -1,10 +1,12 @@
+import json
 import shutil
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from src.cli.config.claude_config import ClaudeConfigError, unregister_all_respec_servers
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -20,17 +22,28 @@ def run(args: Namespace) -> int:
         console.print('[yellow]Cleaning up respec-ai installations...[/yellow]')
         console.print()
 
+        project_path = Path.cwd().resolve()
+        config_path = project_path / '.respec-ai' / 'config.json'
+        tui = 'claude-code'
+        if config_path.exists():
+            try:
+                config = json.loads(config_path.read_text(encoding='utf-8'))
+                tui = config.get('tui', 'claude-code')
+            except (json.JSONDecodeError, OSError):
+                pass
+        tui_adapter = get_tui_adapter(TuiType(tui))
+
         removed_mcp = 0
         removed_docker = 0
 
         try:
             console.print('[dim]Unregistering MCP servers...[/dim]')
-            removed_mcp = unregister_all_respec_servers()
+            removed_mcp = tui_adapter.unregister_all_mcp_servers(project_path)
             if removed_mcp > 0:
                 console.print(f'[green]✓[/green] Removed {removed_mcp} MCP server registration(s)')
             else:
                 console.print('[dim]No MCP servers found to remove[/dim]')
-        except ClaudeConfigError as e:
+        except Exception as e:
             console.print(f'[yellow]⚠[/yellow] MCP cleanup warning: {e}')
 
         try:
@@ -59,7 +72,7 @@ def run(args: Namespace) -> int:
         if removed_mcp > 0 or removed_docker > 0 or project_cleaned:
             console.print('[green]✓[/green] Cleanup complete')
             if removed_mcp > 0:
-                console.print('[yellow]⚠[/yellow] Restart Claude Code to apply MCP changes')
+                console.print(f'[yellow]⚠[/yellow] Restart {tui_adapter.display_name} to apply MCP changes')
         else:
             console.print('[green]✓[/green] Nothing to clean up - system already clean')
 

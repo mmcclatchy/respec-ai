@@ -19,12 +19,12 @@ class PatchCommandStrategy(CommandStrategy[PatchCommandTools]):
     def build_tools(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> PatchCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [adapter.retrieve_phase_tool, adapter.comment_phase_tool]
-        return create_patch_command_tools(platform_tools, platform, plans_dir=plans_dir, tui_adapter=tui_adapter)
+        return create_patch_command_tools(platform_tools, platform, plans_dir, tui_adapter)
 
     def get_template_func(self) -> Callable[[PatchCommandTools], str]:
         return generate_patch_command_template

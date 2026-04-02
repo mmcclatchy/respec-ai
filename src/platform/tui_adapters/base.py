@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from argparse import Namespace
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,6 +27,14 @@ class CommandSpec:
 
 
 class TuiAdapter(ABC):
+    @property
+    @abstractmethod
+    def display_name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def conversation_workflow_name(self) -> str: ...
+
     @abstractmethod
     def commands_dir(self, project_path: Path) -> Path: ...
 
@@ -58,13 +67,20 @@ class TuiAdapter(ABC):
     def register_mcp_server(self, project_path: Path) -> bool: ...
 
     @abstractmethod
-    def add_mcp_permissions(self) -> bool: ...
+    def add_mcp_permissions(self, project_path: Path) -> bool: ...
 
     @abstractmethod
     def is_mcp_registered(self, project_path: Path) -> bool: ...
 
     @abstractmethod
     def unregister_mcp_server(self, project_path: Path) -> bool: ...
+
+    def unregister_all_mcp_servers(self, project_path: Path) -> int:
+        removed = self.unregister_mcp_server(project_path)
+        return 1 if removed else 0
+
+    def post_init_setup(self, args: Namespace) -> int:
+        return 0
 
     @abstractmethod
     def config_dir_name(self) -> str: ...

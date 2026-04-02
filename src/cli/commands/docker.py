@@ -155,7 +155,7 @@ def _run_logs(manager: DockerManager, args: Namespace) -> int:
         console.print()
         console.print('[yellow]No logs available[/yellow]')
         console.print('[dim]Container may not have started any processes yet[/dim]')
-        console.print('[dim]MCP server starts only when Claude Code connects[/dim]')
+        console.print('[dim]MCP server starts only when your coding agent connects[/dim]')
         console.print()
         console.print('[cyan]To verify container is running:[/cyan]')
         console.print('  respec-ai status')

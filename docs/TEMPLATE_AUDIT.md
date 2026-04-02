@@ -195,7 +195,7 @@ Work through workflows one at a time. Each batch must re-audit with open-source 
 | 1 | Plan + Roadmap | plan_command.py, plan_conversation_command.py, plan_critic.py, plan_analyst.py, analyst_critic.py, roadmap_command.py, roadmap.py, roadmap_critic.py, create_phase.py | Complete |
 | 2 | Phase | phase_command.py, phase_architect.py, phase_critic.py | Complete |
 | 3 | Task | task_command.py, task_planner.py, task_plan_critic.py (task_critic.py removed — orphaned) | Complete |
-| 4 | Code | code_command.py, coder.py, code_reviewer.py, review team agents | Pending |
+| 4 | Code | code_command.py, coder.py, review team agents (code_reviewer.py removed — orphaned) | Complete |
 | 5 | Patch | patch_command.py, patch_planner.py | Pending |
 | 6 | Cross-cutting patterns | TOOL INVOCATION sections, output scope restrictions, MCP tool naming | Pending |
 
@@ -428,7 +428,7 @@ Some critics store feedback to MCP, others return to orchestrator:
 
 - plan_critic.py: returns to Main Agent (human-driven)
 - phase_critic.py: stores via MCP tool
-- code_reviewer.py: stores via MCP tool
+- code_reviewer.py: REMOVED (orphaned agent — replaced by split review team)
 
 This is intentional (plan quality loop is human-driven) but not documented clearly enough for agents to understand why they behave differently.
 
@@ -517,9 +517,9 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 143-152 | Phase vocabulary ("features") mixed with Task vocabulary ("Steps") + typo | MEDIUM | Fix terminology |
 | 1-81 | Missing TOOL INVOCATION section | HIGH | Add standard block |
 
-## Code Workflow Findings (Batch 4: PENDING)
+## Code Workflow Findings (Batch 4: COMPLETE)
 
-23 findings across code_command.py, coder.py, code_reviewer.py, automated_quality_checker.py, spec_alignment_reviewer.py, review_consolidator.py, and coding_standards_reviewer.py. These are the NEXT batch to implement.
+Findings addressed across code_command.py, coder.py, automated_quality_checker.py, spec_alignment_reviewer.py, review_consolidator.py, and coding_standards_reviewer.py. code_reviewer.py was removed as an orphaned agent.
 
 **NOTE**: An earlier pass (commit 5361f0a) added some enforcement blocks to code workflow templates BEFORE the open-source model patterns were documented. A fresh re-audit is needed to:
 
@@ -543,12 +543,9 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 43-48 | TodoList gate has no VIOLATION callout | MEDIUM | MANDATORY TODOLIST GATE |
 | 307-327 | Blocking issue resolution stated as bullets, not enforced | HIGH | MANDATORY BLOCKING ISSUE RESOLUTION |
 
-### code_reviewer.py
+### code_reviewer.py — REMOVED (orphaned agent)
 
-| Lines | Issue | Severity | Fix |
-| ----- | ----- | -------- | --- |
-| 126 | "Do NOT write files" is single-line constraint | HIGH | MANDATORY FILESYSTEM BOUNDARY RESTRICTION |
-| 161-181 | Research context extraction has no fallback | HIGH | MANDATORY RESEARCH CONTEXT EXTRACTION |
+All functionality covered by split review team (automated-quality-checker, spec-alignment-reviewer, code-quality-reviewer, specialist reviewers, review-consolidator). Findings moot.
 
 ### review_consolidator.py
 

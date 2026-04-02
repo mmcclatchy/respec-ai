@@ -3,11 +3,11 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from src.cli.config.claude_config import is_mcp_server_registered
-from src.cli.config.ide_constants import get_agents_dir, get_commands_dir
 from src.cli.config.package_info import get_package_version
 from src.cli.ui.formatters import print_validation_report
 from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
+from src.platform.tui_adapters import get_tui_adapter
+from src.platform.tui_selector import TuiType
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -63,7 +63,10 @@ def run(args: Namespace) -> int:
         checks['Platform Valid'] = (False, 'Config missing')
         checks['Version Current'] = (False, 'Config missing')
 
-    commands_dir = get_commands_dir(project_path)
+    tui = config.get('tui', 'claude-code') if config_path.exists() else 'claude-code'
+    tui_adapter = get_tui_adapter(TuiType(tui))
+
+    commands_dir = tui_adapter.commands_dir(project_path)
     if commands_dir.exists():
         commands_count = len(list(commands_dir.glob('*.md')))
         if commands_count == EXPECTED_COMMANDS_COUNT:
@@ -73,7 +76,7 @@ def run(args: Namespace) -> int:
     else:
         checks['Commands Directory'] = (False, 'Directory missing')
 
-    agents_dir = get_agents_dir(project_path)
+    agents_dir = tui_adapter.prompts_dir(project_path)
     if agents_dir.exists():
         agents_count = len(list(agents_dir.glob('*.md')))
         if agents_count == EXPECTED_AGENTS_COUNT:
@@ -83,11 +86,11 @@ def run(args: Namespace) -> int:
     else:
         checks['Agents Directory'] = (False, 'Directory missing')
 
-    mcp_registered = is_mcp_server_registered()
+    mcp_registered = tui_adapter.is_mcp_registered(project_path)
     if mcp_registered:
         checks['MCP Registered'] = (True, 'respec-ai server registered')
     else:
-        checks['MCP Registered'] = (False, 'Not registered in Claude Code')
+        checks['MCP Registered'] = (False, f'Not registered in {tui_adapter.display_name}')
 
     all_passed = all(passed for passed, _ in checks.values())
 

@@ -49,7 +49,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-quality-check. Score: [TOTAL]/70"
+  "Review section stored: [plan_name]/[phase_name]/review-quality-check. Score: [TOTAL]/70 (TQ modifier: [modifier])"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -129,6 +129,67 @@ For multi-language projects, run ALL language checks and report results per lang
 
 **Verification**: Run coverage command and capture output
 
+### 5. Test Quality Validation (Modifier: 0 to -10)
+
+Inspect test code quality regardless of whether tests pass. Two BLOCKING checks force REFINE
+regardless of aggregate score. Apply after §4.
+
+**STEP 1 — Test imports in production** [BLOCKING -10]:
+```text
+Search source directory (not tests/) for any import of test namespaces/directories.
+Concept: production code must not import from test directories.
+Grep source files for: from tests, from test, require('./test', import from './test',
+  from .test_ — adapt to project language convention.
+→ BLOCKING if any match found. Record file:line references.
+```
+
+**STEP 2 — Pointless external package tests** [-2/-5/-10]:
+```text
+Glob test files. For each test file, scan test names and docstrings for tests whose
+subject is a third-party library rather than project code (e.g., test verifies that
+requests.get returns a response, not that the project's API client calls the right endpoint).
+Deduct based on proportion: few isolated → -2, many → -5, systematic → -10.
+```
+
+**STEP 3 — Mocking the module under test** [BLOCKING -10]:
+```text
+Concept: a test file that mocks the exact module it tests defeats the test.
+For each test file:
+  Identify the subject module by naming convention:
+    test_foo.py → foo, foo.test.ts → foo, spec/foo_spec.rb → foo
+  Check whether that same module is mocked inside the test file.
+  Language examples:
+    Python: @patch('mymodule.func') in test_mymodule.py
+    JavaScript: jest.mock('./mymodule') in mymodule.test.js
+→ BLOCKING if found. Record test file:line and mocked target.
+```
+
+**STEP 4 — Testing implementation details** [-2/-3]:
+```text
+Look for tests that assert on:
+- Private methods (names starting with _, __, or language-equivalent private access)
+- Call counts or invocation order rather than observable output or state changes
+Record file:line for each instance. Deduct -2 per file, -3 if pervasive.
+```
+
+**STEP 5 — Aggregate**:
+```text
+TEST_QUALITY_MODIFIER = sum of all penalties (cap at -10)
+IF any BLOCKING check triggered: record BLOCKING flag with file:line references
+```
+
+**STEP 6 — Feedback**:
+```text
+For each flagged test: include file:line, BLOCKING label (if applicable), and fix guidance.
+```
+
+## SCORE CALCULATION
+
+```text
+TOTAL = TEST_SCORE + TYPE_SCORE + LINT_SCORE + COVERAGE_SCORE + TEST_QUALITY_MODIFIER
+(TEST_QUALITY_MODIFIER is 0 or negative; TOTAL is capped at 70)
+```
+
 ## REVIEW SECTION OUTPUT FORMAT
 
 Store the following markdown as review section:
@@ -164,6 +225,12 @@ Store the following markdown as review section:
 - Coverage Percentage: [X]%
 - Coverage Command: {{COVERAGE_COMMAND}}
 - **Uncovered Lines**: [list critical uncovered code paths]
+
+#### Test Quality Validation (Modifier: {{TEST_QUALITY_MODIFIER}})
+- Test imports in production: [NONE / BLOCKING — file:line references]
+- Pointless external package tests: [NONE / count flagged — file references]
+- Mocking module under test: [NONE / BLOCKING — test file:line + mocked target]
+- Testing implementation details: [NONE / count flagged — file:line references]
 
 #### Key Issues
 - [List issues found, with file:line references]

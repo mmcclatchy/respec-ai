@@ -16,7 +16,6 @@ from src.platform.template_helpers import (
     create_analyst_critic_agent_tools,
     create_automated_quality_checker_agent_tools,
     create_backend_api_reviewer_agent_tools,
-    create_code_reviewer_agent_tools,
     create_coder_agent_tools,
     create_coding_standards_reviewer_agent_tools,
     create_create_phase_agent_tools,
@@ -41,7 +40,6 @@ from src.platform.templates.agents import (
     generate_automated_quality_checker_template,
     generate_backend_api_reviewer_template,
     generate_code_quality_reviewer_template,
-    generate_code_reviewer_template,
     generate_coder_template,
     generate_coding_standards_reviewer_template,
     generate_create_phase_template,
@@ -99,7 +97,6 @@ _AGENT_NAMES = [
     'respec-patch-planner',
     'respec-task-critic',
     'respec-coder',
-    'respec-code-reviewer',
     'respec-automated-quality-checker',
     'respec-code-quality-reviewer',
     'respec-spec-alignment-reviewer',
@@ -224,7 +221,6 @@ def _get_agent_specs(
     task_plan_critic_tools = create_task_plan_critic_agent_tools(tui_adapter)
     patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)
     coder_tools = create_coder_agent_tools(tui_adapter, coder_platform_tools)
-    code_reviewer_tools = create_code_reviewer_agent_tools(tui_adapter)
     automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tui_adapter)
     code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools(tui_adapter)
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools(tui_adapter)
@@ -248,7 +244,6 @@ def _get_agent_specs(
         _parse_agent_spec('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
         _parse_agent_spec('respec-patch-planner', generate_patch_planner_template(patch_planner_tools)),
         _parse_agent_spec('respec-coder', generate_coder_template(coder_tools)),
-        _parse_agent_spec('respec-code-reviewer', generate_code_reviewer_template(code_reviewer_tools)),
         _parse_agent_spec(
             'respec-automated-quality-checker',
             generate_automated_quality_checker_template(automated_quality_checker_tools),

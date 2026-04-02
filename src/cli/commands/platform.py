@@ -85,7 +85,7 @@ def run(args: Namespace) -> int:
         print_success(f'Platform changed: {current_platform} → {new_platform}')
         print_success(f'Regenerated {commands_count} commands and {agents_count} agents')
         console.print()
-        print_warning('Restart Claude Code to activate the updated templates')
+        print_warning(f'Restart {tui_adapter.display_name} to activate the updated templates')
         console.print()
 
         return 0

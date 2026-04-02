@@ -35,8 +35,8 @@ class TemplateCoordinator:
         self,
         command_name: str | RespecAICommand,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> str:
         if isinstance(command_name, str):
             try:
@@ -49,7 +49,7 @@ class TemplateCoordinator:
             raise ValueError(f'Unknown command template: {command_enum.value}')
 
         strategy = self._strategies[command_enum]
-        return strategy.generate_template(platform, plans_dir=plans_dir, tui_adapter=tui_adapter)
+        return strategy.generate_template(platform, tui_adapter, plans_dir=plans_dir)
 
     def validate_template_generation(self, command_name: str | RespecAICommand, platform: PlatformType) -> bool:
         if isinstance(command_name, str):

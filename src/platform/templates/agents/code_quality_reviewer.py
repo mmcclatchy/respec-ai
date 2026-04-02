@@ -52,7 +52,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-code-quality"
+  "Review section stored: [plan_name]/[phase_name]/review-code-quality. Adjustment: [TOTAL_ADJUSTMENT]/[-15 to +5]"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -121,7 +121,7 @@ Pattern-based checks for code structure. Use Grep and Read to identify violation
 **Nesting Depth** (-2 per function, max -4):
 Flag functions with >3 levels of indentation nesting.
 ```text
-For each Python file in implementation:
+For each source file in implementation:
   Read file content
   Identify functions with deeply nested blocks (if/for/while/try nested >3 levels)
   Record: file:line, function name, nesting depth
@@ -130,8 +130,8 @@ For each Python file in implementation:
 **Function Length** (-1 per function, max -3):
 Flag functions exceeding 50 lines.
 ```text
-For each Python file in implementation:
-  Identify functions >50 lines (count from def to next def/class/end-of-file)
+For each source file in implementation:
+  Identify functions >50 lines (count from function start to next function/class/end-of-file)
   Record: file:line, function name, line count
 ```
 
@@ -139,7 +139,8 @@ For each Python file in implementation:
 Flag functions with >10 decision branches.
 ```text
 For each flagged long or deeply nested function:
-  Count decision points: if, elif, for, while, except, and, or, ternary
+  Count decision points: conditionals (if/else), loops (for/while), exception handlers,
+  logical operators (and/or), ternary expressions
   IF count > 10: flag as high complexity
   Record: file:line, function name, branch count
 ```
@@ -159,39 +160,69 @@ Pattern-based bug detection. Check for specific, well-defined code shapes.
 
 **Resource Management** (-2 each, mark as [BLOCKING] if database/file connections affected):
 ```text
-Grep for: open(
-  IF not within "with" context manager: flag
-  IF file or database connection: mark [BLOCKING] in key issues
-Grep for: connection patterns (connect, create_engine, Session)
-  IF not within context manager or try/finally: flag [BLOCKING]
+Check for unmanaged resources — file handles, database connections, network sockets.
+The principle: any resource that must be released should be acquired inside a
+guaranteed-cleanup construct (try-finally, using, with, try-with-resources, defer, RAII).
+
+Read source files and look for resource acquisition (file open, DB connect, socket create)
+that is NOT inside a cleanup-guaranteed construct for the project's language:
+- Python: open( or connection patterns not within a with block or try/finally
+- JavaScript/TypeScript: stream/connection creation without .destroy()/.close() in finally
+- Java/Kotlin: non-AutoCloseable resource usage outside try-with-resources
+- Any language: DB connections obtained without guaranteed release
+[BLOCKING] if a database or file connection could leak on error path.
 ```
 
-**Error Handling** (-1 each, bare except is [BLOCKING]):
+**Error Handling** (-1 each, silent catch-all is [BLOCKING]):
 ```text
-Grep for: "except:" (bare except without exception type) → [BLOCKING]
-Grep for: "except Exception:" followed by "pass" or no re-raise
-Grep for: catch-all patterns that silently swallow errors
+Look for catch-all error handlers that suppress exceptions without logging or re-raising.
+For each try/catch or equivalent (try/except, try/rescue, try/recover):
+  Flag: catch block with no body, or body is only a no-op (pass, {{}}, noop)
+  Flag: catch block that catches the most general error type and does nothing useful
+  Examples: Python bare except: or except Exception: pass
+            JavaScript catch(e) {{}} or catch(e) {{ /* ignore */ }}
+            Java catch (Exception e) {{}}
+[BLOCKING] if exception is silently swallowed (no log, no re-raise, no user feedback).
 ```
 
 **Async Issues** (-2 each):
 ```text
-IF project uses async (import asyncio or async def found):
-  Grep for async def functions that call synchronous I/O (open, requests.get, time.sleep)
-  Grep for missing await on coroutine calls
+IF project uses async patterns (detected from imports, function signatures, or framework):
+  Look for synchronous blocking calls inside async functions.
+  The principle: blocking I/O inside an async context stalls the event loop.
+  - Python: async def functions calling requests.get, time.sleep, or blocking open()
+  - JavaScript/TypeScript: async functions calling fs.readFileSync, execSync, or CPU loops
+    without yielding
+  - Go: goroutines calling blocking syscalls without channels
+  Also flag: missing await/resolve on async operations (fire-and-forget without intent).
 ```
 
 **None Safety** (-1 each):
 ```text
-Identify functions returning Optional types
-Check call sites for None checks before attribute access
-Flag: result = get_item(); result.name (without None guard)
+Look for potential null/None/nil dereferences: accessing a property or calling a method
+on a value that may be null/None/nil without a guard check.
+Identify functions/methods that may return a nullable value (return type annotations,
+documentation, or branching logic that sometimes returns nothing).
+Check their call sites for a null guard before attribute access or method call.
+Language examples:
+- Python: T | None return type → check for `if result is not None:` before `.attr`
+- TypeScript/JavaScript: T | null/undefined → check for `?.` or explicit null check
+- Java/Kotlin: @Nullable or Optional<T> → check for `.isPresent()` or null guard
+- Go: pointer types or (T, error) returns → check for nil guard
+Flag: value = get_item(); value.name — record file:line.
 ```
 
 **State Bugs** (-2 each, mutable defaults are [BLOCKING]):
 ```text
-Grep for: "def .*(.*=\\[\\]" (mutable default arguments with lists) → [BLOCKING]
-Grep for: "def .*(.*={{}}" (mutable default arguments with dicts) → [BLOCKING]
-Check for class-level mutable attributes shared between instances
+Look for shared mutable state patterns that cause subtle cross-invocation bugs.
+
+Mutable default parameter values: a default value that is a mutable object gets shared
+across all calls that use the default.
+- Python: def func(x=[]) or def func(x={{}}) — [BLOCKING]
+- JavaScript: function func(x = []) or func(x = {{}}) — [BLOCKING] (object/array literal defaults)
+- Any language: default parameter values that are object/collection references
+Check for class-level or module-level mutable attributes shared across instances.
+[BLOCKING] if mutable object is used as a default parameter value.
 ```
 
 ### Section 3: Research Pattern Application (up to -3 deduction)

@@ -66,7 +66,6 @@ class CriticAgent(str, Enum):
     ROADMAP_CRITIC = 'roadmap-critic'
     PHASE_CRITIC = 'phase-critic'
     TASK_CRITIC = 'task-critic'
-    CODE_REVIEWER = 'code-reviewer'
     AUTOMATED_QUALITY_CHECKER = 'automated-quality-checker'
     SPEC_ALIGNMENT_REVIEWER = 'spec-alignment-reviewer'
     FRONTEND_REVIEWER = 'frontend-reviewer'
@@ -93,8 +92,6 @@ class CriticAgent(str, Enum):
             'BUILD': cls.TASK_CRITIC,
             'BUILD-CRITIC': cls.TASK_CRITIC,
             'TASK': cls.TASK_CRITIC,
-            'BUILD-REVIEWER': cls.CODE_REVIEWER,
-            'REVIEWER': cls.CODE_REVIEWER,
             'QUALITY-CHECKER': cls.AUTOMATED_QUALITY_CHECKER,
             'SPEC-ALIGNMENT': cls.SPEC_ALIGNMENT_REVIEWER,
             'FRONTEND': cls.FRONTEND_REVIEWER,

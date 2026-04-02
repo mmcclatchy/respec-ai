@@ -11,12 +11,22 @@ class TestResolveActiveReviewers:
     @patch(CODING_STANDARDS_PATCH, return_value=False)
     def test_empty_modes_returns_core_plus_consolidator(self, _mock: object) -> None:
         result = resolve_active_reviewers(set())
-        assert result == ['automated-quality-checker', 'spec-alignment-reviewer', 'review-consolidator']
+        assert result == [
+            'automated-quality-checker',
+            'spec-alignment-reviewer',
+            'code-quality-reviewer',
+            'review-consolidator',
+        ]
 
     @patch(CODING_STANDARDS_PATCH, return_value=False)
     def test_implementation_mode_returns_core_only(self, _mock: object) -> None:
         result = resolve_active_reviewers({StepMode.IMPLEMENTATION})
-        assert result == ['automated-quality-checker', 'spec-alignment-reviewer', 'review-consolidator']
+        assert result == [
+            'automated-quality-checker',
+            'spec-alignment-reviewer',
+            'code-quality-reviewer',
+            'review-consolidator',
+        ]
 
     def test_frontend_mode_activates_frontend_reviewer(self) -> None:
         result = resolve_active_reviewers({StepMode.FRONTEND})
@@ -50,12 +60,17 @@ class TestResolveActiveReviewers:
     def test_all_specialist_modes_activate_all_specialists(self, _mock: object) -> None:
         all_specialist_modes = {StepMode.FRONTEND, StepMode.API, StepMode.DATABASE, StepMode.INFRASTRUCTURE}
         result = resolve_active_reviewers(all_specialist_modes)
-        assert len(result) == 7  # 2 core + 4 specialists + consolidator
+        assert len(result) == 8  # 3 core + 4 specialists + consolidator
 
     @patch(CODING_STANDARDS_PATCH, return_value=False)
     def test_passthrough_modes_only_core(self, _mock: object) -> None:
         result = resolve_active_reviewers({StepMode.INTEGRATION, StepMode.TEST})
-        assert result == ['automated-quality-checker', 'spec-alignment-reviewer', 'review-consolidator']
+        assert result == [
+            'automated-quality-checker',
+            'spec-alignment-reviewer',
+            'code-quality-reviewer',
+            'review-consolidator',
+        ]
 
     def test_consolidator_always_last(self) -> None:
         result = resolve_active_reviewers({StepMode.FRONTEND, StepMode.DATABASE})

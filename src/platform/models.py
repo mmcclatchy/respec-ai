@@ -1087,34 +1087,6 @@ class RoadmapCriticAgentTools(AgentToolsModel):
     store_feedback: str = Field(..., description='Store critic feedback')
 
 
-class CodeReviewerAgentTools(AgentToolsModel):
-    respec_ai_tools: ClassVar[list[RespecAITool]] = [
-        RespecAITool.GET_DOCUMENT,
-        RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_CRITIC_FEEDBACK,
-    ]
-
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
-    ]
-
-    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Phase document from planning loop')
-    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
-    store_feedback: str = Field(..., description='Store code review feedback in coding loop')
-
-    @computed_field
-    def research_directory_pattern(self) -> str:
-        return '.best-practices/*.md'
-
-    @computed_field
-    def research_example_path(self) -> str:
-        return '.best-practices/htmx-patterns-codegen.md'
-
-
 class AutomatedQualityCheckerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,

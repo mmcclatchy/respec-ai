@@ -19,15 +19,15 @@ class PlanRoadmapCommandStrategy(CommandStrategy[PlanRoadmapCommandTools]):
     def build_tools(
         self,
         platform: PlatformType,
-        plans_dir: str = '~/.claude/plans',
-        tui_adapter: 'TuiAdapter | None' = None,
+        tui_adapter: 'TuiAdapter',
+        plans_dir: str = '',
     ) -> PlanRoadmapCommandTools:
         adapter = get_platform_adapter(platform)
         platform_tools = [
             adapter.retrieve_plan_tool,
             adapter.list_phases_tool,
         ]
-        return create_roadmap_tools(platform_tools, platform, tui_adapter=tui_adapter)
+        return create_roadmap_tools(platform_tools, platform, tui_adapter)
 
     def get_template_func(self) -> Callable[[PlanRoadmapCommandTools], str]:
         return generate_roadmap_command_template

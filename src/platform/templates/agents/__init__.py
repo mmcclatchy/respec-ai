@@ -2,7 +2,6 @@ from .analyst_critic import generate_analyst_critic_template
 from .automated_quality_checker import generate_automated_quality_checker_template
 from .backend_api_reviewer import generate_backend_api_reviewer_template
 from .code_quality_reviewer import generate_code_quality_reviewer_template
-from .code_reviewer import generate_code_reviewer_template
 from .coder import generate_coder_template
 from .coding_standards_reviewer import generate_coding_standards_reviewer_template
 from .create_phase import generate_create_phase_template
@@ -33,7 +32,6 @@ __all__ = [
     'generate_task_planner_template',
     'generate_task_plan_critic_template',
     'generate_coder_template',
-    'generate_code_reviewer_template',
     'generate_analyst_critic_template',
     'generate_automated_quality_checker_template',
     'generate_code_quality_reviewer_template',

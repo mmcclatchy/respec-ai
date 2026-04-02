@@ -45,7 +45,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-backend-api"
+  "Review section stored: [plan_name]/[phase_name]/review-backend-api. Adjustment: [NET_ADJUSTMENT]/[-10 to +5]"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -115,7 +115,7 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 Store the following markdown as review section:
 
 ```markdown
-### Backend API Review (Active - Optional)
+### Backend API Review (Adjustment: {{NET_ADJUSTMENT}}/[-10 to +5])
 
 #### API Design
 - [RESTful conventions assessment]
@@ -155,5 +155,11 @@ Store the following markdown as review section:
 Specialist reviewers do not contribute to the base 100-point score directly. Instead:
 - **Deductions**: Up to -10 points for critical issues (missing validation, auth bypass, wrong status codes)
 - **Bonus**: Up to +5 points for exceptional quality (comprehensive validation, clean service separation)
-- Report deductions/bonus clearly for the consolidator to apply
+
+Before storing, calculate:
+```
+NET_ADJUSTMENT = sum(all deductions) + bonus
+Cap deductions at -10 total; cap bonus at +5 total
+```
+Replace {{NET_ADJUSTMENT}} in the section header with the calculated value (e.g. `-5` or `+3`).
 """

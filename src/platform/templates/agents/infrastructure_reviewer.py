@@ -45,7 +45,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-infrastructure"
+  "Review section stored: [plan_name]/[phase_name]/review-infrastructure. Adjustment: [NET_ADJUSTMENT]/[-10 to +5]"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -107,7 +107,7 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 Store the following markdown as review section:
 
 ```markdown
-### Infrastructure Review (Active - Optional)
+### Infrastructure Review (Adjustment: {{NET_ADJUSTMENT}}/[-10 to +5])
 
 #### Container Configuration
 - [Dockerfile quality assessment]
@@ -139,5 +139,11 @@ Store the following markdown as review section:
 Specialist reviewers do not contribute to the base 100-point score directly. Instead:
 - **Deductions**: Up to -10 points for critical issues (secrets in source, no health checks, root user in container, `:latest` tags [-2], overly permissive ports [-1])
 - **Bonus**: Up to +5 points for exceptional quality (multi-stage builds, comprehensive CI/CD, proper secret management)
-- Report deductions/bonus clearly for the consolidator to apply
+
+Before storing, calculate:
+```
+NET_ADJUSTMENT = sum(all deductions) + bonus
+Cap deductions at -10 total; cap bonus at +5 total
+```
+Replace {{NET_ADJUSTMENT}} in the section header with the calculated value (e.g. `-5` or `+3`).
 """

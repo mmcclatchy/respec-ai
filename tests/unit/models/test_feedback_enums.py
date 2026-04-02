@@ -37,7 +37,6 @@ class TestCriticAgent:
             'roadmap-critic',
             'phase-critic',
             'task-critic',
-            'code-reviewer',
             'automated-quality-checker',
             'spec-alignment-reviewer',
             'frontend-reviewer',
@@ -52,7 +51,7 @@ class TestCriticAgent:
         actual_agents = {agent.value for agent in CriticAgent}
 
         assert actual_agents == expected_agents
-        assert len(CriticAgent) == 15
+        assert len(CriticAgent) == 14
 
     def test_critic_agent_enum_values_use_kebab_case(self) -> None:
         for agent in CriticAgent:

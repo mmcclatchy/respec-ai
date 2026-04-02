@@ -380,7 +380,7 @@ Exception: Small tasks (<3 items) may implement all items in first iteration
 
 ### Refinement Iterations: Complete + Polish
 
-After each iteration, review code-reviewer feedback and decide next action:
+After each iteration, review consolidated feedback and decide next action:
 
 #### Step 1: Identify Blocking Issues
 
