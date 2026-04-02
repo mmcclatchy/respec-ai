@@ -78,6 +78,44 @@ TASKS: Retrieve Sections → Calculate Score → Merge → Store CriticFeedback
 6. Merge all sections into single CriticFeedback
 7. Store feedback: {tools.store_feedback}
 
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE
+═══════════════════════════════════════════════
+Store CriticFeedback via {tools.store_feedback}.
+Your ONLY output to the orchestrator is:
+  "CriticFeedback stored. Overall Score: [score]/100"
+
+Do NOT return CriticFeedback markdown to the orchestrator.
+Do NOT write files to disk.
+
+VIOLATION: Returning full CriticFeedback markdown to the orchestrator
+           instead of storing via MCP tool.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
+MANDATORY FILESYSTEM BOUNDARY RESTRICTION
+═══════════════════════════════════════════════
+You MUST NOT write files to disk. Period.
+
+Bash is for: git commands and read-only analysis ONLY.
+All output goes through MCP tools (store_feedback).
+
+VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
+           when you should use store_feedback MCP tool.
+═══════════════════════════════════════════════
+
 ## CONSOLIDATION WORKFLOW
 
 Expected review sections:

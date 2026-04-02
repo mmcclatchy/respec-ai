@@ -1,6 +1,6 @@
 # Template Instruction Audit
 
-Comprehensive audit of all 30 templates (7 commands + 23 agents) for weak, ambiguous, or unenforceable instructions that allow agents to deviate from intended behavior.
+Comprehensive audit of all 29 templates (7 commands + 22 agents) for weak, ambiguous, or unenforceable instructions that allow agents to deviate from intended behavior.
 
 ## The Problem
 
@@ -192,13 +192,94 @@ Work through workflows one at a time. Each batch must re-audit with open-source 
 
 | Batch | Workflow | Files | Status |
 | ----- | -------- | ----- | ------ |
-| 1 | Roadmap (command + agents) | roadmap_command.py, plan_command.py Step 10, roadmap.py, create_phase.py | Pending |
-| 2 | Plan + Roadmap (command + agents) | plan_command.py, plan_conversation_command.py, plan_critic.py, plan_analyst.py, analyst_critic.py, roadmap_command.py, roadmap.py, roadmap_critic.py | Complete |
-| 3 | Phase (command + agents) | phase_command.py, phase_architect.py, phase_critic.py | Complete |
-| 4 | Task (command + agents) | task_command.py, task_planner.py, task_plan_critic.py (task_critic.py removed — orphaned) | Complete |
-| 5 | Code (command + agents) | code_command.py, coder.py, code_reviewer.py, review team agents | Pending |
-| 6 | Patch (command + agents) | patch_command.py, patch_planner.py | Pending |
-| 7 | Cross-cutting patterns | TOOL INVOCATION sections, output scope restrictions, MCP tool naming | Pending |
+| 1 | Plan + Roadmap | plan_command.py, plan_conversation_command.py, plan_critic.py, plan_analyst.py, analyst_critic.py, roadmap_command.py, roadmap.py, roadmap_critic.py, create_phase.py | Complete |
+| 2 | Phase | phase_command.py, phase_architect.py, phase_critic.py | Complete |
+| 3 | Task | task_command.py, task_planner.py, task_plan_critic.py (task_critic.py removed — orphaned) | Complete |
+| 4 | Code | code_command.py, coder.py, code_reviewer.py, review team agents | Pending |
+| 5 | Patch | patch_command.py, patch_planner.py | Pending |
+| 6 | Cross-cutting patterns | TOOL INVOCATION sections, output scope restrictions, MCP tool naming | Pending |
+
+### What "Complete" Means
+
+Each completed batch had these blocks added where missing:
+
+- **TOOL INVOCATION** — standard block showing correct vs incorrect tool call syntax
+- **MANDATORY OUTPUT SCOPE** — exact output string, prohibit returning full document content
+- **MANDATORY DECISION PROTOCOL** — MCP decision is FINAL, exhaustive branches
+- **Soft language replaced** — should→MUST, consider→REQUIRED, proceed to→IMMEDIATELY execute
+- **Exhaustive decision branches** — explicit ELSE error cases added
+- **Numeric specifics** — fallback scores, deduction amounts, iteration limits all specified
+
+### Standard Enforcement Blocks (Add to Every Agent)
+
+Every agent template MUST have these blocks. Use these exact formats:
+
+**TOOL INVOCATION** (after frontmatter, before role description):
+
+```text
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = {tools.example_tool}
+  ❌ WRONG: <example_tool><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+```
+
+**MANDATORY OUTPUT SCOPE** (immediately after TOOL INVOCATION):
+
+For agents that store via MCP:
+
+```text
+═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE
+═══════════════════════════════════════════════
+Store [feedback/analysis/document] via {tools.store_tool}.
+Your ONLY output to the orchestrator is: "[Status message]."
+
+Do NOT return [document type] markdown to the orchestrator.
+Do NOT write files to disk.
+
+VIOLATION: Returning full [document type] markdown to the orchestrator
+           instead of storing via MCP tool.
+═══════════════════════════════════════════════
+```
+
+For agents that return to Main Agent (human-driven workflows only — plan_critic):
+
+```text
+═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE
+═══════════════════════════════════════════════
+Return feedback markdown to Main Agent. This is a human-driven workflow.
+
+Your ONLY output is the [FeedbackFormat] markdown specified in OUTPUT FORMAT.
+Do NOT store feedback in MCP. Do NOT write files to disk.
+
+VIOLATION: Storing feedback via MCP tools in this human-driven workflow.
+═══════════════════════════════════════════════
+```
+
+**MANDATORY DECISION PROTOCOL** (in command templates at decision points):
+
+```text
+═══════════════════════════════════════════════
+MANDATORY DECISION PROTOCOL
+═══════════════════════════════════════════════
+The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
+
+"refine"     → Execute refinement. Do NOT ask, confirm, or present options to the user.
+"user_input" → ONLY status that involves the user. Present feedback and wait for response.
+"complete"   → Proceed to next step. Do NOT ask for confirmation.
+
+VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+           is a workflow violation. The decision has already been made by the MCP server.
+═══════════════════════════════════════════════
+```
 
 ### Re-Audit Checklist (Apply to Every Template)
 
@@ -214,7 +295,7 @@ For each template in each batch, verify:
 - [ ] **Contradiction scan**: No two instructions in the same template that could be read as conflicting
 - [ ] **Point-of-action repetition**: Critical constraints restated at the step where violation occurs
 
-## Command Template Findings
+## Command Template Findings (Batches 1-3: RESOLVED)
 
 ### plan_command.py
 
@@ -277,7 +358,7 @@ For each template in each batch, verify:
 | 121 | Planning loop initialization has no error handling | Missing error path | Agent proceeds without checking if loop initialized |
 | 255-273 | "DO NOT confuse" dual loop IDs — warning without enforcement | Warning only | Agent reuses wrong loop ID |
 
-## Agent Template Findings
+## Agent Template Findings (Batches 1-3: RESOLVED except where noted)
 
 ### roadmap.py (CRITICAL)
 
@@ -331,20 +412,15 @@ For each template in each batch, verify:
 | ----- | ----- | -------- | ------ |
 | 173-185 | Research citation format inconsistent between description and example | Ambiguous format | Non-standard citations in output |
 
-### task_critic.py
+### task_critic.py (REMOVED — orphaned agent, never invoked)
 
-| Lines | Issue | Category | Impact |
-| ----- | ----- | -------- | ------ |
-| 114-129 | Deviation classification uses subjective categories ("Adds clarity") | Subjective scoring | Inconsistent quality assessment |
+Agent deleted. task_plan_critic.py handles all Task quality assessment.
 
 ### Cross-cutting: Missing TOOL INVOCATION sections
 
-These agents lack the standard TOOL INVOCATION block:
+RESOLVED for batches 1-3. Remaining:
 
-- plan_analyst.py
-- analyst_critic.py
-- task_planner.py
-- patch_planner.py
+- patch_planner.py (Batch 5)
 
 ### Cross-cutting: Inconsistent feedback storage
 
@@ -356,9 +432,9 @@ Some critics store feedback to MCP, others return to orchestrator:
 
 This is intentional (plan quality loop is human-driven) but not documented clearly enough for agents to understand why they behave differently.
 
-## Phase Workflow Findings (Batch 2)
+## Phase Workflow Findings (Batch 2: RESOLVED)
 
-28 findings across phase_command.py, phase_architect.py, phase_critic.py, and create_phase.py. HIGH severity findings below.
+28 findings across phase_command.py, phase_architect.py, phase_critic.py, and create_phase.py. All HIGH items resolved. Summary of fixes below.
 
 ### phase_command.py
 
@@ -400,9 +476,9 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 136-138 | Weak validation gate — "report rather than saving" but no STOP/EXIT | HIGH | MANDATORY PHASE COMPLETENESS VALIDATION GATE |
 | 50-70 | Missing "DO NOT write files to disk" restriction | MEDIUM | MANDATORY PHASE EXTRACTION SCOPE RESTRICTION |
 
-## Task Workflow Findings (Batch 3)
+## Task Workflow Findings (Batch 3: RESOLVED)
 
-20 findings across task_command.py, task_planner.py, task_plan_critic.py, and task_critic.py.
+20 findings across task_command.py, task_planner.py, task_plan_critic.py. task_critic.py removed (orphaned — never invoked). All items resolved.
 
 ### task_command.py
 
@@ -441,9 +517,16 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 143-152 | Phase vocabulary ("features") mixed with Task vocabulary ("Steps") + typo | MEDIUM | Fix terminology |
 | 1-81 | Missing TOOL INVOCATION section | HIGH | Add standard block |
 
-## Code Workflow Findings (Batch 4)
+## Code Workflow Findings (Batch 4: PENDING)
 
-23 findings across code_command.py, coder.py, code_reviewer.py, automated_quality_checker.py, spec_alignment_reviewer.py, review_consolidator.py, and coding_standards_reviewer.py.
+23 findings across code_command.py, coder.py, code_reviewer.py, automated_quality_checker.py, spec_alignment_reviewer.py, review_consolidator.py, and coding_standards_reviewer.py. These are the NEXT batch to implement.
+
+**NOTE**: An earlier pass (commit 5361f0a) added some enforcement blocks to code workflow templates BEFORE the open-source model patterns were documented. A fresh re-audit is needed to:
+
+1. Check which of the 23 findings below are already resolved
+2. Verify existing blocks follow current standard format (TOOL INVOCATION, OUTPUT SCOPE, etc.)
+3. Apply open-source model patterns: exhaustive positive instructions, prohibition paradox check, inline constraint repetition
+4. Add any missing standard blocks (see "Standard Enforcement Blocks" section above)
 
 ### code_command.py
 

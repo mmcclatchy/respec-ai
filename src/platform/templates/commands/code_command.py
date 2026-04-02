@@ -15,6 +15,18 @@ Orchestrate the complete implementation workflow, transforming Phases into produ
 
 {tools.mcp_tools_reference}
 
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed above.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+
 ## Workflow Steps
 
 ### 1. Extract Command Arguments and Locate Phase File
@@ -148,7 +160,7 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
 
     EXIT: Workflow suspended pending user decision
 
-Proceed to Step 6.5 (Mode Extraction)
+IMMEDIATELY execute Step 6.5 (Mode Extraction)
 ```
 
 ### 6.5 Extract Step Modes from Task

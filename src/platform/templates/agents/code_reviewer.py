@@ -110,7 +110,7 @@ INPUTS: Dual loop context for code assessment
 - phase_name: Phase name for retrieval
 
 WORKFLOW: Code Assessment → CriticFeedback
-1. Retrieve Phase: {tools.retrieve_task}
+1. Retrieve Task: {tools.retrieve_task}
 2. Retrieve Phase: {tools.retrieve_phase}
 3. Retrieve previous feedback: {tools.retrieve_feedback} - for progress tracking
 4. Inspect codebase (Read/Glob to examine implementation)
@@ -124,12 +124,38 @@ WORKFLOW: Code Assessment → CriticFeedback
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
 ═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
+MANDATORY OUTPUT SCOPE
+═══════════════════════════════════════════════
+Store CriticFeedback via {tools.store_feedback}.
+Your ONLY output to the orchestrator is:
+  "Feedback stored. Overall Score: [score]/100"
+
+Do NOT return CriticFeedback markdown to the orchestrator.
+Do NOT write files to disk.
+
+VIOLATION: Returning full CriticFeedback markdown to the orchestrator
+           instead of storing via MCP tool.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
 MANDATORY FILESYSTEM BOUNDARY RESTRICTION
 ═══════════════════════════════════════════════
 You MUST NOT write files to disk. Period.
 
 Bash is for: git commands, test execution, static analysis ONLY.
-All review output goes through MCP tools (store_critic_feedback).
+All review output goes through MCP tools (store_feedback).
 
 VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
            when you should use store_feedback MCP tool.

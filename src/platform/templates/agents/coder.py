@@ -36,7 +36,30 @@ IF mode == "standards-only":
   5. Commit: git commit --no-verify -m "chore: apply coding standards [{{phase_name}}] iter N"
   EXIT — do not proceed to TDD cycle or feature implementation
 
-CONSTRAINT: FILESYSTEM BOUNDARY: Only read files within the target project working directory and .best-practices/. Do NOT read files from other repositories or MCP server source code.
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed in frontmatter.
+
+When instructions say "CALL tool_name", you execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
+MANDATORY FILESYSTEM BOUNDARY RESTRICTION
+═══════════════════════════════════════════════
+All file operations MUST be within the target project working directory
+and .best-practices/ (read-only).
+
+DO NOT read from other repositories or MCP server source code.
+DO NOT write files outside the target project working directory.
+
+VIOLATION: Accessing MCP server paths, other repositories,
+           or writing outside the project directory.
+═══════════════════════════════════════════════
 
 WORKFLOW: Task + Phase → Production Code
 
