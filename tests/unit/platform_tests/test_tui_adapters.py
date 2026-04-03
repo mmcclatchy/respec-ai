@@ -570,11 +570,11 @@ class TestCodexAdapter:
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
     ) -> None:
         files = self.adapter.write_all(project_path, [agent_spec], [command_spec])
-        assert len(files) == 4
+        assert len(files) == 3
         assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
         assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()
-        assert (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent' / 'SKILL.md').exists()
-        assert (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent' / 'agents' / 'openai.yaml').exists()
+        assert (project_path / '.codex' / 'agents' / 'respec-plan-analyst-agent.toml').exists()
+        assert not (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent').exists()
         assert not (project_path / '.codex' / 'commands' / 'respec-plan.md').exists()
         assert not (project_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
 
@@ -593,45 +593,124 @@ class TestCodexAdapter:
         (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').write_text('x', encoding='utf-8')
         (project_path / '.codex' / 'skills' / 'respec-plan-conversation').mkdir(parents=True)
         (project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'SKILL.md').write_text('x', encoding='utf-8')
-        (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent').mkdir(parents=True)
-        (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent' / 'SKILL.md').write_text(
-            'x', encoding='utf-8'
-        )
+        (project_path / '.codex' / 'agents').mkdir(parents=True)
+        (project_path / '.codex' / 'agents' / 'respec-plan-analyst-agent.toml').write_text('x', encoding='utf-8')
         (project_path / '.codex' / 'skills' / 'codex-plan-sync').mkdir(parents=True)
         (project_path / '.codex' / 'skills' / 'codex-plan-sync' / 'SKILL.md').write_text('x', encoding='utf-8')
 
         assert self.adapter.count_generated_commands(project_path) == 2
         assert self.adapter.count_generated_agents(project_path) == 1
 
-    def test_command_skill_policy_marks_internal_conversation_as_non_implicit(self, project_path: Path) -> None:
-        public_command = CommandSpec(
-            name='respec-plan',
-            description='Plan workflow',
-            argument_hint='[plan-name]',
-            tools=['Read'],
-            body='body',
-            delegated_agents=[],
-        )
-        internal_command = CommandSpec(
-            name='respec-plan-conversation',
-            description='Conversation workflow',
-            argument_hint='[optional-context]',
-            tools=['Read'],
-            body='body',
-            delegated_agents=[],
-        )
+    def test_write_all_generates_agent_toml_worker_files(
+        self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
+    ) -> None:
+        self.adapter.write_all(project_path, [agent_spec], [command_spec])
+        agent_file = project_path / '.codex' / 'agents' / 'respec-plan-analyst-agent.toml'
+        content = agent_file.read_text(encoding='utf-8')
 
-        self.adapter.write_all(project_path, [], [public_command, internal_command])
+        assert 'name = "respec-plan-analyst-agent"' in content
+        assert 'sandbox_mode = "workspace-write"' in content
+        assert 'developer_instructions = """' in content
+        assert 'You are a business analyst.' in content
 
-        public_policy = (project_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').read_text(
-            encoding='utf-8'
-        )
-        internal_policy = (
+    def test_command_skill_policy_and_metadata_tiers(self, project_path: Path) -> None:
+        command_specs = [
+            CommandSpec(
+                name='respec-plan',
+                description='Plan workflow',
+                argument_hint='[plan-name]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+            CommandSpec(
+                name='respec-phase',
+                description='Phase workflow',
+                argument_hint='[plan-name] [phase-name]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+            CommandSpec(
+                name='respec-code',
+                description='Code workflow',
+                argument_hint='[plan-name] [phase-name]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+            CommandSpec(
+                name='respec-patch',
+                description='Patch workflow',
+                argument_hint='[plan-name] [phase-name] [task-name]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+            CommandSpec(
+                name='respec-roadmap',
+                description='Roadmap workflow',
+                argument_hint='[plan-name]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+            CommandSpec(
+                name='respec-task',
+                description='Task workflow',
+                argument_hint='[plan-name] [phase-name]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+            CommandSpec(
+                name='respec-plan-conversation',
+                description='Conversation workflow',
+                argument_hint='[optional-context]',
+                tools=['Read'],
+                body='body',
+                delegated_agents=[],
+            ),
+        ]
+
+        self.adapter.write_all(project_path, [], command_specs)
+
+        for command_name in (
+            'respec-plan',
+            'respec-phase',
+            'respec-code',
+            'respec-patch',
+            'respec-roadmap',
+            'respec-task',
+        ):
+            policy = (project_path / '.codex' / 'skills' / command_name / 'agents' / 'openai.yaml').read_text(
+                encoding='utf-8'
+            )
+            assert 'allow_implicit_invocation: true' in policy
+
+        conversation_policy = (
             project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'agents' / 'openai.yaml'
         ).read_text(encoding='utf-8')
+        assert 'allow_implicit_invocation: false' in conversation_policy
+        assert 'Internal workflow used by `respec-plan`; do not invoke directly.' in conversation_policy
 
-        assert 'allow_implicit_invocation: true' in public_policy
-        assert 'allow_implicit_invocation: false' in internal_policy
+        roadmap_policy = (project_path / '.codex' / 'skills' / 'respec-roadmap' / 'agents' / 'openai.yaml').read_text(
+            encoding='utf-8'
+        )
+        task_policy = (project_path / '.codex' / 'skills' / 'respec-task' / 'agents' / 'openai.yaml').read_text(
+            encoding='utf-8'
+        )
+        roadmap_skill = (project_path / '.codex' / 'skills' / 'respec-roadmap' / 'SKILL.md').read_text(encoding='utf-8')
+        task_skill = (project_path / '.codex' / 'skills' / 'respec-task' / 'SKILL.md').read_text(encoding='utf-8')
+        conversation_skill = (project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'SKILL.md').read_text(
+            encoding='utf-8'
+        )
+
+        assert 'Typically orchestrated by `respec-plan`; direct use is for edge cases.' in roadmap_policy
+        assert 'Typically orchestrated by `respec-phase`; direct use is for edge cases.' in task_policy
+        assert 'Typically orchestrated by `respec-plan`; direct use is for edge cases.' in roadmap_skill
+        assert 'Typically orchestrated by `respec-phase`; direct use is for edge cases.' in task_skill
+        assert 'Internal workflow used by `respec-plan`; do not invoke directly.' in conversation_skill
 
     def test_register_unregister_mcp_server(self, tmp_path: Path, project_path: Path) -> None:
         codex_home = tmp_path / '.codex'
@@ -660,13 +739,14 @@ class TestCodexAdapterInvocationRendering:
     def setup_method(self) -> None:
         self.adapter = CodexAdapter()
 
-    def test_render_agent_invocation_uses_skill_name(self) -> None:
+    def test_render_agent_invocation_uses_agent_name(self) -> None:
         result = self.adapter.render_agent_invocation(
             'respec-plan-critic',
             'evaluate strategic plan quality',
             [('plan_name', 'PLAN_NAME')],
         )
         assert 'respec-plan-critic-agent' in result
+        assert 'Invoke the `respec-plan-critic-agent` agent' in result
         assert 'plan_name: PLAN_NAME' in result
 
     def test_render_agent_invocation_dynamic_reviewer(self) -> None:

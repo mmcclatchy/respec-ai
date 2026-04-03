@@ -1371,6 +1371,7 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 
 **Do:**
 - Use `/respec-roadmap` for projects that benefit from phased decomposition
+- Use `/respec-roadmap` directly for edge cases; it is typically orchestrated by `/respec-plan`
 - Let the roadmap agent choose the phasing strategy that fits your project
 - Ensure each phase delivers something testable and meaningful
 - Consider dependencies between phases
@@ -1382,6 +1383,16 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 - Create phases that are too large (multiple independent features bundled)
 - Skip phase validation before implementation
 - Ignore phase dependencies
+
+### Task Breakdown
+
+**Do:**
+- Use `/respec-task` directly for edge cases; it is typically orchestrated by `/respec-phase`
+- Ensure the target Phase document is current before running task breakdown
+
+**Don't:**
+- Run `/respec-task` without a valid plan/phase context
+- Treat task output as detached from phase constraints
 
 ### Phase Documents
 

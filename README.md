@@ -167,6 +167,15 @@ Model mappings are saved to `~/.config/respec-ai/models.json`. API keys provided
    → Code review with code-reviewer (validates against task breakdown)
 ```
 
+### Codex Command Usage Tiers
+
+When using Codex skills, use command tiers to reduce noise:
+
+- **Primary (normal entry points):** `respec-plan`, `respec-phase`, `respec-code`, `respec-patch`
+- **Secondary (usually orchestrated by parent command, direct use for edge cases):**
+  `respec-roadmap` (typically from `respec-plan`) and `respec-task` (typically from `respec-phase`)
+- **Internal workflow:** `respec-plan-conversation` is used by `respec-plan` and should not be invoked directly
+
 Each stage uses **autonomous agentic reflection loops** where producer-critic pairs iteratively refine until quality thresholds met. Hierarchical validation ensures every code change traces back to business objectives.
 
 ```text

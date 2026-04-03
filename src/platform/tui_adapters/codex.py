@@ -11,6 +11,11 @@ from src.cli.config.codex_config import (
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
+_PRIMARY_COMMAND_SKILLS = {'respec-plan', 'respec-phase', 'respec-code', 'respec-patch'}
+_SECONDARY_COMMAND_PARENTS = {
+    'respec-roadmap': 'respec-plan',
+    'respec-task': 'respec-phase',
+}
 _INTERNAL_COMMAND_SKILLS = {'respec-plan-conversation'}
 
 
@@ -64,6 +69,7 @@ class CodexAdapter(TuiAdapter):
         agents_dir = self.prompts_dir(project_path)
 
         skills_dir.mkdir(parents=True, exist_ok=True)
+        agents_dir.mkdir(parents=True, exist_ok=True)
 
         if commands_dir.exists():
             for stale in commands_dir.glob('respec-*.md'):
@@ -71,29 +77,30 @@ class CodexAdapter(TuiAdapter):
         if agents_dir.exists():
             for stale in agents_dir.glob('respec-*.md'):
                 stale.unlink()
+            for stale in agents_dir.glob('respec-*.toml'):
+                stale.unlink()
         for stale in skills_dir.glob('respec-*'):
             if stale.is_dir():
                 shutil.rmtree(stale)
+            elif stale.is_file():
+                stale.unlink()
 
         files_written: list[Path] = []
 
         for cmd_spec in commands:
+            command_description = self._command_short_description(cmd_spec.name, cmd_spec.description)
             skill_dir = skills_dir / cmd_spec.name
             skill_dir.mkdir(parents=True, exist_ok=True)
             skill_path = skill_dir / 'SKILL.md'
-            skill_path.write_text(self._render_command_skill(cmd_spec), encoding='utf-8')
+            skill_path.write_text(self._render_command_skill(cmd_spec, command_description), encoding='utf-8')
             files_written.append(skill_path)
             openai_yaml_path = skill_dir / 'agents' / 'openai.yaml'
             openai_yaml_path.parent.mkdir(parents=True, exist_ok=True)
             openai_yaml_path.write_text(
                 self._render_openai_yaml(
                     display_name=self._command_display_name(cmd_spec.name),
-                    short_description=cmd_spec.description,
-                    default_prompt=(
-                        f'Run the {cmd_spec.name} workflow with arguments: {cmd_spec.argument_hint}.'
-                        if cmd_spec.argument_hint
-                        else f'Run the {cmd_spec.name} workflow.'
-                    ),
+                    short_description=command_description,
+                    default_prompt=self._command_default_prompt(cmd_spec.name, cmd_spec.argument_hint),
                     allow_implicit_invocation=self._allow_implicit_command_invocation(cmd_spec.name),
                 ),
                 encoding='utf-8',
@@ -101,24 +108,13 @@ class CodexAdapter(TuiAdapter):
             files_written.append(openai_yaml_path)
 
         for agent_spec in agents:
-            skill_name = self._agent_skill_name(agent_spec.name)
-            skill_dir = skills_dir / skill_name
-            skill_dir.mkdir(parents=True, exist_ok=True)
-            skill_path = skill_dir / 'SKILL.md'
-            skill_path.write_text(self._render_agent_skill(agent_spec), encoding='utf-8')
-            files_written.append(skill_path)
-            openai_yaml_path = skill_dir / 'agents' / 'openai.yaml'
-            openai_yaml_path.parent.mkdir(parents=True, exist_ok=True)
-            openai_yaml_path.write_text(
-                self._render_openai_yaml(
-                    display_name=self._agent_display_name(skill_name),
-                    short_description=agent_spec.description,
-                    default_prompt=f'Execute the internal worker skill {skill_name}.',
-                    allow_implicit_invocation=False,
-                ),
+            agent_runtime_name = self._agent_runtime_name(agent_spec.name)
+            agent_path = agents_dir / f'{agent_runtime_name}.toml'
+            agent_path.write_text(
+                self._render_agent_toml(agent_spec, agent_runtime_name),
                 encoding='utf-8',
             )
-            files_written.append(openai_yaml_path)
+            files_written.append(agent_path)
 
         return files_written
 
@@ -161,8 +157,8 @@ class CodexAdapter(TuiAdapter):
         description: str,
         params: list[tuple[str, str]],
     ) -> str:
-        skill_name = self._agent_skill_name(agent_name)
-        lines = [f'Invoke the `{skill_name}` skill to {description}.']
+        agent_runtime_name = self._agent_runtime_name(agent_name)
+        lines = [f'Invoke the `{agent_runtime_name}` agent to {description}.']
         if params:
             lines.append('Input:')
             for name, value in params:
@@ -195,52 +191,43 @@ class CodexAdapter(TuiAdapter):
         )
 
     def count_generated_agents(self, project_path: Path) -> int:
-        skills_dir = self.skills_dir(project_path)
-        if not skills_dir.exists():
+        agents_dir = self.prompts_dir(project_path)
+        if not agents_dir.exists():
             return 0
-        return sum(
-            1
-            for skill_dir in skills_dir.iterdir()
-            if skill_dir.is_dir()
-            and (skill_dir / 'SKILL.md').exists()
-            and skill_dir.name.startswith('respec-')
-            and skill_dir.name.endswith('-agent')
-        )
+        return sum(1 for agent_file in agents_dir.glob('respec-*-agent.toml') if agent_file.is_file())
 
-    def _render_command_skill(self, spec: CommandSpec) -> str:
+    def _render_command_skill(self, spec: CommandSpec, command_description: str) -> str:
         return (
             '---\n'
             f'name: {spec.name}\n'
-            f'description: {spec.description}\n'
+            f'description: {command_description}\n'
             '---\n\n'
             f'# {spec.name}\n\n'
-            f'Description: {spec.description}\n'
+            f'Description: {command_description}\n'
             f'Model: {spec.model}\n'
             f'Allowed tools: {", ".join(spec.tools)}\n\n'
             f'{spec.body}'
         )
 
-    def _render_agent_skill(self, spec: AgentSpec) -> str:
-        skill_name = self._agent_skill_name(spec.name)
-        return (
-            '---\n'
-            f'name: {skill_name}\n'
-            f'description: {spec.description}\n'
-            '---\n\n'
-            f'# {skill_name}\n\n'
-            f'Description: {spec.description}\n'
-            f'Model: {spec.model}\n'
-            f'Allowed tools: {", ".join(spec.tools)}\n\n'
-            f'{spec.body}'
-        )
-
-    def _agent_skill_name(self, agent_name: str) -> str:
+    def _agent_runtime_name(self, agent_name: str) -> str:
         placeholder_name = self._extract_placeholder_name(agent_name)
         if placeholder_name is not None:
             return f'respec-{{{placeholder_name}}}-agent'
         if agent_name.startswith('respec-'):
             return f'respec-{agent_name[len("respec-") :]}-agent'
         return f'respec-{agent_name}-agent'
+
+    def _render_agent_toml(self, spec: AgentSpec, agent_runtime_name: str) -> str:
+        instructions = spec.body.rstrip().replace('"""', '\\"""')
+        return (
+            f'name = "{self._toml_quote(agent_runtime_name)}"\n'
+            f'description = "{self._toml_quote(spec.description)}"\n'
+            f'model = "{self._toml_quote(spec.model)}"\n'
+            'sandbox_mode = "workspace-write"\n'
+            'developer_instructions = """\n'
+            f'{instructions}\n'
+            '"""\n'
+        )
 
     def _extract_placeholder_name(self, agent_name: str) -> str | None:
         if agent_name.startswith('{{') and agent_name.endswith('}}'):
@@ -252,13 +239,46 @@ class CodexAdapter(TuiAdapter):
         return None
 
     def _allow_implicit_command_invocation(self, command_name: str) -> bool:
-        return command_name not in _INTERNAL_COMMAND_SKILLS
+        if command_name in _INTERNAL_COMMAND_SKILLS:
+            return False
+        if command_name in _PRIMARY_COMMAND_SKILLS:
+            return True
+        if command_name in _SECONDARY_COMMAND_PARENTS:
+            return True
+        return True
+
+    def _command_short_description(self, command_name: str, base_description: str) -> str:
+        usage_note = self._command_usage_note(command_name)
+        if usage_note is None:
+            return base_description
+        if base_description:
+            return f'{base_description} {usage_note}'
+        return usage_note
+
+    def _command_default_prompt(self, command_name: str, argument_hint: str) -> str:
+        base_prompt = (
+            f'Run the {command_name} workflow with arguments: {argument_hint}.'
+            if argument_hint
+            else f'Run the {command_name} workflow.'
+        )
+        usage_note = self._command_usage_note(command_name)
+        if usage_note is None:
+            return base_prompt
+        return f'{usage_note} {base_prompt}'
+
+    def _command_usage_note(self, command_name: str) -> str | None:
+        if command_name in _INTERNAL_COMMAND_SKILLS:
+            return 'Internal workflow used by `respec-plan`; do not invoke directly.'
+        if command_name in _SECONDARY_COMMAND_PARENTS:
+            parent_command = _SECONDARY_COMMAND_PARENTS[command_name]
+            return f'Typically orchestrated by `{parent_command}`; direct use is for edge cases.'
+        return None
 
     def _command_display_name(self, command_name: str) -> str:
         return self._title_name(command_name)
 
-    def _agent_display_name(self, agent_skill_name: str) -> str:
-        return self._title_name(agent_skill_name)
+    def _agent_display_name(self, agent_runtime_name: str) -> str:
+        return self._title_name(agent_runtime_name)
 
     def _title_name(self, raw_name: str) -> str:
         return raw_name.replace('-', ' ').title()
@@ -281,4 +301,7 @@ class CodexAdapter(TuiAdapter):
         )
 
     def _yaml_quote(self, value: str) -> str:
+        return value.replace('\\', '\\\\').replace('"', '\\"')
+
+    def _toml_quote(self, value: str) -> str:
         return value.replace('\\', '\\\\').replace('"', '\\"')
