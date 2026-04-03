@@ -52,7 +52,7 @@ argument-hint: [plan-name] [phase-name] [optional: instructions]
 description: Transform strategic plans into detailed Phases
 ---
 
-# /respec-phase Command: Phase Creation
+# respec-phase Command: Phase Creation
 
 ## Overview
 Transform strategic plans into detailed Phases through quality-driven refinement. This command orchestrates technical architecture design, research integration, and platform-specific Phase storage.
@@ -60,7 +60,7 @@ Transform strategic plans into detailed Phases through quality-driven refinement
 ## Primary Responsibilities
 
 ### 1. Initialize Technical Design Process
-- Retrieve strategic plan from previous `/respec-plan` phase
+- Retrieve strategic plan from previous `respec-plan` phase
 - Launch phase-architect agent for technical architecture development
 - Initialize MCP refinement loop for Phase creation
 
@@ -82,7 +82,7 @@ Transform strategic plans into detailed Phases through quality-driven refinement
 ## Orchestration Pattern
 
 ```text
-Main Agent (via /respec-phase)
+Main Agent (via respec-phase)
     │
     ├── 1. Retrieve Strategic Plan
     │   └── Access plan from previous phase or user input
@@ -329,7 +329,7 @@ ELIF LOOP_DECISION == "USER_INPUT":
     Recommended: Break into 3-5 focused phases
 
     **Next Steps:**
-    1. Run: /respec-roadmap [PLAN_NAME]
+    1. Run: respec-roadmap [PLAN_NAME]
     2. This will analyze the current phase and create multiple smaller phases
     3. Each resulting phase will be appropriately scoped
 
@@ -574,11 +574,11 @@ IF no strategic plan available:
   ERROR_RESPONSE = {{
     "error_type": "missing_plan",
     "error_message": "No strategic plan found for Phase creation",
-    "recovery_action": "Prompting user for plan location or /respec-plan execution",
-    "user_guidance": "Please provide the strategic plan document path or run /respec-plan command first",
+    "recovery_action": "Prompting user for plan location or respec-plan execution",
+    "user_guidance": "Please provide the strategic plan document path or run respec-plan command first",
     "partial_output": "Phase template prepared"
   }}
-  → Request plan location OR suggest: "Run /respec-plan [plan-name] to create strategic plan first"
+  → Request plan location OR suggest: "Run respec-plan [plan-name] to create strategic plan first"
 ```
 
 #### 2. Knowledge Base Query Failure
@@ -736,21 +736,21 @@ Invoke the task command to generate the Task with full quality loop:
 
 {tools.task_command_invocation}
 
-The `/respec-task` command will:
+The `respec-task` command will:
 1. Locate the Phase file on disk
 2. Initialize a task quality loop
 3. Run task-planner → task-plan-critic refinement cycle
 4. Store the Task document to MCP and platform
 
-**If /respec-task fails**: The Phase is already stored and valid. Display:
+**If respec-task fails**: The Phase is already stored and valid. Display:
 ```text
-"⚠ Task generation failed. Phase is saved. Run /respec-task {{PLAN_NAME}} {{PHASE_NAME}} manually."
+"⚠ Task generation failed. Phase is saved. Run respec-task {{PLAN_NAME}} {{PHASE_NAME}} manually."
 ```
 
-**After /respec-task completes**: Display next steps:
+**After respec-task completes**: Display next steps:
 ```text
-"✅ Phase and Task complete. Next: /respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
+"✅ Phase and Task complete. Next: respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
 ```
 
-The Phase and Task are ready for implementation. Recommend `/respec-code` command for next step.
+The Phase and Task are ready for implementation. Recommend `respec-code` command for next step.
 """

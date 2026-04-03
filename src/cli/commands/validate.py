@@ -66,25 +66,17 @@ def run(args: Namespace) -> int:
     tui = config.get('tui', 'claude-code') if config_path.exists() else 'claude-code'
     tui_adapter = get_tui_adapter(TuiType(tui))
 
-    commands_dir = tui_adapter.commands_dir(project_path)
-    if commands_dir.exists():
-        commands_count = len(list(commands_dir.glob('*.md')))
-        if commands_count == EXPECTED_COMMANDS_COUNT:
-            checks['Commands Directory'] = (True, f'{commands_count} commands found')
-        else:
-            checks['Commands Directory'] = (False, f'{commands_count} commands (expected {EXPECTED_COMMANDS_COUNT})')
+    commands_count = tui_adapter.count_generated_commands(project_path)
+    if commands_count == EXPECTED_COMMANDS_COUNT:
+        checks['Commands Directory'] = (True, f'{commands_count} commands found')
     else:
-        checks['Commands Directory'] = (False, 'Directory missing')
+        checks['Commands Directory'] = (False, f'{commands_count} commands (expected {EXPECTED_COMMANDS_COUNT})')
 
-    agents_dir = tui_adapter.prompts_dir(project_path)
-    if agents_dir.exists():
-        agents_count = len(list(agents_dir.glob('*.md')))
-        if agents_count == EXPECTED_AGENTS_COUNT:
-            checks['Agents Directory'] = (True, f'{agents_count} agents found')
-        else:
-            checks['Agents Directory'] = (False, f'{agents_count} agents (expected {EXPECTED_AGENTS_COUNT})')
+    agents_count = tui_adapter.count_generated_agents(project_path)
+    if agents_count == EXPECTED_AGENTS_COUNT:
+        checks['Agents Directory'] = (True, f'{agents_count} agents found')
     else:
-        checks['Agents Directory'] = (False, 'Directory missing')
+        checks['Agents Directory'] = (False, f'{agents_count} agents (expected {EXPECTED_AGENTS_COUNT})')
 
     mcp_registered = tui_adapter.is_mcp_registered(project_path)
     if mcp_registered:

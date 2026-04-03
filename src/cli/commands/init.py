@@ -181,6 +181,20 @@ def run(args: Namespace) -> int:
             files_created=len(files_written) + 1,
             mcp_registered=mcp_registered,
             tui_display_name=tui_adapter.display_name,
+            command_examples=[
+                tui_adapter.render_command_invocation(
+                    'respec-plan', '[plan-name]', '', requires_user_interaction=False
+                ),
+                tui_adapter.render_command_invocation(
+                    'respec-roadmap', '[plan-name]', '', requires_user_interaction=False
+                ),
+                tui_adapter.render_command_invocation(
+                    'respec-phase', '[plan-name] [phase-name]', '', requires_user_interaction=False
+                ),
+                tui_adapter.render_command_invocation(
+                    'respec-code', '[plan-name] [phase-name]', '', requires_user_interaction=False
+                ),
+            ],
         )
 
         return 0

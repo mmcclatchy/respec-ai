@@ -8,7 +8,7 @@ argument-hint: [plan-name] [phase-name]
 description: Transform Phases into detailed Tasks with implementation Steps through quality-driven refinement
 ---
 
-# /respec-task Command: Task Orchestration
+# respec-task Command: Task Orchestration
 
 ## Overview
 Orchestrate transformation of Phase architecture into a detailed, implementable Task with inline Steps. Bridge architectural design to code implementation through quality-driven task planning.
@@ -167,7 +167,7 @@ Coordinate task-planner → task-plan-critic → MCP decision cycle:
 
 #### Step 4.1: Invoke Task-Planner Agent
 
-Use the Task tool to launch the respec-task-planner agent:
+Invoke the task-planner workflow:
 
 {tools.invoke_task_planner}
 
@@ -180,7 +180,7 @@ Expected: Task document with:
 
 #### Step 4.2: Invoke Task-Plan-Critic Agent
 
-Use the Task tool to launch the respec-task-plan-critic agent:
+Invoke the task-plan-critic workflow:
 
 {tools.invoke_task_plan_critic}
 
@@ -325,7 +325,7 @@ Present completion summary with clear next steps:
 ✅ Technology stack aligned with Phase
 
 **Next Steps**:
-Execute /respec-code {{PLAN_NAME}} {{PHASE_NAME}} to implement the Task with TDD
+Execute respec-code {{PLAN_NAME}} {{PHASE_NAME}} to implement the Task with TDD
 ```
 
 ## Error Handling
@@ -335,7 +335,7 @@ Execute /respec-code {{PLAN_NAME}} {{PHASE_NAME}} to implement the Task with TDD
 #### Phase Not Available
 ```text
 Display: "No phase found for: [PLAN_NAME]/[PHASE_NAME]"
-Suggest: "/respec-phase [PLAN_NAME] [PHASE_NAME] to create phase"
+Suggest: "respec-phase [PLAN_NAME] [PHASE_NAME] to create phase"
 Exit gracefully with guidance
 ```
 
@@ -375,5 +375,5 @@ All specialized work delegated to appropriate agents:
 - **respec-task-plan-critic**: Quality assessment against FSDD criteria
 - **MCP Server**: Decision logic and threshold management
 
-Ready for code implementation through /respec-code command execution with validated Task.
+Ready for code implementation through respec-code command execution with validated Task.
 """

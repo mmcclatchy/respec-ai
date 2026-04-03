@@ -90,8 +90,10 @@ node_modules/
 # mypy
 .mypy_cache/
 
-# Claude Code
+# Terminal User Interfaces
 .claude/
+.opencode/
+.codex/
 
 # Editor backup files
 *~

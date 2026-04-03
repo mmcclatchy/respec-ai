@@ -147,7 +147,10 @@ class TestGenerateTemplates:
 
         assert commands_count == 7
         assert agents_count == 21
-        assert (tmp_path / '.codex' / 'commands').exists()
-        assert (tmp_path / '.codex' / 'agents').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
+        assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()
+        assert (tmp_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'SKILL.md').exists()
+        assert (tmp_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'agents' / 'openai.yaml').exists()
+        assert not (tmp_path / '.codex' / 'commands' / 'respec-plan.md').exists()
+        assert not (tmp_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
         assert any('SKILL.md' in str(p) for p in files_written)

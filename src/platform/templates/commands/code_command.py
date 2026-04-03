@@ -8,7 +8,7 @@ argument-hint: [plan-name] [phase-name]
 description: Transform Phases into production-ready code through TDD-driven implementation
 ---
 
-# /respec-code Command: Implementation Orchestration
+# respec-code Command: Implementation Orchestration
 
 ## Overview
 Orchestrate the complete implementation workflow, transforming Phases into production-ready code through TDD-driven code development with comprehensive quality validation.
@@ -118,7 +118,7 @@ Coder agent will validate Phase exists when retrieving it:
 # This follows the token optimization pattern - agents retrieve their own data
 ```
 
-### 5. Retrieve Task from /respec-task Command
+### 5. Retrieve Task from respec-task Command
 
 Retrieve completed Task document from task workflow:
 
@@ -127,7 +127,7 @@ TASK_MARKDOWN = {tools.get_task_document}
 
 IF TASK_MARKDOWN not found:
   ERROR: "No Task found for Phase: {{PHASE_NAME}}"
-  SUGGEST: "Run '/respec-task {{PLAN_NAME}} {{PHASE_NAME}}' to create Task first"
+  SUGGEST: "Run 'respec-task {{PLAN_NAME}} {{PHASE_NAME}}' to create Task first"
   EXIT: Graceful failure with guidance
 
 Display: "✓ Task retrieved - ready for implementation"
@@ -150,13 +150,13 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
     Review override proposals in Task document.
 
     Choose action:
-    1. Approve proposal → Re-run /respec-phase to update architecture
+    1. Approve proposal → Re-run respec-phase to update architecture
     2. Reject proposal → Continue with current Phase as-is
 
     Task workflow paused until Phase updated.
 
-    To approve: /respec-phase {{PLAN_NAME}} {{PHASE_NAME}} [instructions based on proposal]
-    To reject: Re-run /respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
+    To approve: respec-phase {{PLAN_NAME}} {{PHASE_NAME}} [instructions based on proposal]
+    To reject: Re-run respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
 
     EXIT: Workflow suspended pending user decision
 
@@ -215,7 +215,7 @@ LANGUAGE_CONFIGS = For each file in LANGUAGE_FILES: Read(file) — concatenated 
 ACTIVE_REVIEWERS.append("review-consolidator")
 
 # Loop IDs in this command:
-#   PLANNING_LOOP_ID  — task breakdown loop (from /respec-task)
+#   PLANNING_LOOP_ID  — task breakdown loop (from respec-task)
 #   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
 #   STANDARDS_LOOP_ID — Phase 2 standards loop (coding-standards-reviewer only)
 # Coder receives the loop ID matching its current phase.
@@ -233,7 +233,7 @@ Set up and execute MCP-managed code quality refinement:
 
 #### Step 7.1: Retrieve Task Loop ID from Task Workflow
 
-Retrieve the task_loop_id that was created during /respec-task:
+Retrieve the task_loop_id that was created during respec-task:
 
 ```text
 TASK_INFO = {tools.get_task_document}
@@ -251,7 +251,7 @@ CODING_LOOP_ID = {tools.initialize_coding_loop}
 You now have TWO active loop IDs - DO NOT confuse them:
 
 **task_loop_id = {{TASK_LOOP_ID}}**
-- Purpose: Retrieve Task document (created during /respec-task)
+- Purpose: Retrieve Task document (created during respec-task)
 - Used by: coder (to get implementation plan), reviewers (to verify against Task/Phase)
 - Storage: Task document linked to this loop
 
@@ -576,7 +576,7 @@ Note: Loop decisions determined by MCP Server based on scoring and configuration
 #### Phase Not Available
 ```text
 Display: "No Phase found: [PHASE_NAME]"
-Suggest: "/respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
+Suggest: "respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
 Exit gracefully with guidance
 ```
 
@@ -626,7 +626,7 @@ All specialized work delegated to appropriate agents:
 ## Workflow Enhancements
 
 ### Dual Loop Architecture
-- Separate task loop (from /respec-task) and coding loop (code refinement)
+- Separate task loop (from respec-task) and coding loop (code refinement)
 - task_loop_id used to retrieve Task document created by task workflow
 - coding_loop_id used for code feedback storage/retrieval
 - Coding agents receive both IDs and use appropriately

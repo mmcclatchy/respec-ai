@@ -224,7 +224,7 @@ This agent creates AMENDMENT tasks with these properties:
 ## ERROR HANDLING
 
 ### Missing Phase
-- Report error with suggestion to run /respec-phase first
+- Report error with suggestion to run respec-phase first
 - Do NOT proceed without Phase context
 
 ### Unclear Change Description

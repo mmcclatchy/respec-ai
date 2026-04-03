@@ -8,7 +8,7 @@ argument-hint: [plan-name] [optional: phasing-preferences]
 description: Transform strategic plans into multiple Phases through quality-driven refinement
 ---
 
-# /respec-roadmap Command: Implementation Roadmap Orchestration
+# respec-roadmap Command: Implementation Roadmap Orchestration
 
 ## Overview
 Orchestrate the transformation of strategic plans into discrete, implementable phase roadmaps. Bridge strategic planning to Phase creation through quality-driven decomposition and refinement.
@@ -45,7 +45,7 @@ Retrieve and validate the synced strategic plan:
 STRATEGIC_PLAN = {tools.get_plan}
 IF STRATEGIC_PLAN not found:
   ERROR: "No strategic plan found for project: [PLAN_NAME]"
-  SUGGEST: "Run '/respec-plan [PLAN_NAME]' to create strategic plan first"
+  SUGGEST: "Run 'respec-plan [PLAN_NAME]' to create strategic plan first"
   EXIT: Graceful failure with guidance
 STRUCTURED_OBJECTIVES = [Extract from strategic plan Business Objectives analysis]
 ```
@@ -61,7 +61,7 @@ CONSTRAINT_SECTIONS_FOUND = count of True values above
 IF CONSTRAINT_SECTIONS_FOUND == 0:
   Display: "⚠️ Plan has no constraint sections (Architecture Direction, Technology Decisions, Anti-Requirements, Quality Bar)"
   Display: "Roadmap will proceed but phases may lack constraint guidance"
-  Display: "Run '/respec-plan' to add these sections for better phase quality"
+  Display: "Run 'respec-plan' to add these sections for better phase quality"
 ELSE:
   Display: "✓ Found {{CONSTRAINT_SECTIONS_FOUND}}/4 plan constraint sections"
   IF not PLAN_HAS_ARCHITECTURE: Display: "  ⚠️ Missing: Architecture Direction"
@@ -84,7 +84,7 @@ Coordinate roadmap → roadmap-critic → MCP decision cycle:
 
 #### Step 3.1: Invoke Roadmap Agent
 
-Use the Task tool to launch the respec-roadmap agent with these instructions:
+Invoke the roadmap workflow with these instructions:
 
 {tools.invoke_roadmap_agent}
 
@@ -119,7 +119,7 @@ Choose strategy based on project characteristics. Phases MUST be:
 
 #### Step 3.2: Invoke Roadmap-Critic Agent
 
-Use the Task tool to launch the respec-roadmap-critic agent with these instructions:
+Invoke the roadmap-critic workflow with these instructions:
 
 {tools.invoke_roadmap_critic}
 
@@ -240,7 +240,7 @@ Extract sparse Phases from roadmap and save to MCP storage:
 
 #### Launch Parallel Phase Extraction Agents
 
-Launch all create-phase agents IN PARALLEL using the Task tool:
+Launch all create-phase workflows IN PARALLEL:
 
 ```text
 For each phase in ROADMAP_PHASES, invoke a respec-create-phase agent.
@@ -259,7 +259,7 @@ Each agent will:
 Each agent will NOT return the phase markdown.
 Each agent will report only: completion status and any errors encountered.
 
-IMPORTANT: Launch ALL agents in a SINGLE message (multiple Task tool calls in parallel).
+IMPORTANT: Launch ALL create-phase workflows in a SINGLE message (parallel invocations).
 Do NOT launch agents sequentially. True parallelism requires one message with all invocations.
 
 Wait for all agents to complete before proceeding to result aggregation.
@@ -333,8 +333,8 @@ Present verified results only:
 
 **Readiness Assessment**:
 IF ACTUAL_COUNT == EXPECTED_COUNT:
-  ✅ All phases ready for /respec-phase execution
-  Next: Execute /respec-phase on individual phases
+  ✅ All phases ready for respec-phase execution
+  Next: Execute respec-phase on individual phases
 ELSE:
   ⚠️ Partial completion - manual intervention required
   Missing: [list specific phase names without platform storage]
@@ -351,7 +351,7 @@ ELSE:
 #### Strategic Plan Not Available
 ```text
 Display: "No strategic plan found for project: [PLAN_NAME]"
-Suggest: "/respec-plan [PLAN_NAME] to create strategic plan"
+Suggest: "respec-plan [PLAN_NAME] to create strategic plan"
 Exit gracefully with guidance
 ```
 
@@ -421,5 +421,5 @@ All specialized work delegated to appropriate agents:
 - Coordinates prerequisite ordering and dependencies
 - Manages MCP storage for phase tracking
 
-Ready for Phase development through /respec-phase command execution on individual phases with validated input.
+Ready for Phase development through respec-phase command execution on individual phases with validated input.
 """

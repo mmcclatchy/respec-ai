@@ -8,10 +8,10 @@ argument-hint: [plan-name] [change-description]
 description: Update existing code through amendment tasks with full quality review
 ---
 
-# /respec-patch Command: Maintenance Orchestration
+# respec-patch Command: Maintenance Orchestration
 
 ## Overview
-Orchestrate bug fixes, feature extensions, and refactoring of existing code through amendment tasks with the same quality scoring, review loops, and documentation trail as /respec-code.
+Orchestrate bug fixes, feature extensions, and refactoring of existing code through amendment tasks with the same quality scoring, review loops, and documentation trail as respec-code.
 
 {tools.mcp_tools_reference}
 
@@ -58,7 +58,7 @@ ALL_PHASES = {tools.list_all_phases}
 
 IF count(ALL_PHASES) == 0:
   ERROR: "No phases found in project {{PLAN_NAME}}"
-  SUGGEST: "Run /respec-roadmap {{PLAN_NAME}} first to create phases"
+  SUGGEST: "Run respec-roadmap {{PLAN_NAME}} first to create phases"
   EXIT
 ```
 
@@ -523,8 +523,8 @@ Ready for deployment."
 ## Quality Gates
 
 ### Quality Assessment
-- **Amendment Task Evaluation**: Assessed by task-plan-critic agent (reused from /respec-task)
-- **Code Quality Evaluation**: Assessed by review team (same as /respec-code)
+- **Amendment Task Evaluation**: Assessed by task-plan-critic agent (reused from respec-task)
+- **Code Quality Evaluation**: Assessed by review team (same as respec-code)
 - **Loop Decisions**: Made by MCP Server based on configuration
 - **Thresholds and Limits**: Managed by MCP Server
 
@@ -535,7 +535,7 @@ Ready for deployment."
 #### Phase Not Available
 ```text
 Display: "No Phase found: [PHASE_NAME]"
-Suggest: "/respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
+Suggest: "respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
 Exit gracefully with guidance
 ```
 

@@ -566,15 +566,17 @@ class TestCodexAdapter:
             assert self.adapter.reasoning_model == 'gpt-5.2'
             assert self.adapter.task_model == 'gpt-5.2'
 
-    def test_write_all_creates_docs_and_skills(
+    def test_write_all_creates_skills_and_openai_manifests(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
     ) -> None:
         files = self.adapter.write_all(project_path, [agent_spec], [command_spec])
         assert len(files) == 4
-        assert (project_path / '.codex' / 'commands' / 'respec-plan.md').exists()
-        assert (project_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
         assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
-        assert (project_path / '.codex' / 'skills' / 'respec-agent-plan-analyst' / 'SKILL.md').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'SKILL.md').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'agents' / 'openai.yaml').exists()
+        assert not (project_path / '.codex' / 'commands' / 'respec-plan.md').exists()
+        assert not (project_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
 
     def test_write_all_cleans_stale_skill_dirs(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
@@ -585,6 +587,51 @@ class TestCodexAdapter:
 
         self.adapter.write_all(project_path, [agent_spec], [command_spec])
         assert not stale_dir.exists()
+
+    def test_count_generated_artifacts_uses_skills_directory(self, project_path: Path) -> None:
+        (project_path / '.codex' / 'skills' / 'respec-plan').mkdir(parents=True)
+        (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').write_text('x', encoding='utf-8')
+        (project_path / '.codex' / 'skills' / 'respec-plan-conversation').mkdir(parents=True)
+        (project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'SKILL.md').write_text('x', encoding='utf-8')
+        (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst').mkdir(parents=True)
+        (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'SKILL.md').write_text(
+            'x', encoding='utf-8'
+        )
+        (project_path / '.codex' / 'skills' / 'codex-plan-sync').mkdir(parents=True)
+        (project_path / '.codex' / 'skills' / 'codex-plan-sync' / 'SKILL.md').write_text('x', encoding='utf-8')
+
+        assert self.adapter.count_generated_commands(project_path) == 2
+        assert self.adapter.count_generated_agents(project_path) == 1
+
+    def test_command_skill_policy_marks_internal_conversation_as_non_implicit(self, project_path: Path) -> None:
+        public_command = CommandSpec(
+            name='respec-plan',
+            description='Plan workflow',
+            argument_hint='[plan-name]',
+            tools=['Read'],
+            body='body',
+            delegated_agents=[],
+        )
+        internal_command = CommandSpec(
+            name='respec-plan-conversation',
+            description='Conversation workflow',
+            argument_hint='[optional-context]',
+            tools=['Read'],
+            body='body',
+            delegated_agents=[],
+        )
+
+        self.adapter.write_all(project_path, [], [public_command, internal_command])
+
+        public_policy = (project_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').read_text(
+            encoding='utf-8'
+        )
+        internal_policy = (
+            project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'agents' / 'openai.yaml'
+        ).read_text(encoding='utf-8')
+
+        assert 'allow_implicit_invocation: true' in public_policy
+        assert 'allow_implicit_invocation: false' in internal_policy
 
     def test_register_unregister_mcp_server(self, tmp_path: Path, project_path: Path) -> None:
         codex_home = tmp_path / '.codex'
@@ -619,8 +666,16 @@ class TestCodexAdapterInvocationRendering:
             'evaluate strategic plan quality',
             [('plan_name', 'PLAN_NAME')],
         )
-        assert 'respec-agent-plan-critic' in result
+        assert 'respec-worker-plan-critic' in result
         assert 'plan_name: PLAN_NAME' in result
+
+    def test_render_agent_invocation_dynamic_reviewer(self) -> None:
+        result = self.adapter.render_agent_invocation(
+            '{REVIEWER}',
+            'perform domain-specific code review',
+            [('coding_loop_id', 'CODING_LOOP_ID')],
+        )
+        assert 'respec-worker-{REVIEWER}' in result
 
     def test_render_command_invocation_interactive_returns_guide(self) -> None:
         guide = 'inline guide'

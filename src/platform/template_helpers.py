@@ -20,6 +20,7 @@ from .models import (
     PhaseCriticAgentTools,
     PlanAnalystAgentTools,
     PlanCommandTools,
+    PlanConversationCommandTools,
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
     ReviewConsolidatorAgentTools,
@@ -294,8 +295,6 @@ def create_code_command_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'CodeCommandTools':
     builder = TemplateToolBuilder()
-    builder.add_task_agent(RespecAIAgent.PHASE_PLANNER)
-    builder.add_task_agent(RespecAIAgent.TASK_CRITIC)
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
@@ -507,7 +506,6 @@ def create_task_tools(
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.TASK_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
-    builder.add_task_agent(RespecAIAgent.CREATE_TASK)
 
     for tool in TaskCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -567,6 +565,23 @@ def create_task_tools(
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{TASK_LOOP_ID}', feedback_markdown='{USER_FEEDBACK}'
         ),
+    )
+
+
+def create_plan_conversation_command_tools(
+    tui_adapter: 'TuiAdapter | None' = None,
+) -> 'PlanConversationCommandTools':
+    adapter = _resolve_tui_adapter(tui_adapter)
+    return PlanConversationCommandTools(
+        tui_adapter=adapter,
+        plan_command_invocation=adapter.render_command_invocation(
+            'respec-plan',
+            '[plan-name] [optional: initial context]',
+            '',
+            requires_user_interaction=False,
+        ),
+        plan_command_name='respec-plan',
+        plan_conversation_command_name='respec-plan-conversation',
     )
 
 

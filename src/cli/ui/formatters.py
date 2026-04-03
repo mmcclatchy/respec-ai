@@ -104,6 +104,7 @@ def print_setup_complete(
     files_created: int,
     mcp_registered: bool,
     tui_display_name: str = 'Claude Code',
+    command_examples: list[str] | None = None,
 ) -> None:
     """Print setup completion message with Rich formatting.
 
@@ -140,13 +141,15 @@ def print_setup_complete(
         )
         console.print()
 
-    console.print(
-        f'[bold]Available Commands:[/bold] (restart {tui_display_name} to activate)',
-    )
-    console.print('  • [cyan]/respec-plan[/cyan] - Create strategic plans')
-    console.print('  • [cyan]/respec-roadmap[/cyan] - Create phased roadmaps')
-    console.print('  • [cyan]/respec-phase[/cyan] - Transform plans into phases')
-    console.print('  • [cyan]/respec-code[/cyan] - Execute implementation')
+    console.print(f'[bold]Available Workflows:[/bold] (restart {tui_display_name} to activate)')
+    if command_examples:
+        for example in command_examples:
+            console.print(f'  • [cyan]{example}[/cyan]')
+    else:
+        console.print('  • [cyan]respec-plan[/cyan]')
+        console.print('  • [cyan]respec-roadmap[/cyan]')
+        console.print('  • [cyan]respec-phase[/cyan]')
+        console.print('  • [cyan]respec-code[/cyan]')
     console.print()
     console.print(
         f'[bold yellow]🚀 Ready to begin![/bold yellow] Restart {tui_display_name} to use the respec-ai commands.',

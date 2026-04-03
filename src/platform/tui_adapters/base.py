@@ -104,3 +104,15 @@ class TuiAdapter(ABC):
         inline_guide: str,
         requires_user_interaction: bool = False,
     ) -> str: ...
+
+    def count_generated_commands(self, project_path: Path) -> int:
+        commands_dir = self.commands_dir(project_path)
+        if not commands_dir.exists():
+            return 0
+        return len(list(commands_dir.glob('*.md')))
+
+    def count_generated_agents(self, project_path: Path) -> int:
+        prompts_dir = self.prompts_dir(project_path)
+        if not prompts_dir.exists():
+            return 0
+        return len(list(prompts_dir.glob('*.md')))

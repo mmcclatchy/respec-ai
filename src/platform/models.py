@@ -412,6 +412,12 @@ class PlanCommandTools(CommandToolsModel):
         return self._adapter.plan_resource_example
 
 
+class PlanConversationCommandTools(CommandToolsModel):
+    plan_command_invocation: str = Field(..., description='Adapter-rendered invocation for strategic planning workflow')
+    plan_command_name: str = Field(..., description='Name of the strategic planning command/skill')
+    plan_conversation_command_name: str = Field(..., description='Name of the conversation workflow command/skill')
+
+
 class CodeCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,

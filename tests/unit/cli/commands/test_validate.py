@@ -14,16 +14,14 @@ def _mock_adapter(
     mocker: MockerFixture,
     *,
     mcp_registered: bool = True,
-    commands_dir: Path | None = None,
-    agents_dir: Path | None = None,
+    commands_count: int = 0,
+    agents_count: int = 0,
 ) -> MagicMock:
     adapter = MagicMock()
     adapter.is_mcp_registered.return_value = mcp_registered
     adapter.display_name = 'Claude Code'
-    if commands_dir is not None:
-        adapter.commands_dir.return_value = commands_dir
-    if agents_dir is not None:
-        adapter.prompts_dir.return_value = agents_dir
+    adapter.count_generated_commands.return_value = commands_count
+    adapter.count_generated_agents.return_value = agents_count
     mocker.patch('src.cli.commands.validate.get_tui_adapter', return_value=adapter)
     return adapter
 
@@ -53,7 +51,12 @@ class TestValidateCommand:
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
+        _mock_adapter(
+            mocker,
+            mcp_registered=True,
+            commands_count=EXPECTED_COMMANDS_COUNT,
+            agents_count=EXPECTED_AGENTS_COUNT,
+        )
 
         args = Namespace()
         result = validate.run(args)
@@ -68,10 +71,8 @@ class TestValidateCommand:
     ) -> None:
         monkeypatch.chdir(tmp_path)
 
-        commands_dir = tmp_path / 'commands'
-        agents_dir = tmp_path / 'agents'
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=False, commands_dir=commands_dir, agents_dir=agents_dir)
+        _mock_adapter(mocker, mcp_registered=False, commands_count=0, agents_count=0)
 
         args = Namespace()
         result = validate.run(args)
@@ -102,7 +103,12 @@ class TestValidateCommand:
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
+        _mock_adapter(
+            mocker,
+            mcp_registered=True,
+            commands_count=EXPECTED_COMMANDS_COUNT,
+            agents_count=EXPECTED_AGENTS_COUNT,
+        )
 
         args = Namespace()
         result = validate.run(args)
@@ -133,7 +139,7 @@ class TestValidateCommand:
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
+        _mock_adapter(mocker, mcp_registered=True, commands_count=3, agents_count=10)
 
         args = Namespace()
         result = validate.run(args)
@@ -164,7 +170,12 @@ class TestValidateCommand:
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=False, commands_dir=commands_dir, agents_dir=agents_dir)
+        _mock_adapter(
+            mocker,
+            mcp_registered=False,
+            commands_count=EXPECTED_COMMANDS_COUNT,
+            agents_count=EXPECTED_AGENTS_COUNT,
+        )
 
         args = Namespace()
         result = validate.run(args)
@@ -195,7 +206,12 @@ class TestValidateCommand:
             (agents_dir / f'agent{i}.md').touch()
 
         mocker.patch('src.cli.commands.validate.get_package_version', return_value='0.2.0')
-        _mock_adapter(mocker, mcp_registered=True, commands_dir=commands_dir, agents_dir=agents_dir)
+        _mock_adapter(
+            mocker,
+            mcp_registered=True,
+            commands_count=EXPECTED_COMMANDS_COUNT,
+            agents_count=EXPECTED_AGENTS_COUNT,
+        )
 
         args = Namespace()
         result = validate.run(args)

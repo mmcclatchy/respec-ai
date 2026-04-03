@@ -247,3 +247,22 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'allowed-tools: mcp__exa__web_search_exa, Read' in template
         assert 'allowed-tools: [mcp__exa__web_search_exa, Read]' not in template
+
+    def test_code_template_excludes_stale_task_targets(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'Task(respec-phase-planner)' not in template
+        assert 'Task(respec-task-critic)' not in template
+
+    def test_task_template_excludes_stale_create_task_target(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'Task(respec-create-task)' not in template

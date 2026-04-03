@@ -62,7 +62,15 @@ conversation_context_template = ConversationContext(
 ).build_markdown()
 
 
-def generate_plan_conversation_command_template(_tools: Any = None) -> str:
+def generate_plan_conversation_command_template(tools: Any = None) -> str:
+    plan_command_name = getattr(tools, 'plan_command_name', 'respec-plan')
+    plan_conversation_command_name = getattr(tools, 'plan_conversation_command_name', 'respec-plan-conversation')
+    plan_command_invocation = getattr(
+        tools,
+        'plan_command_invocation',
+        'Invoke the `respec-plan` workflow with: `[plan-name] [optional: initial context]`.',
+    )
+
     return f"""---
 allowed-tools: mcp__exa__web_search_exa, Read
 argument-hint: [optional-context]
@@ -347,7 +355,7 @@ Do NOT leave any field with placeholder text like "[Description]".
 ### Handoff Protocol
 Once `CONVERSATION_CONTEXT` is populated:
 
-**If called from /respec-plan**: The calling command will automatically proceed with strategic
+**If called from {plan_command_name}**: The calling command will automatically proceed with strategic
 plan generation using this structured context.
 
 **If called standalone**: Display the following message to the user:
@@ -358,20 +366,18 @@ plan generation using this structured context.
 I've gathered comprehensive context for your project plan.
 
 ### Next Steps
-The /respec-plan command is designed to call this command internally. To use this workflow:
+The {plan_command_name} workflow is designed to call this command internally. To use this workflow:
 
-```bash
-/respec-plan [plan-name] [optional: initial context]
-```
+{plan_command_invocation}
 
-The /respec-plan command will:
-1. Call /respec-plan-conversation to gather requirements (if needed)
+The {plan_command_name} workflow will:
+1. Call {plan_conversation_command_name} to gather requirements (if needed)
 2. Transform the conversation into a structured strategic plan
 3. Create a plan file/project for your review
 4. Evaluate the plan quality using the FSDD framework
 5. Guide you through refinement or acceptance
 
-**Note**: Run /respec-plan directly for the full workflow.
+**Note**: Run {plan_command_name} directly for the full workflow.
 
 ## Error Handling and Recovery
 

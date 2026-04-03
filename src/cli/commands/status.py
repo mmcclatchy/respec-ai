@@ -60,11 +60,8 @@ def run(args: Namespace) -> int:
             except DockerManagerError:
                 pass
 
-        commands_dir = tui_adapter.commands_dir(project_path)
-        agents_dir = tui_adapter.prompts_dir(project_path)
-
-        commands_count = len(list(commands_dir.glob('*.md'))) if commands_dir.exists() else 0
-        agents_count = len(list(agents_dir.glob('*.md'))) if agents_dir.exists() else 0
+        commands_count = tui_adapter.count_generated_commands(project_path)
+        agents_count = tui_adapter.count_generated_agents(project_path)
 
         console.print()
         config_table = format_project_config_table(

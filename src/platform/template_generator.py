@@ -95,7 +95,6 @@ _AGENT_NAMES = [
     'respec-task-planner',
     'respec-task-plan-critic',
     'respec-patch-planner',
-    'respec-task-critic',
     'respec-coder',
     'respec-automated-quality-checker',
     'respec-code-quality-reviewer',

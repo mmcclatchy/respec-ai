@@ -330,7 +330,7 @@ This Phase scope exceeds single-task capacity.
 
 **Reasoning**: [Why the split is necessary]
 
-**Next Action**: User must approve via /respec-task with split option
+**Next Action**: User must approve via respec-task with split option
 ```
 
 **Keep It Simple**: If decomposition seems complicated, proceed with single larger Task. Don't over-engineer the split.
