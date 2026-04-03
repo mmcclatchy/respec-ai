@@ -573,8 +573,8 @@ class TestCodexAdapter:
         assert len(files) == 4
         assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
         assert (project_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()
-        assert (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'SKILL.md').exists()
-        assert (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'agents' / 'openai.yaml').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent' / 'SKILL.md').exists()
+        assert (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent' / 'agents' / 'openai.yaml').exists()
         assert not (project_path / '.codex' / 'commands' / 'respec-plan.md').exists()
         assert not (project_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
 
@@ -593,8 +593,8 @@ class TestCodexAdapter:
         (project_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').write_text('x', encoding='utf-8')
         (project_path / '.codex' / 'skills' / 'respec-plan-conversation').mkdir(parents=True)
         (project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'SKILL.md').write_text('x', encoding='utf-8')
-        (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst').mkdir(parents=True)
-        (project_path / '.codex' / 'skills' / 'respec-worker-plan-analyst' / 'SKILL.md').write_text(
+        (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent').mkdir(parents=True)
+        (project_path / '.codex' / 'skills' / 'respec-plan-analyst-agent' / 'SKILL.md').write_text(
             'x', encoding='utf-8'
         )
         (project_path / '.codex' / 'skills' / 'codex-plan-sync').mkdir(parents=True)
@@ -666,7 +666,7 @@ class TestCodexAdapterInvocationRendering:
             'evaluate strategic plan quality',
             [('plan_name', 'PLAN_NAME')],
         )
-        assert 'respec-worker-plan-critic' in result
+        assert 'respec-plan-critic-agent' in result
         assert 'plan_name: PLAN_NAME' in result
 
     def test_render_agent_invocation_dynamic_reviewer(self) -> None:
@@ -675,7 +675,7 @@ class TestCodexAdapterInvocationRendering:
             'perform domain-specific code review',
             [('coding_loop_id', 'CODING_LOOP_ID')],
         )
-        assert 'respec-worker-{REVIEWER}' in result
+        assert 'respec-{REVIEWER}-agent' in result
 
     def test_render_command_invocation_interactive_returns_guide(self) -> None:
         guide = 'inline guide'

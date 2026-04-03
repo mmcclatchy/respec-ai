@@ -191,7 +191,7 @@ class CodexAdapter(TuiAdapter):
             if skill_dir.is_dir()
             and (skill_dir / 'SKILL.md').exists()
             and skill_dir.name.startswith('respec-')
-            and not skill_dir.name.startswith('respec-worker-')
+            and not skill_dir.name.endswith('-agent')
         )
 
     def count_generated_agents(self, project_path: Path) -> int:
@@ -201,7 +201,10 @@ class CodexAdapter(TuiAdapter):
         return sum(
             1
             for skill_dir in skills_dir.iterdir()
-            if skill_dir.is_dir() and (skill_dir / 'SKILL.md').exists() and skill_dir.name.startswith('respec-worker-')
+            if skill_dir.is_dir()
+            and (skill_dir / 'SKILL.md').exists()
+            and skill_dir.name.startswith('respec-')
+            and skill_dir.name.endswith('-agent')
         )
 
     def _render_command_skill(self, spec: CommandSpec) -> str:
@@ -234,10 +237,10 @@ class CodexAdapter(TuiAdapter):
     def _agent_skill_name(self, agent_name: str) -> str:
         placeholder_name = self._extract_placeholder_name(agent_name)
         if placeholder_name is not None:
-            return f'respec-worker-{{{placeholder_name}}}'
+            return f'respec-{{{placeholder_name}}}-agent'
         if agent_name.startswith('respec-'):
-            return f'respec-worker-{agent_name[len("respec-") :]}'
-        return f'respec-worker-{agent_name}'
+            return f'respec-{agent_name[len("respec-") :]}-agent'
+        return f'respec-{agent_name}-agent'
 
     def _extract_placeholder_name(self, agent_name: str) -> str | None:
         if agent_name.startswith('{{') and agent_name.endswith('}}'):
