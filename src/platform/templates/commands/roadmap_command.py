@@ -45,7 +45,8 @@ Retrieve and validate the synced strategic plan:
 STRATEGIC_PLAN = {tools.get_plan}
 IF STRATEGIC_PLAN not found:
   ERROR: "No strategic plan found for project: [PLAN_NAME]"
-  SUGGEST: "Run 'respec-plan [PLAN_NAME]' to create strategic plan first"
+  SUGGEST: "Use the strategic planning workflow to create the plan first"
+  {tools.plan_command_invocation}
   EXIT: Graceful failure with guidance
 STRUCTURED_OBJECTIVES = [Extract from strategic plan Business Objectives analysis]
 ```
@@ -61,7 +62,8 @@ CONSTRAINT_SECTIONS_FOUND = count of True values above
 IF CONSTRAINT_SECTIONS_FOUND == 0:
   Display: "⚠️ Plan has no constraint sections (Architecture Direction, Technology Decisions, Anti-Requirements, Quality Bar)"
   Display: "Roadmap will proceed but phases may lack constraint guidance"
-  Display: "Run 'respec-plan' to add these sections for better phase quality"
+  Display: "Use the strategic planning workflow to add these sections for better phase quality"
+  Display: "{tools.plan_command_invocation}"
 ELSE:
   Display: "✓ Found {{CONSTRAINT_SECTIONS_FOUND}}/4 plan constraint sections"
   IF not PLAN_HAS_ARCHITECTURE: Display: "  ⚠️ Missing: Architecture Direction"
@@ -333,8 +335,9 @@ Present verified results only:
 
 **Readiness Assessment**:
 IF ACTUAL_COUNT == EXPECTED_COUNT:
-  ✅ All phases ready for respec-phase execution
-  Next: Execute respec-phase on individual phases
+  ✅ All phases ready for phase development workflow
+  Next: Run phase workflow on individual phases
+  {tools.phase_command_invocation}
 ELSE:
   ⚠️ Partial completion - manual intervention required
   Missing: [list specific phase names without platform storage]
@@ -351,7 +354,8 @@ ELSE:
 #### Strategic Plan Not Available
 ```text
 Display: "No strategic plan found for project: [PLAN_NAME]"
-Suggest: "respec-plan [PLAN_NAME] to create strategic plan"
+Suggest: "Use strategic planning workflow to create strategic plan"
+{tools.plan_command_invocation}
 Exit gracefully with guidance
 ```
 
@@ -421,5 +425,5 @@ All specialized work delegated to appropriate agents:
 - Coordinates prerequisite ordering and dependencies
 - Manages MCP storage for phase tracking
 
-Ready for Phase development through respec-phase command execution on individual phases with validated input.
+Ready for Phase development through the phase workflow on individual phases with validated input.
 """

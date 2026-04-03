@@ -1,7 +1,7 @@
 from textwrap import indent
-from typing import Any
 
 from src.models.conversation_context import ConversationContext
+from src.platform.models import PlanConversationCommandTools
 
 
 conversation_context_template = ConversationContext(
@@ -62,14 +62,10 @@ conversation_context_template = ConversationContext(
 ).build_markdown()
 
 
-def generate_plan_conversation_command_template(tools: Any = None) -> str:
-    plan_command_name = getattr(tools, 'plan_command_name', 'respec-plan')
-    plan_conversation_command_name = getattr(tools, 'plan_conversation_command_name', 'respec-plan-conversation')
-    plan_command_invocation = getattr(
-        tools,
-        'plan_command_invocation',
-        'Invoke the `respec-plan` workflow with: `[plan-name] [optional: initial context]`.',
-    )
+def generate_plan_conversation_command_template(tools: PlanConversationCommandTools) -> str:
+    plan_command_name = tools.plan_command_name
+    plan_conversation_command_name = tools.plan_conversation_command_name
+    plan_command_invocation = tools.plan_command_invocation
 
     return f"""---
 allowed-tools: mcp__exa__web_search_exa, Read
@@ -196,10 +192,10 @@ Topics to cover through natural follow-up (not all at once):
 - Where this will run (cloud, serverless, containers, on-premise)
 - Any must-use or must-not-use technologies
 
-### If Claude Plan Context Was Provided
-If the initial context mentions decisions from a Claude Plan file:
+### If Prior Plan Context Was Provided
+If the initial context mentions decisions from a prior plan document:
 - Acknowledge already-resolved technology decisions (do not re-derive or challenge them)
-- Focus discussion on technology areas NOT covered by the Claude Plan
+- Focus discussion on technology areas NOT covered by the provided plan context
 - Ask whether there are additional technology decisions to capture beyond the plan
 
 ═══════════════════════════════════════════════

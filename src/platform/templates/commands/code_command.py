@@ -127,7 +127,8 @@ TASK_MARKDOWN = {tools.get_task_document}
 
 IF TASK_MARKDOWN not found:
   ERROR: "No Task found for Phase: {{PHASE_NAME}}"
-  SUGGEST: "Run 'respec-task {{PLAN_NAME}} {{PHASE_NAME}}' to create Task first"
+  SUGGEST: "Run task workflow to create Task first"
+  {tools.task_command_invocation}
   EXIT: Graceful failure with guidance
 
 Display: "✓ Task retrieved - ready for implementation"
@@ -150,13 +151,15 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
     Review override proposals in Task document.
 
     Choose action:
-    1. Approve proposal → Re-run respec-phase to update architecture
+    1. Approve proposal → Re-run phase workflow to update architecture
     2. Reject proposal → Continue with current Phase as-is
 
     Task workflow paused until Phase updated.
 
-    To approve: respec-phase {{PLAN_NAME}} {{PHASE_NAME}} [instructions based on proposal]
-    To reject: Re-run respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
+    To approve:
+    {tools.phase_command_invocation}
+    To reject:
+    {tools.code_command_invocation}"
 
     EXIT: Workflow suspended pending user decision
 
@@ -576,7 +579,8 @@ Note: Loop decisions determined by MCP Server based on scoring and configuration
 #### Phase Not Available
 ```text
 Display: "No Phase found: [PHASE_NAME]"
-Suggest: "respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
+Suggest: "Use phase workflow to create Phase"
+{tools.phase_command_invocation}
 Exit gracefully with guidance
 ```
 

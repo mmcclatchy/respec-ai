@@ -58,7 +58,8 @@ ALL_PHASES = {tools.list_all_phases}
 
 IF count(ALL_PHASES) == 0:
   ERROR: "No phases found in project {{PLAN_NAME}}"
-  SUGGEST: "Run respec-roadmap {{PLAN_NAME}} first to create phases"
+  SUGGEST: "Run roadmap workflow first to create phases"
+  {tools.roadmap_command_invocation}
   EXIT
 ```
 
@@ -481,7 +482,8 @@ Store updated Phase:
 ```text
 {tools.task_location_setup}
 
-Write amendment task to: .respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md
+TASK_FILE_PATH = {tools.task_resource_pattern}
+Write amendment task to: {{TASK_FILE_PATH}}
 ```
 
 #### Report Completion
@@ -535,7 +537,8 @@ Ready for deployment."
 #### Phase Not Available
 ```text
 Display: "No Phase found: [PHASE_NAME]"
-Suggest: "respec-phase [PLAN_NAME] [PHASE_NAME] to create Phase"
+Suggest: "Use phase workflow to create Phase"
+{tools.phase_command_invocation}
 Exit gracefully with guidance
 ```
 

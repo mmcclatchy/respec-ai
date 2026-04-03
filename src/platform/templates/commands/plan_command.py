@@ -671,6 +671,8 @@ Display: "━━━━━━━━━━━━━━━━━━━━━━━�
 - Phases generated: [list phase names from roadmap]
 
 **Next Steps**:
-Run `respec-phase {{PLAN_NAME}} [phase-name]` to expand a phase with architecture detail.
+Use the phase workflow to expand a phase with architecture detail.
 ```
+
+{tools.phase_command_invocation}
 """

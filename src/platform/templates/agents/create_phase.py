@@ -123,7 +123,7 @@ CASE 1 — Both MCP and platform storage succeed:
    - Phase Name: [phase_name]
    - MCP Storage: ✅ Stored
    - Platform Storage: ✅ Saved
-   - Status: Ready for respec-phase workflow"
+   - Status: Ready for downstream phase workflow"
 
 CASE 2 — MCP succeeds, platform fails:
   "⚠ Partial Success
@@ -163,7 +163,7 @@ IF ANY field is empty OR contains "not specified":
   ERROR: "Phase incomplete — [field] missing"
   DIAGNOSTIC: Show which fields are invalid
   EXIT: Do NOT proceed to storage steps
-  GUIDANCE: "This indicates roadmap generation issue. Check respec-roadmap output."
+  GUIDANCE: "This indicates roadmap generation issue. Check roadmap output."
 
 VIOLATION: Reporting a missing field but continuing to save
            an incomplete phase to platform storage.
@@ -246,7 +246,7 @@ VIOLATION: Reporting a missing field but continuing to save
 - Verify all critical phase information extracted successfully
 - Validate Phase structure completeness and accuracy
 - Confirm alignment between phase context and Phase
-- Ensure Phase provides adequate guidance for respec-phase command execution
+- Ensure Phase provides adequate guidance for downstream phase workflow execution
 
 #### Phase Readiness Assessment
 - Check that Phase contains actionable technical guidance

@@ -169,6 +169,24 @@ def create_phase_command_tools(
             '',
             requires_user_interaction=False,
         ),
+        roadmap_command_invocation=adapter.render_command_invocation(
+            'respec-roadmap',
+            '{PLAN_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
+        plan_command_invocation=adapter.render_command_invocation(
+            'respec-plan',
+            '[plan-name] [optional: initial context]',
+            '',
+            requires_user_interaction=False,
+        ),
+        code_command_invocation=adapter.render_command_invocation(
+            'respec-code',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
         store_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{STRATEGIC_PLAN_MARKDOWN}'
         ),
@@ -256,6 +274,12 @@ def create_plan_command_tools(
         roadmap_command_invocation=adapter.render_command_invocation(
             'respec-roadmap',
             '{PLAN_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
+        phase_command_invocation=adapter.render_command_invocation(
+            'respec-phase',
+            '{PLAN_NAME} [phase-name]',
             '',
             requires_user_interaction=False,
         ),
@@ -390,6 +414,24 @@ def create_code_command_tools(
                 ('phase2_mode', 'true'),
             ],
         ),
+        task_command_invocation=adapter.render_command_invocation(
+            'respec-task',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
+        phase_command_invocation=adapter.render_command_invocation(
+            'respec-phase',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
+        code_command_invocation=adapter.render_command_invocation(
+            'respec-code',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"task"',
@@ -477,6 +519,18 @@ def create_roadmap_tools(
             'evaluate roadmap quality against FSDD framework',
             [('plan_name', 'PLAN_NAME'), ('loop_id', 'ROADMAP_LOOP_ID')],
         ),
+        plan_command_invocation=adapter.render_command_invocation(
+            'respec-plan',
+            '[plan-name] [optional: initial context]',
+            '',
+            requires_user_interaction=False,
+        ),
+        phase_command_invocation=adapter.render_command_invocation(
+            'respec-phase',
+            '{PLAN_NAME} [phase-name]',
+            '',
+            requires_user_interaction=False,
+        ),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
@@ -538,6 +592,18 @@ def create_task_tools(
             'evaluate Task quality against FSDD criteria',
             [('task_loop_id', 'TASK_LOOP_ID'), ('plan_name', 'PLAN_NAME'), ('phase_name', 'PHASE_NAME')],
         ),
+        phase_command_invocation=adapter.render_command_invocation(
+            'respec-phase',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
+        code_command_invocation=adapter.render_command_invocation(
+            'respec-code',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
         store_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
@@ -572,17 +638,7 @@ def create_plan_conversation_command_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PlanConversationCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
-    return PlanConversationCommandTools(
-        tui_adapter=adapter,
-        plan_command_invocation=adapter.render_command_invocation(
-            'respec-plan',
-            '[plan-name] [optional: initial context]',
-            '',
-            requires_user_interaction=False,
-        ),
-        plan_command_name='respec-plan',
-        plan_conversation_command_name='respec-plan-conversation',
-    )
+    return PlanConversationCommandTools(tui_adapter=adapter)
 
 
 def create_phase_architect_agent_tools(
@@ -1294,6 +1350,18 @@ def create_patch_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('phase2_mode', 'true'),
             ],
+        ),
+        roadmap_command_invocation=adapter.render_command_invocation(
+            'respec-roadmap',
+            '{PLAN_NAME}',
+            '',
+            requires_user_interaction=False,
+        ),
+        phase_command_invocation=adapter.render_command_invocation(
+            'respec-phase',
+            '{PLAN_NAME} {PHASE_NAME}',
+            '',
+            requires_user_interaction=False,
         ),
         store_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,

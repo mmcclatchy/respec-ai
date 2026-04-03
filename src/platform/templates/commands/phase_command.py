@@ -329,7 +329,8 @@ ELIF LOOP_DECISION == "USER_INPUT":
     Recommended: Break into 3-5 focused phases
 
     **Next Steps:**
-    1. Run: respec-roadmap [PLAN_NAME]
+    1. Run roadmap workflow:
+       {tools.roadmap_command_invocation}
     2. This will analyze the current phase and create multiple smaller phases
     3. Each resulting phase will be appropriately scoped
 
@@ -574,11 +575,12 @@ IF no strategic plan available:
   ERROR_RESPONSE = {{
     "error_type": "missing_plan",
     "error_message": "No strategic plan found for Phase creation",
-    "recovery_action": "Prompting user for plan location or respec-plan execution",
-    "user_guidance": "Please provide the strategic plan document path or run respec-plan command first",
+    "recovery_action": "Prompting user for plan location or strategic planning workflow execution",
+    "user_guidance": "Please provide the strategic plan document path or use the strategic planning workflow first",
     "partial_output": "Phase template prepared"
   }}
-  → Request plan location OR suggest: "Run respec-plan [plan-name] to create strategic plan first"
+  → Request plan location OR suggest strategic planning workflow invocation:
+    {tools.plan_command_invocation}
 ```
 
 #### 2. Knowledge Base Query Failure
@@ -736,21 +738,23 @@ Invoke the task command to generate the Task with full quality loop:
 
 {tools.task_command_invocation}
 
-The `respec-task` command will:
+The task workflow will:
 1. Locate the Phase file on disk
 2. Initialize a task quality loop
 3. Run task-planner → task-plan-critic refinement cycle
 4. Store the Task document to MCP and platform
 
-**If respec-task fails**: The Phase is already stored and valid. Display:
+**If task workflow fails**: The Phase is already stored and valid. Display:
 ```text
-"⚠ Task generation failed. Phase is saved. Run respec-task {{PLAN_NAME}} {{PHASE_NAME}} manually."
+"⚠ Task generation failed. Phase is saved. Retry the task workflow manually:"
+{tools.task_command_invocation}
 ```
 
-**After respec-task completes**: Display next steps:
+**After task workflow completes**: Display next steps:
 ```text
-"✅ Phase and Task complete. Next: respec-code {{PLAN_NAME}} {{PHASE_NAME}}"
+"✅ Phase and Task complete. Next: run implementation workflow"
+{tools.code_command_invocation}
 ```
 
-The Phase and Task are ready for implementation. Recommend `respec-code` command for next step.
+The Phase and Task are ready for implementation. Recommend the implementation workflow for next step.
 """

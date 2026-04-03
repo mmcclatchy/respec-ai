@@ -181,6 +181,9 @@ class PhaseCommandTools(CommandToolsModel):
     invoke_phase_architect: str = Field(..., description='Invocation text for respec-phase-architect agent')
     invoke_phase_critic: str = Field(..., description='Invocation text for respec-phase-critic agent')
     task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
+    roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')
+    plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')
+    code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
 
     # Parameterized MCP tool invocations
     store_plan: str = Field(..., description='Store strategic plan')
@@ -347,6 +350,7 @@ class PlanCommandTools(CommandToolsModel):
     conversation_invocation: str = Field(..., description='Invocation text for plan-conversation workflow')
     conversation_workflow_name: str = Field(..., description='Platform-appropriate name for the conversation workflow')
     roadmap_command_invocation: str = Field(..., description='Invocation text for roadmap workflow handoff')
+    phase_command_invocation: str = Field(..., description='Invocation text for phase workflow handoff')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -413,9 +417,23 @@ class PlanCommandTools(CommandToolsModel):
 
 
 class PlanConversationCommandTools(CommandToolsModel):
-    plan_command_invocation: str = Field(..., description='Adapter-rendered invocation for strategic planning workflow')
-    plan_command_name: str = Field(..., description='Name of the strategic planning command/skill')
-    plan_conversation_command_name: str = Field(..., description='Name of the conversation workflow command/skill')
+    plan_command_invocation: str = Field(
+        default='', description='Adapter-rendered invocation for strategic planning workflow'
+    )
+    plan_command_name: str = Field(default='', description='Name of the strategic planning command/skill')
+    plan_conversation_command_name: str = Field(
+        default='', description='Name of the conversation workflow command/skill'
+    )
+
+    def model_post_init(self, __context: Any) -> None:
+        self.plan_command_name = RespecAICommand.PLAN.value
+        self.plan_conversation_command_name = RespecAICommand.PLAN_CONVERSATION.value
+        self.plan_command_invocation = self.tui_adapter.render_command_invocation(
+            self.plan_command_name,
+            '[plan-name] [optional: initial context]',
+            '',
+            requires_user_interaction=False,
+        )
 
 
 class CodeCommandTools(CommandToolsModel):
@@ -463,6 +481,9 @@ class CodeCommandTools(CommandToolsModel):
     invoke_coding_standards_reviewer: str = Field(
         ..., description='Invocation text for respec-coding-standards-reviewer agent'
     )
+    task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
+    phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
+    code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -604,6 +625,8 @@ class PatchCommandTools(CommandToolsModel):
     invoke_coding_standards_reviewer: str = Field(
         ..., description='Invocation text for respec-coding-standards-reviewer agent'
     )
+    roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')
+    phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -707,6 +730,8 @@ class PlanRoadmapCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_roadmap_agent: str = Field(..., description='Invocation text for respec-roadmap agent')
     invoke_roadmap_critic: str = Field(..., description='Invocation text for respec-roadmap-critic agent')
+    plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')
+    phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -800,6 +825,8 @@ class TaskCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_task_planner: str = Field(..., description='Invocation text for respec-task-planner agent')
     invoke_task_plan_critic: str = Field(..., description='Invocation text for respec-task-plan-critic agent')
+    phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
+    code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

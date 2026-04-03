@@ -120,7 +120,7 @@ CALL mcp__respec-ai__get_document(
 
 IF STRATEGIC_PLAN_MARKDOWN not found:
   ERROR: "No strategic plan found: [PLAN_NAME]"
-  SUGGEST: "Run 'respec-plan [PLAN_NAME]' to create strategic plan first"
+  SUGGEST: "Run strategic planning workflow to create strategic plan first"
   EXIT: Workflow terminated
 
 STEP 0.55: Extract Plan Context Variables
@@ -251,7 +251,7 @@ IF IMPL_PLAN_CONSTRAINTS is non-empty:
   IF CURRENT_PHASE_MARKDOWN does NOT contain "### Implementation Plan References":
     → In STEP 3 output, auto-create "### Implementation Plan References" under "## Additional Details"
     → List each file path read as a "- Constraint: `{{file_path}}`" entry
-    → This ensures respec-task can extract the paths downstream
+    → This ensures the downstream task workflow can extract the paths
 
   IF CURRENT_PHASE_MARKDOWN DOES contain "### Implementation Plan References":
     → In STEP 3 output, preserve this section VERBATIM — do not modify, reword, or drop any entries

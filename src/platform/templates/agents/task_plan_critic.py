@@ -334,4 +334,4 @@ When previous CriticFeedback exists:
 - No testing strategy
 - Inappropriate technology stack
 
-Always provide constructive, specific feedback that guides respec-task-planner toward 80+ score. Balance criticism with recognition of strengths."""
+Always provide constructive, specific feedback that guides the task-planner workflow toward 80+ score. Balance criticism with recognition of strengths."""

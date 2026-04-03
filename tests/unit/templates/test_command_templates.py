@@ -248,6 +248,36 @@ class TestCrossPlatformInvocationRendering:
         assert 'allowed-tools: mcp__exa__web_search_exa, Read' in template
         assert 'allowed-tools: [mcp__exa__web_search_exa, Read]' not in template
 
+    def test_plan_conversation_uses_typed_claude_invocation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN_CONVERSATION,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '/respec-plan [plan-name] [optional: initial context]' in template
+        assert 'Invoke the `respec-plan` workflow with:' not in template
+
+    def test_plan_conversation_uses_typed_codex_invocation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN_CONVERSATION,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'Invoke the `respec-plan` skill with: `[plan-name] [optional: initial context]`.' in template
+
+    def test_plan_conversation_removes_non_legacy_claude_labeling(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN_CONVERSATION,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'If Prior Plan Context Was Provided' in template
+        assert 'If Claude Plan Context Was Provided' not in template
+        assert 'Claude Plan file' not in template
+
     def test_code_template_excludes_stale_task_targets(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(

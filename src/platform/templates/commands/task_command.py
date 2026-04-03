@@ -325,7 +325,8 @@ Present completion summary with clear next steps:
 ✅ Technology stack aligned with Phase
 
 **Next Steps**:
-Execute respec-code {{PLAN_NAME}} {{PHASE_NAME}} to implement the Task with TDD
+Use the implementation workflow to implement the Task with TDD:
+{tools.code_command_invocation}
 ```
 
 ## Error Handling
@@ -335,7 +336,8 @@ Execute respec-code {{PLAN_NAME}} {{PHASE_NAME}} to implement the Task with TDD
 #### Phase Not Available
 ```text
 Display: "No phase found for: [PLAN_NAME]/[PHASE_NAME]"
-Suggest: "respec-phase [PLAN_NAME] [PHASE_NAME] to create phase"
+Suggest: "Use phase workflow to create phase"
+{tools.phase_command_invocation}
 Exit gracefully with guidance
 ```
 
@@ -375,5 +377,5 @@ All specialized work delegated to appropriate agents:
 - **respec-task-plan-critic**: Quality assessment against FSDD criteria
 - **MCP Server**: Decision logic and threshold management
 
-Ready for code implementation through respec-code command execution with validated Task.
+Ready for code implementation through the implementation workflow with validated Task.
 """
