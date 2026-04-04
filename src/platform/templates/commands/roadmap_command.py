@@ -261,10 +261,7 @@ Each agent will:
 Each agent will NOT return the phase markdown.
 Each agent will report only: completion status and any errors encountered.
 
-IMPORTANT: Launch ALL create-phase workflows in a SINGLE message (parallel invocations).
-Do NOT launch agents sequentially. True parallelism requires one message with all invocations.
-
-Wait for all agents to complete before proceeding to result aggregation.
+{tools.phase_extraction_parallel_policy}
 ```
 
 #### Aggregate Results

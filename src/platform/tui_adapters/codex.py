@@ -163,7 +163,7 @@ class CodexAdapter(TuiAdapter):
             lines.append('Input:')
             for name, value in params:
                 lines.append(f'  - {name}: {value}')
-        lines.append('Wait for completion before continuing.')
+        lines.append('Wait for completion, harvest output, then close the completed agent before continuing.')
         return '\n'.join(lines)
 
     def render_command_invocation(
@@ -176,6 +176,64 @@ class CodexAdapter(TuiAdapter):
         if requires_user_interaction:
             return inline_guide
         return f'Invoke the `{command_name}` skill with: `{args_template}`.'
+
+    def parallel_worker_limit(self) -> int:
+        default_limit = 6
+        try:
+            config = load_codex_config()
+        except Exception:
+            return default_limit
+
+        agents_config = config.get('agents')
+        if not isinstance(agents_config, dict):
+            return default_limit
+
+        limit = agents_config.get('max_threads')
+        if isinstance(limit, int) and limit > 0:
+            return limit
+        return default_limit
+
+    def render_parallel_fanout_policy(
+        self,
+        worker_group_label: str,
+        completion_signal_label: str,
+    ) -> str:
+        bounded_policy = self._render_bounded_parallel_policy(worker_group_label, completion_signal_label)
+        if worker_group_label == 'bp-pipeline tasks':
+            return f'\n{bounded_policy}\n'
+        if worker_group_label == 'Phase 1 review agents (excluding consolidator)':
+            return f'\n\n{bounded_policy}\n\n'
+        return bounded_policy
+
+    def _render_bounded_parallel_policy(
+        self,
+        worker_group_label: str,
+        completion_signal_label: str,
+    ) -> str:
+        max_workers = self.parallel_worker_limit()
+        return (
+            f'Use bounded parallel execution for {worker_group_label}.\n'
+            f'MAX_ACTIVE_WORKERS = {max_workers}\n'
+            '\n'
+            'Initialize:\n'
+            f'- PENDING_ITEMS: all {worker_group_label} not started yet\n'
+            '- ACTIVE_WORKERS: currently running workers\n'
+            '- SUCCEEDED_ITEMS / FAILED_ITEMS trackers\n'
+            '\n'
+            'Execution loop:\n'
+            '1. While PENDING_ITEMS is not empty AND len(ACTIVE_WORKERS) < MAX_ACTIVE_WORKERS:\n'
+            '   - Spawn one worker for the next pending item.\n'
+            '   - If spawn succeeds, add worker handle to ACTIVE_WORKERS.\n'
+            '   - If spawn fails:\n'
+            '     - If ACTIVE_WORKERS is non-empty: wait for one active worker to complete, harvest output, close it, '
+            'remove it from ACTIVE_WORKERS, then retry spawning.\n'
+            '     - If ACTIVE_WORKERS is empty: record this item in FAILED_ITEMS with diagnostics and continue.\n'
+            '2. If ACTIVE_WORKERS is non-empty, wait for one completion, harvest output, close the completed worker, '
+            'remove it from ACTIVE_WORKERS, and continue.\n'
+            '\n'
+            f'Continue until both PENDING_ITEMS and ACTIVE_WORKERS are empty, then validate {completion_signal_label}. '
+            'Do not proceed with dangling completed workers left open.'
+        )
 
     def count_generated_commands(self, project_path: Path) -> int:
         skills_dir = self.skills_dir(project_path)
@@ -197,6 +255,8 @@ class CodexAdapter(TuiAdapter):
         return sum(1 for agent_file in agents_dir.glob('respec-*-agent.toml') if agent_file.is_file())
 
     def _render_command_skill(self, spec: CommandSpec, command_description: str) -> str:
+        usage_hint = self._command_usage_hint(spec.name, spec.argument_hint)
+        usage_line = f'Usage: {usage_hint}\n' if usage_hint else ''
         return (
             '---\n'
             f'name: {spec.name}\n'
@@ -204,6 +264,7 @@ class CodexAdapter(TuiAdapter):
             '---\n\n'
             f'# {spec.name}\n\n'
             f'Description: {command_description}\n'
+            f'{usage_line}'
             f'Model: {spec.model}\n'
             f'Allowed tools: {", ".join(spec.tools)}\n\n'
             f'{spec.body}'
@@ -273,6 +334,13 @@ class CodexAdapter(TuiAdapter):
             parent_command = _SECONDARY_COMMAND_PARENTS[command_name]
             return f'Typically orchestrated by `{parent_command}`; direct use is for edge cases.'
         return None
+
+    def _command_usage_hint(self, command_name: str, argument_hint: str) -> str | None:
+        if command_name in _INTERNAL_COMMAND_SKILLS:
+            return None
+        if argument_hint:
+            return f'${command_name} {argument_hint}'
+        return f'${command_name}'
 
     def _command_display_name(self, command_name: str) -> str:
         return self._title_name(command_name)

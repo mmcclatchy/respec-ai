@@ -403,7 +403,7 @@ For EACH prompt in SYNTHESIZE_PROMPTS:
   Store computed parameters for this prompt.
 
 SUB-STEP 4: Launch bp-pipeline Tasks IN PARALLEL
-For ALL uncached prompts, launch bp-pipeline agents simultaneously:
+For ALL uncached prompts, launch bp-pipeline agents simultaneously:{tools.bp_pipeline_parallel_policy}
 
   Task(bp-pipeline):
   MODE: codegen

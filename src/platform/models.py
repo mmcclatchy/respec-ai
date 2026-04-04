@@ -180,6 +180,9 @@ class PhaseCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_phase_architect: str = Field(..., description='Invocation text for respec-phase-architect agent')
     invoke_phase_critic: str = Field(..., description='Invocation text for respec-phase-critic agent')
+    bp_pipeline_parallel_policy: str = Field(
+        ..., description='Adapter-rendered parallel orchestration policy for bp-pipeline fan-out'
+    )
     task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
     roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')
     plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')
@@ -475,6 +478,9 @@ class CodeCommandTools(CommandToolsModel):
     invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')
     invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
     invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
+    phase1_review_parallel_policy: str = Field(
+        ..., description='Adapter-rendered parallel orchestration policy for Phase 1 reviewer fan-out'
+    )
     invoke_coder_standards: str = Field(
         ..., description='Invocation text for respec-coder agent (Phase 2 standards-only)'
     )
@@ -619,6 +625,9 @@ class PatchCommandTools(CommandToolsModel):
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
     invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
     invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
+    phase1_review_parallel_policy: str = Field(
+        ..., description='Adapter-rendered parallel orchestration policy for Phase 1 reviewer fan-out'
+    )
     invoke_coder_standards: str = Field(
         ..., description='Invocation text for respec-coder agent (Phase 2 standards-only)'
     )
@@ -730,6 +739,9 @@ class PlanRoadmapCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_roadmap_agent: str = Field(..., description='Invocation text for respec-roadmap agent')
     invoke_roadmap_critic: str = Field(..., description='Invocation text for respec-roadmap-critic agent')
+    phase_extraction_parallel_policy: str = Field(
+        ..., description='Adapter-rendered parallel orchestration policy for create-phase fan-out'
+    )
     plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')
     phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
 

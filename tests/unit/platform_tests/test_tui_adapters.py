@@ -711,6 +711,9 @@ class TestCodexAdapter:
         assert 'Typically orchestrated by `respec-plan`; direct use is for edge cases.' in roadmap_skill
         assert 'Typically orchestrated by `respec-phase`; direct use is for edge cases.' in task_skill
         assert 'Internal workflow used by `respec-plan`; do not invoke directly.' in conversation_skill
+        assert 'Usage: $respec-roadmap [plan-name]' in roadmap_skill
+        assert 'Usage: $respec-task [plan-name] [phase-name]' in task_skill
+        assert 'Usage:' not in conversation_skill
 
     def test_register_unregister_mcp_server(self, tmp_path: Path, project_path: Path) -> None:
         codex_home = tmp_path / '.codex'
@@ -756,6 +759,29 @@ class TestCodexAdapterInvocationRendering:
             [('coding_loop_id', 'CODING_LOOP_ID')],
         )
         assert 'respec-{REVIEWER}-agent' in result
+
+    def test_render_agent_invocation_includes_close_guidance(self) -> None:
+        result = self.adapter.render_agent_invocation('respec-roadmap', 'generate roadmap', [])
+        assert 'close the completed agent' in result
+
+    def test_parallel_worker_limit_defaults_to_six(self) -> None:
+        assert self.adapter.parallel_worker_limit() == 6
+
+    def test_parallel_worker_limit_reads_codex_agents_max_threads(self, tmp_path: Path) -> None:
+        codex_home = tmp_path / '.codex'
+        codex_home.mkdir(parents=True)
+        (codex_home / 'config.toml').write_text('[agents]\nmax_threads = 9\n', encoding='utf-8')
+        with patch.dict('os.environ', {'CODEX_HOME': str(codex_home)}, clear=False):
+            assert self.adapter.parallel_worker_limit() == 9
+
+    def test_render_parallel_fanout_policy_is_slot_aware(self) -> None:
+        result = self.adapter.render_parallel_fanout_policy(
+            'create-phase agents',
+            'one completion result per roadmap phase',
+        )
+        assert 'MAX_ACTIVE_WORKERS = 6' in result
+        assert 'If spawn fails' in result
+        assert 'close it' in result
 
     def test_render_command_invocation_interactive_returns_guide(self) -> None:
         guide = 'inline guide'

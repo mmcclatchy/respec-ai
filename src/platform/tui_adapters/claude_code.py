@@ -131,3 +131,20 @@ class ClaudeCodeAdapter(TuiAdapter):
         requires_user_interaction: bool = False,
     ) -> str:
         return f'/{command_name} {args_template}'
+
+    def render_parallel_fanout_policy(
+        self,
+        worker_group_label: str,
+        completion_signal_label: str,
+    ) -> str:
+        if worker_group_label == 'create-phase agents':
+            return (
+                'IMPORTANT: Launch ALL create-phase workflows in a SINGLE message (parallel invocations).\n'
+                'Do NOT launch agents sequentially. True parallelism requires one message with all invocations.\n\n'
+                'Wait for all agents to complete before proceeding to result aggregation.'
+            )
+        if worker_group_label == 'bp-pipeline tasks':
+            return ''
+        if worker_group_label == 'Phase 1 review agents (excluding consolidator)':
+            return ''
+        return super().render_parallel_fanout_policy(worker_group_label, completion_signal_label)

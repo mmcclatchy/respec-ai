@@ -105,6 +105,24 @@ class TuiAdapter(ABC):
         requires_user_interaction: bool = False,
     ) -> str: ...
 
+    def parallel_worker_limit(self) -> int:
+        """Return max active workers hint for adapter-specific orchestration guidance.
+
+        Default `0` means no adapter-specific cap guidance.
+        """
+        return 0
+
+    def render_parallel_fanout_policy(
+        self,
+        worker_group_label: str,
+        completion_signal_label: str,
+    ) -> str:
+        return (
+            f'Launch all {worker_group_label} in parallel.\n'
+            f'Wait for all {worker_group_label} to complete before proceeding.\n'
+            f'Collect {completion_signal_label} for each item before aggregation.'
+        )
+
     def count_generated_commands(self, project_path: Path) -> int:
         commands_dir = self.commands_dir(project_path)
         if not commands_dir.exists():

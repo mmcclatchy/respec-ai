@@ -172,6 +172,82 @@ class TestCrossPlatformInvocationRendering:
         assert 'subagent_type: "respec-task-planner"' in template
         assert 'subagent_type: "respec-task-plan-critic"' in template
 
+    def test_codex_roadmap_includes_slot_aware_parallel_policy(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'MAX_ACTIVE_WORKERS =' in template
+        assert 'If spawn fails' in template
+        assert 'close it' in template
+
+    def test_non_codex_roadmap_excludes_codex_slot_policy(self) -> None:
+        coordinator = TemplateCoordinator()
+        claude_template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        opencode_template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        assert 'MAX_ACTIVE_WORKERS =' not in claude_template
+        assert 'MAX_ACTIVE_WORKERS =' not in opencode_template
+        assert 'If spawn fails' not in claude_template
+        assert 'If spawn fails' not in opencode_template
+
+    def test_non_codex_roadmap_retains_legacy_parallel_wording(self) -> None:
+        coordinator = TemplateCoordinator()
+        claude_template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        opencode_template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        for template in (claude_template, opencode_template):
+            assert 'SINGLE message (parallel invocations)' in template
+            assert 'True parallelism requires one message with all invocations.' in template
+
+    def test_roadmap_removes_single_message_parallel_instruction(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'SINGLE message' not in template
+        assert 'True parallelism requires one message with all invocations.' not in template
+
+    def test_codex_code_template_includes_close_guidance_in_parallel_policy(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Phase 1 review agents (excluding consolidator)' in template
+        assert 'close the completed worker' in template
+
+    def test_non_codex_excludes_codex_slot_policy_across_parallel_sections(self) -> None:
+        coordinator = TemplateCoordinator()
+        for command in (RespecAICommand.PHASE, RespecAICommand.CODE, RespecAICommand.PATCH):
+            claude_template = coordinator.generate_command_template(
+                command, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+            )
+            opencode_template = coordinator.generate_command_template(
+                command, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+            )
+            assert 'MAX_ACTIVE_WORKERS =' not in claude_template
+            assert 'MAX_ACTIVE_WORKERS =' not in opencode_template
+            assert 'If spawn fails' not in claude_template
+            assert 'If spawn fails' not in opencode_template
+
+    def test_non_codex_phase_retains_bp_pipeline_wait_wording(self) -> None:
+        coordinator = TemplateCoordinator()
+        claude_template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        opencode_template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
+        for template in (claude_template, opencode_template):
+            assert 'For ALL uncached prompts, launch bp-pipeline agents simultaneously:' in template
+            assert 'Wait for ALL tasks to return BP_PIPELINE_COMPLETE signals.' in template
+
     def test_claude_code_patch_uses_planning_loop_id(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(

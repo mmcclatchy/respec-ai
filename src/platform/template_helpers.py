@@ -163,6 +163,10 @@ def create_phase_command_tools(
             'evaluate phase quality against FSDD framework',
             [('plan_name', 'PLAN_NAME'), ('loop_id', 'LOOP_ID'), ('phase_name', 'PHASE_NAME')],
         ),
+        bp_pipeline_parallel_policy=adapter.render_parallel_fanout_policy(
+            'bp-pipeline tasks',
+            'BP_PIPELINE_COMPLETE signals',
+        ),
         task_command_invocation=adapter.render_command_invocation(
             'respec-task',
             '{PLAN_NAME} {PHASE_NAME}',
@@ -390,6 +394,10 @@ def create_code_command_tools(
                 ('active_reviewers', 'PHASE1_REVIEWERS'),
             ],
         ),
+        phase1_review_parallel_policy=adapter.render_parallel_fanout_policy(
+            'Phase 1 review agents (excluding consolidator)',
+            'review sections for all active reviewers',
+        ),
         invoke_coder_standards=adapter.render_agent_invocation(
             'respec-coder',
             'apply coding standards fixes',
@@ -518,6 +526,10 @@ def create_roadmap_tools(
             'respec-roadmap-critic',
             'evaluate roadmap quality against FSDD framework',
             [('plan_name', 'PLAN_NAME'), ('loop_id', 'ROADMAP_LOOP_ID')],
+        ),
+        phase_extraction_parallel_policy=adapter.render_parallel_fanout_policy(
+            'create-phase agents',
+            'one completion result per roadmap phase',
         ),
         plan_command_invocation=adapter.render_command_invocation(
             'respec-plan',
@@ -1326,6 +1338,10 @@ def create_patch_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('active_reviewers', 'PHASE1_REVIEWERS'),
             ],
+        ),
+        phase1_review_parallel_policy=adapter.render_parallel_fanout_policy(
+            'Phase 1 review agents (excluding consolidator)',
+            'review sections for all active reviewers',
         ),
         invoke_coder_standards=adapter.render_agent_invocation(
             'respec-coder',

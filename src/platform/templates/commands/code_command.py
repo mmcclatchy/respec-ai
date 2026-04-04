@@ -272,7 +272,7 @@ Expected: Code implementation committed, platform status updated
 
 #### Step 7.4.1: Review Team Orchestration
 
-Launch ALL Phase 1 review agents (except consolidator) in parallel. Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 6.6. The review-consolidator MUST run AFTER all other reviewers complete. coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
+Launch ALL Phase 1 review agents (except consolidator) in parallel.{tools.phase1_review_parallel_policy} Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 6.6. The review-consolidator MUST run AFTER all other reviewers complete. coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
 
 **Core Reviewers (always active):**
 {tools.invoke_quality_checker}
