@@ -629,6 +629,9 @@ Phases vary by project type. Evaluate based on project context:
 - This is a BLOCKING issue - invalid paths cause downstream task-planner failure
 - Phase CANNOT score above 80 with any invalid archive paths
 - "Synthesize:" prompts are NOT penalized (converted to files in Step 7.5)
+- However, low-value or redundant "Synthesize:" prompts SHOULD be flagged as quality issues
+- If prompt set appears quota-driven (added to fill count rather than clear gaps), deduct points
+- Require prompt discipline: specific, high-value gaps only; avoid broad "research everything" prompts
 - All invalid "Read:" paths MUST be corrected before phase is considered ready
 - List each invalid path in Key Issues section
 

@@ -236,7 +236,7 @@ class TestCrossPlatformInvocationRendering:
             assert 'If spawn fails' not in claude_template
             assert 'If spawn fails' not in opencode_template
 
-    def test_non_codex_phase_retains_bp_pipeline_wait_wording(self) -> None:
+    def test_phase_template_enforces_cost_aware_bp_synthesis_policy(self) -> None:
         coordinator = TemplateCoordinator()
         claude_template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
@@ -245,8 +245,10 @@ class TestCrossPlatformInvocationRendering:
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
         )
         for template in (claude_template, opencode_template):
-            assert 'For ALL uncached prompts, launch bp-pipeline agents simultaneously:' in template
-            assert 'Wait for ALL tasks to return BP_PIPELINE_COMPLETE signals.' in template
+            assert 'MANDATORY COST-AWARE SYNTHESIS POLICY' in template
+            assert 'MAX_ACTIVE_BP_WORKERS = 3' in template
+            assert 'Do NOT create or execute prompts to hit a quota' in template
+            assert 'All launched uncached prompts MUST return BP_PIPELINE_COMPLETE signals.' in template
 
     def test_claude_code_patch_uses_planning_loop_id(self) -> None:
         coordinator = TemplateCoordinator()
@@ -314,6 +316,13 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'respec-task' in template
 
+    def test_phase_template_includes_bp_pipeline_tool_permission(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Task(bp-pipeline)' in template
+
     def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
         coordinator = TemplateCoordinator()
         adapters = (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter())
@@ -354,6 +363,16 @@ class TestCrossPlatformInvocationRendering:
         assert 'task_invocation_status ("succeeded" | "failed")' in template
         assert 'task_identifier (MCP key when available, else "unavailable")' in template
         assert 'next_action (required when task_invocation_status == "failed")' in template
+
+    def test_task_template_fail_fast_on_unresolved_synthesize_prompts(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert '#### Step 2.3: Fail Fast on Unresolved Synthesize Prompts' in template
+        assert 'Task planning is blocked until phase-owned synthesis is complete.' in template
+        assert 'Do NOT invoke task-planner' in template
+        assert 'Do NOT continue to Step 3' in template
 
     def test_plan_conversation_allowed_tools_frontmatter_is_comma_separated(self) -> None:
         coordinator = TemplateCoordinator()

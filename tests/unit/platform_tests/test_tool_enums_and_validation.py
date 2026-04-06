@@ -110,6 +110,7 @@ class TestTemplateHelpers:
         )
 
         assert 'Task(respec-phase-architect)' in tools.tools_yaml
+        assert 'Task(bp-pipeline)' in tools.tools_yaml
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools.tools_yaml
         assert 'mcp__linear-server__create_issue' in tools.tools_yaml
         assert tools.platform == PlatformType.LINEAR

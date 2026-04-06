@@ -379,7 +379,21 @@ IF no SYNTHESIZE_PROMPTS:
   Display: "✓ No research synthesis required"
   Proceed to Step 7.6.
 
+═══════════════════════════════════════════════
+MANDATORY COST-AWARE SYNTHESIS POLICY
+═══════════════════════════════════════════════
+- `/respec-phase` is the ONLY workflow that runs bp synthesis
+- Run synthesis only for unresolved high-value knowledge gaps
+- Do NOT create or execute prompts to hit a quota
+- Existing "Read:" entries and cache hits do NOT consume synthesis worker slots
+- Uncached prompts use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
+═══════════════════════════════════════════════
+
 SUB-STEP 3: Pre-compute bp-pipeline parameters for each prompt
+MAX_ACTIVE_BP_WORKERS = 3
+CACHED_PATHS = []
+UNCACHED_PROMPTS = []
+
 For EACH prompt in SYNTHESIZE_PROMPTS:
   Extract TECH (technology names) and TOPICS (remaining keywords) from prompt text.
 
@@ -391,7 +405,9 @@ For EACH prompt in SYNTHESIZE_PROMPTS:
   → OUTPUT_FILE = ".best-practices/{{OUTPUT_SLUG}}-codegen.md"
 
   Bash: best-practices-rag check-file-cache --file "OUTPUT_FILE" --model "<model ID>"
-  → IF hit is true: record OUTPUT_FILE in CACHED_PATHS, skip this prompt
+  → IF hit is true:
+      - record OUTPUT_FILE in CACHED_PATHS
+      - skip this prompt (does NOT consume worker slot)
   → IF hit is false: continue
 
   Bash: best-practices-rag query-kb --tech "TECH" --topics "TOPICS"
@@ -400,10 +416,22 @@ For EACH prompt in SYNTHESIZE_PROMPTS:
 
   Build PRIMARY_QUERY: versioned query with "official documentation"
 
-  Store computed parameters for this prompt.
+  Store computed parameters for this prompt in UNCACHED_PROMPTS.
 
 SUB-STEP 4: Launch bp-pipeline Tasks IN PARALLEL
-For ALL uncached prompts, launch bp-pipeline agents simultaneously:{tools.bp_pipeline_parallel_policy}
+IF UNCACHED_PROMPTS is empty:
+  Display: "✓ All synthesis prompts resolved from cache"
+  Proceed to SUB-STEP 5.
+
+Execute UNCACHED_PROMPTS with bounded concurrency:
+- ACTIVE_WORKERS max size: MAX_ACTIVE_BP_WORKERS (3)
+- PENDING_PROMPTS: uncached prompts not started yet
+- SUCCEEDED_SYNTHESIS / FAILED_SYNTHESIS trackers
+
+While PENDING_PROMPTS not empty OR ACTIVE_WORKERS not empty:
+  - Launch new bp-pipeline task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
+  - Wait for one task completion
+  - Record completion signal/result and free slot
 
   Task(bp-pipeline):
   MODE: codegen
@@ -421,7 +449,7 @@ For ALL uncached prompts, launch bp-pipeline agents simultaneously:{tools.bp_pip
   COVERED_TECHS: <if partial gap or cache hit, omit if full gap>
   ALL_QUERIED_TECHS: <tech names from prompt>
 
-Wait for ALL tasks to return BP_PIPELINE_COMPLETE signals.
+All launched uncached prompts MUST return BP_PIPELINE_COMPLETE signals.
 
 ═══════════════════════════════════════════════
 MANDATORY BP-PIPELINE VALIDATION GATE
@@ -453,6 +481,7 @@ SUB-STEP 6: Store updated Phase
 )
 
 Display: "✓ Synthesized {{len(SYNTHESIZED_PATHS)}} research brief(s), {{len(COMPLETE_PATHS)}} total documents"
+Display: "Research synthesis summary: total_prompts={{len(SYNTHESIZE_PROMPTS)}}, cache_hits={{len(CACHED_PATHS)}}, uncached_executed={{len(UNCACHED_PROMPTS)}}, generated_docs={{len(SYNTHESIZED_PATHS) - len(CACHED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
 
 Proceed to Step 7.6.
 ```

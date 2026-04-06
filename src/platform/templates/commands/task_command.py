@@ -145,6 +145,35 @@ ELSE:
   Display to user: "✓ Found {{len(IMPL_PLAN_PATHS)}} implementation constraint(s)"
 ```
 
+#### Step 2.3: Fail Fast on Unresolved Synthesize Prompts
+
+```text
+SYNTHESIZE_PROMPTS = []
+
+Search PHASE_MARKDOWN for lines matching:
+  "- Synthesize: <prompt text>"
+
+For each match:
+  SYNTHESIZE_PROMPTS.append(prompt text)
+
+IF SYNTHESIZE_PROMPTS is non-empty:
+  ERROR: "Phase contains unresolved research synthesis prompts"
+  Display:
+  - "Unresolved Synthesize prompts: {{len(SYNTHESIZE_PROMPTS)}}"
+  - "Task planning is blocked until phase-owned synthesis is complete."
+
+  REQUIRED ACTION:
+  - Re-run phase workflow for this phase so Step 7.5 converts Synthesize prompts to Read paths:
+    {tools.phase_command_invocation}
+
+  FAIL-CLOSED:
+  - Do NOT invoke task-planner
+  - Do NOT continue to Step 3
+  - Exit with diagnostics and retry guidance
+```
+
+`/respec-task` consumes finalized research artifacts only. It MUST NOT execute bp synthesis itself.
+
 ### 3. Initialize Task Planning Loop
 
 Set up MCP-managed quality refinement loop:

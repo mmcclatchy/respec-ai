@@ -132,6 +132,7 @@ def create_phase_command_tools(
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
+    builder.add_builtin_tool(BuiltInTool.TASK, 'bp-pipeline')
     builder.add_builtin_tool(BuiltInTool.BASH, '')
 
     for tool in PhaseCommandTools.respec_ai_tools:

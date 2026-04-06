@@ -826,10 +826,10 @@ If `best-practices-rag query-kb` fails:
 
 ### Research Identification Challenges
 When unsure about research needs:
-1. Err on side of inclusion
-2. Be specific in research prompts
-3. Include technology versions
-4. Add "2025" for current practices
+1. Prefer minimal high-value prompts over broad coverage
+2. Include a `Synthesize:` prompt only when existing docs cannot answer the gap
+3. It is valid to produce zero `Synthesize:` prompts when gaps are already covered
+4. Never add prompts to fill a target count or quota
 
 ### Incomplete Feedback
 If feedback history unavailable:
