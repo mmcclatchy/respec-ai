@@ -119,7 +119,7 @@ phase_feedback_template = CriticFeedback(
         '**[Category]**: [Technical concern]',
         '**[Category]**: [Missing detail]',
         '**[Research Path Invalid - BLOCKING]**: Path `[path]` does not exist - phase-architect must use actual file paths from archive scan output, not guessed names',
-        '**[Plan Constraint Violation - BLOCKING]**: Phase [contradicts Architecture Direction / uses rejected technology [name] / includes anti-requirement work] — plan constraint must be respected',
+        '**[Plan Constraint Violation - BLOCKING]**: Phase contradicts plan/reference constraints without documented deviation rationale',
     ],
     recommendations=[
         '**[Priority Level - Critical/Important/Nice-to-Have]**: [Specific improvement action]',
@@ -450,11 +450,12 @@ Assess Phase against FSDD quality framework criteria
 → Implementation readiness
 → Research requirements adequacy
 → Plan Constraint Alignment (if PLAN_CONSTRAINTS_AVAILABLE):
-  → IF PLAN_ARCHITECTURE: Verify Phase architecture refines it, does not contradict
-  → IF PLAN_TECHNOLOGY_DECISIONS: Verify Phase Technology Stack honors chosen technologies
-  → IF PLAN_TECHNOLOGY_REJECTIONS: Verify no rejected technologies appear in Phase
-  → IF PLAN_ANTI_REQUIREMENTS: Verify Phase scope excludes anti-requirements
-  → IF PLAN_QUALITY_BAR: Verify Testing Strategy and NFRs reference quality targets
+  → IF PLAN_ARCHITECTURE: Verify Phase architecture refines it, or deviation is explicitly documented
+  → IF PLAN_TECHNOLOGY_DECISIONS: Verify Technology Stack honors chosen technologies, or deviation is documented
+  → IF PLAN_TECHNOLOGY_REJECTIONS: Verify rejected technologies are absent, or any usage is documented as deviation
+  → IF PLAN_ANTI_REQUIREMENTS: Verify scope excludes anti-requirements, or deviation is documented
+  → IF PLAN_QUALITY_BAR: Verify Testing Strategy/NFRs reference targets, or target deviation is documented
+  → Verify presence/quality of `TUI Plan Deviation Log` when deviations exist
 
 STEP 4: Calculate Quality Score
 Use objective assessment criteria to calculate numerical score (0-100)
@@ -761,7 +762,7 @@ Assess phase for implementation details that belong in Task:
 - Caps maximum score at 80 until all paths are corrected
 
 **Plan Constraint Penalty (BLOCKING)**:
-- If PLAN_CONSTRAINTS_AVAILABLE AND phase contradicts plan architecture OR uses rejected technology OR includes anti-requirement: -20 points
+- If PLAN_CONSTRAINTS_AVAILABLE AND phase contradicts plan constraints WITHOUT documented deviation rationale: -20 points
 - Caps maximum score at 80 until violations are corrected
 - If PLAN_CONSTRAINTS_AVAILABLE is False: 0 points (graceful degradation)
 
@@ -774,7 +775,7 @@ Assess phase for implementation details that belong in Task:
 - Over-detailing penalty: Up to -10 points for implementation details
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
 - **Research path penalty: -20 points if ANY invalid research file paths (BLOCKING)**
-- **Plan constraint penalty: -20 points if phase contradicts plan constraints (BLOCKING)**
+- **Plan constraint penalty: -20 points if phase contradicts plan constraints without documented deviation (BLOCKING)**
 
 **Maximum possible: 105 points** (base 100 + 5 structure bonus)
 **Minimum possible: 0 points** (penalties can reduce to 0 but not below)
@@ -791,7 +792,7 @@ Assess phase for implementation details that belong in Task:
 - Length penalty escalates dramatically for oversized phases (0, -5, -15, -30, -50 points)
 - Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
 - **Research path penalty is BLOCKING** - invalid paths cause downstream task-planner failure
-- **Plan constraint penalty is BLOCKING** - contradicting plan architecture/technology decisions causes downstream failures
+- **Plan constraint penalty is BLOCKING** - undocumented contradictions to plan/reference decisions cause downstream failures
 - Score cannot go below 0 or above 100
 
 ### Score Interpretation

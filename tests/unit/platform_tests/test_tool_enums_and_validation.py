@@ -8,7 +8,12 @@ from src.platform.startup_validation import (
     validate_external_platform_tools,
     validate_platform_adapters,
 )
-from src.platform.template_helpers import TemplateToolBuilder, create_phase_command_tools
+from src.platform.template_helpers import (
+    TemplateToolBuilder,
+    create_phase_command_tools,
+    create_plan_command_tools,
+    create_roadmap_agent_tools,
+)
 from src.platform.tool_enums import (
     BuiltInTool,
     ExternalPlatformTool,
@@ -114,6 +119,27 @@ class TestTemplateHelpers:
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools.tools_yaml
         assert 'mcp__linear-server__create_issue' in tools.tools_yaml
         assert tools.platform == PlatformType.LINEAR
+
+    def test_create_plan_command_tools_includes_reference_write_without_ask_user(self) -> None:
+        platform_tools = [
+            'mcp__linear-server__create_project',
+            'mcp__linear-server__get_project',
+        ]
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        tools = create_plan_command_tools(
+            platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert 'AskUserQuestion' not in tools.tools_yaml
+        assert 'Read' in tools.tools_yaml
+        assert 'Write(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
+
+    def test_create_roadmap_agent_tools_includes_reference_read_permission(self) -> None:
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        tools = create_roadmap_agent_tools(ClaudeCodeAdapter(), plans_dir='~/.claude/plans')
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
 
 class TestStartupValidation:

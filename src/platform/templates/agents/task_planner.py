@@ -113,15 +113,29 @@ INPUTS: Loop context, Phase information, and research documents
 - project_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for retrieval
 - research_file_paths: List of best-practice document paths from Phase (may be empty)
-- impl_plan_paths: List of implementation plan reference paths — HARD CONSTRAINTS (may be empty)
+- impl_plan_paths: List of implementation plan reference paths — default constraints (may be empty)
+- impl_plan_references: Optional structured references from command parsing:
+  - path: file path
+  - section: optional section citation
+  - line_range: optional line range citation
 
 WORKFLOW: Phase + Research → Task with Checklist and Steps
 1. Retrieve Phase: {tools.retrieve_phase}
 1.5. Read Implementation Plan Constraints (BEFORE generating task):
+   Parse PHASE_MARKDOWN for `#### TUI Plan Deviation Log` (if present):
+     - Extract each deviation with source citation, revised decision, rationale
+     - Store as PHASE_DEVIATION_OVERRIDES
+
+   FOR EACH reference in impl_plan_references:
+     a. Call Read(file_path=reference.path)
+     b. If Read SUCCEEDS: append to IMPL_PLAN_CONSTRAINTS with citation metadata
+     c. If Read FAILS: note as "unavailable — proceeding without constraint from {{reference.path}}"
+
    FOR EACH path in impl_plan_paths:
-     a. Call Read(file_path=path)
-     b. If Read SUCCEEDS: append file content to IMPL_PLAN_CONSTRAINTS list
-     c. If Read FAILS: note as "unavailable — proceeding without constraint from {{path}}"
+     IF path not already present from impl_plan_references:
+       a. Call Read(file_path=path)
+       b. If Read SUCCEEDS: append file content to IMPL_PLAN_CONSTRAINTS list
+       c. If Read FAILS: note as "unavailable — proceeding without constraint from {{path}}"
 
    ALSO scan PHASE_MARKDOWN for "### Implementation Plan References" section:
      For each "- Constraint: `<file-path>`" line found:
@@ -137,12 +151,13 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    MANDATORY CONSTRAINT HIERARCHY
    ═══════════════════════════════════════════════
    Precedence (highest to lowest):
-   1. IMPL_PLAN_CONSTRAINTS — BINDING. No alternatives. No deviations.
-   2. Research documents (research_file_paths) — Guidance. May adapt if justified.
-   3. General knowledge — Lowest priority.
+   1. PHASE_DEVIATION_OVERRIDES — Explicitly approved revisions to source-plan constraints.
+   2. IMPL_PLAN_CONSTRAINTS — Default constraints from implementation references.
+   3. Research documents (research_file_paths) — Guidance. May adapt if justified.
+   4. General knowledge — Lowest priority.
 
-   VIOLATION: Suggesting an alternative to a technology in IMPL_PLAN_CONSTRAINTS.
-   VIOLATION: "Constraint says PostgreSQL but SQLite works better" is prohibited.
+   VIOLATION: Ignoring a PHASE_DEVIATION_OVERRIDES entry when it applies.
+   VIOLATION: Suggesting an alternative to IMPL_PLAN_CONSTRAINTS without matching deviation entry.
    ═══════════════════════════════════════════════
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
@@ -222,6 +237,23 @@ If research includes `.best-practices/docker-compose-best-practices-codegen.md`:
 ### When No Research Available
 Proceed using Phase information only. Note in output: "No research documentation provided for this task."
 
+## IMPLEMENTATION PLAN REFERENCE INTEGRATION
+
+When IMPL_PLAN_CONSTRAINTS are available (from impl_plan_references, impl_plan_paths, or phase section parsing):
+
+1. **Use Relevant Constraints**: Apply only constraints relevant to this Task's scope and steps
+2. **Cite Source Sections**: Add inline citations where constraints influence decisions:
+   - Preferred: `(per plan reference: filename.md § "Section Name" (lines X-Y))`
+   - If section/line metadata unavailable: `(per plan reference: filename.md (section/lines unavailable))`
+3. **Required Citation Locations**:
+   - `### Technology Stack Reference`: cite constrained technology choices
+   - `### Steps`: cite constrained implementation choices in the affected Step actions
+4. **Deviation Handling**:
+   - If PHASE_DEVIATION_OVERRIDES apply, follow override decisions and note:
+     `(per phase deviation log: revised constraint from TUI Plan Deviation Log)`
+
+If IMPL_PLAN_CONSTRAINTS are empty, do NOT fabricate plan-reference citations.
+
 ## CRITICAL: NO HALLUCINATED CITATIONS
 
 **NEVER cite research you haven't Read().**
@@ -233,6 +265,17 @@ Proceed using Phase information only. Note in output: "No research documentation
 **Verification**: Before finalizing Task, confirm every `(per research:` citation corresponds to an actual Read() call you made.
 
 **If caught hallucinating**: Task-plan-critic will flag inconsistencies between claimed citations and actual Research Read Log entries.
+
+## CRITICAL: NO HALLUCINATED PLAN-REFERENCE CITATIONS
+
+**NEVER cite plan references you haven't Read().**
+
+- ONLY add `(per plan reference: ...)` after successful Read(file_path=path) for that reference
+- If Read() fails or file doesn't exist, DO NOT cite it - note unavailability in Research Read Log
+- If citation includes section/line details, they MUST match extracted metadata or parsed headings
+- If section/line details are unavailable, explicitly use `(section/lines unavailable)` fallback
+
+**Verification**: Before finalizing Task, confirm every `(per plan reference:` citation maps to an actual loaded reference.
 
 **Note on Date Prefixes**: Date prefixes (2025-08-29) indicate when documentation was created, NOT an expiration date. Documents from weeks/months ago remain valid and relevant.
 
@@ -255,7 +298,7 @@ Examples:
 ### Overview
 - **Goal**: Clear implementation objective from Phase (one sentence, imperative tone)
 - **Acceptance Criteria**: Verifiable checkpoints from Phase deliverables
-- **Technology Stack Reference**: Technologies used by this Task's Steps
+- **Technology Stack Reference**: Technologies used by this Task's Steps, with plan-reference citations for constrained choices when applicable
 
 ### Implementation (CRITICAL)
 Contains two subsections:
@@ -272,6 +315,7 @@ Contains two subsections:
 - Each Step has **Objective** (one sentence, imperative)
 - Each Step has **Actions** list (imperative verbs)
 - Research citations where applicable
+- Plan-reference citations for constrained implementation choices where applicable
 - Typical range: 3-6 steps per Task
 
 ### Quality

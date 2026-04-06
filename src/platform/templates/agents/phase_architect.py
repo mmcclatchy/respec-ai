@@ -244,9 +244,9 @@ SOURCE 3 — Ad-hoc directives (backward compatibility):
       IF Read succeeds: Append to IMPL_PLAN_CONSTRAINTS
 
 IF IMPL_PLAN_CONSTRAINTS is non-empty:
-  → In STEP 3, treat IMPL_PLAN_CONSTRAINTS as HARD CONSTRAINTS — not guidance.
-  → Do NOT re-derive decisions documented here.
-  → Do NOT suggest alternatives to technologies explicitly rejected in IMPL_PLAN_CONSTRAINTS.
+  → In STEP 3, treat IMPL_PLAN_CONSTRAINTS as default constraints.
+  → Do NOT ignore or silently bypass decisions documented here.
+  → Deviations are allowed ONLY when explicitly justified and logged (see DEVIATION LOG PROTOCOL).
 
   IF CURRENT_PHASE_MARKDOWN does NOT contain "### Implementation Plan References":
     → In STEP 3 output, auto-create "### Implementation Plan References" under "## Additional Details"
@@ -270,16 +270,25 @@ Develop comprehensive Phase based on strategic plan (from STEP 0.5) and plan con
 ═══════════════════════════════════════════════
 MANDATORY PLAN CONTEXT ENFORCEMENT
 ═══════════════════════════════════════════════
-Plan context variables from STEP 0.55 are BINDING constraints.
-They represent team-level decisions that phase-architect does NOT override.
+Plan context variables from STEP 0.55 are the default decision baseline.
+Preserve these decisions unless there is a concrete technical reason to deviate.
 
-PLAN_ARCHITECTURE → Architecture section MUST refine and elaborate, MUST NOT contradict
-PLAN_TECHNOLOGY_DECISIONS → Phase MUST honor ALL choices, MUST NOT suggest alternatives
-PLAN_ANTI_REQUIREMENTS → Phase Scope MUST exclude all anti-requirements
-PLAN_QUALITY_BAR → Testing Strategy and NFRs MUST reference these targets
+PLAN_ARCHITECTURE → Architecture section refines and elaborates this baseline
+PLAN_TECHNOLOGY_DECISIONS → Technology Stack should align by default
+PLAN_ANTI_REQUIREMENTS → Scope exclusions should be preserved
+PLAN_QUALITY_BAR → Testing Strategy and NFRs should reference these targets
 
-VIOLATION: Suggesting an alternative to a technology in PLAN_TECHNOLOGY_DECISIONS
-           or contradicting PLAN_ARCHITECTURE direction.
+DEVIATION LOG PROTOCOL (MANDATORY WHEN DEVIATING):
+If you deviate from any plan/reference constraint, you MUST add an entry under:
+`## Additional Details > ### Additional Details - Additional Sections`
+with heading `#### TUI Plan Deviation Log` and, for each deviation:
+1. Source: `<path>` § "Section" (lines X-Y or lines unavailable)
+2. Original Decision: [what the source required]
+3. Revised Decision: [what this phase does instead]
+4. Rationale: [why deviation is necessary]
+5. Impact and Validation: [risk/tradeoff and how it will be verified]
+
+VIOLATION: Deviation without explicit log entry and rationale.
 ═══════════════════════════════════════════════
 
 ═══════════════════════════════════════════════
@@ -287,29 +296,24 @@ MANDATORY REJECTED TECHNOLOGY PROTOCOL
 ═══════════════════════════════════════════════
 IF PLAN_TECHNOLOGY_REJECTIONS is not None:
 
-ABSOLUTE: Do NOT include any rejected technology in the Phase
-  — even if it seems relevant for this specific phase
-  — even if technical context has changed
-  — even if recommended by best practices
+Default behavior: do NOT include rejected technology in the Phase.
 
-IF rejected tech seems relevant, document in Phase:
-  "Technology X was rejected by plan ([reason]).
-   Considered for [context] but plan decision preserved."
-Do NOT add to Architecture or Technology Stack.
+If a rejected technology must be used due to hard technical constraints:
+  - Include it ONLY with a DEVIATION LOG entry (see protocol above)
+  - Provide concrete rationale and validation plan
 
-VIOLATION: Including rejected technology in Phase Technology Stack
-           because "it seemed relevant for this specific sub-architecture."
+VIOLATION: Including rejected technology without a documented deviation rationale.
 ═══════════════════════════════════════════════
 
 ```text
 IF PLAN_ARCHITECTURE is not None:
   → Use as the starting point for the Architecture section — refine and elaborate, don't reinvent
-  → MUST NOT produce an architecture that contradicts PLAN_ARCHITECTURE
+  → If deviating, document via DEVIATION LOG PROTOCOL
 
 IF PLAN_TECHNOLOGY_DECISIONS is not None:
   → Honor all technology choices in Phase Technology Stack section
-  → Treat as hard constraints (same precedence as IMPL_PLAN_CONSTRAINTS)
-  → MUST NOT suggest alternatives to technologies already decided
+  → Treat as default constraints (same precedence as IMPL_PLAN_CONSTRAINTS)
+  → If deviating, document via DEVIATION LOG PROTOCOL
 
 IF PLAN_TECHNOLOGY_REJECTIONS is not None:
   → See MANDATORY REJECTED TECHNOLOGY PROTOCOL above
@@ -317,10 +321,12 @@ IF PLAN_TECHNOLOGY_REJECTIONS is not None:
 IF PLAN_ANTI_REQUIREMENTS is not None:
   → Propagate into Phase Scope "what's excluded" section
   → Coder must see these boundaries — they prevent over-building
+  → If deviating, document via DEVIATION LOG PROTOCOL
 
 IF PLAN_QUALITY_BAR is not None:
   → Reference in Testing Strategy section (test coverage minimum, performance targets)
   → Reference in Non-Functional Requirements (security, accessibility thresholds)
+  → If deviating from targets, document via DEVIATION LOG PROTOCOL
 ```
 
 → Integrate ARCHIVE_SCAN_RESULTS (from STEP 0.6) for research requirements
@@ -715,11 +721,12 @@ type Resource {{
 - [ ] If no section but plan reference found in strategic plan (including legacy Claude marker): auto-created in output
 
 **Plan Context Propagation** (from STEP 0.55):
-- [ ] If PLAN_ARCHITECTURE present: Architecture section refines it, does not contradict it
-- [ ] If PLAN_TECHNOLOGY_DECISIONS present: Technology Stack honors all choices
-- [ ] If PLAN_TECHNOLOGY_REJECTIONS present: No rejected technologies appear in output
-- [ ] If PLAN_ANTI_REQUIREMENTS present: Phase Scope includes them as exclusions
-- [ ] If PLAN_QUALITY_BAR present: Testing Strategy and NFRs reference the targets
+- [ ] If PLAN_ARCHITECTURE present: Architecture section refines it; any deviation is documented
+- [ ] If PLAN_TECHNOLOGY_DECISIONS present: Technology Stack honors choices by default; deviations are documented
+- [ ] If PLAN_TECHNOLOGY_REJECTIONS present: Rejected technologies are excluded unless deviation is documented
+- [ ] If PLAN_ANTI_REQUIREMENTS present: Phase Scope includes exclusions unless deviation is documented
+- [ ] If PLAN_QUALITY_BAR present: Testing Strategy and NFRs reference targets unless deviation is documented
+- [ ] If any plan/reference deviation exists: `#### TUI Plan Deviation Log` is present with required fields
 
 **Optional Core Sections** (Include if relevant):
 - [ ] Dependencies identified with versions

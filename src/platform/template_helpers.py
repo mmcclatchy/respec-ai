@@ -598,6 +598,7 @@ def create_task_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('research_file_paths', 'DOCUMENTATION_PATHS'),
                 ('impl_plan_paths', 'IMPL_PLAN_PATHS'),
+                ('impl_plan_references', 'IMPL_PLAN_REFERENCES'),
             ],
         ),
         invoke_task_plan_critic=adapter.render_agent_invocation(

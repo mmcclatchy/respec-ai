@@ -8,12 +8,14 @@ from src.platform.template_helpers import (
     create_phase_architect_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_create_phase_template,
     generate_phase_architect_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
+    generate_task_planner_template,
 )
 
 
@@ -230,8 +232,37 @@ class TestTemplateConsistency:
         assert '"Plan Reference: `<path>`"' in template
         assert '"Claude Plan: `<path>`" (legacy)' in template
 
+    def test_roadmap_template_allows_reference_citation_exception_for_sparse_phase(self) -> None:
+        roadmap_tools = create_roadmap_agent_tools(_adapter)
+        template = generate_roadmap_template(roadmap_tools)
+        assert 'Exception: If plan references exist, you MAY add only:' in template
+        assert '### Implementation Plan References' in template
+        assert '(lines X-Y)' in template
+
+    def test_roadmap_template_includes_reference_read_permission(self) -> None:
+        roadmap_tools = create_roadmap_agent_tools(_adapter)
+        template = generate_roadmap_template(roadmap_tools)
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in template
+
     def test_phase_architect_template_accepts_legacy_and_new_plan_reference_markers(self) -> None:
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)
         assert '"Plan Reference: `<file-path>`"' in template
         assert '"Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN (legacy)' in template
+
+    def test_phase_architect_template_requires_deviation_log_for_constraint_overrides(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+        assert 'DEVIATION LOG PROTOCOL' in template
+        assert '#### TUI Plan Deviation Log' in template
+
+    def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:
+        task_planner_tools = create_task_planner_agent_tools(_adapter)
+        template = generate_task_planner_template(task_planner_tools)
+        assert '- impl_plan_references: Optional structured references' in template
+        assert 'PHASE_DEVIATION_OVERRIDES' in template
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in template
+        assert '## IMPLEMENTATION PLAN REFERENCE INTEGRATION' in template
+        assert '(per plan reference: filename.md § "Section Name" (lines X-Y))' in template
+        assert '### Technology Stack Reference' in template
+        assert '### Steps' in template

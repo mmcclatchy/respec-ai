@@ -125,24 +125,49 @@ Do NOT silently treat "section exists with no paths" as equivalent to "section m
 
 ```text
 IMPL_PLAN_PATHS = []
+IMPL_PLAN_REFERENCES = []
 
 Search PHASE_MARKDOWN for "### Implementation Plan References" section:
   IF section found:
     For each line matching "- Constraint: `<path>`":
-      Extract path from backtick-quoted value, append to IMPL_PLAN_PATHS
-      Display to user: "📌 Implementation constraint: {{path}}"
+      Extract:
+        - PATH from backtick-quoted value
+        - SECTION (optional) from `§ "Section Name"` if present
+        - LINE_RANGE (optional) from `(lines X-Y)` if present
+
+      Append PATH to IMPL_PLAN_PATHS (if not already present)
+      Append structured reference to IMPL_PLAN_REFERENCES:
+        {{
+          "path": PATH,
+          "section": SECTION or None,
+          "line_range": LINE_RANGE or None
+        }}
+      Display to user: "📌 Implementation constraint: {{PATH}} {{SECTION}} {{LINE_RANGE}}"
 
 Also scan full PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
   For each directive found:
     Extract file_path from backtick-quoted value after "read"
     IF path not already in IMPL_PLAN_PATHS:
       IMPL_PLAN_PATHS.append(path)
+      IMPL_PLAN_REFERENCES.append({{"path": path, "section": None, "line_range": None}})
       Display to user: "📌 Implementation constraint (inline): {{path}}"
 
 IF IMPL_PLAN_PATHS is empty:
   Display to user: "ℹ️ No implementation plan references in Phase"
 ELSE:
   Display to user: "✓ Found {{len(IMPL_PLAN_PATHS)}} implementation constraint(s)"
+  Display to user: "✓ Structured citations available: {{len(IMPL_PLAN_REFERENCES)}}"
+```
+
+#### Step 2.25: Constraint Precedence Contract
+
+```text
+Task planning MUST apply this precedence order:
+1. `TUI Plan Deviation Log` entries in Phase (if present)
+2. Remaining implementation plan references (IMPL_PLAN_REFERENCES)
+3. Research documentation paths (DOCUMENTATION_PATHS)
+
+Pass both IMPL_PLAN_PATHS and IMPL_PLAN_REFERENCES to task-planner.
 ```
 
 #### Step 2.3: Fail Fast on Unresolved Synthesize Prompts

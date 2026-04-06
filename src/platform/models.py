@@ -968,7 +968,9 @@ class PhaseCriticAgentTools(AgentToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.GLOB, ''),
+    ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
@@ -1108,7 +1110,9 @@ class RoadmapAgentTools(AgentToolsModel):
         RespecAITool.CREATE_ROADMAP,  # Dedicated roadmap creation
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, '.respec-ai/plans/*/references/*.md'),
+    ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     plans_dir: str = Field(..., description='TUI-specific plans directory path')
@@ -1319,6 +1323,7 @@ class TaskPlannerAgentTools(AgentToolsModel):
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
         (BuiltInTool.READ, '.best-practices/*.md'),
+        (BuiltInTool.READ, '.respec-ai/plans/*/references/*.md'),
         (BuiltInTool.GREP, ''),
         (BuiltInTool.GLOB, ''),
     ]

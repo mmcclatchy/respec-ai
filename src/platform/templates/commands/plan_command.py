@@ -125,52 +125,77 @@ Automated analyst phase (Steps 6-9):
 - If no conversation context provided, start with: "I need help creating a strategic plan for my project"
 - Initialize variables for state management throughout the human-driven process
 
-## Step 1.5: Detect Plan Reference File
+## Step 1.5: Detect and Capture TUI Plan Reference (Fail-Closed)
 
-Check for pre-resolved architecture decisions in a plan reference file:
+Check for pre-resolved architecture decisions from a TUI plan source.
+Accepted inputs are ONLY:
+1) explicit file path, or
+2) full inline markdown plan content.
 
 ```text
 PLAN_REFERENCE_FILE = None
 PLAN_REFERENCE_CONTEXT = None
+PLAN_REFERENCE_SOURCE = None
 
-Check remaining arguments (after PLAN_NAME) for a file path argument
-(contains {tools.plans_dir}/ or ends in .md with a path separator):
-  IF found: PLAN_REFERENCE_FILE = extracted path
+REMAINING_INPUT = [all arguments after PLAN_NAME]
 
-IF PLAN_REFERENCE_FILE is None:
-  Bash: find {tools.plans_dir} -name "*.md" -mtime -7 -type f 2>/dev/null | head -5
-  IF results found:
-    Use AskUserQuestion:
-      Question: "I found recently modified plan reference file(s). Use one as a starting point?"
-      Header: "Select Plan Reference"
-      multiSelect: false
-      Options: [each file path found, plus "No, proceed without a plan reference file"]
-    IF user selects a file: PLAN_REFERENCE_FILE = selected path
-    IF user declines: PLAN_REFERENCE_FILE = None
+STEP A: Detect explicit file path in REMAINING_INPUT
+  IF argument contains {tools.plans_dir}/ OR argument ends in .md with a path separator:
+    PLAN_REFERENCE_FILE = extracted path
+    PLAN_REFERENCE_SOURCE = "file-path"
+
+STEP B: Detect full inline plan content in REMAINING_INPUT
+  IF PLAN_REFERENCE_FILE is None:
+    IF REMAINING_INPUT contains "<proposed_plan>" and "</proposed_plan>":
+      PLAN_REFERENCE_CONTEXT = [full content inside block]
+      PLAN_REFERENCE_SOURCE = "inline-proposed-plan"
+    ELIF REMAINING_INPUT contains full markdown plan body
+         (title + multiple markdown headings, not a short summary):
+      PLAN_REFERENCE_CONTEXT = [full inline markdown plan]
+      PLAN_REFERENCE_SOURCE = "inline-markdown"
+
+STEP C: Detect reference-intent language (without usable source)
+  PLAN_REFERENCE_INTENT = REMAINING_INPUT contains phrases like:
+    "use my plan", "use the TUI plan", "based on previous plan", "use existing plan"
+
+FAIL-CLOSED RULE:
+  IF PLAN_REFERENCE_INTENT is true AND PLAN_REFERENCE_SOURCE is None:
+    ERROR: "Plan reference mentioned but no readable source provided."
+    GUIDANCE:
+      - "Provide a path to a markdown plan file, OR"
+      - "Paste the FULL plan markdown (recommended: <proposed_plan>...</proposed_plan>)."
+    STOP workflow (do NOT continue with inferred summary)
 
 IF PLAN_REFERENCE_FILE is not None:
   CALL Read(PLAN_REFERENCE_FILE)
   PLAN_REFERENCE_CONTEXT = [content read from file]
-  Display: "✓ Using plan reference: {{PLAN_REFERENCE_FILE}}"
-ELSE:
-  Display: "ℹ️ No plan reference file detected — proceeding with standard workflow"
+  Display: "✓ Loaded plan reference from file: {{PLAN_REFERENCE_FILE}}"
+
+IF PLAN_REFERENCE_CONTEXT is None:
+  Display: "ℹ️ No plan reference source provided — proceeding with standard workflow"
 ```
 
-## Step 1.7: Copy External Plan File to Repo
+## Step 1.7: Canonical Reference Copy to Project
 
-If the plan file is external to the project, copy it into the repo so downstream
-agents can reliably Read() it on any machine.
+Always persist accepted plan reference content into the project so downstream
+agents can reliably Read() the same source.
 
 ```text
-IF PLAN_REFERENCE_FILE is not None:
-  IF PLAN_REFERENCE_FILE is an absolute path (starts with "/", "~", or a drive letter like "C:\\"):
-    REFERENCE_FILENAME = [basename of PLAN_REFERENCE_FILE]
-    REFERENCE_PATH = .respec-ai/plans/{{PLAN_NAME}}/references/{{REFERENCE_FILENAME}}
-    CALL Write(REFERENCE_PATH, PLAN_REFERENCE_CONTEXT)
-    Display: "✓ Copied plan reference to {{REFERENCE_PATH}}"
-    PLAN_REFERENCE_FILE = REFERENCE_PATH
-  ELSE:
-    Display: "ℹ️ Plan file is project-relative — referencing in place"
+IF PLAN_REFERENCE_CONTEXT is not None:
+  REFERENCE_FILENAME = [derive from source:
+    - file path basename when source is file-path
+    - "tui-plan-reference.md" when source is inline]
+
+  REFERENCE_FILENAME = [normalize to lowercase-kebab-case filename ending in .md]
+  REFERENCE_PATH = .respec-ai/plans/{{PLAN_NAME}}/references/{{REFERENCE_FILENAME}}
+
+  IF REFERENCE_PATH already exists:
+    REFERENCE_PATH = [append -2, -3, ... before .md until unique]
+
+  CALL Write(REFERENCE_PATH, PLAN_REFERENCE_CONTEXT)
+  Display: "✓ Stored canonical plan reference: {{REFERENCE_PATH}}"
+
+  PLAN_REFERENCE_FILE = REFERENCE_PATH
 ```
 
 ## Step 2: Conversational Requirements Gathering

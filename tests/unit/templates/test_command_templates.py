@@ -302,6 +302,16 @@ class TestCrossPlatformInvocationRendering:
         assert 'Plan Reference: {PLAN_REFERENCE_FILE}' in template
         assert 'Claude Plan: {CLAUDE_PLAN_FILE}' not in template
 
+    def test_plan_template_enforces_fail_closed_reference_capture(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'FAIL-CLOSED RULE' in template
+        assert 'Plan reference mentioned but no readable source provided.' in template
+        assert '.respec-ai/plans/{PLAN_NAME}/references/{REFERENCE_FILENAME}' in template
+        assert '/resources/' not in template
+
     def test_claude_code_phase_to_task_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -373,6 +383,15 @@ class TestCrossPlatformInvocationRendering:
         assert 'Task planning is blocked until phase-owned synthesis is complete.' in template
         assert 'Do NOT invoke task-planner' in template
         assert 'Do NOT continue to Step 3' in template
+
+    def test_task_template_passes_structured_reference_metadata(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'IMPL_PLAN_REFERENCES = []' in template
+        assert 'Constraint Precedence Contract' in template
+        assert 'TUI Plan Deviation Log' in template
 
     def test_plan_conversation_allowed_tools_frontmatter_is_comma_separated(self) -> None:
         coordinator = TemplateCoordinator()

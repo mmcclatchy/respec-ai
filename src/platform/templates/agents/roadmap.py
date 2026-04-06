@@ -202,8 +202,18 @@ STEP 3.5: Propagate Plan References to Sparse Phases
 If the strategic plan contains a line matching "Plan Reference: `<path>`",
 "Claude Plan: `<path>`" (legacy), or any path
 containing {tools.plans_dir}/ ending in .md:
-  Include `### Implementation Plan References` in each sparse phase under ## Additional Details:
-  - Constraint: `<path>` (propagated from strategic plan)
+  For each referenced `<path>`:
+    1. CALL Read(`<path>`)
+    2. Identify section(s) relevant to the specific phase scope
+    3. Compute line ranges when determinable from heading boundaries
+    4. Build citation entry:
+       - Constraint: `<path>` § "Section Name" (lines X-Y) — [phase relevance]
+
+  If exact line ranges are not determinable:
+    - Constraint: `<path>` § "Section Name" (lines unavailable) — [phase relevance]
+
+  Include these entries under `### Implementation Plan References` in each sparse phase under `## Additional Details`.
+  Do NOT copy full reference document content into the phase.
 
 This ensures every sparse phase carries the reference so phase-architect's SOURCE 2 finds it.
 
@@ -308,12 +318,17 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 - Output roadmap metadata followed by sparse Phases (one per phase)
 - **NEVER truncate phases** - output a sparse phase for EVERY phase you define
 - **NEVER use** "[Remaining phases omitted...]" text
-- Each Phase has ONLY 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
-- Do NOT add System Design, Implementation, or Additional Details sections
+- Base sparse phase has 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
+- Exception: If plan references exist, you MAY add only:
+  - `## Additional Details`
+  - `### Implementation Plan References`
+  with citation entries as defined in STEP 3.5
+- Do NOT add System Design or Implementation sections in roadmap phases
 
 **DOCUMENT STRUCTURE CONSTRAINTS — Violating these causes silent data loss**:
 - Roadmap metadata: Use ONLY the H2 > H3 headers shown in the template. Do NOT add custom H3 headers under Plan Details, Risk Assessment, Resource Planning, or Success Metrics.
-- Sparse Phases: Use ONLY ## Overview with ### Objectives, ### Scope, ### Dependencies, ### Deliverables. Do NOT add extra H3 sections.
+- Sparse Phases: Use ## Overview with ### Objectives, ### Scope, ### Dependencies, ### Deliverables.
+- If plan references are propagated, allow ONLY `## Additional Details > ### Implementation Plan References` as an extra structure.
 - Put any additional context WITHIN existing H3 sections, not as new H3 headers.
 - Do NOT add H2 headers not in the template (they will be silently dropped).
 
