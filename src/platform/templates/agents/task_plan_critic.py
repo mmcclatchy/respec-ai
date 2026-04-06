@@ -100,6 +100,13 @@ WORKFLOW: Task Assessment → CriticFeedback
 1. Retrieve Task: {tools.retrieve_task}
 2. Retrieve Phase: {tools.retrieve_phase}
 3. Retrieve previous feedback (for progress tracking): {tools.retrieve_feedback}
+3.5. If Phase contains implementation plan references:
+   - Parse `### Implementation Plan References` and collect each `- Constraint: `<path>` ...` entry
+   - Parse `#### TUI Plan Deviation Log` entries (if present)
+   - For each referenced path:
+     - Require canonical form: `.respec-ai/plans/{{PLAN_NAME}}/references/*.md`
+     - CALL Read(path) for canonical references
+     - Track readable vs unreadable references for validation
 4. Assess Task against FSDD criteria
 5. Calculate quality score (0-100 scale)
 6. Generate CriticFeedback markdown
@@ -116,6 +123,7 @@ The Task document follows this structure:
 - **Implementation Checklist**: Prioritized action items with verification methods
 - **Implementation Steps**: Inline `#### Step N:` sections (3-6 Steps typical)
 - **Testing Strategy**: How to verify implementation
+- **Plan Reference Citations**: Inline `(per plan reference: ...)` citations where constraints apply
 - **Status/Active/Version**: Metadata
 
 ## ASSESSMENT CRITERIA (100 Points Total)
@@ -136,11 +144,12 @@ The Task document follows this structure:
 - Task Goal maps to Phase objectives
 - Scope boundaries respected (addresses in-scope requirements)
 - Technology Stack Reference aligns with Phase tech_stack
+- If implementation plan references exist in Phase: constrained decisions include valid plan-reference citations
 
 **Deviation Classification**: When Task deviates from Phase, classify each deviation:
 - **Improvement**: Deviation adds clarity, fixes ambiguity, or strengthens the plan beyond Phase intent. No penalty.
 - **Neutral**: Reasonable alternative that neither improves nor harms. Minor penalty (1-2 pts max).
-- **Regression**: Drops requirements, contradicts Phase intent, or introduces scope creep. Full penalty.
+- **Regression**: Drops requirements, contradicts Phase intent/referenced constraints, or introduces scope creep. Full penalty.
 
 #### Change Description Alignment (When Provided)
 When change_description is provided as input, ALSO assess Task against the original change request:
@@ -178,6 +187,7 @@ When change_description is NOT provided, skip this subsection entirely.
 - Steps are sequenced logically (dependencies respected)
 - Clear deliverables for each Step
 - Research citations where applicable
+- Plan-reference citations for constrained implementation choices where applicable
 - Appropriate number of Steps (typically 3-6)
 
 **Partial Points (15-22)**: Steps present but missing Objective/Actions structure or inconsistent format
@@ -232,7 +242,44 @@ Impact: Reduce score by 15+ points if any hallucinations detected.
 Do NOT accept tasks with hallucinated citations without explicit Key Issues notation.
 ═══════════════════════════════════════════════
 
-### 8. Change Description Alignment (Informational - Not Scored)
+### 8. TUI Plan Reference Validity (BLOCKING when references are present)
+
+═══════════════════════════════════════════════
+MANDATORY TUI PLAN REFERENCE VALIDATION
+═══════════════════════════════════════════════
+Apply this section ONLY if Phase has `### Implementation Plan References`.
+
+Step 1: Validate reference paths from Phase
+  FOR EACH referenced path:
+    IF path is non-canonical (not under `.respec-ai/plans/{{PLAN_NAME}}/references/`):
+      Flag BLOCKING issue:
+      "**[TUI Plan Path Violation - BLOCKING]**: Non-canonical reference '{{path}}'. Use canonical references path."
+
+Step 2: Validate reference readability
+  FOR EACH canonical path:
+    IF Read(path) fails:
+      Flag BLOCKING issue:
+      "**[TUI Plan Reference Unreadable - BLOCKING]**: Could not read '{{path}}'."
+
+Step 3: Validate Task plan-reference citation integrity
+  FOR EACH `(per plan reference: ...)` citation in Task:
+    - Filename must map to a successfully read canonical reference
+    - Citation should include section/line detail when available:
+      `§ "Section Name" (lines X-Y)` OR `(section/lines unavailable)`
+    IF citation does not map to readable reference:
+      Flag BLOCKING issue:
+      "**[Plan Reference Citation Hallucination - BLOCKING]**: Task cites '{{citation}}' without a readable source."
+
+Step 4: Validate semantic alignment to referenced constraints
+  - Check `### Technology Stack Reference` against referenced constraints
+  - Check constrained Step actions against referenced constraints
+  - If `TUI Plan Deviation Log` in Phase explicitly revises a constraint, treat revised decision as source of truth
+  - Any undocumented contradiction is BLOCKING
+
+Impact: Apply TUI plan blocking penalty and cap score at 80 until corrected.
+═══════════════════════════════════════════════
+
+### 9. Change Description Alignment (Informational - Not Scored)
 When change_description is provided as input, document alignment analysis:
 
 **Scope Comparison**:
@@ -255,6 +302,10 @@ When change_description is NOT provided, skip this section.
 
 Generate objective score (0-100) based on evaluation criteria.
 Loop decisions made by MCP Server based on configuration.
+
+TUI Plan Blocking Penalty (when references are present):
+- If any TUI-plan blocking issue is detected: apply -20 points
+- Cap score at 80 until TUI-plan blocking issues are resolved
 
 ## CRITICAL: EXACT FEEDBACK FORMAT REQUIRED
 

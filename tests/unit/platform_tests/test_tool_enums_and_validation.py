@@ -13,6 +13,8 @@ from src.platform.template_helpers import (
     create_phase_command_tools,
     create_plan_command_tools,
     create_roadmap_agent_tools,
+    create_roadmap_critic_agent_tools,
+    create_task_plan_critic_agent_tools,
 )
 from src.platform.tool_enums import (
     BuiltInTool,
@@ -139,6 +141,18 @@ class TestTemplateHelpers:
         from src.platform.tui_adapters import ClaudeCodeAdapter
 
         tools = create_roadmap_agent_tools(ClaudeCodeAdapter(), plans_dir='~/.claude/plans')
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
+
+    def test_create_roadmap_critic_tools_include_reference_read_permission(self) -> None:
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        tools = create_roadmap_critic_agent_tools(ClaudeCodeAdapter())
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
+
+    def test_create_task_plan_critic_tools_include_reference_read_permission(self) -> None:
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        tools = create_task_plan_critic_agent_tools(ClaudeCodeAdapter())
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
 

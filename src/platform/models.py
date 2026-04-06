@@ -1129,7 +1129,9 @@ class RoadmapCriticAgentTools(AgentToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, '.respec-ai/plans/*/references/*.md'),
+    ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
@@ -1344,7 +1346,9 @@ class TaskPlanCriticAgentTools(AgentToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
+        (BuiltInTool.READ, '.respec-ai/plans/*/references/*.md'),
+    ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve task breakdown document via get_document')

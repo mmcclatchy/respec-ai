@@ -46,12 +46,13 @@ Assessment of cross-phase communication, handoff procedures, and overall workflo
 
 Assessment of whether roadmap phases respect plan-level architecture, technology, scope, and quality constraints.
 
-[Validation that phases collectively implement Architecture Direction, honor Chosen Technologies, exclude Anti-Requirements, and reflect Quality Bar. Note any rejected technologies that appear in phase scope. Skip if plan not available.]""",
+[Validation that phases collectively implement Architecture Direction, honor Chosen Technologies, exclude Anti-Requirements, and reflect Quality Bar. If TUI plan references are present, validate canonical-path usage, citation quality, and semantic consistency between referenced sections and phase content. Note any rejected technologies that appear in phase scope. Skip if plan not available.]""",
     key_issues=[
         '**[Category]**: [Specific roadmap problem with phase or section reference]',
         '**[Category]**: [Implementation readiness gap with technical focus area citation]',
         '**[Category]**: [Dependency sequencing issue with suggested resolution approach]',
         '**[Category]**: [Scope boundary concern with clarification recommendations]',
+        '**[TUI Plan Usage Violation - BLOCKING]**: [Missing/invalid/non-canonical plan reference usage or semantic contradiction to referenced constraints]',
     ],
     recommendations=[
         '**[Priority Level]**: [Specific improvement action with implementation guidance]',
@@ -141,6 +142,41 @@ IF PLAN_AVAILABLE:
   PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
   IF any section missing: set variable = None
 
+STEP 1.7: Detect and Validate TUI Plan References (if plan available)
+IF PLAN_AVAILABLE:
+  PLAN_REFERENCE_PATHS = []
+
+  SOURCE A (strategic plan markers):
+    Parse lines matching:
+      - Plan Reference: `<path>`
+      - Claude Plan: `<path>` (legacy marker)
+    Append extracted paths to PLAN_REFERENCE_PATHS
+
+  SOURCE B (roadmap phase propagation):
+    Search ROADMAP_MARKDOWN for `### Implementation Plan References`
+    Parse each `- Constraint: `<path>` ...` entry
+    Append extracted paths to PLAN_REFERENCE_PATHS (deduplicated)
+
+  IF PLAN_REFERENCE_PATHS is non-empty:
+    TUI_PLAN_REFERENCES_PRESENT = true
+  ELSE:
+    TUI_PLAN_REFERENCES_PRESENT = false
+
+  FOR EACH path in PLAN_REFERENCE_PATHS:
+    IF path does NOT start with `.respec-ai/plans/` OR path does NOT contain `/references/`:
+      Add BLOCKING issue:
+        "Non-canonical TUI plan reference path: {{path}}.
+         Canonical required path: .respec-ai/plans/{{PLAN_NAME}}/references/*.md"
+      Mark TUI_PLAN_BLOCKING_VIOLATION = true
+      CONTINUE
+
+    CALL Read(path)
+    IF Read fails:
+      Add BLOCKING issue: "Referenced TUI plan file unreadable: {{path}}"
+      Mark TUI_PLAN_BLOCKING_VIOLATION = true
+    ELSE:
+      Store loaded content in LOADED_TUI_REFERENCES[path]
+
 ═══════════════════════════════════════════════
 MANDATORY PLAN CONSTRAINT CHECK
 ═══════════════════════════════════════════════
@@ -154,6 +190,11 @@ IF plan retrieved successfully in STEP 1.5:
   - No phase includes Anti-Requirements work
   - Quality Bar targets reflected in phase planning
   - No rejected technologies appear in any phase scope
+  - If TUI plan references are present:
+    - each phase includes `### Implementation Plan References` evidence when relevant
+    - each constraint citation includes section and lines (or explicit lines-unavailable fallback)
+    - phase Objectives/Scope/Dependencies/Deliverables semantically align with referenced constraints
+    - contradictions to referenced decisions are flagged as BLOCKING
 
 IF plan NOT available:
   Skip Plan Constraint Alignment. Use the 5-dimension formula.
@@ -233,6 +274,10 @@ Evaluate each dimension systematically:
 - Validate no phase includes work covered by Anti-Requirements
 - Confirm Quality Bar targets reflected in phase quality plans
 - Check rejected technologies do not appear in any phase scope
+- If TUI plan references are present:
+  - Validate canonical `references/` path usage
+  - Validate citation quality (`§ "Section"` + `(lines X-Y)` or `(lines unavailable)`)
+  - Validate semantic alignment between referenced sections and phase content
 
 ### FSDD Framework Application
 
@@ -338,6 +383,13 @@ MANDATORY SCORING PROTOCOL above.
 - Quality Bar targets accounted for in phase planning: +15 points
 - No rejected technologies appear in any phase: +10 points
 - **Deductions**: Architecture contradiction (-30), rejected tech included (-20), anti-requirement violated (-20)
+
+#### TUI Plan Usage Penalty (BLOCKING, only when references are present)
+- If any non-canonical reference path is used: -20 points
+- If any canonical reference path is unreadable: -20 points
+- If citation evidence is missing/invalid for referenced constraints: -20 points
+- If phase content contradicts referenced constraints: -20 points
+- IF any TUI plan usage violation occurs: cap overall score at 80 until corrected
 
 ### Score Interpretation
 - **90-100**: Exceptional - Ready for immediate implementation

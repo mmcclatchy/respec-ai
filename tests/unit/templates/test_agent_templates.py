@@ -8,6 +8,7 @@ from src.platform.template_helpers import (
     create_phase_architect_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_task_plan_critic_agent_tools,
     create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
@@ -15,6 +16,7 @@ from src.platform.templates.agents import (
     generate_phase_architect_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
+    generate_task_plan_critic_template,
     generate_task_planner_template,
 )
 
@@ -121,6 +123,28 @@ class TestRoadmapCriticTemplate:
         threshold_terms = ['85%', '90%', 'threshold configured']
         for term in threshold_terms:
             assert term not in template, f'Template should not contain threshold reference: {term}'
+
+    def test_template_enforces_tui_plan_reference_usage_when_present(self) -> None:
+        tools = create_roadmap_critic_agent_tools(_adapter)
+        template = generate_roadmap_critic_template(tools)
+
+        assert 'STEP 1.7: Detect and Validate TUI Plan References' in template
+        assert '.respec-ai/plans/{PLAN_NAME}/references/*.md' in template
+        assert 'CALL Read(path)' in template
+        assert 'TUI Plan Usage Penalty (BLOCKING' in template
+        assert 'cap overall score at 80' in template
+
+
+class TestTaskPlanCriticTemplate:
+    def test_template_enforces_tui_plan_reference_validation(self) -> None:
+        tools = create_task_plan_critic_agent_tools(_adapter)
+        template = generate_task_plan_critic_template(tools)
+
+        assert 'MANDATORY TUI PLAN REFERENCE VALIDATION' in template
+        assert '.respec-ai/plans/{PLAN_NAME}/references/' in template
+        assert '(per plan reference: ...)' in template
+        assert 'TUI Plan Deviation Log' in template
+        assert 'cap score at 80' in template
 
 
 class TestCreatePhaseTemplate:
