@@ -1,6 +1,8 @@
 import shutil
+from argparse import Namespace
 from pathlib import Path
 
+from src.cli.config.global_config import load_global_models
 from src.cli.config.codex_config import (
     is_mcp_server_registered,
     load_codex_config,
@@ -120,15 +122,32 @@ class CodexAdapter(TuiAdapter):
 
     @property
     def reasoning_model(self) -> str:
-        config = load_codex_config()
-        model = config.get('model')
-        if isinstance(model, str) and model.strip():
-            return model
-        return 'gpt-5'
+        models = load_global_models('codex')
+        if 'reasoning' not in models:
+            raise RuntimeError("Codex reasoning model not configured. Run 'respec-ai models codex' first.")
+        return models['reasoning']
 
     @property
     def task_model(self) -> str:
-        return self.reasoning_model
+        models = load_global_models('codex')
+        if 'task' not in models:
+            raise RuntimeError("Codex task model not configured. Run 'respec-ai models codex' first.")
+        return models['task']
+
+    def post_init_setup(self, args: Namespace) -> int:
+        from src.cli.commands import codex_model
+        from src.cli.ui.console import console
+
+        sync_args = Namespace(
+            aa_key=getattr(args, 'aa_key', None),
+            yes=getattr(args, 'yes', False),
+            debug=False,
+            no_cache=False,
+            reasoning_model=None,
+            task_model=None,
+        )
+        console.print('\n[bold cyan]Configuring Codex model tiers...[/bold cyan]\n')
+        return codex_model.run(sync_args)
 
     def register_mcp_server(self, project_path: Path) -> bool:
         return _register_mcp_server(force=True)

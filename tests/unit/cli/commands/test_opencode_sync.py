@@ -360,6 +360,7 @@ class TestRunCommand:
         saved = mock_save.call_args[0][0]
         assert 'reasoning' in saved
         assert 'task' in saved
+        assert mock_save.call_args.kwargs.get('provider') == 'opencode'
 
     def test_uses_aa_key_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv('ARTIFICIAL_ANALYSIS_API_KEY', 'env-key')

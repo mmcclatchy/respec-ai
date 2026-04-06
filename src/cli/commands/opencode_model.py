@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Any
 
 from exa_py import Exa
 from rich.table import Table
@@ -53,6 +54,7 @@ def _clear_cache() -> None:
 
 
 _REASONING_INDEX = 'artificial_analysis_intelligence_index'
+_CODING_INDEX = 'artificial_analysis_coding_index'
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -121,12 +123,7 @@ def run(args: Namespace) -> int:
     scored_by_tier = _score_models_by_tier(models, aa_data, rate_limits=rate_limits, debug=debug)
 
     if aa_data or rate_limits:
-        intelligence_by_model = dict(scored_by_tier['reasoning'])
-        task_with_intelligence = [
-            (model_id, intelligence_by_model.get(model_id, 0.0)) for model_id, _ in scored_by_tier['task']
-        ]
-        _display_tier_table('Reasoning Scores', scored_by_tier['reasoning'], 'Intelligence', rate_limits)
-        _display_tier_table('Task Scores', task_with_intelligence, 'Intelligence', rate_limits)
+        _display_model_insights(scored_by_tier.get('metrics', {}), rate_limits)
 
     suggestion = _suggest_tiers(scored_by_tier)
 
@@ -138,7 +135,7 @@ def run(args: Namespace) -> int:
             print_warning('Mapping not saved')
             return 1
 
-    save_global_models(mapping)
+    save_global_models(mapping, provider='opencode')
     console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
     print_info("Run 'respec-ai regenerate' to apply new models to your config")
     return 0
@@ -205,7 +202,7 @@ def _fetch_aa_data(aa_key: str, *, debug: bool = False) -> dict[str, dict[str, f
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode('utf-8'))
         result: dict[str, dict[str, float]] = {}
-        all_fields = {_REASONING_INDEX}
+        all_fields = {_REASONING_INDEX, _CODING_INDEX}
         models_list = data if isinstance(data, list) else data.get('models', data.get('data', []))
         if debug:
             console.print(f'[dim]  AA response type: {type(data).__name__}, models: {len(models_list)}[/dim]')
@@ -306,9 +303,10 @@ def _score_models_by_tier(
     rate_limits: dict[str, str] | None = None,
     *,
     debug: bool = False,
-) -> dict[str, list[tuple[str, float]]]:
+) -> dict[str, Any]:
     reasoning_scored: list[tuple[str, float]] = []
     task_scored: list[tuple[str, float]] = []
+    metrics: dict[str, dict[str, float]] = {}
 
     parsed_rates: dict[str, int] = {}
     if rate_limits:
@@ -322,14 +320,17 @@ def _score_models_by_tier(
             console.print(f'[dim]  {model_id} -> {status}[/dim]')
 
         intelligence = aa_data[match].get(_REASONING_INDEX, 0.0) if match else 0.0
+        coding = aa_data[match].get(_CODING_INDEX, 0.0) if match else 0.0
         reasoning_scored.append((model_id, intelligence))
 
         throughput = float(parsed_rates.get(model_id, 0))
         task_scored.append((model_id, throughput))
+        metrics[model_id] = {'intelligence': intelligence, 'coding': coding, 'throughput': throughput}
 
     return {
         'reasoning': sorted(reasoning_scored, key=lambda x: x[1], reverse=True),
         'task': sorted(task_scored, key=lambda x: x[1], reverse=True),
+        'metrics': metrics,
     }
 
 
@@ -397,6 +398,57 @@ def _display_tier_table(
         if rate_limits:
             row.append(rate_limits.get(model_id, '\u2014'))
         table.add_row(*row)
+    console.print()
+    console.print(table)
+
+
+def _display_model_insights(metrics: dict[str, dict[str, float]], rate_limits: dict[str, str]) -> None:
+    if not metrics:
+        return
+    table = Table(title='OpenCode Model Benchmarks', show_header=True, header_style='bold cyan')
+    table.add_column('Model')
+    table.add_column('Intelligence', justify='right')
+    table.add_column('Coding', justify='right')
+    if rate_limits:
+        table.add_column('Reqs/5hr', justify='right')
+    table.add_column('Insight')
+
+    top_reasoning = max(metrics.items(), key=lambda item: item[1].get('intelligence', 0.0))[0]
+    top_task = max(metrics.items(), key=lambda item: item[1].get('throughput', 0.0))[0]
+
+    for model_id, row in sorted(
+        metrics.items(),
+        key=lambda item: (
+            item[1].get('intelligence', 0.0),
+            item[1].get('coding', 0.0),
+            item[1].get('throughput', 0.0),
+        ),
+        reverse=True,
+    ):
+        intelligence = row.get('intelligence', 0.0)
+        coding = row.get('coding', 0.0)
+        throughput = row.get('throughput', 0.0)
+
+        if model_id == top_reasoning and intelligence > 0:
+            insight = 'Best for planning and deep architecture reasoning.'
+        elif model_id == top_task and throughput > 0:
+            insight = 'Best throughput for high-volume task workflows.'
+        elif coding > intelligence and coding > 0:
+            insight = 'Coding-leaning profile; practical for implementation/review loops.'
+        elif intelligence > 0:
+            insight = 'Balanced profile; solid fallback when tiers overlap.'
+        else:
+            insight = 'No benchmark signal; keep as manual/backup option.'
+
+        out = [
+            model_id.split('/', 1)[-1],
+            f'{intelligence:.1f}' if intelligence else '[dim]no data[/dim]',
+            f'{coding:.1f}' if coding else '[dim]no data[/dim]',
+        ]
+        if rate_limits:
+            out.append(rate_limits.get(model_id, '\u2014'))
+        out.append(insight)
+        table.add_row(*out)
     console.print()
     console.print(table)
 

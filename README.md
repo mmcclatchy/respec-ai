@@ -104,9 +104,9 @@ That's it! `respec-ai` will guide you through strategic planning, technical phas
 
 **[Platform Comparison Guide →](docs/CLI_GUIDE.md#platform-selection)**
 
-## OpenCode Model Configuration
+## Model Configuration
 
-When using OpenCode (`--tui opencode`), `respec-ai` assigns each agent a specific model from your OpenCode provider. The `opencode-models` command discovers your available models and assigns them to two tiers:
+When using OpenCode (`--tui opencode`), `respec-ai` assigns each agent a specific model from your OpenCode provider. The `models opencode` command discovers your available models and assigns them to two tiers:
 
 - **Reasoning tier** - Used by agents that do deep architectural thinking (phase-architect, roadmap) and strategic planning commands (`/respec-plan`, `/respec-plan-conversation`). Ranked by intelligence index.
 - **Task tier** - Used by all other agents (coding, reviewing, critiquing) and orchestration commands. Ranked by throughput/rate limits.
@@ -114,17 +114,23 @@ When using OpenCode (`--tui opencode`), `respec-ai` assigns each agent a specifi
 Model selection runs automatically during `respec-ai init --tui opencode`. To reconfigure models later:
 
 ```bash
-respec-ai opencode-models
+respec-ai models opencode
 ```
 
 For benchmark-backed recommendations, provide an [Artificial Analysis](https://artificialanalysis.ai/) API key:
 
 ```bash
 # Pass directly (saved for future use)
-respec-ai opencode-models --aa-key YOUR_KEY
+respec-ai models opencode --aa-key YOUR_KEY
 
 # Or set as environment variable
 export ARTIFICIAL_ANALYSIS_API_KEY=YOUR_KEY
+```
+
+For Codex (`--tui codex`), configure reasoning/task tiers with:
+
+```bash
+respec-ai models codex
 ```
 
 Model mappings are saved to `~/.config/respec-ai/models.json`. API keys provided via `--aa-key` or `--exa-key` are persisted to `~/.config/respec-ai/api_keys.json`.

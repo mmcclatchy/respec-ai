@@ -201,12 +201,12 @@ class TestOpenCodeAdapter:
 
     def test_reasoning_model_raises_when_not_configured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
-            with pytest.raises(RuntimeError, match='opencode-models'):
+            with pytest.raises(RuntimeError, match='models opencode'):
                 _ = self.adapter.reasoning_model
 
     def test_task_model_raises_when_not_configured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
-            with pytest.raises(RuntimeError, match='opencode-models'):
+            with pytest.raises(RuntimeError, match='models opencode'):
                 _ = self.adapter.task_model
 
     def test_render_agent_returns_body(self, agent_spec: AgentSpec) -> None:
@@ -554,17 +554,20 @@ class TestCodexAdapter:
     def test_plans_dir(self) -> None:
         assert self.adapter.plans_dir() == '.codex/plans'
 
-    def test_reasoning_model_defaults_when_unconfigured(self, tmp_path: Path) -> None:
-        with patch.dict('os.environ', {'CODEX_HOME': str(tmp_path / '.codex')}, clear=False):
-            assert self.adapter.reasoning_model == 'gpt-5'
+    def test_reasoning_model_raises_when_unconfigured(self, tmp_path: Path) -> None:
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
+            with pytest.raises(RuntimeError, match='models codex'):
+                _ = self.adapter.reasoning_model
 
-    def test_reasoning_model_uses_codex_config(self, tmp_path: Path) -> None:
-        codex_home = tmp_path / '.codex'
-        codex_home.mkdir(parents=True)
-        (codex_home / 'config.toml').write_text('model = "gpt-5.2"\n', encoding='utf-8')
-        with patch.dict('os.environ', {'CODEX_HOME': str(codex_home)}, clear=False):
-            assert self.adapter.reasoning_model == 'gpt-5.2'
-            assert self.adapter.task_model == 'gpt-5.2'
+    def test_reasoning_and_task_model_use_global_mapping(self, tmp_path: Path) -> None:
+        models_path = tmp_path / 'models.json'
+        models_path.write_text(
+            json.dumps({'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}),
+            encoding='utf-8',
+        )
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
+            assert self.adapter.reasoning_model == 'gpt-5.4'
+            assert self.adapter.task_model == 'gpt-5.4-mini'
 
     def test_write_all_creates_skills_and_openai_manifests(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
