@@ -314,6 +314,47 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'respec-task' in template
 
+    def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
+        coordinator = TemplateCoordinator()
+        adapters = (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter())
+
+        for adapter in adapters:
+            template = coordinator.generate_command_template(
+                RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter
+            )
+            assert 'MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)' in template
+            assert 'Return "Phase complete" success without attempting Step 9' in template
+            assert 'Fallback/manual mode does NOT waive Step 9 obligations.' in template
+            assert 'IF TASK_INVOCATION_ATTEMPTED == false' in template
+
+    def test_phase_template_places_task_handoff_after_phase_storage(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        step_8_pos = template.find('### Step 8: Phase Storage')
+        step_9_pos = template.find('### Step 9: Automatic Task Generation')
+        step_10_pos = template.find('### Step 10: Completion Contract and Final Reporting')
+
+        assert step_8_pos != -1
+        assert step_9_pos != -1
+        assert step_10_pos != -1
+        assert step_8_pos < step_9_pos < step_10_pos
+
+    def test_phase_template_requires_completion_contract_fields(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        assert 'Completion contract (required in final response):' in template
+        assert 'phase_file_path' in template
+        assert 'phase_status' in template
+        assert 'task_invocation_status ("succeeded" | "failed")' in template
+        assert 'task_identifier (MCP key when available, else "unavailable")' in template
+        assert 'next_action (required when task_invocation_status == "failed")' in template
+
     def test_plan_conversation_allowed_tools_frontmatter_is_comma_separated(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(

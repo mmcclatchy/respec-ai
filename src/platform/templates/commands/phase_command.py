@@ -520,6 +520,96 @@ Labels: phase, architecture, phase-2
 
 **Important**: Use FINAL_PHASE_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
 
+### Step 9: Automatic Task Generation
+
+After Phase storage completes, automatically generate the Task document.
+
+═══════════════════════════════════════════════
+MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)
+═══════════════════════════════════════════════
+MUST:
+- Attempt task generation in the SAME run via `{tools.task_command_invocation}`
+- Record task invocation outcome before any completion response
+
+MUST NOT:
+- Return "Phase complete" success without attempting Step 9
+
+EXCEPTION:
+- Only skip automatic chaining if user explicitly instructed to stop chaining
+
+IMPORTANT:
+- Fallback/manual mode changes implementation method only.
+- Fallback/manual mode does NOT waive Step 9 obligations.
+═══════════════════════════════════════════════
+
+```text
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Display: "✅  PHASE COMPLETE — generating Task document"
+Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+TASK_INVOCATION_ATTEMPTED = false
+TASK_INVOCATION_STATUS = "failed"
+TASK_IDENTIFIER = "unavailable"
+TASK_ERROR_SUMMARY = ""
+
+Attempt task workflow:
+{tools.task_command_invocation}
+TASK_INVOCATION_ATTEMPTED = true
+
+IF task workflow invocation returns error:
+  TASK_INVOCATION_STATUS = "failed"
+  TASK_ERROR_SUMMARY = [captured error summary]
+
+ELSE:
+  IF PHASE_NAME starts with "phase-":
+    TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)
+  ELSE:
+    TASK_NAME = f"task-{{PHASE_NAME}}"
+
+  TASK_DOC_KEY = f"{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}"
+
+  Verify task exists in MCP:
+  mcp__respec-ai__get_document(
+    doc_type="task",
+    key=TASK_DOC_KEY
+  )
+
+  IF verification succeeds:
+    TASK_INVOCATION_STATUS = "succeeded"
+    TASK_IDENTIFIER = TASK_DOC_KEY
+  ELSE:
+    TASK_INVOCATION_STATUS = "failed"
+    TASK_ERROR_SUMMARY = "Task workflow returned but task retrieval verification failed"
+```
+
+### Step 10: Completion Contract and Final Reporting
+
+```text
+IF TASK_INVOCATION_ATTEMPTED == false AND user did not explicitly request to stop chaining:
+  ERROR: non-compliant run (Step 9 not attempted)
+  EXIT with structured error (do NOT report success)
+
+Completion contract (required in final response):
+1. phase_file_path
+2. phase_status
+3. task_invocation_status ("succeeded" | "failed")
+4. task_identifier (MCP key when available, else "unavailable")
+5. next_action (required when task_invocation_status == "failed")
+```
+
+```text
+IF TASK_INVOCATION_STATUS == "succeeded":
+  Display:
+  "✅ Phase and Task complete. Next: run implementation workflow"
+  {tools.code_command_invocation}
+
+ELSE:
+  Display:
+  "⚠ Task generation failed. Phase is saved. Retry the task workflow manually:"
+  {tools.task_command_invocation}
+  Include error output summary and retry guidance in next_action.
+```
+
 ## Quality Assessment
 
 ### Loop Management
@@ -603,10 +693,10 @@ IF mcp__respec-ai tools unavailable:
     "error_type": "mcp_error",
     "error_message": "MCP loop state management unavailable",
     "recovery_action": "Falling back to direct agent coordination with single iteration",
-    "user_guidance": "Quality loop disabled - single-pass Phase generation",
+    "user_guidance": "Quality loop disabled - single-pass Phase generation. Step 9 task handoff still required.",
     "partial_output": "Strategic plan processed"
   }}
-  → Continue with single phase-architect → phase-critic → storage workflow
+  → Continue with single phase-architect → phase-critic → storage workflow, then execute Step 9
 ```
 
 #### 4. Storage Platform Failure
@@ -724,37 +814,4 @@ Maintain conversation flow while processing complex backend refinement:
 - **Implementation Ready**: Sufficient detail for development teams
 - **Integration**: Seamless storage and retrieval
 
-## Step 9: Automatic Task Generation
-
-After Phase storage completes, automatically generate the Task document:
-
-```text
-Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Display: "✅  PHASE COMPLETE — generating Task document"
-Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-```
-
-Invoke the task command to generate the Task with full quality loop:
-
-{tools.task_command_invocation}
-
-The task workflow will:
-1. Locate the Phase file on disk
-2. Initialize a task quality loop
-3. Run task-planner → task-plan-critic refinement cycle
-4. Store the Task document to MCP and platform
-
-**If task workflow fails**: The Phase is already stored and valid. Display:
-```text
-"⚠ Task generation failed. Phase is saved. Retry the task workflow manually:"
-{tools.task_command_invocation}
-```
-
-**After task workflow completes**: Display next steps:
-```text
-"✅ Phase and Task complete. Next: run implementation workflow"
-{tools.code_command_invocation}
-```
-
-The Phase and Task are ready for implementation. Recommend the implementation workflow for next step.
 """
