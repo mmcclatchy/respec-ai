@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from shutil import which
 from typing import Any
 
 import tomllib
@@ -10,6 +11,7 @@ MCP_SERVER_NAME = 'respec-ai'
 MCP_SERVER_ALIASES = ('respec-ai', 'respec_ai', 'respecai')
 MCP_COMMAND = 'respec-ai'
 MCP_ARGS: list[str] = ['mcp-server']
+MCP_STARTUP_TIMEOUT_SEC = 30
 
 
 class CodexConfigError(Exception):
@@ -49,7 +51,17 @@ def is_mcp_server_registered(config_path: Path | None = None) -> bool:
         server = mcp_servers.get(MCP_SERVER_NAME)
         if not isinstance(server, dict):
             return False
-        return server.get('command') == MCP_COMMAND and server.get('args') == MCP_ARGS
+        command = server.get('command')
+        args = server.get('args')
+        startup_timeout_sec = server.get('startup_timeout_sec')
+
+        if not isinstance(command, str):
+            return False
+        if command != MCP_COMMAND and Path(command).name != MCP_COMMAND:
+            return False
+        if args != MCP_ARGS:
+            return False
+        return startup_timeout_sec == MCP_STARTUP_TIMEOUT_SEC
     except CodexConfigError:
         return False
 
@@ -67,8 +79,24 @@ def _normalize_config_text(content: str) -> str:
     return f'{collapsed}\n' if collapsed else ''
 
 
+def _resolve_mcp_command() -> str:
+    resolved = which(MCP_COMMAND)
+    return resolved if resolved else MCP_COMMAND
+
+
+def _toml_escape(value: str) -> str:
+    return value.replace('\\', '\\\\').replace('"', '\\"')
+
+
 def _render_mcp_server_block() -> str:
-    return f'[mcp_servers.{MCP_SERVER_NAME}]\ncommand = "{MCP_COMMAND}"\nargs = ["{MCP_ARGS[0]}"]\nenabled = true\n'
+    command = _toml_escape(_resolve_mcp_command())
+    return (
+        f'[mcp_servers.{MCP_SERVER_NAME}]\n'
+        f'command = "{command}"\n'
+        f'args = ["{MCP_ARGS[0]}"]\n'
+        f'startup_timeout_sec = {MCP_STARTUP_TIMEOUT_SEC}\n'
+        'enabled = true\n'
+    )
 
 
 def register_mcp_server(force: bool = False, config_path: Path | None = None) -> bool:
