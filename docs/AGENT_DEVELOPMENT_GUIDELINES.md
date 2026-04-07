@@ -1502,8 +1502,8 @@ Each reviewer stores its output under a unique section key following the pattern
 
 Current section keys:
 
-- `review-quality-check` — automated-quality-checker (core, 70 pts)
-- `review-spec-alignment` — spec-alignment-reviewer (core, 30 pts)
+- `review-quality-check` — automated-quality-checker (core, 50 pts)
+- `review-spec-alignment` — spec-alignment-reviewer (core, 50 pts)
 - `review-code-quality` — code-quality-reviewer (always active, -15 to +5)
 - `review-frontend` — frontend-reviewer (specialist, -10 to +5)
 - `review-backend-api` — backend-api-reviewer (specialist, -10 to +5)

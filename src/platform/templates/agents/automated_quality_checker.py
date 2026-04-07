@@ -49,7 +49,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-quality-check. Score: [TOTAL]/70 (TQ modifier: [modifier])"
+  "Review section stored: [plan_name]/[phase_name]/review-quality-check. Score: [TOTAL]/50 (TQ modifier: [modifier])"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -90,42 +90,42 @@ Read project configuration at workflow start:
 
 For multi-language projects, run ALL language checks and report results per language.
 
-## ASSESSMENT CRITERIA (70 Points Total)
+## ASSESSMENT CRITERIA (50 Points Total)
 
-### 1. Tests Passing (30 Points)
-**Full Points (30)**: All tests pass without errors
+### 1. Tests Passing (20 Points)
+**Full Points (20)**: All tests pass without errors
 - Run the test command from Tech Stack Discovery
 - **Zero test failures** required for full points
-- Every failed test = -3 points (minimum 0 points)
-- Test errors (not failures) = -5 points each
+- Every failed test = -2 points (minimum 0 points)
+- Test errors (not failures) = -4 points each
 
 **Verification**: Run test command and capture output
 
-### 2. Type Checking (15 Points)
-**Full Points (15)**: Type checker reports zero errors
+### 2. Type Checking (11 Points)
+**Full Points (11)**: Type checker reports zero errors
 - Run the check command from Tech Stack Discovery
 - **Zero type errors** required for full points
 - Each type error = -1 point (minimum 0 points)
-- If no type checker available for language: award 15/15
+- If no type checker available for language: award 11/11
 
 **Verification**: Run check command and capture output
 
-### 3. Linting (10 Points)
-**Full Points (10)**: Linter reports zero issues
+### 3. Linting (7 Points)
+**Full Points (7)**: Linter reports zero issues
 - Run the lint command from Tech Stack Discovery
 - **Zero linting issues** required for full points
 - Each linting issue = -0.5 points (minimum 0 points)
 
 **Verification**: Run lint command and capture output
 
-### 4. Test Coverage (15 Points)
-**Full Points (15)**: Coverage >= 80%
+### 4. Test Coverage (12 Points)
+**Full Points (12)**: Coverage >= 80%
 - Run the coverage command from Tech Stack Discovery
-- Coverage >= 80% = 15 points
-- Coverage 70-79% = 12 points
-- Coverage 60-69% = 9 points
-- Coverage 50-59% = 6 points
-- Coverage < 50% = 3 points
+- Coverage >= 80% = 12 points
+- Coverage 70-79% = 9 points
+- Coverage 60-69% = 7 points
+- Coverage 50-59% = 5 points
+- Coverage < 50% = 2 points
 
 **Verification**: Run coverage command and capture output
 
@@ -187,7 +187,7 @@ For each flagged test: include file:line, BLOCKING label (if applicable), and fi
 
 ```text
 TOTAL = TEST_SCORE + TYPE_SCORE + LINT_SCORE + COVERAGE_SCORE + TEST_QUALITY_MODIFIER
-(TEST_QUALITY_MODIFIER is 0 or negative; TOTAL is capped at 70)
+(TEST_QUALITY_MODIFIER is 0 or negative; TOTAL is capped at 50)
 ```
 
 ## REVIEW SECTION OUTPUT FORMAT
@@ -195,9 +195,9 @@ TOTAL = TEST_SCORE + TYPE_SCORE + LINT_SCORE + COVERAGE_SCORE + TEST_QUALITY_MOD
 Store the following markdown as review section:
 
 ```markdown
-### Automated Quality Check (Score: {{TOTAL}}/70)
+### Automated Quality Check (Score: {{TOTAL}}/50)
 
-#### Tests Passing (Score: {{TEST_SCORE}}/30)
+#### Tests Passing (Score: {{TEST_SCORE}}/20)
 - Total Tests: [count]
 - Passing: [count]
 - Failing: [count]
@@ -207,21 +207,21 @@ Store the following markdown as review section:
 - **Failed Tests** (if any):
   - [test_name]: [failure reason]
 
-#### Type Checking (Score: {{TYPE_SCORE}}/15)
+#### Type Checking (Score: {{TYPE_SCORE}}/11)
 - Type Checker: {{CHECKER}}
 - Command: {{CHECK_COMMAND}}
 - Total Errors: [count]
 - **Type Errors** (if any):
   - [file:line]: [error description]
 
-#### Linting (Score: {{LINT_SCORE}}/10)
+#### Linting (Score: {{LINT_SCORE}}/7)
 - Linter: {{LINTER}}
 - Command: {{LINT_COMMAND}}
 - Total Issues: [count]
 - **Linting Issues** (if any):
   - [file:line]: [issue description]
 
-#### Test Coverage (Score: {{COVERAGE_SCORE}}/15)
+#### Test Coverage (Score: {{COVERAGE_SCORE}}/12)
 - Coverage Percentage: [X]%
 - Coverage Command: {{COVERAGE_COMMAND}}
 - **Uncovered Lines**: [list critical uncovered code paths]

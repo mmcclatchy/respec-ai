@@ -52,7 +52,7 @@ class TestAutomatedQualityCheckerTemplate:
         assert 'Type Checking' in template
         assert 'Linting' in template
         assert 'Coverage' in template
-        assert '70' in template  # 70 points total
+        assert '50 Points Total' in template
 
     def test_template_has_mcp_tools(self) -> None:
         tools = create_automated_quality_checker_agent_tools(_adapter)
@@ -88,7 +88,7 @@ class TestSpecAlignmentReviewerTemplate:
 
         assert 'Phase Alignment' in template
         assert 'Requirements' in template
-        assert '30' in template  # 30 points total
+        assert '50 Points Total' in template
 
 
 class TestFrontendReviewerTemplate:

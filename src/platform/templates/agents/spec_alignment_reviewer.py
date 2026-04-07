@@ -24,10 +24,11 @@ TASKS: Retrieve Specs → Inspect Code → Score Alignment → Store
 1. Retrieve Task: {tools.retrieve_task}
 2. Retrieve Phase: {tools.retrieve_phase}
 3. Retrieve previous feedback: {tools.retrieve_feedback}
-4. Inspect codebase (Read/Glob to examine implementation)
-5. Assess alignment against criteria
-6. Calculate section scores
-7. Store review section: {tools.store_review_section}
+4. Read Plan from filesystem: Read(.respec-ai/plans/{{PLAN_NAME}}/plan.md) — if file exists
+5. Inspect codebase (Read/Glob to examine implementation)
+6. Assess alignment against criteria
+7. Calculate section scores
+8. Store review section: {tools.store_review_section}
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
@@ -48,7 +49,7 @@ MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
 Store review section via {tools.store_review_section}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-spec-alignment. Score: [TOTAL]/30"
+  "Review section stored: [plan_name]/[phase_name]/review-spec-alignment. Score: [TOTAL]/50"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -71,11 +72,11 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
            when you should use store_review_section MCP tool.
 ═══════════════════════════════════════════════
 
-## ASSESSMENT CRITERIA (30 Points Total)
+## ASSESSMENT CRITERIA (50 Points Total)
 
-### 1. Phase Alignment (15 Points)
+### 1. Phase Alignment (25 Points)
 
-**Full Points (13-15)**: Implementation matches Phase structure and specifications
+**Full Points (22-25)**: Implementation matches Phase structure and specifications
 - File structure follows Phase Development Environment section
 - Features implement Phase Core Features section
 - Code organization matches Phase Architecture sections
@@ -83,11 +84,11 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 
 **Deviation Classification**: When code structure deviates from Phase, classify each deviation:
 - **Improvement**: Improves architecture, fixes Phase ambiguity, or better fits the codebase. No penalty.
-- **Neutral**: Reasonable structural alternative with equivalent result. Minor penalty (1 pt max).
+- **Neutral**: Reasonable structural alternative with equivalent result. Minor penalty (2 pts max).
 - **Regression**: Missing structure, contradicts Phase architecture, or adds unspecified components. Full penalty.
 
-**Partial Points (8-12)**: General alignment with neutral deviations or minor gaps
-**Low Points (0-7)**: Regressions with significant structural differences or missing features
+**Partial Points (13-21)**: General alignment with neutral deviations or minor gaps
+**Low Points (0-12)**: Regressions with significant structural differences or missing features
 
 **Verification Approach**:
 1. Use Glob to list implemented files
@@ -108,30 +109,42 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 - **integration mode**: Cross-component structure matches Phase Integration Context
 - **test mode**: Test organization matches Phase Test Organization
 
-### 2. Phase Requirements (15 Points)
+**Plan Scope Coverage** (deduction up to -5 from Phase Alignment):
+If Plan file was read in step 4, check whether the Phase scope adequately covers the Plan's
+expectations for this phase. If the Phase omitted Plan-level requirements that were explicitly
+scoped to this phase, deduct up to -5 from the Phase Alignment score and note the gap.
+If no Plan file exists on disk, skip this check.
 
-**Full Points (13-15)**: Code implements all Phase objectives and scope items
-- All objectives from Phase addressed in code
-- Scope boundaries respected (no out-of-scope additions)
-- Technical constraints satisfied
-- Dependencies integrated correctly
+### 2. Phase Requirements (25 Points)
+
+**Per-FR Scoring**: Enumerate each Functional Requirement (FR) from the Phase document.
+Divide the 25 points equally across all FRs (e.g., 5 FRs = 5 pts each, 3 FRs ≈ 8 pts each).
+Score each FR individually:
+- **Fully implemented** (all acceptance criteria met): full points for that FR
+- **Partially implemented** (code exists but incomplete): proportional partial credit
+- **Not implemented** ([BLOCKING]): zero points AND mark as [BLOCKING] in Key Issues
+
+**BLOCKING Rule**: Mark `[BLOCKING]` ONLY when an FR has zero implementation evidence —
+no code path, no test, no file corresponds to the requirement. Partially implemented FRs
+receive proportional deductions but are NOT blocking.
+
+**Full Points (22-25)**: All FRs fully implemented, scope respected, constraints satisfied
+**Partial Points (13-21)**: Most FRs met with neutral deviations or minor gaps
+**Low Points (0-12)**: Significant FRs missing or incorrectly implemented
 
 **Deviation Classification**: When implementation deviates from Phase requirements, classify:
 - **Improvement**: Exceeds requirement intent, adds necessary error handling, or implements a more robust solution. No penalty.
-- **Neutral**: Satisfies requirement through an alternative approach. Minor penalty (1 pt max).
-- **Regression**: Requirement unmet, incorrectly implemented, or scope creep. Full penalty.
-
-**Partial Points (8-12)**: Most requirements met with neutral deviations or minor gaps
-**Low Points (0-7)**: Regressions with significant requirements missing or incorrectly implemented
+- **Neutral**: Satisfies requirement through an alternative approach. Minor penalty (2 pts max).
+- **Regression**: Requirement unmet or incorrectly implemented. Full penalty.
 
 **Verification Approach**:
-1. Extract objectives and scope from Phase
-2. Use Glob/Read to search for implementation evidence
-3. Verify each objective has corresponding code
+1. Extract all FRs and objectives from Phase
+2. Use Glob/Read to search for implementation evidence per FR
+3. Verify each FR has corresponding code
 4. Check scope items are fully addressed
 
 **Assessment Focus**:
-- Feature completeness per Phase
+- Feature completeness per Phase FR
 - Correctness of implementation (not just presence)
 - Integration of dependencies
 - Alignment with architecture decisions
@@ -148,17 +161,20 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 Store the following markdown as review section:
 
 ```markdown
-### Spec Alignment (Score: {{TOTAL}}/30)
+### Spec Alignment (Score: {{TOTAL}}/50)
 
-#### Phase Alignment (Score: {{ALIGNMENT_SCORE}}/15)
+#### Phase Alignment (Score: {{ALIGNMENT_SCORE}}/25)
 [Analysis of how implementation matches Phase]
 - **File Structure**: [matches/deviates from Phase]
 - **Feature Implementation**: [completeness assessment]
 - **Architecture Adherence**: [alignment with Phase architecture]
+- **Plan Scope Coverage**: [gaps vs Plan expectations, or "Plan not available"]
 
-#### Phase Requirements (Score: {{REQUIREMENTS_SCORE}}/15)
-[Analysis of how code addresses Phase objectives]
-- **Objectives Coverage**: [X/Y objectives implemented]
+#### Phase Requirements (Score: {{REQUIREMENTS_SCORE}}/25)
+[Per-FR analysis — enumerate each FR from Phase with individual scores]
+- **FR-1 [Name]** (X/Y pts): [implementation status — fully implemented / partially / [BLOCKING] not implemented]
+- **FR-N [Name]** (X/Y pts): [implementation status]
+- **Objectives Coverage**: [X/Y FRs fully implemented]
 - **Scope Adherence**: [within scope / scope creep detected]
 - **Technical Constraints**: [satisfied / violated]
 
@@ -167,6 +183,7 @@ Store the following markdown as review section:
 
 #### Key Issues
 - [List alignment issues with specific file/line references]
+- **[BLOCKING]**: [FR-N has zero implementation evidence — file:line]
 - **[DEVIATION-REGRESSION]**: [Description of harmful deviation with file/line reference]
 
 #### Recommendations

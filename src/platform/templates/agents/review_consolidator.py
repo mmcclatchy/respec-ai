@@ -15,32 +15,32 @@ consolidator_feedback_template = CriticFeedback(
 
 | Component | Score | Max |
 | --------- | ----- | --- |
-| Automated Quality Check | X | 70 |
-| Spec Alignment | X | 30 |
+| Automated Quality Check | X | 50 |
+| Spec Alignment | X | 50 |
 | Code Quality Adjustment | X | [-15 to +5] |
 | [Specialist] Adjustment (one row per active specialist) | X | [-10 to +5] |
 | **Total** | **X** | **100** |
 
-### Automated Quality Check (Score: X/70)
+### Automated Quality Check (Score: X/50)
 
-#### Tests Passing (Score: X/30)
+#### Tests Passing (Score: X/20)
 [Merged from review-quality-check section]
 
-#### Type Checking (Score: X/15)
+#### Type Checking (Score: X/11)
 [Merged from review-quality-check section]
 
-#### Linting (Score: X/10)
+#### Linting (Score: X/7)
 [Merged from review-quality-check section]
 
-#### Test Coverage (Score: X/15)
+#### Test Coverage (Score: X/12)
 [Merged from review-quality-check section]
 
-### Spec Alignment (Score: X/30)
+### Spec Alignment (Score: X/50)
 
-#### Phase Alignment (Score: X/15)
+#### Phase Alignment (Score: X/25)
 [Merged from review-spec-alignment section]
 
-#### Phase Requirements (Score: X/15)
+#### Phase Requirements (Score: X/25)
 [Merged from review-spec-alignment section]
 
 ### [Specialist Name] Review (Adjustment: X/[-10 to +5])
@@ -129,8 +129,8 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 ## CONSOLIDATION WORKFLOW
 
 Expected review sections:
-- review-quality-check (core: 70 points)
-- review-spec-alignment (core: 30 points)
+- review-quality-check (core: 50 points)
+- review-spec-alignment (core: 50 points)
 - review-code-quality (always active: -15 to +5)
 - review-frontend (specialist: -10 to +5)
 - review-backend-api (specialist: -10 to +5)
@@ -160,12 +160,12 @@ Extract scores from each review section's markdown headers:
 CORE_SCORES = {{}}
 
 For "review-quality-check" section:
-  Parse "### Automated Quality Check (Score: X/70)"
-  CORE_SCORES["quality_check"] = X  (out of 70)
+  Parse "### Automated Quality Check (Score: X/50)"
+  CORE_SCORES["quality_check"] = X  (out of 50)
 
 For "review-spec-alignment" section:
-  Parse "### Spec Alignment (Score: X/30)"
-  CORE_SCORES["spec_alignment"] = X  (out of 30)
+  Parse "### Spec Alignment (Score: X/50)"
+  CORE_SCORES["spec_alignment"] = X  (out of 50)
 
 SPECIALIST_ADJUSTMENTS = 0
 
@@ -204,9 +204,17 @@ For each section in REVIEW_SECTIONS:
 
 ```text
 BASE_SCORE = CORE_SCORES["quality_check"] + CORE_SCORES["spec_alignment"]
-  (quality_check out of 70 + spec_alignment out of 30 = base out of 100)
+  (quality_check out of 50 + spec_alignment out of 50 = base out of 100)
 
-OVERALL_SCORE = clamp(BASE_SCORE + SPECIALIST_ADJUSTMENTS, 0, 100)
+# Bonus isolation: specialist bonuses scale proportionally with spec alignment.
+# This prevents quality bonuses from masking spec gaps.
+# Deductions always apply in full regardless of spec score.
+SPECIALIST_DEDUCTIONS = sum of all negative specialist adjustments
+SPECIALIST_BONUSES = sum of all positive specialist adjustments
+EFFECTIVE_BONUSES = SPECIALIST_BONUSES * (CORE_SCORES["spec_alignment"] / 50)
+  (at 50/50 spec = 100% of bonuses; at 25/50 spec = 50%; at 0/50 spec = 0%)
+
+OVERALL_SCORE = clamp(BASE_SCORE + SPECIALIST_DEDUCTIONS + EFFECTIVE_BONUSES, 0, 100)
 
 ═══════════════════════════════════════════════
 MANDATORY BLOCKING ISSUE SCORE CAP
@@ -230,8 +238,8 @@ Combine all review section content into a single detailed_feedback markdown docu
 DETAILED_FEEDBACK = ""
 
 Build Score Summary table using CORE_SCORES and SPECIALIST_ADJUSTMENTS from Steps 2/3:
-  - Row 1: Automated Quality Check — CORE_SCORES["quality_check"] / 70
-  - Row 2: Spec Alignment — CORE_SCORES["spec_alignment"] / 30
+  - Row 1: Automated Quality Check — CORE_SCORES["quality_check"] / 50
+  - Row 2: Spec Alignment — CORE_SCORES["spec_alignment"] / 50
   - Row 3: Code Quality Adjustment — parsed from review-code-quality (always present)
   - For each active specialist section retrieved (review-frontend, review-backend-api,
     review-database, review-infrastructure, review-coding-standards):
@@ -290,12 +298,14 @@ Generate and store the final CriticFeedback markdown:
 ## SCORING RULES
 
 ### Core Base: 100 Points
-- Automated Quality Check: 70 points (Tests: 30, Types: 15, Lint: 10, Coverage: 15)
-- Spec Alignment: 30 points (Phase Alignment: 15, Requirements: 15)
+- Automated Quality Check: 50 points (Tests: 20, Types: 11, Lint: 7, Coverage: 12)
+- Spec Alignment: 50 points (Phase Alignment: 25, Requirements: 25)
 
 ### Specialist Adjustments
 - Each specialist can **deduct up to 10 points** for critical domain-specific issues
 - Each specialist can **add up to 5 bonus points** for exceptional domain-specific quality
+- Specialist bonuses scale with spec alignment: `effective_bonus = raw_bonus * (spec_alignment / 50)`
+- Specialist deductions always apply in full
 - Final score clamped to 0-100 range
 
 ### Score Preservation
