@@ -145,23 +145,17 @@ def _auto_apply_to_current_project(*, no_apply: bool) -> int:
         return 0
 
     try:
-        config = json.loads(config_path.read_text(encoding='utf-8'))
+        json.loads(config_path.read_text(encoding='utf-8'))
     except (json.JSONDecodeError, OSError) as e:
         print_warning(f'Auto-apply skipped: could not read project config ({e}).')
         print_info("Run 'respec-ai regenerate --force' after fixing .respec-ai/config.json.")
         return 0
 
-    tui = config.get('tui', 'claude-code')
-    if tui != 'codex':
-        print_info(f"Auto-apply skipped: project TUI is '{tui}' (requires 'codex').")
-        print_info("Run 'respec-ai regenerate --force' in a Codex-initialized project.")
-        return 0
-
-    print_info('Applying saved Codex model tiers to current project (forced regenerate)...')
+    print_info('Applying saved Codex model tiers to detected project TUI artifacts (forced regenerate)...')
     if _run_forced_regenerate() != 0:
         print_warning('Auto-apply failed: forced regenerate returned non-zero exit code.')
         return 1
-    print_info('Applied saved Codex model tiers to current project.')
+    print_info('Applied saved Codex model tiers to detected project TUI artifacts.')
     return 0
 
 

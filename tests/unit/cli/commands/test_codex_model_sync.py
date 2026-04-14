@@ -131,7 +131,7 @@ class TestCodexModelRun:
         assert result == 0
         mock_regen.assert_not_called()
 
-    def test_auto_apply_skips_when_project_tui_is_not_codex(
+    def test_auto_apply_runs_even_when_project_tui_is_not_codex(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.chdir(tmp_path)
@@ -144,7 +144,7 @@ class TestCodexModelRun:
 
         with (
             patch('src.cli.commands.codex_model.save_global_models'),
-            patch('src.cli.commands.codex_model._run_forced_regenerate') as mock_regen,
+            patch('src.cli.commands.codex_model._run_forced_regenerate', return_value=0) as mock_regen,
         ):
             result = codex_model.run(
                 Namespace(
@@ -158,7 +158,7 @@ class TestCodexModelRun:
                 )
             )
         assert result == 0
-        mock_regen.assert_not_called()
+        mock_regen.assert_called_once_with()
 
     def test_no_apply_suppresses_forced_regenerate(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
