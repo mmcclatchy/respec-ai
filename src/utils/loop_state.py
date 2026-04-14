@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.models.roadmap import Roadmap
 from src.utils.enums import HealthState, LoopStatus, LoopType, OperationStatus
@@ -40,6 +41,11 @@ class LoopState(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     feedback_history: list[CriticFeedback] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=datetime.now)
+    _BLOCKING_MARKERS = ('[blocking]', '[severity:p0]', 'severity=p0', '**[p0]**')
+    _BLOCKING_GATE_CRITICS = {
+        CriticAgent.REVIEW_CONSOLIDATOR,
+        CriticAgent.CODING_STANDARDS_REVIEWER,
+    }
 
     @property
     def mcp_response(self) -> MCPResponse:
@@ -55,7 +61,7 @@ class LoopState(BaseModel):
         self.current_score = score
 
     def decide_next_loop_action(self) -> MCPResponse:
-        if self.current_score >= self.loop_type.threshold:
+        if self.current_score >= self.loop_type.threshold and not self._latest_feedback_has_blockers():
             self.status = LoopStatus.COMPLETED
             return self.mcp_response
 
@@ -67,6 +73,24 @@ class LoopState(BaseModel):
 
         self.status = LoopStatus.REFINE
         return self.mcp_response
+
+    def _latest_feedback_has_blockers(self) -> bool:
+        if not self.feedback_history:
+            return False
+
+        latest_feedback = self.feedback_history[-1]
+        if latest_feedback.critic_agent not in self._BLOCKING_GATE_CRITICS:
+            return False
+
+        feedback_text = '\n'.join(
+            [
+                latest_feedback.assessment_summary,
+                latest_feedback.detailed_feedback,
+                *latest_feedback.key_issues,
+                *latest_feedback.recommendations,
+            ]
+        ).lower()
+        return any(marker in feedback_text for marker in self._BLOCKING_MARKERS)
 
     def _calculate_improvement(self, scores_ago: int = 1) -> int:
         if not self.score_history:

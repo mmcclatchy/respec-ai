@@ -224,6 +224,11 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **coding-standards-reviewer** - Project coding standards compliance
 - **review-consolidator** - Merges review sections into single CriticFeedback
 
+**Code Review Score Semantics**
+- Review workflows report the true computed score (0-100) from reviewer outputs.
+- Blocking findings (`[BLOCKING]` / `P0`) are enforced as a separate completion gate.
+- Result: scores remain transparent while blocking issues still prevent loop completion.
+
 **Specialized Agents:**
 - **create-phase** - External platform phase creation
 

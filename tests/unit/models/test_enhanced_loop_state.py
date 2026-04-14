@@ -1,6 +1,6 @@
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
-from src.utils.enums import LoopType
+from src.utils.enums import LoopStatus, LoopType
 from src.utils.loop_state import LoopState
 
 
@@ -98,3 +98,89 @@ class TestEnhancedLoopState:
 
         response = loop_state.decide_next_loop_action()
         assert response.id == loop_state.id
+
+    def test_review_consolidator_blocker_prevents_completion(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
+            iteration=1,
+            overall_score=96,
+            assessment_summary='Strong score with blocker',
+            detailed_feedback='Found critical issue [BLOCKING] in changed file.',
+            key_issues=['Critical blocker remains'],
+            recommendations=['Fix blocker'],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.REFINE
+
+    def test_coding_standards_blocker_prevents_completion(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.CODING_STANDARDS_REVIEWER,
+            iteration=1,
+            overall_score=97,
+            assessment_summary='Standards review raised a P0',
+            detailed_feedback='Violations include [Severity:P0] secret handling issue.',
+            key_issues=['P0 standards issue'],
+            recommendations=['Resolve P0 issue'],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.REFINE
+
+    def test_high_score_without_blockers_still_completes(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
+            iteration=1,
+            overall_score=96,
+            assessment_summary='High quality and no blockers',
+            detailed_feedback='No blocking findings remain.',
+            key_issues=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.COMPLETED
+
+    def test_blocker_with_checkpoint_returns_user_input(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        for i in range(1, 6):
+            feedback = CriticFeedback(
+                loop_id=loop_state.id,
+                critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
+                iteration=i,
+                overall_score=98,
+                assessment_summary=f'Iteration {i} with blocker',
+                detailed_feedback='Blocking condition persists: [BLOCKING]',
+                key_issues=['Blocking issue still active'],
+                recommendations=['Resolve blocker'],
+            )
+            loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.USER_INPUT
+
+    def test_non_review_critic_uses_existing_completion_behavior(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.PHASE_CRITIC,
+            iteration=1,
+            overall_score=97,
+            assessment_summary='High score from non-review critic',
+            detailed_feedback='Contains [BLOCKING] marker but from non-gated critic.',
+            key_issues=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.COMPLETED

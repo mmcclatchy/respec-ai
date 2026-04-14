@@ -285,16 +285,18 @@ EFFECTIVE_BONUSES = SPECIALIST_BONUSES * (CORE_SCORES["spec_alignment"] / 50)
 OVERALL_SCORE = clamp(BASE_SCORE + SPECIALIST_DEDUCTIONS + EFFECTIVE_BONUSES, 0, 100)
 
 ═══════════════════════════════════════════════
-MANDATORY BLOCKING ISSUE SCORE CAP
+MANDATORY BLOCKING ISSUE GATE (NO SCORE CAP)
 ═══════════════════════════════════════════════
+OVERALL_SCORE MUST remain the true calculated score (0-100), even when
+blocking issues are present.
+
 IF BLOCKING_FLAG:
-  OVERALL_SCORE = 79 (hardcoded cap, no exceptions)
+  Keep OVERALL_SCORE unchanged.
+  Mark blocking gate active in key issues and assessment summary.
+  Blocking issues MUST be resolved before review can pass.
 
-IF NOT BLOCKING_FLAG:
-  OVERALL_SCORE = calculated normally (0-100)
-
-VIOLATION: Score >= 80 when [BLOCKING] markers exist.
-           Blocking issues MUST force score <= 79.
+VIOLATION: Overwriting OVERALL_SCORE to a hardcoded value (for example 79)
+           when blocking issues exist.
 ═══════════════════════════════════════════════
 ```
 
@@ -351,7 +353,7 @@ For each review section:
 
 IF BLOCKING_FLAG:
   Insert at top of KEY_ISSUES:
-    "**[SCORE CAPPED - BLOCKING]**: Score capped at 79 due to blocking issues from: {{BLOCKING_SOURCES}}. These MUST be resolved before passing review."
+    "**[BLOCKING GATE ACTIVE]**: Blocking issues detected from: {{BLOCKING_SOURCES}}. True score is reported, but these issues MUST be resolved before passing review."
 
 Filter KEY_ISSUES and RECOMMENDATIONS:
   - Suppress deferred (DR-###) non-P0 items from score-penalizing lists

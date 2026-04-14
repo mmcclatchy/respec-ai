@@ -208,6 +208,14 @@ class TestReviewConsolidatorTemplate:
         assert 'Task policy is primary source of truth. Feedback snapshot is fallback only.' in template
         assert '### Accepted for this loop' in template
 
+    def test_template_uses_true_score_with_blocking_gate(self) -> None:
+        tools = create_review_consolidator_agent_tools(_adapter)
+        template = generate_review_consolidator_template(tools)
+        assert 'MANDATORY BLOCKING ISSUE GATE (NO SCORE CAP)' in template
+        assert '**[BLOCKING GATE ACTIVE]**' in template
+        assert 'OVERALL_SCORE = 79' not in template
+        assert 'Score capped at 79' not in template
+
 
 class TestReviewAgentConsistency:
     def test_all_review_agents_use_sonnet(self) -> None:

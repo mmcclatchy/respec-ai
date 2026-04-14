@@ -397,7 +397,7 @@ IF CODING_DECISION == "refine":
   Call MCP decision again.
 
 ELIF CODING_DECISION == "complete":
-  Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached"
+  Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached, no active blockers"
   IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 6.5
   ELSE: Proceed to Step 7
 
@@ -465,7 +465,7 @@ Loop:
   STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
 
   IF STANDARDS_DECISION == "complete":
-    Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached"
+    Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached, no active blockers"
     exit loop
 
   IF STANDARDS_DECISION == "refine":
