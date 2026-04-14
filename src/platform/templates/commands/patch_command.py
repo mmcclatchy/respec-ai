@@ -24,6 +24,23 @@ PLAN_NAME = [first argument from command - the project name]
 CHANGE_DESCRIPTION = [all remaining arguments - description of the change needed]
 ```
 
+#### Step 1.2: Capture Execution Mode (MANDATORY)
+
+```text
+Use AskUserQuestion:
+  Header: "Patch Mode"
+  Question: "Which delivery intent should this patch follow?"
+  multiSelect: false
+  Options:
+    - MVP: Prioritize core functional/spec delivery, defer non-P0 hardening
+    - mixed: Balance feature completion and targeted hardening
+    - hardening: Prioritize full quality hardening and strict review
+
+EXECUTION_MODE = [selected option label normalized to MVP|mixed|hardening]
+
+Display: "Execution mode selected: {{EXECUTION_MODE}}"
+```
+
 #### Step 1.1: Resolve Active Plan (if referenced)
 
 ```text
@@ -120,6 +137,16 @@ Create a targeted amendment task through refinement:
 
 ```text
 PLANNING_LOOP_ID = {tools.initialize_planning_loop}
+
+LOOP_ID = PLANNING_LOOP_ID
+USER_FEEDBACK_MARKDOWN = (
+  "## Execution Intent Snapshot\\n"
+  + "- Mode: {{EXECUTION_MODE}}\\n"
+  + "- Source: patch-mode-selection\\n"
+  + "- Tie-Break Policy: Prioritize core functional/spec delivery unless active P0 risks demand otherwise.\\n"
+  + "- Deferred Risk Register Source: Task Acceptance Criteria"
+)
+{tools.store_user_feedback}
 ```
 
 #### Step 3.2: Link Planning Loop to Phase
@@ -188,6 +215,26 @@ Parse amendment task to determine which specialist reviewers to activate:
 TASK_MARKDOWN = {tools.get_task_document}
 ```
 
+#### Step 4.1.1: Validate Resolved Mode Against Task Policy
+
+```text
+TASK_MODE = extract from:
+  "### Acceptance Criteria > #### Execution Intent Policy > Mode"
+
+IF TASK_MODE in {{MVP,mixed,hardening}} AND TASK_MODE != EXECUTION_MODE:
+  Use AskUserQuestion:
+    Header: "Mode Mismatch"
+    Question: "Task policy mode differs from selected patch mode. Which should this loop use?"
+    Options: selected patch mode, task policy mode
+  EXECUTION_MODE = [user-selected mode]
+
+IF TASK_MODE missing:
+  # Patch planner may be legacy. Keep user-selected mode as source of truth.
+  EXECUTION_MODE = EXECUTION_MODE
+
+Display: "Resolved execution mode: {{EXECUTION_MODE}}"
+```
+
 #### Step 4.2: Extract Step Modes
 
 ```text
@@ -210,7 +257,7 @@ Display: "Detected step modes: {{STEP_MODES}}"
 #### Step 4.3: Resolve Active Reviewers
 
 ```text
-ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer"]
+ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer", "code-quality-reviewer"]
 
 IF "frontend" in STEP_MODES:
   ACTIVE_REVIEWERS.append("frontend-reviewer")
@@ -251,6 +298,16 @@ Display: "Phase 1 reviewers: {{PHASE1_REVIEWERS}}"
 
 ```text
 CODING_LOOP_ID = {tools.initialize_coding_loop}
+
+LOOP_ID = CODING_LOOP_ID
+USER_FEEDBACK_MARKDOWN = (
+  "## Execution Intent Snapshot\\n"
+  + "- Mode: {{EXECUTION_MODE}}\\n"
+  + "- Source: patch-mode-selection\\n"
+  + "- Tie-Break Policy: Prioritize core functional/spec delivery unless active P0 risks demand otherwise.\\n"
+  + "- Deferred Risk Register Source: Task Acceptance Criteria"
+)
+{tools.store_user_feedback}
 ```
 
 #### Step 5.2: CRITICAL - Dual Loop ID Management
@@ -291,6 +348,10 @@ Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-quality-c
 {tools.invoke_spec_alignment}
 
 Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-spec-alignment
+
+{tools.invoke_code_quality}
+
+Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-code-quality
 
 **Optional Specialist Reviewers (from PHASE1_REVIEWERS):**
 For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core and not consolidator:

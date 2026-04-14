@@ -443,6 +443,31 @@ class TestCrossPlatformInvocationRendering:
         assert 'Task(respec-phase-planner)' not in template
         assert 'Task(respec-task-critic)' not in template
 
+    def test_code_template_includes_mode_resolution_precedence(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '### 6.7 Resolve Delivery Intent Policy' in template
+        assert 'Deterministic precedence' in template
+        assert 'RESOLVED_MODE_SOURCE = "task-policy"' in template
+        assert 'RESOLVED_MODE_SOURCE = "phase-override"' in template
+        assert 'RESOLVED_MODE_SOURCE = "plan-default"' in template
+        assert 'RESOLVED_MODE_SOURCE = "default-MVP"' in template
+
+    def test_code_template_includes_deterministic_user_input_mode_options(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'Continue refine in current mode' in template
+        assert 'Switch mode and continue refine' in template
+        assert 'Finalize now with deferred-risk summary' in template
+
     def test_task_template_excludes_stale_create_task_target(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -451,3 +476,18 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert 'Task(respec-create-task)' not in template
+
+    def test_patch_template_requires_upfront_mode_and_code_quality_core_reviewer(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '#### Step 1.2: Capture Execution Mode (MANDATORY)' in template
+        assert 'Header: "Patch Mode"' in template
+        assert (
+            'ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer", "code-quality-reviewer"]'
+            in template
+        )
+        assert 'review-code-quality' in template

@@ -21,14 +21,15 @@ INPUTS: Dual loop context for quality assessment
 - phase_name: Phase name for context
 
 TASKS: Run Static Analysis → Generate Review Section → Store
-1. Retrieve Phase: {tools.retrieve_phase}
-2. Retrieve previous feedback: {tools.retrieve_feedback}
-3. Discover tech stack from Phase Technology Stack section
-4. Run test suite with coverage
-5. Run type checker
-6. Run linter
-7. Calculate section scores
-8. Store review section: {tools.store_review_section}
+1. Retrieve Task: {tools.retrieve_task}
+2. Retrieve Phase: {tools.retrieve_phase}
+3. Retrieve previous feedback: {tools.retrieve_feedback}
+4. Discover tech stack from Phase Technology Stack section
+5. Run test suite with coverage
+6. Run type checker
+7. Run linter
+8. Calculate section scores
+9. Store review section: {tools.store_review_section}
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
@@ -71,6 +72,30 @@ Do NOT read other repositories or MCP server source code.
 VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
            when you should use store_review_section MCP tool.
 ═══════════════════════════════════════════════
+
+## MODE-AWARE REVIEW CONTRACT (MANDATORY)
+
+Resolve mode and deferred risks from Task:
+- Parse `### Acceptance Criteria > #### Execution Intent Policy > Mode`
+- Parse `### Acceptance Criteria > #### Deferred Risk Register`
+- Mode fallback: `MVP` if missing
+
+For EVERY finding, include BOTH tags:
+- Severity tag: `[Severity:P0]`, `[Severity:P1]`, `[Severity:P2]`, or `[Severity:P3]`
+- Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
+
+Scope constraints:
+- Score-impacting findings should focus on changed files and explicit acceptance-criteria gaps.
+- Use `[Scope:global]` only for cross-cutting test/type/lint/coverage evidence.
+
+Deferred-risk suppression:
+- If a finding maps to Deferred Risk Register item `DR-###`, tag it `[Scope:deferred]`.
+- Deferred items DO NOT deduct unless new evidence promotes them to `P0`.
+
+Mode-aware behavior:
+- `MVP`: treat non-core hardening findings as advisory (`P2/P3`, usually deferred/global).
+- `mixed`: allow targeted quality deductions for changed-file or acceptance-gap findings.
+- `hardening`: full weighting active across all categories.
 
 ## PROJECT CONFIGURATION
 
@@ -233,10 +258,10 @@ Store the following markdown as review section:
 - Testing implementation details: [NONE / count flagged — file:line references]
 
 #### Key Issues
-- [List issues found, with file:line references]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Issue with file:line references]
 
 #### Recommendations
-- [List recommendations with expected point impact]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Recommendation with expected point impact]
 ```
 
 ## EVIDENCE-BASED ASSESSMENT

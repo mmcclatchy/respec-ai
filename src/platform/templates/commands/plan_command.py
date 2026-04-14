@@ -53,6 +53,10 @@ plan_template = Plan(
     ),
     quality_assurance=(
         '### Quality Bar\n[Quantified quality thresholds and performance targets]\n\n'
+        '### Delivery Intent Policy\n'
+        '- Default Mode: [MVP|mixed|hardening]\n'
+        '- Tie-Break Policy: [How to resolve MVP-vs-hardening conflicts]\n'
+        '- Deferred Risk Rule: [How accepted risks are tracked/suppressed during the chosen mode]\n\n'
         '### Testing Strategy\n[Testing approach from quality requirements]\n\n'
         '### Acceptance Criteria\n[Acceptance criteria from success metrics discussion]'
     ),
@@ -307,6 +311,8 @@ Expected structured format from plan-conversation (markdown document):
 
 ## Quality Bar
 [Test coverage minimum, security requirements, accessibility standards]
+Delivery Intent Default: [MVP|mixed|hardening]
+Intent Tie-Break Policy: [How to resolve MVP vs hardening conflicts]
 
 ## Conversation Summary
 - **Total Stages Completed**: 6
@@ -368,12 +374,18 @@ VIOLATION: Adding any H2 header not in the list above.
 Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
-3. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
-4. **If PLAN_REFERENCE_FILE is not None**: You MUST append this exact line to the resource_requirements section:
+3. **Resolve delivery intent defaults from conversation context**:
+   - Parse `Delivery Intent Default` and `Intent Tie-Break Policy` from conversation Quality Bar
+   - If missing/ambiguous, default to:
+     - Default Mode: MVP
+     - Tie-Break Policy: "When in doubt, prioritize core functional/spec delivery and defer non-P0 hardening risks."
+4. **Persist Delivery Intent Policy in Plan `## Quality Assurance`** using a structured `### Delivery Intent Policy` block
+5. **Incorporate previous feedback** if CRITIC_FEEDBACK variable exists from prior iterations
+6. **If PLAN_REFERENCE_FILE is not None**: You MUST append this exact line to the resource_requirements section:
    `Plan Reference: {{PLAN_REFERENCE_FILE}}` — phase-architect reads this as hard constraints.
    Do NOT inline the decisions and omit the file path. The path is how downstream agents access the full implementation details.
-5. **MUST store in variable** as CURRENT_PLAN — required for Steps 4 and 5
-6. **MUST store in MCP** using: `{tools.store_plan}` — verify storage succeeds before proceeding
+7. **MUST store in variable** as CURRENT_PLAN — required for Steps 4 and 5
+8. **MUST store in MCP** using: `{tools.store_plan}` — verify storage succeeds before proceeding
    IF MCP storage fails: retry once. IF second attempt fails: display error and STOP.
 
 ## Step 3.2: Write Plan to External File/Platform

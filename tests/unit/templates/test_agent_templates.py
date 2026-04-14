@@ -5,6 +5,7 @@ from src.platform.tui_adapters import ClaudeCodeAdapter
 
 from src.platform.template_helpers import (
     create_create_phase_agent_tools,
+    create_patch_planner_agent_tools,
     create_phase_architect_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
@@ -13,6 +14,7 @@ from src.platform.template_helpers import (
 )
 from src.platform.templates.agents import (
     generate_create_phase_template,
+    generate_patch_planner_template,
     generate_phase_architect_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
@@ -280,6 +282,13 @@ class TestTemplateConsistency:
         assert 'DEVIATION LOG PROTOCOL' in template
         assert '#### TUI Plan Deviation Log' in template
 
+    def test_phase_architect_template_propagates_delivery_intent_override_contract(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+        assert 'PLAN_DELIVERY_INTENT_POLICY' in template
+        assert '#### Delivery Intent Override' in template
+        assert 'Mode: inherit-plan-default' in template
+
     def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:
         task_planner_tools = create_task_planner_agent_tools(_adapter)
         template = generate_task_planner_template(task_planner_tools)
@@ -290,3 +299,14 @@ class TestTemplateConsistency:
         assert '(per plan reference: filename.md § "Section Name" (lines X-Y))' in template
         assert '### Technology Stack Reference' in template
         assert '### Steps' in template
+        assert '#### Execution Intent Policy' in template
+        assert '#### Deferred Risk Register' in template
+        assert 'DR-001' in template
+
+    def test_patch_planner_template_requires_execution_intent_and_deferred_risks(self) -> None:
+        patch_planner_tools = create_patch_planner_agent_tools(_adapter)
+        template = generate_patch_planner_template(patch_planner_tools)
+        assert '- execution_mode: User-selected mode from respec-patch command' in template
+        assert '#### Execution Intent Policy' in template
+        assert '#### Deferred Risk Register' in template
+        assert 'patch-mode-selection' in template

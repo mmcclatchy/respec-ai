@@ -14,7 +14,13 @@ amendment_task_example = Task(
     acceptance_criteria=(
         '- Token expiry uses milliseconds consistently\n'
         '- Existing tests updated to verify correct expiry timing\n'
-        '- No regression in token validation logic'
+        '- No regression in token validation logic\n\n'
+        '#### Execution Intent Policy\n'
+        '- Mode: MVP\n'
+        '- Source: patch-mode-selection\n'
+        '- Tie-Break Policy: Prioritize core functional/spec delivery; defer non-P0 hardening gaps.\n\n'
+        '#### Deferred Risk Register\n'
+        '- DR-001 | status=accepted | severity=P2 | scope=deferred | reason=Token rotation hardening deferred to follow-up patch'
     ),
     tech_stack_reference='PyJWT 2.x, Python 3.13+',
     implementation_checklist=(
@@ -73,6 +79,7 @@ INPUTS: Loop context, Phase information, and change description
 - plan_name: Project name
 - phase_name: Phase name for retrieval
 - change_description: User's description of the change needed
+- execution_mode: User-selected mode from respec-patch command (MVP|mixed|hardening)
 
 TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
 1. Retrieve Phase: {tools.retrieve_phase}
@@ -88,6 +95,10 @@ TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
 
    IF IMPL_PLAN_CONSTRAINTS is non-empty:
      Treat as HARD CONSTRAINTS in amendment task — do NOT deviate from technology choices documented here
+1.75 Resolve execution intent policy:
+   - Primary source: execution_mode input from orchestrating command
+   - If missing/invalid: default to MVP
+   - Store resolved mode, source, and tie-break policy in Acceptance Criteria
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
 4. Explore affected codebase:
@@ -127,6 +138,21 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 - Do NOT rename or reorder any header
 
 **MCP Validation will REJECT documents that don't match this structure.**
+
+### Acceptance Criteria Contract (MANDATORY)
+
+Within `### Acceptance Criteria`, include BOTH sub-blocks exactly once:
+
+1. `#### Execution Intent Policy`
+- Mode: MVP | mixed | hardening
+- Source: patch-mode-selection | default-MVP
+- Tie-Break Policy: one sentence
+
+2. `#### Deferred Risk Register`
+- Use stable IDs: `DR-001`, `DR-002`, ...
+- Each line format:
+  `- DR-### | status=accepted|open | severity=P0|P1|P2|P3 | scope=changed-file|acceptance-gap|global|deferred | reason=...`
+- If no deferred risks: add `- None`
 
 ## TASK STRUCTURE (CONCRETE EXAMPLE)
 
@@ -174,7 +200,9 @@ The slug should be derived from the change_description, keeping it concise but s
 
 ### Overview
 - **Goal**: User's change_description expanded with codebase context (one sentence, imperative tone)
-- **Acceptance Criteria**: Specific conditions verified through codebase exploration
+- **Acceptance Criteria**: Specific conditions verified through codebase exploration PLUS:
+  - `#### Execution Intent Policy` block
+  - `#### Deferred Risk Register` block with stable DR IDs
 - **Technology Stack Reference**: Technologies used by this Task's Steps
 
 ### Implementation (CRITICAL)

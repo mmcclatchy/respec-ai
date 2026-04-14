@@ -623,6 +623,7 @@ class PatchCommandTools(CommandToolsModel):
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
     invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
+    invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')
     invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
     invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
     phase1_review_parallel_policy: str = Field(
@@ -1299,6 +1300,7 @@ class CodingStandardsReviewerAgentTools(AgentToolsModel):
 
 class ReviewConsolidatorAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_REVIEW_SECTION,
         RespecAITool.LIST_REVIEW_SECTIONS,
         RespecAITool.GET_FEEDBACK,
@@ -1308,6 +1310,7 @@ class ReviewConsolidatorAgentTools(AgentToolsModel):
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_task: str = Field(..., description='Retrieve Task document for mode and deferred-risk policy')
     retrieve_review_sections: str = Field(..., description='List review section documents')
     get_review_section: str = Field(..., description='Get individual review section document')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')

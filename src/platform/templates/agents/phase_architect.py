@@ -147,6 +147,10 @@ PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
 PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
   (performance targets, security reqs, test coverage minimum — reference in Testing Strategy)
   IF section missing: PLAN_QUALITY_BAR = None
+
+PLAN_DELIVERY_INTENT_POLICY = extract content of "### Delivery Intent Policy" section
+  (default delivery mode + tie-break policy for downstream refinement loops)
+  IF section missing: PLAN_DELIVERY_INTENT_POLICY = None
 ```
 
 STEP 0.6: Execute Archive Scan
@@ -277,6 +281,7 @@ PLAN_ARCHITECTURE → Architecture section refines and elaborates this baseline
 PLAN_TECHNOLOGY_DECISIONS → Technology Stack should align by default
 PLAN_ANTI_REQUIREMENTS → Scope exclusions should be preserved
 PLAN_QUALITY_BAR → Testing Strategy and NFRs should reference these targets
+PLAN_DELIVERY_INTENT_POLICY → Success Criteria should declare a phase-level override or explicit inheritance
 
 DEVIATION LOG PROTOCOL (MANDATORY WHEN DEVIATING):
 If you deviate from any plan/reference constraint, you MUST add an entry under:
@@ -327,6 +332,17 @@ IF PLAN_QUALITY_BAR is not None:
   → Reference in Testing Strategy section (test coverage minimum, performance targets)
   → Reference in Non-Functional Requirements (security, accessibility thresholds)
   → If deviating from targets, document via DEVIATION LOG PROTOCOL
+
+IF PLAN_DELIVERY_INTENT_POLICY is not None:
+  → In `### Success Criteria`, include:
+    `#### Delivery Intent Override`
+  → Set one of:
+    - `Mode: MVP|mixed|hardening` (explicit phase override), OR
+    - `Mode: inherit-plan-default`
+  → Include tie-break rule text for this phase
+  → If omitted, set explicit inheritance:
+    `Mode: inherit-plan-default`
+    `Tie-Break Policy: inherit-plan-policy`
 ```
 
 → Integrate ARCHIVE_SCAN_RESULTS (from STEP 0.6) for research requirements
@@ -726,6 +742,7 @@ type Resource {{
 - [ ] If PLAN_TECHNOLOGY_REJECTIONS present: Rejected technologies are excluded unless deviation is documented
 - [ ] If PLAN_ANTI_REQUIREMENTS present: Phase Scope includes exclusions unless deviation is documented
 - [ ] If PLAN_QUALITY_BAR present: Testing Strategy and NFRs reference targets unless deviation is documented
+- [ ] Success Criteria includes `#### Delivery Intent Override` (explicit mode or inherit-plan-default)
 - [ ] If any plan/reference deviation exists: `#### TUI Plan Deviation Log` is present with required fields
 
 **Optional Core Sections** (Include if relevant):

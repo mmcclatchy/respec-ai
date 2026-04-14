@@ -12,7 +12,13 @@ task_example = Task(
         '- Docker container starts successfully\n'
         '- Health checks pass within 60 seconds\n'
         '- Neo4j web interface accessible at localhost:7474\n'
-        '- Python environment configured with dependencies'
+        '- Python environment configured with dependencies\n\n'
+        '#### Execution Intent Policy\n'
+        '- Mode: MVP\n'
+        '- Source: phase-success-criteria-override\n'
+        '- Tie-Break Policy: Prioritize core functional/spec delivery; defer non-P0 hardening gaps.\n\n'
+        '#### Deferred Risk Register\n'
+        '- DR-001 | status=accepted | severity=P2 | scope=global | reason=Container image hardening deferred to post-MVP'
     ),
     tech_stack_reference='Docker 24+, Docker Compose v2, Neo4j 5.x, Python 3.13+',
     implementation_checklist=(
@@ -159,6 +165,12 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    VIOLATION: Ignoring a PHASE_DEVIATION_OVERRIDES entry when it applies.
    VIOLATION: Suggesting an alternative to IMPL_PLAN_CONSTRAINTS without matching deviation entry.
    ═══════════════════════════════════════════════
+1.75 Resolve execution intent policy from Phase:
+   Parse `### Success Criteria > #### Delivery Intent Override` from PHASE_MARKDOWN.
+   - If explicit override mode exists: use it.
+   - If mode is `inherit-plan-default` or missing/ambiguous: default to `MVP`.
+   - Capture resolved mode, source, and tie-break policy for Task Acceptance Criteria.
+   - Never leave execution intent unspecified.
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
 4. Read research documents (if research_file_paths provided):
@@ -210,6 +222,21 @@ To add detail beyond required H3 headers:
 
 VIOLATION: Adding "### Implementation Notes" under ## Implementation — silently dropped on storage.
 ═══════════════════════════════════════════════
+
+### Acceptance Criteria Contract (MANDATORY)
+
+Within `### Acceptance Criteria`, include BOTH sub-blocks exactly once:
+
+1. `#### Execution Intent Policy`
+- Mode: MVP | mixed | hardening
+- Source: task-override | phase-override | plan-default | default-MVP
+- Tie-Break Policy: one sentence
+
+2. `#### Deferred Risk Register`
+- Use stable IDs: `DR-001`, `DR-002`, ...
+- Each line format:
+  `- DR-### | status=accepted|open | severity=P0|P1|P2|P3 | scope=changed-file|acceptance-gap|global|deferred | reason=...`
+- If no deferred risks: add `- None`
 
 ## TASK STRUCTURE (CONCRETE EXAMPLE)
 
@@ -297,7 +324,9 @@ Examples:
 
 ### Overview
 - **Goal**: Clear implementation objective from Phase (one sentence, imperative tone)
-- **Acceptance Criteria**: Verifiable checkpoints from Phase deliverables
+- **Acceptance Criteria**: Verifiable checkpoints from Phase deliverables PLUS:
+  - `#### Execution Intent Policy` block
+  - `#### Deferred Risk Register` block with stable DR IDs
 - **Technology Stack Reference**: Technologies used by this Task's Steps, with plan-reference citations for constrained choices when applicable
 
 ### Implementation (CRITICAL)

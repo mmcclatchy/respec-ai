@@ -72,6 +72,29 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
            when you should use store_review_section MCP tool.
 ═══════════════════════════════════════════════
 
+## MODE-AWARE REVIEW CONTRACT (MANDATORY)
+
+Resolve mode and deferred risks from Task:
+- Parse `### Acceptance Criteria > #### Execution Intent Policy > Mode`
+- Parse `### Acceptance Criteria > #### Deferred Risk Register`
+- Mode fallback: `MVP` if missing
+
+For EVERY finding, include BOTH tags:
+- Severity tag: `[Severity:P0]`, `[Severity:P1]`, `[Severity:P2]`, or `[Severity:P3]`
+- Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
+
+Scope constraints:
+- Score-impacting findings should be limited to changed files and explicit acceptance-criteria gaps.
+
+Deferred-risk suppression:
+- If a finding maps to Deferred Risk Register item `DR-###`, tag it `[Scope:deferred]`.
+- Deferred items DO NOT deduct unless promoted to `P0` by new evidence.
+
+Mode-aware behavior:
+- `MVP`: only core functional/spec gaps should materially impact scoring.
+- `mixed`: core + selected quality findings (changed-file / acceptance-gap) may deduct.
+- `hardening`: full review weighting active.
+
 ## ASSESSMENT CRITERIA (50 Points Total)
 
 ### 1. Phase Alignment (25 Points)
@@ -182,12 +205,12 @@ Store the following markdown as review section:
 - [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description of each deviation found, with file reference]
 
 #### Key Issues
-- [List alignment issues with specific file/line references]
-- **[BLOCKING]**: [FR-N has zero implementation evidence — file:line]
-- **[DEVIATION-REGRESSION]**: [Description of harmful deviation with file/line reference]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Alignment issue with file:line references]
+- **[Severity:P0] [Scope:acceptance-gap] [BLOCKING]**: [FR-N has zero implementation evidence — file:line]
+- **[Severity:P1|P2] [Scope:changed-file] [DEVIATION-REGRESSION]**: [Description of harmful deviation with file/line reference]
 
 #### Recommendations
-- [List recommendations with expected point impact]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Recommendation with expected point impact]
 ```
 
 ## EVIDENCE-BASED ASSESSMENT

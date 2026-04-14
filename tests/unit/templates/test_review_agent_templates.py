@@ -2,6 +2,7 @@ from src.platform.tui_adapters import ClaudeCodeAdapter
 from src.platform.template_helpers import (
     create_automated_quality_checker_agent_tools,
     create_backend_api_reviewer_agent_tools,
+    create_code_quality_reviewer_agent_tools,
     create_coder_agent_tools,
     create_database_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
@@ -12,6 +13,7 @@ from src.platform.template_helpers import (
 from src.platform.templates.agents import (
     generate_automated_quality_checker_template,
     generate_backend_api_reviewer_template,
+    generate_code_quality_reviewer_template,
     generate_coder_template,
     generate_database_reviewer_template,
     generate_frontend_reviewer_template,
@@ -197,6 +199,14 @@ class TestReviewConsolidatorTemplate:
 
         assert 'mcp__respec-ai__store_critic_feedback' in template
         assert 'mcp__respec-ai__list_review_sections' in template
+        assert 'mcp__respec-ai__get_document' in template
+
+    def test_template_uses_task_first_mode_context_and_accepted_loop_section(self) -> None:
+        tools = create_review_consolidator_agent_tools(_adapter)
+        template = generate_review_consolidator_template(tools)
+        assert '- task_loop_id: Loop identifier for Task retrieval' in template
+        assert 'Task policy is primary source of truth. Feedback snapshot is fallback only.' in template
+        assert '### Accepted for this loop' in template
 
 
 class TestReviewAgentConsistency:
@@ -253,6 +263,22 @@ class TestReviewAgentConsistency:
         for template in templates:
             for pattern in behavioral_patterns:
                 assert pattern not in template, f'Template contains behavioral description: {pattern}'
+
+    def test_reviewers_enforce_mode_aware_severity_scope_contract(self) -> None:
+        reviewer_templates = [
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+        ]
+        for template in reviewer_templates:
+            assert 'MODE-AWARE REVIEW CONTRACT (MANDATORY)' in template
+            assert '[Severity:P0]' in template
+            assert '[Scope:changed-file]' in template
+            assert 'Deferred Risk Register' in template
 
 
 class TestCoderTemplateConfig:

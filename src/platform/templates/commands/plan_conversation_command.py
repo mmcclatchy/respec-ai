@@ -54,7 +54,11 @@ conversation_context_template = ConversationContext(
     risk_assessment=[
         '[Technical risk with severity/likelihood/mitigation (e.g., "HIGH: Third-party API rate limits — mitigation: local caching layer")]',
     ],
-    quality_bar='[Test coverage minimum, security requirements, accessibility standards, performance thresholds]',
+    quality_bar=(
+        '[Test coverage minimum, security requirements, accessibility standards, performance thresholds]\n'
+        'Delivery Intent Default: [MVP|mixed|hardening]\n'
+        'Intent Tie-Break Policy: [How to resolve MVP vs hardening conflicts for this plan]'
+    ),
     total_stages_completed=6,
     key_insights=['[Main discoveries or understandings from the conversation]'],
     areas_of_emphasis=['[Topics or aspects the user focused on most]'],
@@ -265,6 +269,7 @@ Topics to cover through natural follow-up (not all at once):
 - Expected load and performance targets (offer sensible defaults if user is unsure)
 - What could go wrong technically — surface the challenges from Stage 5 as risks
 - Quality bar: test coverage, security, accessibility expectations
+- Delivery intent default for implementation loops (MVP, mixed, or hardening) and tie-break policy
 
 ═══════════════════════════════════════════════
 MANDATORY ANTI-REQUIREMENTS PROTOCOL
@@ -288,6 +293,21 @@ VIOLATION: Generating CONVERSATION_CONTEXT with an empty
 
 For each risk identified: capture severity, likelihood, and a mitigation approach.
 Use the Decision Facilitation Pattern for high-severity risks with multiple mitigations.
+
+═══════════════════════════════════════════════
+MANDATORY DELIVERY INTENT CAPTURE PROTOCOL
+═══════════════════════════════════════════════
+Before completion, you MUST capture a default delivery intent policy:
+- Default Mode: one of MVP, mixed, hardening
+- Tie-Break Policy: how to resolve MVP-vs-hardening conflicts in later loops
+
+If user has no preference:
+- Set Default Mode to MVP
+- Set Tie-Break Policy to: "When in doubt, prioritize core functional/spec delivery and defer non-P0 hardening risks."
+
+Record both fields in CONVERSATION_CONTEXT under Quality Bar.
+VIOLATION: Completing conversation without explicit delivery intent default and tie-break policy.
+═══════════════════════════════════════════════
 
 ### Final Validation
 Before wrapping up, summarize what you've heard across all topics and ask the user to confirm.
@@ -325,6 +345,7 @@ ALL of the following MUST be true before generating CONVERSATION_CONTEXT:
 - [ ] Anti-requirements documented (what system MUST NOT do)
 - [ ] Performance/scale targets defined (or sensible defaults accepted)
 - [ ] Technical risks identified with mitigations
+- [ ] Delivery intent default and tie-break policy captured
 - [ ] User confirms understanding is accurate
 
 IF ANY item is unchecked: DO NOT generate CONVERSATION_CONTEXT.

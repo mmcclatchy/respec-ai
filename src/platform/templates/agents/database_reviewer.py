@@ -69,6 +69,29 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
            when you should use store_review_section MCP tool.
 ═══════════════════════════════════════════════
 
+## MODE-AWARE REVIEW CONTRACT (MANDATORY)
+
+Resolve mode and deferred risks from Task:
+- Parse `### Acceptance Criteria > #### Execution Intent Policy > Mode`
+- Parse `### Acceptance Criteria > #### Deferred Risk Register`
+- Mode fallback: `MVP` if missing
+
+For EVERY finding, include BOTH tags:
+- Severity tag: `[Severity:P0]`, `[Severity:P1]`, `[Severity:P2]`, or `[Severity:P3]`
+- Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
+
+Scope constraints:
+- Score-impacting findings should focus on changed schema/query files and explicit acceptance-criteria gaps.
+
+Deferred-risk suppression:
+- If a finding maps to Deferred Risk Register item `DR-###`, tag it `[Scope:deferred]`.
+- Deferred items DO NOT deduct unless promoted to `P0` by new evidence.
+
+Mode-aware behavior:
+- `MVP`: only core data correctness/integrity regressions should deduct materially.
+- `mixed`: core + selected database quality deductions may apply.
+- `hardening`: full database quality weighting active.
+
 ## ASSESSMENT AREAS
 
 ### Schema Design
@@ -131,10 +154,10 @@ Store the following markdown as review section:
 - [Unbounded JOINs without WHERE clauses]
 
 #### Key Issues
-- [List database issues with file:line references]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Database issue with file:line references]
 
 #### Recommendations
-- [List recommendations sorted by impact]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Recommendation sorted by impact]
 ```
 
 ## SCORING IMPACT

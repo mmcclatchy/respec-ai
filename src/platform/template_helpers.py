@@ -327,12 +327,14 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.CODE_QUALITY_REVIEWER)
     builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
     builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
     builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
+    builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     builder.add_bash_script('scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
@@ -390,6 +392,7 @@ def create_code_command_tools(
             'merge all review sections into a single CriticFeedback',
             [
                 ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('active_reviewers', 'PHASE1_REVIEWERS'),
@@ -1187,6 +1190,11 @@ def create_review_consolidator_agent_tools(tui_adapter: TuiAdapter) -> ReviewCon
     return ReviewConsolidatorAgentTools(
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT,
+            doc_type='"task"',
+            loop_id='{task_loop_id}',
+        ),
         retrieve_review_sections=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.LIST_REVIEW_SECTIONS,
             parent_key='{PLAN_NAME}/{PHASE_NAME}',
@@ -1255,6 +1263,7 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.CODE_QUALITY_REVIEWER)
     builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
     builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
@@ -1292,6 +1301,7 @@ def create_patch_command_tools(
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('change_description', 'CHANGE_DESCRIPTION'),
+                ('execution_mode', 'EXECUTION_MODE'),
             ],
         ),
         invoke_task_plan_critic=adapter.render_agent_invocation(
@@ -1326,6 +1336,11 @@ def create_patch_command_tools(
             'verify implementation matches Task and Phase objectives',
             _reviewer_params,
         ),
+        invoke_code_quality=adapter.render_agent_invocation(
+            'respec-code-quality-reviewer',
+            'assess code structural quality and design principles',
+            _reviewer_params,
+        ),
         invoke_dynamic_reviewer_pattern=adapter.render_agent_invocation(
             '{REVIEWER}',
             'perform domain-specific code review',
@@ -1336,6 +1351,7 @@ def create_patch_command_tools(
             'merge all review sections into a single CriticFeedback',
             [
                 ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('task_loop_id', 'PLANNING_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('active_reviewers', 'PHASE1_REVIEWERS'),

@@ -46,6 +46,10 @@ consolidator_feedback_template = CriticFeedback(
 ### [Specialist Name] Review (Adjustment: X/[-10 to +5])
 [Merged from specialist review section, if active]
 
+### Accepted for this loop
+- [DR-### items suppressed this iteration, unless promoted to P0 by new evidence]
+- [Mode-based advisory findings accepted without score penalty]
+
 ### Progress Notes
 [Analysis of improvement from previous iteration if applicable]
 [Deviation summary: N improvements, N neutral, N regressions found across reviewers]""",
@@ -75,18 +79,21 @@ You are a review consolidation specialist focused on merging review sections fro
 
 INPUTS: Review context
 - coding_loop_id: Loop identifier for feedback storage
+- task_loop_id: Loop identifier for Task retrieval (mode + deferred-risk policy source of truth)
 - plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
 - active_reviewers: List of reviewer slugs that were invoked this iteration
 
 TASKS: Retrieve Sections → Calculate Score → Merge → Store CriticFeedback
-1. List review sections: {tools.retrieve_review_sections}
-2. For each section key containing "review-": Retrieve section: {tools.get_review_section}
-3. Retrieve previous feedback: {tools.retrieve_feedback}
-4. Parse scores from each section
-5. Calculate weighted overall score
-6. Merge all sections into single CriticFeedback
-7. Store feedback: {tools.store_feedback}
+1. Retrieve Task policy context: {tools.retrieve_task}
+2. List review sections: {tools.retrieve_review_sections}
+3. For each section key containing "review-": Retrieve section: {tools.get_review_section}
+4. Retrieve previous feedback: {tools.retrieve_feedback}
+5. Parse scores from each section
+6. Apply mode-aware and deferred-risk suppression rules
+7. Calculate weighted overall score
+8. Merge all sections into single CriticFeedback
+9. Store feedback: {tools.store_feedback}
 
 ═══════════════════════════════════════════════
 TOOL INVOCATION
@@ -138,6 +145,32 @@ Expected review sections:
 - review-infrastructure (specialist: -10 to +5)
 - review-coding-standards (specialist: -10 to +5)
 
+### Step 0: Resolve Mode and Deferred Risk Context
+
+Task policy is primary source of truth. Feedback snapshot is fallback only.
+
+```text
+TASK_MARKDOWN = {tools.retrieve_task}
+
+IF TASK_MARKDOWN available:
+  RESOLVED_MODE = parse from:
+    "### Acceptance Criteria > #### Execution Intent Policy > Mode"
+  DEFERRED_RISK_REGISTER = parse lines from:
+    "### Acceptance Criteria > #### Deferred Risk Register"
+ELSE:
+  # Fallback for legacy or retrieval failures
+  PREV_FEEDBACK = {tools.retrieve_feedback}
+  RESOLVED_MODE = parse latest "Execution Intent Snapshot" mode from PREV_FEEDBACK
+  DEFERRED_RISK_REGISTER = parse deferred IDs from PREV_FEEDBACK if present
+
+IF RESOLVED_MODE missing/invalid:
+  RESOLVED_MODE = "MVP"
+
+Accepted-risk suppression key:
+- Deferred risk IDs: DR-### entries from DEFERRED_RISK_REGISTER
+- Suppress re-penalization unless promoted to P0 by new evidence
+```
+
 ### Step 1: Retrieve All Review Sections
 
 List documents matching the plan/phase pattern and filter for review sections:
@@ -182,6 +215,11 @@ For each specialist section (review-frontend, review-backend-api, review-databas
     ELSE (fallback for sections without structured header):
       Parse "Deduction: -N points" and "Bonus: +N points" prose patterns
       SPECIALIST_ADJUSTMENTS += net adjustment (capped: deductions max -10, bonus max +5 per specialist)
+
+Also parse finding tags from all review sections:
+- Severity tags: [Severity:P0|P1|P2|P3]
+- Scope tags: [Scope:changed-file|acceptance-gap|global|deferred]
+- Deferred risk IDs: DR-### (if present)
 ```
 
 ### Step 2.5: Check for BLOCKING Issues
@@ -195,9 +233,39 @@ BLOCKING_SOURCES = []
 
 For each section in REVIEW_SECTIONS:
   Search for "[BLOCKING]" in section content (Key Issues, flagged items, etc.)
+  Search for "[Severity:P0]" markers
   IF any "[BLOCKING]" markers found:
     BLOCKING_FLAG = True
     BLOCKING_SOURCES.append(section_reviewer_name)
+  IF any "[Severity:P0]" markers found:
+    BLOCKING_FLAG = True
+    BLOCKING_SOURCES.append(section_reviewer_name)
+```
+
+### Step 2.6: Apply Mode and Deferred-Risk Suppression
+
+```text
+ACCEPTED_FOR_LOOP = []
+FILTERED_SPECIALIST_ADJUSTMENTS = SPECIALIST_ADJUSTMENTS
+
+For each finding tagged [Scope:deferred] and linked to DR-###:
+  IF NOT promoted to [Severity:P0] by new evidence:
+    Suppress deduction from this finding
+    Add to ACCEPTED_FOR_LOOP
+
+Mode matrix:
+- MVP:
+  - Keep core scores (quality-check + spec-alignment)
+  - Suppress non-P0 specialist deductions unless directly tagged [Scope:acceptance-gap]
+  - Treat hardening/global P2/P3 findings as advisory and add to ACCEPTED_FOR_LOOP
+- mixed:
+  - Keep core scores
+  - Apply specialist deductions for changed-file / acceptance-gap findings
+  - Suppress pure global P3 hardening deductions
+- hardening:
+  - Full scoring path active (all valid deductions/bonuses apply)
+
+Use FILTERED_SPECIALIST_ADJUSTMENTS in final score calculations.
 ```
 
 ### Step 3: Calculate Overall Score
@@ -209,8 +277,8 @@ BASE_SCORE = CORE_SCORES["quality_check"] + CORE_SCORES["spec_alignment"]
 # Bonus isolation: specialist bonuses scale proportionally with spec alignment.
 # This prevents quality bonuses from masking spec gaps.
 # Deductions always apply in full regardless of spec score.
-SPECIALIST_DEDUCTIONS = sum of all negative specialist adjustments
-SPECIALIST_BONUSES = sum of all positive specialist adjustments
+SPECIALIST_DEDUCTIONS = sum of all negative filtered specialist adjustments
+SPECIALIST_BONUSES = sum of all positive filtered specialist adjustments
 EFFECTIVE_BONUSES = SPECIALIST_BONUSES * (CORE_SCORES["spec_alignment"] / 50)
   (at 50/50 spec = 100% of bonuses; at 25/50 spec = 50%; at 0/50 spec = 0%)
 
@@ -237,7 +305,7 @@ Combine all review section content into a single detailed_feedback markdown docu
 ```text
 DETAILED_FEEDBACK = ""
 
-Build Score Summary table using CORE_SCORES and SPECIALIST_ADJUSTMENTS from Steps 2/3:
+Build Score Summary table using CORE_SCORES and FILTERED_SPECIALIST_ADJUSTMENTS from Steps 2.6/3:
   - Row 1: Automated Quality Check — CORE_SCORES["quality_check"] / 50
   - Row 2: Spec Alignment — CORE_SCORES["spec_alignment"] / 50
   - Row 3: Code Quality Adjustment — parsed from review-code-quality (always present)
@@ -256,6 +324,10 @@ Append Progress Notes:
   IF previous feedback exists:
     Compare current OVERALL_SCORE to previous score
     Note score changes and persistent issues
+
+Append "Accepted for this loop" section:
+  - Include deferred DR-### items that were suppressed this iteration
+  - Include mode-advisory findings suppressed by MVP/mixed policy
 ```
 
 ### Step 5: Aggregate Issues and Recommendations
@@ -280,6 +352,11 @@ For each review section:
 IF BLOCKING_FLAG:
   Insert at top of KEY_ISSUES:
     "**[SCORE CAPPED - BLOCKING]**: Score capped at 79 due to blocking issues from: {{BLOCKING_SOURCES}}. These MUST be resolved before passing review."
+
+Filter KEY_ISSUES and RECOMMENDATIONS:
+  - Suppress deferred (DR-###) non-P0 items from score-penalizing lists
+  - Keep them in "Accepted for this loop" summary
+  - Preserve any item promoted to [Severity:P0]
 
 Sort KEY_ISSUES by severity (BLOCKING first, then critical, deviation-regressions grouped)
 Sort RECOMMENDATIONS by expected point impact (highest first)
@@ -307,6 +384,15 @@ Generate and store the final CriticFeedback markdown:
 - Specialist bonuses scale with spec alignment: `effective_bonus = raw_bonus * (spec_alignment / 50)`
 - Specialist deductions always apply in full
 - Final score clamped to 0-100 range
+
+### Mode-Aware Gating
+- `MVP`: suppress non-core hardening deductions unless P0 or explicit acceptance-gap risk
+- `mixed`: apply targeted deductions; suppress low-severity global hardening noise
+- `hardening`: apply full weighting and full specialist deductions
+
+### Deferred Risk Suppression
+- Deferred Register items (`DR-###`) are accepted for this loop by default
+- Re-penalize only when new evidence promotes the item to `P0`
 
 ### Score Preservation
 The OVERALL_SCORE must remain compatible with the MCP `decide_loop_next_action` tool which expects 0-100.

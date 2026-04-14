@@ -163,7 +163,7 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
 
     EXIT: Workflow suspended pending user decision
 
-IMMEDIATELY execute Step 6.5 (Mode Extraction)
+IMMEDIATELY execute Step 6.5 (Mode Extraction) and Step 6.7 (Delivery Intent Resolution)
 ```
 
 ### 6.5 Extract Step Modes from Task
@@ -231,6 +231,63 @@ Display: "✓ Active reviewers: {{ACTIVE_REVIEWERS}}"
 Display: "✓ Phase 1 reviewers: {{PHASE1_REVIEWERS}}"
 ```
 
+### 6.7 Resolve Delivery Intent Policy
+
+Resolve execution mode deterministically before coding/review:
+
+```text
+# Required documents for policy resolution
+PHASE_MARKDOWN = {tools.get_phase_document}
+PLAN_MARKDOWN = mcp__respec-ai__get_document(doc_type="plan", key=PLAN_NAME, loop_id=None)
+
+# Parse policy blocks (if present)
+TASK_POLICY = extract from TASK_MARKDOWN:
+  "### Acceptance Criteria > #### Execution Intent Policy"
+PHASE_OVERRIDE = extract from PHASE_MARKDOWN:
+  "### Success Criteria > #### Delivery Intent Override"
+PLAN_DEFAULT = extract from PLAN_MARKDOWN:
+  "## Quality Assurance > ### Delivery Intent Policy > Default Mode"
+PLAN_TIE_BREAK = extract from PLAN_MARKDOWN:
+  "## Quality Assurance > ### Delivery Intent Policy > Tie-Break Policy"
+
+# Deterministic precedence
+IF TASK_POLICY has valid Mode in {{MVP,mixed,hardening}}:
+  RESOLVED_MODE = TASK_POLICY.mode
+  RESOLVED_MODE_SOURCE = "task-policy"
+ELIF PHASE_OVERRIDE has valid Mode in {{MVP,mixed,hardening}}:
+  RESOLVED_MODE = PHASE_OVERRIDE.mode
+  RESOLVED_MODE_SOURCE = "phase-override"
+ELIF PLAN_DEFAULT has valid Mode in {{MVP,mixed,hardening}}:
+  RESOLVED_MODE = PLAN_DEFAULT
+  RESOLVED_MODE_SOURCE = "plan-default"
+ELSE:
+  RESOLVED_MODE = "MVP"
+  RESOLVED_MODE_SOURCE = "default-MVP"
+
+RESOLVED_TIE_BREAK = first non-empty of:
+  TASK_POLICY.tie_break, PHASE_OVERRIDE.tie_break, PLAN_TIE_BREAK,
+  "Prioritize core functional/spec delivery and defer non-P0 hardening risks."
+
+AMBIGUOUS_MODE = conflicting explicit values across task/phase/plan sources
+
+IF AMBIGUOUS_MODE:
+  Use AskUserQuestion:
+    Header: "Resolve Mode"
+    Question: "Delivery intent sources conflict. Which mode should this coding loop use?"
+    multiSelect: false
+    Options:
+      - MVP
+      - mixed
+      - hardening
+
+  RESOLVED_MODE = [user choice]
+  RESOLVED_MODE_SOURCE = "user-selected-conflict-resolution"
+```
+
+Display:
+- "✓ Resolved execution mode: {{RESOLVED_MODE}} (source: {{RESOLVED_MODE_SOURCE}})"
+- "✓ Tie-break policy: {{RESOLVED_TIE_BREAK}}"
+
 ### 7. Coding Loop Initialization and Refinement
 Set up and execute MCP-managed code quality refinement:
 
@@ -264,6 +321,20 @@ You now have TWO active loop IDs - DO NOT confuse them:
 - Storage: CriticFeedback for code quality
 
 Pass BOTH IDs to coding agents. Never swap them.
+
+#### Step 7.3.1: Persist Mode Snapshot to Loop Feedback
+
+```text
+MODE_SNAPSHOT_MARKDOWN = "## Execution Intent Snapshot\\n"
+  + "- Mode: {{RESOLVED_MODE}}\\n"
+  + "- Source: {{RESOLVED_MODE_SOURCE}}\\n"
+  + "- Tie-Break Policy: {{RESOLVED_TIE_BREAK}}\\n"
+  + "- Deferred Risk Register Source: Task Acceptance Criteria"
+
+LOOP_ID = CODING_LOOP_ID
+USER_FEEDBACK_MARKDOWN = MODE_SNAPSHOT_MARKDOWN
+{tools.store_user_feedback}
+```
 
 #### Step 7.4: Code Implementation Cycle
 {tools.invoke_coder}
@@ -350,17 +421,51 @@ ELIF CODING_DECISION == "complete":
 
 ELIF CODING_DECISION == "user_input":
   LATEST_FEEDBACK = {tools.get_feedback}
+  P0_ACTIVE = LATEST_FEEDBACK contains any of:
+    "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
 
   Display LATEST_FEEDBACK to user with:
   - Current quality score and iteration
   - Key issues requiring attention
   - Recommended improvements
 
-  Prompt user for guidance
-  Store user feedback: {tools.store_user_feedback}
-  Re-invoke coder agent (same parameters)
-  Re-invoke review team (Step 7.4.1: quality-checker → spec-alignment → specialists → consolidator)
-  Call MCP decision again
+  IF P0_ACTIVE:
+    Use AskUserQuestion with options:
+      1. Continue refine in current mode
+      2. Switch mode and continue refine
+  ELSE:
+    Use AskUserQuestion with options:
+      1. Continue refine in current mode
+      2. Switch mode and continue refine
+      3. Finalize now with deferred-risk summary
+
+  IF user selects option 1:
+    USER_FEEDBACK_MARKDOWN = "User selected continue refine in mode={{RESOLVED_MODE}}"
+    LOOP_ID = CODING_LOOP_ID
+    {tools.store_user_feedback}
+    Re-invoke coder + review team, then call MCP decision again
+
+  IF user selects option 2:
+    Use AskUserQuestion:
+      Header: "Switch Mode"
+      Question: "Select new execution mode for this loop."
+      Options: MVP, mixed, hardening
+    RESOLVED_MODE = [user selection]
+    RESOLVED_MODE_SOURCE = "user-switched-during-user_input"
+    USER_FEEDBACK_MARKDOWN = "Execution Intent Snapshot updated: mode={{RESOLVED_MODE}} (switched by user)"
+    LOOP_ID = CODING_LOOP_ID
+    {tools.store_user_feedback}
+    Re-invoke coder + review team, then call MCP decision again
+
+  IF user selects option 3:
+    IF P0_ACTIVE:
+      Display: "Cannot finalize while active P0 issues exist."
+      Return to user_input options.
+    ELSE:
+      USER_FEEDBACK_MARKDOWN = "User finalized with deferred-risk summary in mode={{RESOLVED_MODE}}"
+      LOOP_ID = CODING_LOOP_ID
+      {tools.store_user_feedback}
+      Proceed directly to Step 9 (Integration & Documentation)
 ```
 
 ### 7.5: Standards Finalization Phase

@@ -75,6 +75,30 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
            when you should use store_review_section MCP tool.
 ═══════════════════════════════════════════════
 
+## MODE-AWARE REVIEW CONTRACT (MANDATORY)
+
+Resolve mode and deferred risks from Task:
+- Parse `### Acceptance Criteria > #### Execution Intent Policy > Mode`
+- Parse `### Acceptance Criteria > #### Deferred Risk Register`
+- Mode fallback: `MVP` if missing
+
+For EVERY finding, include BOTH tags:
+- Severity tag: `[Severity:P0]`, `[Severity:P1]`, `[Severity:P2]`, or `[Severity:P3]`
+- Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
+
+Scope constraints:
+- Score-impacting findings should focus on changed files and explicit acceptance-criteria gaps.
+- Use `[Scope:global]` only for cross-cutting structural concerns that cannot be localized.
+
+Deferred-risk suppression:
+- If a finding maps to Deferred Risk Register item `DR-###`, tag it `[Scope:deferred]`.
+- Deferred items DO NOT deduct unless promoted to `P0` by new evidence.
+
+Mode-aware behavior:
+- `MVP`: hardening/style concerns are advisory by default unless they create core-risk regressions.
+- `mixed`: apply selected structural/correctness deductions for changed-file and acceptance-gap findings.
+- `hardening`: full weighting active.
+
 ## TASK CONTEXT DISCOVERY
 
 ### Extract Research Context from Task
@@ -335,11 +359,11 @@ Store the following markdown as review section:
 [Holistic evaluation — principles violated or exemplified, with file references]
 
 #### Key Issues
-- **[BLOCKING]**: [Any blocking issues — resource leaks, bare excepts, mutable defaults — listed first]
-- [Other issues with specific file/line references, sorted by severity]
+- **[Severity:P0] [Scope:changed-file|acceptance-gap] [BLOCKING]**: [Any blocking issues — resource leaks, bare excepts, mutable defaults — listed first]
+- [Severity:P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Other issues with specific file/line references, sorted by severity]
 
 #### Recommendations
-- [Fixes with expected point impact, sorted by priority]
+- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Fix with expected point impact, sorted by priority]
 ```
 
 ## PROGRESS TRACKING

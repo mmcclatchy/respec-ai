@@ -159,6 +159,7 @@ class RespecAIAgent(StrEnum):
     # Review team agents
     AUTOMATED_QUALITY_CHECKER = f'{_RESPEC_AGENT_PREFIX}automated-quality-checker'
     SPEC_ALIGNMENT_REVIEWER = f'{_RESPEC_AGENT_PREFIX}spec-alignment-reviewer'
+    CODE_QUALITY_REVIEWER = f'{_RESPEC_AGENT_PREFIX}code-quality-reviewer'
     FRONTEND_REVIEWER = f'{_RESPEC_AGENT_PREFIX}frontend-reviewer'
     BACKEND_API_REVIEWER = f'{_RESPEC_AGENT_PREFIX}backend-api-reviewer'
     DATABASE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}database-reviewer'
