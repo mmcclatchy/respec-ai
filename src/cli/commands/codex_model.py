@@ -72,6 +72,11 @@ def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument('--no-cache', action='store_true', help='Bypass cached API responses')
     parser.add_argument('--reasoning-model', help='Set reasoning model directly')
     parser.add_argument('--task-model', help='Set task model directly')
+    parser.add_argument(
+        '--no-apply',
+        action='store_true',
+        help='Save global model mapping only (skip forced regenerate for current codex project)',
+    )
 
 
 def run(args: Namespace) -> int:
@@ -85,10 +90,7 @@ def run(args: Namespace) -> int:
             return 1
         mapping: dict[str, str] = {'reasoning': reasoning, 'task': task}
         _warn_if_unknown_mapping(mapping)
-        save_global_models(mapping, provider='codex')
-        console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
-        print_info("Run 'respec-ai regenerate' to apply new models to your config")
-        return 0
+        return _save_and_apply(mapping, no_apply=bool(getattr(args, 'no_apply', False)))
 
     aa_key = (
         getattr(args, 'aa_key', None)
@@ -122,10 +124,51 @@ def run(args: Namespace) -> int:
         print_warning('Mapping not saved')
         return 1
 
+    return _save_and_apply(mapping, no_apply=bool(getattr(args, 'no_apply', False)))
+
+
+def _save_and_apply(mapping: dict[str, str], *, no_apply: bool) -> int:
     save_global_models(mapping, provider='codex')
     console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
-    print_info("Run 'respec-ai regenerate' to apply new models to your config")
+    return _auto_apply_to_current_project(no_apply=no_apply)
+
+
+def _auto_apply_to_current_project(*, no_apply: bool) -> int:
+    if no_apply:
+        print_info("Auto-apply skipped (--no-apply). Run 'respec-ai regenerate --force' when ready.")
+        return 0
+
+    config_path = Path.cwd() / '.respec-ai' / 'config.json'
+    if not config_path.exists():
+        print_info('Auto-apply skipped: .respec-ai/config.json not found in current directory.')
+        print_info("Run 'respec-ai regenerate --force' inside an initialized Codex project.")
+        return 0
+
+    try:
+        config = json.loads(config_path.read_text(encoding='utf-8'))
+    except (json.JSONDecodeError, OSError) as e:
+        print_warning(f'Auto-apply skipped: could not read project config ({e}).')
+        print_info("Run 'respec-ai regenerate --force' after fixing .respec-ai/config.json.")
+        return 0
+
+    tui = config.get('tui', 'claude-code')
+    if tui != 'codex':
+        print_info(f"Auto-apply skipped: project TUI is '{tui}' (requires 'codex').")
+        print_info("Run 'respec-ai regenerate --force' in a Codex-initialized project.")
+        return 0
+
+    print_info('Applying saved Codex model tiers to current project (forced regenerate)...')
+    if _run_forced_regenerate() != 0:
+        print_warning('Auto-apply failed: forced regenerate returned non-zero exit code.')
+        return 1
+    print_info('Applied saved Codex model tiers to current project.')
     return 0
+
+
+def _run_forced_regenerate() -> int:
+    from src.cli.commands import regenerate
+
+    return regenerate.run(Namespace(force=True))
 
 
 def _warn_if_unknown_mapping(mapping: dict[str, str]) -> None:

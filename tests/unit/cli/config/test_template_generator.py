@@ -154,3 +154,31 @@ class TestGenerateTemplates:
         assert not (tmp_path / '.codex' / 'commands' / 'respec-plan.md').exists()
         assert not (tmp_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
         assert any('SKILL.md' in str(p) for p in files_written)
+
+    def test_codex_model_tiers_propagate_to_skill_and_agent_artifacts(
+        self, mocker: MockerFixture, tmp_path: Path
+    ) -> None:
+        mock_orchestrator = mocker.MagicMock()
+        mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
+        adapter = get_tui_adapter(TuiType.CODEX)
+        models_data = {'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}
+
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
+            (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
+            generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter)
+
+        plan_skill = (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').read_text(encoding='utf-8')
+        code_skill = (tmp_path / '.codex' / 'skills' / 'respec-code' / 'SKILL.md').read_text(encoding='utf-8')
+        phase_architect_agent = (tmp_path / '.codex' / 'agents' / 'respec-phase-architect-agent.toml').read_text(
+            encoding='utf-8'
+        )
+        coder_agent = (tmp_path / '.codex' / 'agents' / 'respec-coder-agent.toml').read_text(encoding='utf-8')
+        plan_openai_yaml = (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').read_text(
+            encoding='utf-8'
+        )
+
+        assert 'Model: gpt-5.4' in plan_skill
+        assert 'Model: gpt-5.4-mini' in code_skill
+        assert 'model = "gpt-5.4"' in phase_architect_agent
+        assert 'model = "gpt-5.4-mini"' in coder_agent
+        assert '\nmodel:' not in plan_openai_yaml
