@@ -5,6 +5,7 @@ import docker
 from docker.errors import DockerException, ImageNotFound, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
+from docker.types import LogConfig
 from src.cli.config.package_info import get_package_version
 
 
@@ -26,6 +27,11 @@ class DockerManager:
         'DATABASE_URL': 'postgresql://respec:respec_prod@respec-ai-db-prod:5432/respec_prod',
         'MCP_LOG_LEVEL': 'INFO',
         'MCP_DEBUG': 'false',
+    }
+    CONTAINER_LOG_DRIVER = 'json-file'
+    CONTAINER_LOG_OPTIONS = {
+        'max-size': '10m',
+        'max-file': '5',
     }
     DB_IMAGE = 'postgres:16-alpine'
     DB_ENV = {
@@ -188,6 +194,7 @@ class DockerManager:
                 restart_policy={'Name': 'unless-stopped'},
                 environment=self.CONTAINER_ENV,
                 network=self.DB_NETWORK_NAME,
+                log_config=LogConfig(type=self.CONTAINER_LOG_DRIVER, config=self.CONTAINER_LOG_OPTIONS),
             )
             print(f'✓ Container {container_name} started')
             return container

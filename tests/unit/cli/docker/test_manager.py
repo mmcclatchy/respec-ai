@@ -20,6 +20,8 @@ class TestStartContainer:
         call_kwargs = mock_client.containers.run.call_args.kwargs
         assert call_kwargs['environment'] == DockerManager.CONTAINER_ENV
         assert call_kwargs['network'] == DockerManager.DB_NETWORK_NAME
+        assert call_kwargs['log_config']['Type'] == DockerManager.CONTAINER_LOG_DRIVER
+        assert call_kwargs['log_config']['Config'] == DockerManager.CONTAINER_LOG_OPTIONS
 
     def test_start_container_env_includes_database_url(self) -> None:
         assert 'DATABASE_URL' in DockerManager.CONTAINER_ENV
@@ -27,6 +29,10 @@ class TestStartContainer:
 
     def test_start_container_env_includes_state_manager(self) -> None:
         assert DockerManager.CONTAINER_ENV['MCP_STATE_MANAGER'] == 'database'
+
+    def test_start_container_uses_log_rotation_settings(self) -> None:
+        assert DockerManager.CONTAINER_LOG_DRIVER == 'json-file'
+        assert DockerManager.CONTAINER_LOG_OPTIONS == {'max-size': '10m', 'max-file': '5'}
 
 
 class TestEnsureDbRunning:
