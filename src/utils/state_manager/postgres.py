@@ -194,9 +194,25 @@ class PostgresStateManager(StateManager):
                 feedback_history=feedback_list,
             )
 
+    async def _get_loop_status_row(self, loop_id: str) -> Record:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT id, status, current_score, iteration FROM loop_states WHERE id = $1',
+                loop_id,
+            )
+
+        if not row:
+            raise LoopNotFoundError(f'Loop not found: {loop_id}')
+        return row
+
     async def get_loop_status(self, loop_id: str) -> MCPResponse:
-        loop_state = await self.get_loop(loop_id)
-        return loop_state.mcp_response
+        row = await self._get_loop_status_row(loop_id)
+        return MCPResponse(
+            id=row['id'],
+            status=LoopStatus(row['status']),
+            current_score=row['current_score'],
+            iteration=row['iteration'],
+        )
 
     async def decide_loop_next_action(self, loop_id: str) -> MCPResponse:
         loop_state = await self.get_loop(loop_id)
@@ -217,17 +233,15 @@ class PostgresStateManager(StateManager):
         return [MCPResponse(id=row['id'], status=LoopStatus(row['status'])) for row in rows]
 
     async def get_objective_feedback(self, loop_id: str) -> MCPResponse:
-        loop_state = await self.get_loop(loop_id)
+        status = await self.get_loop_status(loop_id)
 
         async with db_pool.acquire() as conn:
             feedback = await conn.fetchval('SELECT feedback FROM objective_feedback WHERE loop_id = $1', loop_id)
 
-        return MCPResponse(
-            id=loop_id, status=loop_state.status, message=feedback or 'No previous objective feedback found'
-        )
+        return MCPResponse(id=loop_id, status=status.status, message=feedback or 'No previous objective feedback found')
 
     async def store_objective_feedback(self, loop_id: str, feedback: str) -> MCPResponse:
-        loop_state = await self.get_loop(loop_id)
+        status = await self.get_loop_status(loop_id)
 
         async with db_pool.acquire() as conn:
             await conn.execute(
@@ -240,9 +254,55 @@ class PostgresStateManager(StateManager):
                 feedback,
             )
 
-        return MCPResponse(
-            id=loop_id, status=loop_state.status, message=f'Objective feedback stored for loop {loop_id}'
-        )
+        return MCPResponse(id=loop_id, status=status.status, message=f'Objective feedback stored for loop {loop_id}')
+
+    async def append_user_feedback(self, loop_id: str, feedback_markdown: str) -> None:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO user_feedback_entries (loop_id, feedback)
+                VALUES ($1, $2)
+                """,
+                loop_id,
+                feedback_markdown,
+            )
+
+    async def list_user_feedback(self, loop_id: str) -> list[str]:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT feedback FROM user_feedback_entries
+                WHERE loop_id = $1
+                ORDER BY created_at, id
+                """,
+                loop_id,
+            )
+        return [row['feedback'] for row in rows]
+
+    async def upsert_loop_analysis(self, loop_id: str, analysis: str) -> None:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO loop_analysis (loop_id, analysis)
+                VALUES ($1, $2)
+                ON CONFLICT (loop_id) DO UPDATE SET
+                    analysis = $2, updated_at = CURRENT_TIMESTAMP
+                """,
+                loop_id,
+                analysis,
+            )
+
+    async def get_loop_analysis(self, loop_id: str) -> str | None:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            analysis = await conn.fetchval(
+                'SELECT analysis FROM loop_analysis WHERE loop_id = $1',
+                loop_id,
+            )
+        return analysis
 
     async def store_roadmap(self, plan_name: str, roadmap: Roadmap) -> str:
         async with db_pool.acquire() as conn:

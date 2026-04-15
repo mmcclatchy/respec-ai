@@ -5,7 +5,7 @@ from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.models.task import Task
-from src.utils.enums import LoopType
+from src.utils.enums import LoopStatus, LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
@@ -359,6 +359,55 @@ class TestDatabaseLoopOperations:
         with pytest.raises(LoopNotFoundError):
             await db_state_manager.get_loop('non-existent-loop-id')
 
+    @pytest.mark.asyncio
+    async def test_get_loop_status_returns_current_score_and_iteration(
+        self, db_state_manager: PostgresStateManager, plan_name: str
+    ) -> None:
+        loop = LoopState(loop_type=LoopType.PLAN)
+        await db_state_manager.add_loop(loop, plan_name)
+
+        status = await db_state_manager.get_loop_status(loop.id)
+
+        assert status.id == loop.id
+        assert status.status == LoopStatus.INITIALIZED
+        assert status.current_score == 0
+        assert status.iteration == 1
+
+    @pytest.mark.asyncio
+    async def test_user_feedback_entries_roundtrip(
+        self, db_state_manager: PostgresStateManager, plan_name: str
+    ) -> None:
+        loop = LoopState(loop_type=LoopType.PLAN)
+        await db_state_manager.add_loop(loop, plan_name)
+
+        await db_state_manager.append_user_feedback(loop.id, 'feedback 1')
+        await db_state_manager.append_user_feedback(loop.id, 'feedback 2')
+
+        feedback_entries = await db_state_manager.list_user_feedback(loop.id)
+        assert feedback_entries == ['feedback 1', 'feedback 2']
+
+    @pytest.mark.asyncio
+    async def test_loop_analysis_upsert_roundtrip(self, db_state_manager: PostgresStateManager, plan_name: str) -> None:
+        loop = LoopState(loop_type=LoopType.ANALYST)
+        await db_state_manager.add_loop(loop, plan_name)
+
+        await db_state_manager.upsert_loop_analysis(loop.id, 'analysis v1')
+        await db_state_manager.upsert_loop_analysis(loop.id, 'analysis v2')
+
+        analysis = await db_state_manager.get_loop_analysis(loop.id)
+        assert analysis == 'analysis v2'
+
+    @pytest.mark.asyncio
+    async def test_new_feedback_methods_raise_for_missing_loop(self, db_state_manager: PostgresStateManager) -> None:
+        with pytest.raises(LoopNotFoundError):
+            await db_state_manager.append_user_feedback('missing', 'feedback')
+        with pytest.raises(LoopNotFoundError):
+            await db_state_manager.list_user_feedback('missing')
+        with pytest.raises(LoopNotFoundError):
+            await db_state_manager.upsert_loop_analysis('missing', 'analysis')
+        with pytest.raises(LoopNotFoundError):
+            await db_state_manager.get_loop_analysis('missing')
+
 
 class TestDatabasePlanOperations:
     @staticmethod
@@ -552,6 +601,7 @@ class TestDatabaseDeletePlanCascade:
         await db_state_manager.delete_plan('plan-a')
 
         retrieved_plan = await db_state_manager.get_plan('plan-b')
-        assert retrieved_plan.plan_name == 'Plan B'
+        # Store/get contract uses the storage key passed to store_plan as canonical identifier.
+        assert retrieved_plan.plan_name == 'plan-b'
         await db_state_manager.get_roadmap('plan-b')
         assert await db_state_manager.list_phases('plan-b') == ['phase-1']

@@ -119,7 +119,8 @@ async def db_state_manager(check_database_available: bool) -> AsyncGenerator[Pos
             async with db_pool._pool.acquire() as conn:
                 await conn.execute(
                     'TRUNCATE loop_states, objective_feedback, roadmaps, '
-                    'phases, plans, loop_to_phase_mappings, tasks, loop_to_task_mappings, '
+                    'phases, plans, loop_to_phase_mappings, loop_to_task_mappings, '
+                    'user_feedback_entries, loop_analysis, tasks, '
                     'review_sections CASCADE'
                 )
         except Exception:

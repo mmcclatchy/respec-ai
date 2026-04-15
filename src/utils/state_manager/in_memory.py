@@ -1,3 +1,4 @@
+import logging
 from collections import deque
 from typing import Generic, TypeVar
 
@@ -41,6 +42,8 @@ class InMemoryStateManager(StateManager):
         self._active_loops: dict[str, LoopState] = {}
         self._loop_history: Queue[str] = Queue(maxlen=max_history_size)
         self._objective_feedback: dict[str, str] = {}
+        self._user_feedback_entries: dict[str, list[str]] = {}
+        self._loop_analysis: dict[str, str] = {}
         self._roadmaps: dict[str, Roadmap] = {}
         self._plans: dict[str, Plan] = {}  # plan_name -> Plan
 
@@ -66,6 +69,15 @@ class InMemoryStateManager(StateManager):
 
         logger.info(f'InMemoryStateManager initialized with max_history_size={max_history_size}')
 
+    def _cleanup_loop_references(self, loop_id: str) -> None:
+        self._active_loops.pop(loop_id, None)
+        self._loop_to_plan.pop(loop_id, None)
+        self._loop_to_phase.pop(loop_id, None)
+        self._loop_to_task.pop(loop_id, None)
+        self._objective_feedback.pop(loop_id, None)
+        self._user_feedback_entries.pop(loop_id, None)
+        self._loop_analysis.pop(loop_id, None)
+
     def _log_state(self) -> None:
         logger.debug(
             f'State:\n'
@@ -81,6 +93,9 @@ class InMemoryStateManager(StateManager):
         )
 
     def _log_state_snapshot(self, method_name: str, stage: str) -> None:
+        if not logger.isEnabledFor(logging.DEBUG):
+            return
+
         phases_dict = {proj: list(phases.keys()) for proj, phases in self._phases.items()}
         inactive_phases_dict = {proj: list(phases.keys()) for proj, phases in self._inactive_phases.items()}
         tasks_dict = {phase_path: list(tasks.keys()) for phase_path, tasks in self._tasks.items()}
@@ -112,8 +127,7 @@ class InMemoryStateManager(StateManager):
         dropped_loop_id = self._loop_history.append(loop.id)
         if dropped_loop_id:
             logger.info(f'add_loop: Dropped oldest loop from history: {dropped_loop_id}')
-            self._active_loops.pop(dropped_loop_id)
-            self._loop_to_plan.pop(dropped_loop_id, None)
+            self._cleanup_loop_references(dropped_loop_id)
         self._log_state()
         self._log_state_snapshot('add_loop', 'EXIT')
 
@@ -187,6 +201,24 @@ class InMemoryStateManager(StateManager):
         return MCPResponse(
             id=loop_id, status=loop_state.status, message=f'Objective feedback stored for loop {loop_id}'
         )
+
+    async def append_user_feedback(self, loop_id: str, feedback_markdown: str) -> None:
+        await self.get_loop(loop_id)
+        if loop_id not in self._user_feedback_entries:
+            self._user_feedback_entries[loop_id] = []
+        self._user_feedback_entries[loop_id].append(feedback_markdown)
+
+    async def list_user_feedback(self, loop_id: str) -> list[str]:
+        await self.get_loop(loop_id)
+        return list(self._user_feedback_entries.get(loop_id, []))
+
+    async def upsert_loop_analysis(self, loop_id: str, analysis: str) -> None:
+        await self.get_loop(loop_id)
+        self._loop_analysis[loop_id] = analysis
+
+    async def get_loop_analysis(self, loop_id: str) -> str | None:
+        await self.get_loop(loop_id)
+        return self._loop_analysis.get(loop_id)
 
     async def store_roadmap(self, plan_name: str, roadmap: Roadmap) -> str:
         self._log_state_snapshot('store_roadmap', 'ENTRY')
@@ -516,11 +548,7 @@ class InMemoryStateManager(StateManager):
 
         loop_ids_to_remove = [lid for lid, pn in self._loop_to_plan.items() if pn == plan_name]
         for lid in loop_ids_to_remove:
-            self._active_loops.pop(lid, None)
-            self._loop_to_plan.pop(lid, None)
-            self._loop_to_phase.pop(lid, None)
-            self._loop_to_task.pop(lid, None)
-            self._objective_feedback.pop(lid, None)
+            self._cleanup_loop_references(lid)
 
         task_paths = [p for p in self._tasks if p.startswith(f'{plan_name}/')]
         for path in task_paths:

@@ -57,6 +57,40 @@ class TestDatabaseCascadeDeletes:
             count_after = await conn.fetchval('SELECT COUNT(*) FROM loop_to_phase_mappings WHERE loop_id = $1', loop.id)
             assert count_after == 0
 
+    @pytest.mark.asyncio
+    async def test_cascade_delete_on_user_feedback_entries(self, db_state_manager: PostgresStateManager) -> None:
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await db_state_manager.add_loop(loop, 'test-project')
+        await db_state_manager.append_user_feedback(loop.id, 'user feedback')
+
+        async with db_pool.acquire() as conn:
+            count_before = await conn.fetchval('SELECT COUNT(*) FROM user_feedback_entries WHERE loop_id = $1', loop.id)
+            assert count_before == 1
+
+        async with db_pool.acquire() as conn:
+            await conn.execute('DELETE FROM loop_states WHERE id = $1', loop.id)
+
+        async with db_pool.acquire() as conn:
+            count_after = await conn.fetchval('SELECT COUNT(*) FROM user_feedback_entries WHERE loop_id = $1', loop.id)
+            assert count_after == 0
+
+    @pytest.mark.asyncio
+    async def test_cascade_delete_on_loop_analysis(self, db_state_manager: PostgresStateManager) -> None:
+        loop = LoopState(loop_type=LoopType.ANALYST)
+        await db_state_manager.add_loop(loop, 'test-project')
+        await db_state_manager.upsert_loop_analysis(loop.id, 'analysis')
+
+        async with db_pool.acquire() as conn:
+            count_before = await conn.fetchval('SELECT COUNT(*) FROM loop_analysis WHERE loop_id = $1', loop.id)
+            assert count_before == 1
+
+        async with db_pool.acquire() as conn:
+            await conn.execute('DELETE FROM loop_states WHERE id = $1', loop.id)
+
+        async with db_pool.acquire() as conn:
+            count_after = await conn.fetchval('SELECT COUNT(*) FROM loop_analysis WHERE loop_id = $1', loop.id)
+            assert count_after == 0
+
 
 class TestDatabaseJSONBSerialization:
     @pytest.mark.asyncio

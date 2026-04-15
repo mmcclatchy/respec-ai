@@ -606,6 +606,49 @@ class TestLoopOperations(TestInMemoryStateManager):
             retrieved = await state_manager.get_loop(loop.id)
             assert retrieved == loop
 
+    @pytest.mark.asyncio
+    async def test_loop_history_eviction_cleans_all_loop_linked_references(
+        self, state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
+        initial_loop = LoopState(loop_type=LoopType.PHASE)
+        await state_manager.add_loop(initial_loop, plan_name)
+        await state_manager.link_loop_to_phase(initial_loop.id, plan_name, 'phase-1')
+        await state_manager.link_loop_to_task(initial_loop.id, f'{plan_name}/phase-1', 'task-1')
+        await state_manager.store_objective_feedback(initial_loop.id, 'objective feedback')
+
+        # Fill queue beyond max_history_size=3 so initial loop is evicted.
+        await state_manager.add_loop(LoopState(loop_type=LoopType.PLAN), plan_name)
+        await state_manager.add_loop(LoopState(loop_type=LoopType.TASK), plan_name)
+        await state_manager.add_loop(LoopState(loop_type=LoopType.ANALYST), plan_name)
+
+        assert initial_loop.id not in state_manager._active_loops
+        assert initial_loop.id not in state_manager._loop_to_plan
+        assert initial_loop.id not in state_manager._loop_to_phase
+        assert initial_loop.id not in state_manager._loop_to_task
+        assert initial_loop.id not in state_manager._objective_feedback
+
+    @pytest.mark.asyncio
+    async def test_user_feedback_entries_roundtrip(self, state_manager: InMemoryStateManager, plan_name: str) -> None:
+        loop = LoopState(loop_type=LoopType.PLAN)
+        await state_manager.add_loop(loop, plan_name)
+
+        await state_manager.append_user_feedback(loop.id, 'feedback 1')
+        await state_manager.append_user_feedback(loop.id, 'feedback 2')
+
+        feedback_entries = await state_manager.list_user_feedback(loop.id)
+        assert feedback_entries == ['feedback 1', 'feedback 2']
+
+    @pytest.mark.asyncio
+    async def test_loop_analysis_upsert_roundtrip(self, state_manager: InMemoryStateManager, plan_name: str) -> None:
+        loop = LoopState(loop_type=LoopType.ANALYST)
+        await state_manager.add_loop(loop, plan_name)
+
+        await state_manager.upsert_loop_analysis(loop.id, 'analysis v1')
+        await state_manager.upsert_loop_analysis(loop.id, 'analysis v2')
+
+        analysis = await state_manager.get_loop_analysis(loop.id)
+        assert analysis == 'analysis v2'
+
 
 class TestPlanOperations(TestInMemoryStateManager):
     @staticmethod

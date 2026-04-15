@@ -22,11 +22,6 @@ class UnifiedFeedbackTools:
 
     def __init__(self, state: StateManager) -> None:
         self.state = state
-        # Store user feedback separately (simple markdown strings)
-        # Critic feedback goes into LoopState.feedback_history (structured CriticFeedback objects)
-        self._user_feedback: dict[str, list[str]] = {}  # loop_id -> list of feedback
-        # Analysis storage for plan-analyst workflow
-        self._analysis_storage: dict[str, str] = {}  # loop_id -> analysis
 
     async def store_critic_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
         """Store structured critic feedback from automated assessment.
@@ -77,22 +72,14 @@ class UnifiedFeedbackTools:
             raise ToolError('User feedback cannot be empty')
 
         try:
-            loop_state = await self.state.get_loop(loop_id)
+            loop_status = await self.state.get_loop_status(loop_id)
+            await self.state.append_user_feedback(loop_id, feedback_markdown)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = loop_id
-
-        # Initialize user feedback list if needed
-        if storage_key not in self._user_feedback:
-            self._user_feedback[storage_key] = []
-
-        # Append user feedback (chronological order)
-        self._user_feedback[storage_key].append(feedback_markdown)
-
         return MCPResponse(
             id=loop_id,
-            status=loop_state.status,
+            status=loop_status.status,
             message=f'Stored user feedback for loop {loop_id}',
         )
 
@@ -118,16 +105,12 @@ class UnifiedFeedbackTools:
 
         try:
             loop_state = await self.state.get_loop(loop_id)
+            user_feedback_list = await self.state.list_user_feedback(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = loop_id
-
         # Get recent critic feedback from loop state (limited by count)
         critic_feedback_list = loop_state.get_recent_feedback(count=count)
-
-        # Get user feedback (all of it - typically sparse, high-value signal)
-        user_feedback_list = self._user_feedback.get(storage_key, [])
 
         # Build combined feedback markdown
         if not critic_feedback_list and not user_feedback_list:
@@ -188,13 +171,12 @@ class UnifiedFeedbackTools:
             raise ToolError('Analysis cannot be empty')
 
         try:
-            loop_state = await self.state.get_loop(loop_id)
+            loop_status = await self.state.get_loop_status(loop_id)
+            await self.state.upsert_loop_analysis(loop_id, analysis)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = loop_id
-        self._analysis_storage[storage_key] = analysis
-        return MCPResponse(id=loop_id, status=loop_state.status, message=f'Stored analysis for loop {loop_id}')
+        return MCPResponse(id=loop_id, status=loop_status.status, message=f'Stored analysis for loop {loop_id}')
 
     async def get_previous_analysis(self, loop_id: str) -> MCPResponse:
         """Get previous analysis (used by plan-analyst workflow).
@@ -209,18 +191,17 @@ class UnifiedFeedbackTools:
             raise ToolError('Loop ID cannot be empty')
 
         try:
-            loop_state = await self.state.get_loop(loop_id)
+            loop_status = await self.state.get_loop_status(loop_id)
+            analysis = await self.state.get_loop_analysis(loop_id)
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
-        storage_key = loop_id
-        analysis = self._analysis_storage.get(storage_key, '')
         if analysis:
             message = f'Previous analysis for loop {loop_id}:\n\n{analysis}'
         else:
             message = f'No previous analysis found for loop {loop_id}'
 
-        return MCPResponse(id=loop_id, status=loop_state.status, message=message)
+        return MCPResponse(id=loop_id, status=loop_status.status, message=message)
 
     def _parse_and_validate_feedback(self, feedback_markdown: str) -> CriticFeedback:
         try:
