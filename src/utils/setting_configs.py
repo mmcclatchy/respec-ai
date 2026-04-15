@@ -85,6 +85,7 @@ class DatabaseSettings(BaseSettings):
         ),
         description='PostgreSQL connection URL',
     )
+    search_path: str | None = Field(default=None, description='Optional PostgreSQL search_path override')
     pool_min_size: int = Field(default=5, ge=1, le=50)
     pool_max_size: int = Field(default=20, ge=1, le=100)
     pool_timeout: float = Field(default=30.0, ge=1.0, le=120.0)

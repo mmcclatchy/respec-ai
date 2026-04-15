@@ -22,6 +22,12 @@ class DatabasePool:
 
         logger.info(f'Initializing database pool: {database_settings.url.split("@")[1]}')
 
+        server_settings = (
+            {'search_path': database_settings.search_path}
+            if database_settings.search_path and database_settings.search_path.strip()
+            else None
+        )
+
         self._pool = await asyncpg.create_pool(
             dsn=database_settings.url,
             min_size=database_settings.pool_min_size,
@@ -29,6 +35,7 @@ class DatabasePool:
             timeout=database_settings.pool_timeout,
             command_timeout=database_settings.command_timeout,
             max_inactive_connection_lifetime=database_settings.max_inactive_connection_lifetime,
+            server_settings=server_settings,
         )
 
         logger.info('Database pool initialized')

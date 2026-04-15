@@ -11,7 +11,7 @@ These tests verify:
 4. Dependency injection works properly with either implementation
 """
 
-from typing import AsyncGenerator, Callable
+from typing import Callable
 
 import pytest
 
@@ -20,7 +20,6 @@ from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.models.task import Task
-from src.utils.database_pool import db_pool
 from src.utils.enums import LoopType
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, StateManager
@@ -38,68 +37,18 @@ async def inmemory_manager() -> StateManager:
 
 
 @pytest.fixture
-async def postgres_manager(check_database_available: bool) -> AsyncGenerator[StateManager, None]:
-    if not check_database_available:
-        pytest.skip(
-            'PostgreSQL test database not available. '
-            'Start with: docker-compose -f docker-compose.dev.yml up -d\n'
-            'Or run with: pytest -k "not postgres" to skip database tests'
-        )
-
-    manager = PostgresStateManager(max_history_size=10)
-    await manager.initialize()
-
-    yield manager
-
-    if db_pool._pool is not None:
-        try:
-            async with db_pool._pool.acquire() as conn:
-                await conn.execute(
-                    'TRUNCATE loop_states, objective_feedback, roadmaps, phases, plans, loop_to_phase_mappings CASCADE'
-                )
-        except Exception:
-            pass
-        finally:
-            await db_pool.close()
+def postgres_manager(db_state_manager: PostgresStateManager) -> StateManager:
+    return db_state_manager
 
 
-@pytest.fixture(params=['inmemory', 'postgres'])
-async def state_manager(
-    request: pytest.FixtureRequest,
-    check_database_available: bool,
-    inmemory_manager: StateManager,
-) -> AsyncGenerator[StateManager, None]:
+@pytest.fixture(params=['inmemory_manager', 'db_state_manager'])
+def state_manager(request: pytest.FixtureRequest) -> StateManager:
     """Parameterized fixture providing both StateManager implementations.
 
     Tests using this fixture will run twice - once with InMemoryStateManager
     and once with PostgresStateManager.
     """
-    if request.param == 'inmemory':
-        yield inmemory_manager
-    else:
-        if not check_database_available:
-            pytest.skip(
-                'PostgreSQL test database not available. '
-                'Start with: docker-compose -f docker-compose.dev.yml up -d\n'
-                'Or run with: pytest -k "not postgres" to skip database tests'
-            )
-
-        manager = PostgresStateManager(max_history_size=10)
-        await manager.initialize()
-
-        yield manager
-
-        if db_pool._pool is not None:
-            try:
-                async with db_pool._pool.acquire() as conn:
-                    await conn.execute(
-                        'TRUNCATE loop_states, loop_history, objective_feedback, roadmaps, '
-                        'phases, plans, loop_to_phase_mappings CASCADE'
-                    )
-            except Exception:
-                pass
-            finally:
-                await db_pool.close()
+    return request.getfixturevalue(request.param)
 
 
 @pytest.fixture

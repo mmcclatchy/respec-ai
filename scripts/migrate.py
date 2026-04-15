@@ -20,10 +20,17 @@ def _has_executable_sql(sql: str) -> bool:
     return bool(no_block_comments.strip())
 
 
-async def _connect_with_retry(database_url: str, attempts: int = 30) -> asyncpg.Connection:
+async def _connect_with_retry(
+    database_url: str,
+    attempts: int = 30,
+    search_path: str | None = None,
+) -> asyncpg.Connection:
     for i in range(attempts):
         try:
-            return await asyncpg.connect(database_url)
+            connect_kwargs: dict[str, object] = {'dsn': database_url}
+            if search_path:
+                connect_kwargs['server_settings'] = {'search_path': search_path}
+            return await asyncpg.connect(**connect_kwargs)
         except (asyncpg.CannotConnectNowError, ConnectionRefusedError):
             if i == attempts - 1:
                 raise
@@ -34,7 +41,8 @@ async def _connect_with_retry(database_url: str, attempts: int = 30) -> asyncpg.
 
 async def run() -> None:
     database_url = os.environ['DATABASE_URL']
-    conn = await _connect_with_retry(database_url)
+    migration_search_path = os.getenv('MIGRATION_SEARCH_PATH')
+    conn = await _connect_with_retry(database_url, search_path=migration_search_path)
     try:
         await conn.execute('SELECT pg_advisory_lock($1)', _MIGRATION_LOCK_KEY)
         try:

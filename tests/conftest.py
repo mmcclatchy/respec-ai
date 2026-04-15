@@ -1,7 +1,13 @@
 import asyncio
 import logging
 import os
-from typing import AsyncGenerator, Generator
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, AsyncGenerator, Awaitable, Generator, Literal
+from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 import asyncpg
 import pytest
@@ -9,11 +15,128 @@ from pytest_mock import MockerFixture
 
 from src.mcp.tools.loop_tools import LoopTools
 from src.utils.database_pool import db_pool
-from src.utils.setting_configs import LoopConfig
+from src.utils.setting_configs import LoopConfig, database_settings
 from src.utils.state_manager import InMemoryStateManager, PostgresStateManager
 
 
 logger = logging.getLogger(__name__)
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+_TEST_TABLES = (
+    'loop_states',
+    'objective_feedback',
+    'roadmaps',
+    'phases',
+    'plans',
+    'loop_to_phase_mappings',
+    'loop_to_task_mappings',
+    'user_feedback_entries',
+    'loop_analysis',
+    'tasks',
+    'review_sections',
+)
+_TRUNCATE_SQL = f'TRUNCATE {", ".join(_TEST_TABLES)} RESTART IDENTITY CASCADE'
+
+
+@dataclass(frozen=True)
+class PostgresTestContext:
+    worker_id: str
+    mode: Literal['database', 'schema']
+    database_url: str
+    database_name: str
+    schema_name: str | None
+
+
+def _quote_ident(identifier: str) -> str:
+    escaped = identifier.replace('"', '""')
+    return f'"{escaped}"'
+
+
+def _sanitize_worker_id(worker_id: str) -> str:
+    sanitized = re.sub(r'[^a-z0-9]+', '_', worker_id.lower()).strip('_')
+    return sanitized or 'worker'
+
+
+def _replace_database_name(database_url: str, database_name: str) -> str:
+    parsed = urlsplit(database_url)
+    return urlunsplit(
+        SplitResult(
+            scheme=parsed.scheme,
+            netloc=parsed.netloc,
+            path=f'/{database_name}',
+            query=parsed.query,
+            fragment=parsed.fragment,
+        )
+    )
+
+
+def _extract_database_name(database_url: str) -> str:
+    parsed = urlsplit(database_url)
+    database_name = parsed.path.lstrip('/')
+    if not database_name:
+        raise ValueError(f'Invalid DATABASE_URL (missing database name): {database_url}')
+    return database_name
+
+
+def _run_async(coro: Awaitable[Any]) -> Any:
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
+def _run_migrations(database_url: str, migration_search_path: str | None = None) -> None:
+    env = os.environ.copy()
+    env['DATABASE_URL'] = database_url
+    if migration_search_path:
+        env['MIGRATION_SEARCH_PATH'] = migration_search_path
+    else:
+        env.pop('MIGRATION_SEARCH_PATH', None)
+
+    subprocess.run(
+        [sys.executable, str(ROOT_DIR / 'scripts' / 'migrate.py')],
+        cwd=ROOT_DIR,
+        check=True,
+        env=env,
+    )
+
+
+async def _is_database_reachable(database_url: str) -> bool:
+    try:
+        conn = await asyncpg.connect(dsn=database_url, timeout=2.0)
+    except Exception:
+        return False
+    await conn.close()
+    return True
+
+
+async def _reset_worker_database(base_database_url: str, worker_database_name: str) -> None:
+    admin_database_url = _replace_database_name(base_database_url, 'postgres')
+    conn = await asyncpg.connect(dsn=admin_database_url, timeout=5.0)
+    try:
+        await conn.execute(
+            'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()',
+            worker_database_name,
+        )
+        await conn.execute(f'DROP DATABASE IF EXISTS {_quote_ident(worker_database_name)}')
+        await conn.execute(f'CREATE DATABASE {_quote_ident(worker_database_name)}')
+    finally:
+        await conn.close()
+
+
+async def _reset_worker_schema(base_database_url: str, schema_name: str) -> None:
+    conn = await asyncpg.connect(dsn=base_database_url, timeout=5.0)
+    try:
+        await conn.execute(f'DROP SCHEMA IF EXISTS {_quote_ident(schema_name)} CASCADE')
+        await conn.execute(f'CREATE SCHEMA {_quote_ident(schema_name)}')
+    finally:
+        await conn.close()
+
+
+async def _cleanup_test_tables() -> None:
+    async with db_pool.acquire() as conn:
+        await conn.execute(_TRUNCATE_SQL)
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -79,34 +202,74 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 
 
 @pytest.fixture(scope='session')
-def check_database_available() -> bool:
-    async def check_db() -> bool:
-        db_url = (
-            'postgresql://respec:respec_dev@localhost:5433/respec_test'
-            if os.getenv('TESTING', '').lower() == 'true'
-            else 'postgresql://respec:respec_dev@localhost:5433/respec_dev'
+def postgres_test_context(worker_id: str) -> Generator[PostgresTestContext | None, None, None]:
+    base_database_url = database_settings.url
+    is_reachable = bool(_run_async(_is_database_reachable(base_database_url)))
+    if not is_reachable:
+        logger.warning('PostgreSQL not available at configured DATABASE_URL')
+        yield None
+        return
+
+    worker_suffix = _sanitize_worker_id(worker_id)
+    base_database_name = _extract_database_name(base_database_url)
+    worker_database_name = f'{base_database_name}_{worker_suffix}'
+    worker_schema_name = f'test_{worker_suffix}'
+
+    context: PostgresTestContext | None = None
+
+    if db_pool._pool is not None:
+        _run_async(db_pool.close())
+
+    try:
+        _run_async(_reset_worker_database(base_database_url, worker_database_name))
+        worker_database_url = _replace_database_name(base_database_url, worker_database_name)
+        _run_migrations(worker_database_url)
+        database_settings.url = worker_database_url
+        database_settings.search_path = None
+        context = PostgresTestContext(
+            worker_id=worker_id,
+            mode='database',
+            database_url=worker_database_url,
+            database_name=worker_database_name,
+            schema_name=None,
+        )
+    except asyncpg.InsufficientPrivilegeError:
+        _run_async(_reset_worker_schema(base_database_url, worker_schema_name))
+        _run_migrations(base_database_url, migration_search_path=f'{worker_schema_name},public')
+        database_settings.url = base_database_url
+        database_settings.search_path = f'{worker_schema_name},public'
+        context = PostgresTestContext(
+            worker_id=worker_id,
+            mode='schema',
+            database_url=base_database_url,
+            database_name=base_database_name,
+            schema_name=worker_schema_name,
         )
 
-        try:
-            conn = await asyncpg.connect(dsn=db_url, timeout=2.0)
-            await conn.close()
-            return True
-        except Exception as e:
-            logger.warning(f'PostgreSQL not available: {e}')
-            return False
+    yield context
 
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    try:
-        result = loop.run_until_complete(check_db())
-    finally:
-        loop.close()
+    if db_pool._pool is not None:
+        _run_async(db_pool.close())
 
-    return result
+    if context is None:
+        return
+
+    if context.mode == 'database':
+        _run_async(_reset_worker_database(base_database_url, context.database_name))
+    elif context.schema_name:
+        _run_async(_reset_worker_schema(base_database_url, context.schema_name))
+
+
+@pytest.fixture(scope='session')
+def check_database_available(postgres_test_context: PostgresTestContext | None) -> bool:
+    return postgres_test_context is not None
 
 
 @pytest.fixture(scope='function')
-async def db_state_manager(check_database_available: bool) -> AsyncGenerator[PostgresStateManager, None]:
-    if not check_database_available:
+async def db_state_manager(
+    postgres_test_context: PostgresTestContext | None,
+) -> AsyncGenerator[PostgresStateManager, None]:
+    if postgres_test_context is None:
         pytest.skip('PostgreSQL database not available. Start with: docker-compose -f docker-compose.dev.yml up -d')
 
     manager = PostgresStateManager(max_history_size=3)
@@ -114,16 +277,5 @@ async def db_state_manager(check_database_available: bool) -> AsyncGenerator[Pos
 
     yield manager
 
-    if db_pool._pool is not None:
-        try:
-            async with db_pool._pool.acquire() as conn:
-                await conn.execute(
-                    'TRUNCATE loop_states, objective_feedback, roadmaps, '
-                    'phases, plans, loop_to_phase_mappings, loop_to_task_mappings, '
-                    'user_feedback_entries, loop_analysis, tasks, '
-                    'review_sections CASCADE'
-                )
-        except Exception:
-            pass
-        finally:
-            await db_pool.close()
+    await _cleanup_test_tables()
+    await db_pool.close()
