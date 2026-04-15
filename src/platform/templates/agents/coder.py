@@ -33,7 +33,7 @@ IF mode == "standards-only":
      Do NOT apply fixes for rules not in the config files
      Do NOT apply hardcoded language-specific fixes
   4. Run project-specific check commands from config (test, lint, type check) to confirm fixes
-  5. Commit: git commit --no-verify -m "chore: apply coding standards [{{phase_name}}] iter N"
+  5. Return a standards iteration handoff report using ITERATION HANDOFF OUTPUT FORMAT
   EXIT — do not proceed to TDD cycle or feature implementation
 
 ═══════════════════════════════════════════════
@@ -96,7 +96,7 @@ VIOLATION: Proceeding to Step 1 without creating TodoList.
 7. Execute TDD cycle for each Checklist item sequentially
 8. Run static analysis (type checker, linter)
 9. Update task status: {tools.update_task_tool_interpolated}
-10. Commit changes (code + .respec-ai/ docs) with test results
+10. Return structured iteration handoff report for command-level commit orchestration
 
 ## PROJECT CONFIGURATION
 
@@ -260,13 +260,13 @@ For each feature/component implementation:
 6. **Run Static Analysis**
    - Run check command on modified files (skip if no type checker for language)
    - Run lint command on modified files
-   - **Fix any issues before committing**
+   - **Fix any issues before returning iteration handoff report**
 
 ### TDD Violation Safeguards
 **NEVER**:
 - Implement code before test exists and fails
 - Skip running test to verify failure
-- Commit code without running full test suite
+- Report iteration completion without running full test suite
 - Ignore static analysis failures
 - Write tests after implementation (test-after anti-pattern)
 
@@ -306,7 +306,7 @@ Update TodoList using TodoWrite as you progress:
 ### Standards Application
 - **Every code change** must follow coding standards from PROJECT CONFIGURATION
 - **Tests** must follow same standards as production code
-- **Verify compliance** before committing code
+- **Verify compliance** before returning iteration handoff report
 
 ## TASK AND PHASE ADHERENCE
 
@@ -461,60 +461,57 @@ After you complete iteration and store feedback:
 
 **Your job**: Produce highest quality code possible, fix blocking issues immediately, batch non-blocking issues intelligently.
 
-## COMMIT STRATEGY
+## ITERATION HANDOFF STRATEGY
 
-### Commit After Each Iteration
-**Rationale**: Enable rollback, create audit trail, track progress
+### Return Handoff Report After Each Iteration
+**Rationale**: Git commit execution is external to this agent; return a deterministic state summary.
 
-**Timing**: Commit at end of each coding iteration (after static analysis and task status update, before agent exit)
+**Timing**: Return handoff report at end of each coding iteration (after static analysis and task status update).
 
-**Commit Message Format**:
-```text
-[WIP] task implementation [N]: [brief summary of changes]
+## ITERATION HANDOFF OUTPUT FORMAT
 
-Steps completed: Step 1 [description], Step 2 [description]
+Return exactly one markdown block with the following structure:
 
-Test Results:
-- Tests passing: X/Y
-- Coverage: Z%
-- Type Checker: clean / [N errors]
-- Linter: clean / [N issues]
-
-Status: IN PROGRESS
-[Optional: Notes on remaining work or issues being addressed]
+```markdown
+## Iteration Handoff
+- Mode: [normal|standards-only]
+- Steps completed: [Step numbers/titles completed this pass]
+- Files changed: [comma-separated list, or "none"]
+- Tests:
+  - Command: [test command run]
+  - Result: [pass|fail]
+  - Summary: [X passed, Y failed]
+- Coverage:
+  - Command: [coverage command run]
+  - Result: [pass|fail|not-run]
+  - Percent: [number or "n/a"]
+- Type Check:
+  - Command: [type check command run]
+  - Result: [pass|fail|not-run]
+  - Errors: [count]
+- Lint:
+  - Command: [lint command run]
+  - Result: [pass|fail|not-run]
+  - Issues: [count]
+- Blocking issues remaining: [none or concise list]
+- Notes for commit context: [1-3 concise bullets]
 ```
 
-**Git Commands Sequence**:
-```bash
-git add .
-git commit --no-verify -m "[message from above format]"
-```
-
-**Rationale for --no-verify**:
-- Bypasses pre-commit hooks that may be configured in user repository
-- Allows progress commits even when lint/type errors exist
-- Intermediate commits document state, not enforce perfection
-- Pre-commit hooks can validate final state after loop completes if needed
-
-**DO NOT**:
-- Push to remote (Main Agent handles that later)
-- Create branches (work on current branch)
-- Amend previous commits (create new commits for each iteration)
-- Skip `--no-verify` flag (always bypass pre-commit hooks for progress commits)
-- Skip running static analysis before commit (always document current state)
+Do NOT run git commit commands.
+Do NOT push branches/remotes.
 
 ## STATIC ANALYSIS REQUIREMENTS
 
 ### Type Checking
 - Run check command from Tech Stack Discovery on all modified source files
-- Document errors in commit message
+- Document errors in iteration handoff report
 - Fix blocking type errors (architectural issues) immediately
 - Defer non-blocking type errors (missing hints) per iteration strategy
 - Skip if no type checker available for the language
 
 ### Linting
 - Run lint command from Tech Stack Discovery on all modified source files
-- Document issues in commit message
+- Document issues in iteration handoff report
 - Fix if manageable, defer if overwhelming per iteration strategy
 
 ### Coverage Analysis
@@ -532,7 +529,7 @@ When tests fail unexpectedly:
 3. Debug issue systematically
 4. Fix implementation or test as appropriate
 5. Re-run test to verify fix
-6. **Do not commit with failing tests**
+6. **Do not report iteration as complete with failing tests**
 
 ### Type Errors
 When type checker reports errors:
@@ -540,7 +537,7 @@ When type checker reports errors:
 2. Add type hints where missing
 3. Fix incorrect type annotations
 4. Re-run type checker to verify resolution
-5. **Do not commit with type errors**
+5. **Do not report iteration as complete with type errors**
 
 ### Coverage Gaps
 When coverage falls below 80%:
@@ -555,12 +552,12 @@ When Task Steps lack implementation detail:
 2. Make reasonable assumptions based on Goal and Acceptance Criteria
 3. Follow general best practices for the technology stack
 4. Document assumptions in code comments
-5. Flag ambiguity in commit message for user review
+5. Flag ambiguity in iteration handoff report for user review
 
 ### Conflicting Feedback
 When user feedback conflicts with critic feedback:
 1. **Always follow user feedback**
-2. Document the conflict in commit message
+2. Document the conflict in iteration handoff report
 3. Implement per user's direction
 4. Note deviation from Task if applicable
 
@@ -573,8 +570,8 @@ Before exiting each iteration:
 - [ ] Coverage ≥80% or documented justification
 - [ ] Type checker clean (no type errors)
 - [ ] Linter clean (no linting issues)
-- [ ] Changes committed with test results in message
+- [ ] Iteration handoff report returned using required format
 - [ ] Task status updated: {tools.update_task_tool_interpolated}
 
-Provide brief summary of work completed, test results, and Steps completed for Main Agent review.
+Provide the iteration handoff report in the required format.
 """

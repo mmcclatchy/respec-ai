@@ -330,48 +330,101 @@ You now have TWO active loop IDs - DO NOT confuse them:
 
 Pass BOTH IDs to coding agents. Never swap them.
 
-#### Step 5.3: Code Implementation Cycle
+#### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)
 
-{tools.invoke_coder}
-
-Expected: Code implementation committed, platform status updated
-
-#### Step 5.4: Phase 1 Review Team Orchestration
-
-Launch ALL Phase 1 review agents (except consolidator) in parallel.{tools.phase1_review_parallel_policy} Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 4.3. The review-consolidator MUST run AFTER all other reviewers complete. coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
-
-**Core Reviewers (always active):**
-{tools.invoke_quality_checker}
-
-Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-quality-check
-
-{tools.invoke_spec_alignment}
-
-Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-spec-alignment
-
-{tools.invoke_code_quality}
-
-Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-code-quality
-
-**Optional Specialist Reviewers (from PHASE1_REVIEWERS):**
-For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core and not consolidator:
-  {tools.invoke_dynamic_reviewer_pattern}
-
-  Expected: Review section stored at {{PLAN_NAME}}/{{PHASE_NAME}}/review-{{REVIEWER_SLUG}}
-
-**Consolidator (always last, runs over PHASE1_REVIEWERS):**
-{tools.invoke_consolidator}
-
-Expected: Single CriticFeedback with Overall Score stored in MCP coding loop
-
-#### MCP Coding Decision
 ```text
-CODING_DECISION_RESPONSE = {tools.decide_coding_action}
-CODING_DECISION = CODING_DECISION_RESPONSE.status
-CODING_SCORE = CODING_DECISION_RESPONSE.current_score
-CODING_ITERATION = CODING_DECISION_RESPONSE.iteration
+Loop:
+  # A) Coder pass
+  {tools.invoke_coder}
+  Expected: Code implementation updated, task status synced, iteration handoff report returned
 
-Decision options: "COMPLETE", "REFINE", "USER_INPUT"
+  # B) Phase 1 review team orchestration
+  Launch ALL Phase 1 review agents (except consolidator) in parallel.{tools.phase1_review_parallel_policy}
+  Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 4.3.
+  The review-consolidator MUST run AFTER all other reviewers complete.
+  coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
+
+  Core reviewers (always active):
+  {tools.invoke_quality_checker}
+  {tools.invoke_spec_alignment}
+  {tools.invoke_code_quality}
+
+  Optional specialists:
+  For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core and not consolidator:
+    {tools.invoke_dynamic_reviewer_pattern}
+
+  Consolidator (always last):
+  {tools.invoke_consolidator}
+
+  # C) MCP coding decision
+  CODING_DECISION_RESPONSE = {tools.decide_coding_action}
+  CODING_DECISION = CODING_DECISION_RESPONSE.status
+  CODING_SCORE = CODING_DECISION_RESPONSE.current_score
+  CODING_ITERATION = CODING_DECISION_RESPONSE.iteration
+  Decision options: "COMPLETE", "REFINE", "USER_INPUT"
+
+  # D) Phase 1 commit orchestration (command-owned, every pass)
+  # Narrow exception: command reads latest feedback only for commit metadata synthesis.
+  PHASE1_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=CODING_LOOP_ID, count=1)
+  PHASE1_SCORE = [extract latest Overall Score from PHASE1_FEEDBACK]
+  PHASE1_SUMMARY = [extract latest Assessment Summary from PHASE1_FEEDBACK]
+  PHASE1_KEY_ISSUES = [extract top key issues from PHASE1_FEEDBACK]
+
+  PHASE1_TERMINAL = (
+    CODING_DECISION == "complete"
+    AND "coding-standards-reviewer" not in ACTIVE_REVIEWERS
+  )
+
+  IF PHASE1_TERMINAL:
+    COMMIT_SUBJECT = "fix: complete {{CHANGE_DESCRIPTION}} [Phase 1]"
+  ELSE:
+    COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 1 iter {{CODING_ITERATION}}]"
+
+  COMMIT_MESSAGE_BLOCK = compose:
+    {{COMMIT_SUBJECT}}
+
+    Change: {{CHANGE_DESCRIPTION}}
+    Phase: {{PHASE_NAME}}
+    Loop: Phase 1 (coding_loop_id={{CODING_LOOP_ID}})
+    Decision: {{CODING_DECISION}}
+    Score: {{PHASE1_SCORE}}/100
+
+    Summary:
+    {{PHASE1_SUMMARY}}
+
+    Key Issues:
+    {{PHASE1_KEY_ISSUES}}
+
+    Source: review-consolidator CriticFeedback
+
+  HAS_CHANGES = `git status --porcelain` has any output
+
+  IF HAS_CHANGES:
+    Execute commit via adapter policy:
+{tools.tui_adapter.loop_commit_instructions}
+  ELIF PHASE1_TERMINAL:
+    IF `git rev-parse --verify HEAD` succeeds:
+      git commit --amend --no-verify -F - <<'EOF'
+      {{COMMIT_MESSAGE_BLOCK}}
+      EOF
+    ELSE:
+      git commit --allow-empty --no-verify -F - <<'EOF'
+      {{COMMIT_MESSAGE_BLOCK}}
+      EOF
+  ELSE:
+    git commit --allow-empty --no-verify -F - <<'EOF'
+    {{COMMIT_MESSAGE_BLOCK}}
+    EOF
+
+  # E) Decision handling after commit
+  IF CODING_DECISION == "refine":
+    continue loop
+
+  IF CODING_DECISION == "complete":
+    exit loop to Step 6
+
+  IF CODING_DECISION == "user_input":
+    exit loop to Step 6
 ```
 
 ### 6. Coding Decision Handling
@@ -392,9 +445,7 @@ VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
 ```text
 IF CODING_DECISION == "refine":
   Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Score: {{CODING_SCORE}}/100 — refining"
-  Re-invoke coder agent (same parameters).
-  Re-invoke review team (Step 5.4: quality-checker -> spec-alignment -> specialists -> consolidator).
-  Call MCP decision again.
+  Return to Step 5.3 (next loop pass runs coder -> reviews -> decision -> commit).
 
 ELIF CODING_DECISION == "complete":
   Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached, no active blockers"
@@ -411,9 +462,7 @@ ELIF CODING_DECISION == "user_input":
 
   Prompt user for guidance
   Store user feedback: {tools.store_user_feedback}
-  Re-invoke coder agent (same parameters)
-  Re-invoke review team (Step 5.4: quality-checker -> spec-alignment -> specialists -> consolidator)
-  Call MCP decision again
+  Return to Step 5.3
 ```
 
 ### 6.5: Standards Finalization Phase
@@ -436,6 +485,7 @@ nothing to assess. Do NOT apply general coding standards.
 
 ```text
 STANDARDS_LOOP_ID = {tools.initialize_standards_loop}
+RUN_PRECOMMIT_VALIDATION = false
 
 PHASE1_SCORE = [final Overall Score from CODING_LOOP_ID CriticFeedback]
 Display:
@@ -444,7 +494,7 @@ Display:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🟣  PHASE 2 STARTING: Coding Standards
     Focus: naming · imports · type hints · docstrings
-    Completes with a pre-commit hook validated commit.
+    Command orchestration owns commit lifecycle.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
 
@@ -464,6 +514,51 @@ Loop:
   STANDARDS_SCORE = STANDARDS_DECISION_RESPONSE.current_score
   STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
 
+  # Phase 2 feedback source (coding-standards reviewer CriticFeedback):
+  STANDARDS_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
+  STANDARDS_SUMMARY = [extract latest Assessment Summary from STANDARDS_FEEDBACK]
+  STANDARDS_KEY_ISSUES = [extract top key issues from STANDARDS_FEEDBACK]
+
+  IF STANDARDS_DECISION == "complete":
+    STANDARDS_COMMIT_SUBJECT = "fix: complete {{CHANGE_DESCRIPTION}} [Phase 2 standards]"
+  ELSE:
+    STANDARDS_COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 2 iter {{STANDARDS_ITERATION}}]"
+
+  STANDARDS_COMMIT_MESSAGE_BLOCK = compose:
+    {{STANDARDS_COMMIT_SUBJECT}}
+
+    Change: {{CHANGE_DESCRIPTION}}
+    Phase: {{PHASE_NAME}}
+    Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
+    Decision: {{STANDARDS_DECISION}}
+    Score: {{STANDARDS_SCORE}}/100
+
+    Summary:
+    {{STANDARDS_SUMMARY}}
+
+    Key Issues:
+    {{STANDARDS_KEY_ISSUES}}
+
+    Source: coding-standards-reviewer CriticFeedback
+
+  HAS_CHANGES = `git status --porcelain` has any output
+  IF HAS_CHANGES:
+    Execute commit via adapter policy:
+{tools.tui_adapter.loop_commit_instructions}
+  ELIF STANDARDS_DECISION == "complete":
+    IF `git rev-parse --verify HEAD` succeeds:
+      git commit --amend --no-verify -F - <<'EOF'
+      {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
+      EOF
+    ELSE:
+      git commit --allow-empty --no-verify -F - <<'EOF'
+      {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
+      EOF
+  ELSE:
+    git commit --allow-empty --no-verify -F - <<'EOF'
+    {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
+    EOF
+
   IF STANDARDS_DECISION == "complete":
     Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached, no active blockers"
     exit loop
@@ -478,40 +573,68 @@ Loop:
 
     Use AskUserQuestion with options:
       1. Continue Phase 2 with more iterations
-      2. Accept current state — finalize with --no-verify
-      3. Finalize now with pre-commit hooks (may fail)
+      2. Finalize current standards state now
+      3. Finalize now and run pre-commit hooks validation
 
     Store user choice and branch accordingly:
     - Option 1: continue loop
-    - Option 2: git commit --no-verify -m "fix: {{CHANGE_DESCRIPTION}} [coding standards — hooks bypassed]"
-                EXIT Phase 2 loop
-    - Option 3: proceed to Step 6.5.3
+    - Option 2: RUN_PRECOMMIT_VALIDATION = false
+                EXIT Phase 2 loop → Step 6.5.3
+    - Option 3: RUN_PRECOMMIT_VALIDATION = true
+                EXIT Phase 2 loop → Step 6.5.3
 ```
 
-#### Step 6.5.3: Final Commit with Pre-commit Hooks
+#### Step 6.5.3: Finalize Phase 2 Completion Commit
 
 ```text
-Run (without --no-verify):
-  git add -A
-  git commit -m "fix: {{CHANGE_DESCRIPTION}} — coding standards applied"
+# Ensure terminal commit is non-WIP when Phase 2 exits via user_input finalization.
+FINAL_STANDARDS_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
+FINAL_STANDARDS_SCORE = [extract latest Overall Score]
+FINAL_STANDARDS_SUMMARY = [extract latest Assessment Summary]
+FINAL_STANDARDS_KEY_ISSUES = [extract top key issues]
 
-IF commit succeeds:
-  Display:
-  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ✅  PHASE 2 COMPLETE  ·  Coding Standards Applied
-  ✅  Pre-commit hooks passed — implementation complete
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+FINAL_COMMIT_MESSAGE_BLOCK = compose:
+  fix: complete {{CHANGE_DESCRIPTION}} [Phase 2 standards]
 
-IF commit fails (hooks rejected):
-  Display hook output
+  Change: {{CHANGE_DESCRIPTION}}
+  Phase: {{PHASE_NAME}}
+  Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
+  Decision: finalized-by-user
+  Score: {{FINAL_STANDARDS_SCORE}}/100
 
-  Use AskUserQuestion:
-    "Pre-commit hooks failed. Options:"
-    1. Finalize with --no-verify (address hooks separately)
-    2. Fix failures manually, then re-run
+  Summary:
+  {{FINAL_STANDARDS_SUMMARY}}
 
-  IF option 1:
-    git commit --no-verify -m "fix: {{CHANGE_DESCRIPTION}} [pre-commit hooks bypassed]"
+  Key Issues:
+  {{FINAL_STANDARDS_KEY_ISSUES}}
+
+  Source: coding-standards-reviewer CriticFeedback
+
+HAS_CHANGES = `git status --porcelain` has any output
+IF HAS_CHANGES:
+  Execute commit via adapter policy:
+{tools.tui_adapter.loop_commit_instructions}
+ELIF `git rev-parse --verify HEAD` succeeds:
+  git commit --amend --no-verify -F - <<'EOF'
+  {{FINAL_COMMIT_MESSAGE_BLOCK}}
+  EOF
+ELSE:
+  git commit --allow-empty --no-verify -F - <<'EOF'
+  {{FINAL_COMMIT_MESSAGE_BLOCK}}
+  EOF
+
+IF RUN_PRECOMMIT_VALIDATION == true:
+  VALIDATION_COMMANDS = []
+  IF LANGUAGE_CONFIGS includes command labels:
+    Append in deterministic order: Test, Type check, Lint
+
+  IF VALIDATION_COMMANDS is empty:
+    Display: "ℹ️ No configured validation commands found (Test/Type check/Lint) — skipping post-finalization validation."
+  ELSE:
+    For each VALIDATION_COMMAND in VALIDATION_COMMANDS:
+      Run command and capture exit code + summary output
+    IF any command fails:
+      Display failures and continue with completed commit already recorded.
 ```
 
 ### 7. Update Phase Evolution Log

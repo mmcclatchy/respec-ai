@@ -335,6 +335,7 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
     builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
     builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    builder.add_builtin_tool(BuiltInTool.BASH)
     builder.add_bash_script('scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
@@ -1271,6 +1272,7 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
     builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
     builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    builder.add_builtin_tool(BuiltInTool.BASH)
     builder.add_builtin_tool(BuiltInTool.GLOB)
     builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md')
     builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/phases/*/tasks/*.md')

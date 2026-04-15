@@ -503,6 +503,17 @@ IF LOOP_DECISION == "USER_INPUT":
   Prompt user for input
 ```
 
+**Narrow Exception: Commit Metadata Synthesis in `respec-code` / `respec-patch`**
+
+For commit-lifecycle orchestration, `respec-code` and `respec-patch` may retrieve the latest
+feedback outside `USER_INPUT` to synthesize command-owned commit metadata (subject/summary/score).
+
+Exception constraints:
+- Retrieval is read-only and limited to latest feedback needed for commit message composition.
+- Retrieved feedback is NOT passed to specialized agents as input parameters.
+- Retrieval does NOT override MCP decision authority (`decide_loop_next_action` remains source of truth).
+- Commands continue to own control flow; agents continue to retrieve their own processing context.
+
 **❌ WRONG: Command retrieves data for agents**
 
 ```markdown
@@ -1513,7 +1524,7 @@ Current section keys:
 
 ### Parallel Execution
 
-The orchestrating command (code_command.py Step 7.4.1) launches all Phase 1 review agents in
+The orchestrating command (code_command.py Step 7.4 loop) launches all Phase 1 review agents in
 parallel. Each reviewer operates independently — no reviewer references or depends on another
 reviewer's output. The review-consolidator runs **after** all other reviewers complete.
 

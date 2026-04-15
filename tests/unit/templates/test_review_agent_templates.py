@@ -320,3 +320,35 @@ class TestCoderTemplateConfig:
         assert 'TOOLS.test_runner' not in template
         assert 'CONFIG = Read' not in template
         assert 'TOOLING[LANGUAGE]' not in template
+
+    def test_coder_template_removes_agent_owned_commit_execution(self) -> None:
+        tools = create_coder_agent_tools(
+            _adapter,
+            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+        )
+        template = generate_coder_template(tools)
+
+        assert 'git commit --no-verify -m' not in template
+        assert 'Commit After Each Iteration' not in template
+        assert 'Do NOT run git commit commands.' in template
+
+    def test_coder_template_requires_structured_iteration_handoff(self) -> None:
+        tools = create_coder_agent_tools(
+            _adapter,
+            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+        )
+        template = generate_coder_template(tools)
+
+        assert '## ITERATION HANDOFF OUTPUT FORMAT' in template
+        assert '## Iteration Handoff' in template
+        assert 'Mode: [normal|standards-only]' in template
+
+    def test_coder_template_removes_orchestration_aware_wording(self) -> None:
+        tools = create_coder_agent_tools(
+            _adapter,
+            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+        )
+        template = generate_coder_template(tools)
+
+        assert 'Main command owns git commit execution' not in template
+        assert 'Main Agent review' not in template

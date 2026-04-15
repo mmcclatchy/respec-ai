@@ -153,6 +153,16 @@ class OpenCodeAdapter(TuiAdapter):
     def plans_dir(self) -> str:
         return '.opencode/plans'
 
+    @property
+    def loop_commit_instructions(self) -> str:
+        return (
+            'Execute commit directly with git:\n'
+            '1. git add -A\n'
+            "2. git commit --no-verify -F - <<'EOF'\n"
+            '   COMMIT_MESSAGE_BLOCK\n'
+            '   EOF'
+        )
+
     def render_agent_invocation(
         self,
         agent_name: str,

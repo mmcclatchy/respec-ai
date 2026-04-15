@@ -1,5 +1,7 @@
 """Tests for command template generation functions."""
 
+from pathlib import Path
+
 from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.tool_enums import RespecAICommand
@@ -468,6 +470,69 @@ class TestCrossPlatformInvocationRendering:
         assert 'Switch mode and continue refine' in template
         assert 'Finalize now with deferred-risk summary' in template
 
+    def test_code_template_includes_command_owned_commit_orchestration(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
+        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
+        assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
+        assert 'Source: review-consolidator CriticFeedback' in template
+        assert 'Source: coding-standards-reviewer CriticFeedback' in template
+        assert '### 7.5: Standards Finalization Phase' in template
+        assert '#### Step 7.5.3: Finalize Phase 2 Completion Commit' in template
+
+    def test_code_template_phase1_loop_orders_commit_before_transitions(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
+        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
+        assert '# E) Decision handling after commit' in template
+        assert template.index('# D) Phase 1 commit orchestration (command-owned, every pass)') < template.index(
+            '# E) Decision handling after commit'
+        )
+        assert 'Return to Step 7.4 (next loop pass runs coder → reviews → decision → commit).' in template
+
+    def test_code_template_phase1_commit_subjects_include_terminal_and_wip(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'COMMIT_SUBJECT = "feat: complete {PHASE_NAME} [Phase 1]"' in template
+        assert 'COMMIT_SUBJECT = "[WIP] {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
+        assert 'git commit --amend --no-verify -F - <<' in template
+        assert 'git commit --allow-empty --no-verify -F - <<' in template
+
+    def test_code_template_precommit_validation_is_deterministic(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'Append in deterministic order: Test, Type check, Lint' in template
+        assert 'No configured validation commands found (Test/Type check/Lint)' in template
+        assert 'Run project hook validation commands if configured by repository.' not in template
+
+    def test_codex_code_template_prefers_commit_skill_in_commit_orchestration(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert '$Commit' in template
+        assert 'git commit --no-verify -F - <<' in template
+
     def test_task_template_excludes_stale_create_task_target(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -490,4 +555,77 @@ class TestCrossPlatformInvocationRendering:
             'ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer", "code-quality-reviewer"]'
             in template
         )
-        assert 'review-code-quality' in template
+        assert 'Task(respec-code-quality-reviewer)' in template
+
+    def test_patch_template_includes_command_owned_commit_orchestration(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '#### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)' in template
+        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
+        assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
+        assert 'Source: review-consolidator CriticFeedback' in template
+        assert 'Source: coding-standards-reviewer CriticFeedback' in template
+        assert '#### Step 6.5.3: Finalize Phase 2 Completion Commit' in template
+
+    def test_patch_template_phase1_loop_orders_commit_before_transitions(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert '#### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)' in template
+        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
+        assert '# E) Decision handling after commit' in template
+        assert template.index('# D) Phase 1 commit orchestration (command-owned, every pass)') < template.index(
+            '# E) Decision handling after commit'
+        )
+        assert 'Return to Step 5.3 (next loop pass runs coder -> reviews -> decision -> commit).' in template
+
+    def test_patch_template_phase1_commit_subjects_include_terminal_and_wip(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'COMMIT_SUBJECT = "fix: complete {CHANGE_DESCRIPTION} [Phase 1]"' in template
+        assert 'COMMIT_SUBJECT = "[WIP] patch {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
+        assert 'git commit --amend --no-verify -F - <<' in template
+        assert 'git commit --allow-empty --no-verify -F - <<' in template
+
+    def test_patch_template_precommit_validation_is_deterministic(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'Append in deterministic order: Test, Type check, Lint' in template
+        assert 'No configured validation commands found (Test/Type check/Lint)' in template
+        assert 'Run project hook validation commands if configured by repository.' not in template
+
+    def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
+        guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')
+        assert 'Narrow Exception: Commit Metadata Synthesis in `respec-code` / `respec-patch`' in guidelines
+        assert 'NOT passed to specialized agents as input parameters' in guidelines
+        assert 'does NOT override MCP decision authority' in guidelines
+
+        coordinator = TemplateCoordinator()
+        code_template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        patch_template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        exception_phrase = 'Narrow exception: command reads latest feedback only for commit metadata synthesis.'
+        assert exception_phrase in code_template
+        assert exception_phrase in patch_template

@@ -10,7 +10,9 @@ from src.platform.startup_validation import (
 )
 from src.platform.template_helpers import (
     TemplateToolBuilder,
+    create_code_command_tools,
     create_phase_command_tools,
+    create_patch_command_tools,
     create_plan_command_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
@@ -154,6 +156,28 @@ class TestTemplateHelpers:
 
         tools = create_task_plan_critic_agent_tools(ClaudeCodeAdapter())
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
+
+    def test_create_code_command_tools_include_unrestricted_bash(self) -> None:
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        platform_tools = [
+            'mcp__linear-server__get_issue',
+            'mcp__linear-server__create_comment',
+        ]
+        tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+        assert 'Bash' in tools.tools_yaml
+
+    def test_create_patch_command_tools_include_unrestricted_bash(self) -> None:
+        from src.platform.tui_adapters import ClaudeCodeAdapter
+
+        platform_tools = [
+            'mcp__linear-server__get_issue',
+            'mcp__linear-server__create_comment',
+        ]
+        tools = create_patch_command_tools(
+            platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'Bash' in tools.tools_yaml
 
 
 class TestStartupValidation:
