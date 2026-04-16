@@ -36,12 +36,16 @@ def _update_docker(old_version: str, new_version: str) -> bool:
         print_info('Skip Docker update with: respec-ai update --skip-docker')
         return False
 
-    old_status = docker_manager.get_container_status(version=old_version)
-    was_running = old_status.get('running', False)
+    is_same_version = old_version == new_version
+    was_running = False
 
-    if was_running:
-        print_info('Stopping container...')
-        docker_manager.stop_container(version=old_version)
+    if not is_same_version:
+        old_status = docker_manager.get_container_status(version=old_version)
+        was_running = old_status.get('running', False)
+
+        if was_running:
+            print_info('Stopping container...')
+            docker_manager.stop_container(version=old_version)
 
     print_info(f'Pulling Docker image v{new_version}...')
     try:
@@ -62,8 +66,11 @@ def _update_docker(old_version: str, new_version: str) -> bool:
                 print_info('Start manually when image is ready: respec-ai docker start')
         return False
 
-    if old_version != new_version:
-        docker_manager.cleanup_old_versions(version=new_version)
+    docker_manager.cleanup_old_versions(version=new_version)
+
+    if is_same_version:
+        print_info('No new CLI version found; skipping container stop/start')
+        return True
 
     print_info('Starting container...')
     try:

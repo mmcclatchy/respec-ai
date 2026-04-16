@@ -99,3 +99,45 @@ class TestEnsureDbRunning:
             manager.ensure_db_running()
 
         mock_network.connect.assert_not_called()
+
+
+class TestCleanupOldVersions:
+    def test_does_not_remove_database_container(self) -> None:
+        mock_client = MagicMock()
+        current_server = MagicMock()
+        current_server.name = 'respec-ai-1.0.0'
+        old_server = MagicMock()
+        old_server.name = 'respec-ai-0.9.0'
+        db_container = MagicMock()
+        db_container.name = DockerManager.DB_CONTAINER_NAME
+
+        mock_client.containers.list.return_value = [current_server, old_server, db_container]
+        mock_client.images.list.return_value = []
+
+        with patch('src.cli.docker.manager.docker.from_env', return_value=mock_client):
+            manager = DockerManager()
+            manager.cleanup_old_versions(version='1.0.0')
+
+        old_server.remove.assert_called_once_with(force=True)
+        current_server.remove.assert_not_called()
+        db_container.remove.assert_not_called()
+
+    def test_only_removes_versioned_server_containers(self) -> None:
+        mock_client = MagicMock()
+        versioned_old_server = MagicMock()
+        versioned_old_server.name = 'respec-ai-0.8.0'
+        non_versioned_server = MagicMock()
+        non_versioned_server.name = 'respec-ai-dev'
+        unrelated_container = MagicMock()
+        unrelated_container.name = 'other-app'
+
+        mock_client.containers.list.return_value = [versioned_old_server, non_versioned_server, unrelated_container]
+        mock_client.images.list.return_value = []
+
+        with patch('src.cli.docker.manager.docker.from_env', return_value=mock_client):
+            manager = DockerManager()
+            manager.cleanup_old_versions(version='1.0.0')
+
+        versioned_old_server.remove.assert_called_once_with(force=True)
+        non_versioned_server.remove.assert_not_called()
+        unrelated_container.remove.assert_not_called()

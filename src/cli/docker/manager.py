@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ class DockerManager:
         'POSTGRES_USER': 'respec',
         'POSTGRES_PASSWORD': 'respec_prod',
     }
+    SERVER_CONTAINER_NAME_PATTERN = re.compile(r'^respec-ai-\d+\.\d+\.\d+$')
 
     def __init__(self) -> None:
         try:
@@ -347,6 +349,10 @@ class DockerManager:
                 filters={'name': self.CONTAINER_NAME_PREFIX},
             )
             for container in containers:
+                if container.name == self.DB_CONTAINER_NAME:
+                    continue
+                if not self.SERVER_CONTAINER_NAME_PATTERN.match(container.name):
+                    continue
                 if container.name != current_container_name:
                     print(f'Removing old container: {container.name}')
                     try:
