@@ -1,17 +1,60 @@
 import logging
 import sys
+import json
+from typing import Any, Callable
 from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.server.middleware import MiddlewareContext
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
-from fastmcp.server.middleware.logging import LoggingMiddleware
+from fastmcp.server.middleware.logging import LoggingMiddleware, default_serializer
 
 from src.mcp.lifespan import mcp_lifespan
 from src.mcp.tools import register_all_tools
 from src.utils.enums import HealthState
 from src.utils.loop_state import HealthStatus
 from src.utils.setting_configs import mcp_settings
+
+
+REDACTED_PAYLOAD_KEYS = {
+    'content',
+    'analysis',
+    'feedback_markdown',
+    'detailed_feedback',
+}
+
+
+def _redact_payload_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for key, item in value.items():
+            if key.lower() in REDACTED_PAYLOAD_KEYS and isinstance(item, str):
+                redacted[key] = f'<redacted:{len(item)} chars>'
+            else:
+                redacted[key] = _redact_payload_value(item)
+        return redacted
+
+    if isinstance(value, list):
+        return [_redact_payload_value(item) for item in value]
+
+    return value
+
+
+def _build_payload_serializer(include_full_payloads: bool) -> Callable[[Any], str]:
+    def payload_serializer(message: Any) -> str:
+        serialized = default_serializer(message)
+
+        if include_full_payloads:
+            return serialized
+
+        try:
+            parsed = json.loads(serialized)
+        except Exception:
+            return serialized
+
+        return json.dumps(_redact_payload_value(parsed))
+
+    return payload_serializer
 
 
 class MCPRequestFilter(logging.Filter):
@@ -116,6 +159,7 @@ def _configure_logging() -> logging.Logger:
 def create_mcp_server() -> FastMCP:
     tool_logger = _configure_logging()
     log_level = getattr(logging, mcp_settings.log_level.upper(), logging.INFO)
+    include_full_payloads = log_level == logging.DEBUG
 
     mcp = FastMCP(mcp_settings.server_name, lifespan=mcp_lifespan)
     error_logger = logging.getLogger('mcp_errors')
@@ -150,6 +194,7 @@ def create_mcp_server() -> FastMCP:
             log_level=log_level,
             include_payloads=True,
             max_payload_length=50000,
+            payload_serializer=_build_payload_serializer(include_full_payloads),
         )
     )
 
