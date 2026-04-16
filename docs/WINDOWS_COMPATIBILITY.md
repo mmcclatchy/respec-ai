@@ -65,7 +65,7 @@ All command and agent templates use forward-slash relative paths:
 
 - `.respec-ai/plans/{PLAN_NAME}/references/{REFERENCE_FILENAME}`
 - `.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/tasks/{TASK_NAME}.md`
-- `.respec-ai/config/stack.md`
+- `.respec-ai/config/stack.toml`
 - `.respec-ai/config.json`
 
 **Question**: Do Claude Code/OpenCode tools resolve project-relative paths with forward slashes on Windows?

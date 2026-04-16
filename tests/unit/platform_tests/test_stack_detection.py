@@ -12,6 +12,7 @@ class TestDetectProjectStackPython:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'python'
+        assert result.languages == ['python']
         assert result.package_manager == 'uv'
 
     def test_detects_python_with_pip(self, tmp_path: Path) -> None:
@@ -91,6 +92,7 @@ class TestDetectProjectStackJavaScript:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'javascript'
+        assert result.languages == ['javascript']
         assert result.package_manager == 'npm'
 
     def test_detects_typescript(self, tmp_path: Path) -> None:
@@ -100,6 +102,7 @@ class TestDetectProjectStackJavaScript:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'typescript'
+        assert result.languages == ['typescript']
 
     def test_detects_yarn(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
@@ -186,6 +189,15 @@ class TestDetectProjectStackOther:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'python'
+        assert result.languages == ['python', 'javascript']
+
+    def test_detects_multilanguage_project_stack(self, tmp_path: Path) -> None:
+        (tmp_path / 'pyproject.toml').write_text('[project]\ndependencies = []\n')
+        (tmp_path / 'go.mod').write_text('module example.com/test\ngo 1.22\n')
+        result = detect_project_stack(tmp_path)
+        assert result is not None
+        assert result.language == 'python'
+        assert result.languages == ['python', 'go']
 
 
 class TestApplyStackToTooling:

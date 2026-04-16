@@ -14,6 +14,7 @@ from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
 _PRIMARY_COMMAND_SKILLS = {'respec-plan', 'respec-phase', 'respec-code', 'respec-patch'}
+_PREFLIGHT_COMMAND_SKILLS = {'respec-standards'}
 _SECONDARY_COMMAND_PARENTS = {
     'respec-roadmap': 'respec-plan',
     'respec-task': 'respec-phase',
@@ -332,6 +333,8 @@ class CodexAdapter(TuiAdapter):
     def _allow_implicit_command_invocation(self, command_name: str) -> bool:
         if command_name in _INTERNAL_COMMAND_SKILLS:
             return False
+        if command_name in _PREFLIGHT_COMMAND_SKILLS:
+            return True
         if command_name in _PRIMARY_COMMAND_SKILLS:
             return True
         if command_name in _SECONDARY_COMMAND_PARENTS:
@@ -360,6 +363,8 @@ class CodexAdapter(TuiAdapter):
     def _command_usage_note(self, command_name: str) -> str | None:
         if command_name in _INTERNAL_COMMAND_SKILLS:
             return 'Internal workflow used by `respec-plan`; do not invoke directly.'
+        if command_name in _PREFLIGHT_COMMAND_SKILLS:
+            return 'Preflight workflow; run before `respec-plan`, `respec-phase`, `respec-code`, and `respec-patch`.'
         if command_name in _SECONDARY_COMMAND_PARENTS:
             parent_command = _SECONDARY_COMMAND_PARENTS[command_name]
             return f'Typically orchestrated by `{parent_command}`; direct use is for edge cases.'

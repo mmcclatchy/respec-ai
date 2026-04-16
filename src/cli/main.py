@@ -152,7 +152,7 @@ def main() -> int:
 
     standards_parser = subparsers.add_parser(
         'standards',
-        help='Manage standards canonical TOML files and markdown mirrors',
+        help='Manage canonical standards TOML files',
     )
 
     standards.add_arguments(standards_parser)

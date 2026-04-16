@@ -376,7 +376,7 @@ Phase updated successfully.
 
 ## PROJECT CONFIGURATION
 
-Read .respec-ai/config/stack.md for project stack context.
+Read .respec-ai/config/stack.toml for project execution stack context.
 
 ## OUTPUT DETAIL GUIDELINES
 

@@ -213,6 +213,7 @@ class TestPromptStackProfile:
 
         assert isinstance(result, ProjectStack)
         assert result.language == 'python'
+        assert result.languages == ['python']
         assert result.backend_framework == 'fastapi'
         assert result.database is None
 
@@ -249,6 +250,7 @@ class TestPromptStackProfile:
         result = prompt_stack_profile(detected)
 
         assert result.language == 'python'
+        assert result.languages == ['python']
         assert result.backend_framework == 'flask'
         assert result.frontend_framework == 'react'
         assert result.package_manager == 'uv'

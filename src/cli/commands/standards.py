@@ -6,7 +6,6 @@ from src.platform.standards_config import (
     available_languages,
     build_language_template,
     render_language_toml,
-    render_markdown_mirrors,
     validate_project_config,
 )
 
@@ -32,10 +31,6 @@ def add_arguments(parser: ArgumentParser) -> None:
         'validate',
         help='Validate canonical standards TOML files',
     )
-    subparsers.add_parser(
-        'render',
-        help='Render markdown mirror files from canonical TOML',
-    )
 
 
 def run(args: Namespace) -> int:
@@ -44,8 +39,6 @@ def run(args: Namespace) -> int:
         return _run_init(args)
     if command == 'validate':
         return _run_validate()
-    if command == 'render':
-        return _run_render()
     print_error(f'Unknown standards command: {command}')
     return 1
 
@@ -79,11 +72,6 @@ def _run_init(args: Namespace) -> int:
         print_success(f'Wrote template: {target.relative_to(project_path)}')
         written += 1
 
-    # Ensure mirrors are refreshed from canonical files after init.
-    rendered = render_markdown_mirrors(project_path)
-    if rendered:
-        print_info(f'Rendered {len(rendered)} markdown mirror file(s)')
-
     if written == 0:
         print_warning('No files created (all targets existed)')
         return 0
@@ -103,22 +91,3 @@ def _run_validate() -> int:
     for error in errors:
         print_error(f'- {error}')
     return 1
-
-
-def _run_render() -> int:
-    project_path = Path.cwd()
-    errors = validate_project_config(project_path)
-    if errors:
-        print_error('Cannot render markdown mirrors: standards config is invalid')
-        for error in errors:
-            print_error(f'- {error}')
-        return 1
-
-    rendered = render_markdown_mirrors(project_path)
-    if not rendered:
-        print_warning('No markdown mirrors rendered (no canonical TOML files found)')
-        return 1
-
-    for path in rendered:
-        print_success(f'Rendered: {path.relative_to(project_path)}')
-    return 0

@@ -21,8 +21,8 @@ INPUTS: Dual loop context for code implementation
 - phase_name: Phase name for context
 - mode: "standards-only" (optional)
   When set: skip TDD cycle; fix only naming, imports, type syntax, docstring violations
-- stack_config: (OPTIONAL) Project tech stack from .respec-ai/config/stack.md
-- language_configs: (OPTIONAL) Language-specific config from .respec-ai/config/{{language}}.md
+- stack_config_toml: (OPTIONAL) Project execution stack from .respec-ai/config/stack.toml
+- language_config_tomls: (OPTIONAL) Language standards from .respec-ai/config/standards/{{language}}.toml
 
 ## STANDARDS-ONLY MODE
 
@@ -102,24 +102,23 @@ VIOLATION: Proceeding to Step 1 without creating TodoList.
 
 **Use provided configuration when available:**
 
-When stack_config and language_configs are provided as inputs, use them directly as your project configuration. These contain the authoritative tech stack, package managers, and commands for this project.
+When stack_config_toml and language_config_tomls are provided as inputs, use them directly as your project configuration. These contain the authoritative execution stack and commands for this project.
 
-**Using Commands from language config:**
+**Using Commands from language config TOML:**
 - Match language config file to the Phase specification language
-- Commands section uses format: `- **Label**: `command``
-- Four standard labels: Test, Coverage, Type check, Lint
+- Read `[commands]` table
+- Required keys: `test`, `coverage`, `type_check`, `lint`
 
 **Coding Standards Priority (if conflicts):**
-1. language_configs Coding Standards section (highest)
+1. language_config_tomls `[rules]` sections (highest)
 2. CLAUDE.md at project root (additive — honored unless conflicts with #1)
 3. Phase Code Standards section
 4. General language best practices (lowest)
 
 **If config inputs are NOT provided (fallback):**
-1. Read(.respec-ai/config/stack.md) — project tech stack and architecture context
+1. Read(.respec-ai/config/stack.toml) — project execution stack and language tables
 2. Glob(.respec-ai/config/standards/*.toml) — discover canonical language standards files
-3. For each standards TOML file, read markdown mirror at .respec-ai/config/{{language}}.md
-4. Extract Commands for test/check/lint from markdown mirrors
+3. Read each relevant language TOML directly and extract `[commands]` + `[rules]`
 
 **If .respec-ai/config/ doesn't exist:**
 - Fall back to Phase Technology Stack section for commands
@@ -329,7 +328,7 @@ Update TodoList using TodoWrite as you progress:
 - Check constraints before choosing implementation approach
 
 ### Code Quality Standards
-- Apply coding standards from .respec-ai/config/{{language}}.md (or Phase fallback)
+- Apply coding standards from .respec-ai/config/standards/{{language}}.toml (or Phase fallback)
 - Meet type checking requirements (full typing per project type checker)
 - Follow documentation expectations from coding standards
 - Adhere to security considerations from Phase

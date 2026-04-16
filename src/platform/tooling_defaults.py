@@ -24,6 +24,15 @@ TOOLING_DEFAULTS: dict[str, LanguageTooling] = {
         linter='eslint',
         lint_command='npx eslint src/',
     ),
+    'typescript': LanguageTooling(
+        test_runner='vitest',
+        test_command='npx vitest run',
+        coverage_command='npx vitest run --coverage',
+        checker='tsc',
+        check_command='npx tsc --noEmit',
+        linter='eslint',
+        lint_command='npx eslint src/',
+    ),
     'go': LanguageTooling(
         test_runner='go test',
         test_command='go test ./...',
@@ -59,15 +68,25 @@ def detect_project_tooling(project_path: Path) -> dict[str, LanguageTooling]:
         if (project_path / build_file).exists() and language not in detected:
             if language in TOOLING_DEFAULTS:
                 detected[language] = TOOLING_DEFAULTS[language]
+    if (project_path / 'package.json').exists() and (project_path / 'tsconfig.json').exists():
+        detected.pop('javascript', None)
+        detected['typescript'] = TOOLING_DEFAULTS['typescript']
     return detected
 
 
+def _primary_language(stack: ProjectStack) -> str | None:
+    if stack.languages:
+        return stack.languages[0]
+    return stack.language
+
+
 def apply_stack_to_tooling(tooling: dict[str, LanguageTooling], stack: ProjectStack) -> dict[str, LanguageTooling]:
-    if not stack.type_checker or stack.language not in tooling:
+    primary_language = _primary_language(stack)
+    if not stack.type_checker or not primary_language or primary_language not in tooling:
         return tooling
 
     updated_tooling = dict(tooling)
-    language = stack.language
+    language = primary_language
 
     if language == 'python' and language in updated_tooling:
         current = updated_tooling[language]
@@ -259,20 +278,26 @@ def _detect_from_package_json(package_json_path: Path, project_path: Path) -> Pr
 
 
 def detect_project_stack(project_path: Path) -> ProjectStack:
+    detected_tooling = detect_project_tooling(project_path)
+    detected_languages = list(detected_tooling.keys())
+    if not detected_languages:
+        return ProjectStack()
+
     pyproject = project_path / 'pyproject.toml'
-    if pyproject.exists():
-        return _detect_from_pyproject(pyproject)
-
     package_json = project_path / 'package.json'
-    if package_json.exists():
-        return _detect_from_package_json(package_json, project_path)
-
     go_mod = project_path / 'go.mod'
-    if go_mod.exists():
-        return ProjectStack(language='go', package_manager='go modules')
-
     cargo_toml = project_path / 'Cargo.toml'
-    if cargo_toml.exists():
-        return ProjectStack(language='rust', package_manager='cargo')
 
-    return ProjectStack()
+    if pyproject.exists():
+        base_stack = _detect_from_pyproject(pyproject)
+    elif package_json.exists():
+        base_stack = _detect_from_package_json(package_json, project_path)
+    elif go_mod.exists():
+        base_stack = ProjectStack(language='go', package_manager='go modules')
+    elif cargo_toml.exists():
+        base_stack = ProjectStack(language='rust', package_manager='cargo')
+    else:
+        base_stack = ProjectStack()
+
+    primary_language = detected_languages[0]
+    return base_stack.model_copy(update={'language': primary_language, 'languages': detected_languages})

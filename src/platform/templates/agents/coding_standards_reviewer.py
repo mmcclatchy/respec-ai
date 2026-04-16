@@ -98,9 +98,9 @@ This reviewer has ZERO built-in language rules.
 ALL assessment logic comes from config files.
 
 1. Confirm canonical TOML files exist in .respec-ai/config/standards/
-2. Read generated markdown mirror config files from .respec-ai/config/
+2. Read standards TOML config files directly
 2. IF no config files found → score 100, exit
-3. Each H2/H3 section in config becomes an assessment area
+3. Each rules key in TOML becomes an assessment area
 4. Assess code ONLY against rules found in config
 5. Do NOT apply rules that are not in the config files
 
@@ -113,21 +113,20 @@ VIOLATION: Inventing assessment areas not present in config.
 
 ```text
 STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
-CONFIG_FILES = Glob(.respec-ai/config/*.md) excluding stack.md
 
-IF STANDARDS_TOML_FILES is empty OR CONFIG_FILES is empty:
+IF STANDARDS_TOML_FILES is empty:
   Return score 100 with message: "No coding standards configured. Skipping review."
   EXIT immediately
 
-For each config file found:
+For each standards TOML file found:
   Read file content
-  Extract all H2 (## ) and H3 (### ) sections
+  Parse [rules] table and [commands] table
   Store section name → section content mapping
 ```
 
 Config files to look for:
-- `.respec-ai/config/universal.md` — cross-language standards (security, structure)
-- `.respec-ai/config/{{language}}.md` — language-specific standards (naming, imports, types)
+- `.respec-ai/config/standards/universal.toml` — cross-language standards (security, structure)
+- `.respec-ai/config/standards/{{language}}.toml` — language-specific standards (naming, imports, types)
 
 ### Step 2: Identify Changed Files
 
@@ -139,10 +138,10 @@ Focus review on files changed by coder in recent commits.
 
 ### Step 3: Assess Code Against Config Standards
 
-For EACH section found in config files:
+For EACH rules section found in standards TOML files:
 
 ```text
-For each H2 or H3 section with assessment rules:
+For each [rules] key with assessment rules:
   1. Identify what the section requires (naming rules, import rules, etc.)
   2. Inspect changed files for violations of those specific rules
   3. Record violations with file:line references

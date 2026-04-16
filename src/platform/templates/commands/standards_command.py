@@ -40,7 +40,7 @@ INCOMPLETE means:
 4. For each incomplete section, ask user for preference using AskUserQuestion:
 ```text
 Prompt should ask for explicit rule direction.
-Allowed fallback answer: "no_preference".
+Allowed fallback answer: "no_preference" (or "no-preference").
 ```
 
 5. Rewrite each populated section as authoritative agent-style rules:
@@ -57,6 +57,5 @@ Allowed fallback answer: "no_preference".
 Standards template updated: .respec-ai/config/standards/{{LANGUAGE}}.toml
 Next steps:
 1) Run: respec-ai standards validate
-2) Run: respec-ai standards render
 ```
 """

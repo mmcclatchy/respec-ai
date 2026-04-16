@@ -249,9 +249,24 @@ class TestInitCommand:
             )
         )
         config_dir = respec_ai_dir / 'config'
-        config_dir.mkdir()
-        (config_dir / 'stack.md').write_text('# Project Stack\n\n## Languages\n- Python 3.13')
-        (config_dir / 'python.md').write_text('# Python\n\n## Commands\n- **Test**: `pytest`')
+        (config_dir / 'standards').mkdir(parents=True)
+        (config_dir / 'stack.toml').write_text(
+            'schema_version = 2\n\n[project]\nprimary_language = "python"\nlanguages = ["python"]\n\n'
+            '[execution]\nstandards_profile = "opt_in"\nrecommend_preflight = true\n\n'
+            '[language.python]\nruntime_version = "3.13"\npackage_manager = "uv"\nbackend_framework = ""\n'
+            'frontend_framework = ""\ndatabase = ""\napi_style = ""\narchitecture = ""\n'
+            'async_runtime = false\ntype_checker = "mypy"\ntest_runner = "pytest"\n'
+            'test_command = "pytest"\ncoverage_command = "pytest --cov"\n'
+            'type_check_command = "mypy ."\nlint_command = "ruff check ."\n'
+        )
+        (config_dir / 'standards' / 'python.toml').write_text(
+            'schema_version = 1\nlanguage = "python"\n\n[commands]\n'
+            'test = "pytest"\ncoverage = "pytest --cov"\ntype_check = "mypy ."\nlint = "ruff check ."\n\n'
+            '[testing]\nframework = "pytest"\nlocation = "tests/"\nnaming = "test_*"\nextras = []\n\n'
+            '[rules]\nnaming = ["snake_case"]\nimports = ["absolute imports"]\n'
+            'type_system = ["Type hints required"]\ndocumentation = ["public APIs only"]\n'
+            'error_handling = ["Fail fast"]\ncode_structure = ["No globals"]\n'
+        )
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
@@ -272,8 +287,8 @@ class TestInitCommand:
         mock_detect.assert_not_called()
         mock_prompt.assert_not_called()
 
-        assert (config_dir / 'stack.md').read_text() == '# Project Stack\n\n## Languages\n- Python 3.13'
-        assert (config_dir / 'python.md').read_text() == '# Python\n\n## Commands\n- **Test**: `pytest`'
+        assert (config_dir / 'stack.toml').exists()
+        assert (config_dir / 'standards' / 'python.toml').exists()
 
     def test_existing_config_without_yes_flag_prompts_user_option_1(
         self,
@@ -294,9 +309,24 @@ class TestInitCommand:
             )
         )
         config_dir = respec_ai_dir / 'config'
-        config_dir.mkdir()
-        (config_dir / 'stack.md').write_text('# Project Stack')
-        (config_dir / 'python.md').write_text('# Python')
+        (config_dir / 'standards').mkdir(parents=True)
+        (config_dir / 'stack.toml').write_text(
+            'schema_version = 2\n\n[project]\nprimary_language = "python"\nlanguages = ["python"]\n\n'
+            '[execution]\nstandards_profile = "opt_in"\nrecommend_preflight = true\n\n'
+            '[language.python]\nruntime_version = ""\npackage_manager = ""\nbackend_framework = ""\n'
+            'frontend_framework = ""\ndatabase = ""\napi_style = ""\narchitecture = ""\n'
+            'async_runtime = false\ntype_checker = "mypy"\ntest_runner = "pytest"\n'
+            'test_command = "pytest"\ncoverage_command = "pytest --cov"\n'
+            'type_check_command = "mypy ."\nlint_command = "ruff check ."\n'
+        )
+        (config_dir / 'standards' / 'python.toml').write_text(
+            'schema_version = 1\nlanguage = "python"\n\n[commands]\n'
+            'test = "pytest"\ncoverage = "pytest --cov"\ntype_check = "mypy ."\nlint = "ruff check ."\n\n'
+            '[testing]\nframework = "pytest"\nlocation = "tests/"\nnaming = "test_*"\nextras = []\n\n'
+            '[rules]\nnaming = ["snake_case"]\nimports = ["absolute imports"]\n'
+            'type_system = ["Type hints required"]\ndocumentation = ["public APIs only"]\n'
+            'error_handling = ["Fail fast"]\ncode_structure = ["No globals"]\n'
+        )
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
@@ -321,8 +351,8 @@ class TestInitCommand:
         mock_prompt.assert_not_called()
         mock_console.input.assert_called_once()
 
-        assert (config_dir / 'stack.md').read_text() == '# Project Stack'
-        assert (config_dir / 'python.md').read_text() == '# Python'
+        assert (config_dir / 'stack.toml').exists()
+        assert (config_dir / 'standards' / 'python.toml').exists()
 
     def test_existing_config_without_yes_flag_prompts_user_option_2(
         self,
@@ -344,7 +374,7 @@ class TestInitCommand:
         )
         config_dir = respec_ai_dir / 'config'
         config_dir.mkdir()
-        (config_dir / 'stack.md').write_text('# Old Stack')
+        (config_dir / 'stack.toml').write_text('schema_version = 2\n')
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
@@ -397,7 +427,7 @@ class TestInitCommand:
         )
         config_dir = respec_ai_dir / 'config'
         config_dir.mkdir()
-        (config_dir / 'stack.md').write_text('# Project Stack')
+        (config_dir / 'stack.toml').write_text('schema_version = 2\n')
 
         mock_console = mocker.patch('src.cli.commands.init.console')
         mock_console.input.return_value = '3'

@@ -33,6 +33,13 @@ STACK_FIELD_ORDER: list[str] = [
     'architecture',
 ]
 
+STACK_FIELD_SECTIONS: list[tuple[str, list[str]]] = [
+    ('Project Languages', ['language', 'package_manager', 'runtime_version']),
+    ('Application Frameworks', ['backend_framework', 'frontend_framework', 'api_style', 'async_runtime']),
+    ('Data and Architecture', ['database', 'architecture']),
+    ('Code Quality Preferences', ['type_checker', 'css_framework', 'ui_components']),
+]
+
 STACK_MULTI_SELECT_FIELDS: set[str] = {
     'language',
     'package_manager',
@@ -47,7 +54,7 @@ def _build_options_list(options: list[str], detected_values: list[str]) -> list[
     return not_in_options + detected_in_options + rest
 
 
-def _parse_multi_selection(raw: str, options: list[str], detected_values: list[str]) -> str | None:
+def _parse_multi_selection(raw: str, options: list[str], detected_values: list[str]) -> list[str] | None:
     parts = [p.strip() for p in raw.split(',')]
 
     if all(p.isdigit() for p in parts):
@@ -57,12 +64,12 @@ def _parse_multi_selection(raw: str, options: list[str], detected_values: list[s
             if index < 1 or index > len(options):
                 return None
             selected.append(options[index - 1])
-        return ', '.join(selected)
+        return selected
 
-    return ', '.join(parts)
+    return [p for p in parts if p]
 
 
-def _prompt_stack_field(field_name: str, detected_value: str | bool | None) -> str | bool | None:
+def _prompt_stack_field(field_name: str, detected_value: str | list[str] | bool | None) -> str | list[str] | bool | None:
     label = field_name.replace('_', ' ').title()
     options = list(STACK_FIELD_OPTIONS.get(field_name, []))
     multi = field_name in STACK_MULTI_SELECT_FIELDS
@@ -95,7 +102,9 @@ def _prompt_stack_field(field_name: str, detected_value: str | bool | None) -> s
 
     detected_values: list[str] = []
     if isinstance(detected_value, str):
-        detected_values = [v.strip() for v in detected_value.split(',')]
+        detected_values = [v.strip() for v in detected_value.split(',') if v.strip()]
+    elif isinstance(detected_value, list):
+        detected_values = [str(v).strip() for v in detected_value if str(v).strip()]
 
     if options:
         options = _build_options_list(options, detected_values)
@@ -109,8 +118,9 @@ def _prompt_stack_field(field_name: str, detected_value: str | bool | None) -> s
         else:
             number_hint = 'number'
 
+        display_default = ', '.join(detected_values) if isinstance(detected_value, list) else detected_value
         if detected_value:
-            prompt = f'  Enter {number_hint} or custom value [{detected_value}]: '
+            prompt = f'  Enter {number_hint} or custom value [{display_default}]: '
         else:
             prompt = f'  Enter {number_hint} or custom value, or Enter to skip: '
     else:
@@ -133,6 +143,8 @@ def _prompt_stack_field(field_name: str, detected_value: str | bool | None) -> s
             if result is None:
                 console.print(f'  [red]Invalid number. Enter 1-{len(options)}.[/red]')
                 continue
+            if field_name != 'language':
+                return ', '.join(result)
             return result
 
         if raw.isdigit():
@@ -147,12 +159,41 @@ def _prompt_stack_field(field_name: str, detected_value: str | bool | None) -> s
 
 def prompt_stack_profile(detected: ProjectStack) -> ProjectStack:
     console.print('\n  [bold cyan]Stack Configuration[/bold cyan]')
+    console.print('  Provide values to tune project execution defaults. Press Enter to keep detected values.\n')
 
     values: dict[str, Any] = {}
     detected_data = detected.model_dump()
-
+    section_for_field = {
+        field_name: section_title
+        for section_title, fields in STACK_FIELD_SECTIONS
+        for field_name in fields
+    }
+    printed_sections: set[str] = set()
     for field_name in STACK_FIELD_ORDER:
-        detected_value = detected_data.get(field_name)
+        section_title = section_for_field.get(field_name)
+        if section_title and section_title not in printed_sections:
+            console.print(f'  [bold]{section_title}[/bold]')
+            printed_sections.add(section_title)
+        if field_name == 'language':
+            detected_value = detected.languages or detected_data.get(field_name)
+        else:
+            detected_value = detected_data.get(field_name)
         values[field_name] = _prompt_stack_field(field_name, detected_value)
+        if section_title:
+            next_index = STACK_FIELD_ORDER.index(field_name) + 1
+            if next_index < len(STACK_FIELD_ORDER):
+                next_field = STACK_FIELD_ORDER[next_index]
+                if section_for_field.get(next_field) != section_title:
+                    console.print()
+
+    selected_language = values.get('language')
+    if isinstance(selected_language, list):
+        values['languages'] = selected_language
+        values['language'] = selected_language[0] if selected_language else None
+    elif isinstance(selected_language, str) and selected_language.strip():
+        values['languages'] = [selected_language.strip()]
+        values['language'] = selected_language.strip()
+    else:
+        values['languages'] = None
 
     return ProjectStack(**values)

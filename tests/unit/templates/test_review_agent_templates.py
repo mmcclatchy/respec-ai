@@ -43,7 +43,7 @@ class TestAutomatedQualityCheckerTemplate:
         template = generate_automated_quality_checker_template(tools)
 
         assert 'PROJECT CONFIGURATION' in template
-        assert '.respec-ai/config/stack.md' in template
+        assert '.respec-ai/config/stack.toml' in template
         assert '.respec-ai/config/standards/*.toml' in template
 
     def test_template_includes_scoring(self) -> None:
@@ -298,7 +298,7 @@ class TestCoderTemplateConfig:
         template = generate_coder_template(tools)
 
         assert 'PROJECT CONFIGURATION' in template
-        assert '.respec-ai/config/stack.md' in template
+        assert '.respec-ai/config/stack.toml' in template
         assert '.respec-ai/config/standards/*.toml' in template
 
     def test_coder_template_no_pseudocode_remains(self) -> None:

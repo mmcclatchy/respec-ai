@@ -196,6 +196,18 @@ def run(args: Namespace) -> int:
                 ),
             ],
         )
+        print_info('Optional but recommended preflight before workflow commands:')
+        print_info('1) respec-ai standards init')
+        print_info(
+            '2) '
+            + tui_adapter.render_command_invocation(
+                'respec-standards',
+                '[language]',
+                '',
+                requires_user_interaction=False,
+            )
+        )
+        print_info('3) respec-ai standards validate')
 
         return 0
 

@@ -133,9 +133,9 @@ class TestGenerateTemplates:
         quality_checker_content = (agents_dir / 'respec-automated-quality-checker.md').read_text()
 
         assert 'PROJECT CONFIGURATION' in coder_content
-        assert '.respec-ai/config/stack.md' in coder_content
+        assert '.respec-ai/config/stack.toml' in coder_content
         assert 'PROJECT CONFIGURATION' in quality_checker_content
-        assert '.respec-ai/config/stack.md' in quality_checker_content
+        assert '.respec-ai/config/stack.toml' in quality_checker_content
 
     def test_generates_codex_artifacts(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()

@@ -100,13 +100,13 @@ Mode-aware behavior:
 ## PROJECT CONFIGURATION
 
 Read project configuration at workflow start:
-1. Read(.respec-ai/config/stack.md) — project tech stack context
+1. Read(.respec-ai/config/stack.toml) — project execution stack context
 2. Glob(.respec-ai/config/standards/*.toml) — discover canonical language standards files
-3. Read corresponding markdown mirrors (e.g., .respec-ai/config/python.md) — extract Commands for test/check/lint/coverage
+3. Read each relevant standards TOML directly and extract `[commands]` values for test/check/lint/coverage
 
 **Using Commands:**
-- Commands section uses format: `- **Label**: `command``
-- Four standard labels: Test, Coverage, Type check, Lint
+- Commands come from TOML `[commands]`
+- Required keys: `test`, `coverage`, `type_check`, `lint`
 - Run each command and capture output for scoring
 
 **If .respec-ai/config/ doesn't exist:**

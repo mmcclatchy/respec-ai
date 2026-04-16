@@ -38,6 +38,10 @@ class PlatformModel(BaseModel):
 
 class ProjectStack(PlatformModel):
     language: str | None = Field(default=None, description='Primary language (e.g., python, javascript, go, rust)')
+    languages: list[str] | None = Field(
+        default=None,
+        description='Detected/selected project languages in priority order',
+    )
     backend_framework: str | None = Field(
         default=None, description='Backend framework (e.g., fastapi, fastmcp, flask, django, express)'
     )

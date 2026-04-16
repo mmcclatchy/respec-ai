@@ -275,10 +275,9 @@ IF LANGUAGE_TOML_FILES is not empty:
   ACTIVE_REVIEWERS.append("coding-standards-reviewer")
 
 Read config files for coder agent:
-STACK_CONFIG = Read(.respec-ai/config/stack.md) if file exists, else ""
+STACK_CONFIG = Read(.respec-ai/config/stack.toml) if file exists, else ""
 LANGUAGE_CONFIGS = For each file in LANGUAGE_TOML_FILES:
-  MIRROR_FILE = ".respec-ai/config/" + basename(file).replace(".toml", ".md")
-  Read(MIRROR_FILE) if file exists — concatenated content
+  Read(file) — concatenated content
 
 ACTIVE_REVIEWERS.append("review-consolidator")
 
