@@ -765,6 +765,9 @@ When implementing agents using this pattern:
 - [ ] Only retrieves feedback for USER_INPUT display
 - [ ] Never acts as data intermediary
 - [ ] Focuses on control flow orchestration
+- [ ] Uses adapter-rendered command invocation for command-to-command handoff (no ad-hoc shell command strings)
+- [ ] Treats shell/Bash fallback for workflow command handoff as non-compliant
+- [ ] Fails closed with structured error when required orchestration invocation path is unavailable
 
 **MCP Server Requirements:**
 - [ ] Provides loop status retrieval

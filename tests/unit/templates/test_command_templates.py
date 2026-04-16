@@ -345,8 +345,12 @@ class TestCrossPlatformInvocationRendering:
             )
             assert 'MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)' in template
             assert 'Return "Phase complete" success without attempting Step 9' in template
+            assert 'Attempt `respec-task` invocation via Bash/CLI' in template
+            assert 'Command handoff path MUST use adapter-rendered orchestration invocation' in template
+            assert 'Sanity check orchestration path:' in template
             assert 'Fallback/manual mode does NOT waive Step 9 obligations.' in template
             assert 'IF TASK_INVOCATION_ATTEMPTED == false' in template
+            assert 'IF TASK_INVOCATION_METHOD == "shell"' in template
 
     def test_phase_template_places_task_handoff_after_phase_storage(self) -> None:
         coordinator = TemplateCoordinator()
@@ -373,6 +377,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'phase_file_path' in template
         assert 'phase_status' in template
         assert 'task_invocation_status ("succeeded" | "failed")' in template
+        assert 'task_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)' in template
         assert 'task_identifier (MCP key when available, else "unavailable")' in template
         assert 'next_action (required when task_invocation_status == "failed")' in template
 

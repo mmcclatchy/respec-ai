@@ -557,11 +557,13 @@ After Phase storage completes, automatically generate the Task document.
 MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)
 ═══════════════════════════════════════════════
 MUST:
-- Attempt task generation in the SAME run via `{tools.task_command_invocation}`
+- Attempt task generation in the SAME run via:
+  {tools.task_command_invocation}
 - Record task invocation outcome before any completion response
 
 MUST NOT:
 - Return "Phase complete" success without attempting Step 9
+- Attempt `respec-task` invocation via Bash/CLI
 
 EXCEPTION:
 - Only skip automatic chaining if user explicitly instructed to stop chaining
@@ -569,6 +571,7 @@ EXCEPTION:
 IMPORTANT:
 - Fallback/manual mode changes implementation method only.
 - Fallback/manual mode does NOT waive Step 9 obligations.
+- Command handoff path MUST use adapter-rendered orchestration invocation, not shell fallback.
 ═══════════════════════════════════════════════
 
 ```text
@@ -578,12 +581,26 @@ Display: "━━━━━━━━━━━━━━━━━━━━━━━�
 
 TASK_INVOCATION_ATTEMPTED = false
 TASK_INVOCATION_STATUS = "failed"
+TASK_INVOCATION_METHOD = "orchestration"
 TASK_IDENTIFIER = "unavailable"
 TASK_ERROR_SUMMARY = ""
 
-Attempt task workflow:
+Sanity check orchestration path:
+TASK_ORCHESTRATION_INVOCATION = "{tools.task_command_invocation}"
+IF TASK_ORCHESTRATION_INVOCATION is empty OR missing expected respec-task invocation text:
+  ERROR_RESPONSE = {{
+    "error_type": "task_handoff_unavailable",
+    "error_message": "Task orchestration invocation path unavailable",
+    "recovery_action": "Stop before Step 9 execution and preserve phase output",
+    "user_guidance": "Run template regeneration and retry Phase workflow. Do NOT use shell fallback for respec-task.",
+    "partial_output": "Phase stored successfully; task handoff blocked by fail-closed policy."
+  }}
+  EXIT: Workflow terminated
+
+Attempt task workflow via orchestration path:
 {tools.task_command_invocation}
 TASK_INVOCATION_ATTEMPTED = true
+TASK_INVOCATION_METHOD = "orchestration"
 
 IF task workflow invocation returns error:
   TASK_INVOCATION_STATUS = "failed"
@@ -618,12 +635,18 @@ IF TASK_INVOCATION_ATTEMPTED == false AND user did not explicitly request to sto
   ERROR: non-compliant run (Step 9 not attempted)
   EXIT with structured error (do NOT report success)
 
+IF TASK_INVOCATION_METHOD == "shell":
+  ERROR: non-compliant run (shell invocation is invalid for Step 9)
+  RETRY REQUIRED: re-run Step 9 via orchestration invocation path before reporting success/failure
+  EXIT with structured error
+
 Completion contract (required in final response):
 1. phase_file_path
 2. phase_status
 3. task_invocation_status ("succeeded" | "failed")
-4. task_identifier (MCP key when available, else "unavailable")
-5. next_action (required when task_invocation_status == "failed")
+4. task_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)
+5. task_identifier (MCP key when available, else "unavailable")
+6. next_action (required when task_invocation_status == "failed")
 ```
 
 ```text

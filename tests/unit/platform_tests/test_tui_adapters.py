@@ -9,6 +9,9 @@ import pytest
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, get_tui_adapter
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
+from src.platform.template_coordinator import TemplateCoordinator
+from src.platform.platform_selector import PlatformType
+from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_selector import TuiType
 
 
@@ -820,3 +823,11 @@ class TestCodexAdapterInvocationRendering:
             requires_user_interaction=False,
         )
         assert 'Invoke the `respec-roadmap` skill' in result
+
+    def test_phase_template_step_9_codex_invocation_avoids_nested_backticks(self) -> None:
+        template = TemplateCoordinator().generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=self.adapter
+        )
+        assert 'via `Invoke the `respec-task` skill with:' not in template
+        assert 'Attempt task generation in the SAME run via:' in template
+        assert 'Invoke the `respec-task` skill with: `{PLAN_NAME} {PHASE_NAME}`.' in template
