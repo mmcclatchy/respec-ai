@@ -124,6 +124,23 @@ def run(args: Namespace) -> int:
 
         config_path = Path.cwd() / '.respec-ai' / 'config.json'
         if config_path.exists():
+            standards_dir = Path.cwd() / '.respec-ai' / 'config'
+            if standards_dir.exists():
+                standards_validate = subprocess.run(
+                    ['respec-ai', 'standards', 'validate'],
+                    capture_output=True,
+                    text=True,
+                )
+                if standards_validate.returncode != 0:
+                    print_warning('Standards config validation failed — regeneration skipped')
+                    print_warning('Fix standards config and run: respec-ai standards validate')
+                    return 1
+
+                subprocess.run(
+                    ['respec-ai', 'standards', 'render'],
+                    capture_output=True,
+                    text=True,
+                )
             regen_result = subprocess.run(
                 ['respec-ai', 'regenerate'],
                 capture_output=True,

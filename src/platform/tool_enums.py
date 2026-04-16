@@ -184,6 +184,7 @@ class RespecAICommand(StrEnum):
     PATCH = 'respec-patch'
     ROADMAP = 'respec-roadmap'
     PLAN_CONVERSATION = 'respec-plan-conversation'
+    STANDARDS = 'respec-standards'
 
 
 ToolEnums = ExternalPlatformTool | BuiltInTool | RespecAITool

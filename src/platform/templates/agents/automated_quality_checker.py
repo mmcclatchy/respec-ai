@@ -101,8 +101,8 @@ Mode-aware behavior:
 
 Read project configuration at workflow start:
 1. Read(.respec-ai/config/stack.md) — project tech stack context
-2. Glob(.respec-ai/config/*.md) — discover language config files (e.g., python.md)
-3. Read each language config file — extract Commands for test/check/lint/coverage
+2. Glob(.respec-ai/config/standards/*.toml) — discover canonical language standards files
+3. Read corresponding markdown mirrors (e.g., .respec-ai/config/python.md) — extract Commands for test/check/lint/coverage
 
 **Using Commands:**
 - Commands section uses format: `- **Label**: `command``

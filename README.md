@@ -3,13 +3,17 @@
 ---
 
 > **⚠️ Active Development:** `respec-ai` is under active development.
+> - Respec-AI is currently subject to breaking changes.
+>   - Version 1.0.0 will denote when backwards compatibility will be enforced
 > - All core workflows are functional:
 >   - `/respec-plan` - Strategic planning with conversational discovery
 >   - `/respec-roadmap` - Multi-phase implementation roadmap
 >   - `/respec-phase` - Technical specifications with architecture decisions
 >   - `/respec-task` - Detailed task breakdowns from phases
 >   - `/respec-code` - TDD-driven implementation with code review
-> - Specialized coding agents (frontend, backend, database) are planned enhancements.
+>   - `/respec-patch` - TODO: Add description
+> - Other Commands:
+>   - `/respec-standards` - TODO: Add description
 
 ---
 

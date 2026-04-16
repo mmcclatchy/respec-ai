@@ -97,7 +97,8 @@ MANDATORY CONFIG-DRIVEN ASSESSMENT PROTOCOL
 This reviewer has ZERO built-in language rules.
 ALL assessment logic comes from config files.
 
-1. Read config files from .respec-ai/config/
+1. Confirm canonical TOML files exist in .respec-ai/config/standards/
+2. Read generated markdown mirror config files from .respec-ai/config/
 2. IF no config files found → score 100, exit
 3. Each H2/H3 section in config becomes an assessment area
 4. Assess code ONLY against rules found in config
@@ -111,9 +112,10 @@ VIOLATION: Inventing assessment areas not present in config.
 ### Step 1: Discover and Read Config Files
 
 ```text
+STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
 CONFIG_FILES = Glob(.respec-ai/config/*.md) excluding stack.md
 
-IF CONFIG_FILES is empty:
+IF STANDARDS_TOML_FILES is empty OR CONFIG_FILES is empty:
   Return score 100 with message: "No coding standards configured. Skipping review."
   EXIT immediately
 

@@ -268,15 +268,17 @@ IF "database" in STEP_MODES:
 IF "infrastructure" in STEP_MODES:
   ACTIVE_REVIEWERS.append("infrastructure-reviewer")
 
-Check for coding standards config files:
-CONFIG_FILES = Glob(.respec-ai/config/*.md)
-LANGUAGE_FILES = CONFIG_FILES excluding stack.md
-IF LANGUAGE_FILES is not empty:
+Check for canonical coding standards config files:
+STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
+LANGUAGE_TOML_FILES = STANDARDS_TOML_FILES excluding universal.toml
+IF LANGUAGE_TOML_FILES is not empty:
   ACTIVE_REVIEWERS.append("coding-standards-reviewer")
 
 Read config files for coder agent:
 STACK_CONFIG = Read(.respec-ai/config/stack.md) if file exists, else ""
-LANGUAGE_CONFIGS = For each file in LANGUAGE_FILES: Read(file) — concatenated content
+LANGUAGE_CONFIGS = For each file in LANGUAGE_TOML_FILES:
+  MIRROR_FILE = ".respec-ai/config/" + basename(file).replace(".toml", ".md")
+  Read(MIRROR_FILE) if file exists — concatenated content
 
 ACTIVE_REVIEWERS.append("review-consolidator")
 
@@ -471,13 +473,13 @@ ELIF CODING_DECISION == "user_input":
 MANDATORY PHASE 2 ACTIVATION GATE
 ═══════════════════════════════════════════════
 Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS
-(language config files detected in Step 4.3).
+(standards TOML files detected in Step 4.3).
 
-IF no config files were found in .respec-ai/config/:
+IF no standards TOML files were found in .respec-ai/config/standards/:
   Skip Phase 2 entirely. Proceed directly to Step 7.
   Display: "ℹ️ No coding standards configured — skipping Phase 2"
 
-Phase 2 has ZERO built-in rules. Without config files, there is
+Phase 2 has ZERO built-in rules. Without standards TOML files, there is
 nothing to assess. Do NOT apply general coding standards.
 ═══════════════════════════════════════════════
 

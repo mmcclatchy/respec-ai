@@ -115,7 +115,7 @@ class TestFormatLanguageMd:
             lint_command='ruff check .',
         )
         result = format_language_md('python', tooling)
-        assert '- **Type check**: none' in result
+        assert '- **Type check**: `none`' in result
 
 
 class TestWriteConfigFiles:
@@ -134,9 +134,12 @@ class TestWriteConfigFiles:
         }
         written = write_config_files(tmp_path, stack, tooling)
 
-        assert len(written) == 3
+        assert len(written) == 6
         config_dir = tmp_path / '.respec-ai' / 'config'
         assert config_dir.exists()
+        assert (config_dir / 'stack.toml').exists()
+        assert (config_dir / 'standards' / 'universal.toml').exists()
+        assert (config_dir / 'standards' / 'python.toml').exists()
         assert (config_dir / 'universal.md').exists()
         assert (config_dir / 'stack.md').exists()
         assert (config_dir / 'python.md').exists()
@@ -155,22 +158,25 @@ class TestWriteConfigFiles:
             )
         }
         config_dir = tmp_path / '.respec-ai' / 'config'
-        config_dir.mkdir(parents=True)
-        (config_dir / 'stack.md').write_text('existing content')
+        (config_dir / 'standards').mkdir(parents=True)
+        (config_dir / 'stack.toml').write_text('schema_version = 1\n[project]\nlanguage = "python"\nlanguages = ["python"]\n\n[stack]\nbackend_framework = ""\nfrontend_framework = ""\npackage_manager = ""\nruntime_version = ""\ndatabase = ""\napi_style = ""\narchitecture = ""\ntype_checker = ""\ncss_framework = ""\nui_components = ""\nasync_runtime = false\n\n[workflow]\nstandards_phase = "phase2"\n')
+        (config_dir / 'standards' / 'python.toml').write_text(
+            'schema_version = 1\nlanguage = "python"\n\n[commands]\ntest = "pytest"\ncoverage = "pytest --cov"\ntype_check = "mypy ."\nlint = "ruff check ."\n\n[testing]\nframework = "pytest"\nlocation = "tests/"\nnaming = "test_*"\nextras = []\n\n[rules]\nnaming = ["snake_case"]\nimports = ["absolute imports only"]\ntype_system = ["Required on all function parameters and return values"]\ndocumentation = ["Docstrings: public APIs only"]\nerror_handling = ["Fail fast"]\ncode_structure = ["No global variables"]\n'
+        )
 
         written = write_config_files(tmp_path, stack, tooling)
 
-        assert len(written) == 2
+        assert len(written) == 4
         written_names = [w.name for w in written]
         assert 'universal.md' in written_names
         assert 'python.md' in written_names
-        assert (config_dir / 'stack.md').read_text() == 'existing content'
+        assert 'stack.md' in written_names
 
     def test_empty_tooling(self, tmp_path: Path) -> None:
         stack = ProjectStack(language='python')
         written = write_config_files(tmp_path, stack, {})
 
-        assert len(written) == 2
+        assert len(written) == 4
         written_names = [w.name for w in written]
         assert 'universal.md' in written_names
         assert 'stack.md' in written_names

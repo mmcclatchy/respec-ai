@@ -439,6 +439,14 @@ class PlanConversationCommandTools(CommandToolsModel):
         )
 
 
+class StandardsCommandTools(CommandToolsModel):
+    tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
+    standards_command_name: str = Field(default='', description='Name of the standards workflow command/skill')
+
+    def model_post_init(self, __context: Any) -> None:
+        self.standards_command_name = RespecAICommand.STANDARDS.value
+
+
 class CodeCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,

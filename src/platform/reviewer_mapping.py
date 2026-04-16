@@ -12,14 +12,12 @@ MODE_TO_REVIEWER: dict[StepMode, str] = {
 
 
 def has_coding_standards_file() -> bool:
-    standards_file = Path.cwd() / 'CLAUDE.md'
-
-    if not standards_file.exists():
+    standards_dir = Path.cwd() / '.respec-ai' / 'config' / 'standards'
+    if not standards_dir.exists():
         return False
 
     try:
-        content = standards_file.read_text()
-        return bool(content.strip())
+        return any(path.is_file() for path in standards_dir.glob('*.toml'))
     except Exception:
         return False
 

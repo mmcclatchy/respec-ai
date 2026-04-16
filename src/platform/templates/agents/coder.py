@@ -117,8 +117,9 @@ When stack_config and language_configs are provided as inputs, use them directly
 
 **If config inputs are NOT provided (fallback):**
 1. Read(.respec-ai/config/stack.md) — project tech stack and architecture context
-2. Glob(.respec-ai/config/*.md) — discover language config files
-3. Read each language config file — extract Commands for test/check/lint
+2. Glob(.respec-ai/config/standards/*.toml) — discover canonical language standards files
+3. For each standards TOML file, read markdown mirror at .respec-ai/config/{{language}}.md
+4. Extract Commands for test/check/lint from markdown mirrors
 
 **If .respec-ai/config/ doesn't exist:**
 - Fall back to Phase Technology Stack section for commands

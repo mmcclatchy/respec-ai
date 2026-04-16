@@ -74,6 +74,7 @@ _COMMAND_TEMPLATES = [
     RespecAICommand.PATCH,
     RespecAICommand.ROADMAP,
     RespecAICommand.PLAN_CONVERSATION,
+    RespecAICommand.STANDARDS,
 ]
 
 _REASONING_COMMANDS: frozenset[RespecAICommand] = frozenset(

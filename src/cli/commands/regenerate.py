@@ -11,6 +11,7 @@ from src.cli.ui.console import console, print_error, print_info, print_success, 
 from src.mcp.tools import register_all_tools
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
+from src.platform.standards_config import render_markdown_mirrors, validate_project_config
 from src.platform.template_generator import generate_templates
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
@@ -62,6 +63,16 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             print_error('respec-ai is not initialized in this project')
             print_warning('Run: respec-ai init --platform [linear|github|markdown]')
             return 1
+
+        config_dir = project_path / '.respec-ai' / 'config'
+        if config_dir.exists():
+            standards_errors = validate_project_config(project_path)
+            if standards_errors:
+                print_error('Invalid standards config. Regeneration aborted.')
+                for err in standards_errors:
+                    print_error(f'- {err}')
+                print_warning('Fix standards config: respec-ai standards init|validate|render')
+                return 1
 
         config = json.loads(config_path.read_text(encoding='utf-8'))
         current_version = config.get('version', 'unknown')
@@ -115,6 +126,8 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             if not failures:
                 config['version'] = package_version
                 config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
+                if config_dir.exists():
+                    render_markdown_mirrors(project_path)
 
             progress.update(task, description='Complete!', completed=True)
 

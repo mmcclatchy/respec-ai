@@ -23,7 +23,7 @@ class TestGenerateTemplates:
         assert (tmp_path / '.claude' / 'commands').exists()
         assert (tmp_path / '.claude' / 'agents').exists()
 
-    def test_generates_five_commands(self, mocker: MockerFixture, tmp_path: Path) -> None:
+    def test_generates_commands(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
@@ -32,8 +32,9 @@ class TestGenerateTemplates:
         )
 
         commands_dir = tmp_path / '.claude' / 'commands'
-        assert commands_count == 7
-        assert len(list(commands_dir.glob('*.md'))) == 7
+        assert commands_count == 8
+        assert len(list(commands_dir.glob('*.md'))) == 8
+        assert (commands_dir / 'respec-standards.md').exists()
 
     def test_generates_thirteen_agents(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
@@ -55,7 +56,7 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert len(files_written) == 28  # 7 commands + 21 agents = 28
+        assert len(files_written) == 29  # 8 commands + 21 agents = 29
         assert all(isinstance(f, Path) for f in files_written)
         assert all(f.suffix == '.md' for f in files_written)
 
@@ -66,7 +67,7 @@ class TestGenerateTemplates:
         for platform in [PlatformType.LINEAR, PlatformType.GITHUB, PlatformType.MARKDOWN]:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
 
-            assert commands_count == 7
+            assert commands_count == 8
             assert agents_count == 21
 
     def test_removes_stale_respec_files_before_writing(self, mocker: MockerFixture, tmp_path: Path) -> None:
@@ -118,7 +119,7 @@ class TestGenerateTemplates:
             generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter)
 
         config = json.loads((tmp_path / 'opencode.json').read_text())
-        for name in ('respec-phase', 'respec-task', 'respec-code', 'respec-patch', 'respec-roadmap'):
+        for name in ('respec-phase', 'respec-task', 'respec-code', 'respec-patch', 'respec-roadmap', 'respec-standards'):
             assert config['agent'][f'cmd-{name}']['model'] == 'provider/task-model'
 
     def test_templates_include_project_configuration(self, mocker: MockerFixture, tmp_path: Path) -> None:
@@ -145,8 +146,9 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter
         )
 
-        assert commands_count == 7
+        assert commands_count == 8
         assert agents_count == 21
+        assert (tmp_path / '.codex' / 'skills' / 'respec-standards' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()
         assert (tmp_path / '.codex' / 'agents' / 'respec-plan-analyst-agent.toml').exists()

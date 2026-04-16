@@ -152,7 +152,7 @@ def main() -> int:
 
     standards_parser = subparsers.add_parser(
         'standards',
-        help='Upgrade coding standards config files to MANDATORY protocol format',
+        help='Manage standards canonical TOML files and markdown mirrors',
     )
 
     standards.add_arguments(standards_parser)

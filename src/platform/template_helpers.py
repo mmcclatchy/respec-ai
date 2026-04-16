@@ -27,6 +27,7 @@ from .models import (
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
     SpecAlignmentReviewerAgentTools,
+    StandardsCommandTools,
     TaskCommandTools,
     TaskPlanCriticAgentTools,
     TaskPlannerAgentTools,
@@ -657,6 +658,23 @@ def create_plan_conversation_command_tools(
 ) -> 'PlanConversationCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
     return PlanConversationCommandTools(tui_adapter=adapter)
+
+
+def create_standards_command_tools(
+    tui_adapter: 'TuiAdapter | None' = None,
+) -> 'StandardsCommandTools':
+    builder = TemplateToolBuilder()
+    adapter = _resolve_tui_adapter(tui_adapter)
+    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/config/*.toml')
+    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInTool.EDIT, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInTool.GLOB, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    return StandardsCommandTools(
+        tui_adapter=adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+    )
 
 
 def create_phase_architect_agent_tools(

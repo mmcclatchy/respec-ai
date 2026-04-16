@@ -8,6 +8,7 @@ from .command_strategies import (
     PlanCommandStrategy,
     PlanConversationCommandStrategy,
     PlanRoadmapCommandStrategy,
+    StandardsCommandStrategy,
     TaskCommandStrategy,
 )
 from .platform_selector import PlatformSelector, PlatformType
@@ -29,6 +30,7 @@ class TemplateCoordinator:
             RespecAICommand.PATCH: PatchCommandStrategy(),
             RespecAICommand.ROADMAP: PlanRoadmapCommandStrategy(),
             RespecAICommand.PLAN_CONVERSATION: PlanConversationCommandStrategy(),
+            RespecAICommand.STANDARDS: StandardsCommandStrategy(),
         }
 
     def generate_command_template(
