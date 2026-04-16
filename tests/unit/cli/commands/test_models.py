@@ -23,9 +23,10 @@ class TestModelsArguments:
     def test_parses_codex_subcommand(self) -> None:
         parser = ArgumentParser()
         models.add_arguments(parser)
-        args = parser.parse_args(['codex', '--yes'])
+        args = parser.parse_args(['codex', '--yes', '--include-hidden'])
         assert args.models_command == 'codex'
         assert args.yes is True
+        assert args.include_hidden is True
 
 
 class TestModelsRun:

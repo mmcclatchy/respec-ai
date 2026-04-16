@@ -121,11 +121,12 @@ def run(args: Namespace) -> int:
         rate_limits = _fetch_rate_limits(exa_key, provider, debug=debug)
 
     scored_by_tier = _score_models_by_tier(models, aa_data, rate_limits=rate_limits, debug=debug)
-
-    if aa_data or rate_limits:
-        _display_model_insights(scored_by_tier.get('metrics', {}), rate_limits)
-
     suggestion = _suggest_tiers(scored_by_tier)
+    _display_model_comparison(
+        scored_by_tier.get('metrics', {}),
+        suggestion=suggestion,
+        rate_limits=rate_limits,
+    )
 
     if getattr(args, 'yes', False):
         mapping = suggestion
@@ -453,6 +454,145 @@ def _display_model_insights(metrics: dict[str, dict[str, float]], rate_limits: d
     console.print(table)
 
 
+def _display_model_comparison(
+    metrics: dict[str, dict[str, float]],
+    *,
+    suggestion: dict[str, str],
+    rate_limits: dict[str, str],
+) -> None:
+    if not metrics:
+        return
+
+    table = Table(title='OpenCode Model Comparison', show_header=True, header_style='bold cyan')
+    table.add_column('Model')
+    table.add_column('Capability', justify='right')
+    table.add_column('Speed', justify='right')
+    table.add_column('Coding', justify='right')
+    table.add_column('Cost', justify='right')
+    table.add_column('Data', justify='right')
+    table.add_column('Recommended Tier')
+    table.add_column('Insight')
+
+    for model_id, row in sorted(
+        metrics.items(),
+        key=lambda item: (
+            item[1].get('intelligence', 0.0),
+            item[1].get('coding', 0.0),
+            item[1].get('throughput', 0.0),
+        ),
+        reverse=True,
+    ):
+        intelligence = float(row.get('intelligence', 0.0))
+        coding = float(row.get('coding', 0.0))
+        throughput = float(row.get('throughput', 0.0))
+
+        has_aa = intelligence > 0 or coding > 0
+        capability_score = intelligence if intelligence > 0 else _infer_capability_score(model_id)
+        speed_score = coding if coding > 0 else _infer_speed_score(throughput, model_id)
+        cost_score = _infer_cost_score(throughput, model_id)
+
+        tiers: list[str] = []
+        if model_id == suggestion.get('reasoning'):
+            tiers.append('Reasoning')
+        if model_id == suggestion.get('task'):
+            tiers.append('Task')
+        tier_text = ', '.join(tiers) if tiers else '-'
+
+        if intelligence >= 55:
+            insight = 'Strong planning profile for architecture-heavy prompts.'
+        elif throughput > 0:
+            insight = 'Throughput-oriented profile for high-volume task loops.'
+        elif coding > 0 and coding >= intelligence:
+            insight = 'Coding-leaning profile; practical implementation option.'
+        elif has_aa:
+            insight = 'Balanced profile; solid fallback when tiers overlap.'
+        else:
+            insight = 'No benchmark signal; keep as manual/backup option.'
+
+        table.add_row(
+            model_id.split('/', 1)[-1],
+            _format_metric(capability_score, aa_score=intelligence, has_aa=intelligence > 0),
+            _format_metric(speed_score, aa_score=coding, has_aa=coding > 0),
+            f'{coding:.1f}' if coding else '[dim]n/a[/dim]',
+            _cost_symbol(cost_score),
+            'AA' if has_aa else 'Inferred',
+            tier_text,
+            insight,
+        )
+
+    console.print()
+    console.print(table)
+    console.print('[dim]Legend: Data=AA (benchmark-backed), Inferred (local heuristics).[/dim]')
+
+
+def _infer_capability_score(model_id: str) -> float:
+    short = model_id.split('/', 1)[-1].lower()
+    if any(tag in short for tag in ('pro', 'plus', '2.7', '5.1')):
+        return 52.0
+    if any(tag in short for tag in ('mini', 'omni', '2.5')):
+        return 44.0
+    return 48.0
+
+
+def _infer_speed_score(throughput: float, model_id: str) -> float:
+    if throughput > 0:
+        return min(95.0, 35.0 + (throughput / 250.0))
+    short = model_id.split('/', 1)[-1].lower()
+    if any(tag in short for tag in ('mini', 'omni', '2.5')):
+        return 56.0
+    if any(tag in short for tag in ('pro', 'plus', '2.7')):
+        return 50.0
+    return 47.0
+
+
+def _infer_cost_score(throughput: float, model_id: str) -> float:
+    if throughput >= 15000:
+        return 92.0
+    if throughput >= 9000:
+        return 82.0
+    if throughput >= 3000:
+        return 68.0
+    if throughput > 0:
+        return 54.0
+    short = model_id.split('/', 1)[-1].lower()
+    if any(tag in short for tag in ('mini', 'omni', '2.5')):
+        return 80.0
+    if any(tag in short for tag in ('pro', 'plus', '2.7')):
+        return 56.0
+    return 50.0
+
+
+def _format_metric(score: float, *, aa_score: float, has_aa: bool) -> str:
+    band = _metric_band(score)
+    if has_aa:
+        return f'{band} ({aa_score:.1f})'
+    return f'{band} [dim](inferred)[/dim]'
+
+
+def _metric_band(score: float) -> str:
+    if score >= 75:
+        return 'Very High'
+    if score >= 60:
+        return 'High'
+    if score >= 45:
+        return 'Medium'
+    if score >= 30:
+        return 'Low'
+    return 'Very Low'
+
+
+def _cost_symbol(cost_affordability: float) -> str:
+    if cost_affordability >= 90:
+        return '$'
+    if cost_affordability >= 75:
+        return '$$'
+    if cost_affordability >= 60:
+        return '$$$'
+    if cost_affordability >= 45:
+        return '$$$$'
+    return '$$$$$'
+
+
 def _interactive_override(
     suggestion: dict[str, str],
     scored_by_tier: dict[str, list[tuple[str, float]]],
@@ -461,11 +601,16 @@ def _interactive_override(
 
     for tier in ('reasoning', 'task'):
         options = scored_by_tier.get(tier, [])
+        metrics_raw = scored_by_tier.get('metrics', {})
+        metrics = metrics_raw if isinstance(metrics_raw, dict) else {}
 
         console.print(f'\n[bold]{tier.title()} model:[/bold]')
         for i, (model_id, score) in enumerate(options, 1):
+            row = metrics.get(model_id, {})
+            has_aa = row.get('intelligence', 0.0) > 0 or row.get('coding', 0.0) > 0
             score_text = f'({score:.1f})' if score else ''
-            console.print(f'  [bold][{i}][/bold] {model_id}  {score_text}')
+            source = 'AA' if has_aa else 'Inferred'
+            console.print(f'  [bold][{i}][/bold] {model_id}  {score_text} [{source}]')
 
         while True:
             raw = console.input(f'  Select [1-{len(options)}]: ').strip()
