@@ -527,7 +527,8 @@ class TestCrossPlatformInvocationRendering:
         assert 'Source: review-consolidator CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
         assert '### 7.5: Standards Finalization Phase' in template
-        assert '#### Step 7.5.3: Finalize Phase 2 Completion Commit' in template
+        assert '#### Step 7.5.3: Exit to Completion Gate' in template
+        assert '### 8.5 Completion Gate (Mandatory)' in template
 
     def test_code_template_phase1_loop_orders_commit_before_transitions(self) -> None:
         coordinator = TemplateCoordinator()
@@ -544,28 +545,28 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'Return to Step 7.4 (next loop pass runs coder → reviews → decision → commit).' in template
 
-    def test_code_template_phase1_commit_subjects_include_terminal_and_wip(self) -> None:
+    def test_code_template_phase1_commit_subject_is_checkpoint_only(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'COMMIT_SUBJECT = "feat: complete {PHASE_NAME} [Phase 1]"' in template
         assert 'COMMIT_SUBJECT = "[WIP] {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
-        assert 'git commit --amend --no-verify -F - <<' in template
+        assert 'COMMIT_SUBJECT = "feat: complete {PHASE_NAME}"' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
 
-    def test_code_template_precommit_validation_is_deterministic(self) -> None:
+    def test_code_template_uses_mandatory_precommit_completion_gate(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'Append in deterministic order: Test, Type check, Lint' in template
-        assert 'No configured validation commands found (Test/Type check/Lint)' in template
-        assert 'Run project hook validation commands if configured by repository.' not in template
+        assert 'PRECOMMIT_EXIT_CODE = run: pre-commit run -a' in template
+        assert 'Finalization is non-compliant until hooks pass.' in template
+        assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'Append in deterministic order: Test, Type check, Lint' not in template
 
     def test_codex_code_template_prefers_commit_skill_in_commit_orchestration(self) -> None:
         coordinator = TemplateCoordinator()
@@ -613,7 +614,8 @@ class TestCrossPlatformInvocationRendering:
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
         assert 'Source: review-consolidator CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
-        assert '#### Step 6.5.3: Finalize Phase 2 Completion Commit' in template
+        assert '#### Step 6.5.3: Exit to Completion Gate' in template
+        assert '### 6.7 Completion Gate (Mandatory)' in template
 
     def test_patch_template_phase1_loop_orders_commit_before_transitions(self) -> None:
         coordinator = TemplateCoordinator()
@@ -630,28 +632,28 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'Return to Step 5.3 (next loop pass runs coder -> reviews -> decision -> commit).' in template
 
-    def test_patch_template_phase1_commit_subjects_include_terminal_and_wip(self) -> None:
+    def test_patch_template_phase1_commit_subject_is_checkpoint_only(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'COMMIT_SUBJECT = "fix: complete {CHANGE_DESCRIPTION} [Phase 1]"' in template
         assert 'COMMIT_SUBJECT = "[WIP] patch {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
-        assert 'git commit --amend --no-verify -F - <<' in template
+        assert 'COMMIT_SUBJECT = "fix: complete {CHANGE_DESCRIPTION}"' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
 
-    def test_patch_template_precommit_validation_is_deterministic(self) -> None:
+    def test_patch_template_uses_mandatory_precommit_completion_gate(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'Append in deterministic order: Test, Type check, Lint' in template
-        assert 'No configured validation commands found (Test/Type check/Lint)' in template
-        assert 'Run project hook validation commands if configured by repository.' not in template
+        assert 'PRECOMMIT_EXIT_CODE = run: pre-commit run -a' in template
+        assert 'Finalization is non-compliant until hooks pass.' in template
+        assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'Append in deterministic order: Test, Type check, Lint' not in template
 
     def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
         guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')

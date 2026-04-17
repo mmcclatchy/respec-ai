@@ -371,15 +371,9 @@ Loop:
   PHASE1_SUMMARY = [extract latest Assessment Summary from PHASE1_FEEDBACK]
   PHASE1_KEY_ISSUES = [extract top key issues from PHASE1_FEEDBACK]
 
-  PHASE1_TERMINAL = (
-    CODING_DECISION == "complete"
-    AND "coding-standards-reviewer" not in ACTIVE_REVIEWERS
-  )
-
-  IF PHASE1_TERMINAL:
-    COMMIT_SUBJECT = "fix: complete {{CHANGE_DESCRIPTION}} [Phase 1]"
-  ELSE:
-    COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 1 iter {{CODING_ITERATION}}]"
+  # Loop commits are progress checkpoints only.
+  # Completion commit is owned by Step 6.7 finalization gate.
+  COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 1 iter {{CODING_ITERATION}}]"
 
   COMMIT_MESSAGE_BLOCK = compose:
     {{COMMIT_SUBJECT}}
@@ -403,15 +397,6 @@ Loop:
   IF HAS_CHANGES:
     Execute commit via adapter policy:
 {tools.tui_adapter.loop_commit_instructions}
-  ELIF PHASE1_TERMINAL:
-    IF `git rev-parse --verify HEAD` succeeds:
-      git commit --amend --no-verify -F - <<'EOF'
-      {{COMMIT_MESSAGE_BLOCK}}
-      EOF
-    ELSE:
-      git commit --allow-empty --no-verify -F - <<'EOF'
-      {{COMMIT_MESSAGE_BLOCK}}
-      EOF
   ELSE:
     git commit --allow-empty --no-verify -F - <<'EOF'
     {{COMMIT_MESSAGE_BLOCK}}
@@ -451,7 +436,9 @@ IF CODING_DECISION == "refine":
 ELIF CODING_DECISION == "complete":
   Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached, no active blockers"
   IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 6.5
-  ELSE: Proceed to Step 7
+  ELSE:
+    FINALIZATION_DECISION_SOURCE = "phase1-complete"
+    Proceed to Step 6.7
 
 ELIF CODING_DECISION == "user_input":
   LATEST_FEEDBACK = {tools.get_feedback}
@@ -475,7 +462,7 @@ Run ONLY IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS
 (standards TOML files detected in Step 4.3).
 
 IF no standards TOML files were found in .respec-ai/config/standards/:
-  Skip Phase 2 entirely. Proceed directly to Step 7.
+  Skip Phase 2 entirely. Proceed directly to Step 6.7.
   Display: "ℹ️ No coding standards configured — skipping Phase 2"
 
 Phase 2 has ZERO built-in rules. Without standards TOML files, there is
@@ -486,7 +473,6 @@ nothing to assess. Do NOT apply general coding standards.
 
 ```text
 STANDARDS_LOOP_ID = {tools.initialize_standards_loop}
-RUN_PRECOMMIT_VALIDATION = false
 
 PHASE1_SCORE = [final Overall Score from CODING_LOOP_ID CriticFeedback]
 Display:
@@ -520,10 +506,9 @@ Loop:
   STANDARDS_SUMMARY = [extract latest Assessment Summary from STANDARDS_FEEDBACK]
   STANDARDS_KEY_ISSUES = [extract top key issues from STANDARDS_FEEDBACK]
 
-  IF STANDARDS_DECISION == "complete":
-    STANDARDS_COMMIT_SUBJECT = "fix: complete {{CHANGE_DESCRIPTION}} [Phase 2 standards]"
-  ELSE:
-    STANDARDS_COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 2 iter {{STANDARDS_ITERATION}}]"
+  # Loop commits are progress checkpoints only.
+  # Completion commit is owned by Step 6.7 finalization gate.
+  STANDARDS_COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 2 iter {{STANDARDS_ITERATION}}]"
 
   STANDARDS_COMMIT_MESSAGE_BLOCK = compose:
     {{STANDARDS_COMMIT_SUBJECT}}
@@ -546,15 +531,6 @@ Loop:
   IF HAS_CHANGES:
     Execute commit via adapter policy:
 {tools.tui_adapter.loop_commit_instructions}
-  ELIF STANDARDS_DECISION == "complete":
-    IF `git rev-parse --verify HEAD` succeeds:
-      git commit --amend --no-verify -F - <<'EOF'
-      {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
-      EOF
-    ELSE:
-      git commit --allow-empty --no-verify -F - <<'EOF'
-      {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
-      EOF
   ELSE:
     git commit --allow-empty --no-verify -F - <<'EOF'
     {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
@@ -575,67 +551,100 @@ Loop:
     Use AskUserQuestion with options:
       1. Continue Phase 2 with more iterations
       2. Finalize current standards state now
-      3. Finalize now and run pre-commit hooks validation
 
     Store user choice and branch accordingly:
     - Option 1: continue loop
-    - Option 2: RUN_PRECOMMIT_VALIDATION = false
-                EXIT Phase 2 loop → Step 6.5.3
-    - Option 3: RUN_PRECOMMIT_VALIDATION = true
-                EXIT Phase 2 loop → Step 6.5.3
+    - Option 2: FINALIZATION_DECISION_SOURCE = "phase2-user-finalized"
+                EXIT Phase 2 loop → Step 6.7
 ```
 
-#### Step 6.5.3: Finalize Phase 2 Completion Commit
+#### Step 6.5.3: Exit to Completion Gate
 
 ```text
-# Ensure terminal commit is non-WIP when Phase 2 exits via user_input finalization.
-FINAL_STANDARDS_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
-FINAL_STANDARDS_SCORE = [extract latest Overall Score]
-FINAL_STANDARDS_SUMMARY = [extract latest Assessment Summary]
-FINAL_STANDARDS_KEY_ISSUES = [extract top key issues]
+IF STANDARDS_DECISION == "complete":
+  FINALIZATION_DECISION_SOURCE = "phase2-complete"
+  Proceed to Step 6.7
+```
+
+### 6.7 Completion Gate (Mandatory)
+
+```text
+# Ensure source label exists for completion metadata.
+IF FINALIZATION_DECISION_SOURCE is empty:
+  FINALIZATION_DECISION_SOURCE = "loop-complete"
+
+# Enforce repository hooks exactly once before final completion commit.
+PRECOMMIT_EXIT_CODE = run: pre-commit run -a
+
+IF PRECOMMIT_EXIT_CODE != 0:
+  Display: "❌ Completion gate failed: pre-commit hooks reported issues."
+  Display: "Finalization is non-compliant until hooks pass."
+  Display: "Address hook failures, then continue refinement or re-finalize."
+
+  Use AskUserQuestion with options:
+    1. Continue refine in current mode
+    2. Finalize now and retry completion gate
+
+  IF user selects option 1:
+    USER_FEEDBACK_MARKDOWN = "Completion gate failed; user selected continue refine in mode={{EXECUTION_MODE}}"
+    LOOP_ID = (
+      STANDARDS_LOOP_ID if "coding-standards-reviewer" in ACTIVE_REVIEWERS
+      else CODING_LOOP_ID
+    )
+    {tools.store_user_feedback}
+    IF "coding-standards-reviewer" in ACTIVE_REVIEWERS:
+      Return to Step 6.5.2
+    ELSE:
+      Return to Step 5.3
+
+  IF user selects option 2:
+    USER_FEEDBACK_MARKDOWN = "Completion gate failed; user requested retry finalization."
+    LOOP_ID = (
+      STANDARDS_LOOP_ID if "coding-standards-reviewer" in ACTIVE_REVIEWERS
+      else CODING_LOOP_ID
+    )
+    {tools.store_user_feedback}
+    Return to Step 6.7
+
+# pre-commit succeeded; compose dedicated completion commit.
+IF "coding-standards-reviewer" in ACTIVE_REVIEWERS:
+  FINAL_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
+  FINAL_LOOP_LABEL = "Phase 2 standards"
+  FINAL_LOOP_ID = STANDARDS_LOOP_ID
+  FINAL_SOURCE = "coding-standards-reviewer CriticFeedback"
+ELSE:
+  FINAL_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=CODING_LOOP_ID, count=1)
+  FINAL_LOOP_LABEL = "Phase 1"
+  FINAL_LOOP_ID = CODING_LOOP_ID
+  FINAL_SOURCE = "review-consolidator CriticFeedback"
+
+FINAL_SCORE = [extract latest Overall Score from FINAL_FEEDBACK]
+FINAL_SUMMARY = [extract latest Assessment Summary from FINAL_FEEDBACK]
+FINAL_KEY_ISSUES = [extract top key issues from FINAL_FEEDBACK]
 
 FINAL_COMMIT_MESSAGE_BLOCK = compose:
-  fix: complete {{CHANGE_DESCRIPTION}} [Phase 2 standards]
+  fix: complete {{CHANGE_DESCRIPTION}}
 
   Change: {{CHANGE_DESCRIPTION}}
   Phase: {{PHASE_NAME}}
-  Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
-  Decision: finalized-by-user
-  Score: {{FINAL_STANDARDS_SCORE}}/100
+  Finalization Source: {{FINALIZATION_DECISION_SOURCE}}
+  Final Loop: {{FINAL_LOOP_LABEL}} (loop_id={{FINAL_LOOP_ID}})
+  Final Score: {{FINAL_SCORE}}/100
 
   Summary:
-  {{FINAL_STANDARDS_SUMMARY}}
+  {{FINAL_SUMMARY}}
 
   Key Issues:
-  {{FINAL_STANDARDS_KEY_ISSUES}}
+  {{FINAL_KEY_ISSUES}}
 
-  Source: coding-standards-reviewer CriticFeedback
+  Source: {{FINAL_SOURCE}}
 
-HAS_CHANGES = `git status --porcelain` has any output
-IF HAS_CHANGES:
-  Execute commit via adapter policy:
-{tools.tui_adapter.loop_commit_instructions}
-ELIF `git rev-parse --verify HEAD` succeeds:
-  git commit --amend --no-verify -F - <<'EOF'
-  {{FINAL_COMMIT_MESSAGE_BLOCK}}
-  EOF
-ELSE:
-  git commit --allow-empty --no-verify -F - <<'EOF'
-  {{FINAL_COMMIT_MESSAGE_BLOCK}}
-  EOF
+git add -A
+git commit --allow-empty --no-verify -F - <<'EOF'
+{{FINAL_COMMIT_MESSAGE_BLOCK}}
+EOF
 
-IF RUN_PRECOMMIT_VALIDATION == true:
-  VALIDATION_COMMANDS = []
-  IF LANGUAGE_CONFIGS includes command labels:
-    Append in deterministic order: Test, Type check, Lint
-
-  IF VALIDATION_COMMANDS is empty:
-    Display: "ℹ️ No configured validation commands found (Test/Type check/Lint) — skipping post-finalization validation."
-  ELSE:
-    For each VALIDATION_COMMAND in VALIDATION_COMMANDS:
-      Run command and capture exit code + summary output
-    IF any command fails:
-      Display failures and continue with completed commit already recorded.
+Proceed to Step 7 (Update Phase Evolution Log)
 ```
 
 ### 7. Update Phase Evolution Log
