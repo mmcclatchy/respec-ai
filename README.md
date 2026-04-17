@@ -46,7 +46,8 @@ respec-ai standards init python typescript
 - Generated TOMLs are prefilled with starter best-practice defaults.
 
 - In your TUI, run `respec-standards` for each language you care about to render derived guides from TOML.
-- If you run `respec-standards` with no arguments, it prompts for target selection (language or `all`).
+- On TUIs with interactive prompt support, running `respec-standards` with no arguments prompts for target selection (language or `all`).
+- On TUIs without interactive prompt support, pass an explicit target: `respec-standards <language>` or `respec-standards all`.
 - Claude Code / OpenCode: `/respec-standards python`
 - Claude Code / OpenCode (all): `/respec-standards all`
 - Codex: `$respec-standards python`

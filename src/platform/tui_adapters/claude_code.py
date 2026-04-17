@@ -19,6 +19,10 @@ class ClaudeCodeAdapter(TuiAdapter):
     def conversation_workflow_name(self) -> str:
         return 'the plan-conversation command'
 
+    @property
+    def ask_user_question_tool_name(self) -> str | None:
+        return 'AskUserQuestion'
+
     def commands_dir(self, project_path: Path) -> Path:
         return project_path / '.claude' / 'commands'
 

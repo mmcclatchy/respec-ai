@@ -447,9 +447,57 @@ class PlanConversationCommandTools(CommandToolsModel):
 class StandardsCommandTools(CommandToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     standards_command_name: str = Field(default='', description='Name of the standards workflow command/skill')
+    ask_user_question_tool_name: str = Field(
+        default='',
+        description='Adapter-specific interactive prompt tool name (empty when unsupported)',
+    )
+    target_argument_hint: str = Field(
+        default='[language|all]',
+        description='Argument hint adjusted by adapter interactive prompt capability',
+    )
+    missing_target_resolution_text: str = Field(
+        default='',
+        description='Workflow instructions for handling missing language targets',
+    )
 
     def model_post_init(self, __context: Any) -> None:
         self.standards_command_name = RespecAICommand.STANDARDS.value
+        ask_tool_name = self.tui_adapter.ask_user_question_tool_name
+        if ask_tool_name:
+            self.ask_user_question_tool_name = ask_tool_name
+            self.target_argument_hint = '[optional: language|all]'
+            self.missing_target_resolution_text = (
+                f'IF TARGET is missing:\n'
+                f'  MUST call {ask_tool_name} to select one language or "all".\n'
+                '  MUST NOT infer or auto-select a default target, even when only one language exists.\n'
+                f'  {ask_tool_name}:\n'
+                '    Header: "Standards Target"\n'
+                '    Question: "Select standards target language or all."\n'
+                '    Options:\n'
+                '      1) one language (pick from AVAILABLE_LANGUAGES)\n'
+                '      2) all languages\n'
+                '  TARGET = selected value\n'
+                '\n'
+                f'If {ask_tool_name} is unavailable:\n'
+                '  Stop and return structured error:\n'
+                f'  "standards_target_selection_unavailable: missing {ask_tool_name} tool; cannot continue without '
+                'explicit target selection."'
+            )
+        else:
+            self.ask_user_question_tool_name = ''
+            self.target_argument_hint = '[language|all]'
+            self.missing_target_resolution_text = (
+                'IF TARGET is missing:\n'
+                '  Stop and return structured error:\n'
+                '  "standards_target_required: explicit target required on this TUI."\n'
+                '  Present numbered options for selection:\n'
+                '    1..N) one entry per AVAILABLE_LANGUAGES item (in deterministic sorted order)\n'
+                '    N+1) all\n'
+                '  Include exact rerun commands beside each option:\n'
+                '    - respec-standards <language>\n'
+                '    - respec-standards all\n'
+                '  Do not continue rendering until user reruns with an explicit target.'
+            )
 
 
 class CodeCommandTools(CommandToolsModel):

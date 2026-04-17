@@ -34,6 +34,15 @@ class TuiAdapter(ABC):
     @abstractmethod
     def conversation_workflow_name(self) -> str: ...
 
+    @property
+    def ask_user_question_tool_name(self) -> str | None:
+        """Return the adapter-specific interactive user prompt tool name.
+
+        None means this adapter does not support an interactive prompt tool in
+        generated command workflows.
+        """
+        return None
+
     @abstractmethod
     def commands_dir(self, project_path: Path) -> Path: ...
 

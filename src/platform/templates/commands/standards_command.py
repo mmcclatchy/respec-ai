@@ -4,7 +4,7 @@ from src.platform.models import StandardsCommandTools
 def generate_standards_command_template(tools: StandardsCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [optional: language|all]
+argument-hint: {tools.target_argument_hint}
 description: Render standards guides from canonical TOML templates
 ---
 
@@ -38,20 +38,7 @@ If AVAILABLE_LANGUAGES is empty:
   Stop and return structured error:
   "standards_languages_missing: no language TOML files found under .respec-ai/config/standards/; run respec-ai standards init <language...>."
 
-IF TARGET is missing:
-  MUST call AskUserQuestion to select one language or "all".
-  MUST NOT infer or auto-select a default target, even when only one language exists.
-  AskUserQuestion:
-    Header: "Standards Target"
-    Question: "Select standards target language or all."
-    Options:
-      1) one language (pick from AVAILABLE_LANGUAGES)
-      2) all languages
-  TARGET = selected value
-
-If AskUserQuestion is unavailable:
-  Stop and return structured error:
-  "standards_target_selection_unavailable: missing AskUserQuestion tool; cannot continue without explicit target selection."
+{tools.missing_target_resolution_text}
 
 IF TARGET == "all":
   TARGET_LANGUAGES = AVAILABLE_LANGUAGES

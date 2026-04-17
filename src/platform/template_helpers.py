@@ -678,7 +678,8 @@ def create_standards_command_tools(
     builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/config/standards/guides/*.md')
     builder.add_builtin_tool(BuiltInTool.EDIT, '.respec-ai/config/standards/guides/*.md')
     builder.add_builtin_tool(BuiltInTool.GLOB, '.respec-ai/config/standards/guides/*.md')
-    builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    if adapter.ask_user_question_tool_name:
+        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     return StandardsCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),

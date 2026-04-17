@@ -725,3 +725,19 @@ class TestCrossPlatformInvocationRendering:
         assert 'TARGET_GUIDE = .respec-ai/config/standards/guides/{LANGUAGE}.md' in template
         assert 'If a section is missing in TOML, omit it from the guide (do not invent values)' in template
         assert 'Canonical source remains: .respec-ai/config/standards/{LANGUAGE}.toml for each language' in template
+
+    def test_standards_command_template_requires_explicit_target_when_prompt_tool_unsupported(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.STANDARDS,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'argument-hint: [language|all]' in template
+        assert 'AskUserQuestion' not in template
+        assert 'standards_target_required: explicit target required on this TUI.' in template
+        assert 'Present numbered options for selection:' in template
+        assert '1..N) one entry per AVAILABLE_LANGUAGES item (in deterministic sorted order)' in template
+        assert 'N+1) all' in template
+        assert '- respec-standards <language>' in template
+        assert '- respec-standards all' in template
