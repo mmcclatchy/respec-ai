@@ -13,6 +13,7 @@ from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.codex_config import CodexConfigError
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
+from src.cli.services.tui_model_setup import run_tui_model_setup
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
 from src.cli.ui.stack_prompts import prompt_stack_profile
@@ -135,7 +136,7 @@ def run(args: Namespace) -> int:
                     print_warning('Initialization cancelled')
                     return 1
 
-        result = tui_adapter.post_init_setup(args)
+        result = run_tui_model_setup(TuiType(tui), args)
         if result != 0:
             return result
 

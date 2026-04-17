@@ -1,5 +1,4 @@
 import shutil
-from argparse import Namespace
 from pathlib import Path
 
 from src.cli.config.global_config import load_global_models
@@ -11,10 +10,6 @@ from src.cli.config.codex_config import (
     unregister_mcp_server as _unregister_mcp_server,
 )
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
-
-
-from src.cli.commands import codex_model
-from src.cli.ui.console import console
 
 
 _PRIMARY_COMMAND_SKILLS = {'respec-plan', 'respec-phase', 'respec-code', 'respec-patch'}
@@ -138,18 +133,6 @@ class CodexAdapter(TuiAdapter):
         if 'task' not in models:
             raise RuntimeError("Codex task model not configured. Run 'respec-ai models codex' first.")
         return models['task']
-
-    def post_init_setup(self, args: Namespace) -> int:
-        sync_args = Namespace(
-            aa_key=getattr(args, 'aa_key', None),
-            yes=getattr(args, 'yes', False),
-            debug=False,
-            no_cache=False,
-            reasoning_model=None,
-            task_model=None,
-        )
-        console.print('\n[bold cyan]Configuring Codex model tiers...[/bold cyan]\n')
-        return codex_model.run(sync_args)
 
     def register_mcp_server(self, project_path: Path) -> bool:
         return _register_mcp_server(force=True)

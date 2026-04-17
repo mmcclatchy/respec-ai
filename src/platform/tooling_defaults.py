@@ -24,15 +24,6 @@ TOOLING_DEFAULTS: dict[str, LanguageTooling] = {
         linter='eslint',
         lint_command='npx eslint src/',
     ),
-    'typescript': LanguageTooling(
-        test_runner='vitest',
-        test_command='npx vitest run',
-        coverage_command='npx vitest run --coverage',
-        checker='tsc',
-        check_command='npx tsc --noEmit',
-        linter='eslint',
-        lint_command='npx eslint src/',
-    ),
     'go': LanguageTooling(
         test_runner='go test',
         test_command='go test ./...',
@@ -70,7 +61,8 @@ def detect_project_tooling(project_path: Path) -> dict[str, LanguageTooling]:
                 detected[language] = TOOLING_DEFAULTS[language]
     if (project_path / 'package.json').exists() and (project_path / 'tsconfig.json').exists():
         detected.pop('javascript', None)
-        detected['typescript'] = TOOLING_DEFAULTS['typescript']
+        # TypeScript inherits JavaScript tool defaults and is promoted at detection time.
+        detected['typescript'] = LanguageTooling.model_validate(TOOLING_DEFAULTS['javascript'].model_dump())
     return detected
 
 

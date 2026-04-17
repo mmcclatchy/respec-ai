@@ -1,4 +1,5 @@
 import json
+import inspect
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
@@ -8,7 +9,9 @@ import pytest
 
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, get_tui_adapter
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec
+from src.platform.tui_adapters import codex as codex_adapter_module
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
+from src.platform.tui_adapters import opencode as opencode_adapter_module
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.platform_selector import PlatformType
 from src.platform.tool_enums import RespecAICommand
@@ -74,6 +77,13 @@ class TestGetTuiAdapter:
     def test_invalid_tui_raises(self) -> None:
         with pytest.raises((ValueError, AttributeError)):
             get_tui_adapter('invalid')  # type: ignore[arg-type]
+
+    def test_adapter_modules_do_not_import_cli_commands(self) -> None:
+        codex_source = inspect.getsource(codex_adapter_module)
+        opencode_source = inspect.getsource(opencode_adapter_module)
+
+        assert 'from src.cli.commands import' not in codex_source
+        assert 'from src.cli.commands import' not in opencode_source
 
 
 class TestClaudeCodeAdapter:

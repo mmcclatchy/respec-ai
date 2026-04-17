@@ -1,14 +1,9 @@
 import json
-from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
 from src.cli.config.global_config import load_global_models
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
-
-
-from src.cli.commands import opencode_model
-from src.cli.ui.console import console
 
 
 _BUILTIN_TOOL_MAP = {
@@ -135,18 +130,6 @@ class OpenCodeAdapter(TuiAdapter):
         del mcp['respec-ai']
         opencode_json_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         return True
-
-    def post_init_setup(self, args: Namespace) -> int:
-        sync_args = Namespace(
-            aa_key=getattr(args, 'aa_key', None),
-            exa_key=getattr(args, 'exa_key', None),
-            yes=getattr(args, 'yes', False),
-            debug=False,
-            no_cache=False,
-        )
-
-        console.print('\n[bold cyan]Configuring OpenCode model tiers...[/bold cyan]\n')
-        return opencode_model.run(sync_args)
 
     def config_dir_name(self) -> str:
         return '.opencode'

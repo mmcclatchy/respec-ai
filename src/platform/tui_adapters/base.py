@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from argparse import Namespace
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -78,9 +77,6 @@ class TuiAdapter(ABC):
     def unregister_all_mcp_servers(self, project_path: Path) -> int:
         removed = self.unregister_mcp_server(project_path)
         return 1 if removed else 0
-
-    def post_init_setup(self, args: Namespace) -> int:
-        return 0
 
     @abstractmethod
     def config_dir_name(self) -> str: ...

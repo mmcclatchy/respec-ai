@@ -21,7 +21,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -49,7 +48,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -78,7 +76,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -103,7 +100,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -139,7 +135,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -166,7 +161,6 @@ class TestInitCommand:
         monkeypatch.chdir(tmp_path)
 
         mock_adapter = mocker.MagicMock()
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -188,7 +182,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -216,7 +209,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.side_effect = ClaudeConfigError('MCP registration failed')
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -270,7 +262,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -330,7 +321,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
@@ -378,7 +368,6 @@ class TestInitCommand:
 
         mock_adapter = mocker.MagicMock()
         mock_adapter.register_mcp_server.return_value = True
-        mock_adapter.post_init_setup.return_value = 0
         mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
         mocker.patch('src.cli.commands.init.PlatformOrchestrator')
         mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
