@@ -66,20 +66,26 @@ def _update_docker(old_version: str, new_version: str) -> bool:
                 print_info('Start manually when image is ready: respec-ai docker start')
         return False
 
-    docker_manager.cleanup_old_versions(version=new_version)
-
-    if is_same_version:
-        print_info('No new CLI version found; skipping container stop/start')
-        return True
-
     print_info('Starting container...')
     try:
-        docker_manager.start_container(version=new_version)
+        docker_manager.ensure_running(version=new_version)
         print_success('Container running')
     except DockerManagerError as e:
         print_warning(f'Failed to start container: {e}')
+        if not is_same_version and was_running:
+            print_info('Restarting previous container...')
+            try:
+                docker_manager.ensure_running(version=old_version)
+                print_success('Previous container restored')
+            except DockerManagerError:
+                print_warning('Could not restart previous container')
         print_info('Start manually: respec-ai docker start')
         return False
+
+    docker_manager.cleanup_old_versions(version=new_version)
+
+    if is_same_version:
+        print_info('No new CLI version found; refreshed Docker image and ensured container is running')
 
     return True
 
@@ -125,6 +131,7 @@ def run(args: Namespace) -> int:
         config_path = Path.cwd() / '.respec-ai' / 'config.json'
         if config_path.exists():
             standards_dir = Path.cwd() / '.respec-ai' / 'config'
+            standards_valid = True
             if standards_dir.exists():
                 standards_validate = subprocess.run(
                     ['respec-ai', 'standards', 'validate'],
@@ -132,24 +139,28 @@ def run(args: Namespace) -> int:
                     text=True,
                 )
                 if standards_validate.returncode != 0:
-                    print_warning('Standards config validation failed — regeneration skipped')
+                    standards_valid = False
+                    print_warning('Standards config validation failed — skipping standards render')
                     print_warning('Fix standards config and run: respec-ai standards validate')
-                    return 1
+                else:
+                    subprocess.run(
+                        ['respec-ai', 'standards', 'render'],
+                        capture_output=True,
+                        text=True,
+                    )
 
-                subprocess.run(
-                    ['respec-ai', 'standards', 'render'],
+            if standards_valid:
+                regen_result = subprocess.run(
+                    ['respec-ai', 'regenerate'],
                     capture_output=True,
                     text=True,
                 )
-            regen_result = subprocess.run(
-                ['respec-ai', 'regenerate'],
-                capture_output=True,
-                text=True,
-            )
-            if regen_result.returncode == 0:
-                print_success('Templates regenerated')
+                if regen_result.returncode == 0:
+                    print_success('Templates regenerated')
+                else:
+                    print_warning('Template regeneration skipped — run `respec-ai regenerate` in your project')
             else:
-                print_warning('Template regeneration skipped — run `respec-ai regenerate` in your project')
+                print_warning('Template regeneration skipped — fix standards config and run `respec-ai regenerate`')
         elif new_version != current_version:
             print_info('Run: respec-ai regenerate in your project directory to update templates')
 
