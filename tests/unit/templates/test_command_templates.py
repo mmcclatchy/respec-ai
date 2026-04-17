@@ -703,7 +703,9 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'argument-hint: [language] | render [language]' in template
+        assert 'argument-hint: [optional: language|all] | render [optional: language|all]' in template
         assert 'IF first argument == "render":' in template
+        assert 'IF TARGET is missing:' in template
+        assert 'TARGET_LANGUAGES = AVAILABLE_LANGUAGES' in template
         assert 'TARGET_GUIDE = .respec-ai/config/standards/guides/{LANGUAGE}.md' in template
-        assert 'Canonical source remains: .respec-ai/config/standards/{LANGUAGE}.toml' in template
+        assert 'Canonical source remains: .respec-ai/config/standards/{LANGUAGE}.toml for each language' in template
