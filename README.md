@@ -1,16 +1,25 @@
 # `respec-ai`
 
-Agentic, phase-driven workflow tooling for AI-assisted software delivery.
+AI-assisted delivery often breaks down when vague requirements move to code before constraints are explicit: plans drift, documents desync, and teams burn cycles on ad hoc prompt retries to close quality gaps.
 
-`respec-ai` bootstraps command/agent templates for Claude Code, OpenCode, and Codex, and runs a meta MCP server used by generated workflows.
+`respec-ai` applies spec-driven development with MCP-orchestrated agentic reflection loops: 
+    - `/respec-plan` turns ambiguity into a measurable plan
+    - `/respec-roadmap` decomposes that plan into phases
+    - `/respec-phase` defines system design and synthesizes best-practice research via `best-practices-rag`
+    - `/respec-task` generates implementation-grade task specs
+    - `/respec-code` plus `/respec-patch` run TDD-first implementation and review against those specs and project standards set by the user
+
+`best-practices-rag` addresses a common LLM quality problem: code that works but is outdated, non-idiomatic, or inconsistently applied for a given stack. It queries a curated Neo4j knowledge graph first to reinforce proven patterns (including ones already in model training), performs external gap-fill research only when coverage is missing or stale, stores synthesized results back to the graph, and reuses them in future runs.
+
+For command behavior and current workflow status details, see [docs/WORKFLOWS.md](docs/WORKFLOWS.md).
 
 ## Quick Start
 
 Prerequisites:
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- docker (Linux) or [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac and Windows)
 - [uv](https://docs.astral.sh/uv/)
 
-Install:
+Install `respec-ai`:
 
 ```bash
 uv tool install git+https://github.com/mmcclatchy/respec-ai.git
@@ -20,7 +29,7 @@ Initialize inside your project:
 
 ```bash
 cd /path/to/your/project
-respec-ai init -p markdown
+respec-ai init -p markdown --tui {claude-code\|codex\|opencode\|}
 ```
 
 ### Standards Preflight (Recommended)
