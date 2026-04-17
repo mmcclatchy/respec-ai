@@ -197,7 +197,7 @@ IF SYNTHESIZE_PROMPTS is non-empty:
   - Exit with diagnostics and retry guidance
 ```
 
-`/respec-task` consumes finalized research artifacts only. It MUST NOT execute bp synthesis itself.
+{tools.task_command_reference} consumes finalized research artifacts only. It MUST NOT execute bp synthesis itself.
 
 ### 3. Initialize Task Planning Loop
 

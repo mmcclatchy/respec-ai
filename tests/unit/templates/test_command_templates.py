@@ -352,6 +352,21 @@ class TestCrossPlatformInvocationRendering:
             assert 'IF TASK_INVOCATION_ATTEMPTED == false' in template
             assert 'IF TASK_INVOCATION_METHOD == "shell"' in template
 
+    def test_plan_template_enforces_fail_closed_roadmap_handoff(self) -> None:
+        coordinator = TemplateCoordinator()
+        adapters = (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter())
+
+        for adapter in adapters:
+            template = coordinator.generate_command_template(
+                RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=adapter
+            )
+            assert 'MANDATORY ROADMAP HANDOFF PROTOCOL (FAIL-CLOSED)' in template
+            assert 'Return "Plan complete" success without attempting Step 10' in template
+            assert 'Attempt `respec-roadmap` invocation via Bash/CLI' in template
+            assert 'IF ROADMAP_INVOCATION_ATTEMPTED == false' in template
+            assert 'IF ROADMAP_INVOCATION_METHOD == "shell"' in template
+            assert 'roadmap_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)' in template
+
     def test_phase_template_places_task_handoff_after_phase_storage(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -381,6 +396,14 @@ class TestCrossPlatformInvocationRendering:
         assert 'task_identifier (MCP key when available, else "unavailable")' in template
         assert 'next_action (required when task_invocation_status == "failed")' in template
 
+    def test_phase_template_uses_adapter_owned_phase_command_reference(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert '- `/respec-phase` is the ONLY workflow that runs bp synthesis' not in template
+        assert '- `respec-phase` skill is the ONLY workflow that runs bp synthesis' in template
+
     def test_task_template_fail_fast_on_unresolved_synthesize_prompts(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -390,6 +413,22 @@ class TestCrossPlatformInvocationRendering:
         assert 'Task planning is blocked until phase-owned synthesis is complete.' in template
         assert 'Do NOT invoke task-planner' in template
         assert 'Do NOT continue to Step 3' in template
+
+    def test_task_template_uses_adapter_owned_task_command_reference(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert '`/respec-task` consumes finalized research artifacts only.' not in template
+        assert '`respec-task` skill consumes finalized research artifacts only.' in template
+
+    def test_code_template_override_prompt_has_no_trailing_quote(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Invoke the `respec-code` skill with: `{PLAN_NAME} {PHASE_NAME}`."' not in template
+        assert 'To reject:' in template
 
     def test_task_template_passes_structured_reference_metadata(self) -> None:
         coordinator = TemplateCoordinator()

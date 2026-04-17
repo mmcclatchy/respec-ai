@@ -670,46 +670,111 @@ ELIF ANALYST_LOOP_STATUS == "completed":
 
 After analyst validation completes, automatically generate the roadmap:
 
+═══════════════════════════════════════════════
+MANDATORY ROADMAP HANDOFF PROTOCOL (FAIL-CLOSED)
+═══════════════════════════════════════════════
+MUST:
+- Attempt roadmap generation in the SAME run via:
+  {tools.roadmap_command_invocation}
+- Record roadmap invocation outcome before any completion response
+
+MUST NOT:
+- Return "Plan complete" success without attempting Step 10
+- Attempt `respec-roadmap` invocation via Bash/CLI
+
+EXCEPTION:
+- Only skip automatic chaining if user explicitly instructed to stop chaining
+
+IMPORTANT:
+- Fallback/manual mode changes implementation method only.
+- Fallback/manual mode does NOT waive Step 10 obligations.
+- Command handoff path MUST use adapter-rendered orchestration invocation, not shell fallback.
+═══════════════════════════════════════════════
+
 ```text
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 Display: "✅  PLAN COMPLETE — generating roadmap"
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-```
 
-Invoke the roadmap workflow to decompose the plan into phases:
+ROADMAP_INVOCATION_ATTEMPTED = false
+ROADMAP_INVOCATION_STATUS = "failed"
+ROADMAP_INVOCATION_METHOD = "orchestration"
+ROADMAP_IDENTIFIER = "unavailable"
+ROADMAP_ERROR_SUMMARY = ""
 
+Sanity check orchestration path:
+ROADMAP_ORCHESTRATION_INVOCATION = "{tools.roadmap_command_invocation}"
+IF ROADMAP_ORCHESTRATION_INVOCATION is empty OR missing expected respec-roadmap invocation text:
+  ERROR_RESPONSE = {{
+    "error_type": "roadmap_handoff_unavailable",
+    "error_message": "Roadmap orchestration invocation path unavailable",
+    "recovery_action": "Stop before Step 10 execution and preserve plan output",
+    "user_guidance": "Run template regeneration and retry Plan workflow. Do NOT use shell fallback for respec-roadmap.",
+    "partial_output": "Plan saved successfully; roadmap handoff blocked by fail-closed policy."
+  }}
+  EXIT: Workflow terminated
+
+Attempt roadmap workflow via orchestration path:
 {tools.roadmap_command_invocation}
+ROADMAP_INVOCATION_ATTEMPTED = true
+ROADMAP_INVOCATION_METHOD = "orchestration"
 
-The roadmap workflow will:
-1. Retrieve the strategic plan from MCP
-2. Initialize a roadmap quality loop
-3. Run roadmap agent → roadmap-critic refinement cycle
-4. Extract and save sparse phase files for each phase in the roadmap
+IF roadmap workflow invocation returns error:
+  ROADMAP_INVOCATION_STATUS = "failed"
+  ROADMAP_ERROR_SUMMARY = [captured error summary]
+ELSE:
+  ROADMAP_IDENTIFIER = PLAN_NAME
+  Verify roadmap exists in MCP:
+  mcp__respec-ai__get_document(
+    doc_type="roadmap",
+    key=PLAN_NAME,
+    loop_id=None
+  )
 
-The roadmap is stored in MCP only — it is internal working data.
-Do NOT write a roadmap.md file or any roadmap file to disk.
-The only user-visible files from this workflow are the plan file and the individual phase files.
-
-**If roadmap generation fails**: The plan is already stored and valid. Display:
-```text
-"⚠ Roadmap generation failed. Plan is saved. Retry roadmap generation with PLAN_NAME={{PLAN_NAME}}."
+  IF verification succeeds:
+    ROADMAP_INVOCATION_STATUS = "succeeded"
+  ELSE:
+    ROADMAP_INVOCATION_STATUS = "failed"
+    ROADMAP_ERROR_SUMMARY = "Roadmap workflow returned but roadmap retrieval verification failed"
 ```
 
-**After roadmap generation completes**: Present final summary:
-
 ```text
-Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Display: "✅  PLAN AND ROADMAP COMPLETE"
-Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+IF ROADMAP_INVOCATION_ATTEMPTED == false AND user did not explicitly request to stop chaining:
+  ERROR: non-compliant run (Step 10 not attempted)
+  EXIT with structured error (do NOT report success)
 
-**Summary**:
-- Plan quality score: [score]
-- Analyst validation score: [score]
-- Phases generated: [list phase names from roadmap]
+IF ROADMAP_INVOCATION_METHOD == "shell":
+  ERROR: non-compliant run (shell invocation is invalid for Step 10)
+  RETRY REQUIRED: re-run Step 10 via orchestration invocation path before reporting success/failure
+  EXIT with structured error
 
-**Next Steps**:
-Use the phase workflow to expand a phase with architecture detail.
+Completion contract (required in final response):
+1. plan_file_path
+2. plan_status
+3. roadmap_invocation_status ("succeeded" | "failed")
+4. roadmap_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)
+5. roadmap_identifier (MCP key when available, else "unavailable")
+6. next_action (required when roadmap_invocation_status == "failed")
 ```
 
-{tools.phase_command_invocation}
+```text
+IF ROADMAP_INVOCATION_STATUS == "succeeded":
+  Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  Display: "✅  PLAN AND ROADMAP COMPLETE"
+  Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  **Summary**:
+  - Plan quality score: [score]
+  - Analyst validation score: [score]
+  - Roadmap key: [ROADMAP_IDENTIFIER]
+
+  **Next Steps**:
+  Use the phase workflow to expand a phase with architecture detail.
+  {tools.phase_command_invocation}
+ELSE:
+  Display:
+  "⚠ Roadmap generation failed. Plan is saved. Retry roadmap generation:"
+  {tools.roadmap_command_invocation}
+  Include error output summary and retry guidance in next_action.
+```
 """

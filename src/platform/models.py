@@ -188,6 +188,7 @@ class PhaseCommandTools(CommandToolsModel):
         ..., description='Adapter-rendered parallel orchestration policy for bp-pipeline fan-out'
     )
     task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
+    phase_command_reference: str = Field(..., description='Adapter-rendered reference text for respec-phase command')
     roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')
     plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')
     code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
@@ -850,6 +851,7 @@ class TaskCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_task_planner: str = Field(..., description='Invocation text for respec-task-planner agent')
     invoke_task_plan_critic: str = Field(..., description='Invocation text for respec-task-plan-critic agent')
+    task_command_reference: str = Field(..., description='Adapter-rendered reference text for respec-task command')
     phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
     code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
 

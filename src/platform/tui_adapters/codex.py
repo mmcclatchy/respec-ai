@@ -208,6 +208,9 @@ class CodexAdapter(TuiAdapter):
             return inline_guide
         return f'Invoke the `{command_name}` skill with: `{args_template}`.'
 
+    def render_command_reference(self, command_name: str) -> str:
+        return f'`{command_name}` skill'
+
     def parallel_worker_limit(self) -> int:
         default_limit = 6
         try:

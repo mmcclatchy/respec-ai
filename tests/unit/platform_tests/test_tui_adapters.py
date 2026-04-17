@@ -463,6 +463,9 @@ class TestClaudeCodeAdapterInvocationRendering:
         )
         assert result == '/respec-task {PLAN_NAME} {PHASE_NAME}'
 
+    def test_render_command_reference(self) -> None:
+        assert self.adapter.render_command_reference('respec-phase') == '/respec-phase'
+
     def test_render_command_invocation_ignores_inline_guide(self) -> None:
         result = self.adapter.render_command_invocation(
             'respec-plan-conversation',
@@ -549,6 +552,9 @@ class TestOpenCodeAdapterInvocationRendering:
             requires_user_interaction=False,
         )
         assert 'This guide should not appear' not in result
+
+    def test_render_command_reference(self) -> None:
+        assert self.adapter.render_command_reference('respec-task') == '/respec-task'
 
 
 class TestCodexAdapter:
@@ -824,6 +830,9 @@ class TestCodexAdapterInvocationRendering:
         )
         assert 'Invoke the `respec-roadmap` skill' in result
 
+    def test_render_command_reference(self) -> None:
+        assert self.adapter.render_command_reference('respec-task') == '`respec-task` skill'
+
     def test_phase_template_step_9_codex_invocation_avoids_nested_backticks(self) -> None:
         template = TemplateCoordinator().generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=self.adapter
@@ -831,3 +840,15 @@ class TestCodexAdapterInvocationRendering:
         assert 'via `Invoke the `respec-task` skill with:' not in template
         assert 'Attempt task generation in the SAME run via:' in template
         assert 'Invoke the `respec-task` skill with: `{PLAN_NAME} {PHASE_NAME}`.' in template
+
+    def test_codex_generated_templates_do_not_leak_hardcoded_slash_references(self) -> None:
+        phase_template = TemplateCoordinator().generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=self.adapter
+        )
+        task_template = TemplateCoordinator().generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=self.adapter
+        )
+        assert '/respec-phase` is the ONLY workflow that runs bp synthesis' not in phase_template
+        assert '`respec-phase` skill is the ONLY workflow that runs bp synthesis' in phase_template
+        assert '`/respec-task` consumes finalized research artifacts only.' not in task_template
+        assert '`respec-task` skill consumes finalized research artifacts only.' in task_template

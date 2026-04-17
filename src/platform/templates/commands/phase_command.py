@@ -382,7 +382,7 @@ IF no SYNTHESIZE_PROMPTS:
 ═══════════════════════════════════════════════
 MANDATORY COST-AWARE SYNTHESIS POLICY
 ═══════════════════════════════════════════════
-- `/respec-phase` is the ONLY workflow that runs bp synthesis
+- {tools.phase_command_reference} is the ONLY workflow that runs bp synthesis
 - Run synthesis only for unresolved high-value knowledge gaps
 - Do NOT create or execute prompts to hit a quota
 - Existing "Read:" entries and cache hits do NOT consume synthesis worker slots

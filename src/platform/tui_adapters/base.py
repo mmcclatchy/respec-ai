@@ -109,6 +109,9 @@ class TuiAdapter(ABC):
         requires_user_interaction: bool = False,
     ) -> str: ...
 
+    @abstractmethod
+    def render_command_reference(self, command_name: str) -> str: ...
+
     def parallel_worker_limit(self) -> int:
         """Return max active workers hint for adapter-specific orchestration guidance.
 

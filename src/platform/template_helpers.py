@@ -175,6 +175,7 @@ def create_phase_command_tools(
             '',
             requires_user_interaction=False,
         ),
+        phase_command_reference=adapter.render_command_reference('respec-phase'),
         roadmap_command_invocation=adapter.render_command_invocation(
             'respec-roadmap',
             '{PLAN_NAME}',
@@ -611,6 +612,7 @@ def create_task_tools(
             'evaluate Task quality against FSDD criteria',
             [('task_loop_id', 'TASK_LOOP_ID'), ('plan_name', 'PLAN_NAME'), ('phase_name', 'PHASE_NAME')],
         ),
+        task_command_reference=adapter.render_command_reference('respec-task'),
         phase_command_invocation=adapter.render_command_invocation(
             'respec-phase',
             '{PLAN_NAME} {PHASE_NAME}',

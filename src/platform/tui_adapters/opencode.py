@@ -197,6 +197,9 @@ class OpenCodeAdapter(TuiAdapter):
             return inline_guide
         return f'Run /{command_name} {args_template} when ready to continue.'
 
+    def render_command_reference(self, command_name: str) -> str:
+        return f'/{command_name}'
+
     def render_parallel_fanout_policy(
         self,
         worker_group_label: str,

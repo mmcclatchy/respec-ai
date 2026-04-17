@@ -159,7 +159,7 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
     To approve:
     {tools.phase_command_invocation}
     To reject:
-    {tools.code_command_invocation}"
+    {tools.code_command_invocation}
 
     EXIT: Workflow suspended pending user decision
 
