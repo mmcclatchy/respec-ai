@@ -7,6 +7,7 @@ from src.platform.template_helpers import (
     create_create_phase_agent_tools,
     create_patch_planner_agent_tools,
     create_phase_architect_agent_tools,
+    create_phase_critic_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
     create_task_plan_critic_agent_tools,
@@ -16,6 +17,7 @@ from src.platform.templates.agents import (
     generate_create_phase_template,
     generate_patch_planner_template,
     generate_phase_architect_template,
+    generate_phase_critic_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
     generate_task_plan_critic_template,
@@ -189,6 +191,25 @@ class TestCreatePhaseTemplate:
 
         # Should reference Phase
         assert 'Phase' in template
+
+
+class TestPhaseCriticTemplate:
+    def test_template_includes_api_research_freshness_gates(self) -> None:
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        template = generate_phase_critic_template(tools)
+        assert 'API_STALE_SOFT_DAYS = 30' in template
+        assert 'API_STALE_HARD_DAYS = 365' in template
+        assert '--force-refresh' in template
+        assert 'per-service research coverage' in template
+        assert '.best-practices/*.md' in template
+        assert 'API Research Coverage Missing - BLOCKING' in template
+        assert 'Best-Practices Reference Invalid - BLOCKING' in template
+        assert 'API_RESEARCH_FRESHNESS_PENALTY' in template
+
+    def test_template_grants_bash_and_glob_tools(self) -> None:
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        assert 'Bash' in tools.tools_yaml
+        assert 'Glob' in tools.tools_yaml
 
 
 class TestTemplateConsistency:

@@ -1040,6 +1040,7 @@ class PhaseCriticAgentTools(AgentToolsModel):
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
         (BuiltInTool.GLOB, ''),
+        (BuiltInTool.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
