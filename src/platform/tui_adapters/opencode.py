@@ -7,6 +7,10 @@ from src.cli.config.global_config import load_global_models
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
+from src.cli.commands import opencode_model
+from src.cli.ui.console import console
+
+
 _BUILTIN_TOOL_MAP = {
     'Read': 'read',
     'Write': 'write',
@@ -133,8 +137,6 @@ class OpenCodeAdapter(TuiAdapter):
         return True
 
     def post_init_setup(self, args: Namespace) -> int:
-        from src.cli.commands import opencode_model
-
         sync_args = Namespace(
             aa_key=getattr(args, 'aa_key', None),
             exa_key=getattr(args, 'exa_key', None),
@@ -142,7 +144,6 @@ class OpenCodeAdapter(TuiAdapter):
             debug=False,
             no_cache=False,
         )
-        from src.cli.ui.console import console
 
         console.print('\n[bold cyan]Configuring OpenCode model tiers...[/bold cyan]\n')
         return opencode_model.run(sync_args)

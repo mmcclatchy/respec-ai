@@ -16,6 +16,9 @@ from src.cli.config.global_config import GLOBAL_MODELS_PATH, load_api_key, save_
 from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
+from src.cli.commands import regenerate
+
+
 _AA_MODELS_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
 _CACHE_DIR = Path.home() / '.config' / 'respec-ai' / 'cache'
 _CACHE_TTL_SECONDS = 12 * 60 * 60
@@ -182,8 +185,6 @@ def _auto_apply_to_current_project(*, no_apply: bool) -> int:
 
 
 def _run_forced_regenerate() -> int:
-    from src.cli.commands import regenerate
-
     return regenerate.run(Namespace(force=True))
 
 

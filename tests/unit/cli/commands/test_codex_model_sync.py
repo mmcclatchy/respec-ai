@@ -344,7 +344,10 @@ class TestCodexModelDiscovery:
             },
         ]
         with (
-            patch('src.cli.commands.codex_model._fetch_codex_models_live', return_value=codex_model._normalize_discovered_models(live)),
+            patch(
+                'src.cli.commands.codex_model._fetch_codex_models_live',
+                return_value=codex_model._normalize_discovered_models(live),
+            ),
             patch('src.cli.commands.codex_model._write_cache') as mock_cache,
         ):
             visible = codex_model._discover_codex_models(include_hidden=False, debug=False)

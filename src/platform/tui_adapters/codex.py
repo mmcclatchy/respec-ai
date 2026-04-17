@@ -13,6 +13,10 @@ from src.cli.config.codex_config import (
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
+from src.cli.commands import codex_model
+from src.cli.ui.console import console
+
+
 _PRIMARY_COMMAND_SKILLS = {'respec-plan', 'respec-phase', 'respec-code', 'respec-patch'}
 _PREFLIGHT_COMMAND_SKILLS = {'respec-standards'}
 _SECONDARY_COMMAND_PARENTS = {
@@ -136,9 +140,6 @@ class CodexAdapter(TuiAdapter):
         return models['task']
 
     def post_init_setup(self, args: Namespace) -> int:
-        from src.cli.commands import codex_model
-        from src.cli.ui.console import console
-
         sync_args = Namespace(
             aa_key=getattr(args, 'aa_key', None),
             yes=getattr(args, 'yes', False),

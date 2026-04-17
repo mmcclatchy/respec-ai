@@ -26,6 +26,9 @@ from src.platform.tool_enums import (
 )
 
 
+from src.platform.tui_adapters import ClaudeCodeAdapter
+
+
 class TestToolEnums:
     def test_external_platform_tool_values(self) -> None:
         assert ExternalPlatformTool.LINEAR_CREATE_ISSUE.value == 'mcp__linear-server__create_issue'
@@ -112,8 +115,6 @@ class TestTemplateHelpers:
             'mcp__linear-server__update_issue',
         ]
 
-        from src.platform.tui_adapters import ClaudeCodeAdapter
-
         tools = create_phase_command_tools(
             platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
         )
@@ -129,7 +130,6 @@ class TestTemplateHelpers:
             'mcp__linear-server__create_project',
             'mcp__linear-server__get_project',
         ]
-        from src.platform.tui_adapters import ClaudeCodeAdapter
 
         tools = create_plan_command_tools(
             platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
@@ -140,26 +140,18 @@ class TestTemplateHelpers:
         assert 'Write(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
     def test_create_roadmap_agent_tools_includes_reference_read_permission(self) -> None:
-        from src.platform.tui_adapters import ClaudeCodeAdapter
-
         tools = create_roadmap_agent_tools(ClaudeCodeAdapter(), plans_dir='~/.claude/plans')
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
     def test_create_roadmap_critic_tools_include_reference_read_permission(self) -> None:
-        from src.platform.tui_adapters import ClaudeCodeAdapter
-
         tools = create_roadmap_critic_agent_tools(ClaudeCodeAdapter())
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
     def test_create_task_plan_critic_tools_include_reference_read_permission(self) -> None:
-        from src.platform.tui_adapters import ClaudeCodeAdapter
-
         tools = create_task_plan_critic_agent_tools(ClaudeCodeAdapter())
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
     def test_create_code_command_tools_include_unrestricted_bash(self) -> None:
-        from src.platform.tui_adapters import ClaudeCodeAdapter
-
         platform_tools = [
             'mcp__linear-server__get_issue',
             'mcp__linear-server__create_comment',
@@ -168,8 +160,6 @@ class TestTemplateHelpers:
         assert 'Bash' in tools.tools_yaml
 
     def test_create_patch_command_tools_include_unrestricted_bash(self) -> None:
-        from src.platform.tui_adapters import ClaudeCodeAdapter
-
         platform_tools = [
             'mcp__linear-server__get_issue',
             'mcp__linear-server__create_comment',

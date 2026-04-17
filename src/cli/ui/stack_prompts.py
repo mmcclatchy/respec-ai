@@ -69,7 +69,9 @@ def _parse_multi_selection(raw: str, options: list[str], detected_values: list[s
     return [p for p in parts if p]
 
 
-def _prompt_stack_field(field_name: str, detected_value: str | list[str] | bool | None) -> str | list[str] | bool | None:
+def _prompt_stack_field(
+    field_name: str, detected_value: str | list[str] | bool | None
+) -> str | list[str] | bool | None:
     label = field_name.replace('_', ' ').title()
     options = list(STACK_FIELD_OPTIONS.get(field_name, []))
     multi = field_name in STACK_MULTI_SELECT_FIELDS
@@ -164,9 +166,7 @@ def prompt_stack_profile(detected: ProjectStack) -> ProjectStack:
     values: dict[str, Any] = {}
     detected_data = detected.model_dump()
     section_for_field = {
-        field_name: section_title
-        for section_title, fields in STACK_FIELD_SECTIONS
-        for field_name in fields
+        field_name: section_title for section_title, fields in STACK_FIELD_SECTIONS for field_name in fields
     }
     printed_sections: set[str] = set()
     for field_name in STACK_FIELD_ORDER:

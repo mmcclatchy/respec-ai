@@ -4,6 +4,7 @@ from src.platform.tui_adapters.codex import CodexAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 from src.platform.tui_selector import TuiType
 
+
 _ADAPTER_MAP: dict[TuiType, type[TuiAdapter]] = {
     TuiType.CLAUDE_CODE: ClaudeCodeAdapter,
     TuiType.OPENCODE: OpenCodeAdapter,

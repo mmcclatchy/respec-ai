@@ -119,7 +119,14 @@ class TestGenerateTemplates:
             generate_templates(mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter)
 
         config = json.loads((tmp_path / 'opencode.json').read_text())
-        for name in ('respec-phase', 'respec-task', 'respec-code', 'respec-patch', 'respec-roadmap', 'respec-standards'):
+        for name in (
+            'respec-phase',
+            'respec-task',
+            'respec-code',
+            'respec-patch',
+            'respec-roadmap',
+            'respec-standards',
+        ):
             assert config['agent'][f'cmd-{name}']['model'] == 'provider/task-model'
 
     def test_templates_include_project_configuration(self, mocker: MockerFixture, tmp_path: Path) -> None:

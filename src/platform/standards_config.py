@@ -169,9 +169,7 @@ def _validate_language_config(language_data: dict, path: Path) -> list[str]:
     errors: list[str] = []
     schema_version = language_data.get('schema_version')
     if schema_version != LANGUAGE_SCHEMA_VERSION:
-        errors.append(
-            f'{path}: unsupported schema_version={schema_version!r} (expected {LANGUAGE_SCHEMA_VERSION})'
-        )
+        errors.append(f'{path}: unsupported schema_version={schema_version!r} (expected {LANGUAGE_SCHEMA_VERSION})')
 
     language = str(language_data.get('language', '')).strip().lower()
     commands = language_data.get('commands') or {}
