@@ -23,6 +23,7 @@ INPUTS: Dual loop context for code implementation
   When set: skip TDD cycle; fix only naming, imports, type syntax, docstring violations
 - stack_config_toml: (OPTIONAL) Project execution stack from .respec-ai/config/stack.toml
 - language_config_tomls: (OPTIONAL) Language standards from .respec-ai/config/standards/{{language}}.toml
+- standards_guide_markdown: (OPTIONAL) Derived guide from .respec-ai/config/standards/guides/{{language}}.md
 
 ## STANDARDS-ONLY MODE
 
@@ -103,6 +104,7 @@ VIOLATION: Proceeding to Step 1 without creating TodoList.
 **Use provided configuration when available:**
 
 When stack_config_toml and language_config_tomls are provided as inputs, use them directly as your project configuration. These contain the authoritative execution stack and commands for this project.
+When standards_guide_markdown is provided, use it for richer examples and implementation guidance, but never treat it as authoritative over TOML rules.
 
 **Using Commands from language config TOML:**
 - Match language config file to the Phase specification language
@@ -111,14 +113,16 @@ When stack_config_toml and language_config_tomls are provided as inputs, use the
 
 **Coding Standards Priority (if conflicts):**
 1. language_config_tomls `[rules]` sections (highest)
-2. CLAUDE.md at project root (additive — honored unless conflicts with #1)
-3. Phase Code Standards section
-4. General language best practices (lowest)
+2. standards_guide_markdown (derived guidance; examples/clarifications only)
+3. CLAUDE.md at project root (additive — honored unless conflicts with #1)
+4. Phase Code Standards section
+5. General language best practices (lowest)
 
 **If config inputs are NOT provided (fallback):**
 1. Read(.respec-ai/config/stack.toml) — project execution stack and language tables
 2. Glob(.respec-ai/config/standards/*.toml) — discover canonical language standards files
 3. Read each relevant language TOML directly and extract `[commands]` + `[rules]`
+4. Glob(.respec-ai/config/standards/guides/*.md) — optional derived guides for examples only (never authoritative over TOML)
 
 **If .respec-ai/config/ doesn't exist:**
 - Fall back to Phase Technology Stack section for commands

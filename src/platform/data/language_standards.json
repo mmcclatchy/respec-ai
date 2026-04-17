@@ -21,15 +21,15 @@
     "error_handling": [
       "Fail fast — validate inputs early",
       "Use specific exceptions — never bare `except:` or `except Exception:`",
-      "Use `async/await` for I/O operations"
+      "Raise exceptions with actionable context"
     ],
     "code_structure": [
       "No global variables except UPPER_CASE constants",
-      "Max 3 levels of nesting",
-      "Services separate from endpoints"
+      "Keep functions focused and cohesive",
+      "Separate business logic from I/O boundaries (CLI/web/DB)"
     ],
     "testing": {
-      "framework": "pytest with pytest-mock",
+      "framework": "Project-standard testing framework",
       "location": "tests/ directory, mirrors src/ structure",
       "naming": "test_{function}_{scenario}",
       "extras": [
@@ -59,11 +59,11 @@
     ],
     "code_structure": [
       "Prefer const over let — never use var",
-      "Max 3 levels of nesting",
-      "One component per file"
+      "Keep functions/modules focused and cohesive",
+      "Separate UI and business logic where applicable"
     ],
     "testing": {
-      "framework": "vitest",
+      "framework": "Project-standard testing framework",
       "location": "tests/ or __tests__/ directories",
       "naming": "describe/it blocks with clear descriptions",
       "extras": []
@@ -95,11 +95,11 @@
     ],
     "code_structure": [
       "Prefer const over let — never use var",
-      "Max 3 levels of nesting",
-      "One component per file"
+      "Keep functions/modules focused and cohesive",
+      "Separate UI and business logic where applicable"
     ],
     "testing": {
-      "framework": "vitest",
+      "framework": "Project-standard testing framework",
       "location": "tests/ or __tests__/ directories",
       "naming": "describe/it blocks with clear descriptions",
       "extras": []
@@ -135,7 +135,7 @@
       "Prefer composition over inheritance"
     ],
     "testing": {
-      "framework": "JUnit 5 with Mockito",
+      "framework": "Project-standard testing framework",
       "location": "src/test/java/, mirrors main structure",
       "naming": "methodName_scenario_expectedResult",
       "extras": []
@@ -171,7 +171,7 @@
       "Use dependency injection"
     ],
     "testing": {
-      "framework": "xUnit with Moq",
+      "framework": "Project-standard testing framework",
       "location": "ProjectName.Tests/ project",
       "naming": "MethodName_Scenario_ExpectedResult",
       "extras": []
@@ -185,7 +185,7 @@
     ],
     "imports": [
       "Group order: stdlib → third-party → local",
-      "Use goimports for formatting"
+      "Use consistent import formatting (project formatter)"
     ],
     "type_system": [],
     "documentation": [
@@ -229,7 +229,7 @@
     ],
     "error_handling": [
       "Use Result<T, E> for recoverable errors — no unwrap() in production code",
-      "Use thiserror for custom error types",
+      "Define custom error types with project-standard approach",
       "Propagate errors with ? operator"
     ],
     "code_structure": [
@@ -262,11 +262,11 @@
       "Prefer `std::optional` over null pointers"
     ],
     "documentation": [
-      "Doxygen comments for public APIs",
+      "Documentation comments for public APIs",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
-      "Use exceptions for error handling (not error codes) unless performance-critical",
+      "Use a consistent project-wide error strategy (exceptions or status/error types)",
       "Use RAII for resource management",
       "Prefer smart pointers over raw pointers"
     ],
@@ -276,7 +276,7 @@
       "Prefer composition over inheritance"
     ],
     "testing": {
-      "framework": "Google Test (gtest)",
+      "framework": "Project-standard testing framework",
       "location": "tests/ directory",
       "naming": "TEST(SuiteName, TestName)",
       "extras": []
@@ -294,7 +294,7 @@
     ],
     "type_system": [],
     "documentation": [
-      "Doxygen comments for public APIs",
+      "Documentation comments for public APIs",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
@@ -308,7 +308,7 @@
       "Use opaque pointers for encapsulation"
     ],
     "testing": {
-      "framework": "Unity or CMocka",
+      "framework": "Project-standard testing framework",
       "location": "tests/ directory",
       "naming": "test_function_name_scenario",
       "extras": []
@@ -326,7 +326,7 @@
     ],
     "type_system": [],
     "documentation": [
-      "YARD comments for public APIs",
+      "Documentation comments for public APIs",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
@@ -340,7 +340,7 @@
       "Follow Rails conventions if applicable"
     ],
     "testing": {
-      "framework": "RSpec",
+      "framework": "Project-standard testing framework",
       "location": "spec/ directory, mirrors lib/ structure",
       "naming": "describe/it blocks with clear descriptions",
       "extras": []
@@ -375,7 +375,7 @@
       "Use dependency injection"
     ],
     "testing": {
-      "framework": "PHPUnit",
+      "framework": "Project-standard testing framework",
       "location": "tests/ directory",
       "naming": "testMethodName_scenario",
       "extras": []
@@ -410,7 +410,7 @@
       "Follow protocol-oriented programming patterns"
     ],
     "testing": {
-      "framework": "XCTest",
+      "framework": "Project-standard testing framework",
       "location": "Tests/ target",
       "naming": "testMethodName_scenario_expectedResult",
       "extras": []
@@ -431,13 +431,13 @@
       "Prefer data classes for value objects"
     ],
     "documentation": [
-      "KDoc for public APIs",
+      "Documentation comments for public APIs",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
       "Use specific exception types",
       "Prefer sealed classes for error hierarchies",
-      "Use runCatching for functional error handling"
+      "Use project-standard functional error-handling patterns"
     ],
     "code_structure": [
       "Prefer immutability — use val over var",
@@ -445,7 +445,7 @@
       "Prefer composition over inheritance"
     ],
     "testing": {
-      "framework": "JUnit 5 with MockK",
+      "framework": "Project-standard testing framework",
       "location": "src/test/kotlin/, mirrors main structure",
       "naming": "methodName_scenario_expectedResult",
       "extras": []
@@ -455,7 +455,7 @@
     "naming": [
       "Variables/methods: camelCase",
       "Classes/Traits: PascalCase",
-      "Constants: PascalCase"
+      "Constants/vals: camelCase (project-consistent)"
     ],
     "imports": [
       "No wildcard imports in production code",
@@ -466,7 +466,7 @@
       "Use sealed traits for ADTs"
     ],
     "documentation": [
-      "Scaladoc for public APIs",
+      "Documentation comments for public APIs",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
@@ -480,7 +480,7 @@
       "Use companion objects for factory methods"
     ],
     "testing": {
-      "framework": "ScalaTest with Mockito",
+      "framework": "Project-standard testing framework",
       "location": "src/test/scala/",
       "naming": "describe/it blocks or FunctionName_Scenario",
       "extras": []
@@ -511,12 +511,12 @@
       "Provide meaningful error messages"
     ],
     "code_structure": [
-      "One widget per file for Flutter",
+      "Keep files/modules focused and cohesive",
       "Separate business logic from UI",
       "Use const constructors where possible"
     ],
     "testing": {
-      "framework": "flutter_test / test",
+      "framework": "Project-standard testing framework",
       "location": "test/ directory, mirrors lib/ structure",
       "naming": "group/test blocks with clear descriptions",
       "extras": []
@@ -534,7 +534,7 @@
     ],
     "type_system": [
       "Use @spec for public functions",
-      "Use Dialyzer for static analysis"
+      "Use project-standard static analysis for type/spec checks"
     ],
     "documentation": [
       "@doc for public functions",
@@ -551,7 +551,7 @@
       "Separate pure functions from side effects"
     ],
     "testing": {
-      "framework": "ExUnit",
+      "framework": "Project-standard testing framework",
       "location": "test/ directory, mirrors lib/ structure",
       "naming": "test \"description\" blocks",
       "extras": []
@@ -583,7 +583,7 @@
       "Keep modules self-contained"
     ],
     "testing": {
-      "framework": "busted",
+      "framework": "Project-standard testing framework",
       "location": "spec/ directory",
       "naming": "describe/it blocks",
       "extras": []
@@ -597,7 +597,7 @@
     ],
     "imports": [
       "use statements at file top",
-      "use strict and use warnings always"
+      "Enable strict and warning checks consistently"
     ],
     "type_system": [],
     "documentation": [
@@ -611,11 +611,11 @@
     ],
     "code_structure": [
       "One package per file",
-      "Use Moose/Moo for OOP",
+      "Use project-standard object-oriented patterns",
       "Keep subroutines short and focused"
     ],
     "testing": {
-      "framework": "Test::More",
+      "framework": "Project-standard testing framework",
       "location": "t/ directory",
       "naming": "t/test_name.t",
       "extras": []
@@ -647,7 +647,7 @@
       "Keep scripts under 200 lines — split into functions/files"
     ],
     "testing": {
-      "framework": "bats-core",
+      "framework": "Project-standard testing framework",
       "location": "tests/ directory",
       "naming": "@test \"description\" blocks",
       "extras": []
@@ -673,16 +673,16 @@
     ],
     "error_handling": [
       "Use try/catch/finally",
-      "Set $ErrorActionPreference = 'Stop'",
+      "Use strict error handling behavior for critical operations",
       "Use -ErrorAction Stop on critical cmdlets"
     ],
     "code_structure": [
-      "Use approved verbs (Get-Verb for list)",
+      "Use approved verb-noun naming conventions",
       "One function per file for modules",
       "Use parameter sets for overloads"
     ],
     "testing": {
-      "framework": "Pester",
+      "framework": "Project-standard testing framework",
       "location": "Tests/ directory",
       "naming": "Describe/It blocks with clear descriptions",
       "extras": []
@@ -717,7 +717,7 @@
       "Use where/let for local bindings"
     ],
     "testing": {
-      "framework": "Hspec with QuickCheck",
+      "framework": "Project-standard testing framework",
       "location": "test/ directory",
       "naming": "describe/it blocks",
       "extras": []
@@ -752,7 +752,7 @@
       "Keep namespaces focused and small"
     ],
     "testing": {
-      "framework": "clojure.test",
+      "framework": "Project-standard testing framework",
       "location": "test/ directory, mirrors src/ structure",
       "naming": "deftest test-function-name",
       "extras": []
@@ -777,7 +777,7 @@
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
-      "Use error unions (T!E) for all fallible functions",
+      "Use error unions (`!T`) for fallible functions",
       "Use errdefer for cleanup on error",
       "Never silently discard errors"
     ],
@@ -787,7 +787,7 @@
       "Keep functions short and focused"
     ],
     "testing": {
-      "framework": "zig test (built-in)",
+      "framework": "Project-standard testing framework",
       "location": "test blocks within source files",
       "naming": "test \"description\" blocks",
       "extras": []
@@ -808,12 +808,12 @@
       "Use instancetype for factory methods"
     ],
     "documentation": [
-      "HeaderDoc/Doxygen for public APIs",
+      "Documentation comments for public APIs",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [
-      "Use NSError out-parameter pattern",
-      "Check return values before using NSError",
+      "Use project-standard Objective-C error reporting patterns",
+      "Check operation results before consuming error details",
       "Provide meaningful error descriptions"
     ],
     "code_structure": [
@@ -822,7 +822,7 @@
       "Prefer composition over inheritance"
     ],
     "testing": {
-      "framework": "XCTest",
+      "framework": "Project-standard testing framework",
       "location": "Tests/ target",
       "naming": "testMethodName_scenario_expectedResult",
       "extras": []
@@ -840,7 +840,7 @@
     ],
     "type_system": [],
     "documentation": [
-      "roxygen2 comments for package functions",
+      "Documentation comments for package functions",
       "Comments: non-obvious business logic only"
     ],
     "error_handling": [

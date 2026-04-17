@@ -368,6 +368,7 @@ def create_code_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
+                ('standards_guide', 'STANDARDS_GUIDE'),
             ],
         ),
         invoke_quality_checker=adapter.render_agent_invocation(
@@ -416,6 +417,7 @@ def create_code_command_tools(
                 ('mode', '"standards-only"'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
+                ('standards_guide', 'STANDARDS_GUIDE'),
             ],
         ),
         invoke_coding_standards_reviewer=adapter.render_agent_invocation(
@@ -672,6 +674,10 @@ def create_standards_command_tools(
     builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/config/standards/*.toml')
     builder.add_builtin_tool(BuiltInTool.EDIT, '.respec-ai/config/standards/*.toml')
     builder.add_builtin_tool(BuiltInTool.GLOB, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/config/standards/guides/*.md')
+    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/config/standards/guides/*.md')
+    builder.add_builtin_tool(BuiltInTool.EDIT, '.respec-ai/config/standards/guides/*.md')
+    builder.add_builtin_tool(BuiltInTool.GLOB, '.respec-ai/config/standards/guides/*.md')
     builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     return StandardsCommandTools(
         tui_adapter=adapter,
@@ -1346,6 +1352,7 @@ def create_patch_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
+                ('standards_guide', 'STANDARDS_GUIDE'),
             ],
         ),
         invoke_quality_checker=adapter.render_agent_invocation(
@@ -1394,6 +1401,7 @@ def create_patch_command_tools(
                 ('mode', '"standards-only"'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
+                ('standards_guide', 'STANDARDS_GUIDE'),
             ],
         ),
         invoke_coding_standards_reviewer=adapter.render_agent_invocation(

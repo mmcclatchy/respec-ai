@@ -2,12 +2,12 @@
 
 AI-assisted delivery often breaks down when vague requirements move to code before constraints are explicit: plans drift, documents desync, and teams burn cycles on ad hoc prompt retries to close quality gaps.
 
-`respec-ai` applies spec-driven development with MCP-orchestrated agentic reflection loops: 
-    - `/respec-plan` turns ambiguity into a measurable plan
-    - `/respec-roadmap` decomposes that plan into phases
-    - `/respec-phase` defines system design and synthesizes best-practice research via `best-practices-rag`
-    - `/respec-task` generates implementation-grade task specs
-    - `/respec-code` plus `/respec-patch` run TDD-first implementation and review against those specs and project standards set by the user
+`respec-ai` applies spec-driven development with MCP-orchestrated agentic reflection loops:
+- `/respec-plan` turns ambiguity into a measurable plan
+- `/respec-roadmap` decomposes that plan into phases
+- `/respec-phase` defines system design and synthesizes best-practice research via `best-practices-rag`
+- `/respec-task` generates implementation-grade task specs
+- `/respec-code` plus `/respec-patch` run TDD-first implementation and review against those specs and project standards set by the user
 
 `best-practices-rag` addresses a common LLM quality problem: code that works but is outdated, non-idiomatic, or inconsistently applied for a given stack. It queries a curated Neo4j knowledge graph first to reinforce proven patterns (including ones already in model training), performs external gap-fill research only when coverage is missing or stale, stores synthesized results back to the graph, and reuses them in future runs.
 
@@ -36,28 +36,39 @@ respec-ai init -p markdown --tui {claude-code\|codex\|opencode\|}
 
 Run this once before running workflow commands.
 
-1. Generate standards templates:
+- Generate standards templates:
 
 ```bash
-respec-ai standards init
+respec-ai standards init python typescript
+```
+- Pass one or more languages as space-delimited arguments.
+- Only the languages you pass are generated.
+- Generated TOMLs are prefilled with starter best-practice defaults.
+
+- In your TUI, run `respec-standards` for each language you care about.
+- Claude Code / OpenCode: `/respec-standards python`
+- Codex: `$respec-standards python`
+
+- Optionally render richer derived guides from canonical TOML:
+
+```text
+# In your TUI
+/respec-standards render python
 ```
 
-2. In your TUI, run `respec-standards` for each language you care about.
-   - Claude Code / OpenCode: `/respec-standards python`
-   - Codex: `$respec-standards python`
-
-3. Validate canonical config:
+- Validate canonical config:
 
 ```bash
 respec-ai standards validate
 ```
 
-4. Start workflows:
-   - `/respec-plan ...`
-   - `/respec-phase ...`
-   - `/respec-code ...`
+- Start workflows:
+- `/respec-plan ...`
+- `/respec-phase ...`
+- `/respec-code ...`
 
-`stack.toml` and `standards/*.toml` are canonical. There are no markdown mirror config files.
+`stack.toml` and `standards/*.toml` are canonical.
+Optional `standards/guides/*.md` files are derived guidance artifacts and non-canonical.
 
 ## TUI Support
 
@@ -83,7 +94,7 @@ respec-ai standards validate
 - `respec-task`: implementation task breakdown
 - `respec-code`: implementation + review loops
 - `respec-patch`: amendment workflow for existing phases
-- `respec-standards`: standards authoring from TOML templates
+- `respec-standards`: standards authoring from TOML templates + optional derived guide render
 
 ## Codex Command Usage Tiers
 

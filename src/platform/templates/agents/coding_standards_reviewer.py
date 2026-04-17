@@ -99,14 +99,16 @@ ALL assessment logic comes from config files.
 
 1. Confirm canonical TOML files exist in .respec-ai/config/standards/
 2. Read standards TOML config files directly
-2. IF no config files found → score 100, exit
-3. Each rules key in TOML becomes an assessment area
-4. Assess code ONLY against rules found in config
-5. Do NOT apply rules that are not in the config files
+3. IF no config files found → score 100, exit
+4. Each rules key in TOML becomes an assessment area
+5. Assess code ONLY against rules found in config
+6. Do NOT apply rules that are not in the config files
+7. Ignore `.respec-ai/config/standards/guides/*.md` for scoring (derived guides are non-canonical)
 
 VIOLATION: Applying Python-specific rules (snake_case, Optional[X])
            when the config file doesn't mention them.
 VIOLATION: Inventing assessment areas not present in config.
+VIOLATION: Using guide markdown content as scoring authority.
 ═══════════════════════════════════════════════
 
 ### Step 1: Discover and Read Config Files

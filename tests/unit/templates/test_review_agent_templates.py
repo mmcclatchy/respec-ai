@@ -3,6 +3,7 @@ from src.platform.template_helpers import (
     create_automated_quality_checker_agent_tools,
     create_backend_api_reviewer_agent_tools,
     create_code_quality_reviewer_agent_tools,
+    create_coding_standards_reviewer_agent_tools,
     create_coder_agent_tools,
     create_database_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
@@ -14,6 +15,7 @@ from src.platform.templates.agents import (
     generate_automated_quality_checker_template,
     generate_backend_api_reviewer_template,
     generate_code_quality_reviewer_template,
+    generate_coding_standards_reviewer_template,
     generate_coder_template,
     generate_database_reviewer_template,
     generate_frontend_reviewer_template,
@@ -300,6 +302,8 @@ class TestCoderTemplateConfig:
         assert 'PROJECT CONFIGURATION' in template
         assert '.respec-ai/config/stack.toml' in template
         assert '.respec-ai/config/standards/*.toml' in template
+        assert 'standards_guide_markdown' in template
+        assert '.respec-ai/config/standards/guides/*.md' in template
 
     def test_coder_template_no_pseudocode_remains(self) -> None:
         tools = create_coder_agent_tools(
@@ -352,3 +356,9 @@ class TestCoderTemplateConfig:
 
         assert 'Main command owns git commit execution' not in template
         assert 'Main Agent review' not in template
+
+    def test_coding_standards_reviewer_rejects_guide_markdown_scoring_authority(self) -> None:
+        tools = create_coding_standards_reviewer_agent_tools(_adapter)
+        template = generate_coding_standards_reviewer_template(tools)
+        assert 'Ignore `.respec-ai/config/standards/guides/*.md` for scoring' in template
+        assert 'VIOLATION: Using guide markdown content as scoring authority.' in template

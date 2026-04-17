@@ -140,14 +140,8 @@ def run(args: Namespace) -> int:
                 )
                 if standards_validate.returncode != 0:
                     standards_valid = False
-                    print_warning('Standards config validation failed — skipping standards render')
+                    print_warning('Standards config validation failed')
                     print_warning('Fix standards config and run: respec-ai standards validate')
-                else:
-                    subprocess.run(
-                        ['respec-ai', 'standards', 'render'],
-                        capture_output=True,
-                        text=True,
-                    )
 
             if standards_valid:
                 regen_result = subprocess.run(

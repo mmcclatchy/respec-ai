@@ -31,6 +31,16 @@ def _toml_array(values: list[str]) -> str:
     return '[' + ', '.join(_toml_quote(v) for v in values) + ']'
 
 
+def _append_multiline_array(lines: list[str], key: str, values: list[str], indent: str = '  ') -> None:
+    if not values:
+        lines.append(f'{key} = []')
+        return
+    lines.append(f'{key} = [')
+    for value in values:
+        lines.append(f'{indent}{_toml_quote(value)},')
+    lines.append(']')
+
+
 def _load_language_standards_defaults() -> dict[str, dict]:
     standards_path = DATA_DIR / 'language_standards.json'
     return json.loads(standards_path.read_text(encoding='utf-8'))
@@ -48,7 +58,8 @@ def _rules_from_defaults(lang_data: dict) -> dict[str, list[str]]:
     rules: dict[str, list[str]] = {}
     for key in RULE_SECTIONS:
         values = lang_data.get(key, [])
-        rules[key] = [str(v).strip() for v in values if str(v).strip()]
+        normalized = [str(v).strip() for v in values if str(v).strip()]
+        rules[key] = normalized if normalized else [NO_PREFERENCE]
     return rules
 
 
@@ -78,19 +89,156 @@ def _universal_defaults() -> dict[str, list[str]]:
     }
 
 
+def _command_defaults(lang: str) -> dict[str, str]:
+    # Canonical starter commands for standards init stubs when project tooling
+    # has not been detected yet.
+    defaults: dict[str, dict[str, str]] = {
+        'python': {
+            'test': 'uv run pytest --tb=short -v',
+            'coverage': 'uv run pytest --cov --cov-report=term-missing --tb=short',
+            'type_check': 'uv run ty check',
+            'lint': 'uv run ruff check',
+        },
+        'javascript': {
+            'test': 'npm test',
+            'coverage': 'npm test -- --coverage',
+            'type_check': NO_PREFERENCE,
+            'lint': 'npm run lint',
+        },
+        'typescript': {
+            'test': 'npm test',
+            'coverage': 'npm test -- --coverage',
+            'type_check': 'npx tsc --noEmit',
+            'lint': 'npm run lint',
+        },
+        'java': {
+            'test': './gradlew test',
+            'coverage': './gradlew test jacocoTestReport',
+            'type_check': './gradlew compileJava',
+            'lint': NO_PREFERENCE,
+        },
+        'csharp': {
+            'test': 'dotnet test',
+            'coverage': 'dotnet test --collect:"XPlat Code Coverage"',
+            'type_check': 'dotnet build',
+            'lint': NO_PREFERENCE,
+        },
+        'go': {
+            'test': 'go test ./...',
+            'coverage': 'go test ./... -coverprofile=coverage.out',
+            'type_check': NO_PREFERENCE,
+            'lint': 'golangci-lint run',
+        },
+        'rust': {
+            'test': 'cargo test',
+            'coverage': NO_PREFERENCE,
+            'type_check': 'cargo check',
+            'lint': 'cargo clippy --all-targets --all-features',
+        },
+        'cpp': {
+            'test': 'ctest --output-on-failure',
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': 'clang-tidy',
+        },
+        'php': {
+            'test': 'vendor/bin/phpunit',
+            'coverage': 'vendor/bin/phpunit --coverage-text',
+            'type_check': 'vendor/bin/phpstan analyse',
+            'lint': 'vendor/bin/phpcs',
+        },
+        'swift': {
+            'test': 'swift test',
+            'coverage': 'swift test --enable-code-coverage',
+            'type_check': NO_PREFERENCE,
+            'lint': 'swiftlint',
+        },
+        'ruby': {
+            'test': 'bundle exec rspec',
+            'coverage': 'bundle exec rspec',
+            'type_check': NO_PREFERENCE,
+            'lint': 'bundle exec rubocop',
+        },
+        'kotlin': {
+            'test': './gradlew test',
+            'coverage': './gradlew test jacocoTestReport',
+            'type_check': './gradlew compileKotlin',
+            'lint': './gradlew ktlintCheck',
+        },
+        'shell': {
+            'test': 'bats test',
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': 'shellcheck .',
+        },
+        'r': {
+            'test': 'Rscript -e "testthat::test_dir(\'tests/testthat\')"',
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': 'Rscript -e "lintr::lint_dir()"',
+        },
+        'elixir': {
+            'test': 'mix test',
+            'coverage': 'mix test --cover',
+            'type_check': 'mix dialyzer',
+            'lint': 'mix credo --strict',
+        },
+        'scala': {
+            'test': 'sbt test',
+            'coverage': 'sbt clean coverage test coverageReport',
+            'type_check': 'sbt compile',
+            'lint': NO_PREFERENCE,
+        },
+        'lua': {
+            'test': 'busted',
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': 'luacheck .',
+        },
+        'perl': {
+            'test': 'prove -lr t',
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': 'perlcritic .',
+        },
+        'haskell': {
+            'test': 'stack test',
+            'coverage': NO_PREFERENCE,
+            'type_check': 'stack build --fast',
+            'lint': 'hlint .',
+        },
+        'zig': {
+            'test': 'zig build test',
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': NO_PREFERENCE,
+        },
+    }
+    return defaults.get(
+        lang,
+        {
+            'test': NO_PREFERENCE,
+            'coverage': NO_PREFERENCE,
+            'type_check': NO_PREFERENCE,
+            'lint': NO_PREFERENCE,
+        },
+    )
+
+
 def build_language_defaults(lang: str, tooling: LanguageTooling | None = None) -> dict:
     all_defaults = _load_language_standards_defaults()
     lang_data = all_defaults.get(lang, {})
     testing = lang_data.get('testing', {})
 
+    command_defaults = _command_defaults(lang)
     commands = {
-        'test': tooling.test_command if tooling else '',
-        'coverage': tooling.coverage_command if tooling else '',
-        'type_check': tooling.check_command if tooling else '',
-        'lint': tooling.lint_command if tooling else '',
+        'test': tooling.test_command if tooling else command_defaults['test'],
+        'coverage': tooling.coverage_command if tooling else command_defaults['coverage'],
+        'type_check': tooling.check_command if tooling else command_defaults['type_check'],
+        'lint': tooling.lint_command if tooling else command_defaults['lint'],
     }
     if lang == 'universal':
-        commands = {k: NO_PREFERENCE for k in commands}
+        commands = {}
 
     return {
         'schema_version': LANGUAGE_SCHEMA_VERSION,
@@ -130,27 +278,38 @@ def render_language_toml(language_data: dict) -> str:
     commands = language_data.get('commands', {})
     testing = language_data.get('testing', {})
     rules = language_data.get('rules', {})
+    language = str(language_data.get('language', '')).strip().lower()
     lines = [
         f'schema_version = {language_data.get("schema_version", LANGUAGE_SCHEMA_VERSION)}',
         f'language = {_toml_quote(str(language_data.get("language", "")).strip())}',
         '',
-        '[commands]',
-        f'test = {_toml_quote(str(commands.get("test", "")).strip())}',
-        f'coverage = {_toml_quote(str(commands.get("coverage", "")).strip())}',
-        f'type_check = {_toml_quote(str(commands.get("type_check", "")).strip())}',
-        f'lint = {_toml_quote(str(commands.get("lint", "")).strip())}',
-        '',
-        '[testing]',
-        f'framework = {_toml_quote(str(testing.get("framework", "")).strip())}',
-        f'location = {_toml_quote(str(testing.get("location", "")).strip())}',
-        f'naming = {_toml_quote(str(testing.get("naming", "")).strip())}',
-        f'extras = {_toml_array([str(x).strip() for x in testing.get("extras", []) if str(x).strip()])}',
-        '',
-        '[rules]',
     ]
+    if language != 'universal':
+        lines.extend(
+            [
+                '[commands]',
+                f'test = {_toml_quote(str(commands.get("test", "")).strip())}',
+                f'coverage = {_toml_quote(str(commands.get("coverage", "")).strip())}',
+                f'type_check = {_toml_quote(str(commands.get("type_check", "")).strip())}',
+                f'lint = {_toml_quote(str(commands.get("lint", "")).strip())}',
+                '',
+            ]
+        )
+    if language != 'universal':
+        lines.extend(
+            [
+                '[testing]',
+                f'framework = {_toml_quote(str(testing.get("framework", "")).strip())}',
+                f'location = {_toml_quote(str(testing.get("location", "")).strip())}',
+                f'naming = {_toml_quote(str(testing.get("naming", "")).strip())}',
+                f'extras = {_toml_array([str(x).strip() for x in testing.get("extras", []) if str(x).strip()])}',
+                '',
+            ]
+        )
+    lines.append('[rules]')
     for section in RULE_SECTIONS:
         values = [str(v).strip() for v in rules.get(section, []) if str(v).strip()]
-        lines.append(f'{section} = {_toml_array(values)}')
+        _append_multiline_array(lines, section, values)
     lines.append('')
     return '\n'.join(lines)
 
@@ -173,12 +332,11 @@ def _validate_language_config(language_data: dict, path: Path) -> list[str]:
 
     language = str(language_data.get('language', '')).strip().lower()
     commands = language_data.get('commands') or {}
-    for command_key in ('test', 'coverage', 'type_check', 'lint'):
-        value = str(commands.get(command_key, '')).strip()
-        if language == 'universal' and value.lower() == NO_PREFERENCE:
-            continue
-        if _is_incomplete_value(value):
-            errors.append(f'{path}: commands.{command_key} is required')
+    if language != 'universal':
+        for command_key in ('test', 'coverage', 'type_check', 'lint'):
+            value = str(commands.get(command_key, '')).strip()
+            if _is_incomplete_value(value):
+                errors.append(f'{path}: commands.{command_key} is required')
 
     rules = language_data.get('rules') or {}
     for section in RULE_SECTIONS:

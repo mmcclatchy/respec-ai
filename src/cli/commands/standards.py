@@ -4,7 +4,7 @@ from pathlib import Path
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
 from src.platform.standards_config import (
     available_languages,
-    build_language_template,
+    build_language_defaults,
     render_language_toml,
     validate_project_config,
 )
@@ -15,11 +15,12 @@ def add_arguments(parser: ArgumentParser) -> None:
 
     init_parser = subparsers.add_parser(
         'init',
-        help='Initialize standards TOML template files',
+        help='Initialize standards TOML files for one or more languages',
     )
     init_parser.add_argument(
-        '--language',
-        help='Language to initialize (default: all known languages + universal)',
+        'languages',
+        nargs='+',
+        help='Space-delimited languages to initialize (e.g., python typescript)',
     )
     init_parser.add_argument(
         '--force',
@@ -49,16 +50,18 @@ def _run_init(args: Namespace) -> int:
     standards_dir = config_dir / 'standards'
     standards_dir.mkdir(parents=True, exist_ok=True)
 
-    languages = available_languages()
-    if args.language:
-        requested = args.language.strip().lower()
-        if requested not in languages:
-            print_error(f'Unsupported language: {requested}')
-            print_info(f'Available languages: {", ".join(languages)}')
-            return 1
-        target_languages = [requested]
-    else:
-        target_languages = languages
+    supported_languages = set(available_languages())
+    target_languages: list[str] = []
+    for language in args.languages:
+        normalized = str(language).strip().lower()
+        if normalized and normalized not in target_languages:
+            target_languages.append(normalized)
+
+    unsupported = [language for language in target_languages if language not in supported_languages]
+    if unsupported:
+        print_error(f'Unsupported language(s): {", ".join(unsupported)}')
+        print_info(f'Available languages: {", ".join(sorted(supported_languages))}')
+        return 1
 
     written = 0
     for language in target_languages:
@@ -67,17 +70,17 @@ def _run_init(args: Namespace) -> int:
             print_info(f'Exists (skipped): {target.relative_to(project_path)}')
             continue
 
-        template = build_language_template(language)
+        template = build_language_defaults(language)
         target.write_text(render_language_toml(template), encoding='utf-8')
-        print_success(f'Wrote template: {target.relative_to(project_path)}')
+        print_success(f'Wrote standards: {target.relative_to(project_path)}')
         written += 1
 
     if written == 0:
         print_warning('No files created (all targets existed)')
         return 0
 
-    print_success(f'Initialized {written} standards template file(s)')
-    print_info('Run `respec-ai standards validate` after filling template placeholders.')
+    print_success(f'Initialized {written} standards file(s)')
+    print_info('Run `respec-ai standards validate` to verify generated defaults.')
     return 0
 
 

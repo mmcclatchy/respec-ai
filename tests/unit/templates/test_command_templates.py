@@ -530,6 +530,16 @@ class TestCrossPlatformInvocationRendering:
         assert '#### Step 7.5.3: Exit to Completion Gate' in template
         assert '### 8.5 Completion Gate (Mandatory)' in template
 
+    def test_code_template_loads_optional_standards_guides_for_coder(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'GUIDE_FILES = Glob(.respec-ai/config/standards/guides/*.md)' in template
+        assert '  - standards_guide: STANDARDS_GUIDE' in template
+
     def test_code_template_phase1_loop_orders_commit_before_transitions(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -617,6 +627,16 @@ class TestCrossPlatformInvocationRendering:
         assert '#### Step 6.5.3: Exit to Completion Gate' in template
         assert '### 6.7 Completion Gate (Mandatory)' in template
 
+    def test_patch_template_loads_optional_standards_guides_for_coder(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'GUIDE_FILES = Glob(.respec-ai/config/standards/guides/*.md)' in template
+        assert '  - standards_guide: STANDARDS_GUIDE' in template
+
     def test_patch_template_phase1_loop_orders_commit_before_transitions(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -675,3 +695,15 @@ class TestCrossPlatformInvocationRendering:
         exception_phrase = 'Narrow exception: command reads latest feedback only for commit metadata synthesis.'
         assert exception_phrase in code_template
         assert exception_phrase in patch_template
+
+    def test_standards_command_template_supports_render_mode(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.STANDARDS,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'argument-hint: [language] | render [language]' in template
+        assert 'IF first argument == "render":' in template
+        assert 'TARGET_GUIDE = .respec-ai/config/standards/guides/{LANGUAGE}.md' in template
+        assert 'Canonical source remains: .respec-ai/config/standards/{LANGUAGE}.toml' in template

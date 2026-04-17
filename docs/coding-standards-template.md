@@ -1,20 +1,25 @@
 # Coding Standards Template
 
-This file serves as a reference template for `.respec-ai/coding-standards.md` in user projects.
+This document is a legacy reference for standards content style. Current standards configuration is TOML-first.
 
 ## Purpose
 
-The `.respec-ai/coding-standards.md` file allows users to customize coding standards that the `coder` agent will follow when generating code. This file should be created in the user's project workspace (not in the MCP server).
+Canonical standards live in:
+- `.respec-ai/config/standards/*.toml` (authoritative)
+
+Optional derived guides can be rendered to:
+- `.respec-ai/config/standards/guides/*.md` (non-canonical guidance for richer examples)
 
 ## Location
 
 ```text
-{user-project-workspace}/.respec-ai/coding-standards.md
+{user-project-workspace}/.respec-ai/config/standards/{language}.toml
+{user-project-workspace}/.respec-ai/config/standards/guides/{language}.md  # optional derived output
 ```
 
 ## Usage by coder Agent
 
-The `coder` agent reads this file at the start of each coding iteration and applies all rules to generated code. If the file doesn't exist, the agent falls back to Task Code Standards section or general Python best practices.
+The `coder` agent uses TOML standards as authoritative rules. If a derived guide exists, it can be used for additional examples and explanatory guidance, but TOML remains the source of truth.
 
 ## Template Structure
 
@@ -227,10 +232,10 @@ The `coder` agent reads this file at the start of each coding iteration and appl
 
 To customize this template for your project:
 
-1. Copy this template to `.respec-ai/coding-standards.md` in your project workspace
-2. Modify sections to match your team's preferences
-3. Add project-specific rules (framework conventions, domain-specific patterns)
-4. Remove sections that don't apply to your project
-5. Add examples relevant to your codebase
+1. Run `respec-ai standards init <language> [<language> ...]` to create canonical TOML files
+2. Run `respec-standards <language>` in your TUI to refine TOML rules
+3. Optionally run `respec-standards render <language>` to generate a richer derived guide
+4. Modify canonical TOML entries to match team preferences
+5. Keep derived guides in sync by re-running render when TOML changes
 
-The `coder` agent will read this file and apply all rules to generated code.
+The `coder` agent applies TOML rules as authoritative. Derived guides are supplemental.

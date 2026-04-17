@@ -278,6 +278,10 @@ Read config files for coder agent:
 STACK_CONFIG = Read(.respec-ai/config/stack.toml) if file exists, else ""
 LANGUAGE_CONFIGS = For each file in LANGUAGE_TOML_FILES:
   Read(file) — concatenated content
+GUIDE_FILES = Glob(.respec-ai/config/standards/guides/*.md)
+STANDARDS_GUIDE = For each file in GUIDE_FILES:
+  If filename stem matches a LANGUAGE_TOML_FILES stem: Read(file) — concatenated content
+If no guide files match: STANDARDS_GUIDE = ""
 
 ACTIVE_REVIEWERS.append("review-consolidator")
 

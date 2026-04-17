@@ -1,5 +1,9 @@
+import json
+from argparse import Namespace
+from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
 from pytest_mock import MockerFixture
 
 from src.cli.commands import update
@@ -77,3 +81,33 @@ class TestUpdateDocker:
         mock_manager.ensure_running.assert_any_call(version='1.1.0')
         mock_manager.ensure_running.assert_any_call(version='1.0.0')
         mock_manager.cleanup_old_versions.assert_not_called()
+
+
+class TestUpdateCommandRun:
+    def test_run_does_not_invoke_missing_standards_render(
+        self, tmp_path: Path, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        config_root = tmp_path / '.respec-ai'
+        (config_root / 'config').mkdir(parents=True)
+        (config_root / 'config.json').write_text(
+            json.dumps({'platform': 'markdown', 'version': '1.0.0'}),
+            encoding='utf-8',
+        )
+
+        commands: list[list[str]] = []
+
+        def fake_run(cmd: list[str], capture_output: bool, text: bool) -> MagicMock:
+            commands.append(cmd)
+            return MagicMock(returncode=0, stdout='', stderr='')
+
+        mocker.patch('src.cli.commands.update.get_package_version', return_value='1.0.0')
+        mocker.patch('src.cli.commands.update._get_installed_version', return_value='1.0.0')
+        mocker.patch('src.cli.commands.update.subprocess.run', side_effect=fake_run)
+
+        result = update.run(Namespace(skip_docker=True))
+
+        assert result == 0
+        assert ['respec-ai', 'standards', 'validate'] in commands
+        assert ['respec-ai', 'standards', 'render'] not in commands
+        assert ['respec-ai', 'regenerate'] in commands
