@@ -712,8 +712,9 @@ class TestCrossPlatformInvocationRendering:
             'standards_languages_missing: no language TOML files found under .respec-ai/config/standards/' in template
         )
         assert 'IF TARGET is missing:' in template
+        assert 'If AVAILABLE_LANGUAGES has exactly one entry:' in template
+        assert 'No target provided; auto-selected single available language: {TARGET}.' in template
         assert 'MUST call AskUserQuestion to select one language or "all".' in template
-        assert 'MUST NOT infer or auto-select a default target, even when only one language exists.' in template
         assert (
             'standards_target_selection_unavailable: missing AskUserQuestion tool; cannot continue without explicit target selection.'
             in template
@@ -735,6 +736,8 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'argument-hint: [language|all]' in template
         assert 'AskUserQuestion' not in template
+        assert 'If AVAILABLE_LANGUAGES has exactly one entry:' in template
+        assert 'No target provided; auto-selected single available language: {TARGET}.' in template
         assert 'standards_target_required: explicit target required on this TUI.' in template
         assert 'Present numbered options for selection:' in template
         assert '1..N) one entry per AVAILABLE_LANGUAGES item (in deterministic sorted order)' in template
