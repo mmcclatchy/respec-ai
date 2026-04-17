@@ -233,9 +233,8 @@ The `coder` agent uses TOML standards as authoritative rules. If a derived guide
 To customize this template for your project:
 
 1. Run `respec-ai standards init <language> [<language> ...]` to create canonical TOML files
-2. Run `respec-standards <language>` in your TUI to refine TOML rules
-3. Optionally run `respec-standards render <language>` to generate a richer derived guide
-4. Modify canonical TOML entries to match team preferences
-5. Keep derived guides in sync by re-running render when TOML changes
+2. Modify canonical TOML entries to match team preferences
+3. Run `respec-standards <language>` in your TUI to render a richer derived guide
+4. Keep derived guides in sync by re-running `respec-standards` when TOML changes
 
 The `coder` agent applies TOML rules as authoritative. Derived guides are supplemental.

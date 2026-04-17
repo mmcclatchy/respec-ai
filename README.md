@@ -45,16 +45,12 @@ respec-ai standards init python typescript
 - Only the languages you pass are generated.
 - Generated TOMLs are prefilled with starter best-practice defaults.
 
-- In your TUI, run `respec-standards` for each language you care about.
+- In your TUI, run `respec-standards` for each language you care about to render derived guides from TOML.
+- If you run `respec-standards` with no arguments, it prompts for target selection (language or `all`).
 - Claude Code / OpenCode: `/respec-standards python`
+- Claude Code / OpenCode (all): `/respec-standards all`
 - Codex: `$respec-standards python`
-
-- Optionally render richer derived guides from canonical TOML:
-
-```text
-# In your TUI
-/respec-standards render python
-```
+- Codex (all): `$respec-standards all`
 
 - Validate canonical config:
 
@@ -94,7 +90,7 @@ Optional `standards/guides/*.md` files are derived guidance artifacts and non-ca
 - `respec-task`: implementation task breakdown
 - `respec-code`: implementation + review loops
 - `respec-patch`: amendment workflow for existing phases
-- `respec-standards`: standards authoring from TOML templates + optional derived guide render
+- `respec-standards`: render derived standards guides from canonical TOML templates
 
 ## Codex Command Usage Tiers
 
@@ -125,14 +121,12 @@ respec-ai models opencode --aa-key YOUR_KEY --exa-key YOUR_KEY
 
 ## Useful Commands
 
-```bash
-respec-ai status
-respec-ai validate
-respec-ai regenerate
-respec-ai register-mcp
-respec-ai unregister-mcp
-respec-ai update
-```
+- `respec-ai status` - Quick health check for install, config, and runtime state so you can spot setup drift before running workflows.
+- `respec-ai validate` - Verifies project artifacts and configuration consistency to catch structural issues early.
+- `respec-ai regenerate` - Rebuilds generated agents/commands after template, config, or version changes so runtime behavior stays aligned.
+- `respec-ai register-mcp` - Registers MCP endpoints with your TUI so workflow tools are available to agents.
+- `respec-ai unregister-mcp` - Cleans up MCP registration when uninstalling, troubleshooting, or reconfiguring environments.
+- `respec-ai update` - Upgrades CLI/server components and refreshes runtime dependencies to keep tooling current and compatible.
 
 ## Documentation
 

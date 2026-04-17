@@ -696,16 +696,32 @@ class TestCrossPlatformInvocationRendering:
         assert exception_phrase in code_template
         assert exception_phrase in patch_template
 
-    def test_standards_command_template_supports_render_mode(self) -> None:
+    def test_standards_command_template_is_render_first(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.STANDARDS,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'argument-hint: [optional: language|all] | render [optional: language|all]' in template
-        assert 'IF first argument == "render":' in template
+        assert 'argument-hint: [optional: language|all]' in template
+        assert 'description: Render standards guides from canonical TOML templates' in template
+        assert 'This command MUST NOT edit canonical TOML files.' in template
+        assert 'If RAW_ARGS[0] == "render", treat RAW_ARGS[1] as target.' in template
+        assert 'TARGET = normalized lowercase target token (optional: language or "all")' in template
+        assert (
+            'standards_languages_missing: no language TOML files found under .respec-ai/config/standards/' in template
+        )
         assert 'IF TARGET is missing:' in template
+        assert 'MUST call AskUserQuestion to select one language or "all".' in template
+        assert 'MUST NOT infer or auto-select a default target, even when only one language exists.' in template
+        assert (
+            'standards_target_selection_unavailable: missing AskUserQuestion tool; cannot continue without explicit target selection.'
+            in template
+        )
+        assert "standards_language_invalid: target '{TARGET}' not found; available={AVAILABLE_LANGUAGES}." in template
         assert 'TARGET_LANGUAGES = AVAILABLE_LANGUAGES' in template
+        assert 'AUTHOR FLOW' not in template
+        assert 'Standards template updated for: {TARGET_LANGUAGES}' not in template
         assert 'TARGET_GUIDE = .respec-ai/config/standards/guides/{LANGUAGE}.md' in template
+        assert 'If a section is missing in TOML, omit it from the guide (do not invent values)' in template
         assert 'Canonical source remains: .respec-ai/config/standards/{LANGUAGE}.toml for each language' in template

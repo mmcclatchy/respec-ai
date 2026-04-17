@@ -4,26 +4,28 @@ from src.platform.models import StandardsCommandTools
 def generate_standards_command_template(tools: StandardsCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [optional: language|all] | render [optional: language|all]
-description: Author project coding standards from canonical TOML templates
+argument-hint: [optional: language|all]
+description: Render standards guides from canonical TOML templates
 ---
 
 # {tools.standards_command_name} Command
 
 ## Purpose
-Maintain canonical TOML standards and optionally render a derived LLM-authored guide.
+Render derived standards guides from canonical TOML standards.
 Canonical source of truth is always `.respec-ai/config/standards/{{language}}.toml`.
+This command MUST NOT edit canonical TOML files.
 
 ## Workflow
 
 1. Parse command arguments:
 ```text
-IF first argument == "render":
-  MODE = "render"
-  TARGET = second argument (optional: language or "all")
-ELSE:
-  MODE = "author"
-  TARGET = first argument (optional: language or "all")
+RAW_ARGS = trimmed argument tokens
+
+Compatibility:
+- If RAW_ARGS[0] == "render", treat RAW_ARGS[1] as target.
+- Otherwise, treat RAW_ARGS[0] as target.
+
+TARGET = normalized lowercase target token (optional: language or "all")
 ```
 
 2. Resolve target language set:
@@ -32,82 +34,45 @@ STANDARD_FILES = Glob(.respec-ai/config/standards/*.toml)
 LANGUAGE_FILES = STANDARD_FILES excluding universal.toml
 AVAILABLE_LANGUAGES = filename stems from LANGUAGE_FILES
 
+If AVAILABLE_LANGUAGES is empty:
+  Stop and return structured error:
+  "standards_languages_missing: no language TOML files found under .respec-ai/config/standards/; run respec-ai standards init <language...>."
+
 IF TARGET is missing:
+  MUST call AskUserQuestion to select one language or "all".
+  MUST NOT infer or auto-select a default target, even when only one language exists.
   AskUserQuestion:
     Header: "Standards Target"
-    Question: "Select standards target."
+    Question: "Select standards target language or all."
     Options:
       1) one language (pick from AVAILABLE_LANGUAGES)
       2) all languages
   TARGET = selected value
 
+If AskUserQuestion is unavailable:
+  Stop and return structured error:
+  "standards_target_selection_unavailable: missing AskUserQuestion tool; cannot continue without explicit target selection."
+
 IF TARGET == "all":
   TARGET_LANGUAGES = AVAILABLE_LANGUAGES
 ELSE:
+  If TARGET not in AVAILABLE_LANGUAGES:
+    Stop and return structured error:
+    "standards_language_invalid: target '{{TARGET}}' not found; available={{AVAILABLE_LANGUAGES}}."
   TARGET_LANGUAGES = [TARGET]
-
-FOR each LANGUAGE in TARGET_LANGUAGES:
-  TARGET_TOML = .respec-ai/config/standards/{{LANGUAGE}}.toml
-  If TARGET_TOML doesn't exist:
-    Inform user to run: respec-ai standards init {{LANGUAGE}}
-    Remove LANGUAGE from TARGET_LANGUAGES
-
-If TARGET_LANGUAGES is empty:
-  Exit.
 ```
 
-3. Branch by mode:
+3. For each language in TARGET_LANGUAGES, render guide:
 ```text
-IF MODE == "author": run AUTHOR FLOW
-IF MODE == "render": run RENDER FLOW
-```
-
-AUTHOR FLOW (for each language in TARGET_LANGUAGES)
-
-4. Load target TOML and inspect incomplete sections:
-```text
-INCOMPLETE means:
-- empty command values under [commands]
-- any rules section with zero entries
-- entries that contain TODO placeholders
-```
-
-5. For each incomplete section, ask user for preference using AskUserQuestion:
-```text
-Prompt should ask for explicit rule direction.
-Allowed fallback answer: "no_preference" (or "no-preference").
-```
-
-6. Rewrite each populated section as authoritative agent-style rules:
-```text
-- Use imperative tone ("MUST", "MUST NOT", "DO NOT")
-- Add concrete "CORRECT"/"WRONG" examples when user provides enough context
-- Keep rules concise and enforceable
-```
-
-7. Save updated TOML to TARGET_TOML.
-
-8. Final output:
-```text
-Standards template updated for: {{TARGET_LANGUAGES}}
-Next steps:
-1) Run: respec-ai standards validate
-2) Optional: run respec-standards render {{TARGET or "all"}} to generate derived guides
-```
-
-RENDER FLOW (for each language in TARGET_LANGUAGES)
-
-4. Read canonical TOML (`TARGET_TOML`) and extract:
-```text
-- [commands] entries
-- [testing] entries
-- [rules] entries
-```
-
-5. Synthesize a derived standards guide markdown:
-```text
+TARGET_TOML = .respec-ai/config/standards/{{LANGUAGE}}.toml
 TARGET_GUIDE = .respec-ai/config/standards/guides/{{LANGUAGE}}.md
 Ensure directory exists: .respec-ai/config/standards/guides/
+
+Read TARGET_TOML.
+Extract supported sections when present:
+- [commands]
+- [testing]
+- [rules]
 
 Guide requirements:
 - Start with a clear canonical-source notice:
@@ -115,12 +80,13 @@ Guide requirements:
 - Convert standards into imperative language ("MUST", "MUST NOT", "DO NOT")
 - Include concise rationale where helpful
 - Add concrete CORRECT/WRONG code examples for major rules
-- Include commands section (test, coverage, type_check, lint)
+- Include sections only when corresponding TOML data exists
+- If a section is missing in TOML, omit it from the guide (do not invent values)
 ```
 
-6. Write guide to `TARGET_GUIDE`.
+4. Write guide to `TARGET_GUIDE`.
 
-7. Final output:
+5. Final output:
 ```text
 Derived standards guides rendered for: {{TARGET_LANGUAGES}}
 Canonical source remains: .respec-ai/config/standards/{{LANGUAGE}}.toml for each language
