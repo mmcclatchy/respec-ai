@@ -653,6 +653,47 @@
       "extras": []
     }
   },
+  "terraform": {
+    "naming": [
+      "Variables/outputs/locals: snake_case",
+      "Resource names: snake_case, descriptive, and stable",
+      "Module names: kebab-case or snake_case (project-consistent)"
+    ],
+    "imports": [
+      "Pin provider and module versions explicitly",
+      "Keep providers and required_version declared at root",
+      "Use remote modules only from trusted, versioned sources"
+    ],
+    "type_system": [
+      "Use explicit variable types for all inputs",
+      "Use validation blocks for constrained inputs",
+      "Mark sensitive values with `sensitive = true` where applicable"
+    ],
+    "documentation": [
+      "Document module inputs/outputs and required providers",
+      "Comments: non-obvious infrastructure intent only"
+    ],
+    "error_handling": [
+      "Fail fast with variable validation and preconditions for invariants",
+      "Use lifecycle controls only with clear rationale",
+      "Prefer explicit dependencies when ordering is not inferable"
+    ],
+    "code_structure": [
+      "Keep modules focused on one cohesive infrastructure concern",
+      "Separate reusable modules from environment-specific composition",
+      "Avoid duplicated resource blocks by using locals and composition"
+    ],
+    "testing": {
+      "framework": "terraform test (native)",
+      "location": "tests/ directory or module-level test fixtures",
+      "naming": "module_or_resource_scenario_expected_result",
+      "extras": [
+        "Use `terraform fmt -check -recursive` and `terraform validate` in CI before apply",
+        "Use `tflint` for Terraform linting in CI",
+        "Use `trivy config` as a security/misconfiguration scan in CI"
+      ]
+    }
+  },
   "powershell": {
     "naming": [
       "Functions: Verb-Noun (PascalCase)",
