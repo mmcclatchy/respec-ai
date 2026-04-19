@@ -5,7 +5,7 @@ def generate_backend_api_reviewer_template(tools: BackendApiReviewerAgentTools) 
     return f"""---
 name: respec-backend-api-reviewer
 description: Review API design, validation, authentication, and REST conventions
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

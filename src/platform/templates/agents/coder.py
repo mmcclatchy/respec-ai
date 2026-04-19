@@ -5,7 +5,7 @@ def generate_coder_template(tools: CoderAgentTools) -> str:
     return f"""---
 name: respec-coder
 description: Implement code using strict TDD methodology with test-first discipline
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.coding_model}
 color: green
 tools: {tools.tools_yaml}
 ---
@@ -21,9 +21,9 @@ INPUTS: Dual loop context for code implementation
 - phase_name: Phase name for context
 - mode: "standards-only" (optional)
   When set: skip TDD cycle; fix only naming, imports, type syntax, docstring violations
-- stack_config_toml: (OPTIONAL) Project execution stack from .respec-ai/config/stack.toml
-- language_config_tomls: (OPTIONAL) Language standards from .respec-ai/config/standards/{{language}}.toml
-- standards_guide_markdown: (OPTIONAL) Derived guide from .respec-ai/config/standards/guides/{{language}}.md
+- stack_config_toml: (OPTIONAL INPUT: may be absent; if present, MUST be used) Project execution stack from .respec-ai/config/stack.toml
+- language_config_tomls: (OPTIONAL INPUT: may be absent; if present, MUST be used) Language standards from .respec-ai/config/standards/{{language}}.toml
+- standards_guide_markdown: (OPTIONAL INPUT: may be absent; if present, MUST be used as non-authoritative guidance) Derived guide from .respec-ai/config/standards/guides/{{language}}.md
 
 ## STANDARDS-ONLY MODE
 

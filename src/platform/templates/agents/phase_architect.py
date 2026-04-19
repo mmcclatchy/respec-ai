@@ -165,7 +165,10 @@ Combine technologies and topics:
 TECH = "technology1,technology2"
 TOPICS = "pattern1,pattern2"
 
-Execute knowledge base query:
+Execute knowledge base query with BOTH required flags:
+ - `--tech` must always contain the comma-separated technology names
+ - `--topics` must always contain the comma-separated topic keywords
+ - Do NOT use `--topic` or positional arguments
 CALL Bash: best-practices-rag query-kb --tech "{{TECH}}" --topics "{{TOPICS}}"
 → Store: KB_RESULTS (JSON with count, results, staleness info)
 
@@ -818,11 +821,13 @@ If KB query returns no results for a topic, document in "External Research Neede
 
 ### Scanning Process
 
-1. **Extract Keywords**: Identify technical topics from strategic plan
-2. **Query Knowledge Base**: Run query-kb for technologies and topics
+1. **Extract Keywords**: Identify technical topics from strategic plan and split them into `TECH` and `TOPICS`
+2. **Query Knowledge Base**: Run query-kb for technologies and topics using both required flags
    ```bash
    Bash: best-practices-rag query-kb --tech "react,graphql" --topics "hooks,patterns"
    ```
+   - Always pass both `--tech` and `--topics`
+   - Never use `--topic`
 3. **Check Local Cache**: Scan for existing local documents
    ```bash
    Glob: .best-practices/*.md

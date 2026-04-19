@@ -21,7 +21,7 @@ def generate_create_phase_template(tools: CreatePhaseAgentTools) -> str:
     return f"""---
 name: respec-create-phase
 description: Extract sparse Phases from roadmap and save to platform
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.orchestration_model}
 color: blue
 tools: {tools.tools_yaml}
 ---

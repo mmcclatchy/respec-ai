@@ -302,10 +302,10 @@ def render_language_toml(language_data: dict) -> str:
                 f'framework = {_toml_quote(str(testing.get("framework", "")).strip())}',
                 f'location = {_toml_quote(str(testing.get("location", "")).strip())}',
                 f'naming = {_toml_quote(str(testing.get("naming", "")).strip())}',
-                f'extras = {_toml_array([str(x).strip() for x in testing.get("extras", []) if str(x).strip()])}',
-                '',
             ]
         )
+        _append_multiline_array(lines, 'extras', [str(x).strip() for x in testing.get('extras', []) if str(x).strip()])
+        lines.append('')
     lines.append('[rules]')
     for section in RULE_SECTIONS:
         values = [str(v).strip() for v in rules.get(section, []) if str(v).strip()]

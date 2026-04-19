@@ -5,7 +5,7 @@ def generate_infrastructure_reviewer_template(tools: InfrastructureReviewerAgent
     return f"""---
 name: respec-infrastructure-reviewer
 description: Review Docker, CI/CD, deployment config, and environment management
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

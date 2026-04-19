@@ -89,7 +89,10 @@ def add_arguments(parser: ArgumentParser) -> None:
         help='Include hidden models that do not appear in the default Codex picker',
     )
     parser.add_argument('--reasoning-model', help='Set reasoning model directly')
-    parser.add_argument('--task-model', help='Set task model directly')
+    parser.add_argument('--orchestration-model', help='Set orchestration model directly')
+    parser.add_argument('--task-model', dest='orchestration_model', help='Alias for --orchestration-model')
+    parser.add_argument('--coding-model', help='Set coding model directly')
+    parser.add_argument('--review-model', help='Set review model directly')
     parser.add_argument(
         '--no-apply',
         action='store_true',
@@ -99,14 +102,21 @@ def add_arguments(parser: ArgumentParser) -> None:
 
 def run(args: Namespace) -> int:
     direct_reasoning = getattr(args, 'reasoning_model', None)
-    direct_task = getattr(args, 'task_model', None)
-    if direct_reasoning or direct_task:
-        reasoning = str((direct_reasoning or direct_task or '')).strip()
-        task = str((direct_task or direct_reasoning or '')).strip()
-        if not reasoning or not task:
-            print_warning('Could not derive both reasoning and task models from provided arguments')
+    direct_orchestration = getattr(args, 'orchestration_model', None) or getattr(args, 'task_model', None)
+    direct_coding = getattr(args, 'coding_model', None)
+    direct_review = getattr(args, 'review_model', None)
+    if direct_reasoning or direct_orchestration or direct_coding or direct_review:
+        if not any(hasattr(args, name) for name in ('orchestration_model', 'coding_model', 'review_model')):
+            reasoning = str((direct_reasoning or direct_orchestration or '')).strip()
+            task = str((direct_orchestration or direct_reasoning or '')).strip()
+            if not reasoning or not task:
+                print_warning('Could not derive both reasoning and task models from provided arguments')
+                return 1
+            mapping = {'reasoning': reasoning, 'task': task}
+        else:
+            mapping = _build_direct_mapping(direct_reasoning, direct_orchestration, direct_coding, direct_review)
+        if mapping is None:
             return 1
-        mapping: dict[str, str] = {'reasoning': reasoning, 'task': task}
         _warn_if_unknown_mapping(mapping)
         return _save_and_apply(mapping, no_apply=bool(getattr(args, 'no_apply', False)))
 
@@ -150,6 +160,27 @@ def run(args: Namespace) -> int:
 
     _warn_if_unknown_mapping(mapping, known_models=set(models))
     return _save_and_apply(mapping, no_apply=bool(getattr(args, 'no_apply', False)))
+
+
+def _build_direct_mapping(
+    reasoning: str | None,
+    orchestration: str | None,
+    coding: str | None,
+    review: str | None,
+) -> dict[str, str] | None:
+    reasoning_value = str(reasoning or orchestration or coding or review or '').strip()
+    orchestration_value = str(orchestration or coding or review or reasoning_value).strip()
+    coding_value = str(coding or orchestration_value or reasoning_value or review or '').strip()
+    review_value = str(review or reasoning_value or coding_value or orchestration_value or '').strip()
+    if not reasoning_value or not orchestration_value or not coding_value or not review_value:
+        print_warning('Could not derive all four model categories from provided arguments')
+        return None
+    return {
+        'reasoning': reasoning_value,
+        'orchestration': orchestration_value,
+        'coding': coding_value,
+        'review': review_value,
+    }
 
 
 def _save_and_apply(mapping: dict[str, str], *, no_apply: bool) -> int:
@@ -585,14 +616,16 @@ def _score_models(
         capability_score = intelligence if intelligence > 0 else reasoning_prior * 100
         speed_score = coding if coding > 0 else speed_prior * 100
         reasoning_score = capability_score
-        task_score = coding if coding > 0 else (speed_prior * 0.6 + cost_prior * 0.4) * 100
+        orchestration_score = speed_score
+        coding_score = coding if coding > 0 else speed_score
+        review_score = (capability_score + coding_score) / 2
 
         if intelligence >= 85:
             insight = 'Strong for complex planning; may trade off speed/cost.'
         elif coding >= 80:
-            insight = 'Strong coding throughput; good task-agent default.'
+            insight = 'Strong coding throughput; good implementation default.'
         elif speed_prior >= 0.8:
-            insight = 'Fast/cost-efficient profile; suited for high-volume tasks.'
+            insight = 'Fast/cost-efficient profile; suited for high-volume orchestration.'
         else:
             insight = 'Balanced profile; solid general-purpose fallback.'
 
@@ -607,7 +640,11 @@ def _score_models(
                 'has_aa_capability': intelligence > 0,
                 'has_aa_speed': coding > 0,
                 'reasoning_score': reasoning_score,
-                'task_score': task_score,
+                'task_score': orchestration_score,
+                'orchestration_score': orchestration_score,
+                'coding_score': coding_score,
+                'review_score': review_score,
+                'task': orchestration_score,
                 'insight': insight,
             }
         )
@@ -627,14 +664,20 @@ def _display_model_table(scored: list[dict[str, Any]], suggestion: dict[str, str
     table.add_column('Insight')
 
     reasoning_top = suggestion.get('reasoning', '')
-    task_top = suggestion.get('task', '')
+    orchestration_top = suggestion.get('orchestration', '')
+    coding_top = suggestion.get('coding', '')
+    review_top = suggestion.get('review', '')
     for row in scored:
         model_id = row['model_id']
         tiers: list[str] = []
         if model_id == reasoning_top:
             tiers.append('Reasoning')
-        if model_id == task_top:
-            tiers.append('Task')
+        if model_id == orchestration_top:
+            tiers.append('Orchestration')
+        if model_id == coding_top:
+            tiers.append('Coding')
+        if model_id == review_top:
+            tiers.append('Review')
         tier_text = ', '.join(tiers) if tiers else '-'
         capability_score = float(row['capability_score'])
         speed_score = float(row['speed_score'])
@@ -677,6 +720,30 @@ def _suggest_tiers(scored: list[dict[str, Any]]) -> dict[str, str]:
     if not scored:
         return {}
 
+    if not all('orchestration_score' in row and 'coding_score' in row and 'review_score' in row for row in scored):
+        reasoning_candidates = [row for row in scored if row.get('has_aa_capability')]
+        if reasoning_candidates:
+            reasoning = max(reasoning_candidates, key=lambda r: r.get('reasoning_score', 0.0))['model_id']
+        else:
+            fallback_reasoning = _pick_reasoning_fallback([str(row['model_id']) for row in scored])
+            reasoning = fallback_reasoning or max(scored, key=lambda r: r.get('reasoning_score', 0.0))['model_id']
+
+        codex_scored = [row for row in scored if _is_codex_model(str(row['model_id']))]
+        task_candidates = [row for row in codex_scored if row.get('has_aa_speed')]
+        if task_candidates:
+            task = max(task_candidates, key=lambda r: r.get('task_score', 0.0))['model_id']
+        else:
+            fallback_task = _pick_task_codex_fallback([str(row['model_id']) for row in codex_scored])
+            if fallback_task:
+                task = fallback_task
+            elif len(reasoning_candidates) >= 2:
+                task = sorted(reasoning_candidates, key=lambda r: r.get('reasoning_score', 0.0), reverse=True)[1][
+                    'model_id'
+                ]
+            else:
+                task = reasoning
+        return {'reasoning': reasoning, 'task': task}
+
     reasoning_candidates = [row for row in scored if row['has_aa_capability']]
     if reasoning_candidates:
         reasoning = max(reasoning_candidates, key=lambda r: r['reasoning_score'])['model_id']
@@ -684,38 +751,85 @@ def _suggest_tiers(scored: list[dict[str, Any]]) -> dict[str, str]:
         fallback_reasoning = _pick_reasoning_fallback([str(row['model_id']) for row in scored])
         reasoning = fallback_reasoning or max(scored, key=lambda r: r['reasoning_score'])['model_id']
 
-    codex_scored = [row for row in scored if _is_codex_model(str(row['model_id']))]
-    task_candidates = [row for row in codex_scored if row['has_aa_speed']]
-    if task_candidates:
-        task = max(task_candidates, key=lambda r: r['task_score'])['model_id']
+    orchestration = max(scored, key=lambda r: (float(r['orchestration_score']), float(r['speed_score'])))['model_id']
+    coding_candidates = [row for row in scored if row['has_aa_speed']]
+    if coding_candidates:
+        coding = max(coding_candidates, key=lambda r: (float(r['coding_score']), float(r['task_score'])))['model_id']
     else:
-        fallback_task = _pick_task_codex_fallback([str(row['model_id']) for row in codex_scored])
-        if fallback_task:
-            task = fallback_task
-        elif codex_scored:
-            task = max(codex_scored, key=lambda r: r['task_score'])['model_id']
-        else:
-            task = max(scored, key=lambda r: r['task_score'])['model_id']
+        coding = max(scored, key=lambda r: float(r['coding_score']))['model_id']
 
-    return {'reasoning': reasoning, 'task': task}
+    review = max(scored, key=lambda r: (float(r['review_score']), float(r['reasoning_score'])))['model_id']
+
+    return {'reasoning': reasoning, 'orchestration': orchestration, 'coding': coding, 'review': review}
 
 
 def _interactive_override(scored: list[dict[str, Any]]) -> dict[str, str] | None:
+    if not all('orchestration_score' in row and 'coding_score' in row and 'review_score' in row for row in scored):
+        reasoning_sorted = sorted(
+            scored,
+            key=lambda r: (bool(r.get('has_aa_capability')), float(r.get('reasoning_score', 0.0))),
+            reverse=True,
+        )
+        task_sorted = sorted(
+            scored,
+            key=lambda r: (bool(r.get('has_aa_speed')), float(r.get('task_score', 0.0))),
+            reverse=True,
+        )
+        mapping: dict[str, str] = {}
+
+        for tier, options, score_key in (
+            ('reasoning', reasoning_sorted, 'reasoning_score'),
+            ('task', task_sorted, 'task_score'),
+        ):
+            console.print(f'\n[bold]{tier.title()} model:[/bold]')
+            for i, row in enumerate(options, 1):
+                source = _format_data_source(
+                    has_aa_capability=bool(row.get('has_aa_capability')),
+                    has_aa_speed=bool(row.get('has_aa_speed')),
+                )
+                console.print(f'  [bold][{i}][/bold] {row["model_id"]}  ({row[score_key]:.1f}, {source})')
+
+            while True:
+                raw = console.input(f'  Select [1-{len(options)}]: ').strip()
+                if raw.isdigit():
+                    index = int(raw)
+                    if 1 <= index <= len(options):
+                        mapping[tier] = options[index - 1]['model_id']
+                        break
+                console.print(f'  [red]Enter a number 1-{len(options)}.[/red]')
+
+        response = console.input('\nAccept this mapping? [Y/n] ').strip().lower()
+        if response in ('n', 'no'):
+            return None
+        return mapping
+
     reasoning_sorted = sorted(
         scored,
         key=lambda r: (bool(r['has_aa_capability']), float(r['reasoning_score'])),
         reverse=True,
     )
-    task_sorted = sorted(
+    orchestration_sorted = sorted(
         scored,
-        key=lambda r: (bool(r['has_aa_speed']), float(r['task_score'])),
+        key=lambda r: float(r['orchestration_score']),
+        reverse=True,
+    )
+    coding_sorted = sorted(
+        scored,
+        key=lambda r: (bool(r['has_aa_speed']), float(r['coding_score'])),
+        reverse=True,
+    )
+    review_sorted = sorted(
+        scored,
+        key=lambda r: (float(r['review_score']), float(r['reasoning_score'])),
         reverse=True,
     )
     mapping: dict[str, str] = {}
 
     for tier, options, score_key in (
         ('reasoning', reasoning_sorted, 'reasoning_score'),
-        ('task', task_sorted, 'task_score'),
+        ('orchestration', orchestration_sorted, 'orchestration_score'),
+        ('coding', coding_sorted, 'coding_score'),
+        ('review', review_sorted, 'review_score'),
     ):
         console.print(f'\n[bold]{tier.title()} model:[/bold]')
         for i, row in enumerate(options, 1):
@@ -816,6 +930,19 @@ def _pick_reasoning_fallback(models: list[str]) -> str:
     return max(candidates, key=_fallback_sort_key)
 
 
+def _fallback_sort_key(model_id: str) -> tuple[tuple[int, int, int], int, int]:
+    version = _extract_model_version(model_id) or (-1, -1, -1)
+    lowered = model_id.lower()
+    variant_rank = 0
+    if '-mini' in lowered:
+        variant_rank = -3
+    elif '-spark' in lowered:
+        variant_rank = -2
+    elif '-max' in lowered:
+        variant_rank = -1
+    return (version, variant_rank, -len(model_id))
+
+
 def _pick_task_codex_fallback(models: list[str]) -> str:
     base_codex = [model_id for model_id in models if model_id.lower().endswith('-codex')]
     if base_codex:
@@ -829,19 +956,6 @@ def _pick_task_codex_fallback(models: list[str]) -> str:
 
 def _is_codex_model(model_id: str) -> bool:
     return '-codex' in model_id.lower()
-
-
-def _fallback_sort_key(model_id: str) -> tuple[tuple[int, int, int], int, int]:
-    version = _extract_model_version(model_id) or (-1, -1, -1)
-    lowered = model_id.lower()
-    variant_rank = 0
-    if '-mini' in lowered:
-        variant_rank = -3
-    elif '-spark' in lowered:
-        variant_rank = -2
-    elif '-max' in lowered:
-        variant_rank = -1
-    return (version, variant_rank, -len(model_id))
 
 
 if __name__ == '__main__':

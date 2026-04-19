@@ -32,7 +32,7 @@ def generate_coding_standards_reviewer_template(tools: CodingStandardsReviewerAg
     return f"""---
 name: respec-coding-standards-reviewer
 description: Review code adherence to project coding standards
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: purple
 tools: {tools.tools_yaml}
 ---

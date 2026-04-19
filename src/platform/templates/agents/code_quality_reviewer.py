@@ -5,7 +5,7 @@ def generate_code_quality_reviewer_template(tools: CodeQualityReviewerAgentTools
     return f"""---
 name: respec-code-quality-reviewer
 description: Assess code structural quality, correctness patterns, and design principles
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

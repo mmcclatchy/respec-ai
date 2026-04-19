@@ -296,6 +296,9 @@ class TestTemplateConsistency:
         template = generate_phase_architect_template(architect_tools)
         assert '"Plan Reference: `<file-path>`"' in template
         assert '"Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN (legacy)' in template
+        assert 'Execute knowledge base query with BOTH required flags' in template
+        assert 'Always pass both `--tech` and `--topics`' in template
+        assert 'Never use `--topic`' in template
 
     def test_phase_architect_template_requires_deviation_log_for_constraint_overrides(self) -> None:
         architect_tools = create_phase_architect_agent_tools(_adapter)

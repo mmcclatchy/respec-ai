@@ -9,13 +9,13 @@ def add_arguments(parser: ArgumentParser) -> None:
 
     opencode_parser = subparsers.add_parser(
         'opencode',
-        help='Configure OpenCode reasoning/task model tiers',
+        help='Configure OpenCode reasoning/orchestration/coding/review model tiers',
     )
     opencode_model.add_arguments(opencode_parser)
 
     codex_parser = subparsers.add_parser(
         'codex',
-        help='Configure Codex reasoning/task model tiers',
+        help='Configure Codex reasoning/orchestration/coding/review model tiers',
     )
     codex_model.add_arguments(codex_parser)
 

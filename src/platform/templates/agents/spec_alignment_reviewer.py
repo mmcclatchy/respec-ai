@@ -5,7 +5,7 @@ def generate_spec_alignment_reviewer_template(tools: SpecAlignmentReviewerAgentT
     return f"""---
 name: respec-spec-alignment-reviewer
 description: Verify implementation matches Task, Phase, and Plan objectives
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

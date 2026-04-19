@@ -88,10 +88,39 @@ class OpenCodeAdapter(TuiAdapter):
         return models['reasoning']
 
     @property
-    def task_model(self) -> str:
+    def orchestration_model(self) -> str:
         models = load_global_models('opencode')
-        if 'task' not in models:
-            raise RuntimeError("OpenCode task model not configured. Run 'respec-ai models opencode' first.")
+        if 'orchestration' not in models and 'task' not in models:
+            raise RuntimeError("OpenCode orchestration model not configured. Run 'respec-ai models opencode' first.")
+        orchestration = models.get('orchestration')
+        if orchestration:
+            return orchestration
+        return models['task']
+
+    @property
+    def coding_model(self) -> str:
+        models = load_global_models('opencode')
+        if 'coding' not in models and 'task' not in models:
+            raise RuntimeError("OpenCode coding model not configured. Run 'respec-ai models opencode' first.")
+        coding = models.get('coding')
+        if coding:
+            return coding
+        orchestration = models.get('orchestration')
+        if orchestration:
+            return orchestration
+        return models['task']
+
+    @property
+    def review_model(self) -> str:
+        models = load_global_models('opencode')
+        if 'review' not in models and 'task' not in models:
+            raise RuntimeError("OpenCode review model not configured. Run 'respec-ai models opencode' first.")
+        review = models.get('review')
+        if review:
+            return review
+        orchestration = models.get('orchestration')
+        if orchestration:
+            return orchestration
         return models['task']
 
     def register_mcp_server(self, project_path: Path) -> bool:

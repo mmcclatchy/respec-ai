@@ -68,7 +68,7 @@ def generate_review_consolidator_template(tools: ReviewConsolidatorAgentTools) -
     return f"""---
 name: respec-review-consolidator
 description: Merge all review sections into single CriticFeedback for MCP decision loop
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: orange
 tools: {tools.tools_yaml}
 ---

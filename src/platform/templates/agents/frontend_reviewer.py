@@ -5,7 +5,7 @@ def generate_frontend_reviewer_template(tools: FrontendReviewerAgentTools) -> st
     return f"""---
 name: respec-frontend-reviewer
 description: Review UI components, accessibility, and frontend framework patterns
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

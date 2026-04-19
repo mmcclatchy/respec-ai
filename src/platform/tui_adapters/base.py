@@ -69,7 +69,20 @@ class TuiAdapter(ABC):
 
     @property
     @abstractmethod
-    def task_model(self) -> str: ...
+    def orchestration_model(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def coding_model(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def review_model(self) -> str: ...
+
+    @property
+    def task_model(self) -> str:
+        """Backward-compatible alias for orchestration workflows."""
+        return self.orchestration_model
 
     @abstractmethod
     def register_mcp_server(self, project_path: Path) -> bool: ...

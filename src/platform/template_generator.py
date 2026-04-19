@@ -77,12 +77,16 @@ _COMMAND_TEMPLATES = [
     RespecAICommand.STANDARDS,
 ]
 
-_REASONING_COMMANDS: frozenset[RespecAICommand] = frozenset(
-    {
-        RespecAICommand.PLAN,
-        RespecAICommand.PLAN_CONVERSATION,
-    }
-)
+_COMMAND_CATEGORY_BY_NAME: dict[RespecAICommand, str] = {
+    RespecAICommand.PLAN: 'reasoning',
+    RespecAICommand.PLAN_CONVERSATION: 'reasoning',
+    RespecAICommand.PHASE: 'orchestration',
+    RespecAICommand.TASK: 'orchestration',
+    RespecAICommand.CODE: 'orchestration',
+    RespecAICommand.PATCH: 'orchestration',
+    RespecAICommand.ROADMAP: 'orchestration',
+    RespecAICommand.STANDARDS: 'orchestration',
+}
 
 _AGENT_NAMES = [
     'respec-plan-analyst',
@@ -130,15 +134,13 @@ def generate_templates(
     adapter = tui_adapter or get_tui_adapter(TuiType.CLAUDE_CODE)
     plans_dir = adapter.plans_dir()
 
-    reasoning_model = adapter.reasoning_model
-    task_model = adapter.task_model
     commands: list[CommandSpec] = [
         _parse_command_spec(
             cmd,
             orchestrator.template_coordinator.generate_command_template(
                 cmd, platform_type, plans_dir=plans_dir, tui_adapter=adapter
             ),
-            model=reasoning_model if cmd in _REASONING_COMMANDS else task_model,
+            model=_resolve_model_for_category(adapter, _COMMAND_CATEGORY_BY_NAME[cmd]),
         )
         for cmd in _COMMAND_TEMPLATES
     ]
@@ -148,6 +150,18 @@ def generate_templates(
     files_written = adapter.write_all(project_path, agents, commands)
 
     return files_written, len(commands), len(agents)
+
+
+def _resolve_model_for_category(adapter: TuiAdapter, category: str) -> str:
+    if category == 'reasoning':
+        return adapter.reasoning_model
+    if category == 'orchestration':
+        return adapter.orchestration_model
+    if category == 'coding':
+        return adapter.coding_model
+    if category == 'review':
+        return adapter.review_model
+    raise ValueError(f'Unknown model category: {category}')
 
 
 def _parse_frontmatter(content: str) -> tuple[dict[str, str], str]:

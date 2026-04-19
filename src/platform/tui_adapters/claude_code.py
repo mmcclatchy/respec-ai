@@ -90,7 +90,15 @@ class ClaudeCodeAdapter(TuiAdapter):
         return 'opus'
 
     @property
-    def task_model(self) -> str:
+    def orchestration_model(self) -> str:
+        return 'sonnet'
+
+    @property
+    def coding_model(self) -> str:
+        return 'sonnet'
+
+    @property
+    def review_model(self) -> str:
         return 'sonnet'
 
     def register_mcp_server(self, project_path: Path) -> bool:

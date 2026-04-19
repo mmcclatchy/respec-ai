@@ -5,7 +5,7 @@ def generate_database_reviewer_template(tools: DatabaseReviewerAgentTools) -> st
     return f"""---
 name: respec-database-reviewer
 description: Review schema design, migrations, indexes, and query patterns
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

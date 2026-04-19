@@ -5,7 +5,7 @@ def generate_automated_quality_checker_template(tools: AutomatedQualityCheckerAg
     return f"""---
 name: respec-automated-quality-checker
 description: Run language-agnostic static analysis and produce quality check review section
-model: {tools.tui_adapter.task_model}
+model: {tools.tui_adapter.review_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

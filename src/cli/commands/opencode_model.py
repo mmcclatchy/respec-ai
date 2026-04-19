@@ -82,9 +82,27 @@ def add_arguments(parser: ArgumentParser) -> None:
         action='store_true',
         help='Bypass cached API responses',
     )
+    parser.add_argument('--reasoning-model', help='Set reasoning model directly')
+    parser.add_argument('--orchestration-model', help='Set orchestration model directly')
+    parser.add_argument('--task-model', dest='orchestration_model', help='Alias for --orchestration-model')
+    parser.add_argument('--coding-model', help='Set coding model directly')
+    parser.add_argument('--review-model', help='Set review model directly')
 
 
 def run(args: Namespace) -> int:
+    direct_reasoning = getattr(args, 'reasoning_model', None)
+    direct_orchestration = getattr(args, 'orchestration_model', None) or getattr(args, 'task_model', None)
+    direct_coding = getattr(args, 'coding_model', None)
+    direct_review = getattr(args, 'review_model', None)
+    if direct_reasoning or direct_orchestration or direct_coding or direct_review:
+        mapping = _build_direct_mapping(direct_reasoning, direct_orchestration, direct_coding, direct_review)
+        if mapping is None:
+            return 1
+        save_global_models(mapping, provider='opencode')
+        console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
+        print_info("Run 'respec-ai regenerate' to apply new models to your config")
+        return 0
+
     aa_key = (
         getattr(args, 'aa_key', None)
         or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
@@ -136,10 +154,36 @@ def run(args: Namespace) -> int:
             print_warning('Mapping not saved')
             return 1
 
+    if 'task' not in mapping:
+        fallback = mapping.get('orchestration') or mapping.get('reasoning')
+        if fallback:
+            mapping = {**mapping, 'task': fallback}
+
     save_global_models(mapping, provider='opencode')
     console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
     print_info("Run 'respec-ai regenerate' to apply new models to your config")
     return 0
+
+
+def _build_direct_mapping(
+    reasoning: str | None,
+    orchestration: str | None,
+    coding: str | None,
+    review: str | None,
+) -> dict[str, str] | None:
+    reasoning_value = str(reasoning or orchestration or coding or review or '').strip()
+    orchestration_value = str(orchestration or coding or review or reasoning_value).strip()
+    coding_value = str(coding or orchestration_value or reasoning_value or review or '').strip()
+    review_value = str(review or reasoning_value or coding_value or orchestration_value or '').strip()
+    if not reasoning_value or not orchestration_value or not coding_value or not review_value:
+        print_warning('Could not derive all four model categories from provided arguments')
+        return None
+    return {
+        'reasoning': reasoning_value,
+        'orchestration': orchestration_value,
+        'coding': coding_value,
+        'review': review_value,
+    }
 
 
 def _discover_models() -> tuple[str, list[str]]:
@@ -306,7 +350,10 @@ def _score_models_by_tier(
     debug: bool = False,
 ) -> dict[str, Any]:
     reasoning_scored: list[tuple[str, float]] = []
+    orchestration_scored: list[tuple[str, float]] = []
     task_scored: list[tuple[str, float]] = []
+    coding_scored: list[tuple[str, float]] = []
+    review_scored: list[tuple[str, float]] = []
     metrics: dict[str, dict[str, float]] = {}
 
     parsed_rates: dict[str, int] = {}
@@ -326,10 +373,19 @@ def _score_models_by_tier(
 
         throughput = float(parsed_rates.get(model_id, 0))
         task_scored.append((model_id, throughput))
+        orchestration_score = throughput if throughput > 0 else max(intelligence, coding)
+        coding_score = coding if coding > 0 else orchestration_score
+        review_score = (intelligence + coding_score) / 2 if (intelligence > 0 or coding_score > 0) else 0.0
+        orchestration_scored.append((model_id, orchestration_score))
+        coding_scored.append((model_id, coding_score))
+        review_scored.append((model_id, review_score))
         metrics[model_id] = {'intelligence': intelligence, 'coding': coding, 'throughput': throughput}
 
     return {
         'reasoning': sorted(reasoning_scored, key=lambda x: x[1], reverse=True),
+        'orchestration': sorted(orchestration_scored, key=lambda x: x[1], reverse=True),
+        'coding': sorted(coding_scored, key=lambda x: x[1], reverse=True),
+        'review': sorted(review_scored, key=lambda x: x[1], reverse=True),
         'task': sorted(task_scored, key=lambda x: x[1], reverse=True),
         'metrics': metrics,
     }
@@ -357,16 +413,29 @@ def _find_aa_match(short_name: str, aa_data: dict[str, dict[str, float]]) -> str
 def _suggest_tiers(scored_by_tier: dict[str, list[tuple[str, float]]]) -> dict[str, str]:
     mapping: dict[str, str] = {}
     reasoning = scored_by_tier.get('reasoning', [])
-    task = scored_by_tier.get('task', [])
+    orchestration = scored_by_tier.get('orchestration', [])
+    coding = scored_by_tier.get('coding', [])
+    review = scored_by_tier.get('review', [])
+    if not orchestration and scored_by_tier.get('task'):
+        task = scored_by_tier.get('task', [])
+        if reasoning:
+            mapping['reasoning'] = reasoning[0][0]
+        has_throughput = any(score > 0 for _, score in task)
+        if has_throughput:
+            mapping['task'] = task[0][0]
+        elif len(reasoning) >= 2:
+            mapping['task'] = reasoning[1][0]
+        elif reasoning:
+            mapping['task'] = reasoning[0][0]
+        return mapping
     if reasoning:
         mapping['reasoning'] = reasoning[0][0]
-    has_throughput = any(score > 0 for _, score in task)
-    if has_throughput:
-        mapping['task'] = task[0][0]
-    elif len(reasoning) >= 2:
-        mapping['task'] = reasoning[1][0]
-    elif reasoning:
-        mapping['task'] = reasoning[0][0]
+    if orchestration:
+        mapping['orchestration'] = orchestration[0][0]
+    if coding:
+        mapping['coding'] = coding[0][0]
+    if review:
+        mapping['review'] = review[0][0]
     return mapping
 
 
@@ -415,7 +484,9 @@ def _display_model_insights(metrics: dict[str, dict[str, float]], rate_limits: d
     table.add_column('Insight')
 
     top_reasoning = max(metrics.items(), key=lambda item: item[1].get('intelligence', 0.0))[0]
-    top_task = max(metrics.items(), key=lambda item: item[1].get('throughput', 0.0))[0]
+    top_orchestration = max(metrics.items(), key=lambda item: item[1].get('throughput', 0.0))[0]
+    top_coding = max(metrics.items(), key=lambda item: item[1].get('coding', 0.0))[0]
+    top_review = max(metrics.items(), key=lambda item: item[1].get('intelligence', 0.0) + item[1].get('coding', 0.0))[0]
 
     for model_id, row in sorted(
         metrics.items(),
@@ -432,10 +503,12 @@ def _display_model_insights(metrics: dict[str, dict[str, float]], rate_limits: d
 
         if model_id == top_reasoning and intelligence > 0:
             insight = 'Best for planning and deep architecture reasoning.'
-        elif model_id == top_task and throughput > 0:
-            insight = 'Best throughput for high-volume task workflows.'
-        elif coding > intelligence and coding > 0:
-            insight = 'Coding-leaning profile; practical for implementation/review loops.'
+        elif model_id == top_orchestration and throughput > 0:
+            insight = 'Best throughput for high-volume orchestration workflows.'
+        elif model_id == top_coding and coding > 0:
+            insight = 'Coding-leaning profile; practical for implementation loops.'
+        elif model_id == top_review and (intelligence > 0 or coding > 0):
+            insight = 'Balanced profile; practical for review loops.'
         elif intelligence > 0:
             insight = 'Balanced profile; solid fallback when tiers overlap.'
         else:
@@ -494,8 +567,12 @@ def _display_model_comparison(
         tiers: list[str] = []
         if model_id == suggestion.get('reasoning'):
             tiers.append('Reasoning')
-        if model_id == suggestion.get('task'):
-            tiers.append('Task')
+        if model_id == suggestion.get('orchestration'):
+            tiers.append('Orchestration')
+        if model_id == suggestion.get('coding'):
+            tiers.append('Coding')
+        if model_id == suggestion.get('review'):
+            tiers.append('Review')
         tier_text = ', '.join(tiers) if tiers else '-'
 
         if intelligence >= 55:
@@ -599,7 +676,35 @@ def _interactive_override(
 ) -> dict[str, str] | None:
     mapping: dict[str, str] = {}
 
-    for tier in ('reasoning', 'task'):
+    if not scored_by_tier.get('orchestration') and scored_by_tier.get('task'):
+        for tier in ('reasoning', 'task'):
+            options = scored_by_tier.get(tier, [])
+            metrics_raw = scored_by_tier.get('metrics', {})
+            metrics = metrics_raw if isinstance(metrics_raw, dict) else {}
+
+            console.print(f'\n[bold]{tier.title()} model:[/bold]')
+            for i, (model_id, score) in enumerate(options, 1):
+                row = metrics.get(model_id, {})
+                has_aa = row.get('intelligence', 0.0) > 0 or row.get('coding', 0.0) > 0
+                score_text = f'({score:.1f})' if score else ''
+                source = 'AA' if has_aa else 'Inferred'
+                console.print(f'  [bold][{i}][/bold] {model_id}  {score_text} [{source}]')
+
+            while True:
+                raw = console.input(f'  Select [1-{len(options)}]: ').strip()
+                if raw.isdigit():
+                    index = int(raw)
+                    if 1 <= index <= len(options):
+                        mapping[tier] = options[index - 1][0]
+                        break
+                console.print(f'  [red]Enter a number 1-{len(options)}.[/red]')
+
+        response = console.input('\nAccept this mapping? [Y/n] ').strip().lower()
+        if response in ('n', 'no'):
+            return None
+        return mapping
+
+    for tier in ('reasoning', 'orchestration', 'coding', 'review'):
         options = scored_by_tier.get(tier, [])
         metrics_raw = scored_by_tier.get('metrics', {})
         metrics = metrics_raw if isinstance(metrics_raw, dict) else {}

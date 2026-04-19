@@ -90,3 +90,40 @@ def test_universal_render_omits_commands_section() -> None:
     rendered = render_language_toml(build_language_defaults('universal'))
     assert '[commands]' not in rendered
     assert '[testing]' not in rendered
+
+
+def test_render_language_toml_renders_testing_extras_vertically() -> None:
+    rendered = render_language_toml(
+        {
+            'schema_version': 1,
+            'language': 'terraform',
+            'commands': {
+                'test': 'terraform test',
+                'coverage': 'no_preference',
+                'type_check': 'no_preference',
+                'lint': 'tflint',
+            },
+            'testing': {
+                'framework': 'terraform test (native)',
+                'location': 'tests/ directory or module-level test fixtures',
+                'naming': 'module_or_resource_scenario_expected_result',
+                'extras': [
+                    'Use `terraform fmt -check -recursive` and `terraform validate` in CI before apply',
+                    'Use `tflint` for Terraform linting in CI',
+                    'Use `trivy config` as a security/misconfiguration scan in CI',
+                ],
+            },
+            'rules': {
+                'naming': ['Variables/outputs/locals: snake_case'],
+                'imports': ['Pin provider and module versions explicitly'],
+                'type_system': ['Use explicit variable types for all inputs'],
+                'documentation': ['Document module inputs/outputs and required providers'],
+                'error_handling': ['Fail fast with variable validation and preconditions for invariants'],
+                'code_structure': ['Keep modules focused on one cohesive infrastructure concern'],
+            },
+        }
+    )
+    assert 'extras = [' in rendered
+    assert '  "Use `terraform fmt -check -recursive` and `terraform validate` in CI before apply",' in rendered
+    assert '  "Use `tflint` for Terraform linting in CI",' in rendered
+    assert '  "Use `trivy config` as a security/misconfiguration scan in CI",' in rendered

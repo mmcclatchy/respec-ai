@@ -48,4 +48,3 @@ def test_opencode_runs_model_setup_command(mocker: MockerFixture) -> None:
     assert passed.yes is False
     assert passed.debug is False
     assert passed.no_cache is False
-

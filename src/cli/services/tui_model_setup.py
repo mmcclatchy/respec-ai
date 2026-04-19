@@ -35,4 +35,3 @@ def run_tui_model_setup(tui_type: TuiType, args: Namespace) -> int:
         return opencode_model.run(sync_args)
 
     return 0
-
