@@ -19,6 +19,7 @@ INPUTS: Dual loop context for quality assessment
 - task_loop_id: Loop identifier for Task retrieval (CRITICAL - different from coding_loop_id)
 - plan_name: Project name (from .respec-ai/config.json, passed by orchestrating command)
 - phase_name: Phase name for context
+- optional_context: Additional user guidance or resume context to incorporate when provided
 
 TASKS: Retrieve Context → Inspect Code → Assess Quality → Store Review Section
 1. Retrieve Task: {tools.retrieve_task}

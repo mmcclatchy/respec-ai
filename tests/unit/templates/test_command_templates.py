@@ -588,6 +588,17 @@ class TestCrossPlatformInvocationRendering:
         assert '$Commit' in template
         assert 'git commit --no-verify -F - <<' in template
 
+    def test_code_template_accepts_optional_context_and_forwards_it(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'argument-hint: [plan-name] [phase-name] [optional: additional-context]' in template
+        assert 'OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]' in template
+        assert 'optional_context: OPTIONAL_CONTEXT' in template
+
     def test_task_template_excludes_stale_create_task_target(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -596,6 +607,17 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert 'Task(respec-create-task)' not in template
+
+    def test_task_template_accepts_optional_context_and_forwards_it(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'argument-hint: [plan-name] [phase-name] [optional: additional-context]' in template
+        assert 'OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]' in template
+        assert 'optional_context: OPTIONAL_CONTEXT' in template
 
     def test_patch_template_requires_upfront_mode_and_code_quality_core_reviewer(self) -> None:
         coordinator = TemplateCoordinator()
@@ -674,6 +696,17 @@ class TestCrossPlatformInvocationRendering:
         assert 'Finalization is non-compliant until hooks pass.' in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
+
+    def test_patch_template_accepts_optional_context_and_forwards_it(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'argument-hint: [plan-name] [change-description] [optional: additional-context]' in template
+        assert 'OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]' in template
+        assert 'optional_context: OPTIONAL_CONTEXT' in template
 
     def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
         guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')

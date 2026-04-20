@@ -4,7 +4,7 @@ from src.platform.models import PatchCommandTools
 def generate_patch_command_template(tools: PatchCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [change-description]
+argument-hint: [plan-name] [change-description] [optional: additional-context]
 description: Update existing code through amendment tasks with full quality review
 ---
 
@@ -21,8 +21,16 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 ```text
 PLAN_NAME = [first argument from command - the project name]
-CHANGE_DESCRIPTION = [all remaining arguments - description of the change needed]
+CHANGE_DESCRIPTION = [all arguments after the project name that describe the change]
+OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
 ```
+
+If OPTIONAL_CONTEXT is provided, preserve it for the full patch-planning and
+implementation loop and pass it through to the patch-planner, coder, all
+reviewers, and the consolidator.
+
+If the change description is multi-word and no OPTIONAL_CONTEXT is needed,
+keep the full description together as a single command argument.
 
 #### Step 1.2: Capture Execution Mode (MANDATORY)
 

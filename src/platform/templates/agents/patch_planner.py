@@ -80,6 +80,7 @@ INPUTS: Loop context, Phase information, and change description
 - phase_name: Phase name for retrieval
 - change_description: User's description of the change needed
 - execution_mode: User-selected mode from respec-patch command (MVP|mixed|hardening)
+- optional_context: Additional user guidance or resume context to incorporate when provided
 
 TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
 1. Retrieve Phase: {tools.retrieve_phase}

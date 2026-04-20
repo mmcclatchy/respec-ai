@@ -81,7 +81,6 @@ class TuiAdapter(ABC):
 
     @property
     def task_model(self) -> str:
-        """Backward-compatible alias for orchestration workflows."""
         return self.orchestration_model
 
     @abstractmethod

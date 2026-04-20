@@ -47,6 +47,7 @@ INPUTS: Context for standards assessment
 - task_loop_id: Loop identifier for Task retrieval
 - plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
+- optional_context: Additional user guidance or resume context to incorporate when provided
 - phase2_mode: boolean (optional, default false)
   When true: store a complete CriticFeedback directly to coding_loop_id (Phase 2 — no review-consolidator)
   When false (default): store a review section as currently implemented (Phase 1)

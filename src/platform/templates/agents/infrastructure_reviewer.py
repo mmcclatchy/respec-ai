@@ -19,6 +19,7 @@ INPUTS: Context for infrastructure assessment
 - task_loop_id: Loop identifier for Task retrieval
 - plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
+- optional_context: Additional user guidance or resume context to incorporate when provided
 
 TASKS: Retrieve Specs → Inspect Infrastructure Files → Assess Quality → Store
 1. Retrieve Task: {tools.retrieve_task}

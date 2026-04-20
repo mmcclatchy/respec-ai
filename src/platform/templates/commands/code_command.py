@@ -4,7 +4,7 @@ from src.platform.models import CodeCommandTools
 def generate_code_command_template(tools: CodeCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [phase-name]
+argument-hint: [plan-name] [phase-name] [optional: additional-context]
 description: Transform Phases into production-ready code through TDD-driven implementation
 ---
 
@@ -38,7 +38,11 @@ Parse command arguments and locate phase file using partial name:
 ```text
 PLAN_NAME = [first argument from command - the project name]
 PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
+OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
 ```
+
+If OPTIONAL_CONTEXT is provided, preserve it for the full code-implementation
+loop and pass it through to the coder, all reviewers, and the consolidator.
 
 #### Step 1.2: Search file system for matching phase files
 

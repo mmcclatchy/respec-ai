@@ -4,7 +4,7 @@ from src.platform.models import TaskCommandTools
 def generate_task_command_template(tools: TaskCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [phase-name]
+argument-hint: [plan-name] [phase-name] [optional: additional-context]
 description: Transform Phases into detailed Tasks with implementation Steps through quality-driven refinement
 ---
 
@@ -28,7 +28,11 @@ Parse command arguments and locate phase file using partial name:
 ```text
 PLAN_NAME = [first argument from command - the plan name]
 PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
+OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
 ```
+
+If OPTIONAL_CONTEXT is provided, preserve it for the full task-planning loop
+and pass it through to the task-planner and task-plan-critic agents.
 
 ##### Step 0.1.2: Search file system for matching phase files
 

@@ -171,7 +171,7 @@ def create_phase_command_tools(
         ),
         task_command_invocation=adapter.render_command_invocation(
             'respec-task',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
@@ -190,7 +190,7 @@ def create_phase_command_tools(
         ),
         code_command_invocation=adapter.render_command_invocation(
             'respec-code',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
@@ -351,6 +351,7 @@ def create_code_command_tools(
         ('task_loop_id', 'TASK_LOOP_ID'),
         ('plan_name', 'PLAN_NAME'),
         ('phase_name', 'PHASE_NAME'),
+        ('optional_context', 'OPTIONAL_CONTEXT'),
     ]
     return CodeCommandTools(
         tui_adapter=adapter,
@@ -366,6 +367,7 @@ def create_code_command_tools(
                 ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
                 ('standards_guide', 'STANDARDS_GUIDE'),
@@ -400,6 +402,7 @@ def create_code_command_tools(
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('active_reviewers', 'PHASE1_REVIEWERS'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
             ],
         ),
         phase1_review_parallel_policy=adapter.render_parallel_fanout_policy(
@@ -414,6 +417,7 @@ def create_code_command_tools(
                 ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('mode', '"standards-only"'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
@@ -428,24 +432,25 @@ def create_code_command_tools(
                 ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('phase2_mode', 'true'),
             ],
         ),
         task_command_invocation=adapter.render_command_invocation(
             'respec-task',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
         phase_command_invocation=adapter.render_command_invocation(
             'respec-phase',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
         code_command_invocation=adapter.render_command_invocation(
             'respec-code',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
@@ -604,6 +609,7 @@ def create_task_tools(
                 ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('research_file_paths', 'DOCUMENTATION_PATHS'),
                 ('impl_plan_paths', 'IMPL_PLAN_PATHS'),
                 ('impl_plan_references', 'IMPL_PLAN_REFERENCES'),
@@ -612,18 +618,23 @@ def create_task_tools(
         invoke_task_plan_critic=adapter.render_agent_invocation(
             'respec-task-plan-critic',
             'evaluate Task quality against FSDD criteria',
-            [('task_loop_id', 'TASK_LOOP_ID'), ('plan_name', 'PLAN_NAME'), ('phase_name', 'PHASE_NAME')],
+            [
+                ('task_loop_id', 'TASK_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
+            ],
         ),
         task_command_reference=adapter.render_command_reference('respec-task'),
         phase_command_invocation=adapter.render_command_invocation(
             'respec-phase',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
         code_command_invocation=adapter.render_command_invocation(
             'respec-code',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
@@ -1316,6 +1327,7 @@ def create_patch_command_tools(
         ('task_loop_id', 'PLANNING_LOOP_ID'),
         ('plan_name', 'PLAN_NAME'),
         ('phase_name', 'PHASE_NAME'),
+        ('optional_context', 'OPTIONAL_CONTEXT'),
     ]
     return PatchCommandTools(
         tui_adapter=adapter,
@@ -1331,6 +1343,7 @@ def create_patch_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('change_description', 'CHANGE_DESCRIPTION'),
                 ('execution_mode', 'EXECUTION_MODE'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
             ],
         ),
         invoke_task_plan_critic=adapter.render_agent_invocation(
@@ -1341,6 +1354,7 @@ def create_patch_command_tools(
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('change_description', 'CHANGE_DESCRIPTION'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
             ],
         ),
         invoke_coder=adapter.render_agent_invocation(
@@ -1351,6 +1365,7 @@ def create_patch_command_tools(
                 ('task_loop_id', 'PLANNING_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
                 ('standards_guide', 'STANDARDS_GUIDE'),
@@ -1385,6 +1400,7 @@ def create_patch_command_tools(
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('active_reviewers', 'PHASE1_REVIEWERS'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
             ],
         ),
         phase1_review_parallel_policy=adapter.render_parallel_fanout_policy(
@@ -1399,6 +1415,7 @@ def create_patch_command_tools(
                 ('task_loop_id', 'PLANNING_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('mode', '"standards-only"'),
                 ('stack_config', 'STACK_CONFIG'),
                 ('language_configs', 'LANGUAGE_CONFIGS'),
@@ -1413,6 +1430,7 @@ def create_patch_command_tools(
                 ('task_loop_id', 'PLANNING_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('optional_context', 'OPTIONAL_CONTEXT'),
                 ('phase2_mode', 'true'),
             ],
         ),
@@ -1424,7 +1442,7 @@ def create_patch_command_tools(
         ),
         phase_command_invocation=adapter.render_command_invocation(
             'respec-phase',
-            '{PLAN_NAME} {PHASE_NAME}',
+            '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),

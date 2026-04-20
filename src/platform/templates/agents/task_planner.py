@@ -124,6 +124,7 @@ INPUTS: Loop context, Phase information, and research documents
   - path: file path
   - section: optional section citation
   - line_range: optional line range citation
+- optional_context: Additional user guidance or resume context to incorporate when provided
 
 WORKFLOW: Phase + Research → Task with Checklist and Steps
 1. Retrieve Phase: {tools.retrieve_phase}
