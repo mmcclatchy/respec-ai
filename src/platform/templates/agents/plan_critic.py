@@ -47,7 +47,7 @@ def generate_plan_critic_template(tools: PlanCriticAgentTools) -> str:
     return f"""---
 name: respec-plan-critic
 description: Evaluate strategic plans using FSDD framework
-model: {tools.tui_adapter.review_model}
+model: {tools.tui_adapter.reasoning_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---

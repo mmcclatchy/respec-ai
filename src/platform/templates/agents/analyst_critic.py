@@ -44,7 +44,7 @@ def generate_analyst_critic_template(tools: AnalystCriticAgentTools) -> str:
     return f"""---
 name: respec-analyst-critic
 description: Validate business objective extraction quality and semantic accuracy
-model: {tools.tui_adapter.review_model}
+model: {tools.tui_adapter.reasoning_model}
 color: yellow
 tools: {tools.tools_yaml}
 ---
