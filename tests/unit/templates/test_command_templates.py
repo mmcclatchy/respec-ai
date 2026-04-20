@@ -697,16 +697,20 @@ class TestCrossPlatformInvocationRendering:
         assert 'git commit --allow-empty --no-verify -F - <<' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
 
-    def test_patch_template_accepts_optional_context_and_forwards_it(self) -> None:
+    def test_patch_template_infers_context_from_single_request(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'argument-hint: [plan-name] [change-description] [optional: additional-context]' in template
-        assert 'OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]' in template
+        assert 'argument-hint: [plan-name] [request]' in template
+        assert 'argument-hint: [plan-name] [change-description] [optional: additional-context]' not in template
+        assert 'REQUEST_TEXT = [second argument from command - full patch request]' in template
+        assert 'CHANGE_DESCRIPTION = [explicit change inferred from REQUEST_TEXT]' in template
+        assert 'OPTIONAL_CONTEXT = [supporting context inferred from REQUEST_TEXT, otherwise empty string]' in template
         assert 'optional_context: OPTIONAL_CONTEXT' in template
+        assert 'clarifying question' in template
 
     def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
         guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')

@@ -94,8 +94,8 @@ INPUTS: Loop context for assessment
 - task_loop_id: Loop identifier for Task retrieval
 - plan_name: Plan name for Phase retrieval
 - phase_name: Phase name for retrieval
-- change_description: (OPTIONAL) Original change request from respec-patch. Empty for respec-task workflow.
-- optional_context: Additional user guidance or resume context to consider when provided
+- change_description: (OPTIONAL) Original raw request from respec-patch, including any embedded context. Empty for respec-task workflow.
+- optional_context: Supporting context, constraints, or clarifications inferred from the request when provided
 
 WORKFLOW: Task Assessment → CriticFeedback
 1. Retrieve Task: {tools.retrieve_task}

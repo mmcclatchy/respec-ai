@@ -78,12 +78,15 @@ INPUTS: Loop context, Phase information, and change description
 - task_loop_id: Loop identifier for task refinement
 - plan_name: Project name
 - phase_name: Phase name for retrieval
-- change_description: User's description of the change needed
+- change_description: Explicit change inferred from the raw respec-patch request
 - execution_mode: User-selected mode from respec-patch command (MVP|mixed|hardening)
-- optional_context: Additional user guidance or resume context to incorporate when provided
+- optional_context: Supporting context, constraints, or clarifications inferred from the request
 
 TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
 1. Retrieve Phase: {tools.retrieve_phase}
+1.25. If the request is ambiguous:
+   - Use AskUserQuestion or equivalent user interaction to clarify the explicit change vs supporting context
+   - Do not guess when the boundary changes task scope or implementation intent
 1.5. Read Implementation Plan Constraints (if present in Phase):
    Search PHASE_MARKDOWN for "### Implementation Plan References"
    For each "- Constraint: `<file-path>`" line found:

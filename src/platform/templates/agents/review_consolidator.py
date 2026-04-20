@@ -83,7 +83,7 @@ INPUTS: Review context
 - plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
 - active_reviewers: List of reviewer slugs that were invoked this iteration
-- optional_context: Additional user guidance or resume context to consider when present
+- optional_context: Supporting context, constraints, or clarifications inferred from the request when present
 
 TASKS: Retrieve Sections → Calculate Score → Merge → Store CriticFeedback
 1. Retrieve Task policy context: {tools.retrieve_task}

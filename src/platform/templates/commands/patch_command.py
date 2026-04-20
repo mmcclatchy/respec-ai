@@ -4,7 +4,7 @@ from src.platform.models import PatchCommandTools
 def generate_patch_command_template(tools: PatchCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [change-description] [optional: additional-context]
+argument-hint: [plan-name] [request]
 description: Update existing code through amendment tasks with full quality review
 ---
 
@@ -21,16 +21,19 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 ```text
 PLAN_NAME = [first argument from command - the project name]
-CHANGE_DESCRIPTION = [second argument from command - description of the change needed]
-OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
+REQUEST_TEXT = [second argument from command - full patch request]
+CHANGE_DESCRIPTION = [explicit change inferred from REQUEST_TEXT]
+OPTIONAL_CONTEXT = [supporting context inferred from REQUEST_TEXT, otherwise empty string]
 ```
 
-If OPTIONAL_CONTEXT is provided, preserve it for the full patch-planning and
-implementation loop and pass it through to the patch-planner, coder, all
-reviewers, and the consolidator.
+Interpret REQUEST_TEXT in two passes:
+1. Infer the explicit change being requested.
+2. Extract any supporting context, constraints, or resume details that should
+   be shared with subagents as OPTIONAL_CONTEXT.
 
-If the change description contains spaces, pass it as a single quoted
-argument. OPTIONAL_CONTEXT remains the third argument when present.
+If the boundary between the change request and supporting context is unclear,
+ask the user a clarifying question or present a small set of options before
+proceeding.
 
 #### Step 1.2: Capture Execution Mode (MANDATORY)
 

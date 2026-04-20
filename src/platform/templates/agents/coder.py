@@ -19,7 +19,7 @@ INPUTS: Dual loop context for code implementation
 - task_loop_id: Loop identifier for Task retrieval (CRITICAL - different from coding_loop_id)
 - project_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
-- optional_context: Additional user guidance or resume context to incorporate when provided
+- optional_context: Supporting context, constraints, or clarifications inferred from the request when provided
 - mode: "standards-only" (optional)
   When set: skip TDD cycle; fix only naming, imports, type syntax, docstring violations
 - stack_config_toml: (OPTIONAL INPUT: may be absent; if present, MUST be used) Project execution stack from .respec-ai/config/stack.toml
