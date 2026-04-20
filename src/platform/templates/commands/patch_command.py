@@ -21,7 +21,7 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 ```text
 PLAN_NAME = [first argument from command - the project name]
-CHANGE_DESCRIPTION = [all arguments after the project name that describe the change]
+CHANGE_DESCRIPTION = [second argument from command - description of the change needed]
 OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
 ```
 
@@ -29,8 +29,8 @@ If OPTIONAL_CONTEXT is provided, preserve it for the full patch-planning and
 implementation loop and pass it through to the patch-planner, coder, all
 reviewers, and the consolidator.
 
-If the change description is multi-word and no OPTIONAL_CONTEXT is needed,
-keep the full description together as a single command argument.
+If the change description contains spaces, pass it as a single quoted
+argument. OPTIONAL_CONTEXT remains the third argument when present.
 
 #### Step 1.2: Capture Execution Mode (MANDATORY)
 

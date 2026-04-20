@@ -19,7 +19,7 @@ Ensure each workflow accepts optional user guidance, preserves it through retrie
 - [x] Preserve patch change-description parsing so multi-word descriptions are still supported.
 - [x] Add focused tests for the new command-template behavior.
 - [x] Run the targeted template test suite.
-- [ ] Commit the finalized change set after review.
+- [x] Commit the finalized change set after review.
 
 ## Acceptance Criteria
 - `respec-task`, `respec-code`, and `respec-patch` all document an optional guidance/context argument.
