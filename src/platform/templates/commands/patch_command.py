@@ -17,23 +17,37 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 ## Workflow Steps
 
-### 1. Parse Arguments
+### 1. Parse User Inputs
 
 ```text
 PLAN_NAME = [first argument from command - the project name]
-REQUEST_TEXT = [second argument from command - full patch request]
-CHANGE_DESCRIPTION = [explicit change inferred from REQUEST_TEXT]
-OPTIONAL_CONTEXT = [supporting context inferred from REQUEST_TEXT, otherwise empty string]
+RAW_REQUEST = [all remaining input after PLAN_NAME]
 ```
 
-Interpret REQUEST_TEXT in two passes:
-1. Infer the explicit change being requested.
-2. Extract any supporting context, constraints, or resume details that should
-   be shared with subagents as OPTIONAL_CONTEXT.
+#### Step 1.1: Initialize Workflow Variables
 
-If the boundary between the change request and supporting context is unclear,
-ask the user a clarifying question or present a small set of options before
-proceeding.
+```text
+PATCH_REQUEST_BRIEF = [normalized request produced after clarification]
+REQUEST_SUMMARY = [one-line summary produced from PATCH_REQUEST_BRIEF]
+```
+
+Fail closed on ambiguity:
+- Treat RAW_REQUEST as the only user-authored source of truth for the patch.
+- Do NOT assume RAW_REQUEST has a clean internal boundary between "the change"
+  and "extra context".
+- Do NOT derive execution inputs from an ambiguous RAW_REQUEST.
+- Ask a clarifying question or present options whenever multiple reasonable
+  interpretations would change scope, target area, implementation direction,
+  validation criteria, active-plan selection, or phase selection.
+- Do NOT invoke the patch planner until the request is sufficiently clear.
+
+Once RAW_REQUEST is sufficiently clear:
+- Normalize it into PATCH_REQUEST_BRIEF containing:
+  - requested change
+  - relevant supporting context and constraints
+  - resume details or file references that must be preserved
+  - any clarified decisions that subagents should treat as settled
+- Derive REQUEST_SUMMARY as a short one-line summary for commit/final reporting.
 
 #### Step 1.2: Capture Execution Mode (MANDATORY)
 
@@ -55,10 +69,10 @@ Display: "Execution mode selected: {{EXECUTION_MODE}}"
 #### Step 1.1: Resolve Active Plan (if referenced)
 
 ```text
-IF CHANGE_DESCRIPTION references an active plan (e.g., "use the active plan",
+IF RAW_REQUEST references an active plan (e.g., "use the active plan",
    "from plan mode", or contains a path to a .md file in {tools.plans_dir}/):
 
-  PLAN_FILE_PATH = [extract or infer path from CHANGE_DESCRIPTION]
+  PLAN_FILE_PATH = [extract or infer path from RAW_REQUEST]
   IF PLAN_FILE_PATH not explicitly provided:
     PLAN_FILE_PATH = Glob({tools.plans_dir}/*.md) → select most recently modified
 
@@ -66,7 +80,10 @@ IF CHANGE_DESCRIPTION references an active plan (e.g., "use the active plan",
 
   Display: "Using active plan: {{basename of PLAN_FILE_PATH}}"
 
-  CHANGE_DESCRIPTION = PLAN_CONTENT
+  PATCH_REQUEST_BRIEF = compose normalized brief from:
+    - plan content as primary requested work
+    - any explicit constraints or resume instructions present in RAW_REQUEST
+  REQUEST_SUMMARY = [short summary derived from PATCH_REQUEST_BRIEF]
 
 ELIF recent system message contains "exited Plan Mode" with a plan file path:
   PLAN_FILE_PATH = [path from system message]
@@ -74,7 +91,30 @@ ELIF recent system message contains "exited Plan Mode" with a plan file path:
 
   Display: "Detected active plan from plan mode: {{basename of PLAN_FILE_PATH}}"
 
-  CHANGE_DESCRIPTION = PLAN_CONTENT
+  PATCH_REQUEST_BRIEF = compose normalized brief from:
+    - plan content as primary requested work
+    - any explicit constraints or resume instructions present in RAW_REQUEST
+  REQUEST_SUMMARY = [short summary derived from PATCH_REQUEST_BRIEF]
+
+ELSE:
+  IF RAW_REQUEST is empty or whitespace only:
+    ERROR: "Patch request is required after PLAN_NAME."
+    EXIT
+
+  IF RAW_REQUEST remains ambiguous after initial read:
+    Use AskUserQuestion:
+      Header: "Clarify Patch Request"
+      Question: "Which interpretation matches the patch you want?"
+      Options: [2-4 concrete options derived from plausible interpretations]
+    OR ask one direct clarifying question when options are not cleaner.
+
+  PATCH_REQUEST_BRIEF = compose normalized brief from the clarified RAW_REQUEST:
+    - requested change
+    - constraints and supporting context
+    - affected area, if known
+    - resume details, if any
+    - clarified decisions that downstream agents must honor
+  REQUEST_SUMMARY = [short summary derived from PATCH_REQUEST_BRIEF]
 ```
 
 ### 2. Phase Resolution
@@ -105,9 +145,9 @@ IF count(ALL_PHASES) == 1:
 ```text
 For each PHASE_FILE in ALL_PHASES:
   Read the Overview section (Objectives, Scope, Deliverables) — first 30 lines
-  Assess relevance of CHANGE_DESCRIPTION to this phase's content
+  Assess relevance of PATCH_REQUEST_BRIEF to this phase's content
 
-Rank phases by relevance to CHANGE_DESCRIPTION.
+Rank phases by relevance to PATCH_REQUEST_BRIEF.
 
 IF clear best match (one phase strongly relevant, others weak):
   PHASE_FILE_PATH = best match
@@ -117,7 +157,7 @@ IF clear best match (one phase strongly relevant, others weak):
     Display: "Note: This change may also touch concerns from: [other phase names]"
 ELSE:
   Use AskUserQuestion:
-    Question: "Which phase does this change belong to? '{{CHANGE_DESCRIPTION}}'"
+    Question: "Which phase does this patch belong to? '{{REQUEST_SUMMARY}}'"
     Header: "Select Phase for Patch"
     multiSelect: false
     Options: [ranked phases with objectives summary as description]
@@ -294,6 +334,35 @@ STANDARDS_GUIDE = For each file in GUIDE_FILES:
   If filename stem matches a LANGUAGE_TOML_FILES stem: Read(file) — concatenated content
 If no guide files match: STANDARDS_GUIDE = ""
 
+WORKFLOW_GUIDANCE_MARKDOWN = compose markdown from PATCH_REQUEST_BRIEF:
+  ## Workflow Guidance
+  ### Guidance Summary
+  [normalized request summary from PATCH_REQUEST_BRIEF, otherwise "None"]
+  ### Constraints
+  - [constraint or supporting context preserved from PATCH_REQUEST_BRIEF]
+  - None
+  ### Resume Context
+  - [resume detail or file reference from PATCH_REQUEST_BRIEF]
+  - None
+  ### Settled Decisions
+  - [clarified user decisions from PATCH_REQUEST_BRIEF]
+  - None
+
+PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
+  ## Project Config Context
+  ### Stack Config TOML
+  ```toml
+  [STACK_CONFIG if present, otherwise "None"]
+  ```
+  ### Language Config TOMLs
+  ```toml
+  [LANGUAGE_CONFIGS if present, otherwise "None"]
+  ```
+  ### Standards Guide Markdown
+  ```markdown
+  [STANDARDS_GUIDE if present, otherwise "None"]
+  ```
+
 ACTIVE_REVIEWERS.append("review-consolidator")
 
 # Loop IDs in this command:
@@ -303,6 +372,13 @@ ACTIVE_REVIEWERS.append("review-consolidator")
 
 PHASE1_REVIEWERS = ACTIVE_REVIEWERS excluding "coding-standards-reviewer"
 (coding-standards-reviewer runs in Phase 2 only)
+
+REVIEW_SCOPE_MARKDOWN = compose markdown:
+  ## Review Scope
+  ### Active Reviewers
+  - [each reviewer slug from PHASE1_REVIEWERS]
+  ### Workflow Guidance
+  [WORKFLOW_GUIDANCE_MARKDOWN section values summarized for reviewers, otherwise "None"]
 
 Display: "Active reviewers: {{ACTIVE_REVIEWERS}}"
 Display: "Phase 1 reviewers: {{PHASE1_REVIEWERS}}"
@@ -393,7 +469,7 @@ Loop:
   COMMIT_MESSAGE_BLOCK = compose:
     {{COMMIT_SUBJECT}}
 
-    Change: {{CHANGE_DESCRIPTION}}
+    Change: {{REQUEST_SUMMARY}}
     Phase: {{PHASE_NAME}}
     Loop: Phase 1 (coding_loop_id={{CODING_LOOP_ID}})
     Decision: {{CODING_DECISION}}
@@ -528,7 +604,7 @@ Loop:
   STANDARDS_COMMIT_MESSAGE_BLOCK = compose:
     {{STANDARDS_COMMIT_SUBJECT}}
 
-    Change: {{CHANGE_DESCRIPTION}}
+    Change: {{REQUEST_SUMMARY}}
     Phase: {{PHASE_NAME}}
     Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
     Decision: {{STANDARDS_DECISION}}
@@ -641,9 +717,9 @@ FINAL_SUMMARY = [extract latest Assessment Summary from FINAL_FEEDBACK]
 FINAL_KEY_ISSUES = [extract top key issues from FINAL_FEEDBACK]
 
 FINAL_COMMIT_MESSAGE_BLOCK = compose:
-  fix: complete {{CHANGE_DESCRIPTION}}
+  fix: complete {{REQUEST_SUMMARY}}
 
-  Change: {{CHANGE_DESCRIPTION}}
+  Change: {{REQUEST_SUMMARY}}
   Phase: {{PHASE_NAME}}
   Finalization Source: {{FINALIZATION_DECISION_SOURCE}}
   Final Loop: {{FINAL_LOOP_LABEL}} (loop_id={{FINAL_LOOP_ID}})
@@ -678,7 +754,7 @@ Append Evolution Log section (or update existing):
 
 ## Evolution Log
 
-### {{CURRENT_DATE}}: {{CHANGE_DESCRIPTION_SUMMARY}}
+### {{CURRENT_DATE}}: {{REQUEST_SUMMARY}}
 - Amendment Task: {{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}
 - Code Quality Score: {{CODE_QUALITY_SCORE}}%
 - Files Changed: {{FILE_LIST}}
@@ -702,7 +778,7 @@ Write amendment task to: {{TASK_FILE_PATH}}
 
 ```text
 Present final summary:
-"Implementation complete for amendment: {{CHANGE_DESCRIPTION}}
+"Implementation complete for amendment: {{REQUEST_SUMMARY}}
 
 Planning:
 - Quality Score: {{PLAN_QUALITY_SCORE}}%

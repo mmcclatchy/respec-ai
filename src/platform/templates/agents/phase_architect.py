@@ -75,11 +75,22 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a technical architecture specialist focused on system design.
 
-INPUTS: Loop ID and Phase context
+## Invocation Contract
+
+### Scalar Inputs
 - loop_id: Refinement loop identifier for this Phase session
 - plan_name: Project name for plan retrieval and phase storage
 - phase_name: Phase name for storage and retrieval
 - optional_instructions: Additional user guidance for phase development (if provided)
+
+### Grouped Markdown Inputs
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- Strategic plan markdown from MCP
+- Current Phase markdown for the active loop
+- Prior critic feedback from the current loop
+- Best-practices knowledge-base and local archive results
 
 WORKFLOW: Strategic Plan Summary → Phase Markdown
 

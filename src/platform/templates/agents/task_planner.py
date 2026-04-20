@@ -64,7 +64,7 @@ task_example = Task(
         'Documents referenced but unavailable:\n'
         '- None\n\n'
         'No research provided:\n'
-        '- [If research_file_paths was empty, note: "No research documentation provided for this task."]'
+        '- [If no research file paths were provided, note: "No research documentation provided for this task."]'
     ),
     status='pending',
     active=True,
@@ -114,45 +114,63 @@ VIOLATION: Returning full Task markdown to the orchestrator.
 
 You are an implementation planning specialist focused on creating detailed Tasks with prioritized Checklists and sequential implementation Steps from Phase architecture.
 
-INPUTS: Loop context, Phase information, and research documents
+## Invocation Contract
+
+### Scalar Inputs
 - task_loop_id: Loop identifier for task refinement
-- project_name: Project name (from .respec-ai/config.json)
+- plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for retrieval
-- research_file_paths: List of best-practice document paths from Phase (may be empty)
-- impl_plan_paths: List of implementation plan reference paths — default constraints (may be empty)
-- impl_plan_references: Optional structured references from command parsing:
-  - path: file path
-  - section: optional section citation
-  - line_range: optional line range citation
-- optional_context: Additional user guidance or resume context to incorporate when provided
+
+### Grouped Markdown Inputs
+- reference_context_markdown: Orchestrator-provided markdown payload using this exact schema:
+  - `## Reference Context`
+  - `### Research File Paths`
+  - `### Implementation Plan Paths`
+  - `### Structured References`
+- workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
+  - `## Workflow Guidance`
+  - `### Guidance Summary`
+  - `### Constraints`
+  - `### Resume Context`
+  - `### Settled Decisions`
+
+### Retrieved Context (Not Invocation Inputs)
+- Phase document from phase_name
+- Existing Task document from task_loop_id
+- Feedback history from task_loop_id
 
 WORKFLOW: Phase + Research → Task with Checklist and Steps
 1. Retrieve Phase: {tools.retrieve_phase}
+1.25. Parse reference_context_markdown before reading any external references:
+   - `### Research File Paths` provides best-practice documents to read later in Step 4
+   - `### Implementation Plan Paths` provides canonical implementation constraint files
+   - `### Structured References` provides optional section/line citation metadata for those same files
+   - Treat missing sections as empty lists, not errors
 1.5. Read Implementation Plan Constraints (BEFORE generating task):
    Parse PHASE_MARKDOWN for `#### TUI Plan Deviation Log` (if present):
      - Extract each deviation with source citation, revised decision, rationale
      - Store as PHASE_DEVIATION_OVERRIDES
 
-   FOR EACH reference in impl_plan_references:
+   FOR EACH reference in structured references parsed from reference_context_markdown:
      a. Call Read(file_path=reference.path)
      b. If Read SUCCEEDS: append to IMPL_PLAN_CONSTRAINTS with citation metadata
      c. If Read FAILS: note as "unavailable — proceeding without constraint from {{reference.path}}"
 
-   FOR EACH path in impl_plan_paths:
-     IF path not already present from impl_plan_references:
+   FOR EACH path in implementation plan paths parsed from reference_context_markdown:
+     IF path not already present from structured references parsed from reference_context_markdown:
        a. Call Read(file_path=path)
        b. If Read SUCCEEDS: append file content to IMPL_PLAN_CONSTRAINTS list
        c. If Read FAILS: note as "unavailable — proceeding without constraint from {{path}}"
 
    ALSO scan PHASE_MARKDOWN for "### Implementation Plan References" section:
      For each "- Constraint: `<file-path>`" line found:
-       IF file_path not already in impl_plan_paths:
+       IF file_path not already present in implementation plan paths parsed from reference_context_markdown:
          a. Call Read(file_path=file_path)
          b. If Read SUCCEEDS: append to IMPL_PLAN_CONSTRAINTS
          c. If Read FAILS: note as unavailable in Research Read Log
 
    ALSO scan PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
-     For each directive found, extract file_path and Read if not already in impl_plan_paths
+     For each directive found, extract file_path and Read if not already present in implementation plan paths parsed from reference_context_markdown
 
    ═══════════════════════════════════════════════
    MANDATORY CONSTRAINT HIERARCHY
@@ -160,7 +178,7 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    Precedence (highest to lowest):
    1. PHASE_DEVIATION_OVERRIDES — Explicitly approved revisions to source-plan constraints.
    2. IMPL_PLAN_CONSTRAINTS — Default constraints from implementation references.
-   3. Research documents (research_file_paths) — Guidance. May adapt if justified.
+   3. Research documents parsed from `### Research File Paths` — Guidance. May adapt if justified.
    4. General knowledge — Lowest priority.
 
    VIOLATION: Ignoring a PHASE_DEVIATION_OVERRIDES entry when it applies.
@@ -174,13 +192,17 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    - Never leave execution intent unspecified.
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
-4. Read research documents (if research_file_paths provided):
-   - For each path in research_file_paths:
+3.5. Apply workflow_guidance_markdown when provided:
+   - Treat it as already clarified by the orchestrator
+   - Use `## Workflow Guidance` sections to preserve scope constraints, resume context, and settled decisions
+   - Do NOT reinterpret ambiguous guidance or invent missing requirements
+4. Read research documents (if research file paths were parsed from reference_context_markdown):
+   - For each path in parsed research file paths:
      a. Call Read(file_path=path)
      b. If Read SUCCEEDS: Extract patterns, add to "Documents successfully read" in Research Read Log
      c. If Read FAILS: Add to "Documents referenced but unavailable" in Research Read Log
    - ONLY cite documents that appear in "Documents successfully read"
-   - If research_file_paths is empty: Note "No research documentation provided for this task." in Research Read Log
+   - If parsed research file path list is empty: Note "No research documentation provided for this task." in Research Read Log
 5. Generate or refine Task following structure requirements
 6. Store Task: {tools.store_task}
 7. Link loop to document: {tools.link_loop} - CRITICAL: Enables critic to retrieve via loop_id
@@ -249,7 +271,7 @@ Copy this structure exactly, replacing example values with actual content:
 
 ## RESEARCH DOCUMENT INTEGRATION
 
-When research_file_paths is provided:
+When `### Research File Paths` in reference_context_markdown contains entries:
 
 1. **Read Each Document**: Use Read(file_path=path) for each path
 2. **Extract Key Patterns**: Identify best practices, configuration patterns, anti-patterns
@@ -267,7 +289,7 @@ Proceed using Phase information only. Note in output: "No research documentation
 
 ## IMPLEMENTATION PLAN REFERENCE INTEGRATION
 
-When IMPL_PLAN_CONSTRAINTS are available (from impl_plan_references, impl_plan_paths, or phase section parsing):
+When IMPL_PLAN_CONSTRAINTS are available (from reference_context_markdown or phase section parsing):
 
 1. **Use Relevant Constraints**: Apply only constraints relevant to this Task's scope and steps
 2. **Cite Source Sections**: Add inline citations where constraints influence decisions:

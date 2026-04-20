@@ -4,7 +4,7 @@ from src.platform.models import TaskCommandTools
 def generate_task_command_template(tools: TaskCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [phase-name] [optional: additional-context]
+argument-hint: [plan-name] [phase request]
 description: Transform Phases into detailed Tasks with implementation Steps through quality-driven refinement
 ---
 
@@ -19,20 +19,39 @@ Orchestrate transformation of Phase architecture into a detailed, implementable 
 
 ### 0. Setup and Initialization
 
-#### Step 0.1: Extract Command Arguments and Locate Phase File
+#### Step 0.1: Parse User Inputs and Locate Phase File
 
-Parse command arguments and locate phase file using partial name:
+Parse user inputs and locate the target phase without guessing at free-form boundaries:
 
 ##### Step 0.1.1: Parse arguments
 
 ```text
 PLAN_NAME = [first argument from command - the plan name]
-PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
-OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
+RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]
 ```
 
-If OPTIONAL_CONTEXT is provided, preserve it for the full task-planning loop
-and pass it through to the task-planner and task-plan-critic agents.
+##### Step 0.1.1.a: Initialize workflow variables
+
+```text
+PHASE_NAME_PARTIAL = [empty until RAW_PHASE_REQUEST is clarified]
+OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]
+```
+
+Fail closed on ambiguity:
+- Treat RAW_PHASE_REQUEST as the only user-authored source of truth after PLAN_NAME.
+- Do NOT assume RAW_PHASE_REQUEST has a clean boundary between the phase reference
+  and additional task-planning guidance.
+- Ask the user a clarifying question or present options whenever multiple reasonable
+  interpretations would change the selected phase, task scope, planning direction,
+  validation criteria, or what should be passed downstream as guidance.
+- Do NOT begin phase lookup until the phase reference is sufficiently clear.
+
+Once RAW_PHASE_REQUEST is sufficiently clear:
+- PHASE_NAME_PARTIAL = [clarified phase selector derived from RAW_PHASE_REQUEST]
+- OPTIONAL_CONTEXT = [remaining clarified task-planning guidance, otherwise empty string]
+
+If OPTIONAL_CONTEXT is present after clarification, preserve it for the full
+task-planning loop and pass it through to the task-planner and task-plan-critic agents.
 
 ##### Step 0.1.2: Search file system for matching phase files
 
@@ -171,7 +190,35 @@ Task planning MUST apply this precedence order:
 2. Remaining implementation plan references (IMPL_PLAN_REFERENCES)
 3. Research documentation paths (DOCUMENTATION_PATHS)
 
-Pass both IMPL_PLAN_PATHS and IMPL_PLAN_REFERENCES to task-planner.
+WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
+  ## Workflow Guidance
+  ### Guidance Summary
+  [OPTIONAL_CONTEXT if present, otherwise "None"]
+  ### Constraints
+  - [preserved constraint from OPTIONAL_CONTEXT]
+  - None
+  ### Resume Context
+  - [resume detail from OPTIONAL_CONTEXT]
+  - None
+  ### Settled Decisions
+  - [clarified decision from OPTIONAL_CONTEXT]
+  - None
+
+REFERENCE_CONTEXT_MARKDOWN = compose markdown:
+  ## Reference Context
+  ### Research File Paths
+  - [each path from DOCUMENTATION_PATHS]
+  - None
+  ### Implementation Plan Paths
+  - [each path from IMPL_PLAN_PATHS]
+  - None
+  ### Structured References
+  - path: [reference.path]
+    section: [reference.section or "None"]
+    line_range: [reference.line_range or "None"]
+  - None
+
+Pass REFERENCE_CONTEXT_MARKDOWN and WORKFLOW_GUIDANCE_MARKDOWN to task-planner.
 ```
 
 #### Step 2.3: Fail Fast on Unresolved Synthesize Prompts

@@ -4,7 +4,7 @@ from src.platform.models import PlanRoadmapCommandTools
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [optional: phasing-preferences]
+argument-hint: [plan-name] [optional: roadmap-guidance]
 description: Transform strategic plans into multiple Phases through quality-driven refinement
 ---
 
@@ -24,10 +24,16 @@ Orchestrate the transformation of strategic plans into discrete, implementable p
 Parse command arguments from user input:
 ```text
 PLAN_NAME = [first argument from command - the project name]
-PHASING_PREFERENCES = [second argument if provided, otherwise empty string]
+RAW_PHASING_REQUEST = [all remaining input after PLAN_NAME]
+PHASING_PREFERENCES = [normalized roadmap-guidance brief derived from RAW_PHASING_REQUEST, or empty string]
 ```
 
 **Important**: PLAN_NAME from command arguments is used for all MCP storage operations.
+
+Interpret trailing roadmap guidance as one payload:
+- Treat RAW_PHASING_REQUEST as the only user-authored roadmap guidance after PLAN_NAME.
+- If guidance is present, normalize it into PHASING_PREFERENCES as one preference brief; otherwise leave it empty.
+- If that guidance is ambiguous enough to materially change roadmap structure, ask the user to clarify before continuing.
 
 #### Step 0.2: Sync Plan from Platform to MCP
 

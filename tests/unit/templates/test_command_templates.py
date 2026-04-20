@@ -538,7 +538,8 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert 'GUIDE_FILES = Glob(.respec-ai/config/standards/guides/*.md)' in template
-        assert '  - standards_guide: STANDARDS_GUIDE' in template
+        assert 'PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:' in template
+        assert '### Standards Guide Markdown' in template
 
     def test_code_template_phase1_loop_orders_commit_before_transitions(self) -> None:
         coordinator = TemplateCoordinator()
@@ -588,16 +589,21 @@ class TestCrossPlatformInvocationRendering:
         assert '$Commit' in template
         assert 'git commit --no-verify -F - <<' in template
 
-    def test_code_template_accepts_optional_context_and_forwards_it(self) -> None:
+    def test_code_template_accepts_optional_context_and_normalizes_it_for_shared_agents(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'argument-hint: [plan-name] [phase-name] [optional: additional-context]' in template
-        assert 'OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]' in template
-        assert 'optional_context: OPTIONAL_CONTEXT' in template
+        assert 'argument-hint: [plan-name] [phase request]' in template
+        assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
+        assert 'OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]' in template
+        assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
+        assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
+        assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
+        assert 'project_config_context_markdown: PROJECT_CONFIG_CONTEXT_MARKDOWN' in template
+        assert 'review_scope_markdown: REVIEW_SCOPE_MARKDOWN' in template
 
     def test_task_template_excludes_stale_create_task_target(self) -> None:
         coordinator = TemplateCoordinator()
@@ -615,9 +621,40 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'argument-hint: [plan-name] [phase-name] [optional: additional-context]' in template
-        assert 'OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]' in template
-        assert 'optional_context: OPTIONAL_CONTEXT' in template
+        assert 'argument-hint: [plan-name] [phase request]' in template
+        assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
+        assert 'OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]' in template
+        assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
+        assert 'REFERENCE_CONTEXT_MARKDOWN = compose markdown:' in template
+        assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
+        assert 'reference_context_markdown: REFERENCE_CONTEXT_MARKDOWN' in template
+        assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
+
+    def test_phase_template_uses_raw_phase_request_contract(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'argument-hint: [plan-name] [phase request]' in template
+        assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
+        assert 'OPTIONAL_INSTRUCTIONS = [empty until RAW_PHASE_REQUEST is clarified]' in template
+        assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
+
+    def test_roadmap_template_uses_raw_guidance_contract(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'argument-hint: [plan-name] [optional: roadmap-guidance]' in template
+        assert 'RAW_PHASING_REQUEST = [all remaining input after PLAN_NAME]' in template
+        assert (
+            'PHASING_PREFERENCES = [normalized roadmap-guidance brief derived from RAW_PHASING_REQUEST, or empty string]'
+            in template
+        )
 
     def test_patch_template_requires_upfront_mode_and_code_quality_core_reviewer(self) -> None:
         coordinator = TemplateCoordinator()
@@ -657,7 +694,8 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert 'GUIDE_FILES = Glob(.respec-ai/config/standards/guides/*.md)' in template
-        assert '  - standards_guide: STANDARDS_GUIDE' in template
+        assert 'PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:' in template
+        assert '### Standards Guide Markdown' in template
 
     def test_patch_template_phase1_loop_orders_commit_before_transitions(self) -> None:
         coordinator = TemplateCoordinator()
@@ -706,11 +744,22 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'argument-hint: [plan-name] [request]' in template
         assert 'argument-hint: [plan-name] [change-description] [optional: additional-context]' not in template
-        assert 'REQUEST_TEXT = [second argument from command - full patch request]' in template
-        assert 'CHANGE_DESCRIPTION = [explicit change inferred from REQUEST_TEXT]' in template
-        assert 'OPTIONAL_CONTEXT = [supporting context inferred from REQUEST_TEXT, otherwise empty string]' in template
-        assert 'optional_context: OPTIONAL_CONTEXT' in template
-        assert 'clarifying question' in template
+        assert '### 1. Parse User Inputs' in template
+        assert 'RAW_REQUEST = [all remaining input after PLAN_NAME]' in template
+        assert '#### Step 1.1: Initialize Workflow Variables' in template
+        assert 'PATCH_REQUEST_BRIEF = [normalized request produced after clarification]' in template
+        assert 'REQUEST_SUMMARY = [one-line summary produced from PATCH_REQUEST_BRIEF]' in template
+        assert 'REQUEST_TEXT = [second argument from command - full patch request]' not in template
+        assert 'CHANGE_DESCRIPTION = [explicit change inferred from REQUEST_TEXT]' not in template
+        assert (
+            'OPTIONAL_CONTEXT = [supporting context inferred from REQUEST_TEXT, otherwise empty string]' not in template
+        )
+        assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown from PATCH_REQUEST_BRIEF:' in template
+        assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
+        assert 'review_scope_markdown: REVIEW_SCOPE_MARKDOWN' in template
+        assert 'raw_request: RAW_REQUEST' not in template
+        assert 'Do NOT derive execution inputs from an ambiguous RAW_REQUEST.' in template
+        assert 'Do NOT invoke the patch planner until the request is sufficiently clear.' in template
 
     def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
         guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')

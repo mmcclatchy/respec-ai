@@ -48,7 +48,7 @@ technical_phase_template = Phase(
 def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [phase-name] [optional: instructions]
+argument-hint: [plan-name] [phase request]
 description: Transform strategic plans into detailed Phases
 ---
 
@@ -105,17 +105,36 @@ Main Agent (via respec-phase)
 
 ## Implementation Instructions
 
-### Step 1: Extract Command Arguments and Locate Phase File
+### Step 1: Parse User Inputs and Locate Phase File
 
-Parse command arguments and locate phase file using partial name:
+Parse user inputs and locate the target phase without guessing at free-form boundaries:
 
 #### Step 1.1: Parse arguments
 
 ```text
 PLAN_NAME = [first argument from command - the plan name]
-PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
-OPTIONAL_INSTRUCTIONS = [third argument if provided, otherwise empty string]
+RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]
 ```
+
+#### Step 1.1.1: Initialize workflow variables
+
+```text
+PHASE_NAME_PARTIAL = [empty until RAW_PHASE_REQUEST is clarified]
+OPTIONAL_INSTRUCTIONS = [empty until RAW_PHASE_REQUEST is clarified]
+```
+
+Fail closed on ambiguity:
+- Treat RAW_PHASE_REQUEST as the only user-authored source of truth after PLAN_NAME.
+- Do NOT assume RAW_PHASE_REQUEST has a clean boundary between the phase reference
+  and additional architecture guidance.
+- Ask the user a clarifying question or present options whenever multiple reasonable
+  interpretations would change the selected phase, phase-architect direction,
+  validation criteria, or what should be passed downstream as optional instructions.
+- Do NOT begin phase lookup until the phase reference is sufficiently clear.
+
+Once RAW_PHASE_REQUEST is sufficiently clear:
+- PHASE_NAME_PARTIAL = [clarified phase selector derived from RAW_PHASE_REQUEST]
+- OPTIONAL_INSTRUCTIONS = [remaining clarified phase-development guidance, otherwise empty string]
 
 #### Step 1.2: Search file system for matching phase files
 
@@ -170,7 +189,7 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 - PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
 - PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
 - PLAN_NAME from config is used for all MCP storage operations
-- OPTIONAL_INSTRUCTIONS provides additional context for phase development
+- OPTIONAL_INSTRUCTIONS provides only the clarified guidance that remains after phase resolution
 - All subsequent operations use PHASE_NAME (canonical)
 
 ### Step 2: Load and Store Existing Documents

@@ -118,9 +118,19 @@ The Roadmap decomposes a strategic plan into sprint-sized phases with dependency
 
 **Calibration Principle:** Evaluate whether each sparse phase's Objectives, Scope, Dependencies, and Deliverables give a phase-architect enough direction to design the full Phase. Do NOT penalize for missing System Design, Implementation, Research, or Testing sections — those belong in the full Phase document created downstream.
 
-INPUTS: Plan name and Loop ID for operations
+## Invocation Contract
+
+### Scalar Inputs
 - plan_name: Plan name for roadmap retrieval
 - loop_id: Refinement loop identifier for feedback storage
+
+### Grouped Markdown Inputs
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- Roadmap markdown via {tools.get_roadmap}
+- Strategic plan via {tools.get_plan}
+- Loaded TUI plan references when present
 
 TASKS:
 

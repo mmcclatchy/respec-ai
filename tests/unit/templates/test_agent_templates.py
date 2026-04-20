@@ -4,8 +4,11 @@ from src.platform.models import PlatformType
 from src.platform.tui_adapters import ClaudeCodeAdapter
 
 from src.platform.template_helpers import (
+    create_analyst_critic_agent_tools,
     create_create_phase_agent_tools,
     create_patch_planner_agent_tools,
+    create_plan_analyst_agent_tools,
+    create_plan_critic_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
     create_roadmap_agent_tools,
@@ -14,8 +17,11 @@ from src.platform.template_helpers import (
     create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
+    generate_analyst_critic_template,
     generate_create_phase_template,
     generate_patch_planner_template,
+    generate_plan_analyst_template,
+    generate_plan_critic_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
     generate_roadmap_critic_template,
@@ -90,7 +96,7 @@ class TestRoadmapCriticTemplate:
         assert '---' in template
         assert 'name: respec-roadmap-critic' in template
         assert 'description:' in template
-        assert 'model: sonnet' in template
+        assert 'model: opus' in template
         assert 'tools:' in template
 
         # Check MCP tools - roadmap-critic uses dedicated get_roadmap (no loop_id support)
@@ -138,6 +144,18 @@ class TestRoadmapCriticTemplate:
         assert 'TUI Plan Usage Penalty (BLOCKING' in template
         assert 'cap overall score at 80' in template
 
+    def test_template_uses_invocation_contract_style(self) -> None:
+        tools = create_roadmap_critic_agent_tools(_adapter)
+        template = generate_roadmap_critic_template(tools)
+
+        assert '## Invocation Contract' in template
+        assert '### Scalar Inputs' in template
+        assert '- plan_name: Plan name for roadmap retrieval' in template
+        assert '- loop_id: Refinement loop identifier for feedback storage' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert '### Retrieved Context (Not Invocation Inputs)' in template
+
 
 class TestTaskPlanCriticTemplate:
     def test_template_enforces_tui_plan_reference_validation(self) -> None:
@@ -149,6 +167,17 @@ class TestTaskPlanCriticTemplate:
         assert '(per plan reference: ...)' in template
         assert 'TUI Plan Deviation Log' in template
         assert 'cap score at 80' in template
+
+    def test_template_uses_single_workflow_guidance_contract(self) -> None:
+        tools = create_task_plan_critic_agent_tools(_adapter)
+        template = generate_task_plan_critic_template(tools)
+
+        assert 'workflow_guidance_markdown:' in template
+        assert 'optional_context:' not in template
+        assert 'request_brief:' not in template
+        assert 'Workflow Guidance Alignment' in template
+        assert '## Invocation Contract' in template
+        assert '## Workflow Guidance' in template
 
 
 class TestCreatePhaseTemplate:
@@ -192,6 +221,19 @@ class TestCreatePhaseTemplate:
         # Should reference Phase
         assert 'Phase' in template
 
+    def test_template_uses_invocation_contract_style(self) -> None:
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
+        tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
+        template = generate_create_phase_template(tools)
+
+        assert '## Invocation Contract' in template
+        assert '### Scalar Inputs' in template
+        assert '- plan_name: Plan name for roadmap retrieval' in template
+        assert '- phase_name: Phase name from roadmap to extract' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert '### Retrieved Context (Not Invocation Inputs)' in template
+
 
 class TestPhaseCriticTemplate:
     def test_template_includes_api_research_freshness_gates(self) -> None:
@@ -211,6 +253,43 @@ class TestPhaseCriticTemplate:
         assert 'Bash' in tools.tools_yaml
         assert 'Glob' in tools.tools_yaml
 
+    def test_template_uses_invocation_contract_style(self) -> None:
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        template = generate_phase_critic_template(tools)
+
+        assert '## Invocation Contract' in template
+        assert '### Scalar Inputs' in template
+        assert '- validation_mode: Optional scalar input.' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert '### Retrieved Context (Not Invocation Inputs)' in template
+
+
+class TestPlanCriticTemplate:
+    def test_template_uses_invocation_contract_style(self) -> None:
+        tools = create_plan_critic_agent_tools(_adapter)
+        template = generate_plan_critic_template(tools)
+
+        assert '## Invocation Contract' in template
+        assert '### Scalar Inputs' in template
+        assert '- plan_name: Plan name for MCP plan retrieval' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert '### Retrieved Context (Not Invocation Inputs)' in template
+
+
+class TestAnalystCriticTemplate:
+    def test_template_uses_invocation_contract_style(self) -> None:
+        tools = create_analyst_critic_agent_tools(_adapter)
+        template = generate_analyst_critic_template(tools)
+
+        assert '## Invocation Contract' in template
+        assert '### Scalar Inputs' in template
+        assert '- loop_id: Loop ID provided by Main Agent for MCP data retrieval' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert '### Retrieved Context (Not Invocation Inputs)' in template
+
 
 class TestTemplateConsistency:
     def test_template_models(self) -> None:
@@ -222,13 +301,9 @@ class TestTemplateConsistency:
         # Roadmap uses opus (creative synthesis — architectural decomposition)
         assert 'model: opus' in generate_roadmap_template(roadmap_tools)
 
-        # Critic and create-phase use sonnet (structured evaluation / extraction)
-        sonnet_templates = [
-            generate_roadmap_critic_template(critic_tools),
-            generate_create_phase_template(create_phase_tools),
-        ]
-        for template in sonnet_templates:
-            assert 'model: sonnet' in template
+        # Roadmap critic stays on opus alongside roadmap; create-phase stays on sonnet.
+        assert 'model: opus' in generate_roadmap_critic_template(critic_tools)
+        assert 'model: sonnet' in generate_create_phase_template(create_phase_tools)
 
     def test_all_templates_have_required_sections(self) -> None:
         roadmap_tools = create_roadmap_agent_tools(_adapter)
@@ -242,11 +317,11 @@ class TestTemplateConsistency:
             generate_create_phase_template(create_phase_tools),
         ]
 
-        required_sections = ['name:', 'description:', 'INPUTS:', 'TASKS:']
-
         for template in templates:
-            for section in required_sections:
-                assert section in template, f'Template missing required section: {section}'
+            assert 'name:' in template
+            assert 'description:' in template
+            assert 'TASKS:' in template
+            assert ('INPUTS:' in template) or ('## Invocation Contract' in template)
 
     def test_no_template_contains_behavioral_descriptions(self) -> None:
         roadmap_tools = create_roadmap_agent_tools(_adapter)
@@ -313,10 +388,24 @@ class TestTemplateConsistency:
         assert '#### Delivery Intent Override' in template
         assert 'Mode: inherit-plan-default' in template
 
+    def test_phase_architect_template_uses_invocation_contract_style(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert '## Invocation Contract' in template
+        assert '### Scalar Inputs' in template
+        assert '- optional_instructions: Additional user guidance for phase development (if provided)' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert '### Retrieved Context (Not Invocation Inputs)' in template
+
     def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:
         task_planner_tools = create_task_planner_agent_tools(_adapter)
         template = generate_task_planner_template(task_planner_tools)
-        assert '- impl_plan_references: Optional structured references' in template
+        assert 'reference_context_markdown' in template
+        assert 'workflow_guidance_markdown' in template
+        assert '## Reference Context' in template
+        assert '### Structured References' in template
         assert 'PHASE_DEVIATION_OVERRIDES' in template
         assert 'Read(.respec-ai/plans/*/references/*.md)' in template
         assert '## IMPLEMENTATION PLAN REFERENCE INTEGRATION' in template
@@ -331,6 +420,28 @@ class TestTemplateConsistency:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)
         template = generate_patch_planner_template(patch_planner_tools)
         assert '- execution_mode: User-selected mode from respec-patch command' in template
+        assert '## Invocation Contract' in template
         assert '#### Execution Intent Policy' in template
         assert '#### Deferred Risk Register' in template
         assert 'patch-mode-selection' in template
+
+    def test_patch_planner_treats_request_brief_as_authoritative(self) -> None:
+        patch_planner_tools = create_patch_planner_agent_tools(_adapter)
+        template = generate_patch_planner_template(patch_planner_tools)
+        assert (
+            '- request_brief: Clarified and normalized patch request from respec-patch. '
+            'This is the only authoritative patch-intent input for planning.'
+        ) in template
+        assert 'Do NOT resolve ambiguity here; ambiguity must already be resolved before planner invocation' in template
+        assert '### Unclear Change Description' not in template
+        assert 'raw_request' not in template
+
+    def test_plan_analyst_documents_only_loop_id_as_invocation_input(self) -> None:
+        tools = create_plan_analyst_agent_tools(_adapter)
+        template = generate_plan_analyst_template(tools)
+
+        assert '## Invocation Contract' in template
+        assert '- loop_id: Loop ID provided by Main Agent for MCP plan retrieval' in template
+        assert '### Grouped Markdown Inputs' in template
+        assert '- None' in template
+        assert 'Business context, requirements, success criteria, and constraints embedded' in template

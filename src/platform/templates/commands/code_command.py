@@ -4,7 +4,7 @@ from src.platform.models import CodeCommandTools
 def generate_code_command_template(tools: CodeCommandTools) -> str:
     return f"""---
 allowed-tools: {tools.tools_yaml}
-argument-hint: [plan-name] [phase-name] [optional: additional-context]
+argument-hint: [plan-name] [phase request]
 description: Transform Phases into production-ready code through TDD-driven implementation
 ---
 
@@ -29,20 +29,40 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 ## Workflow Steps
 
-### 1. Extract Command Arguments and Locate Phase File
+### 1. Parse User Inputs and Locate Phase File
 
-Parse command arguments and locate phase file using partial name:
+Parse user inputs and locate the target phase without guessing at free-form boundaries:
 
 #### Step 1.1: Parse arguments
 
 ```text
 PLAN_NAME = [first argument from command - the project name]
-PHASE_NAME_PARTIAL = [second argument from command - partial phase name]
-OPTIONAL_CONTEXT = [third argument if provided, otherwise empty string]
+RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]
 ```
 
-If OPTIONAL_CONTEXT is provided, preserve it for the full code-implementation
-loop and pass it through to the coder, all reviewers, and the consolidator.
+#### Step 1.1.1: Initialize workflow variables
+
+```text
+PHASE_NAME_PARTIAL = [empty until RAW_PHASE_REQUEST is clarified]
+OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]
+```
+
+Fail closed on ambiguity:
+- Treat RAW_PHASE_REQUEST as the only user-authored source of truth after PLAN_NAME.
+- Do NOT assume RAW_PHASE_REQUEST has a clean boundary between the phase reference
+  and additional implementation guidance.
+- Ask the user a clarifying question or present options whenever multiple reasonable
+  interpretations would change the selected phase, scope, implementation direction,
+  validation criteria, or what should be passed downstream as guidance.
+- Do NOT begin phase lookup until the phase reference is sufficiently clear.
+
+Once RAW_PHASE_REQUEST is sufficiently clear:
+- PHASE_NAME_PARTIAL = [clarified phase selector derived from RAW_PHASE_REQUEST]
+- OPTIONAL_CONTEXT = [remaining clarified implementation guidance, otherwise empty string]
+
+If OPTIONAL_CONTEXT is present after clarification, preserve it for the full
+code-implementation loop and pass it through to the coder, all reviewers, and
+the consolidator.
 
 #### Step 1.2: Search file system for matching phase files
 
@@ -224,6 +244,35 @@ STANDARDS_GUIDE = For each file in GUIDE_FILES:
   If filename stem matches a LANGUAGE_TOML_FILES stem: Read(file) — concatenated content
 If no guide files match: STANDARDS_GUIDE = ""
 
+WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
+  ## Workflow Guidance
+  ### Guidance Summary
+  [OPTIONAL_CONTEXT if present, otherwise "None"]
+  ### Constraints
+  - [preserved constraint from OPTIONAL_CONTEXT]
+  - None
+  ### Resume Context
+  - [resume detail from OPTIONAL_CONTEXT]
+  - None
+  ### Settled Decisions
+  - [clarified decision from OPTIONAL_CONTEXT]
+  - None
+
+PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
+  ## Project Config Context
+  ### Stack Config TOML
+  ```toml
+  [STACK_CONFIG if present, otherwise "None"]
+  ```
+  ### Language Config TOMLs
+  ```toml
+  [LANGUAGE_CONFIGS if present, otherwise "None"]
+  ```
+  ### Standards Guide Markdown
+  ```markdown
+  [STANDARDS_GUIDE if present, otherwise "None"]
+  ```
+
 ACTIVE_REVIEWERS.append("review-consolidator")
 
 # Loop IDs in this command:
@@ -235,6 +284,13 @@ ACTIVE_REVIEWERS.append("review-consolidator")
 
 PHASE1_REVIEWERS = ACTIVE_REVIEWERS excluding "coding-standards-reviewer"
 (coding-standards-reviewer runs in Phase 2 only)
+
+REVIEW_SCOPE_MARKDOWN = compose markdown:
+  ## Review Scope
+  ### Active Reviewers
+  - [each reviewer slug from PHASE1_REVIEWERS]
+  ### Workflow Guidance
+  [WORKFLOW_GUIDANCE_MARKDOWN section values summarized for reviewers, otherwise "None"]
 
 Display: "✓ Active reviewers: {{ACTIVE_REVIEWERS}}"
 Display: "✓ Phase 1 reviewers: {{PHASE1_REVIEWERS}}"

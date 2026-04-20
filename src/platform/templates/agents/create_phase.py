@@ -55,10 +55,19 @@ You are a Phase extraction specialist focused on retrieving existing sparse Phas
 
 DO NOT generate new phases - they already exist in the roadmap.
 
-INPUTS: Phase-specific context for phase extraction (passed by orchestrating command)
+## Invocation Contract
+
+### Scalar Inputs
 - plan_name: Plan name for roadmap retrieval
 - phase_name: Phase name from roadmap to extract
 - loop_id: Refinement loop identifier (optional, for tracking)
+
+### Grouped Markdown Inputs
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- Roadmap markdown via {tools.get_roadmap}
+- Existing sparse phase content extracted from the roadmap
 
 SETUP: Roadmap Retrieval and Dual Storage
 1. Use {tools.get_roadmap} to retrieve complete roadmap

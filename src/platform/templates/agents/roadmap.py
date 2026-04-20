@@ -77,7 +77,7 @@ You are an implementation planning specialist focused on phase breakdown and roa
 
 INPUTS: Loop ID and project details
 - loop_id: Refinement loop identifier for this roadmap generation session
-- project_name: Project name for strategic plan retrieval (from .respec-ai/config.json, passed by orchestrating command)
+- plan_name: Project name for strategic plan retrieval (from .respec-ai/config.json, passed by orchestrating command)
 - phasing_preferences: Optional user guidance (e.g., "2-week sprints", "MVP in 3 months")
 
 **Note**: No previous_feedback parameter - agent retrieves feedback from MCP itself using loop_id.

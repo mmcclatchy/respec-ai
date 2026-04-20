@@ -37,7 +37,7 @@ class TestAutomatedQualityCheckerTemplate:
         assert 'name: respec-automated-quality-checker' in template
         assert 'model: sonnet' in template
         assert 'tools:' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_project_configuration(self) -> None:
@@ -83,7 +83,7 @@ class TestSpecAlignmentReviewerTemplate:
         assert '---' in template
         assert 'name: respec-spec-alignment-reviewer' in template
         assert 'model: sonnet' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_alignment_scoring(self) -> None:
@@ -103,7 +103,7 @@ class TestFrontendReviewerTemplate:
         assert '---' in template
         assert 'name: respec-frontend-reviewer' in template
         assert 'model: sonnet' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_accessibility(self) -> None:
@@ -121,7 +121,7 @@ class TestBackendApiReviewerTemplate:
         assert '---' in template
         assert 'name: respec-backend-api-reviewer' in template
         assert 'model: sonnet' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_api_design(self) -> None:
@@ -140,7 +140,7 @@ class TestDatabaseReviewerTemplate:
         assert '---' in template
         assert 'name: respec-database-reviewer' in template
         assert 'model: sonnet' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_schema_review(self) -> None:
@@ -159,7 +159,7 @@ class TestInfrastructureReviewerTemplate:
         assert '---' in template
         assert 'name: respec-infrastructure-reviewer' in template
         assert 'model: sonnet' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_container_review(self) -> None:
@@ -177,7 +177,7 @@ class TestReviewConsolidatorTemplate:
         assert '---' in template
         assert 'name: respec-review-consolidator' in template
         assert 'model: sonnet' in template
-        assert 'INPUTS:' in template
+        assert '## Invocation Contract' in template
         assert 'TASKS:' in template
 
     def test_template_includes_consolidation_workflow(self) -> None:
@@ -248,7 +248,7 @@ class TestReviewAgentConsistency:
         for template in templates:
             assert 'name:' in template
             assert 'description:' in template
-            assert 'INPUTS:' in template
+            assert '## Invocation Contract' in template
             assert 'TASKS:' in template
 
     def test_no_review_agent_contains_behavioral_descriptions(self) -> None:
@@ -290,6 +290,51 @@ class TestReviewAgentConsistency:
             assert '[Scope:changed-file]' in template
             assert 'Deferred Risk Register' in template
 
+    def test_shared_agents_use_single_workflow_guidance_contract(self) -> None:
+        templates = [
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            generate_review_consolidator_template(create_review_consolidator_agent_tools(_adapter)),
+            generate_coder_template(
+                create_coder_agent_tools(_adapter, platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'])
+            ),
+            generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
+        ]
+        for template in templates:
+            assert '## Invocation Contract' in template
+            assert 'optional_context:' not in template
+            assert 'request_brief:' not in template
+            assert 'Do NOT reinterpret ambiguous guidance or invent missing requirements' in template
+
+    def test_shared_agents_document_grouped_markdown_contracts(self) -> None:
+        templates = [
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+        ]
+        for template in templates:
+            assert 'workflow_guidance_markdown' in template
+            assert '## Workflow Guidance' in template
+            assert '### Guidance Summary' in template
+            assert '### Constraints' in template
+            assert '### Resume Context' in template
+            assert '### Settled Decisions' in template
+
+        consolidator = generate_review_consolidator_template(create_review_consolidator_agent_tools(_adapter))
+        assert 'review_scope_markdown' in consolidator
+        assert '## Review Scope' in consolidator
+        assert '### Active Reviewers' in consolidator
+        assert '### Workflow Guidance' in consolidator
+
 
 class TestCoderTemplateConfig:
     def test_coder_template_has_project_configuration(self) -> None:
@@ -302,7 +347,7 @@ class TestCoderTemplateConfig:
         assert 'PROJECT CONFIGURATION' in template
         assert '.respec-ai/config/stack.toml' in template
         assert '.respec-ai/config/standards/*.toml' in template
-        assert 'standards_guide_markdown' in template
+        assert 'project_config_context_markdown' in template
         assert '.respec-ai/config/standards/guides/*.md' in template
 
     def test_coder_template_no_pseudocode_remains(self) -> None:

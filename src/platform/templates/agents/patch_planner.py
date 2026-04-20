@@ -52,7 +52,7 @@ amendment_task_example = Task(
 def generate_patch_planner_template(tools: PatchPlannerAgentTools) -> str:
     return f"""---
 name: respec-patch-planner
-description: Create targeted amendment tasks from change descriptions by exploring existing codebase
+description: Create targeted amendment tasks from clarified patch requests by exploring existing codebase
 model: {tools.tui_adapter.orchestration_model}
 color: green
 tools: {tools.tools_yaml}
@@ -74,19 +74,29 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a maintenance planning specialist focused on creating targeted amendment tasks for bug fixes, feature extensions, and refactoring of existing code.
 
-INPUTS: Loop context, Phase information, and change description
+## Invocation Contract
+
+### Scalar Inputs
 - task_loop_id: Loop identifier for task refinement
 - plan_name: Project name
 - phase_name: Phase name for retrieval
-- change_description: Explicit change inferred from the raw respec-patch request
 - execution_mode: User-selected mode from respec-patch command (MVP|mixed|hardening)
-- optional_context: Supporting context, constraints, or clarifications inferred from the request
 
-TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
+### Grouped Markdown Inputs
+- request_brief: Clarified and normalized patch request from respec-patch. This is the only authoritative patch-intent input for planning.
+
+### Retrieved Context (Not Invocation Inputs)
+- Phase document from phase_name
+- Existing Task document from task_loop_id when refining
+- Feedback history from task_loop_id
+
+TASKS: Phase + Codebase Exploration + Request Brief → Amendment Task
 1. Retrieve Phase: {tools.retrieve_phase}
-1.25. If the request is ambiguous:
-   - Use AskUserQuestion or equivalent user interaction to clarify the explicit change vs supporting context
-   - Do not guess when the boundary changes task scope or implementation intent
+1.25. Use request_brief as the authoritative patch intent:
+   - Treat request_brief as already clarified by the command workflow
+   - Do NOT reinterpret or narrow the request beyond request_brief unless Phase constraints force it
+   - Do NOT resolve ambiguity here; ambiguity must already be resolved before planner invocation
+   - Do NOT infer missing scope, invent constraints, or reopen command-level clarification decisions
 1.5. Read Implementation Plan Constraints (if present in Phase):
    Search PHASE_MARKDOWN for "### Implementation Plan References"
    For each "- Constraint: `<file-path>`" line found:
@@ -106,7 +116,7 @@ TASKS: Phase + Codebase Exploration + Change Description → Amendment Task
 2. Retrieve existing Task (if refining): {tools.retrieve_task}
 3. Retrieve all feedback: {tools.retrieve_feedback} - returns critic + user feedback
 4. Explore affected codebase:
-   - Use Glob to find relevant files matching the change description
+   - Use Glob to find relevant files matching request_brief
    - Use Read to examine current implementation
    - Use Bash to run `git log --oneline -10` for recent changes context
    - Use Bash to run `git diff HEAD~3 --stat` for recent file changes
@@ -170,7 +180,7 @@ Copy this structure exactly, replacing example values with actual content:
 
 Before creating the amendment task, understand what exists:
 
-1. **Find affected files**: Use Glob to locate files mentioned in or related to change_description
+1. **Find affected files**: Use Glob to locate files mentioned in or related to request_brief
 2. **Read current implementation**: Use Read on the primary files that need modification
 3. **Check recent changes**: Use Bash for `git log` and `git diff` to understand recent context
 4. **Search for dependencies**: Use Grep to find callers/consumers of code being changed
@@ -194,16 +204,16 @@ Examples:
 - `patch-refactor-database-queries`
 - `patch-extend-search-filters`
 
-The slug should be derived from the change_description, keeping it concise but specific.
+The slug should be derived from request_brief, keeping it concise but specific.
 
 ## KEY SECTIONS EXPLAINED
 
 ### Identity
-- **name**: `patch-{{descriptive-slug}}` derived from change_description
+- **name**: `patch-{{descriptive-slug}}` derived from request_brief
 - **phase_path**: `{{plan_name}}/{{phase_name}}`
 
 ### Overview
-- **Goal**: User's change_description expanded with codebase context (one sentence, imperative tone)
+- **Goal**: request_brief expanded with codebase context (one sentence, imperative tone)
 - **Acceptance Criteria**: Specific conditions verified through codebase exploration PLUS:
   - `#### Execution Intent Policy` block
   - `#### Deferred Risk Register` block with stable DR IDs
@@ -259,10 +269,10 @@ This agent creates AMENDMENT tasks with these properties:
 - Report error with suggestion to run phase workflow first
 - Do NOT proceed without Phase context
 
-### Unclear Change Description
-- Use codebase exploration to infer scope
-- Document assumptions in the Goal section
-- Flag areas requiring clarification
+### Unexpected Ambiguity
+- Report that request_brief is insufficiently clear for safe planning
+- Do NOT infer missing scope from codebase exploration or partial matches
+- Stop and return the specific clarification gap to the orchestrator
 
 ## SUCCESS CONFIRMATION
 

@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/patch-request-inference.md`
-- Objective: Simplify respec-patch into a single raw request that is inferred and clarified by the skill.
-- Phase: implementation
-- Last Updated: 2026-04-20T00:00:00Z
+- Plan File: `./.codex/plans/invocation-contract-consistency-pass.md`
+- Objective: Normalize remaining agent templates to the Invocation Contract style without changing their actual invocation inputs.
+- Phase: complete
+- Last Updated: 2026-04-20T20:53:00Z
 
 ## Usage
 
