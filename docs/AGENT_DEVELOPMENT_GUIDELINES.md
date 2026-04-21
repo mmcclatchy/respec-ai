@@ -150,37 +150,86 @@ OUTPUTS: Quality assessment containing:
 
 ### 3. Input-Output Contract Specification
 
-**Principle**: Agents operate on explicit input/output contracts without behavioral assumptions.
+**Principle**: Internal agent contracts must distinguish true invocation inputs from retrieved context and derived state.
 
-**Input Specification Standards**:
-- Exact data formats with examples
-- Required vs. optional input elements  
-- Context boundaries and scope limits
-- No behavioral or reasoning instructions
+**Rule of Thumb**:
+- If the orchestrator passes it directly, document it in the invocation contract.
+- If the agent retrieves it itself, document it as retrieved context.
+- If it is normalized or derived after invocation, do **not** present it as an input.
 
-**Output Specification Standards**:
-- Structured format requirements
-- Required output elements
-- Quality criteria for outputs
-- No process or methodology descriptions
-
-**Template Pattern**:
+**Preferred Internal Contract Format**:
 ```markdown
-INPUTS: [Exact format specification]
-- Primary data: [specific structure]  
-- Context data: [if applicable]
-- Constraints: [explicit limitations]
+## Invocation Contract
 
-TASKS: [Imperative behavior instructions]
-1. [Specific action with clear objective]
-2. [Specific action with clear objective]  
-3. [Specific action with clear objective]
+### Scalar Inputs
+- [deterministic scalar input]
+- [deterministic scalar input]
 
-OUTPUTS: [Structured format requirements]
-- [Required element]: [format specification]
-- [Required element]: [format specification]
-- [Optional element]: [when included]
+### Grouped Markdown Inputs
+- [grouped markdown payload name with exact heading schema]
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- [document retrieved by MCP or filesystem read]
+- [prior feedback or loop state]
 ```
+
+**Scalar Input Standards**:
+- Use scalar inputs for deterministic identifiers and mode flags.
+- Examples:
+  - `loop_id`
+  - `plan_name`
+  - `phase_name`
+  - `phase2_mode`
+  - `validation_mode`
+
+**Grouped Markdown Input Standards**:
+- Use grouped markdown payloads for variable-length internal context that would be brittle as flat parameters.
+- Keep the schema heading-driven and explicit.
+- Prefer markdown over JSON/YAML for prompt readability and maintainability.
+
+**Current Standard Payload Shapes**:
+```markdown
+workflow_guidance_markdown
+- ## Workflow Guidance
+- ### Guidance Summary
+- ### Constraints
+- ### Resume Context
+- ### Settled Decisions
+
+project_config_context_markdown
+- ## Project Config Context
+- ### Stack Config TOML
+- ### Language Config TOMLs
+- ### Standards Guide Markdown
+
+reference_context_markdown
+- ## Reference Context
+- ### Research File Paths
+- ### Implementation Plan Paths
+- ### Structured References
+
+review_scope_markdown
+- ## Review Scope
+- ### Active Reviewers
+- ### Workflow Guidance
+```
+
+**User-Facing Skill / Command Boundary**:
+- User-facing Skills and commands stay free-form and natural-language-first.
+- Users should **not** be required to author markdown payloads.
+- Commands/skills may accept raw trailing text, clarify ambiguity, and normalize it before invoking internal agents.
+- Only internal command-to-agent invocations should use grouped markdown payloads.
+
+**Anti-Pattern**:
+```markdown
+INPUTS:
+- request_text
+- change_description
+- optional_context
+```
+
+This is brittle when multiple fields are variable-length or one field is derived from another. Normalize first in the command, then pass one clear internal contract to the agent.
 
 ## Agent Behavioral Standards
 
@@ -437,8 +486,17 @@ When designing agents that participate in MCP-driven refinement loops:
 **✅ CORRECT: Agent retrieves own data using loop_id**
 
 ```markdown
-INPUTS: Loop ID for specification retrieval and feedback storage
+## Invocation Contract
+
+### Scalar Inputs
 - loop_id: Refinement loop identifier for this session
+
+### Grouped Markdown Inputs
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- Previous feedback from MCP
+- Current specification from MCP
 
 STEP 0: Retrieve Previous Feedback (if refinement iteration)
 CALL mcp__respec-ai__get_loop_status(loop_id=loop_id)
@@ -458,23 +516,20 @@ STEP 2: Process Using Retrieved Data
 Use PREVIOUS_FEEDBACK and CURRENT_PHASES to generate improvements
 ```
 
-**❌ WRONG: Agent receives data as parameters**
+**❌ WRONG: Agent receives retrieved data as parameters**
 
 ```markdown
 INPUTS:
 - loop_id: Loop identifier
-- previous_feedback: Critic feedback from last iteration  # ❌ Don't pass as parameter
-- current_phase: Specification to improve                  # ❌ Don't pass as parameter
-
-TASKS:
-Use provided feedback and phase to generate improvements  # ❌ Agent is not self-sufficient
+- previous_feedback: Critic feedback from last iteration  # ❌ Retrieved context, not invocation input
+- current_phase: Specification to improve                 # ❌ Retrieved context, not invocation input
 ```
 
 #### Command Design Pattern
 
 When designing commands that orchestrate MCP-driven refinement loops:
 
-**✅ CORRECT: Command only checks decisions, retrieves for display**
+**✅ CORRECT: Command only checks decisions, retrieves for display, and normalizes internal payloads**
 
 ```markdown
 STEP 5: Invoke Specialized Agent
@@ -483,7 +538,7 @@ Input:
   - loop_id: LOOP_ID
   - plan_name: PLAN_NAME
   - phase_name: PHASE_NAME
-  - strategic_plan_summary: STRATEGIC_PLAN_SUMMARY
+  - optional_instructions: OPTIONAL_INSTRUCTIONS
   # NO feedback parameter - architect retrieves from MCP itself
 
 STEP 6: Get Loop Decision
@@ -501,6 +556,31 @@ IF LOOP_DECISION == "USER_INPUT":
   FEEDBACK = mcp__respec-ai__get_feedback(loop_id=LOOP_ID, count=1)
   Display: FEEDBACK to user
   Prompt user for input
+```
+
+For richer internal guidance:
+
+```markdown
+WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
+  ## Workflow Guidance
+  ### Guidance Summary
+  [...]
+  ### Constraints
+  [...]
+  ### Resume Context
+  [...]
+  ### Settled Decisions
+  [...]
+
+CALL respec-coder
+Input:
+  - coding_loop_id: CODING_LOOP_ID
+  - task_loop_id: TASK_LOOP_ID
+  - plan_name: PLAN_NAME
+  - phase_name: PHASE_NAME
+  - mode: None
+  - workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN
+  - project_config_context_markdown: PROJECT_CONFIG_CONTEXT_MARKDOWN
 ```
 
 **Narrow Exception: Commit Metadata Synthesis in `respec-code` / `respec-patch`**
@@ -870,7 +950,7 @@ If a variable in curly braces is:
 
 1. **Agent Metadata** (YAML frontmatter)
 2. **Agent Identity Statement**  
-3. **Input Specification**
+3. **Invocation Contract**
 4. **Task Instructions** (Imperative)
 5. **Output Specification**
 6. **Quality Criteria** (Objective measures)
@@ -898,9 +978,19 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a [specific role] focused on [specific function].
 
-INPUTS: [Exact data format specification]
-- [Required input]: [format details]
-- [Optional input]: [when provided]
+## Invocation Contract
+
+### Scalar Inputs
+- [required scalar input]
+- [optional scalar input]
+
+### Grouped Markdown Inputs
+- [grouped payload with exact headings]
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- [retrieved document or loop state]
+- [retrieved document or loop state]
 
 TASKS:
 1. [Imperative action with specific objective]
@@ -924,11 +1014,16 @@ QUALITY CRITERIA:
 
 **✅ Correct Specification Approach**:
 ```markdown
-INPUTS: Implementation plan document containing:
-- Step-by-step implementation roadmap
-- Technology stack specifications  
-- File modification sequences
-- Dependency requirements
+## Invocation Contract
+
+### Scalar Inputs
+- [deterministic identifier]
+
+### Grouped Markdown Inputs
+- [normalized markdown payload when needed]
+
+### Retrieved Context (Not Invocation Inputs)
+- [documents the agent retrieves itself]
 
 TASKS:
 1. Read implementation plan completely
@@ -1009,9 +1104,18 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a [domain] specialist focused on [content creation type].
 
-INPUTS: [Specific input format]
-- [Primary data source]
-- [Context information] (if applicable)
+## Invocation Contract
+
+### Scalar Inputs
+- [primary identifier or deterministic input]
+
+### Grouped Markdown Inputs
+- [normalized grouped payload when needed]
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- [primary data source if retrieved]
+- [context information if retrieved]
 
 TASKS:
 1. [Content analysis imperative]
@@ -1088,8 +1192,17 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a [domain] quality specialist focused on [evaluation type].
 
-INPUTS: [Content type] document for evaluation
-- [Primary content]: [format specification]
+## Invocation Contract
+
+### Scalar Inputs
+- loop_id: Refinement loop identifier
+
+### Grouped Markdown Inputs
+- None
+
+### Retrieved Context (Not Invocation Inputs)
+- [Primary content] via MCP retrieval
+- [Previous feedback] via MCP retrieval
 
 TASKS:
 1. [Analysis imperative using specific framework]
@@ -1182,9 +1295,17 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a [implementation domain] specialist focused on [execution type].
 
-INPUTS: [Specification type] with implementation requirements
-- [Implementation plan]: [format details]
-- [Code context]: [current state information]
+## Invocation Contract
+
+### Scalar Inputs
+- [deterministic identifiers and mode flags]
+
+### Grouped Markdown Inputs
+- [workflow guidance or config payloads]
+
+### Retrieved Context (Not Invocation Inputs)
+- [implementation plan or task document]
+- [current code context]
 
 TASKS:
 1. [Implementation preparation imperative]
@@ -1226,11 +1347,23 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 
 You are a software implementation specialist focused on code development.
 
-INPUTS: Implementation plan with detailed development roadmap
-- Step-by-step implementation sequence
-- Technology stack and framework specifications
-- File modification requirements and code patterns
-- Current codebase context and structure
+## Invocation Contract
+
+### Scalar Inputs
+- coding_loop_id: Feedback loop identifier
+- task_loop_id: Task retrieval loop identifier
+- plan_name: Project name
+- phase_name: Phase name
+- mode: Optional scalar mode flag
+
+### Grouped Markdown Inputs
+- workflow_guidance_markdown
+- project_config_context_markdown
+
+### Retrieved Context (Not Invocation Inputs)
+- Task document
+- Phase document
+- Current codebase context
 
 TASKS:
 1. Read implementation plan and current codebase thoroughly
@@ -1571,11 +1704,21 @@ tools: {MCP tools for retrieval + storage, builtin tools for code inspection}
 
 You are a {specialty} specialist focused on {evaluation area}.
 
-INPUTS: Dual loop context for assessment
+## Invocation Contract
+
+### Scalar Inputs
 - coding_loop_id: Loop identifier for feedback retrieval and review section storage
 - task_loop_id: Loop identifier for Task retrieval (different from coding_loop_id)
 - plan_name: Project name
 - phase_name: Phase name for context
+
+### Grouped Markdown Inputs
+- workflow_guidance_markdown
+
+### Retrieved Context (Not Invocation Inputs)
+- Task document
+- Phase document
+- Previous feedback
 
 TASKS:
 1. Retrieve Task (via task_loop_id)
