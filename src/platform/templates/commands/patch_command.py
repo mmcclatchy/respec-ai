@@ -461,6 +461,14 @@ Loop:
   PHASE1_SCORE = [extract latest Overall Score from PHASE1_FEEDBACK]
   PHASE1_SUMMARY = [extract latest Assessment Summary from PHASE1_FEEDBACK]
   PHASE1_KEY_ISSUES = [extract top key issues from PHASE1_FEEDBACK]
+  PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:
+    "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
+  IF PHASE1_BLOCKERS_ACTIVE:
+    PHASE1_REVIEW_STATUS = "blocked by active blockers"
+  ELIF CODING_DECISION == "complete":
+    PHASE1_REVIEW_STATUS = "ready for completion gate"
+  ELSE:
+    PHASE1_REVIEW_STATUS = "below completion threshold"
 
   # Loop commits are progress checkpoints only.
   # Completion commit is owned by Step 6.7 finalization gate.
@@ -473,7 +481,8 @@ Loop:
     Phase: {{PHASE_NAME}}
     Loop: Phase 1 (coding_loop_id={{CODING_LOOP_ID}})
     Decision: {{CODING_DECISION}}
-    Score: {{PHASE1_SCORE}}/100
+    Rubric Score: {{PHASE1_SCORE}}/100
+    Review Status: {{PHASE1_REVIEW_STATUS}}
 
     Summary:
     {{PHASE1_SUMMARY}}
@@ -521,11 +530,11 @@ VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
 
 ```text
 IF CODING_DECISION == "refine":
-  Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Score: {{CODING_SCORE}}/100 — refining"
+  Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Rubric Score: {{CODING_SCORE}}/100 — {{PHASE1_REVIEW_STATUS}}; refining"
   Return to Step 5.3 (next loop pass runs coder -> reviews -> decision -> commit).
 
 ELIF CODING_DECISION == "complete":
-  Display: "🔵 [Phase 1 · Complete] ✅ Score: {{CODING_SCORE}}/100 — threshold reached, no active blockers"
+  Display: "🔵 [Phase 1 · Complete] ✅ Rubric Score: {{CODING_SCORE}}/100 — ready for next phase (threshold met, no active blockers)"
   IF "coding-standards-reviewer" was in ACTIVE_REVIEWERS: Proceed to Step 6.5
   ELSE:
     FINALIZATION_DECISION_SOURCE = "phase1-complete"
@@ -535,7 +544,7 @@ ELIF CODING_DECISION == "user_input":
   LATEST_FEEDBACK = {tools.get_feedback}
 
   Display LATEST_FEEDBACK to user with:
-  - Current quality score and iteration
+  - Current rubric score and iteration
   - Key issues requiring attention
   - Recommended improvements
 
@@ -568,7 +577,7 @@ STANDARDS_LOOP_ID = {tools.initialize_standards_loop}
 PHASE1_SCORE = [final Overall Score from CODING_LOOP_ID CriticFeedback]
 Display:
 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅  PHASE 1 COMPLETE  ·  Functional Quality Score: {{PHASE1_SCORE}}/100
+✅  PHASE 1 COMPLETE  ·  Functional Rubric Score: {{PHASE1_SCORE}}/100
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🟣  PHASE 2 STARTING: Coding Standards
     Focus: naming · imports · type hints · docstrings
@@ -596,6 +605,14 @@ Loop:
   STANDARDS_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
   STANDARDS_SUMMARY = [extract latest Assessment Summary from STANDARDS_FEEDBACK]
   STANDARDS_KEY_ISSUES = [extract top key issues from STANDARDS_FEEDBACK]
+  STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:
+    "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
+  IF STANDARDS_BLOCKERS_ACTIVE:
+    STANDARDS_REVIEW_STATUS = "blocked by active blockers"
+  ELIF STANDARDS_DECISION == "complete":
+    STANDARDS_REVIEW_STATUS = "ready for completion gate"
+  ELSE:
+    STANDARDS_REVIEW_STATUS = "below completion threshold"
 
   # Loop commits are progress checkpoints only.
   # Completion commit is owned by Step 6.7 finalization gate.
@@ -608,7 +625,8 @@ Loop:
     Phase: {{PHASE_NAME}}
     Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
     Decision: {{STANDARDS_DECISION}}
-    Score: {{STANDARDS_SCORE}}/100
+    Rubric Score: {{STANDARDS_SCORE}}/100
+    Review Status: {{STANDARDS_REVIEW_STATUS}}
 
     Summary:
     {{STANDARDS_SUMMARY}}
@@ -628,11 +646,11 @@ Loop:
     EOF
 
   IF STANDARDS_DECISION == "complete":
-    Display: "🟣 [Phase 2 · Complete] ✅ Score: {{STANDARDS_SCORE}}/100 — standards threshold reached, no active blockers"
+    Display: "🟣 [Phase 2 · Complete] ✅ Rubric Score: {{STANDARDS_SCORE}}/100 — ready for completion gate (threshold met, no active blockers)"
     exit loop
 
   IF STANDARDS_DECISION == "refine":
-    Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Score: {{STANDARDS_SCORE}}/100 — refining standards"
+    Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Rubric Score: {{STANDARDS_SCORE}}/100 — {{STANDARDS_REVIEW_STATUS}}; refining standards"
     continue loop
 
   IF STANDARDS_DECISION == "user_input":
@@ -664,38 +682,51 @@ IF STANDARDS_DECISION == "complete":
 IF FINALIZATION_DECISION_SOURCE is empty:
   FINALIZATION_DECISION_SOURCE = "loop-complete"
 
+COMPLETION_GATE_STATUS = "passed"
+COMPLETION_GATE_SUMMARY = "pre-commit run -a passed."
+
 # Enforce repository hooks exactly once before final completion commit.
 PRECOMMIT_EXIT_CODE = run: pre-commit run -a
 
 IF PRECOMMIT_EXIT_CODE != 0:
   Display: "❌ Completion gate failed: pre-commit hooks reported issues."
   Display: "Finalization is non-compliant until hooks pass."
-  Display: "Address hook failures, then continue refinement or re-finalize."
+  Display: "Classify the failure from the hook transcript before branching."
 
-  Use AskUserQuestion with options:
-    1. Continue refine in current mode
-    2. Finalize now and retry completion gate
+  COMPLETION_GATE_FAILURE_KIND = classify from hook transcript as exactly one of:
+    - "actionable_repo_issue"
+    - "external_blocker"
 
-  IF user selects option 1:
-    USER_FEEDBACK_MARKDOWN = "Completion gate failed; user selected continue refine in mode={{EXECUTION_MODE}}"
+  Classification rules:
+  - Use "actionable_repo_issue" when the failure is fixable by repository changes the workflow owns:
+    formatting/import rewrites, lint failures, type-check failures, test failures,
+    terraform fmt changes, generated-file drift, missing repo configuration, or any hook
+    output that points to code/config/content changes inside the workspace.
+  - Use "external_blocker" only when the failure is outside repo control and cannot be
+    resolved by another refinement pass:
+    missing API keys/credentials, unavailable external services, network outages, rate
+    limits, or missing system prerequisites the workflow does not provision.
+
+  COMPLETION_GATE_FAILURE_SUMMARY = [one concise sentence quoting the concrete blocker]
+
+  IF COMPLETION_GATE_FAILURE_KIND == "actionable_repo_issue":
+    USER_FEEDBACK_MARKDOWN = "Completion gate failed; automatic refine due to actionable hook failure in mode={{EXECUTION_MODE}}. Blocker: {{COMPLETION_GATE_FAILURE_SUMMARY}}"
     LOOP_ID = (
       STANDARDS_LOOP_ID if "coding-standards-reviewer" in ACTIVE_REVIEWERS
       else CODING_LOOP_ID
     )
     {tools.store_user_feedback}
+    Display: "↩ Returning to refinement automatically: {{COMPLETION_GATE_FAILURE_SUMMARY}}"
     IF "coding-standards-reviewer" in ACTIVE_REVIEWERS:
       Return to Step 6.5.2
     ELSE:
       Return to Step 5.3
 
-  IF user selects option 2:
-    USER_FEEDBACK_MARKDOWN = "Completion gate failed; user requested retry finalization."
-    LOOP_ID = (
-      STANDARDS_LOOP_ID if "coding-standards-reviewer" in ACTIVE_REVIEWERS
-      else CODING_LOOP_ID
-    )
-    {tools.store_user_feedback}
-    Return to Step 6.7
+  IF COMPLETION_GATE_FAILURE_KIND == "external_blocker":
+    COMPLETION_GATE_STATUS = "deferred-external-blocker"
+    COMPLETION_GATE_SUMMARY = {{COMPLETION_GATE_FAILURE_SUMMARY}}
+    FINALIZATION_DECISION_SOURCE = "{{FINALIZATION_DECISION_SOURCE}}+external-gate-deferred"
+    Display: "⚠ Proceeding to final completion commit with deferred external blocker: {{COMPLETION_GATE_FAILURE_SUMMARY}}"
 
 # pre-commit may rewrite tracked files or add cleanup-only changes.
 # Treat any resulting diffs as part of the final workflow output.
@@ -724,6 +755,8 @@ FINAL_COMMIT_MESSAGE_BLOCK = compose:
   Finalization Source: {{FINALIZATION_DECISION_SOURCE}}
   Final Loop: {{FINAL_LOOP_LABEL}} (loop_id={{FINAL_LOOP_ID}})
   Final Score: {{FINAL_SCORE}}/100
+  Completion Gate: {{COMPLETION_GATE_STATUS}}
+  Completion Gate Summary: {{COMPLETION_GATE_SUMMARY}}
 
   Summary:
   {{FINAL_SUMMARY}}
@@ -793,6 +826,7 @@ Amendment artifacts:
 - Task: {{TASK_NAME}} stored under {{PHASE_NAME}}
 - Phase Evolution Log: Updated
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
+- Completion Gate: {{COMPLETION_GATE_STATUS}} — {{COMPLETION_GATE_SUMMARY}}
 
 Ready for deployment."
 ```

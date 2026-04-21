@@ -526,6 +526,10 @@ class TestCrossPlatformInvocationRendering:
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
         assert 'Source: review-consolidator CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
+        assert 'Rubric Score: {PHASE1_SCORE}/100' in template
+        assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
+        assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
+        assert 'Review Status: {STANDARDS_REVIEW_STATUS}' in template
         assert '### 7.5: Standards Finalization Phase' in template
         assert '#### Step 7.5.3: Exit to Completion Gate' in template
         assert '### 8.5 Completion Gate (Mandatory)' in template
@@ -566,6 +570,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'COMMIT_SUBJECT = "[WIP] {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
         assert 'COMMIT_SUBJECT = "feat: complete {PHASE_NAME}"' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'Decision: {{CODING_DECISION}}\n    Score: {{PHASE1_SCORE}}/100' not in template
 
     def test_code_template_uses_mandatory_precommit_completion_gate(self) -> None:
         coordinator = TemplateCoordinator()
@@ -576,8 +581,35 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'PRECOMMIT_EXIT_CODE = run: pre-commit run -a' in template
         assert 'Finalization is non-compliant until hooks pass.' in template
+        assert 'Classify the failure from the hook transcript before branching.' in template
+        assert 'COMPLETION_GATE_FAILURE_KIND = classify from hook transcript as exactly one of:' in template
+        assert 'COMPLETION_GATE_STATUS = "deferred-external-blocker"' in template
+        assert 'Proceeding to final completion commit with deferred external blocker' in template
+        assert 'Use AskUserQuestion with options:' not in template[template.index('### 8.5 Completion Gate (Mandatory)') :]
+        assert 'Finalize now with deferred-risk summary (retry completion gate)' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
+
+    def test_code_template_separates_rubric_score_from_review_state(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:' in template
+        assert 'PHASE1_REVIEW_STATUS = "blocked by active blockers"' in template
+        assert 'PHASE1_REVIEW_STATUS = "ready for completion gate"' in template
+        assert 'PHASE1_REVIEW_STATUS = "below completion threshold"' in template
+        assert 'STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:' in template
+        assert 'STANDARDS_REVIEW_STATUS = "blocked by active blockers"' in template
+        assert 'STANDARDS_REVIEW_STATUS = "ready for completion gate"' in template
+        assert 'STANDARDS_REVIEW_STATUS = "below completion threshold"' in template
+        assert 'Current rubric score and iteration' in template
+        assert 'Functional Rubric Score' in template
+        assert 'Rubric Score: {CODING_SCORE}/100' in template
+        assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
+        assert 'threshold reached, no active blockers' not in template
 
     def test_codex_code_template_prefers_commit_skill_in_commit_orchestration(self) -> None:
         coordinator = TemplateCoordinator()
@@ -683,6 +715,10 @@ class TestCrossPlatformInvocationRendering:
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
         assert 'Source: review-consolidator CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
+        assert 'Rubric Score: {PHASE1_SCORE}/100' in template
+        assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
+        assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
+        assert 'Review Status: {STANDARDS_REVIEW_STATUS}' in template
         assert '#### Step 6.5.3: Exit to Completion Gate' in template
         assert '### 6.7 Completion Gate (Mandatory)' in template
 
@@ -722,6 +758,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'COMMIT_SUBJECT = "[WIP] patch {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
         assert 'COMMIT_SUBJECT = "fix: complete {CHANGE_DESCRIPTION}"' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'Decision: {{CODING_DECISION}}\n    Score: {{PHASE1_SCORE}}/100' not in template
 
     def test_patch_template_uses_mandatory_precommit_completion_gate(self) -> None:
         coordinator = TemplateCoordinator()
@@ -732,8 +769,35 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'PRECOMMIT_EXIT_CODE = run: pre-commit run -a' in template
         assert 'Finalization is non-compliant until hooks pass.' in template
+        assert 'Classify the failure from the hook transcript before branching.' in template
+        assert 'COMPLETION_GATE_FAILURE_KIND = classify from hook transcript as exactly one of:' in template
+        assert 'COMPLETION_GATE_STATUS = "deferred-external-blocker"' in template
+        assert 'Proceeding to final completion commit with deferred external blocker' in template
+        assert 'Use AskUserQuestion with options:' not in template[template.index('### 6.7 Completion Gate (Mandatory)') :]
+        assert 'Finalize now and retry completion gate' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
+
+    def test_patch_template_separates_rubric_score_from_review_state(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        assert 'PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:' in template
+        assert 'PHASE1_REVIEW_STATUS = "blocked by active blockers"' in template
+        assert 'PHASE1_REVIEW_STATUS = "ready for completion gate"' in template
+        assert 'PHASE1_REVIEW_STATUS = "below completion threshold"' in template
+        assert 'STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:' in template
+        assert 'STANDARDS_REVIEW_STATUS = "blocked by active blockers"' in template
+        assert 'STANDARDS_REVIEW_STATUS = "ready for completion gate"' in template
+        assert 'STANDARDS_REVIEW_STATUS = "below completion threshold"' in template
+        assert 'Current rubric score and iteration' in template
+        assert 'Functional Rubric Score' in template
+        assert 'Rubric Score: {CODING_SCORE}/100' in template
+        assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
+        assert 'threshold reached, no active blockers' not in template
 
     def test_patch_template_infers_context_from_single_request(self) -> None:
         coordinator = TemplateCoordinator()

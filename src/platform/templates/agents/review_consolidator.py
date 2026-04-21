@@ -311,6 +311,7 @@ blocking issues are present.
 IF BLOCKING_FLAG:
   Keep OVERALL_SCORE unchanged.
   Mark blocking gate active in key issues and assessment summary.
+  Assessment summary MUST include the literal marker `[BLOCKING]`.
   Blocking issues MUST be resolved before review can pass.
 
 VIOLATION: Overwriting OVERALL_SCORE to a hardcoded value (for example 79)
@@ -372,6 +373,7 @@ For each review section:
 IF BLOCKING_FLAG:
   Insert at top of KEY_ISSUES:
     "**[BLOCKING GATE ACTIVE]**: Blocking issues detected from: {{BLOCKING_SOURCES}}. True score is reported, but these issues MUST be resolved before passing review."
+  Ensure assessment_summary includes a concise `[BLOCKING]` note naming the blocking sources.
 
 Filter KEY_ISSUES and RECOMMENDATIONS:
   - Suppress deferred (DR-###) non-P0 items from score-penalizing lists

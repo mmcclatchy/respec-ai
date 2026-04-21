@@ -201,6 +201,7 @@ IF phase2_mode == true:
   Retrieve previous feedback (if iteration > 1): {tools.retrieve_feedback}
   Store CriticFeedback directly: {tools.store_feedback}
   (loop_id=coding_loop_id; feedback MUST follow CRITIC FEEDBACK OUTPUT FORMAT below)
+  Preserve `[BLOCKING]` or `[Severity:P0]` markers in assessment_summary and key_issues for critical violations.
   DO NOT call store_review_section
 
 ELSE (Phase 1 mode):

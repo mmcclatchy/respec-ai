@@ -215,8 +215,18 @@ class TestReviewConsolidatorTemplate:
         template = generate_review_consolidator_template(tools)
         assert 'MANDATORY BLOCKING ISSUE GATE (NO SCORE CAP)' in template
         assert '**[BLOCKING GATE ACTIVE]**' in template
+        assert 'Assessment summary MUST include the literal marker `[BLOCKING]`.' in template
+        assert 'Ensure assessment_summary includes a concise `[BLOCKING]` note naming the blocking sources.' in template
         assert 'OVERALL_SCORE = 79' not in template
         assert 'Score capped at 79' not in template
+
+    def test_coding_standards_phase2_feedback_preserves_blocking_markers(self) -> None:
+        tools = create_coding_standards_reviewer_agent_tools(_adapter)
+        template = generate_coding_standards_reviewer_template(tools)
+        assert (
+            'Preserve `[BLOCKING]` or `[Severity:P0]` markers in assessment_summary and key_issues for critical violations.'
+            in template
+        )
 
 
 class TestReviewAgentConsistency:
