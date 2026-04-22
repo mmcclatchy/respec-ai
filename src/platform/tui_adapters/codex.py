@@ -246,8 +246,6 @@ class CodexAdapter(TuiAdapter):
         completion_signal_label: str,
     ) -> str:
         bounded_policy = self._render_bounded_parallel_policy(worker_group_label, completion_signal_label)
-        if worker_group_label == 'bp-pipeline tasks':
-            return f'\n{bounded_policy}\n'
         if worker_group_label == 'Phase 1 review agents (excluding consolidator)':
             return f'\n\n{bounded_policy}\n\n'
         return bounded_policy

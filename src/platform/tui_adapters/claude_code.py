@@ -168,8 +168,6 @@ class ClaudeCodeAdapter(TuiAdapter):
                 'Do NOT launch agents sequentially. True parallelism requires one message with all invocations.\n\n'
                 'Wait for all agents to complete before proceeding to result aggregation.'
             )
-        if worker_group_label == 'bp-pipeline tasks':
-            return ''
         if worker_group_label == 'Phase 1 review agents (excluding consolidator)':
             return ''
         return super().render_parallel_fanout_policy(worker_group_label, completion_signal_label)

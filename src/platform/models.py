@@ -184,9 +184,6 @@ class PhaseCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_phase_architect: str = Field(..., description='Invocation text for respec-phase-architect agent')
     invoke_phase_critic: str = Field(..., description='Invocation text for respec-phase-critic agent')
-    bp_pipeline_parallel_policy: str = Field(
-        ..., description='Adapter-rendered parallel orchestration policy for bp-pipeline fan-out'
-    )
     task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
     phase_command_reference: str = Field(..., description='Adapter-rendered reference text for respec-phase command')
     roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')

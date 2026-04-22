@@ -404,86 +404,62 @@ MANDATORY COST-AWARE SYNTHESIS POLICY
 - {tools.phase_command_reference} is the ONLY workflow that runs bp synthesis
 - Run synthesis only for unresolved high-value knowledge gaps
 - Do NOT create or execute prompts to hit a quota
-- Existing "Read:" entries and cache hits do NOT consume synthesis worker slots
-- Uncached prompts use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
+- Existing "Read:" entries are reused as-is and do NOT consume synthesis worker slots
+- Unresolved "Synthesize:" prompts use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
 ═══════════════════════════════════════════════
 
-SUB-STEP 3: Pre-compute bp-pipeline parameters for each prompt
+SUB-STEP 3: Initialize synthesis orchestration state
 MAX_ACTIVE_BP_WORKERS = 3
-CACHED_PATHS = []
-UNCACHED_PROMPTS = []
+PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
+PENDING_PROMPTS = copy(SYNTHESIZE_PROMPTS)
+SUCCEEDED_SYNTHESIS = []
+FAILED_SYNTHESIS = []
 
-For EACH prompt in SYNTHESIZE_PROMPTS:
-  Extract TECH (technology names) and TOPICS (remaining keywords) from prompt text.
+SUB-STEP 4: Preflight bp tool availability
+IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:
+  ERROR: "bp skill unavailable — cannot synthesize research requirements"
+  DIAGNOSTIC: "Expected Task(bp) permission and runtime bp skill registration"
+  EXIT: Do NOT proceed to synthesis with fallback behavior
 
-  Bash: best-practices-rag lookup-versions --tech "TECH"
-  → Parse JSON: TECH_VERSIONS_JSON, CUTOFF_DATE
-
-  Bash: best-practices-rag generate-slug --tech "TECH" --topics "TOPICS"
-  → OUTPUT_SLUG = stdout
-  → OUTPUT_FILE = ".best-practices/{{OUTPUT_SLUG}}-codegen.md"
-
-  Bash: best-practices-rag check-file-cache --file "OUTPUT_FILE" --model "<model ID>"
-  → IF hit is true:
-      - record OUTPUT_FILE in CACHED_PATHS
-      - skip this prompt (does NOT consume worker slot)
-  → IF hit is false: continue
-
-  Bash: best-practices-rag query-kb --tech "TECH" --topics "TOPICS"
-  → Parse count, staleness, coverage fields
-  → Compute COVERED_TECHS, UNCOVERED_TECHS, STALE_CONTEXT_BODY
-
-  Build PRIMARY_QUERY: versioned query with "official documentation"
-
-  Store computed parameters for this prompt in UNCACHED_PROMPTS.
-
-SUB-STEP 4: Launch bp-pipeline Tasks IN PARALLEL
-IF UNCACHED_PROMPTS is empty:
-  Display: "✓ All synthesis prompts resolved from cache"
-  Proceed to SUB-STEP 5.
-
-Execute UNCACHED_PROMPTS with bounded concurrency:
+SUB-STEP 5: Launch bp Tasks IN PARALLEL
+Execute PENDING_PROMPTS with bounded concurrency:
 - ACTIVE_WORKERS max size: MAX_ACTIVE_BP_WORKERS (3)
-- PENDING_PROMPTS: uncached prompts not started yet
+- PENDING_PROMPTS: prompts not started yet
 - SUCCEEDED_SYNTHESIS / FAILED_SYNTHESIS trackers
 
 While PENDING_PROMPTS not empty OR ACTIVE_WORKERS not empty:
-  - Launch new bp-pipeline task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
+  - Launch new bp task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
   - Wait for one task completion
-  - Record completion signal/result and free slot
+  - Record completion result and free slot
 
-  Task(bp-pipeline):
-  MODE: codegen
-  TECH: <comma-separated tech names>
-  QUERY: <original synthesize prompt>
-  TECH_VERSIONS_JSON: <JSON from lookup-versions>
-  CUTOFF_DATE: <from lookup-versions>
-  PRIMARY_QUERY: <versioned query>
-  OUTPUT_FILE: <computed path>
-  TOPICS: <comma-separated topics>
-  STALE_CONTEXT_BODY: <if any stale KB results, omit if none>
-  STALE_TECHNOLOGIES: <if any, omit if none>
-  VERSION_DELTAS: <if any, omit if none>
-  UNCOVERED_TECH: <if partial gap, omit if full gap or full coverage>
-  COVERED_TECHS: <if partial gap or cache hit, omit if full gap>
-  ALL_QUERIED_TECHS: <tech names from prompt>
-
-All launched uncached prompts MUST return BP_PIPELINE_COMPLETE signals.
+  Task(bp):
+  <original synthesize prompt text>
 
 ═══════════════════════════════════════════════
-MANDATORY BP-PIPELINE VALIDATION GATE
+MANDATORY BP OUTPUT VALIDATION GATE
 ═══════════════════════════════════════════════
-IF any task does NOT return BP_PIPELINE_COMPLETE:
-  ERROR: "bp-pipeline failed — research synthesis incomplete"
-  DIAGNOSTIC: Show failed task names and error output
-  EXIT: Do NOT proceed to SUB-STEP 5 with partial research
+For EACH completed bp task result:
+  CANDIDATE_PATHS = regex matches from task output using PATH_REGEX
 
-VIOLATION: Displaying bp-pipeline error but continuing to update
+  IF len(CANDIDATE_PATHS) != 1:
+    ERROR: "bp output path parsing failed — expected exactly one .best-practices path"
+    DIAGNOSTIC: Show prompt, candidate path count, and task output excerpt
+    EXIT: Do NOT proceed with partial research updates
+
+  RESOLVED_PATH = CANDIDATE_PATHS[0]
+  IF file at RESOLVED_PATH does NOT exist:
+    ERROR: "bp returned non-existent output path"
+    DIAGNOSTIC: Show prompt and RESOLVED_PATH
+    EXIT: Do NOT proceed with partial research updates
+
+  Record RESOLVED_PATH in SUCCEEDED_SYNTHESIS for this prompt
+
+VIOLATION: Displaying bp synthesis errors but continuing to update
            the phase with incomplete research paths.
 ═══════════════════════════════════════════════
 
-SUB-STEP 5: Update Phase with synthesized paths
-SYNTHESIZED_PATHS = paths from BP_PIPELINE_COMPLETE signals + CACHED_PATHS
+SUB-STEP 6: Update Phase with synthesized paths
+SYNTHESIZED_PATHS = paths from SUCCEEDED_SYNTHESIS
 COMPLETE_PATHS = EXISTING_PATHS + SYNTHESIZED_PATHS
 
 Reconstruct Research Requirements section with ONLY "Read:" entries:
@@ -492,7 +468,7 @@ For each PATH in COMPLETE_PATHS:
 
 Replace "### Research Requirements" section in PHASE_MARKDOWN with updated content.
 
-SUB-STEP 6: Store updated Phase
+SUB-STEP 7: Store updated Phase
 {tools.store_document}
   doc_type="phase",
   key="{{PLAN_NAME}}/{{PHASE_NAME}}",
@@ -500,7 +476,7 @@ SUB-STEP 6: Store updated Phase
 )
 
 Display: "✓ Synthesized {{len(SYNTHESIZED_PATHS)}} research brief(s), {{len(COMPLETE_PATHS)}} total documents"
-Display: "Research synthesis summary: total_prompts={{len(SYNTHESIZE_PROMPTS)}}, cache_hits={{len(CACHED_PATHS)}}, uncached_executed={{len(UNCACHED_PROMPTS)}}, generated_docs={{len(SYNTHESIZED_PATHS) - len(CACHED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
+Display: "Research synthesis summary: total_prompts={{len(SYNTHESIZE_PROMPTS)}}, invoked_bp={{len(SYNTHESIZE_PROMPTS)}}, generated_docs={{len(SYNTHESIZED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
 
 Proceed to Step 7.6.
 ```
@@ -517,7 +493,7 @@ Display to user: "🔍 Validating synthesized research paths..."
 IF validation_result shows invalid_count > 0:
     Display warning: "⚠️ Synthesized research paths invalid:"
     List INVALID_PATHS
-    Display: "Check bp-pipeline output logs"
+    Display: "Check bp task output logs"
     # Non-blocking - user can proceed
 ELSE:
     Display: "✓ All research paths validated successfully"

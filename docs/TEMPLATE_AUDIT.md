@@ -2,6 +2,13 @@
 
 Comprehensive audit of all 29 templates (7 commands + 22 agents) for weak, ambiguous, or unenforceable instructions that allow agents to deviate from intended behavior.
 
+## Contract Update Note (2026-04-22)
+
+Historical findings below are preserved as-recorded. Current phase synthesis contract is:
+
+- `respec-phase` invokes `bp` as the public entrypoint.
+- `bp` may delegate to `bp-pipeline` internally.
+
 ## The Problem
 
 Claude Code (Sonnet/Opus) follows these templates reasonably well even with soft language. Open-source models (Llama, Qwen, DeepSeek, Mistral) do not. They exploit every gap, interpret every "should" as optional, and default to their pretraining distribution when instructions are ambiguous.

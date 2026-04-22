@@ -250,7 +250,9 @@ class TestCrossPlatformInvocationRendering:
             assert 'MANDATORY COST-AWARE SYNTHESIS POLICY' in template
             assert 'MAX_ACTIVE_BP_WORKERS = 3' in template
             assert 'Do NOT create or execute prompts to hit a quota' in template
-            assert 'All launched uncached prompts MUST return BP_PIPELINE_COMPLETE signals.' in template
+            assert 'MANDATORY BP OUTPUT VALIDATION GATE' in template
+            assert "PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
+            assert 'IF len(CANDIDATE_PATHS) != 1:' in template
 
     def test_claude_code_patch_uses_planning_loop_id(self) -> None:
         coordinator = TemplateCoordinator()
@@ -328,12 +330,21 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'respec-task' in template
 
-    def test_phase_template_includes_bp_pipeline_tool_permission(self) -> None:
+    def test_phase_template_includes_bp_tool_permission(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
-        assert 'Task(bp-pipeline)' in template
+        assert 'Task(bp)' in template
+
+    def test_phase_template_uses_bp_public_entrypoint_in_step_7_5(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Task(bp):' in template
+        assert 'IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:' in template
+        assert 'BP_PIPELINE_COMPLETE' not in template
 
     def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
         coordinator = TemplateCoordinator()

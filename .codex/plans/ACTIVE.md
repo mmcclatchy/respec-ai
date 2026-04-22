@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/deterministic-review-consolidation.md`
-- Objective: Replace LLM review consolidation with deterministic MCP-side reviewer result storage and consolidation for code and patch workflows.
+- Plan File: `./.codex/plans/respec-phase-bp-public-entrypoint.md`
+- Objective: Replace respec-phase direct bp-pipeline synthesis coupling with bp public entrypoint and deterministic fail-closed path parsing.
 - Phase: implementation
-- Last Updated: 2026-04-21T22:11:24Z
+- Last Updated: 2026-04-22T15:15:34Z
 
 ## Usage
 

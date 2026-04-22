@@ -132,7 +132,7 @@ def create_phase_command_tools(
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
-    builder.add_builtin_tool(BuiltInTool.TASK, 'bp-pipeline')
+    builder.add_builtin_tool(BuiltInTool.TASK, 'bp')
     builder.add_builtin_tool(BuiltInTool.BASH, '')
 
     for tool in PhaseCommandTools.respec_ai_tools:
@@ -163,10 +163,6 @@ def create_phase_command_tools(
             'respec-phase-critic',
             'evaluate phase quality against FSDD framework',
             [('plan_name', 'PLAN_NAME'), ('loop_id', 'LOOP_ID'), ('phase_name', 'PHASE_NAME')],
-        ),
-        bp_pipeline_parallel_policy=adapter.render_parallel_fanout_policy(
-            'bp-pipeline tasks',
-            'BP_PIPELINE_COMPLETE signals',
         ),
         task_command_invocation=adapter.render_command_invocation(
             'respec-task',
