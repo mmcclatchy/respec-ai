@@ -92,6 +92,8 @@ class RespecAITool(StrEnum):
 
     # Feedback Management Tools
     STORE_CRITIC_FEEDBACK = f'{_RESPEC_AI_PREFIX}store_critic_feedback'
+    STORE_REVIEWER_RESULT = f'{_RESPEC_AI_PREFIX}store_reviewer_result'
+    CONSOLIDATE_REVIEW_CYCLE = f'{_RESPEC_AI_PREFIX}consolidate_review_cycle'
     STORE_USER_FEEDBACK = f'{_RESPEC_AI_PREFIX}store_user_feedback'
     GET_FEEDBACK = f'{_RESPEC_AI_PREFIX}get_feedback'
     STORE_CURRENT_ANALYSIS = f'{_RESPEC_AI_PREFIX}store_current_analysis'
@@ -165,7 +167,6 @@ class RespecAIAgent(StrEnum):
     DATABASE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}database-reviewer'
     INFRASTRUCTURE_REVIEWER = f'{_RESPEC_AGENT_PREFIX}infrastructure-reviewer'
     CODING_STANDARDS_REVIEWER = f'{_RESPEC_AGENT_PREFIX}coding-standards-reviewer'
-    REVIEW_CONSOLIDATOR = f'{_RESPEC_AGENT_PREFIX}review-consolidator'
 
     # Patch workflow agents
     PATCH_PLANNER = f'{_RESPEC_AGENT_PREFIX}patch-planner'

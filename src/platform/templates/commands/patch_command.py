@@ -363,8 +363,6 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   [STANDARDS_GUIDE if present, otherwise "None"]
   ```
 
-ACTIVE_REVIEWERS.append("review-consolidator")
-
 # Loop IDs in this command:
 #   PLANNING_LOOP_ID  — planning loop (amendment task creation)
 #   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
@@ -372,13 +370,6 @@ ACTIVE_REVIEWERS.append("review-consolidator")
 
 PHASE1_REVIEWERS = ACTIVE_REVIEWERS excluding "coding-standards-reviewer"
 (coding-standards-reviewer runs in Phase 2 only)
-
-REVIEW_SCOPE_MARKDOWN = compose markdown:
-  ## Review Scope
-  ### Active Reviewers
-  - [each reviewer slug from PHASE1_REVIEWERS]
-  ### Workflow Guidance
-  [WORKFLOW_GUIDANCE_MARKDOWN section values summarized for reviewers, otherwise "None"]
 
 Display: "Active reviewers: {{ACTIVE_REVIEWERS}}"
 Display: "Phase 1 reviewers: {{PHASE1_REVIEWERS}}"
@@ -413,12 +404,12 @@ You now have TWO active loop IDs - DO NOT confuse them:
 
 **coding_loop_id = {{CODING_LOOP_ID}}**
 - Purpose: Phase 1 functional feedback
-- Used by: coder (feedback retrieval), review-consolidator (feedback storage)
+- Used by: coder (feedback retrieval), reviewers (structured result storage), MCP consolidation
 - Storage: CriticFeedback for code quality
 
 **STANDARDS_LOOP_ID** (initialized in Step 6.5.1)
 - Purpose: Phase 2 standards feedback
-- Used by: coder (standards-only mode), coding-standards-reviewer (phase2_mode)
+- Used by: coder (standards-only mode), coding-standards-reviewer, MCP consolidation
 
 Pass BOTH IDs to coding agents. Never swap them.
 
@@ -426,14 +417,15 @@ Pass BOTH IDs to coding agents. Never swap them.
 
 ```text
 Loop:
+  REVIEW_ITERATION = REVIEW_ITERATION if defined else 1
+
   # A) Coder pass
   {tools.invoke_coder}
   Expected: Code implementation updated, task status synced, iteration handoff report returned
 
   # B) Phase 1 review team orchestration
-  Launch ALL Phase 1 review agents (except consolidator) in parallel.{tools.phase1_review_parallel_policy}
+  Launch ALL Phase 1 review agents in parallel.{tools.phase1_review_parallel_policy}
   Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 4.3.
-  The review-consolidator MUST run AFTER all other reviewers complete.
   coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
 
   Core reviewers (always active):
@@ -442,11 +434,12 @@ Loop:
   {tools.invoke_code_quality}
 
   Optional specialists:
-  For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core and not consolidator:
+  For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core:
     {tools.invoke_dynamic_reviewer_pattern}
 
-  Consolidator (always last):
-  {tools.invoke_consolidator}
+  LOOP_ID = CODING_LOOP_ID
+  ACTIVE_REVIEWERS = PHASE1_REVIEWERS
+  {tools.consolidate_review_cycle}
 
   # C) MCP coding decision
   CODING_DECISION_RESPONSE = {tools.decide_coding_action}
@@ -490,7 +483,7 @@ Loop:
     Key Issues:
     {{PHASE1_KEY_ISSUES}}
 
-    Source: review-consolidator CriticFeedback
+    Source: MCP consolidated CriticFeedback
 
   HAS_CHANGES = `git status --porcelain` has any output
 
@@ -504,6 +497,7 @@ Loop:
 
   # E) Decision handling after commit
   IF CODING_DECISION == "refine":
+    REVIEW_ITERATION = CODING_ITERATION + 1
     continue loop
 
   IF CODING_DECISION == "complete":
@@ -550,6 +544,7 @@ ELIF CODING_DECISION == "user_input":
 
   Prompt user for guidance
   Store user feedback: {tools.store_user_feedback}
+  REVIEW_ITERATION = CODING_ITERATION + 1
   Return to Step 5.3
 ```
 
@@ -573,6 +568,7 @@ nothing to assess. Do NOT apply general coding standards.
 
 ```text
 STANDARDS_LOOP_ID = {tools.initialize_standards_loop}
+STANDARDS_REVIEW_ITERATION = 1
 
 PHASE1_SCORE = [final Overall Score from CODING_LOOP_ID CriticFeedback]
 Display:
@@ -589,12 +585,15 @@ Display:
 
 ```text
 Loop:
+  REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION
 
   {tools.invoke_coder_standards}
 
   {tools.invoke_coding_standards_reviewer}
 
-  (No review-consolidator in Phase 2 — coding-standards-reviewer stores CriticFeedback directly)
+  LOOP_ID = STANDARDS_LOOP_ID
+  ACTIVE_REVIEWERS = ["coding-standards-reviewer"]
+  {tools.consolidate_review_cycle}
 
   STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
   STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status
@@ -650,6 +649,7 @@ Loop:
     exit loop
 
   IF STANDARDS_DECISION == "refine":
+    STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1
     Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Rubric Score: {{STANDARDS_SCORE}}/100 — {{STANDARDS_REVIEW_STATUS}}; refining standards"
     continue loop
 
@@ -662,7 +662,8 @@ Loop:
       2. Finalize current standards state now
 
     Store user choice and branch accordingly:
-    - Option 1: continue loop
+    - Option 1: STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1
+                continue loop
     - Option 2: FINALIZATION_DECISION_SOURCE = "phase2-user-finalized"
                 EXIT Phase 2 loop → Step 6.7
 ```
@@ -741,7 +742,7 @@ ELSE:
   FINAL_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=CODING_LOOP_ID, count=1)
   FINAL_LOOP_LABEL = "Phase 1"
   FINAL_LOOP_ID = CODING_LOOP_ID
-  FINAL_SOURCE = "review-consolidator CriticFeedback"
+  FINAL_SOURCE = "MCP consolidated CriticFeedback"
 
 FINAL_SCORE = [extract latest Overall Score from FINAL_FEEDBACK]
 FINAL_SUMMARY = [extract latest Assessment Summary from FINAL_FEEDBACK]

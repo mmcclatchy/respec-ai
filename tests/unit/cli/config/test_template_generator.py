@@ -5,7 +5,7 @@ from unittest.mock import patch
 from pytest_mock import MockerFixture
 
 from src.platform.platform_selector import PlatformType
-from src.platform.template_generator import generate_templates
+from src.platform.template_generator import EXPECTED_AGENTS_COUNT, generate_templates
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
 
@@ -36,7 +36,7 @@ class TestGenerateTemplates:
         assert len(list(commands_dir.glob('*.md'))) == 8
         assert (commands_dir / 'respec-standards.md').exists()
 
-    def test_generates_thirteen_agents(self, mocker: MockerFixture, tmp_path: Path) -> None:
+    def test_generates_expected_agents(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
 
@@ -45,8 +45,8 @@ class TestGenerateTemplates:
         )
 
         agents_dir = tmp_path / '.claude' / 'agents'
-        assert agents_count == 21
-        assert len(list(agents_dir.glob('*.md'))) == 21
+        assert agents_count == EXPECTED_AGENTS_COUNT
+        assert len(list(agents_dir.glob('*.md'))) == EXPECTED_AGENTS_COUNT
 
     def test_returns_file_paths(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
@@ -56,7 +56,7 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert len(files_written) == 29  # 8 commands + 21 agents = 29
+        assert len(files_written) == (8 + EXPECTED_AGENTS_COUNT)
         assert all(isinstance(f, Path) for f in files_written)
         assert all(f.suffix == '.md' for f in files_written)
 
@@ -68,7 +68,7 @@ class TestGenerateTemplates:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
 
             assert commands_count == 8
-            assert agents_count == 21
+            assert agents_count == EXPECTED_AGENTS_COUNT
 
     def test_removes_stale_respec_files_before_writing(self, mocker: MockerFixture, tmp_path: Path) -> None:
         commands_dir = tmp_path / '.claude' / 'commands'
@@ -154,7 +154,7 @@ class TestGenerateTemplates:
         )
 
         assert commands_count == 8
-        assert agents_count == 21
+        assert agents_count == EXPECTED_AGENTS_COUNT
         assert (tmp_path / '.codex' / 'skills' / 'respec-standards' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()

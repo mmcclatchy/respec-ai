@@ -4,7 +4,7 @@ from datetime import datetime
 from asyncpg import Record
 
 from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
-from src.models.feedback import CriticFeedback
+from src.models.feedback import CriticFeedback, ReviewFinding, ReviewerResult
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
@@ -874,3 +874,108 @@ class PostgresStateManager(StateManager):
                 prefix + '%',
             )
         return [row['key'] for row in rows]
+
+    async def upsert_reviewer_result(self, reviewer_result: ReviewerResult) -> None:
+        await self._get_loop_status_row(reviewer_result.loop_id)
+
+        blockers_json = json.dumps(reviewer_result.blockers)
+        async with db_pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO reviewer_results (
+                        loop_id, review_iteration, reviewer_name, feedback_markdown,
+                        score, blockers, created_at, updated_at
+                    )
+                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, CURRENT_TIMESTAMP)
+                    ON CONFLICT (loop_id, review_iteration, reviewer_name) DO UPDATE SET
+                        feedback_markdown = EXCLUDED.feedback_markdown,
+                        score = EXCLUDED.score,
+                        blockers = EXCLUDED.blockers,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    reviewer_result.loop_id,
+                    reviewer_result.review_iteration,
+                    reviewer_result.reviewer_name.value,
+                    reviewer_result.feedback_markdown,
+                    reviewer_result.score,
+                    blockers_json,
+                    reviewer_result.timestamp,
+                )
+
+                await conn.execute(
+                    """
+                    DELETE FROM review_findings
+                    WHERE loop_id = $1 AND review_iteration = $2 AND reviewer_name = $3
+                    """,
+                    reviewer_result.loop_id,
+                    reviewer_result.review_iteration,
+                    reviewer_result.reviewer_name.value,
+                )
+
+                for sort_order, finding in enumerate(reviewer_result.findings):
+                    await conn.execute(
+                        """
+                        INSERT INTO review_findings (
+                            loop_id, review_iteration, reviewer_name,
+                            priority, feedback, sort_order
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        """,
+                        reviewer_result.loop_id,
+                        reviewer_result.review_iteration,
+                        reviewer_result.reviewer_name.value,
+                        finding.priority.value,
+                        finding.feedback,
+                        sort_order,
+                    )
+
+    async def list_reviewer_results(self, loop_id: str, review_iteration: int) -> list[ReviewerResult]:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            result_rows = await conn.fetch(
+                """
+                SELECT loop_id, review_iteration, reviewer_name, feedback_markdown, score, blockers, updated_at
+                FROM reviewer_results
+                WHERE loop_id = $1 AND review_iteration = $2
+                ORDER BY reviewer_name
+                """,
+                loop_id,
+                review_iteration,
+            )
+            finding_rows = await conn.fetch(
+                """
+                SELECT reviewer_name, priority, feedback
+                FROM review_findings
+                WHERE loop_id = $1 AND review_iteration = $2
+                ORDER BY reviewer_name, sort_order
+                """,
+                loop_id,
+                review_iteration,
+            )
+
+        findings_by_reviewer: dict[str, list[ReviewFinding]] = {}
+        for row in finding_rows:
+            reviewer_name = row['reviewer_name']
+            findings_by_reviewer.setdefault(reviewer_name, []).append(
+                ReviewFinding(priority=row['priority'], feedback=row['feedback'])
+            )
+
+        reviewer_results: list[ReviewerResult] = []
+        for row in result_rows:
+            blockers = json.loads(row['blockers']) if isinstance(row['blockers'], str) else row['blockers']
+            reviewer_name = row['reviewer_name']
+            reviewer_results.append(
+                ReviewerResult(
+                    loop_id=row['loop_id'],
+                    review_iteration=row['review_iteration'],
+                    reviewer_name=reviewer_name,
+                    feedback_markdown=row['feedback_markdown'],
+                    score=row['score'],
+                    blockers=list(blockers or []),
+                    findings=findings_by_reviewer.get(reviewer_name, []),
+                    timestamp=row['updated_at'],
+                )
+            )
+
+        return reviewer_results

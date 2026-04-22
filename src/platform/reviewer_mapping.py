@@ -32,5 +32,4 @@ def resolve_active_reviewers(step_modes: set[StepMode]) -> list[str]:
     if has_coding_standards_file():
         reviewers.append('coding-standards-reviewer')
 
-    reviewers.append('review-consolidator')
     return reviewers

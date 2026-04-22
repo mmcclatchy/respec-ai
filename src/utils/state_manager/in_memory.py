@@ -6,6 +6,7 @@ from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.models.task import Task
+from src.models.feedback import ReviewerResult
 from src.utils.errors import (
     LoopAlreadyExistsError,
     LoopNotFoundError,
@@ -66,6 +67,8 @@ class InMemoryStateManager(StateManager):
 
         # Review section storage (hierarchical key -> raw markdown)
         self._review_sections: dict[str, str] = {}
+        # Structured reviewer results ((loop_id, review_iteration, reviewer_name) -> ReviewerResult)
+        self._reviewer_results: dict[tuple[str, int, str], ReviewerResult] = {}
 
         logger.info(f'InMemoryStateManager initialized with max_history_size={max_history_size}')
 
@@ -77,6 +80,9 @@ class InMemoryStateManager(StateManager):
         self._objective_feedback.pop(loop_id, None)
         self._user_feedback_entries.pop(loop_id, None)
         self._loop_analysis.pop(loop_id, None)
+        reviewer_result_keys = [k for k in self._reviewer_results if k[0] == loop_id]
+        for key in reviewer_result_keys:
+            self._reviewer_results.pop(key, None)
 
     def _log_state(self) -> None:
         logger.debug(
@@ -87,6 +93,7 @@ class InMemoryStateManager(StateManager):
             f'  projects_with_phases={len(self._phases)}\n'
             f'  tasks={len(self._tasks)}\n'
             f'  review_sections={len(self._review_sections)}\n'
+            f'  reviewer_results={len(self._reviewer_results)}\n'
             f'  loop_to_phase_mappings={len(self._loop_to_phase)}\n'
             f'  loop_to_plan_mappings={len(self._loop_to_plan)}\n'
             f'  objective_feedback={len(self._objective_feedback)}'
@@ -110,6 +117,7 @@ class InMemoryStateManager(StateManager):
             f'  tasks_by_phase={tasks_dict}\n'
             f'  inactive_tasks_by_phase={inactive_tasks_dict}\n'
             f'  review_sections={list(self._review_sections.keys())}\n'
+            f'  reviewer_results={list(self._reviewer_results.keys())}\n'
             f'  loop_to_phase={dict(self._loop_to_phase)}\n'
             f'  loop_to_task={dict(self._loop_to_task)}\n'
             f'  loop_to_plan={dict(self._loop_to_plan)}\n'
@@ -734,3 +742,20 @@ class InMemoryStateManager(StateManager):
     async def list_review_sections(self, parent_key: str) -> list[str]:
         prefix = parent_key + '/'
         return sorted(k for k in self._review_sections if k.startswith(prefix))
+
+    async def upsert_reviewer_result(self, reviewer_result: ReviewerResult) -> None:
+        await self.get_loop(reviewer_result.loop_id)
+        key = (
+            reviewer_result.loop_id,
+            reviewer_result.review_iteration,
+            reviewer_result.reviewer_name.value,
+        )
+        self._reviewer_results[key] = reviewer_result
+
+    async def list_reviewer_results(self, loop_id: str, review_iteration: int) -> list[ReviewerResult]:
+        await self.get_loop(loop_id)
+        return [
+            result
+            for (stored_loop_id, stored_iteration, _), result in self._reviewer_results.items()
+            if stored_loop_id == loop_id and stored_iteration == review_iteration
+        ]

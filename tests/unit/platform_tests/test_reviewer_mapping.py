@@ -9,13 +9,12 @@ CODING_STANDARDS_PATCH = 'src.platform.reviewer_mapping.has_coding_standards_fil
 
 class TestResolveActiveReviewers:
     @patch(CODING_STANDARDS_PATCH, return_value=False)
-    def test_empty_modes_returns_core_plus_consolidator(self, _mock: object) -> None:
+    def test_empty_modes_returns_core(self, _mock: object) -> None:
         result = resolve_active_reviewers(set())
         assert result == [
             'automated-quality-checker',
             'spec-alignment-reviewer',
             'code-quality-reviewer',
-            'review-consolidator',
         ]
 
     @patch(CODING_STANDARDS_PATCH, return_value=False)
@@ -25,7 +24,6 @@ class TestResolveActiveReviewers:
             'automated-quality-checker',
             'spec-alignment-reviewer',
             'code-quality-reviewer',
-            'review-consolidator',
         ]
 
     def test_frontend_mode_activates_frontend_reviewer(self) -> None:
@@ -33,7 +31,7 @@ class TestResolveActiveReviewers:
         assert 'frontend-reviewer' in result
         assert 'automated-quality-checker' in result
         assert 'spec-alignment-reviewer' in result
-        assert 'review-consolidator' in result
+        assert 'review-consolidator' not in result
 
     def test_api_mode_activates_backend_api_reviewer(self) -> None:
         result = resolve_active_reviewers({StepMode.API})
@@ -54,13 +52,13 @@ class TestResolveActiveReviewers:
         assert 'database-reviewer' in result
         assert 'automated-quality-checker' in result
         assert 'spec-alignment-reviewer' in result
-        assert 'review-consolidator' in result
+        assert 'review-consolidator' not in result
 
     @patch(CODING_STANDARDS_PATCH, return_value=False)
     def test_all_specialist_modes_activate_all_specialists(self, _mock: object) -> None:
         all_specialist_modes = {StepMode.FRONTEND, StepMode.API, StepMode.DATABASE, StepMode.INFRASTRUCTURE}
         result = resolve_active_reviewers(all_specialist_modes)
-        assert len(result) == 8  # 3 core + 4 specialists + consolidator
+        assert len(result) == 7  # 3 core + 4 specialists
 
     @patch(CODING_STANDARDS_PATCH, return_value=False)
     def test_passthrough_modes_only_core(self, _mock: object) -> None:
@@ -69,12 +67,11 @@ class TestResolveActiveReviewers:
             'automated-quality-checker',
             'spec-alignment-reviewer',
             'code-quality-reviewer',
-            'review-consolidator',
         ]
 
-    def test_consolidator_always_last(self) -> None:
+    def test_last_specialist_order_is_stable(self) -> None:
         result = resolve_active_reviewers({StepMode.FRONTEND, StepMode.DATABASE})
-        assert result[-1] == 'review-consolidator'
+        assert result[-1] == 'database-reviewer'
 
     def test_core_reviewers_always_first(self) -> None:
         result = resolve_active_reviewers({StepMode.INFRASTRUCTURE})
@@ -85,8 +82,7 @@ class TestResolveActiveReviewers:
     def test_coding_standards_reviewer_included_when_file_exists(self, _mock: object) -> None:
         result = resolve_active_reviewers(set())
         assert 'coding-standards-reviewer' in result
-        assert result[-1] == 'review-consolidator'
-        assert result.index('coding-standards-reviewer') < result.index('review-consolidator')
+        assert result[-1] == 'coding-standards-reviewer'
 
     @patch(CODING_STANDARDS_PATCH, return_value=False)
     def test_coding_standards_reviewer_excluded_when_no_file(self, _mock: object) -> None:

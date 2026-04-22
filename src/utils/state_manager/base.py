@@ -7,6 +7,7 @@ from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.models.task import Task
+from src.models.feedback import ReviewerResult
 from src.utils.loop_state import LoopState, MCPResponse
 
 
@@ -192,6 +193,13 @@ class StateManager(ABC):
 
     @abstractmethod
     async def list_review_sections(self, parent_key: str) -> list[str]: ...
+
+    # Reviewer Result Management (structured per-reviewer storage for deterministic consolidation)
+    @abstractmethod
+    async def upsert_reviewer_result(self, reviewer_result: ReviewerResult) -> None: ...
+
+    @abstractmethod
+    async def list_reviewer_results(self, loop_id: str, review_iteration: int) -> list[ReviewerResult]: ...
 
     # Plan Plan Management
     @abstractmethod

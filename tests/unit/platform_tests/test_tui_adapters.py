@@ -849,7 +849,9 @@ class TestCodexAdapterInvocationRendering:
         )
         assert 'via `Invoke the `respec-task` skill with:' not in template
         assert 'Attempt task generation in the SAME run via:' in template
-        assert 'Invoke the `respec-task` skill with: `{PLAN_NAME} {PHASE_NAME}`.' in template
+        assert (
+            'Invoke the `respec-task` skill with: `{PLAN_NAME} {PHASE_NAME} [optional: additional-context]`.'
+        ) in template
 
     def test_codex_generated_templates_do_not_leak_hardcoded_slash_references(self) -> None:
         phase_template = TemplateCoordinator().generate_command_template(

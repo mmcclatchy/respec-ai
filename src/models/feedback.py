@@ -3,10 +3,10 @@ from typing import Self
 
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from .base import MCPModel
-from .enums import CriticAgent
+from .enums import CriticAgent, Priority
 
 
 class CriticFeedback(MCPModel):
@@ -146,3 +146,26 @@ class CriticFeedback(MCPModel):
 - **Timestamp**: {self.timestamp.isoformat()}
 - **Status**: completed
 """
+
+
+class ReviewFinding(BaseModel):
+    priority: Priority
+    feedback: str
+
+
+class ReviewerResult(BaseModel):
+    loop_id: str
+    review_iteration: int
+    reviewer_name: CriticAgent
+    feedback_markdown: str
+    score: int
+    blockers: list[str] = Field(default_factory=list)
+    findings: list[ReviewFinding] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+    @field_validator('score')
+    @classmethod
+    def validate_score_range(cls, score: int) -> int:
+        if not (0 <= score <= 100):
+            raise ValueError('Reviewer score must be between 0 and 100')
+        return score

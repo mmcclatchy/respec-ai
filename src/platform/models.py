@@ -511,11 +511,13 @@ class CodeCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.CONSOLIDATE_REVIEW_CYCLE,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.LIST_DOCUMENTS,
         RespecAITool.STORE_USER_FEEDBACK,
         RespecAITool.STORE_CRITIC_FEEDBACK,
+        RespecAITool.STORE_REVIEWER_RESULT,
         RespecAITool.GET_FEEDBACK,
     ]
 
@@ -534,6 +536,7 @@ class CodeCommandTools(CommandToolsModel):
     decide_planning_action: str = Field(..., description='Decide planning loop action')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
     decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
+    consolidate_review_cycle: str = Field(..., description='Consolidate structured reviewer results for an iteration')
     get_standards_feedback: str = Field(..., description='Get feedback from Phase 2 standards loop')
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
@@ -545,7 +548,6 @@ class CodeCommandTools(CommandToolsModel):
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
     invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')
     invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
-    invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
     phase1_review_parallel_policy: str = Field(
         ..., description='Adapter-rendered parallel orchestration policy for Phase 1 reviewer fan-out'
     )
@@ -644,6 +646,7 @@ class PatchCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.CONSOLIDATE_REVIEW_CYCLE,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.UPDATE_DOCUMENT,
@@ -651,6 +654,7 @@ class PatchCommandTools(CommandToolsModel):
         RespecAITool.LINK_LOOP_TO_DOCUMENT,
         RespecAITool.STORE_USER_FEEDBACK,
         RespecAITool.STORE_CRITIC_FEEDBACK,
+        RespecAITool.STORE_REVIEWER_RESULT,
         RespecAITool.GET_FEEDBACK,
     ]
 
@@ -671,6 +675,7 @@ class PatchCommandTools(CommandToolsModel):
     # Coding loop (Phase 1)
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
+    consolidate_review_cycle: str = Field(..., description='Consolidate structured reviewer results for an iteration')
 
     # Standards loop (Phase 2)
     initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
@@ -693,7 +698,6 @@ class PatchCommandTools(CommandToolsModel):
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
     invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')
     invoke_dynamic_reviewer_pattern: str = Field(..., description='Invocation pattern for dynamic specialist reviewers')
-    invoke_consolidator: str = Field(..., description='Invocation text for respec-review-consolidator agent')
     phase1_review_parallel_policy: str = Field(
         ..., description='Adapter-rendered parallel orchestration policy for Phase 1 reviewer fan-out'
     )
@@ -1214,7 +1218,7 @@ class AutomatedQualityCheckerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1228,14 +1232,14 @@ class AutomatedQualityCheckerAgentTools(AgentToolsModel):
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
-    store_review_section: str = Field(..., description='Store quality check review section')
+    store_reviewer_result: str = Field(..., description='Store quality check reviewer result')
 
 
 class SpecAlignmentReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1247,14 +1251,14 @@ class SpecAlignmentReviewerAgentTools(AgentToolsModel):
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
-    store_review_section: str = Field(..., description='Store spec alignment review section')
+    store_reviewer_result: str = Field(..., description='Store spec alignment reviewer result')
 
 
 class CodeQualityReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1268,7 +1272,7 @@ class CodeQualityReviewerAgentTools(AgentToolsModel):
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
-    store_review_section: str = Field(..., description='Store code quality review section')
+    store_reviewer_result: str = Field(..., description='Store code quality reviewer result')
 
     @computed_field
     def research_directory_pattern(self) -> str:
@@ -1278,7 +1282,7 @@ class CodeQualityReviewerAgentTools(AgentToolsModel):
 class FrontendReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1290,13 +1294,13 @@ class FrontendReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    store_review_section: str = Field(..., description='Store frontend review section')
+    store_reviewer_result: str = Field(..., description='Store frontend reviewer result')
 
 
 class BackendApiReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1307,13 +1311,13 @@ class BackendApiReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    store_review_section: str = Field(..., description='Store backend API review section')
+    store_reviewer_result: str = Field(..., description='Store backend API reviewer result')
 
 
 class DatabaseReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1325,13 +1329,13 @@ class DatabaseReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    store_review_section: str = Field(..., description='Store database review section')
+    store_reviewer_result: str = Field(..., description='Store database reviewer result')
 
 
 class InfrastructureReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1343,15 +1347,14 @@ class InfrastructureReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    store_review_section: str = Field(..., description='Store infrastructure review section')
+    store_reviewer_result: str = Field(..., description='Store infrastructure reviewer result')
 
 
 class CodingStandardsReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_REVIEW_SECTION,
-        RespecAITool.STORE_CRITIC_FEEDBACK,
+        RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
@@ -1363,28 +1366,8 @@ class CodingStandardsReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
-    store_review_section: str = Field(..., description='Store coding standards review section (Phase 1)')
-    store_feedback: str = Field(..., description='Store CriticFeedback directly (Phase 2 mode)')
+    store_reviewer_result: str = Field(..., description='Store coding standards reviewer result')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
-
-
-class ReviewConsolidatorAgentTools(AgentToolsModel):
-    respec_ai_tools: ClassVar[list[RespecAITool]] = [
-        RespecAITool.GET_DOCUMENT,
-        RespecAITool.GET_REVIEW_SECTION,
-        RespecAITool.LIST_REVIEW_SECTIONS,
-        RespecAITool.GET_FEEDBACK,
-        RespecAITool.STORE_CRITIC_FEEDBACK,
-    ]
-
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
-
-    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document for mode and deferred-risk policy')
-    retrieve_review_sections: str = Field(..., description='List review section documents')
-    get_review_section: str = Field(..., description='Get individual review section document')
-    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
-    store_feedback: str = Field(..., description='Store consolidated CriticFeedback')
 
 
 class TaskPlannerAgentTools(AgentToolsModel):

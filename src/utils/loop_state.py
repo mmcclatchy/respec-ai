@@ -119,6 +119,23 @@ class LoopState(BaseModel):
         if self.status == LoopStatus.INITIALIZED:
             self.status = LoopStatus.IN_PROGRESS
 
+    def upsert_feedback(self, feedback: CriticFeedback) -> None:
+        for index, existing in enumerate(self.feedback_history):
+            if existing.critic_agent == feedback.critic_agent and existing.iteration == feedback.iteration:
+                self.feedback_history[index] = feedback
+                if index < len(self.score_history):
+                    self.score_history[index] = feedback.quality_score
+                else:
+                    self.score_history.append(feedback.quality_score)
+                self.current_score = self.score_history[-1] if self.score_history else 0
+                self.iteration = len(self.feedback_history)
+                self.updated_at = datetime.now()
+                if self.status == LoopStatus.INITIALIZED:
+                    self.status = LoopStatus.IN_PROGRESS
+                return
+
+        self.add_feedback(feedback)
+
     def get_recent_feedback(self, count: int = 5) -> list[CriticFeedback]:
         return self.feedback_history[-count:] if self.feedback_history else []
 

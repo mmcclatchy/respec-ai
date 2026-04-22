@@ -221,7 +221,7 @@ class TestCrossPlatformInvocationRendering:
         template = coordinator.generate_command_template(
             RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
-        assert 'Phase 1 review agents (excluding consolidator)' in template
+        assert 'Phase 1 review agents' in template
         assert 'close the completed worker' in template
 
     def test_non_codex_excludes_codex_slot_policy_across_parallel_sections(self) -> None:
@@ -524,7 +524,7 @@ class TestCrossPlatformInvocationRendering:
         assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
         assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
-        assert 'Source: review-consolidator CriticFeedback' in template
+        assert 'Source: MCP consolidated CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
         assert 'Rubric Score: {PHASE1_SCORE}/100' in template
         assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
@@ -585,7 +585,9 @@ class TestCrossPlatformInvocationRendering:
         assert 'COMPLETION_GATE_FAILURE_KIND = classify from hook transcript as exactly one of:' in template
         assert 'COMPLETION_GATE_STATUS = "deferred-external-blocker"' in template
         assert 'Proceeding to final completion commit with deferred external blocker' in template
-        assert 'Use AskUserQuestion with options:' not in template[template.index('### 8.5 Completion Gate (Mandatory)') :]
+        assert (
+            'Use AskUserQuestion with options:' not in template[template.index('### 8.5 Completion Gate (Mandatory)') :]
+        )
         assert 'Finalize now with deferred-risk summary (retry completion gate)' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
@@ -635,7 +637,10 @@ class TestCrossPlatformInvocationRendering:
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
         assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
         assert 'project_config_context_markdown: PROJECT_CONFIG_CONTEXT_MARKDOWN' in template
-        assert 'review_scope_markdown: REVIEW_SCOPE_MARKDOWN' in template
+        assert 'review_iteration: REVIEW_ITERATION' in template
+        assert 'STANDARDS_REVIEW_ITERATION = 1' in template
+        assert 'REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION' in template
+        assert 'phase2_mode: true' not in template
 
     def test_task_template_excludes_stale_create_task_target(self) -> None:
         coordinator = TemplateCoordinator()
@@ -713,7 +718,7 @@ class TestCrossPlatformInvocationRendering:
         assert '#### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)' in template
         assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
-        assert 'Source: review-consolidator CriticFeedback' in template
+        assert 'Source: MCP consolidated CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
         assert 'Rubric Score: {PHASE1_SCORE}/100' in template
         assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
@@ -773,7 +778,9 @@ class TestCrossPlatformInvocationRendering:
         assert 'COMPLETION_GATE_FAILURE_KIND = classify from hook transcript as exactly one of:' in template
         assert 'COMPLETION_GATE_STATUS = "deferred-external-blocker"' in template
         assert 'Proceeding to final completion commit with deferred external blocker' in template
-        assert 'Use AskUserQuestion with options:' not in template[template.index('### 6.7 Completion Gate (Mandatory)') :]
+        assert (
+            'Use AskUserQuestion with options:' not in template[template.index('### 6.7 Completion Gate (Mandatory)') :]
+        )
         assert 'Finalize now and retry completion gate' not in template
         assert 'git commit --allow-empty --no-verify -F - <<' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
@@ -820,7 +827,10 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown from PATCH_REQUEST_BRIEF:' in template
         assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
-        assert 'review_scope_markdown: REVIEW_SCOPE_MARKDOWN' in template
+        assert 'review_iteration: REVIEW_ITERATION' in template
+        assert 'STANDARDS_REVIEW_ITERATION = 1' in template
+        assert 'REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION' in template
+        assert 'phase2_mode: true' not in template
         assert 'raw_request: RAW_REQUEST' not in template
         assert 'Do NOT derive execution inputs from an ambiguous RAW_REQUEST.' in template
         assert 'Do NOT invoke the patch planner until the request is sufficiently clear.' in template

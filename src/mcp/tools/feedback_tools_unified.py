@@ -3,7 +3,8 @@ import logging
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
-from src.models.feedback import CriticFeedback
+from src.models.enums import CriticAgent, Priority
+from src.models.feedback import CriticFeedback, ReviewFinding, ReviewerResult
 from src.utils.errors import LoopNotFoundError
 from src.utils.loop_state import MCPResponse
 from src.utils.state_manager import StateManager
@@ -22,6 +23,27 @@ class UnifiedFeedbackTools:
 
     def __init__(self, state: StateManager) -> None:
         self.state = state
+        self._phase1_core_weights: dict[CriticAgent, float] = {
+            CriticAgent.AUTOMATED_QUALITY_CHECKER: 0.30,
+            CriticAgent.SPEC_ALIGNMENT_REVIEWER: 0.35,
+            CriticAgent.CODE_QUALITY_REVIEWER: 0.15,
+        }
+        self._phase1_specialists: set[CriticAgent] = {
+            CriticAgent.FRONTEND_REVIEWER,
+            CriticAgent.BACKEND_API_REVIEWER,
+            CriticAgent.DATABASE_REVIEWER,
+            CriticAgent.INFRASTRUCTURE_REVIEWER,
+        }
+        self._phase1_review_universe: list[CriticAgent] = [
+            CriticAgent.AUTOMATED_QUALITY_CHECKER,
+            CriticAgent.SPEC_ALIGNMENT_REVIEWER,
+            CriticAgent.CODE_QUALITY_REVIEWER,
+            CriticAgent.FRONTEND_REVIEWER,
+            CriticAgent.BACKEND_API_REVIEWER,
+            CriticAgent.DATABASE_REVIEWER,
+            CriticAgent.INFRASTRUCTURE_REVIEWER,
+        ]
+        self._phase2_review_universe: list[CriticAgent] = [CriticAgent.CODING_STANDARDS_REVIEWER]
 
     async def store_critic_feedback(self, loop_id: str, feedback_markdown: str) -> MCPResponse:
         """Store structured critic feedback from automated assessment.
@@ -47,7 +69,7 @@ class UnifiedFeedbackTools:
         feedback = self._parse_and_validate_feedback(feedback_markdown)
 
         # Add to loop state (updates score, adds to feedback_history)
-        loop_state.add_feedback(feedback)
+        loop_state.upsert_feedback(feedback)
         await self.state.save_loop(loop_state)
 
         return MCPResponse(
@@ -203,6 +225,168 @@ class UnifiedFeedbackTools:
 
         return MCPResponse(id=loop_id, status=loop_status.status, message=message)
 
+    async def store_reviewer_result(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+        feedback_markdown: str,
+        score: int,
+        blockers: list[str],
+        findings: list[dict[str, str]],
+    ) -> MCPResponse:
+        if not loop_id or not loop_id.strip():
+            raise ToolError('Loop ID cannot be empty')
+        if review_iteration < 1:
+            raise ToolError('review_iteration must be >= 1')
+        if not reviewer_name or not reviewer_name.strip():
+            raise ToolError('reviewer_name cannot be empty')
+        if not feedback_markdown or not feedback_markdown.strip():
+            raise ToolError('feedback_markdown cannot be empty')
+
+        try:
+            loop_state = await self.state.get_loop(loop_id)
+        except LoopNotFoundError:
+            raise ResourceError('Loop does not exist')
+
+        review_findings = [
+            ReviewFinding(
+                priority=Priority(item['priority']),
+                feedback=item['feedback'],
+            )
+            for item in findings
+        ]
+        reviewer_result = ReviewerResult(
+            loop_id=loop_id,
+            review_iteration=review_iteration,
+            reviewer_name=self._parse_reviewer_name(reviewer_name),
+            feedback_markdown=feedback_markdown,
+            score=score,
+            blockers=blockers or [],
+            findings=review_findings,
+        )
+        await self.state.upsert_reviewer_result(reviewer_result)
+        return MCPResponse(
+            id=loop_id,
+            status=loop_state.status,
+            message=(
+                f'Stored reviewer result for {reviewer_result.reviewer_name.value} '
+                f'(iteration={review_iteration}, score={reviewer_result.score})'
+            ),
+        )
+
+    async def consolidate_review_cycle(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        active_reviewers: list[str],
+    ) -> MCPResponse:
+        if not loop_id or not loop_id.strip():
+            raise ToolError('Loop ID cannot be empty')
+        if review_iteration < 1:
+            raise ToolError('review_iteration must be >= 1')
+        if not active_reviewers:
+            raise ToolError('active_reviewers must not be empty')
+
+        try:
+            loop_state = await self.state.get_loop(loop_id)
+        except LoopNotFoundError:
+            raise ResourceError('Loop does not exist')
+
+        active_critic_agents = [self._parse_reviewer_name(name) for name in active_reviewers]
+        stored_results = await self.state.list_reviewer_results(loop_id, review_iteration)
+        results_by_reviewer = {result.reviewer_name: result for result in stored_results}
+
+        missing_reviewers = [name for name in active_critic_agents if name not in results_by_reviewer]
+        if missing_reviewers:
+            missing = ', '.join(name.value for name in missing_reviewers)
+            raise ToolError(f'Cannot consolidate review cycle: missing reviewer submissions: {missing}')
+
+        is_phase2 = active_critic_agents == [CriticAgent.CODING_STANDARDS_REVIEWER]
+        universe = self._phase2_review_universe if is_phase2 else self._phase1_review_universe
+
+        active_results = [results_by_reviewer[name] for name in active_critic_agents]
+        overall_score = (
+            self._compute_phase2_score(active_results) if is_phase2 else self._compute_phase1_score(active_results)
+        )
+
+        all_blockers = [
+            f'[{result.reviewer_name.value}] {blocker}'
+            for result in active_results
+            for blocker in result.blockers
+            if blocker.strip()
+        ]
+        findings_by_priority: dict[Priority, list[str]] = {
+            Priority.P0: [],
+            Priority.P1: [],
+            Priority.P2: [],
+            Priority.P3: [],
+        }
+        for result in active_results:
+            for finding in result.findings:
+                findings_by_priority[finding.priority].append(f'[{result.reviewer_name.value}] {finding.feedback}')
+
+        blocker_active = bool(all_blockers)
+        summary = (
+            f'Consolidated {len(active_results)} reviewer result(s) for iteration {review_iteration}. '
+            f'Composite score={overall_score}/100. '
+            + ('[BLOCKING] Active blockers detected.' if blocker_active else 'No active blockers detected.')
+        )
+        if blocker_active:
+            summary += f' Blockers: {len(all_blockers)}'
+
+        issues: list[str] = []
+        for priority in (Priority.P0, Priority.P1, Priority.P2, Priority.P3):
+            for item in findings_by_priority[priority]:
+                issues.append(f'[Severity:{priority.value}] {item}')
+        for blocker in all_blockers:
+            issues.append(f'[BLOCKING] {blocker}')
+
+        recommendations: list[str] = []
+        if blocker_active:
+            recommendations.append('[Priority:P0] Resolve all blocking findings before completion.')
+        recommendations.append('Address P0/P1 findings first, then rerun review cycle.')
+
+        detail_lines = ['### Reviewer Results', '']
+        for reviewer in universe:
+            result = results_by_reviewer.get(reviewer)
+            if result:
+                detail_lines.append(f'#### {reviewer.value}')
+                detail_lines.append(f'- Score: {result.score}/100')
+                if result.blockers:
+                    detail_lines.append('- Blockers:')
+                    detail_lines.extend([f'  - {blocker}' for blocker in result.blockers])
+                else:
+                    detail_lines.append('- Blockers: none')
+                detail_lines.append('')
+                detail_lines.append(result.feedback_markdown)
+                detail_lines.append('')
+            else:
+                detail_lines.append(f'#### {reviewer.value}')
+                detail_lines.append('- Not invoked for this work.')
+                detail_lines.append('')
+
+        feedback = CriticFeedback(
+            loop_id=loop_id,
+            critic_agent=CriticAgent.CODING_STANDARDS_REVIEWER if is_phase2 else CriticAgent.REVIEW_CONSOLIDATOR,
+            iteration=review_iteration,
+            overall_score=overall_score,
+            assessment_summary=summary,
+            detailed_feedback='\n'.join(detail_lines).strip(),
+            key_issues=issues[:50],
+            recommendations=recommendations,
+        )
+        loop_state.upsert_feedback(feedback)
+        await self.state.save_loop(loop_state)
+
+        return MCPResponse(
+            id=loop_id,
+            status=loop_state.status,
+            current_score=overall_score,
+            iteration=review_iteration,
+            message=f'Consolidated review cycle for loop {loop_id} iteration {review_iteration}',
+        )
+
     def _parse_and_validate_feedback(self, feedback_markdown: str) -> CriticFeedback:
         try:
             feedback = CriticFeedback.parse_markdown(feedback_markdown)
@@ -223,6 +407,41 @@ class UnifiedFeedbackTools:
 
         return feedback
 
+    def _compute_phase1_score(self, active_results: list[ReviewerResult]) -> int:
+        score_by_reviewer = {result.reviewer_name: result.score for result in active_results}
+        core_weights = dict(self._phase1_core_weights)
+
+        specialist_weights: dict[CriticAgent, float] = {}
+        active_specialists = [reviewer for reviewer in self._phase1_specialists if reviewer in score_by_reviewer]
+        if active_specialists:
+            per_specialist_weight = 0.20 / len(active_specialists)
+            specialist_weights = {reviewer: per_specialist_weight for reviewer in active_specialists}
+        else:
+            # Re-normalize core reviewers when no specialists are active.
+            core_weight_total = sum(core_weights.values())
+            specialist_weights = {}
+            core_weights = {reviewer: weight / core_weight_total for reviewer, weight in core_weights.items()}
+
+        weighted_total = 0.0
+        for reviewer, weight in core_weights.items():
+            if reviewer in score_by_reviewer:
+                weighted_total += score_by_reviewer[reviewer] * weight
+        for reviewer, weight in specialist_weights.items():
+            weighted_total += score_by_reviewer[reviewer] * weight
+        return int(round(weighted_total))
+
+    def _compute_phase2_score(self, active_results: list[ReviewerResult]) -> int:
+        if not active_results:
+            return 0
+        return int(round(sum(result.score for result in active_results) / len(active_results)))
+
+    def _parse_reviewer_name(self, reviewer_name: str) -> CriticAgent:
+        normalized = reviewer_name.strip()
+        for critic in CriticAgent:
+            if critic.value == normalized:
+                return critic
+        raise ToolError(f'Unknown reviewer_name: {reviewer_name}')
+
 
 def register_unified_feedback_tools(mcp: FastMCP) -> None:
     _tools: UnifiedFeedbackTools | None = None
@@ -232,6 +451,79 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         if _tools is None:
             _tools = UnifiedFeedbackTools(ctx.lifespan_context['state_manager'])
         return _tools
+
+    @mcp.tool()
+    async def store_reviewer_result(
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+        feedback_markdown: str,
+        score: int,
+        blockers: list[str],
+        findings: list[dict[str, str]],
+        ctx: Context,
+    ) -> MCPResponse:
+        """Store a structured reviewer result for deterministic review consolidation.
+
+        Parameters:
+        - loop_id: Loop identifier
+        - review_iteration: Explicit review pass number for this loop
+        - reviewer_name: Reviewer agent name (e.g., code-quality-reviewer)
+        - feedback_markdown: Full reviewer section markdown
+        - score: Reviewer-local score (0..100)
+        - blockers: Reviewer blocker list
+        - findings: List of finding objects with `priority` and `feedback`
+
+        Returns:
+        - MCPResponse: Contains loop id and storage confirmation
+        """
+        await ctx.info(
+            f'Storing reviewer result for loop {loop_id} (iteration={review_iteration}, reviewer={reviewer_name})'
+        )
+        try:
+            result = await _get_tools(ctx).store_reviewer_result(
+                loop_id=loop_id,
+                review_iteration=review_iteration,
+                reviewer_name=reviewer_name,
+                feedback_markdown=feedback_markdown,
+                score=score,
+                blockers=blockers,
+                findings=findings,
+            )
+            await ctx.info(f'Stored reviewer result for loop {loop_id}')
+            return result
+        except (ToolError, ResourceError) as e:
+            await ctx.error(f'Failed to store reviewer result: {str(e)}')
+            raise
+        except Exception as e:
+            await ctx.error(f'Unexpected error: {str(e)}')
+            raise ToolError(f'Unexpected error storing reviewer result: {str(e)}')
+
+    @mcp.tool()
+    async def consolidate_review_cycle(
+        loop_id: str, review_iteration: int, active_reviewers: list[str], ctx: Context
+    ) -> MCPResponse:
+        """Consolidate stored reviewer results into one CriticFeedback for this iteration.
+
+        Parameters:
+        - loop_id: Loop identifier
+        - review_iteration: Explicit review pass number for this loop
+        - active_reviewers: Reviewer names invoked for this pass
+
+        Returns:
+        - MCPResponse: Consolidation confirmation with score/iteration metadata
+        """
+        await ctx.info(f'Consolidating review cycle for loop {loop_id} iteration {review_iteration}')
+        try:
+            result = await _get_tools(ctx).consolidate_review_cycle(loop_id, review_iteration, active_reviewers)
+            await ctx.info(f'Consolidated review cycle for loop {loop_id}')
+            return result
+        except (ToolError, ResourceError) as e:
+            await ctx.error(f'Failed to consolidate review cycle: {str(e)}')
+            raise
+        except Exception as e:
+            await ctx.error(f'Unexpected error: {str(e)}')
+            raise ToolError(f'Unexpected error consolidating review cycle: {str(e)}')
 
     @mcp.tool()
     async def store_critic_feedback(loop_id: str, feedback_markdown: str, ctx: Context) -> MCPResponse:

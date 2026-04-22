@@ -106,6 +106,13 @@ class CriticAgent(str, Enum):
         return aliases.get(normalized) or cls.ANALYST_CRITIC
 
 
+class Priority(str, Enum):
+    P0 = 'P0'
+    P1 = 'P1'
+    P2 = 'P2'
+    P3 = 'P3'
+
+
 class StepMode(str, Enum):
     IMPLEMENTATION = 'implementation'
     FRONTEND = 'frontend'

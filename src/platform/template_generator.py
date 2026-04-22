@@ -28,7 +28,6 @@ from src.platform.template_helpers import (
     create_phase_critic_agent_tools,
     create_plan_analyst_agent_tools,
     create_plan_critic_agent_tools,
-    create_review_consolidator_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
@@ -51,7 +50,6 @@ from src.platform.templates.agents import (
     generate_phase_critic_template,
     generate_plan_analyst_template,
     generate_plan_critic_template,
-    generate_review_consolidator_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
     generate_spec_alignment_reviewer_template,
@@ -109,7 +107,6 @@ _AGENT_NAMES = [
     'respec-database-reviewer',
     'respec-infrastructure-reviewer',
     'respec-coding-standards-reviewer',
-    'respec-review-consolidator',
 ]
 
 EXPECTED_COMMANDS_COUNT = len(_COMMAND_TEMPLATES)
@@ -243,7 +240,6 @@ def _get_agent_specs(
     database_reviewer_tools = create_database_reviewer_agent_tools(tui_adapter)
     infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools(tui_adapter)
     coding_standards_reviewer_tools = create_coding_standards_reviewer_agent_tools(tui_adapter)
-    review_consolidator_tools = create_review_consolidator_agent_tools(tui_adapter)
 
     return [
         _parse_agent_spec('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
@@ -279,8 +275,5 @@ def _get_agent_specs(
         _parse_agent_spec(
             'respec-coding-standards-reviewer',
             generate_coding_standards_reviewer_template(coding_standards_reviewer_tools),
-        ),
-        _parse_agent_spec(
-            'respec-review-consolidator', generate_review_consolidator_template(review_consolidator_tools)
         ),
     ]

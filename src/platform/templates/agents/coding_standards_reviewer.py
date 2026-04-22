@@ -1,31 +1,4 @@
-from textwrap import indent
-
-from src.models.enums import CriticAgent
-from src.models.feedback import CriticFeedback
 from src.platform.models import CodingStandardsReviewerAgentTools
-
-
-csr_feedback_template = CriticFeedback(
-    loop_id='[coding_loop_id from input]',
-    critic_agent=CriticAgent.CODING_STANDARDS_REVIEWER,
-    iteration=0,
-    overall_score=0,
-    assessment_summary='[2-3 sentence summary of coding standards compliance]',
-    detailed_feedback="""### Standards Applied
-[List each config file read and sections found]
-
-### Assessment Results
-[For each standards section found, assessment with file:line references]
-
-### Progress Notes
-[Improvement from previous iteration if applicable]""",
-    key_issues=[
-        '**[Category]**: [Description with file:line reference and point deduction]',
-    ],
-    recommendations=[
-        '**[Priority]**: [Fix with standard reference from config file]',
-    ],
-).build_markdown()
 
 
 def generate_coding_standards_reviewer_template(tools: CodingStandardsReviewerAgentTools) -> str:
@@ -49,7 +22,7 @@ config files. You have ZERO built-in language rules. All assessment logic comes 
 - task_loop_id: Loop identifier for Task retrieval
 - plan_name: Project name (from .respec-ai/config.json)
 - phase_name: Phase name for context
-- phase2_mode: Boolean scalar input. `true` means store full CriticFeedback directly to coding_loop_id for Phase 2. `false` means store only the review section for Phase 1 behavior.
+- review_iteration: Explicit review pass number for deterministic reviewer-result storage.
 
 ### Grouped Markdown Inputs
 - workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
@@ -62,7 +35,7 @@ config files. You have ZERO built-in language rules. All assessment logic comes 
 ### Retrieved Context (Not Invocation Inputs)
 - Task document from task_loop_id
 - Standards TOML files from `.respec-ai/config/standards/`
-- Prior feedback from coding_loop_id when phase2_mode is true
+- Prior feedback from coding_loop_id
 
 ═══════════════════════════════════════════════
 TOOL INVOCATION
@@ -82,16 +55,16 @@ Apply workflow_guidance_markdown before assessing standards:
 - Do NOT reinterpret ambiguous guidance or invent missing requirements
 
 ═══════════════════════════════════════════════
-MANDATORY OUTPUT SCOPE (Phase 1 Mode)
+MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
-Store review section via {tools.store_review_section}.
+Store reviewer result via {tools.store_reviewer_result}.
 Your ONLY output to the orchestrator is:
-  "Review section stored: [plan_name]/[phase_name]/review-coding-standards. Adjustment: [NET_ADJUSTMENT]/[-10 to +5]"
+  "Reviewer result stored: coding-standards-reviewer (score=[REVIEW_SCORE], iteration=[review_iteration])"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
 
-VIOLATION: Returning full review section markdown to the orchestrator
+VIOLATION: Returning full reviewer feedback markdown to the orchestrator
            instead of storing via MCP tool.
 ═══════════════════════════════════════════════
 
@@ -197,41 +170,18 @@ Clamp to 0-100 range.
 ### Step 5: Store Results
 
 ```text
-IF phase2_mode == true:
-  Retrieve previous feedback (if iteration > 1): {tools.retrieve_feedback}
-  Store CriticFeedback directly: {tools.store_feedback}
-  (loop_id=coding_loop_id; feedback MUST follow CRITIC FEEDBACK OUTPUT FORMAT below)
-  Preserve `[BLOCKING]` or `[Severity:P0]` markers in assessment_summary and key_issues for critical violations.
-  DO NOT call store_review_section
-
-ELSE (Phase 1 mode):
-  Store review section: {tools.store_review_section}
+Retrieve previous feedback (if iteration > 1): {tools.retrieve_feedback}
+Prepare structured output fields:
+- REVIEW_SCORE: integer reviewer-local score (0-100)
+- BLOCKERS: list[str] of blocking findings (empty list if none)
+- FINDINGS: list[{{priority, feedback}}] grouped as P0/P1/P2/P3
+Preserve `[BLOCKING]` or `[Severity:P0]` markers in findings for critical violations.
+Store reviewer result: {tools.store_reviewer_result}
 ```
 
-## CRITICAL: EXACT FEEDBACK FORMAT REQUIRED (Phase 2 Mode)
+## REVIEWER FEEDBACK MARKDOWN FORMAT
 
-When phase2_mode is true, the feedback document MUST start with exactly:
-`# Critic Feedback: CODING-STANDARDS-REVIEWER`
-
-Do NOT use:
-- `## Critic Feedback` (wrong header level)
-- `# Critic Feedback` (missing colon and agent name)
-- `# Critic Feedback: CODING_STANDARDS_REVIEWER` (wrong format - use hyphens)
-- Any other variation
-
-**MCP Validation will REJECT feedback that doesn't have this exact header.**
-
-## CRITIC FEEDBACK OUTPUT FORMAT (Phase 2 Mode)
-
-When phase2_mode is true, generate feedback in CriticFeedback format:
-
-  ```markdown
-{indent(csr_feedback_template, '  ')}
-  ```
-
-## REVIEW SECTION OUTPUT FORMAT (Phase 1 Mode)
-
-Store the following markdown as review section:
+Store the following markdown as reviewer feedback:
 
 ```markdown
 ### Coding Standards Review (Adjustment: {{NET_ADJUSTMENT}}/[-10 to +5])
@@ -262,7 +212,7 @@ Store the following markdown as review section:
 
 ## SCORING IMPACT
 
-Specialist reviewers do not contribute to the base 100-point score directly. Instead:
+Specialist reviewers contribute reviewer-local scores used by deterministic MCP consolidation:
 
 **Deductions** (up to -10 points):
 - Critical violations from config (security, code separation): -5 to -10 points, mark [BLOCKING]

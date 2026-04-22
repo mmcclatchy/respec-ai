@@ -34,6 +34,8 @@ _TEST_TABLES = (
     'loop_analysis',
     'tasks',
     'review_sections',
+    'review_findings',
+    'reviewer_results',
 )
 _TRUNCATE_SQL = f'TRUNCATE {", ".join(_TEST_TABLES)} RESTART IDENTITY CASCADE'
 

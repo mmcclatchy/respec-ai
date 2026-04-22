@@ -23,7 +23,6 @@ from .models import (
     PlanConversationCommandTools,
     PlanCriticAgentTools,
     PlanRoadmapCommandTools,
-    ReviewConsolidatorAgentTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
     SpecAlignmentReviewerAgentTools,
@@ -335,7 +334,6 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
-    builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
     builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     builder.add_builtin_tool(BuiltInTool.BASH)
     builder.add_bash_script('scripts/detect-packages.sh:*')
@@ -348,6 +346,7 @@ def create_code_command_tools(
     adapter = _resolve_tui_adapter(tui_adapter)
     _reviewer_params = [
         ('coding_loop_id', 'CODING_LOOP_ID'),
+        ('review_iteration', 'REVIEW_ITERATION'),
         ('task_loop_id', 'TASK_LOOP_ID'),
         ('plan_name', 'PLAN_NAME'),
         ('phase_name', 'PHASE_NAME'),
@@ -392,20 +391,9 @@ def create_code_command_tools(
             'perform domain-specific code review',
             _reviewer_params,
         ),
-        invoke_consolidator=adapter.render_agent_invocation(
-            'respec-review-consolidator',
-            'merge all review sections into a single CriticFeedback',
-            [
-                ('coding_loop_id', 'CODING_LOOP_ID'),
-                ('task_loop_id', 'TASK_LOOP_ID'),
-                ('plan_name', 'PLAN_NAME'),
-                ('phase_name', 'PHASE_NAME'),
-                ('review_scope_markdown', 'REVIEW_SCOPE_MARKDOWN'),
-            ],
-        ),
         phase1_review_parallel_policy=adapter.render_parallel_fanout_policy(
-            'Phase 1 review agents (excluding consolidator)',
-            'review sections for all active reviewers',
+            'Phase 1 review agents',
+            'structured reviewer results for all active reviewers',
         ),
         invoke_coder_standards=adapter.render_agent_invocation(
             'respec-coder',
@@ -425,10 +413,10 @@ def create_code_command_tools(
             'evaluate code against project coding standards',
             [
                 ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('review_iteration', 'REVIEW_ITERATION'),
                 ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
-                ('phase2_mode', 'true'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
         ),
@@ -482,6 +470,12 @@ def create_code_command_tools(
         ),
         decide_standards_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{STANDARDS_LOOP_ID}'
+        ),
+        consolidate_review_cycle=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.CONSOLIDATE_REVIEW_CYCLE,
+            loop_id='{LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            active_reviewers='{ACTIVE_REVIEWERS}',
         ),
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
@@ -1007,10 +1001,15 @@ def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> Aut
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-quality-check',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"automated-quality-checker"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1036,10 +1035,15 @@ def create_spec_alignment_reviewer_agent_tools(tui_adapter: TuiAdapter) -> SpecA
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-spec-alignment',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"spec-alignment-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1065,10 +1069,15 @@ def create_code_quality_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeQua
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-code-quality',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"code-quality-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1091,10 +1100,15 @@ def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendRev
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-frontend',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"frontend-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1117,10 +1131,15 @@ def create_backend_api_reviewer_agent_tools(tui_adapter: TuiAdapter) -> BackendA
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-backend-api',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"backend-api-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1143,10 +1162,15 @@ def create_database_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DatabaseRev
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-database',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"database-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1169,10 +1193,15 @@ def create_infrastructure_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Infra
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-infrastructure',
-            content='{REVIEW_SECTION_MARKDOWN}',
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"infrastructure-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
     )
 
@@ -1195,52 +1224,18 @@ def create_coding_standards_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Cod
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
-        store_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_REVIEW_SECTION,
-            key='{PLAN_NAME}/{PHASE_NAME}/review-coding-standards',
-            content='{REVIEW_SECTION_MARKDOWN}',
-        ),
-        store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK,
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
             loop_id='{CODING_LOOP_ID}',
-            feedback_markdown='{CRITIC_FEEDBACK_MARKDOWN}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"coding-standards-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
         ),
         retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
-        ),
-    )
-
-
-def create_review_consolidator_agent_tools(tui_adapter: TuiAdapter) -> ReviewConsolidatorAgentTools:
-    builder = TemplateToolBuilder()
-
-    for tool in ReviewConsolidatorAgentTools.respec_ai_tools:
-        builder.add_respec_ai_tool(tool)
-
-    for builtin_tool, params in ReviewConsolidatorAgentTools.builtin_tools:
-        builder.add_builtin_tool(builtin_tool, params)
-
-    return ReviewConsolidatorAgentTools(
-        tui_adapter=tui_adapter,
-        tools_yaml=builder.render_comma_separated_tools(),
-        retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT,
-            doc_type='"task"',
-            loop_id='{task_loop_id}',
-        ),
-        retrieve_review_sections=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.LIST_REVIEW_SECTIONS,
-            parent_key='{PLAN_NAME}/{PHASE_NAME}',
-        ),
-        get_review_section=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_REVIEW_SECTION,
-            key='{REVIEW_SECTION_KEY}',
-        ),
-        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
-        ),
-        store_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{CODING_LOOP_ID}', feedback_markdown='{FEEDBACK_MARKDOWN}'
         ),
     )
 
@@ -1302,7 +1297,6 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
-    builder.add_task_agent(RespecAIAgent.REVIEW_CONSOLIDATOR)
     builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     builder.add_builtin_tool(BuiltInTool.BASH)
     builder.add_builtin_tool(BuiltInTool.GLOB)
@@ -1318,6 +1312,7 @@ def create_patch_command_tools(
     adapter = _resolve_tui_adapter(tui_adapter)
     _reviewer_params = [
         ('coding_loop_id', 'CODING_LOOP_ID'),
+        ('review_iteration', 'REVIEW_ITERATION'),
         ('task_loop_id', 'PLANNING_LOOP_ID'),
         ('plan_name', 'PLAN_NAME'),
         ('phase_name', 'PHASE_NAME'),
@@ -1382,20 +1377,9 @@ def create_patch_command_tools(
             'perform domain-specific code review',
             _reviewer_params,
         ),
-        invoke_consolidator=adapter.render_agent_invocation(
-            'respec-review-consolidator',
-            'merge all review sections into a single CriticFeedback',
-            [
-                ('coding_loop_id', 'CODING_LOOP_ID'),
-                ('task_loop_id', 'PLANNING_LOOP_ID'),
-                ('plan_name', 'PLAN_NAME'),
-                ('phase_name', 'PHASE_NAME'),
-                ('review_scope_markdown', 'REVIEW_SCOPE_MARKDOWN'),
-            ],
-        ),
         phase1_review_parallel_policy=adapter.render_parallel_fanout_policy(
-            'Phase 1 review agents (excluding consolidator)',
-            'review sections for all active reviewers',
+            'Phase 1 review agents',
+            'structured reviewer results for all active reviewers',
         ),
         invoke_coder_standards=adapter.render_agent_invocation(
             'respec-coder',
@@ -1415,10 +1399,10 @@ def create_patch_command_tools(
             'evaluate code against project coding standards',
             [
                 ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('review_iteration', 'REVIEW_ITERATION'),
                 ('task_loop_id', 'PLANNING_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
-                ('phase2_mode', 'true'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
         ),
@@ -1466,6 +1450,12 @@ def create_patch_command_tools(
         ),
         decide_coding_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{CODING_LOOP_ID}'
+        ),
+        consolidate_review_cycle=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.CONSOLIDATE_REVIEW_CYCLE,
+            loop_id='{LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            active_reviewers='{ACTIVE_REVIEWERS}',
         ),
         initialize_standards_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'

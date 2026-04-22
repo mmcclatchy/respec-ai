@@ -1,5 +1,5 @@
 import pytest
-from fastmcp.exceptions import ResourceError
+from fastmcp.exceptions import ResourceError, ToolError
 
 from src.mcp.tools.feedback_tools_unified import UnifiedFeedbackTools
 from src.models.enums import CriticAgent
@@ -106,3 +106,80 @@ class TestUnifiedFeedbackToolsMemoryBoundaries:
 
         with pytest.raises(ResourceError, match='Loop does not exist'):
             await tools.get_feedback(stale_loop.id, count=1)
+
+
+class TestDeterministicReviewConsolidation:
+    @pytest.mark.asyncio
+    async def test_store_reviewer_result_and_consolidate_phase1(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='automated-quality-checker',
+            feedback_markdown='### Automated Quality Check (Score: 45/50)',
+            score=90,
+            blockers=[],
+            findings=[{'priority': 'P2', 'feedback': 'Minor lint issue in src/main.py:10'}],
+        )
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='spec-alignment-reviewer',
+            feedback_markdown='### Spec Alignment (Score: 47/50)',
+            score=94,
+            blockers=[],
+            findings=[{'priority': 'P1', 'feedback': 'Acceptance criterion AC-3 partially implemented'}],
+        )
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='code-quality-reviewer',
+            feedback_markdown='### Code Quality (Adjustment: -1)',
+            score=88,
+            blockers=[],
+            findings=[],
+        )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[
+                'automated-quality-checker',
+                'spec-alignment-reviewer',
+                'code-quality-reviewer',
+            ],
+        )
+
+        assert consolidate_response.current_score > 0
+        feedback = await tools.get_feedback(loop.id, count=1)
+        assert 'Consolidated 3 reviewer result(s) for iteration 1.' in feedback.message
+        assert '[Severity:P1]' in feedback.message
+        assert '[Severity:P2]' in feedback.message
+
+    @pytest.mark.asyncio
+    async def test_consolidate_requires_all_active_reviewers(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='coding-standards-reviewer',
+            feedback_markdown='### Coding Standards Review (Adjustment: -2)',
+            score=82,
+            blockers=[],
+            findings=[],
+        )
+
+        with pytest.raises(ToolError, match='missing reviewer submissions'):
+            await tools.consolidate_review_cycle(
+                loop_id=loop.id,
+                review_iteration=1,
+                active_reviewers=['coding-standards-reviewer', 'code-quality-reviewer'],
+            )
