@@ -248,6 +248,29 @@ class TestPhaseCriticTemplate:
         assert 'Best-Practices Reference Invalid - BLOCKING' in template
         assert 'API_RESEARCH_FRESHNESS_PENALTY' in template
 
+    def test_template_enforces_deterministic_api_detection_and_mode_aware_coverage(self) -> None:
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        template = generate_phase_critic_template(tools)
+        assert 'API_DETECTION_TEXT = concatenate text from:' in template
+        assert 'Normalize each candidate deterministically:' in template
+        assert 'Exclude internal/local-only candidates:' in template
+        assert (
+            'Validate all "- Read:" lines found under Research Requirements regardless of subsection headers.'
+            in template
+        )
+        assert "line.startswith('- Read:')" in template
+        assert 'IF validation_mode == "post_synthesis":' in template
+        assert (
+            'HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN' in template
+        )
+        assert 'HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item contains api_name OR API_SLUG_TOKEN' in template
+        assert 'For each api_name in APIS_WITH_VALID_BP_READ_COVERAGE:' in template
+        assert 'APIS_MISSING_FINAL_DOCS = []' in template
+        assert 'API Research Coverage Missing - BLOCKING' in template
+        assert 'API Research Final Docs Missing - BLOCKING' in template
+        assert '"detected_external_apis": EXTERNAL_APIS' in template
+        assert '"apis_missing_final_docs": APIS_MISSING_FINAL_DOCS' in template
+
     def test_template_grants_bash_and_glob_tools(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
         assert 'Bash' in tools.tools_yaml

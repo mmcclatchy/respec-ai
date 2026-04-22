@@ -164,6 +164,16 @@ def create_phase_command_tools(
             'evaluate phase quality against FSDD framework',
             [('plan_name', 'PLAN_NAME'), ('loop_id', 'LOOP_ID'), ('phase_name', 'PHASE_NAME')],
         ),
+        invoke_phase_critic_post_synthesis=adapter.render_agent_invocation(
+            'respec-phase-critic',
+            'run post-synthesis research-path and API coverage validation',
+            [
+                ('plan_name', 'PLAN_NAME'),
+                ('loop_id', 'LOOP_ID'),
+                ('phase_name', 'PHASE_NAME'),
+                ('validation_mode', 'post_synthesis'),
+            ],
+        ),
         task_command_invocation=adapter.render_command_invocation(
             'respec-task',
             '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',

@@ -391,11 +391,63 @@ PHASE_MARKDOWN = PHASE_RESPONSE.message
 SUB-STEP 2: Parse Research Requirements
 Extract "### Research Requirements" section from PHASE_MARKDOWN.
 Collect:
-- "Read:" entries → EXISTING_PATHS (keep as-is)
+- "Read:" entries → EXISTING_READ_PATHS (keep as-is)
 - "Synthesize:" entries → SYNTHESIZE_PROMPTS
 
-IF no SYNTHESIZE_PROMPTS:
-  Display: "✓ No research synthesis required"
+SUB-STEP 2.1: Detect external APIs/services from phase content
+API_DETECTION_TEXT = concatenate text from:
+- "### Integration Context"
+- "## API Design" and/or "### API Design"
+- "### Dependencies"
+- "## System Design" and API-related subsections
+
+API_CANDIDATES = []
+- Extract URL hosts from API_DETECTION_TEXT using regex:
+  `https?://([a-zA-Z0-9.-]+)`
+- Extract service/API tokens from lines containing:
+  "api", "sdk", "webhook", "oauth", "service", "provider"
+
+Normalize each candidate deterministically:
+- Lowercase
+- Trim whitespace and punctuation/backticks/quotes
+- Remove trailing suffix tokens: "api", "sdk", "service", "platform", "client"
+- Collapse repeated spaces
+
+Exclude internal/local-only candidates:
+- Starts with `/api/`
+- Contains `localhost` or `127.0.0.1`
+- Ends with `.local` or `.internal`
+- Equals one of: `internal`, `private`, `local`
+
+EXTERNAL_APIS = unique normalized candidates after exclusions
+
+BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
+EXISTING_BP_READ_PATHS = []
+
+For each read_path in EXISTING_READ_PATHS:
+  IF read_path matches BP_PATH_REGEX:
+    EXISTING_BP_READ_PATHS.append(read_path)
+
+APIS_WITH_VALID_BP_DOCS = []
+APIS_MISSING_BP_DOCS = []
+
+For each api_name in EXTERNAL_APIS:
+  API_SLUG_TOKEN = api_name with spaces replaced by `-`
+  IF any EXISTING_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN:
+    APIS_WITH_VALID_BP_DOCS.append(api_name)
+  ELSE:
+    APIS_MISSING_BP_DOCS.append(api_name)
+
+AUTO_API_PROMPTS = []
+For each api_name in APIS_MISSING_BP_DOCS:
+  AUTO_API_PROMPTS.append(
+    "Synthesize API integration guidance for {{api_name}} covering authentication, SDK/client usage, rate limits, retries, pagination, and error handling."
+  )
+
+SYNTHESIS_QUEUE = deduplicated list of SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS
+
+IF SYNTHESIS_QUEUE is empty:
+  Display: "✓ No bp synthesis required (all detected APIs already covered by valid .best-practices docs)"
   Proceed to Step 7.6.
 
 ═══════════════════════════════════════════════
@@ -405,13 +457,13 @@ MANDATORY COST-AWARE SYNTHESIS POLICY
 - Run synthesis only for unresolved high-value knowledge gaps
 - Do NOT create or execute prompts to hit a quota
 - Existing "Read:" entries are reused as-is and do NOT consume synthesis worker slots
-- Unresolved "Synthesize:" prompts use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
+- Unresolved synthesis queue items (explicit + API-derived) use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
 ═══════════════════════════════════════════════
 
 SUB-STEP 3: Initialize synthesis orchestration state
 MAX_ACTIVE_BP_WORKERS = 3
-PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
-PENDING_PROMPTS = copy(SYNTHESIZE_PROMPTS)
+PATH_REGEX = BP_PATH_REGEX
+PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)
 SUCCEEDED_SYNTHESIS = []
 FAILED_SYNTHESIS = []
 
@@ -460,7 +512,7 @@ VIOLATION: Displaying bp synthesis errors but continuing to update
 
 SUB-STEP 6: Update Phase with synthesized paths
 SYNTHESIZED_PATHS = paths from SUCCEEDED_SYNTHESIS
-COMPLETE_PATHS = EXISTING_PATHS + SYNTHESIZED_PATHS
+COMPLETE_PATHS = EXISTING_READ_PATHS + SYNTHESIZED_PATHS
 
 Reconstruct Research Requirements section with ONLY "Read:" entries:
 For each PATH in COMPLETE_PATHS:
@@ -476,7 +528,7 @@ SUB-STEP 7: Store updated Phase
 )
 
 Display: "✓ Synthesized {{len(SYNTHESIZED_PATHS)}} research brief(s), {{len(COMPLETE_PATHS)}} total documents"
-Display: "Research synthesis summary: total_prompts={{len(SYNTHESIZE_PROMPTS)}}, invoked_bp={{len(SYNTHESIZE_PROMPTS)}}, generated_docs={{len(SYNTHESIZED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
+Display: "Research synthesis summary: explicit_prompts={{len(SYNTHESIZE_PROMPTS)}}, auto_api_prompts={{len(AUTO_API_PROMPTS)}}, api_docs_covered_with_valid_bp={{len(APIS_WITH_VALID_BP_DOCS)}}, invoked_bp={{len(SYNTHESIS_QUEUE)}}, generated_docs={{len(SYNTHESIZED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
 
 Proceed to Step 7.6.
 ```
@@ -488,9 +540,14 @@ After research synthesis completes, validate all research paths exist:
 ```text
 Display to user: "🔍 Validating synthesized research paths..."
 
-{tools.invoke_phase_critic}
+{tools.invoke_phase_critic_post_synthesis}
 
-IF validation_result shows invalid_count > 0:
+IF validation_result contains "[API Research Final Docs Missing - BLOCKING]" OR
+   validation_result contains "[API Research Coverage Missing - BLOCKING]":
+    ERROR: "Post-synthesis API documentation coverage check failed"
+    List blocking API coverage issues
+    EXIT: Do NOT proceed to Step 8 with missing external API docs
+ELIF validation_result shows invalid_count > 0:
     Display warning: "⚠️ Synthesized research paths invalid:"
     List INVALID_PATHS
     Display: "Check bp task output logs"

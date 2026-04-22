@@ -123,6 +123,8 @@ class TestTemplateHelpers:
         assert 'Task(bp)' in tools.tools_yaml
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools.tools_yaml
         assert 'mcp__linear-server__create_issue' in tools.tools_yaml
+        assert tools.invoke_phase_critic_post_synthesis
+        assert 'post_synthesis' in tools.invoke_phase_critic_post_synthesis
         assert tools.platform == PlatformType.LINEAR
 
     def test_create_plan_command_tools_includes_reference_write_without_ask_user(self) -> None:

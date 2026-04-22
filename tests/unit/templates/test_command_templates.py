@@ -251,7 +251,8 @@ class TestCrossPlatformInvocationRendering:
             assert 'MAX_ACTIVE_BP_WORKERS = 3' in template
             assert 'Do NOT create or execute prompts to hit a quota' in template
             assert 'MANDATORY BP OUTPUT VALIDATION GATE' in template
-            assert "PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
+            assert "BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
+            assert 'PATH_REGEX = BP_PATH_REGEX' in template
             assert 'IF len(CANDIDATE_PATHS) != 1:' in template
 
     def test_claude_code_patch_uses_planning_loop_id(self) -> None:
@@ -345,6 +346,30 @@ class TestCrossPlatformInvocationRendering:
         assert 'Task(bp):' in template
         assert 'IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:' in template
         assert 'BP_PIPELINE_COMPLETE' not in template
+
+    def test_phase_template_derives_api_based_synthesis_queue(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'SUB-STEP 2.1: Detect external APIs/services from phase content' in template
+        assert "BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
+        assert 'EXISTING_BP_READ_PATHS = []' in template
+        assert 'APIS_WITH_VALID_BP_DOCS = []' in template
+        assert 'APIS_MISSING_BP_DOCS = []' in template
+        assert 'AUTO_API_PROMPTS = []' in template
+        assert 'SYNTHESIS_QUEUE = deduplicated list of SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS' in template
+        assert 'PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)' in template
+        assert 'covered by valid .best-practices docs' in template
+
+    def test_phase_template_uses_post_synthesis_critic_and_fail_closed_api_blockers(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'validation_mode: post_synthesis' in template
+        assert '[API Research Final Docs Missing - BLOCKING]' in template
+        assert 'EXIT: Do NOT proceed to Step 8 with missing external API docs' in template
 
     def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
         coordinator = TemplateCoordinator()

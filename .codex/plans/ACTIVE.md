@@ -1,9 +1,9 @@
 # Active Codex Plan
 
 - Plan File: `./.codex/plans/respec-phase-bp-public-entrypoint.md`
-- Objective: Replace respec-phase direct bp-pipeline synthesis coupling with bp public entrypoint and deterministic fail-closed path parsing.
+- Objective: Enforce BP-doc-only external API coverage semantics and header-independent post-synthesis Read-path validation in phase templates.
 - Phase: implementation
-- Last Updated: 2026-04-22T15:15:34Z
+- Last Updated: 2026-04-22T19:34:00Z
 
 ## Usage
 

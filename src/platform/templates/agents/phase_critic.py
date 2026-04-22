@@ -121,6 +121,7 @@ phase_feedback_template = CriticFeedback(
         '**[Research Path Invalid - BLOCKING]**: Path `[path]` does not exist - phase-architect must use actual file paths from archive scan output, not guessed names',
         '**[Best-Practices Reference Invalid - BLOCKING]**: Referenced path `[path]` does not exist in `.best-practices/`',
         '**[API Research Coverage Missing - BLOCKING]**: External API/service `[name]` has no corresponding Read/Synthesize research entry',
+        '**[API Research Final Docs Missing - BLOCKING]**: External API/service `[name]` has no valid `Read:` best-practices doc after synthesis',
         '**[Plan Constraint Violation - BLOCKING]**: Phase contradicts plan/reference constraints without documented deviation rationale',
     ],
     recommendations=[
@@ -351,9 +352,12 @@ IF section not found:
         "invalid_paths": [],
         "external_research_found": False,
         "api_integration_triggered": False,
+        "detected_external_apis": [],
         "apis_missing_coverage": [],
+        "apis_missing_final_docs": [],
         "soft_stale_warnings": [],
-        "hard_stale_blocking": []
+        "hard_stale_blocking": [],
+        "invalid_bp_references": [],
     }}
     # Continue because global best-practices path scanning still applies
 
@@ -362,21 +366,15 @@ Parse section to distinguish subsections:
 - "**External Research Needed**" → prompts with "- Synthesize: [prompt]"
 
 PATHS_TO_VALIDATE = []
+SYNTHESIZE_LINES = []
 
-## Line-by-line state machine parser (robust against formatting variations)
-in_existing_section = False
-in_external_section = False
+## Line-by-line parser (header-independent for post-synthesis robustness)
+## Validate all "- Read:" lines found under Research Requirements regardless of subsection headers.
 
 For each line in research_section.split('\\n'):
     line = line.strip()
 
-    IF '**Existing Documentation**' in line:
-        in_existing_section = True
-        in_external_section = False
-    ELIF '**External Research Needed**' in line:
-        in_existing_section = False
-        in_external_section = True
-    ELIF line.startswith('- Read:') AND in_existing_section:
+    IF line.startswith('- Read:'):
         # Extract path from: "- Read: `.best-practices/file.md`"
         # Handle both backtick formats: `path` and plain path
         IF '`' in line:
@@ -389,9 +387,11 @@ For each line in research_section.split('\\n'):
             path = line.replace('- Read:', '').strip()
             IF path:
                 PATHS_TO_VALIDATE.append(path)
-    # Ignore "- Synthesize:" lines completely (they'll be created in Step 7.5)
+    ELIF line.startswith('- Synthesize:'):
+        SYNTHESIZE_LINES.append(line)
+    # Ignore all other lines in Research Requirements.
 
-## Validate only paths from "Existing Documentation" subsection
+## Validate all "Read:" paths from Research Requirements
 VALID_PATHS = []
 INVALID_PATHS = []
 
@@ -412,7 +412,7 @@ RESEARCH_PATH_VALIDATION = {{
     "external_research_found": ("**External Research Needed**" in research_section)
 }}
 
-## SEVERE PENALTY for invalid "Read:" paths in Existing Documentation
+## SEVERE PENALTY for invalid "Read:" paths in Research Requirements
 IF len(INVALID_PATHS) > 0:
     RESEARCH_PATH_PENALTY = -20  # Blocking penalty
 ELSE:
@@ -437,23 +437,72 @@ IF len(INVALID_BP_REFERENCES) > 0:
 ELSE:
     BP_DOC_REFERENCE_PENALTY = 0
 
-## Contextual API integration trigger and per-service research coverage
+## Deterministic external API detection and per-service research coverage
 API_STALE_SOFT_DAYS = 30
 API_STALE_HARD_DAYS = 365
-API_INTEGRATION_TRIGGER = detect external API/service integrations from Integration Context, System Design, and API-related sections
 
-If API_INTEGRATION_TRIGGER is true:
-    EXTERNAL_APIS = extract normalized API/service names (unique)
-    APIS_WITH_COVERAGE = []
-    APIS_MISSING_COVERAGE = []
+API_DETECTION_TEXT = concatenate text from:
+- "### Integration Context"
+- "## API Design" and/or "### API Design"
+- "### Dependencies"
+- "## System Design" and API-related subsections
 
+API_CANDIDATES = []
+- Extract URL hosts from API_DETECTION_TEXT via regex: `https?://([a-zA-Z0-9.-]+)`
+- Extract service/API tokens from lines containing: "api", "sdk", "webhook", "oauth", "service", "provider"
+
+Normalize each candidate deterministically:
+- Lowercase
+- Trim whitespace and punctuation/backticks/quotes
+- Remove trailing suffix tokens: "api", "sdk", "service", "platform", "client"
+- Collapse repeated spaces
+
+Exclude internal/local-only candidates:
+- Starts with `/api/`
+- Contains `localhost` or `127.0.0.1`
+- Ends with `.local` or `.internal`
+- Equals one of: `internal`, `private`, `local`
+
+EXTERNAL_APIS = unique normalized candidates after exclusions
+API_INTEGRATION_TRIGGER = len(EXTERNAL_APIS) > 0
+
+BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
+VALID_BP_READ_PATHS = []
+
+For each path in VALID_PATHS:
+    IF path matches BP_PATH_REGEX:
+        VALID_BP_READ_PATHS.append(path)
+
+APIS_WITH_COVERAGE = []
+APIS_WITH_VALID_BP_READ_COVERAGE = []
+APIS_MISSING_COVERAGE = []
+APIS_MISSING_FINAL_DOCS = []
+
+IF API_INTEGRATION_TRIGGER is true:
     For each api_name in EXTERNAL_APIS:
-        If research_section contains api_name in ANY "- Read:" OR "- Synthesize:" entry:
-            APIS_WITH_COVERAGE.append(api_name)
-        Else:
-            APIS_MISSING_COVERAGE.append(api_name)
+        API_SLUG_TOKEN = api_name with spaces replaced by "-"
+        HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN
+        HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item contains api_name OR API_SLUG_TOKEN
 
-    IF len(APIS_MISSING_COVERAGE) > 0:
+        IF HAS_VALID_BP_READ_COVERAGE:
+            APIS_WITH_VALID_BP_READ_COVERAGE.append(api_name)
+
+        IF validation_mode == "post_synthesis":
+            IF HAS_VALID_BP_READ_COVERAGE:
+                APIS_WITH_COVERAGE.append(api_name)
+            ELSE:
+                APIS_MISSING_FINAL_DOCS.append(api_name)
+        ELSE:
+            IF HAS_VALID_BP_READ_COVERAGE OR HAS_SYNTH_COVERAGE:
+                APIS_WITH_COVERAGE.append(api_name)
+            ELSE:
+                APIS_MISSING_COVERAGE.append(api_name)
+
+    IF validation_mode == "post_synthesis" AND len(APIS_MISSING_FINAL_DOCS) > 0:
+        API_RESEARCH_COVERAGE_PENALTY = -20  # Blocking penalty
+        Add key issue for each api_name:
+          "[API Research Final Docs Missing - BLOCKING]: External API/service `{{api_name}}` has no valid Read: best-practices document after synthesis"
+    ELIF validation_mode != "post_synthesis" AND len(APIS_MISSING_COVERAGE) > 0:
         API_RESEARCH_COVERAGE_PENALTY = -20  # Blocking penalty
         Add key issue for each api_name:
           "[API Research Coverage Missing - BLOCKING]: External API/service `{{api_name}}` has no corresponding Read/Synthesize research entry"
@@ -464,22 +513,18 @@ If API_INTEGRATION_TRIGGER is true:
     SOFT_STALE_WARNINGS = []
     HARD_STALE_BLOCKING = []
 
-    For each api-related "- Read:" path in research_section:
-        # Retrieve freshness metadata from best-practices-rag
+    For each api_name in APIS_WITH_VALID_BP_READ_COVERAGE:
         CALL Bash: best-practices-rag query-kb --tech "{{api_name}}" --topics "official docs, sdk, api usage" --force-refresh
         IF command fails:
-            IF referenced file exists AND doc age < API_STALE_HARD_DAYS:
-                SOFT_STALE_WARNINGS.append("refresh_failed_existing_doc")
-            ELSE:
-                HARD_STALE_BLOCKING.append("refresh_failed_no_reliable_doc")
+            SOFT_STALE_WARNINGS.append(f"refresh_failed_existing_doc:{{api_name}}")
             Continue
 
         DOC_AGE_DAYS = parse age/staleness from command output (or metadata)
 
         IF DOC_AGE_DAYS > API_STALE_HARD_DAYS:
-            HARD_STALE_BLOCKING.append(path)
+            HARD_STALE_BLOCKING.append(api_name)
         ELIF DOC_AGE_DAYS > API_STALE_SOFT_DAYS:
-            SOFT_STALE_WARNINGS.append(path)
+            SOFT_STALE_WARNINGS.append(api_name)
 
     IF len(HARD_STALE_BLOCKING) > 0:
         API_RESEARCH_FRESHNESS_PENALTY = -20  # Blocking penalty
@@ -490,7 +535,9 @@ If API_INTEGRATION_TRIGGER is true:
 ELSE:
     API_RESEARCH_COVERAGE_PENALTY = 0
     API_RESEARCH_FRESHNESS_PENALTY = 0
+    APIS_WITH_VALID_BP_READ_COVERAGE = []
     APIS_MISSING_COVERAGE = []
+    APIS_MISSING_FINAL_DOCS = []
     SOFT_STALE_WARNINGS = []
     HARD_STALE_BLOCKING = []
 
@@ -502,7 +549,9 @@ RESEARCH_PATH_VALIDATION = {{
     "invalid_paths": INVALID_PATHS,
     "external_research_found": ("**External Research Needed**" in research_section),
     "api_integration_triggered": API_INTEGRATION_TRIGGER,
+    "detected_external_apis": EXTERNAL_APIS,
     "apis_missing_coverage": APIS_MISSING_COVERAGE,
+    "apis_missing_final_docs": APIS_MISSING_FINAL_DOCS,
     "soft_stale_warnings": SOFT_STALE_WARNINGS,
     "hard_stale_blocking": HARD_STALE_BLOCKING,
     "invalid_bp_references": INVALID_BP_REFERENCES
@@ -733,7 +782,9 @@ Phases vary by project type. Evaluate based on project context:
 - Invalid "Read:" paths found: {{RESEARCH_PATH_VALIDATION.invalid_count}}
 - External research prompts: {{count of "Synthesize:" entries}}
 - API integration triggered: {{RESEARCH_PATH_VALIDATION.api_integration_triggered}}
+- Detected external APIs/services: {{RESEARCH_PATH_VALIDATION.detected_external_apis}}
 - APIs missing coverage: {{RESEARCH_PATH_VALIDATION.apis_missing_coverage}}
+- APIs missing final docs: {{RESEARCH_PATH_VALIDATION.apis_missing_final_docs}}
 - Invalid `.best-practices` references anywhere in phase: {{RESEARCH_PATH_VALIDATION.invalid_bp_references}}
 - Soft stale warnings (>30d): {{RESEARCH_PATH_VALIDATION.soft_stale_warnings}}
 - Hard stale blocking (>365d or refresh without reliable doc): {{RESEARCH_PATH_VALIDATION.hard_stale_blocking}}
@@ -755,7 +806,8 @@ Phases vary by project type. Evaluate based on project context:
 - Phase CANNOT score above 80 with any invalid `.best-practices` reference
 
 **SEVERE PENALTY FOR API RESEARCH COVERAGE GAPS**:
-- If API integration is present and ANY external API/service lacks corresponding Read/Synthesize research entry: Apply API_RESEARCH_COVERAGE_PENALTY (-20 points)
+- In `validation_mode == "full"`: if ANY external API/service lacks corresponding Read/Synthesize research entry: Apply API_RESEARCH_COVERAGE_PENALTY (-20 points)
+- In `validation_mode == "post_synthesis"`: if ANY external API/service lacks a valid `Read:` `.best-practices/*.md` doc: Apply API_RESEARCH_COVERAGE_PENALTY (-20 points)
 - This is a BLOCKING issue - missing API lookups risks hallucinated integration logic
 - Phase CANNOT score above 80 until all external APIs/services have explicit research coverage
 
@@ -896,7 +948,8 @@ Assess phase for implementation details that belong in Task:
 - Caps maximum score at 80 until all invalid references are corrected
 
 **API Research Coverage Penalty (BLOCKING)**:
-- If API integrations are present and any external API/service lacks research coverage: -20 points
+- In full mode: if API integrations are present and any external API/service lacks Read/Synthesize coverage: -20 points
+- In post-synthesis mode: if any detected external API/service lacks valid `Read:` `.best-practices` docs: -20 points
 - Caps maximum score at 80 until coverage is complete
 
 **API Research Freshness Penalty (BLOCKING for hard stale / no reliable doc)**:
@@ -918,7 +971,7 @@ Assess phase for implementation details that belong in Task:
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
 - **Research path penalty: -20 points if ANY invalid research file paths (BLOCKING)**
 - **Best-practices reference penalty: -20 points if ANY `.best-practices` reference is invalid (BLOCKING)**
-- **API research coverage penalty: -20 points if any integrated external API lacks research entry (BLOCKING)**
+- **API research coverage penalty: -20 points if any integrated external API lacks required mode-specific coverage (BLOCKING)**
 - **API research freshness penalty: -20 points for unresolved hard-stale/no-reliable-doc API references (BLOCKING)**
 - **Plan constraint penalty: -20 points if phase contradicts plan constraints without documented deviation (BLOCKING)**
 
@@ -941,7 +994,7 @@ Assess phase for implementation details that belong in Task:
 - Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
 - **Research path penalty is BLOCKING** - invalid paths cause downstream task-planner failure
 - **Best-practices reference penalty is BLOCKING** - hallucinated docs invalidate research grounding
-- **API research coverage penalty is BLOCKING** - missing API lookups allow hallucinated integration behavior
+- **API research coverage penalty is BLOCKING** - missing API coverage (full mode: Read/Synthesize, post-synthesis: valid Read docs) allows hallucinated integration behavior
 - **API research freshness penalty is BLOCKING for hard stale/no reliable docs** - outdated API guidance can be unsafe
 - **Plan constraint penalty is BLOCKING** - undocumented contradictions to plan/reference decisions cause downstream failures
 - Score cannot go below 0 or above 100
