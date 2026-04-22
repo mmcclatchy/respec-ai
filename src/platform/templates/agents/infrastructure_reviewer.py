@@ -107,7 +107,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: only core deployment/security breakages should deduct materially.
-- `mixed`: core + selected infra quality deductions may apply.
 - `hardening`: full infrastructure quality weighting active.
 
 ## ASSESSMENT AREAS

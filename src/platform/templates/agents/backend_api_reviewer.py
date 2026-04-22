@@ -107,7 +107,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: only core API correctness/security regressions should deduct materially.
-- `mixed`: core + selected API quality deductions may apply.
 - `hardening`: full API quality weighting active.
 
 ## ASSESSMENT AREAS

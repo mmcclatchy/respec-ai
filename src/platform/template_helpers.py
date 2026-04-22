@@ -330,6 +330,7 @@ def create_code_command_tools(
     platform_type: 'PlatformType',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'CodeCommandTools':
+    adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
@@ -340,7 +341,8 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
-    builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    if adapter.ask_user_question_tool_name:
+        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     builder.add_builtin_tool(BuiltInTool.BASH)
     builder.add_bash_script('scripts/detect-packages.sh:*')
 
@@ -349,7 +351,6 @@ def create_code_command_tools(
 
     builder.add_platform_tools(platform_tools)
 
-    adapter = _resolve_tui_adapter(tui_adapter)
     _reviewer_params = [
         ('coding_loop_id', 'CODING_LOOP_ID'),
         ('review_iteration', 'REVIEW_ITERATION'),
@@ -503,10 +504,13 @@ def create_roadmap_tools(
     platform_type: 'PlatformType',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PlanRoadmapCommandTools':
+    adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.ROADMAP)
     builder.add_task_agent(RespecAIAgent.ROADMAP_CRITIC)
     builder.add_task_agent(RespecAIAgent.CREATE_PHASE)
+    if adapter.ask_user_question_tool_name:
+        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
 
     for tool in PlanRoadmapCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -516,7 +520,6 @@ def create_roadmap_tools(
 
     builder.add_platform_tools(platform_tools)
 
-    adapter = _resolve_tui_adapter(tui_adapter)
     return PlanRoadmapCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
@@ -579,9 +582,12 @@ def create_task_tools(
     platform_type: 'PlatformType',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'TaskCommandTools':
+    adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.TASK_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
+    if adapter.ask_user_question_tool_name:
+        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
 
     for tool in TaskCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -591,7 +597,6 @@ def create_task_tools(
 
     builder.add_platform_tools(platform_tools)
 
-    adapter = _resolve_tui_adapter(tui_adapter)
     return TaskCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
@@ -1291,6 +1296,7 @@ def create_patch_command_tools(
     plans_dir: str = '~/.claude/plans',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> PatchCommandTools:
+    adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder()
     builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
@@ -1303,7 +1309,8 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
-    builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    if adapter.ask_user_question_tool_name:
+        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
     builder.add_builtin_tool(BuiltInTool.BASH)
     builder.add_builtin_tool(BuiltInTool.GLOB)
     builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md')
@@ -1315,7 +1322,6 @@ def create_patch_command_tools(
 
     builder.add_platform_tools(platform_tools)
 
-    adapter = _resolve_tui_adapter(tui_adapter)
     _reviewer_params = [
         ('coding_loop_id', 'CODING_LOOP_ID'),
         ('review_iteration', 'REVIEW_ITERATION'),

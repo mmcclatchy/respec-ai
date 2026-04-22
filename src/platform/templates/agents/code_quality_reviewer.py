@@ -117,7 +117,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: hardening/style concerns are advisory by default unless they create core-risk regressions.
-- `mixed`: apply selected structural/correctness deductions for changed-file and acceptance-gap findings.
 - `hardening`: full weighting active.
 
 ## TASK CONTEXT DISCOVERY

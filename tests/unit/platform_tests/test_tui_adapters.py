@@ -99,10 +99,8 @@ class TestClaudeCodeAdapter:
     def test_config_dir_name(self) -> None:
         assert self.adapter.config_dir_name() == '.claude'
 
-    def test_loop_commit_instructions(self) -> None:
-        instructions = self.adapter.loop_commit_instructions
-        assert 'git add -A' in instructions
-        assert 'git commit --no-verify' in instructions
+    def test_no_adapter_level_commit_instruction_api(self) -> None:
+        assert not hasattr(self.adapter, 'loop_commit_instructions')
 
     def test_reasoning_model(self) -> None:
         assert self.adapter.reasoning_model == 'opus'
@@ -199,10 +197,8 @@ class TestOpenCodeAdapter:
     def test_config_dir_name(self) -> None:
         assert self.adapter.config_dir_name() == '.opencode'
 
-    def test_loop_commit_instructions(self) -> None:
-        instructions = self.adapter.loop_commit_instructions
-        assert 'git add -A' in instructions
-        assert 'git commit --no-verify' in instructions
+    def test_no_adapter_level_commit_instruction_api(self) -> None:
+        assert not hasattr(self.adapter, 'loop_commit_instructions')
 
     def test_reasoning_model_returns_configured_value(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
@@ -583,11 +579,8 @@ class TestCodexAdapter:
     def test_plans_dir(self) -> None:
         assert self.adapter.plans_dir() == '.codex/plans'
 
-    def test_loop_commit_instructions_prefers_commit_skill_with_git_fallback(self) -> None:
-        instructions = self.adapter.loop_commit_instructions
-        assert '$Commit' in instructions
-        assert 'git add -A' in instructions
-        assert 'git commit --no-verify' in instructions
+    def test_no_adapter_level_commit_instruction_api(self) -> None:
+        assert not hasattr(self.adapter, 'loop_commit_instructions')
 
     def test_reasoning_model_raises_when_unconfigured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):

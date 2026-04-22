@@ -792,9 +792,7 @@ class PlanRoadmapCommandTools(CommandToolsModel):
         RespecAITool.GET_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.ASK_USER_QUESTION, ''),
-    ]
+    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
@@ -887,7 +885,6 @@ class TaskCommandTools(CommandToolsModel):
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.ASK_USER_QUESTION, ''),
         (BuiltInTool.GLOB, ''),
         (BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md'),
         (BuiltInTool.TASK, ''),

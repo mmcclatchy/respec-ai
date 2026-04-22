@@ -114,7 +114,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: treat non-core hardening findings as advisory (`P2/P3`, usually deferred/global).
-- `mixed`: allow targeted quality deductions for changed-file or acceptance-gap findings.
 - `hardening`: full weighting active across all categories.
 
 ## PROJECT CONFIGURATION

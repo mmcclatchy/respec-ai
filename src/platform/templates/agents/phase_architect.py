@@ -351,7 +351,7 @@ IF PLAN_DELIVERY_INTENT_POLICY is not None:
   → In `### Success Criteria`, include:
     `#### Delivery Intent Override`
   → Set one of:
-    - `Mode: MVP|mixed|hardening` (explicit phase override), OR
+    - `Mode: MVP|hardening` (explicit phase override), OR
     - `Mode: inherit-plan-default`
   → Include tie-break rule text for this phase
   → If omitted, set explicit inheritance:

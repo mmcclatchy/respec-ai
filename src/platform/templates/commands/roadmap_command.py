@@ -2,6 +2,15 @@ from src.platform.models import PlanRoadmapCommandTools
 
 
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
+    ask_tool = tools.tui_adapter.ask_user_question_tool_name
+    selection_prompt_instructions = (
+        f'Use {ask_tool} tool to present options:'
+        if ask_tool
+        else (
+            'Ask the user directly with a numbered options list and require a single explicit selection '
+            'before continuing:'
+        )
+    )
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [optional: roadmap-guidance]
@@ -172,7 +181,7 @@ ELIF LOOP_DECISION == "user_input":
   - Key issues identified by roadmap-critic
   - Recommendations for improvement
 
-  Use AskUserQuestion tool to present options:
+  {selection_prompt_instructions}
   Question: "The roadmap quality is at [SCORE]/100. How would you like to proceed?"
   Options:
     1. "Proceed with current roadmap - quality is sufficient"

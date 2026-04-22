@@ -108,7 +108,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: only core data correctness/integrity regressions should deduct materially.
-- `mixed`: core + selected database quality deductions may apply.
 - `hardening`: full database quality weighting active.
 
 ## ASSESSMENT AREAS

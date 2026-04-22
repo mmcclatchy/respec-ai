@@ -14,8 +14,10 @@ from src.platform.template_helpers import (
     create_phase_command_tools,
     create_patch_command_tools,
     create_plan_command_tools,
+    create_roadmap_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_task_tools,
     create_task_plan_critic_agent_tools,
 )
 from src.platform.tool_enums import (
@@ -26,7 +28,7 @@ from src.platform.tool_enums import (
 )
 
 
-from src.platform.tui_adapters import ClaudeCodeAdapter
+from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, OpenCodeAdapter
 
 
 class TestToolEnums:
@@ -170,6 +172,36 @@ class TestTemplateHelpers:
             platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
         )
         assert 'Bash' in tools.tools_yaml
+
+    def test_create_code_command_tools_includes_ask_tool_only_when_adapter_supports_it(self) -> None:
+        platform_tools = [
+            'mcp__linear-server__get_issue',
+            'mcp__linear-server__create_comment',
+        ]
+        claude_tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+        codex_tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter())
+        opencode_tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter())
+
+        assert 'AskUserQuestion' in claude_tools.tools_yaml
+        assert 'AskUserQuestion' not in codex_tools.tools_yaml
+        assert 'AskUserQuestion' not in opencode_tools.tools_yaml
+
+    def test_create_task_and_roadmap_tools_include_ask_tool_only_when_adapter_supports_it(self) -> None:
+        platform_tools = [
+            'mcp__linear-server__get_issue',
+            'mcp__linear-server__list_issues',
+        ]
+        claude_task_tools = create_task_tools(platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+        codex_task_tools = create_task_tools(platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter())
+        claude_roadmap_tools = create_roadmap_tools(
+            platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        codex_roadmap_tools = create_roadmap_tools(platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter())
+
+        assert 'AskUserQuestion' in claude_task_tools.tools_yaml
+        assert 'AskUserQuestion' not in codex_task_tools.tools_yaml
+        assert 'AskUserQuestion' in claude_roadmap_tools.tools_yaml
+        assert 'AskUserQuestion' not in codex_roadmap_tools.tools_yaml
 
 
 class TestStartupValidation:

@@ -56,7 +56,7 @@ conversation_context_template = ConversationContext(
     ],
     quality_bar=(
         '[Test coverage minimum, security requirements, accessibility standards, performance thresholds]\n'
-        'Delivery Intent Default: [MVP|mixed|hardening]\n'
+        'Delivery Intent Default: [MVP|hardening]\n'
         'Intent Tie-Break Policy: [How to resolve MVP vs hardening conflicts for this plan]'
     ),
     total_stages_completed=6,
@@ -269,7 +269,7 @@ Topics to cover through natural follow-up (not all at once):
 - Expected load and performance targets (offer sensible defaults if user is unsure)
 - What could go wrong technically — surface the challenges from Stage 5 as risks
 - Quality bar: test coverage, security, accessibility expectations
-- Delivery intent default for implementation loops (MVP, mixed, or hardening) and tie-break policy
+- Delivery intent default for implementation loops (MVP or hardening) and tie-break policy
 
 ═══════════════════════════════════════════════
 MANDATORY ANTI-REQUIREMENTS PROTOCOL
@@ -298,7 +298,7 @@ Use the Decision Facilitation Pattern for high-severity risks with multiple miti
 MANDATORY DELIVERY INTENT CAPTURE PROTOCOL
 ═══════════════════════════════════════════════
 Before completion, you MUST capture a default delivery intent policy:
-- Default Mode: one of MVP, mixed, hardening
+- Default Mode: one of MVP, hardening
 - Tie-Break Policy: how to resolve MVP-vs-hardening conflicts in later loops
 
 If user has no preference:

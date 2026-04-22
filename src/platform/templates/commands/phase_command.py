@@ -46,6 +46,16 @@ technical_phase_template = Phase(
 
 
 def generate_phase_command_template(tools: PhaseCommandTools) -> str:
+    ask_tool = tools.tui_adapter.ask_user_question_tool_name
+    selection_prompt_instructions = (
+        f'Use {ask_tool} tool to present options:'
+        if ask_tool
+        else (
+            'Ask the user directly with a numbered options list and require a single explicit selection '
+            'before continuing:'
+        )
+    )
+    selection_response_source = f'{ask_tool} response' if ask_tool else 'the user response'
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [phase request]
@@ -155,7 +165,7 @@ ELIF count(SPEC_FILE_MATCHES) == 1:
 
 ELSE:
   (Multiple matches - use interactive selection)
-  Use AskUserQuestion tool to present options:
+  {selection_prompt_instructions}
     Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
     Header: "Select Phase"
     multiSelect: false
@@ -171,7 +181,7 @@ ELSE:
       ... for all matches
     ]
 
-  PHASE_FILE_PATH = [selected file path from AskUserQuestion response]
+  PHASE_FILE_PATH = [selected file path from {selection_response_source}]
 ```
 
 #### Step 1.4: Extract canonical name from file path

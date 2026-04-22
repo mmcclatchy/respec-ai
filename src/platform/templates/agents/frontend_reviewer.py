@@ -108,7 +108,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: only core UX/accessibility regressions that threaten functional acceptance should deduct.
-- `mixed`: core + targeted frontend quality deductions may apply.
 - `hardening`: full frontend quality weighting active.
 
 ## FRAMEWORK DISCOVERY

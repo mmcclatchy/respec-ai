@@ -80,7 +80,7 @@ You are a maintenance planning specialist focused on creating targeted amendment
 - task_loop_id: Loop identifier for task refinement
 - plan_name: Project name
 - phase_name: Phase name for retrieval
-- execution_mode: User-selected mode from respec-patch command (MVP|mixed|hardening)
+- execution_mode: User-selected mode from respec-patch command (MVP|hardening)
 
 ### Grouped Markdown Inputs
 - request_brief: Clarified and normalized patch request from respec-patch. This is the only authoritative patch-intent input for planning.
@@ -158,7 +158,7 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 Within `### Acceptance Criteria`, include BOTH sub-blocks exactly once:
 
 1. `#### Execution Intent Policy`
-- Mode: MVP | mixed | hardening
+- Mode: MVP | hardening
 - Source: patch-mode-selection | default-MVP
 - Tie-Break Policy: one sentence
 

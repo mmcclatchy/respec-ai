@@ -105,10 +105,6 @@ class TuiAdapter(ABC):
     @abstractmethod
     def plans_dir(self) -> str: ...
 
-    @property
-    @abstractmethod
-    def loop_commit_instructions(self) -> str: ...
-
     @abstractmethod
     def render_agent_invocation(
         self,

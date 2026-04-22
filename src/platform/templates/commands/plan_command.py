@@ -54,7 +54,7 @@ plan_template = Plan(
     quality_assurance=(
         '### Quality Bar\n[Quantified quality thresholds and performance targets]\n\n'
         '### Delivery Intent Policy\n'
-        '- Default Mode: [MVP|mixed|hardening]\n'
+        '- Default Mode: [MVP|hardening]\n'
         '- Tie-Break Policy: [How to resolve MVP-vs-hardening conflicts]\n'
         '- Deferred Risk Rule: [How accepted risks are tracked/suppressed during the chosen mode]\n\n'
         '### Testing Strategy\n[Testing approach from quality requirements]\n\n'
@@ -311,7 +311,7 @@ Expected structured format from plan-conversation (markdown document):
 
 ## Quality Bar
 [Test coverage minimum, security requirements, accessibility standards]
-Delivery Intent Default: [MVP|mixed|hardening]
+Delivery Intent Default: [MVP|hardening]
 Intent Tie-Break Policy: [How to resolve MVP vs hardening conflicts]
 
 ## Conversation Summary

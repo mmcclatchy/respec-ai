@@ -113,7 +113,6 @@ Deferred-risk suppression:
 
 Mode-aware behavior:
 - `MVP`: only core functional/spec gaps should materially impact scoring.
-- `mixed`: core + selected quality findings (changed-file / acceptance-gap) may deduct.
 - `hardening`: full review weighting active.
 
 ## ASSESSMENT CRITERIA (50 Points Total)

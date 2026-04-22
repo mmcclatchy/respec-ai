@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/respec-phase-bp-public-entrypoint.md`
-- Objective: Enforce BP-doc-only external API coverage semantics and header-independent post-synthesis Read-path validation in phase templates.
-- Phase: implementation
-- Last Updated: 2026-04-22T19:34:00Z
+- Plan File: `./.codex/plans/commit-style-unification-prompt-mode-cleanup.md`
+- Objective: Unify commit style and interactive prompt/mode handling across TUIs with command-owned behavior and no mixed-mode flow.
+- Phase: completed
+- Last Updated: 2026-04-22T20:41:00Z
 
 ## Usage
 

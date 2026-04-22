@@ -562,10 +562,14 @@ class TestCrossPlatformInvocationRendering:
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
         assert 'Source: MCP consolidated CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
-        assert 'Rubric Score: {PHASE1_SCORE}/100' in template
+        assert 'Review Score: {PHASE1_SCORE}/100' in template
+        assert 'Accomplished:' in template
+        assert 'Remaining Issues/Blockers:' in template
         assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
-        assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
+        assert 'Review Score: {STANDARDS_SCORE}/100' in template
         assert 'Review Status: {STANDARDS_REVIEW_STATUS}' in template
+        assert 'Do NOT append attribution trailers like Co-Authored-By' in template
+        assert 'git commit --amend --no-verify -F - <<' in template
         assert '### 7.5: Standards Finalization Phase' in template
         assert '#### Step 7.5.3: Exit to Completion Gate' in template
         assert '### 8.5 Completion Gate (Mandatory)' in template
@@ -649,15 +653,38 @@ class TestCrossPlatformInvocationRendering:
         assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
         assert 'threshold reached, no active blockers' not in template
 
-    def test_codex_code_template_prefers_commit_skill_in_commit_orchestration(self) -> None:
+    def test_codex_code_template_uses_command_owned_git_commit_rules(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
             PlatformType.LINEAR,
             tui_adapter=CodexAdapter(),
         )
-        assert '$Commit' in template
+        assert '$Commit' not in template
         assert 'git commit --no-verify -F - <<' in template
+        assert 'Do NOT append attribution trailers like Co-Authored-By' in template
+
+    def test_codex_code_template_uses_direct_numbered_selection_instructions(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'Ask the user directly with a numbered options list' in template
+        assert 'Use AskUserQuestion' not in template
+        assert 'mixed' not in template
+
+    def test_opencode_code_template_uses_direct_numbered_selection_instructions(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=OpenCodeAdapter(),
+        )
+        assert 'Ask the user directly with a numbered options list' in template
+        assert 'Use AskUserQuestion' not in template
+        assert 'mixed' not in template
 
     def test_code_template_accepts_optional_context_and_normalizes_it_for_shared_agents(self) -> None:
         coordinator = TemplateCoordinator()
@@ -738,6 +765,9 @@ class TestCrossPlatformInvocationRendering:
         )
         assert '#### Step 1.2: Capture Execution Mode (MANDATORY)' in template
         assert 'Header: "Patch Mode"' in template
+        assert 'EXECUTION_MODE = [selected option label normalized to MVP|hardening]' in template
+        assert '- mixed: Balance feature completion and targeted hardening' not in template
+        assert 'mixed' not in template
         assert (
             'ACTIVE_REVIEWERS = ["automated-quality-checker", "spec-alignment-reviewer", "code-quality-reviewer"]'
             in template
@@ -756,10 +786,14 @@ class TestCrossPlatformInvocationRendering:
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
         assert 'Source: MCP consolidated CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
-        assert 'Rubric Score: {PHASE1_SCORE}/100' in template
+        assert 'Review Score: {PHASE1_SCORE}/100' in template
+        assert 'Accomplished:' in template
+        assert 'Remaining Issues/Blockers:' in template
         assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
-        assert 'Rubric Score: {STANDARDS_SCORE}/100' in template
+        assert 'Review Score: {STANDARDS_SCORE}/100' in template
         assert 'Review Status: {STANDARDS_REVIEW_STATUS}' in template
+        assert 'Do NOT append attribution trailers like Co-Authored-By' in template
+        assert 'git commit --amend --no-verify -F - <<' in template
         assert '#### Step 6.5.3: Exit to Completion Gate' in template
         assert '### 6.7 Completion Gate (Mandatory)' in template
 

@@ -184,17 +184,6 @@ class CodexAdapter(TuiAdapter):
     def plans_dir(self) -> str:
         return '.codex/plans'
 
-    @property
-    def loop_commit_instructions(self) -> str:
-        return (
-            'Preferred path (Codex): invoke the `$Commit` skill with COMMIT_MESSAGE_BLOCK.\n'
-            'Fallback path (required if `$Commit` is unavailable or fails):\n'
-            '1. git add -A\n'
-            "2. git commit --no-verify -F - <<'EOF'\n"
-            '   COMMIT_MESSAGE_BLOCK\n'
-            '   EOF'
-        )
-
     def render_agent_invocation(
         self,
         agent_name: str,

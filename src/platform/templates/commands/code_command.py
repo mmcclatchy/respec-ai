@@ -2,6 +2,16 @@ from src.platform.models import CodeCommandTools
 
 
 def generate_code_command_template(tools: CodeCommandTools) -> str:
+    ask_tool = tools.tui_adapter.ask_user_question_tool_name
+    selection_prompt_instructions = (
+        f'Use {ask_tool} tool to present options:'
+        if ask_tool
+        else (
+            'Ask the user directly with a numbered options list and require a single explicit selection '
+            'before continuing:'
+        )
+    )
+    selection_response_source = f'{ask_tool} response' if ask_tool else 'the user response'
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [phase request]
@@ -83,7 +93,7 @@ ELIF count(SPEC_FILE_MATCHES) == 1:
 
 ELSE:
   (Multiple matches - use interactive selection)
-  Use AskUserQuestion tool to present options:
+  {selection_prompt_instructions}
     Question: "Multiple phase files match '{{PHASE_NAME_PARTIAL}}'. Which one do you want to use?"
     Header: "Select Phase"
     multiSelect: false
@@ -99,7 +109,7 @@ ELSE:
       ... for all matches
     ]
 
-  PHASE_FILE_PATH = [selected file path from AskUserQuestion response]
+  PHASE_FILE_PATH = [selected file path from {selection_response_source}]
 ```
 
 #### Step 1.4: Extract canonical name from file path
@@ -307,13 +317,13 @@ PLAN_TIE_BREAK = extract from PLAN_MARKDOWN:
   "## Quality Assurance > ### Delivery Intent Policy > Tie-Break Policy"
 
 # Deterministic precedence
-IF TASK_POLICY has valid Mode in {{MVP,mixed,hardening}}:
+IF TASK_POLICY has valid Mode in {{MVP,hardening}}:
   RESOLVED_MODE = TASK_POLICY.mode
   RESOLVED_MODE_SOURCE = "task-policy"
-ELIF PHASE_OVERRIDE has valid Mode in {{MVP,mixed,hardening}}:
+ELIF PHASE_OVERRIDE has valid Mode in {{MVP,hardening}}:
   RESOLVED_MODE = PHASE_OVERRIDE.mode
   RESOLVED_MODE_SOURCE = "phase-override"
-ELIF PLAN_DEFAULT has valid Mode in {{MVP,mixed,hardening}}:
+ELIF PLAN_DEFAULT has valid Mode in {{MVP,hardening}}:
   RESOLVED_MODE = PLAN_DEFAULT
   RESOLVED_MODE_SOURCE = "plan-default"
 ELSE:
@@ -327,13 +337,12 @@ RESOLVED_TIE_BREAK = first non-empty of:
 AMBIGUOUS_MODE = conflicting explicit values across task/phase/plan sources
 
 IF AMBIGUOUS_MODE:
-  Use AskUserQuestion:
+  {selection_prompt_instructions}
     Header: "Resolve Mode"
     Question: "Delivery intent sources conflict. Which mode should this coding loop use?"
     multiSelect: false
     Options:
       - MVP
-      - mixed
       - hardening
 
   RESOLVED_MODE = [user choice]
@@ -433,6 +442,7 @@ Loop:
   PHASE1_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=CODING_LOOP_ID, count=1)
   PHASE1_SCORE = [extract latest Overall Score from PHASE1_FEEDBACK]
   PHASE1_SUMMARY = [extract latest Assessment Summary from PHASE1_FEEDBACK]
+  PHASE1_ACCOMPLISHED = [extract concise accomplished outcomes from PHASE1_FEEDBACK or coder handoff report]
   PHASE1_KEY_ISSUES = [extract top key issues from PHASE1_FEEDBACK]
   PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:
     "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
@@ -450,27 +460,43 @@ Loop:
   COMMIT_MESSAGE_BLOCK = compose:
     {{COMMIT_SUBJECT}}
 
-    Phase: {{PHASE_NAME}}
-    Loop: Phase 1 (coding_loop_id={{CODING_LOOP_ID}})
-    Decision: {{CODING_DECISION}}
-    Rubric Score: {{PHASE1_SCORE}}/100
-    Review Status: {{PHASE1_REVIEW_STATUS}}
-
     Summary:
     {{PHASE1_SUMMARY}}
 
-    Key Issues:
+    Review Score: {{PHASE1_SCORE}}/100
+
+    Accomplished:
+    {{PHASE1_ACCOMPLISHED}}
+
+    Remaining Issues/Blockers:
     {{PHASE1_KEY_ISSUES}}
 
+    Phase: {{PHASE_NAME}}
+    Loop: Phase 1 (coding_loop_id={{CODING_LOOP_ID}})
+    Decision: {{CODING_DECISION}}
+    Review Status: {{PHASE1_REVIEW_STATUS}}
+
     Source: MCP consolidated CriticFeedback
+
+  COMMIT_MESSAGE_RULES:
+  - Commit body MUST be exactly COMMIT_MESSAGE_BLOCK.
+  - Do NOT append attribution trailers like Co-Authored-By, Signed-off-by, Generated-by, or similar.
 
   HAS_CHANGES = `git status --porcelain` has any output
 
   IF HAS_CHANGES:
-    Execute commit via adapter policy:
-{tools.tui_adapter.loop_commit_instructions}
+    git add -A
+    git commit --no-verify -F - <<'EOF'
+    {{COMMIT_MESSAGE_BLOCK}}
+    EOF
   ELSE:
     git commit --allow-empty --no-verify -F - <<'EOF'
+    {{COMMIT_MESSAGE_BLOCK}}
+    EOF
+
+  LATEST_COMMIT_BODY = `git log -1 --pretty=%B`
+  IF LATEST_COMMIT_BODY contains any prohibited attribution trailer:
+    git commit --amend --no-verify -F - <<'EOF'
     {{COMMIT_MESSAGE_BLOCK}}
     EOF
 
@@ -536,11 +562,11 @@ ELIF CODING_DECISION == "user_input":
   - Recommended improvements
 
   IF P0_ACTIVE:
-    Use AskUserQuestion with options:
+    {selection_prompt_instructions}
       1. Continue refine in current mode
       2. Switch mode and continue refine
   ELSE:
-    Use AskUserQuestion with options:
+    {selection_prompt_instructions}
       1. Continue refine in current mode
       2. Switch mode and continue refine
       3. Finalize now with deferred-risk summary
@@ -553,10 +579,10 @@ ELIF CODING_DECISION == "user_input":
     Return to Step 7.4
 
   IF user selects option 2:
-    Use AskUserQuestion:
+    {selection_prompt_instructions}
       Header: "Switch Mode"
       Question: "Select new execution mode for this loop."
-      Options: MVP, mixed, hardening
+      Options: MVP, hardening
     RESOLVED_MODE = [user selection]
     RESOLVED_MODE_SOURCE = "user-switched-during-user_input"
     USER_FEEDBACK_MARKDOWN = "Execution Intent Snapshot updated: mode={{RESOLVED_MODE}} (switched by user)"
@@ -632,6 +658,7 @@ Loop:
   # Phase 2 feedback source (coding-standards reviewer CriticFeedback):
   STANDARDS_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
   STANDARDS_SUMMARY = [extract latest Assessment Summary from STANDARDS_FEEDBACK]
+  STANDARDS_ACCOMPLISHED = [extract concise accomplished outcomes from STANDARDS_FEEDBACK or coder handoff report]
   STANDARDS_KEY_ISSUES = [extract top key issues from STANDARDS_FEEDBACK]
   STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:
     "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
@@ -649,26 +676,42 @@ Loop:
   STANDARDS_COMMIT_MESSAGE_BLOCK = compose:
     {{STANDARDS_COMMIT_SUBJECT}}
 
-    Phase: {{PHASE_NAME}}
-    Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
-    Decision: {{STANDARDS_DECISION}}
-    Rubric Score: {{STANDARDS_SCORE}}/100
-    Review Status: {{STANDARDS_REVIEW_STATUS}}
-
     Summary:
     {{STANDARDS_SUMMARY}}
 
-    Key Issues:
+    Review Score: {{STANDARDS_SCORE}}/100
+
+    Accomplished:
+    {{STANDARDS_ACCOMPLISHED}}
+
+    Remaining Issues/Blockers:
     {{STANDARDS_KEY_ISSUES}}
+
+    Phase: {{PHASE_NAME}}
+    Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
+    Decision: {{STANDARDS_DECISION}}
+    Review Status: {{STANDARDS_REVIEW_STATUS}}
 
     Source: coding-standards-reviewer CriticFeedback
 
+  STANDARDS_COMMIT_MESSAGE_RULES:
+  - Commit body MUST be exactly STANDARDS_COMMIT_MESSAGE_BLOCK.
+  - Do NOT append attribution trailers like Co-Authored-By, Signed-off-by, Generated-by, or similar.
+
   HAS_CHANGES = `git status --porcelain` has any output
   IF HAS_CHANGES:
-    Execute commit via adapter policy:
-{tools.tui_adapter.loop_commit_instructions}
+    git add -A
+    git commit --no-verify -F - <<'EOF'
+    {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
+    EOF
   ELSE:
     git commit --allow-empty --no-verify -F - <<'EOF'
+    {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
+    EOF
+
+  LATEST_COMMIT_BODY = `git log -1 --pretty=%B`
+  IF LATEST_COMMIT_BODY contains any prohibited attribution trailer:
+    git commit --amend --no-verify -F - <<'EOF'
     {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
     EOF
 
@@ -695,7 +738,7 @@ Loop:
     STANDARDS_FEEDBACK = {tools.get_standards_feedback}
     Display stagnation info with: phase 1 score, phase 2 current score, iterations, key issues
 
-    Use AskUserQuestion with options:
+    {selection_prompt_instructions}
       1. Continue Phase 2 with more iterations
       2. Finalize current standards state now
 
@@ -784,30 +827,45 @@ ELSE:
 
 FINAL_SCORE = [extract latest Overall Score from FINAL_FEEDBACK]
 FINAL_SUMMARY = [extract latest Assessment Summary from FINAL_FEEDBACK]
+FINAL_ACCOMPLISHED = [extract concise accomplished outcomes from FINAL_FEEDBACK or coder handoff report]
 FINAL_KEY_ISSUES = [extract top key issues from FINAL_FEEDBACK]
 
 FINAL_COMMIT_MESSAGE_BLOCK = compose:
   feat: complete {{PHASE_NAME}}
 
-  Phase: {{PHASE_NAME}}
-  Finalization Source: {{FINALIZATION_DECISION_SOURCE}}
-  Final Loop: {{FINAL_LOOP_LABEL}} (loop_id={{FINAL_LOOP_ID}})
-  Final Score: {{FINAL_SCORE}}/100
-  Completion Gate: {{COMPLETION_GATE_STATUS}}
-  Completion Gate Summary: {{COMPLETION_GATE_SUMMARY}}
-
   Summary:
   {{FINAL_SUMMARY}}
 
-  Key Issues:
+  Review Score: {{FINAL_SCORE}}/100
+
+  Accomplished:
+  {{FINAL_ACCOMPLISHED}}
+
+  Remaining Issues/Blockers:
   {{FINAL_KEY_ISSUES}}
 
+  Phase: {{PHASE_NAME}}
+  Finalization Source: {{FINALIZATION_DECISION_SOURCE}}
+  Final Loop: {{FINAL_LOOP_LABEL}} (loop_id={{FINAL_LOOP_ID}})
+  Completion Gate: {{COMPLETION_GATE_STATUS}}
+  Completion Gate Summary: {{COMPLETION_GATE_SUMMARY}}
+
   Source: {{FINAL_SOURCE}}
+
+FINAL_COMMIT_MESSAGE_RULES:
+- Commit body MUST be exactly FINAL_COMMIT_MESSAGE_BLOCK.
+- Do NOT append attribution trailers like Co-Authored-By, Signed-off-by, Generated-by, or similar.
 
 git add -A
 git commit --allow-empty --no-verify -F - <<'EOF'
 {{FINAL_COMMIT_MESSAGE_BLOCK}}
 EOF
+
+LATEST_COMMIT_BODY = `git log -1 --pretty=%B`
+IF LATEST_COMMIT_BODY contains any prohibited attribution trailer:
+  git commit --amend --no-verify -F - <<'EOF'
+  {{FINAL_COMMIT_MESSAGE_BLOCK}}
+  EOF
 
 Proceed directly to Step 9 (Integration & Documentation)
 ```

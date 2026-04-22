@@ -251,7 +251,7 @@ VIOLATION: Adding "### Implementation Notes" under ## Implementation — silentl
 Within `### Acceptance Criteria`, include BOTH sub-blocks exactly once:
 
 1. `#### Execution Intent Policy`
-- Mode: MVP | mixed | hardening
+- Mode: MVP | hardening
 - Source: task-override | phase-override | plan-default | default-MVP
 - Tie-Break Policy: one sentence
 
