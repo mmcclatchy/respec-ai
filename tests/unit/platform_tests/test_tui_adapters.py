@@ -14,7 +14,7 @@ from src.platform.tui_adapters.opencode import OpenCodeAdapter
 from src.platform.tui_adapters import opencode as opencode_adapter_module
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.platform_selector import PlatformType
-from src.platform.tool_enums import RespecAICommand
+from src.platform.tool_enums import BuiltInToolCapability, RespecAICommand
 from src.platform.tui_selector import TuiType
 
 
@@ -85,6 +85,12 @@ class TestGetTuiAdapter:
         assert 'from src.cli.commands import' not in codex_source
         assert 'from src.cli.commands import' not in opencode_source
 
+    def test_all_adapters_define_runtime_decision_for_every_builtin_capability(self) -> None:
+        expected = set(BuiltInToolCapability)
+
+        for adapter in (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter()):
+            assert set(adapter.builtin_tool_name_map.keys()) == expected
+
 
 class TestClaudeCodeAdapter:
     def setup_method(self) -> None:
@@ -107,6 +113,10 @@ class TestClaudeCodeAdapter:
 
     def test_task_model(self) -> None:
         assert self.adapter.task_model == 'sonnet'
+
+    def test_selection_prompt_contract_uses_ask_user_question(self) -> None:
+        assert self.adapter.selection_prompt_instruction == 'Use AskUserQuestion tool to present options:'
+        assert self.adapter.selection_response_source == 'AskUserQuestion response'
 
     def test_render_agent_frontmatter(self, agent_spec: AgentSpec) -> None:
         result = self.adapter.render_agent(agent_spec)
@@ -199,6 +209,11 @@ class TestOpenCodeAdapter:
 
     def test_no_adapter_level_commit_instruction_api(self) -> None:
         assert not hasattr(self.adapter, 'loop_commit_instructions')
+
+    def test_selection_prompt_contract_uses_question_tool(self) -> None:
+        assert self.adapter.ask_user_question_tool_name == 'question'
+        assert self.adapter.selection_prompt_instruction == 'Use question tool to present options:'
+        assert self.adapter.selection_response_source == 'question response'
 
     def test_reasoning_model_returns_configured_value(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
@@ -333,7 +348,7 @@ class TestOpenCodeAdapter:
             name='respec-coder',
             description='Coder',
             model='sonnet',
-            tools=['Read', 'Write', 'Bash', 'mcp__respec-ai__get_plan'],
+            tools=['read', 'write', 'bash', 'question', 'mcp__respec-ai__get_plan'],
             body='body',
             color=None,
             is_orchestrator=False,
@@ -344,6 +359,7 @@ class TestOpenCodeAdapter:
         assert tools.get('read') is True
         assert tools.get('write') is True
         assert tools.get('bash') is True
+        assert tools.get('question') is True
 
     def test_opencode_json_task_permissions_on_command(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec
@@ -581,6 +597,13 @@ class TestCodexAdapter:
 
     def test_no_adapter_level_commit_instruction_api(self) -> None:
         assert not hasattr(self.adapter, 'loop_commit_instructions')
+
+    def test_selection_prompt_contract_is_explicitly_user_facing(self) -> None:
+        assert (
+            self.adapter.selection_prompt_instruction
+            == 'Present these options directly to the user in the chat UI as a numbered list. This is a user-facing prompt, not an internal instruction. Require a single explicit selection before continuing:'
+        )
+        assert self.adapter.selection_response_source == 'the user response'
 
     def test_reasoning_model_raises_when_unconfigured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):

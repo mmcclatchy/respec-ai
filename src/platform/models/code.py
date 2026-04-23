@@ -7,7 +7,7 @@ from ..adapters import PlatformAdapter, get_platform_adapter
 from ..platform_selector import PlatformType
 from ..tool_doc_extractor import ToolDocumentationExtractor
 from ..tool_doc_generator import ToolDocGenerator
-from ..tool_enums import BuiltInTool, RespecAITool
+from ..tool_enums import BuiltInToolCapability, RespecAITool
 from .core import AgentToolsModel, CommandToolsModel
 
 
@@ -136,13 +136,13 @@ class CoderAgentTools(AgentToolsModel):
         RespecAITool.GET_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.WRITE, ''),
-        (BuiltInTool.EDIT, ''),
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
-        (BuiltInTool.TODO_WRITE, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.WRITE, ''),
+        (BuiltInToolCapability.EDIT, ''),
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
+        (BuiltInToolCapability.TODO_WRITE, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -173,11 +173,11 @@ class AutomatedQualityCheckerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
-        (BuiltInTool.GREP, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
+        (BuiltInToolCapability.GREP, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -194,9 +194,9 @@ class SpecAlignmentReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -213,11 +213,11 @@ class CodeQualityReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.GREP, ''),
-        (BuiltInTool.BASH, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.GREP, ''),
+        (BuiltInToolCapability.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -237,10 +237,10 @@ class FrontendReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -255,9 +255,9 @@ class BackendApiReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -272,10 +272,10 @@ class DatabaseReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -290,10 +290,10 @@ class InfrastructureReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -309,10 +309,10 @@ class CodingStandardsReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')

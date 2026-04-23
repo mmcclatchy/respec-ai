@@ -7,7 +7,7 @@ from ..adapters import PlatformAdapter, get_platform_adapter
 from ..platform_selector import PlatformType
 from ..tool_doc_extractor import ToolDocumentationExtractor
 from ..tool_doc_generator import ToolDocGenerator
-from ..tool_enums import BuiltInTool, RespecAITool
+from ..tool_enums import BuiltInToolCapability, RespecAITool
 from .core import AgentToolsModel, CommandToolsModel
 
 
@@ -164,11 +164,11 @@ class PhaseArchitectAgentTools(AgentToolsModel):
         RespecAITool.GET_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, ''),
-        (BuiltInTool.BASH, ''),
-        (BuiltInTool.GREP, ''),
-        (BuiltInTool.GLOB, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.BASH, ''),
+        (BuiltInToolCapability.GREP, ''),
+        (BuiltInToolCapability.GLOB, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -186,9 +186,9 @@ class PhaseCriticAgentTools(AgentToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.GLOB, ''),
-        (BuiltInTool.BASH, ''),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')

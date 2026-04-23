@@ -7,6 +7,7 @@ from src.cli.config.claude_config import (
     unregister_all_respec_servers as _unregister_all_respec_servers,
     unregister_mcp_server as _unregister_mcp_server,
 )
+from src.platform.tool_enums import BuiltInToolCapability
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
@@ -22,6 +23,38 @@ class ClaudeCodeAdapter(TuiAdapter):
     @property
     def ask_user_question_tool_name(self) -> str | None:
         return 'AskUserQuestion'
+
+    @property
+    def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
+        # Source of truth for Claude Code built-in tool runtime names.
+        # Any new built-in capability must be reviewed here explicitly.
+        return {
+            BuiltInToolCapability.READ: 'Read',
+            BuiltInToolCapability.WRITE: 'Write',
+            BuiltInToolCapability.EDIT: 'Edit',
+            BuiltInToolCapability.MULTI_EDIT: 'MultiEdit',
+            BuiltInToolCapability.NOTEBOOK_EDIT: 'NotebookEdit',
+            BuiltInToolCapability.GLOB: 'Glob',
+            BuiltInToolCapability.GREP: 'Grep',
+            BuiltInToolCapability.TASK: 'Task',
+            BuiltInToolCapability.BASH: 'Bash',
+            BuiltInToolCapability.BASH_OUTPUT: 'BashOutput',
+            BuiltInToolCapability.KILL_SHELL: 'KillShell',
+            BuiltInToolCapability.WEB_FETCH: 'WebFetch',
+            BuiltInToolCapability.WEB_SEARCH: 'WebSearch',
+            BuiltInToolCapability.TODO_WRITE: 'TodoWrite',
+            BuiltInToolCapability.EXIT_PLAN_MODE: 'ExitPlanMode',
+            BuiltInToolCapability.SLASH_COMMAND: 'SlashCommand',
+            BuiltInToolCapability.ASK_USER_QUESTION: 'AskUserQuestion',
+        }
+
+    @property
+    def selection_prompt_instruction(self) -> str:
+        return 'Use AskUserQuestion tool to present options:'
+
+    @property
+    def selection_response_source(self) -> str:
+        return 'AskUserQuestion response'
 
     def commands_dir(self, project_path: Path) -> Path:
         return project_path / '.claude' / 'commands'

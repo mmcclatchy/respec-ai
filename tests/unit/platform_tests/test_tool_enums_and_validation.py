@@ -21,7 +21,7 @@ from src.platform.template_helpers import (
     create_task_plan_critic_agent_tools,
 )
 from src.platform.tool_enums import (
-    BuiltInTool,
+    BuiltInToolCapability,
     ExternalPlatformTool,
     RespecAIAgent,
     RespecAITool,
@@ -37,10 +37,10 @@ class TestToolEnums:
         assert ExternalPlatformTool.GITHUB_CREATE_ISSUE.value == 'mcp__github__create_issue'
 
     def test_builtin_tool_values(self) -> None:
-        assert BuiltInTool.READ.value == 'Read'
-        assert BuiltInTool.WRITE.value == 'Write'
-        assert BuiltInTool.EDIT.value == 'Edit'
-        assert BuiltInTool.TASK.value == 'Task'
+        assert BuiltInToolCapability.READ.value == 'read'
+        assert BuiltInToolCapability.WRITE.value == 'write'
+        assert BuiltInToolCapability.EDIT.value == 'edit'
+        assert BuiltInToolCapability.TASK.value == 'task'
 
     def test_respec_ai_tool_values(self) -> None:
         assert RespecAITool.INITIALIZE_REFINEMENT_LOOP.value == 'mcp__respec-ai__initialize_refinement_loop'
@@ -54,28 +54,28 @@ class TestToolEnums:
 
 class TestToolReference:
     def test_tool_reference_render_without_parameters(self) -> None:
-        tool_ref = ToolReference(tool=BuiltInTool.READ)
-        assert tool_ref.render() == 'Read'
+        tool_ref = ToolReference(tool=BuiltInToolCapability.READ)
+        assert tool_ref.render() == 'read'
 
     def test_tool_reference_render_with_parameters(self) -> None:
-        tool_ref = ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/plans/*/phases/*.md')
-        assert tool_ref.render() == 'Read(.respec-ai/plans/*/phases/*.md)'
+        tool_ref = ToolReference(tool=BuiltInToolCapability.READ, parameters='.respec-ai/plans/*/phases/*.md')
+        assert tool_ref.render() == 'read(.respec-ai/plans/*/phases/*.md)'
 
     def test_tool_reference_validation_file_operations(self) -> None:
         # Should work with valid path
-        ToolReference(tool=BuiltInTool.READ, parameters='.respec-ai/plans/*/phases/*.md')
+        ToolReference(tool=BuiltInToolCapability.READ, parameters='.respec-ai/plans/*/phases/*.md')
 
         # Should fail with directory traversal
         with pytest.raises(ValueError, match='directory traversal'):
-            ToolReference(tool=BuiltInTool.READ, parameters='../../../etc/passwd')
+            ToolReference(tool=BuiltInToolCapability.READ, parameters='../../../etc/passwd')
 
     def test_tool_reference_validation_task_agent(self) -> None:
         # Should work with valid agent name
-        ToolReference(tool=BuiltInTool.TASK, parameters='phase-architect')
+        ToolReference(tool=BuiltInToolCapability.TASK, parameters='phase-architect')
 
         # Should fail with invalid agent name
         with pytest.raises(ValueError, match='Agent name can only contain'):
-            ToolReference(tool=BuiltInTool.TASK, parameters='invalid@agent!')
+            ToolReference(tool=BuiltInToolCapability.TASK, parameters='invalid@agent!')
 
     def test_tool_reference_external_tools(self) -> None:
         tool_ref = ToolReference(tool=ExternalPlatformTool.LINEAR_CREATE_ISSUE)
@@ -88,7 +88,7 @@ class TestToolReference:
 
 class TestTemplateHelpers:
     def test_template_tool_builder(self) -> None:
-        builder = TemplateToolBuilder()
+        builder = TemplateToolBuilder(ClaudeCodeAdapter())
         tools = (
             builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
             .add_respec_ai_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
@@ -99,7 +99,7 @@ class TestTemplateHelpers:
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools
 
     def test_template_tool_builder_yaml_rendering(self) -> None:
-        builder = TemplateToolBuilder()
+        builder = TemplateToolBuilder(ClaudeCodeAdapter())
         yaml_output = (
             builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
             .add_respec_ai_tool(RespecAITool.INITIALIZE_REFINEMENT_LOOP)
@@ -204,6 +204,7 @@ class TestTemplateHelpers:
         assert 'AskUserQuestion' in claude_tools.tools_yaml
         assert 'AskUserQuestion' not in codex_tools.tools_yaml
         assert 'AskUserQuestion' not in opencode_tools.tools_yaml
+        assert 'question' in opencode_tools.tools_yaml
 
     def test_create_task_and_roadmap_tools_include_ask_tool_only_when_adapter_supports_it(self) -> None:
         phase_retrieval_tool = 'mcp__linear-server__get_issue'
@@ -221,17 +222,45 @@ class TestTemplateHelpers:
             PlatformType.LINEAR,
             tui_adapter=CodexAdapter(),
         )
+        opencode_task_tools = create_task_tools(
+            phase_retrieval_tool,
+            phase_listing_tool,
+            PlatformType.LINEAR,
+            tui_adapter=OpenCodeAdapter(),
+        )
         claude_roadmap_tools = create_roadmap_tools(
             roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
         )
         codex_roadmap_tools = create_roadmap_tools(
             roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
+        opencode_roadmap_tools = create_roadmap_tools(
+            roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
+        )
 
         assert 'AskUserQuestion' in claude_task_tools.tools_yaml
         assert 'AskUserQuestion' not in codex_task_tools.tools_yaml
+        assert 'question' in opencode_task_tools.tools_yaml
         assert 'AskUserQuestion' in claude_roadmap_tools.tools_yaml
         assert 'AskUserQuestion' not in codex_roadmap_tools.tools_yaml
+        assert 'question' in opencode_roadmap_tools.tools_yaml
+
+    def test_template_tool_builder_renders_adapter_specific_builtin_names(self) -> None:
+        claude_builder = TemplateToolBuilder(ClaudeCodeAdapter()).add_builtin_tool(
+            BuiltInToolCapability.ASK_USER_QUESTION
+        )
+        opencode_builder = TemplateToolBuilder(OpenCodeAdapter()).add_builtin_tool(
+            BuiltInToolCapability.ASK_USER_QUESTION
+        )
+
+        assert claude_builder.build() == ['AskUserQuestion']
+        assert opencode_builder.build() == ['question']
+
+    def test_template_tool_builder_rejects_unsupported_capability_for_adapter(self) -> None:
+        builder = TemplateToolBuilder(CodexAdapter()).add_builtin_tool(BuiltInToolCapability.ASK_USER_QUESTION)
+
+        with pytest.raises(ValueError, match='does not support built-in tool capability'):
+            builder.build()
 
 
 class TestStartupValidation:

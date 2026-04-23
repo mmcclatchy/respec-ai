@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..tool_enums import BuiltInToolCapability
+
 
 @dataclass(frozen=True)
 class AgentSpec:
@@ -41,7 +43,36 @@ class TuiAdapter(ABC):
         None means this adapter does not support an interactive prompt tool in
         generated command workflows.
         """
-        return None
+        return self.render_builtin_tool_name(BuiltInToolCapability.ASK_USER_QUESTION)
+
+    @property
+    @abstractmethod
+    def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
+        """Map each built-in capability to a real runtime tool name or explicit non-support.
+
+        NOTE FOR MAINTAINERS:
+        Runtime tool names are adapter-specific. Every concrete adapter MUST
+        make an explicit decision for every capability in
+        `BuiltInToolCapability`, even if that decision is `None` for
+        unsupported tools. Adding a new built-in capability requires updating
+        all adapters before shared code may use it.
+        """
+        ...
+
+    def render_builtin_tool_name(self, capability: BuiltInToolCapability) -> str | None:
+        return self.builtin_tool_name_map[capability]
+
+    @property
+    def selection_prompt_instruction(self) -> str:
+        ask_tool = self.ask_user_question_tool_name
+        if ask_tool:
+            return f'Use {ask_tool} tool to present options:'
+        return 'Ask the user directly with a numbered options list and require a single explicit selection before continuing:'
+
+    @property
+    def selection_response_source(self) -> str:
+        ask_tool = self.ask_user_question_tool_name
+        return f'{ask_tool} response' if ask_tool else 'the user response'
 
     @abstractmethod
     def commands_dir(self, project_path: Path) -> Path: ...

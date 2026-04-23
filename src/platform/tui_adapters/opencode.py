@@ -3,22 +3,8 @@ from pathlib import Path
 from typing import Any
 
 from src.cli.config.global_config import load_global_models
+from src.platform.tool_enums import BuiltInToolCapability
 from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
-
-
-_BUILTIN_TOOL_MAP = {
-    'Read': 'read',
-    'Write': 'write',
-    'Edit': 'edit',
-    'Bash': 'bash',
-    'Glob': 'glob',
-    'Grep': 'grep',
-    'LS': 'ls',
-    'WebSearch': 'webSearch',
-    'WebFetch': 'webFetch',
-    'TodoWrite': 'todoWrite',
-    'NotebookEdit': 'notebookEdit',
-}
 
 
 class OpenCodeAdapter(TuiAdapter):
@@ -29,6 +15,38 @@ class OpenCodeAdapter(TuiAdapter):
     @property
     def conversation_workflow_name(self) -> str:
         return 'the conversation workflow'
+
+    @property
+    def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
+        # Source of truth for OpenCode built-in tool runtime names.
+        # Any new built-in capability must be reviewed here explicitly.
+        return {
+            BuiltInToolCapability.READ: 'read',
+            BuiltInToolCapability.WRITE: 'write',
+            BuiltInToolCapability.EDIT: 'edit',
+            BuiltInToolCapability.MULTI_EDIT: None,
+            BuiltInToolCapability.NOTEBOOK_EDIT: 'notebookEdit',
+            BuiltInToolCapability.GLOB: 'glob',
+            BuiltInToolCapability.GREP: 'grep',
+            BuiltInToolCapability.TASK: 'Task',
+            BuiltInToolCapability.BASH: 'bash',
+            BuiltInToolCapability.BASH_OUTPUT: None,
+            BuiltInToolCapability.KILL_SHELL: None,
+            BuiltInToolCapability.WEB_FETCH: 'webFetch',
+            BuiltInToolCapability.WEB_SEARCH: 'webSearch',
+            BuiltInToolCapability.TODO_WRITE: 'todoWrite',
+            BuiltInToolCapability.EXIT_PLAN_MODE: None,
+            BuiltInToolCapability.SLASH_COMMAND: None,
+            BuiltInToolCapability.ASK_USER_QUESTION: 'question',
+        }
+
+    @property
+    def selection_prompt_instruction(self) -> str:
+        return 'Use question tool to present options:'
+
+    @property
+    def selection_response_source(self) -> str:
+        return 'question response'
 
     def commands_dir(self, project_path: Path) -> Path:
         return project_path / '.opencode' / 'commands'
@@ -266,14 +284,17 @@ class OpenCodeAdapter(TuiAdapter):
         }
 
     def _build_tools_block(self, tools: list[str]) -> dict[str, Any]:
+        # Keep this aligned with `builtin_tool_name_map`; prompt rendering and
+        # opencode.json must resolve built-in capabilities through the same
+        # adapter-owned runtime names.
+        supported_builtins = {name for name in self.builtin_tool_name_map.values() if name is not None}
         result: dict[str, bool] = {}
         for tool in tools:
             if tool.startswith('mcp__') or tool.startswith('Task('):
                 continue
             base = tool.split('(')[0]
-            oc_key = _BUILTIN_TOOL_MAP.get(base)
-            if oc_key:
-                result[oc_key] = True
+            if base in supported_builtins:
+                result[base] = True
         if result:
             return {'tools': result}
         return {}

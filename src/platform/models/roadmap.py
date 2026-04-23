@@ -7,7 +7,7 @@ from ..adapters import PlatformAdapter, get_platform_adapter
 from ..platform_selector import PlatformType
 from ..tool_doc_extractor import ToolDocumentationExtractor
 from ..tool_doc_generator import ToolDocGenerator
-from ..tool_enums import BuiltInTool, RespecAITool
+from ..tool_enums import BuiltInToolCapability, RespecAITool
 from .core import AgentToolsModel, CommandToolsModel
 
 
@@ -21,7 +21,7 @@ class PlanRoadmapCommandTools(CommandToolsModel):
         RespecAITool.GET_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
@@ -167,8 +167,8 @@ class RoadmapAgentTools(AgentToolsModel):
         RespecAITool.CREATE_ROADMAP,  # Dedicated roadmap creation
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, '.respec-ai/plans/*/references/*.md'),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, '.respec-ai/plans/*/references/*.md'),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
@@ -187,8 +187,8 @@ class RoadmapCriticAgentTools(AgentToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = [
-        (BuiltInTool.READ, '.respec-ai/plans/*/references/*.md'),
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, '.respec-ai/plans/*/references/*.md'),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')

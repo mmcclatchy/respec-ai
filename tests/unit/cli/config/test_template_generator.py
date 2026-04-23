@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from pytest_mock import MockerFixture
 
+from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import EXPECTED_AGENTS_COUNT, generate_templates
 from src.platform.tui_adapters import get_tui_adapter
@@ -191,3 +192,34 @@ class TestGenerateTemplates:
         assert 'model = "gpt-5.4"' in phase_architect_agent
         assert 'model = "gpt-5.4-mini"' in coder_agent
         assert '\nmodel:' not in plan_openai_yaml
+
+    def test_generated_codex_patch_skill_uses_adapter_owned_direct_user_selection_prompt(self, tmp_path: Path) -> None:
+        orchestrator = PlatformOrchestrator(config_dir=str(tmp_path / 'config'))
+        adapter = get_tui_adapter(TuiType.CODEX)
+        models_data = {'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}
+        project_path = tmp_path / 'project'
+
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
+            (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
+            generate_templates(orchestrator, project_path, PlatformType.LINEAR, tui_adapter=adapter)
+
+        patch_skill = (project_path / '.codex' / 'skills' / 'respec-patch' / 'SKILL.md').read_text(encoding='utf-8')
+        assert 'Present these options directly to the user in the chat UI as a numbered list.' in patch_skill
+        assert 'This is a user-facing prompt, not an internal instruction.' in patch_skill
+        assert 'Ask the user directly with a numbered options list' not in patch_skill
+
+    def test_generated_opencode_patch_prompt_uses_question_tool_selection_prompt(self, tmp_path: Path) -> None:
+        orchestrator = PlatformOrchestrator(config_dir=str(tmp_path / 'config'))
+        adapter = get_tui_adapter(TuiType.OPENCODE)
+        models_data = {'opencode': {'reasoning': 'provider/reasoning-model', 'task': 'provider/task-model'}}
+        project_path = tmp_path / 'project'
+
+        with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
+            (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
+            generate_templates(orchestrator, project_path, PlatformType.LINEAR, tui_adapter=adapter)
+
+        patch_prompt = (project_path / '.opencode' / 'prompts' / 'commands' / 'respec-patch.md').read_text(
+            encoding='utf-8'
+        )
+        assert 'Use question tool to present options:' in patch_prompt
+        assert 'WAIT for question response.' in patch_prompt

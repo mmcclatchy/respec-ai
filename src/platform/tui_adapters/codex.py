@@ -2,6 +2,7 @@ import shutil
 from pathlib import Path
 
 from src.cli.config.global_config import load_global_models
+from src.platform.tool_enums import BuiltInToolCapability
 from src.cli.config.codex_config import (
     is_mcp_server_registered,
     load_codex_config,
@@ -29,6 +30,43 @@ class CodexAdapter(TuiAdapter):
     @property
     def conversation_workflow_name(self) -> str:
         return 'the conversation workflow'
+
+    @property
+    def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
+        # Source of truth for Codex built-in tool spellings emitted by this repo.
+        # Any new built-in capability must be reviewed here explicitly. Preserve
+        # existing non-question spellings unless separately verified.
+        return {
+            BuiltInToolCapability.READ: 'Read',
+            BuiltInToolCapability.WRITE: 'Write',
+            BuiltInToolCapability.EDIT: 'Edit',
+            BuiltInToolCapability.MULTI_EDIT: 'MultiEdit',
+            BuiltInToolCapability.NOTEBOOK_EDIT: 'NotebookEdit',
+            BuiltInToolCapability.GLOB: 'Glob',
+            BuiltInToolCapability.GREP: 'Grep',
+            BuiltInToolCapability.TASK: 'Task',
+            BuiltInToolCapability.BASH: 'Bash',
+            BuiltInToolCapability.BASH_OUTPUT: 'BashOutput',
+            BuiltInToolCapability.KILL_SHELL: 'KillShell',
+            BuiltInToolCapability.WEB_FETCH: 'WebFetch',
+            BuiltInToolCapability.WEB_SEARCH: 'WebSearch',
+            BuiltInToolCapability.TODO_WRITE: 'TodoWrite',
+            BuiltInToolCapability.EXIT_PLAN_MODE: 'ExitPlanMode',
+            BuiltInToolCapability.SLASH_COMMAND: 'SlashCommand',
+            BuiltInToolCapability.ASK_USER_QUESTION: None,
+        }
+
+    @property
+    def selection_prompt_instruction(self) -> str:
+        return (
+            'Present these options directly to the user in the chat UI as a numbered list. '
+            'This is a user-facing prompt, not an internal instruction. '
+            'Require a single explicit selection before continuing:'
+        )
+
+    @property
+    def selection_response_source(self) -> str:
+        return 'the user response'
 
     def commands_dir(self, project_path: Path) -> Path:
         return project_path / '.codex' / 'commands'

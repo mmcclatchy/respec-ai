@@ -34,27 +34,33 @@ from .models import (
 )
 from .platform_selector import PlatformType
 from .tool_doc_generator import ToolDocGenerator
-from .tool_enums import BuiltInTool, RespecAIAgent, RespecAITool
+from .tool_enums import BuiltInToolCapability, RespecAIAgent, RespecAITool
 from .tui_adapters.base import TuiAdapter
 
 
 class TemplateToolBuilder:
-    def __init__(self) -> None:
+    def __init__(self, tui_adapter: TuiAdapter) -> None:
+        # NOTE FOR MAINTAINERS:
+        # Shared platform code stores built-in tools as semantic capabilities.
+        # This builder is the rendering boundary that converts those
+        # capabilities into adapter-specific runtime tool names. Do not emit
+        # raw adapter runtime names directly from shared code paths.
+        self.tui_adapter = tui_adapter
         self.tools: list[ToolReference] = []
 
     def add_task_agent(self, agent_name: RespecAIAgent) -> 'TemplateToolBuilder':
-        self.tools.append(ToolReference(tool=BuiltInTool.TASK, parameters=agent_name))
+        self.tools.append(ToolReference(tool=BuiltInToolCapability.TASK, parameters=agent_name))
         return self
 
     def add_bash_script(self, script_path: str) -> 'TemplateToolBuilder':
-        self.tools.append(ToolReference(tool=BuiltInTool.BASH, parameters=script_path))
+        self.tools.append(ToolReference(tool=BuiltInToolCapability.BASH, parameters=script_path))
         return self
 
     def add_respec_ai_tool(self, tool: RespecAITool) -> 'TemplateToolBuilder':
         self.tools.append(ToolReference(tool=tool))
         return self
 
-    def add_builtin_tool(self, tool: BuiltInTool, parameters: str = '') -> 'TemplateToolBuilder':
+    def add_builtin_tool(self, tool: BuiltInToolCapability, parameters: str = '') -> 'TemplateToolBuilder':
         self.tools.append(ToolReference(tool=tool, parameters=parameters))
         return self
 
@@ -62,20 +68,32 @@ class TemplateToolBuilder:
         for tool_string in platform_tools:
             # For platform tools, we don't validate the enum since they're already processed
             # Just store them as plain strings in the final tools list
-            self.tools.append(ToolReference(tool=BuiltInTool.TASK, parameters=f'__PLATFORM_TOOL__{tool_string}'))
+            self.tools.append(
+                ToolReference(tool=BuiltInToolCapability.TASK, parameters=f'__PLATFORM_TOOL__{tool_string}')
+            )
         return self
 
     def build(self) -> list[str]:
         tool_strings = []
         for tool_ref in self.tools:
-            rendered = tool_ref.render()
-            # Handle special platform tool case
-            if rendered.startswith('Task(__PLATFORM_TOOL__') and rendered.endswith(')'):
-                # Extract the actual tool string
-                tool_string = rendered[len('Task(__PLATFORM_TOOL__') : -1]
-                tool_strings.append(tool_string)
-            else:
-                tool_strings.append(rendered)
+            if tool_ref.tool == BuiltInToolCapability.TASK and tool_ref.parameters.startswith('__PLATFORM_TOOL__'):
+                tool_strings.append(tool_ref.parameters[len('__PLATFORM_TOOL__') :])
+                continue
+
+            if isinstance(tool_ref.tool, BuiltInToolCapability):
+                runtime_name = self.tui_adapter.render_builtin_tool_name(tool_ref.tool)
+                if runtime_name is None:
+                    raise ValueError(
+                        f'{self.tui_adapter.__class__.__name__} does not support built-in tool capability '
+                        f'{tool_ref.tool}'
+                    )
+                if tool_ref.parameters:
+                    tool_strings.append(f'{runtime_name}({tool_ref.parameters})')
+                else:
+                    tool_strings.append(runtime_name)
+                continue
+
+            tool_strings.append(tool_ref.render())
         return tool_strings
 
     def render_yaml_tools(self, indent: str = '  ') -> str:
@@ -85,6 +103,11 @@ class TemplateToolBuilder:
     def render_comma_separated_tools(self) -> str:
         tool_strings = self.build()
         return ', '.join(tool_strings)
+
+
+def _add_adapter_question_tool(builder: TemplateToolBuilder, adapter: TuiAdapter) -> None:
+    if adapter.ask_user_question_tool_name:
+        builder.add_builtin_tool(BuiltInToolCapability.ASK_USER_QUESTION)
 
 
 PLAN_CONVERSATION_INLINE_GUIDE = """\
@@ -131,18 +154,18 @@ def create_phase_command_tools(
     plans_dir: str = '~/.claude/plans',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PhaseCommandTools':
-    builder = TemplateToolBuilder()
+    adapter = _resolve_tui_adapter(tui_adapter)
+    builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
-    builder.add_builtin_tool(BuiltInTool.TASK, 'bp')
-    builder.add_builtin_tool(BuiltInTool.BASH, '')
+    builder.add_builtin_tool(BuiltInToolCapability.TASK, 'bp')
+    builder.add_builtin_tool(BuiltInToolCapability.BASH, '')
 
     for tool in PhaseCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools([create_phase_tool, phase_retrieval_tool, phase_listing_tool])
 
-    adapter = _resolve_tui_adapter(tui_adapter)
     return PhaseCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
@@ -239,21 +262,21 @@ def create_plan_command_tools(
     plans_dir: str = '~/.claude/plans',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PlanCommandTools':
-    builder = TemplateToolBuilder()
+    adapter = _resolve_tui_adapter(tui_adapter)
+    builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.PLAN_CONVERSATION)
     builder.add_task_agent(RespecAIAgent.PLAN_CRITIC)
     builder.add_task_agent(RespecAIAgent.PLAN_ANALYST)
     builder.add_task_agent(RespecAIAgent.ANALYST_CRITIC)
-    builder.add_builtin_tool(BuiltInTool.READ)
-    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/references/*.md')
-    builder.add_builtin_tool(BuiltInTool.BASH)
+    builder.add_builtin_tool(BuiltInToolCapability.READ)
+    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/references/*.md')
+    builder.add_builtin_tool(BuiltInToolCapability.BASH)
 
     for tool in PlanCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
     builder.add_platform_tools(platform_tools)
 
-    adapter = _resolve_tui_adapter(tui_adapter)
     return PlanCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
@@ -338,7 +361,7 @@ def create_code_command_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'CodeCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
@@ -348,9 +371,8 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
-    if adapter.ask_user_question_tool_name:
-        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
-    builder.add_builtin_tool(BuiltInTool.BASH)
+    _add_adapter_question_tool(builder, adapter)
+    builder.add_builtin_tool(BuiltInToolCapability.BASH)
     builder.add_bash_script('scripts/detect-packages.sh:*')
 
     for tool in CodeCommandTools.respec_ai_tools:
@@ -504,12 +526,11 @@ def create_roadmap_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'PlanRoadmapCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.ROADMAP)
     builder.add_task_agent(RespecAIAgent.ROADMAP_CRITIC)
     builder.add_task_agent(RespecAIAgent.CREATE_PHASE)
-    if adapter.ask_user_question_tool_name:
-        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    _add_adapter_question_tool(builder, adapter)
 
     for tool in PlanRoadmapCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -586,11 +607,10 @@ def create_task_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'TaskCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.TASK_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
-    if adapter.ask_user_question_tool_name:
-        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    _add_adapter_question_tool(builder, adapter)
 
     for tool in TaskCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -681,19 +701,18 @@ def create_plan_conversation_command_tools(
 def create_standards_command_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'StandardsCommandTools':
-    builder = TemplateToolBuilder()
     adapter = _resolve_tui_adapter(tui_adapter)
-    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/config/*.toml')
-    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/config/standards/*.toml')
-    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/config/standards/*.toml')
-    builder.add_builtin_tool(BuiltInTool.EDIT, '.respec-ai/config/standards/*.toml')
-    builder.add_builtin_tool(BuiltInTool.GLOB, '.respec-ai/config/standards/*.toml')
-    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/config/standards/guides/*.md')
-    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/config/standards/guides/*.md')
-    builder.add_builtin_tool(BuiltInTool.EDIT, '.respec-ai/config/standards/guides/*.md')
-    builder.add_builtin_tool(BuiltInTool.GLOB, '.respec-ai/config/standards/guides/*.md')
-    if adapter.ask_user_question_tool_name:
-        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
+    builder = TemplateToolBuilder(adapter)
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/config/*.toml')
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInToolCapability.EDIT, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInToolCapability.GLOB, '.respec-ai/config/standards/*.toml')
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/config/standards/guides/*.md')
+    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/config/standards/guides/*.md')
+    builder.add_builtin_tool(BuiltInToolCapability.EDIT, '.respec-ai/config/standards/guides/*.md')
+    builder.add_builtin_tool(BuiltInToolCapability.GLOB, '.respec-ai/config/standards/guides/*.md')
+    _add_adapter_question_tool(builder, adapter)
     return StandardsCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
@@ -703,7 +722,7 @@ def create_standards_command_tools(
 def create_phase_architect_agent_tools(
     tui_adapter: TuiAdapter, plans_dir: str = '~/.claude/plans'
 ) -> PhaseArchitectAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PhaseArchitectAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -732,7 +751,7 @@ def create_phase_architect_agent_tools(
 
 
 def create_phase_critic_agent_tools(tui_adapter: TuiAdapter, phase_length_soft_cap: int) -> PhaseCriticAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PhaseCriticAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -760,7 +779,7 @@ def create_phase_critic_agent_tools(tui_adapter: TuiAdapter, phase_length_soft_c
 
 
 def create_analyst_critic_agent_tools(tui_adapter: TuiAdapter) -> AnalystCriticAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in AnalystCriticAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -787,7 +806,7 @@ def create_analyst_critic_agent_tools(tui_adapter: TuiAdapter) -> AnalystCriticA
 
 
 def create_plan_analyst_agent_tools(tui_adapter: TuiAdapter) -> PlanAnalystAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PlanAnalystAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -814,7 +833,7 @@ def create_plan_analyst_agent_tools(tui_adapter: TuiAdapter) -> PlanAnalystAgent
 
 
 def create_plan_critic_agent_tools(tui_adapter: TuiAdapter) -> PlanCriticAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PlanCriticAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -832,7 +851,7 @@ def create_plan_critic_agent_tools(tui_adapter: TuiAdapter) -> PlanCriticAgentTo
 
 
 def create_roadmap_agent_tools(tui_adapter: TuiAdapter, plans_dir: str = '~/.claude/plans') -> RoadmapAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in RoadmapAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -858,7 +877,7 @@ def create_roadmap_agent_tools(tui_adapter: TuiAdapter, plans_dir: str = '~/.cla
 
 
 def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in RoadmapCriticAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -883,7 +902,7 @@ def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticA
 
 
 def create_task_planner_agent_tools(tui_adapter: TuiAdapter) -> TaskPlannerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in TaskPlannerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -922,7 +941,7 @@ def create_task_planner_agent_tools(tui_adapter: TuiAdapter) -> TaskPlannerAgent
 
 
 def create_task_plan_critic_agent_tools(tui_adapter: TuiAdapter) -> TaskPlanCriticAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in TaskPlanCriticAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -952,7 +971,7 @@ def create_coder_agent_tools(
     tui_adapter: TuiAdapter,
     platform_tools: list[str],
 ) -> CoderAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in CoderAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -981,7 +1000,7 @@ def create_coder_agent_tools(
 def create_create_phase_agent_tools(
     tui_adapter: TuiAdapter, platform_tools: list[str], platform: PlatformType
 ) -> CreatePhaseAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in CreatePhaseAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1008,7 +1027,7 @@ def create_create_phase_agent_tools(
 
 
 def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> AutomatedQualityCheckerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in AutomatedQualityCheckerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1042,7 +1061,7 @@ def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> Aut
 
 
 def create_spec_alignment_reviewer_agent_tools(tui_adapter: TuiAdapter) -> SpecAlignmentReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in SpecAlignmentReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1076,7 +1095,7 @@ def create_spec_alignment_reviewer_agent_tools(tui_adapter: TuiAdapter) -> SpecA
 
 
 def create_code_quality_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeQualityReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in CodeQualityReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1110,7 +1129,7 @@ def create_code_quality_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeQua
 
 
 def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in FrontendReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1141,7 +1160,7 @@ def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendRev
 
 
 def create_backend_api_reviewer_agent_tools(tui_adapter: TuiAdapter) -> BackendApiReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in BackendApiReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1172,7 +1191,7 @@ def create_backend_api_reviewer_agent_tools(tui_adapter: TuiAdapter) -> BackendA
 
 
 def create_database_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DatabaseReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in DatabaseReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1203,7 +1222,7 @@ def create_database_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DatabaseRev
 
 
 def create_infrastructure_reviewer_agent_tools(tui_adapter: TuiAdapter) -> InfrastructureReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in InfrastructureReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1234,7 +1253,7 @@ def create_infrastructure_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Infra
 
 
 def create_coding_standards_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodingStandardsReviewerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in CodingStandardsReviewerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1268,7 +1287,7 @@ def create_coding_standards_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Cod
 
 
 def create_patch_planner_agent_tools(tui_adapter: TuiAdapter) -> PatchPlannerAgentTools:
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PatchPlannerAgentTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
@@ -1313,7 +1332,7 @@ def create_patch_command_tools(
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> PatchCommandTools:
     adapter = _resolve_tui_adapter(tui_adapter)
-    builder = TemplateToolBuilder()
+    builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
     builder.add_task_agent(RespecAIAgent.TASK_PLAN_CRITIC)
     builder.add_task_agent(RespecAIAgent.CODER)
@@ -1325,12 +1344,11 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.DATABASE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.INFRASTRUCTURE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODING_STANDARDS_REVIEWER)
-    if adapter.ask_user_question_tool_name:
-        builder.add_builtin_tool(BuiltInTool.ASK_USER_QUESTION)
-    builder.add_builtin_tool(BuiltInTool.BASH)
-    builder.add_builtin_tool(BuiltInTool.GLOB)
-    builder.add_builtin_tool(BuiltInTool.READ, '.respec-ai/plans/*/phases/*.md')
-    builder.add_builtin_tool(BuiltInTool.WRITE, '.respec-ai/plans/*/phases/*/tasks/*.md')
+    _add_adapter_question_tool(builder, adapter)
+    builder.add_builtin_tool(BuiltInToolCapability.BASH)
+    builder.add_builtin_tool(BuiltInToolCapability.GLOB)
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/plans/*/phases/*.md')
+    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/tasks/*.md')
     builder.add_bash_script('scripts/detect-packages.sh:*')
 
     for tool in PatchCommandTools.respec_ai_tools:

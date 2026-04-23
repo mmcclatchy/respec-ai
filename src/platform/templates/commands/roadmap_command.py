@@ -2,16 +2,8 @@ from src.platform.models import PlanRoadmapCommandTools
 
 
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
-    ask_tool = tools.tui_adapter.ask_user_question_tool_name
-    selection_prompt_instructions = (
-        f'Use {ask_tool} tool to present options:'
-        if ask_tool
-        else (
-            'Ask the user directly with a numbered options list and require a single explicit selection '
-            'before continuing:'
-        )
-    )
-    selection_response_source = f'{ask_tool} response' if ask_tool else 'the user response'
+    selection_prompt_instructions = tools.tui_adapter.selection_prompt_instruction
+    selection_response_source = tools.tui_adapter.selection_response_source
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [optional: roadmap-guidance]

@@ -7,7 +7,7 @@ from ..adapters import PlatformAdapter, get_platform_adapter
 from ..platform_selector import PlatformType
 from ..tool_doc_extractor import ToolDocumentationExtractor
 from ..tool_doc_generator import ToolDocGenerator
-from ..tool_enums import BuiltInTool, RespecAICommand, RespecAITool
+from ..tool_enums import BuiltInToolCapability, RespecAICommand, RespecAITool
 from .core import AgentToolsModel, CommandToolsModel
 
 
@@ -207,7 +207,7 @@ class AnalystCriticAgentTools(AgentToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
@@ -224,7 +224,7 @@ class PlanAnalystAgentTools(AgentToolsModel):
         RespecAITool.STORE_CURRENT_ANALYSIS,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
@@ -238,7 +238,7 @@ class PlanCriticAgentTools(AgentToolsModel):
         RespecAITool.GET_DOCUMENT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = []
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')

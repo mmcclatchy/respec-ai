@@ -922,7 +922,8 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=CodexAdapter(),
         )
-        assert 'Ask the user directly with a numbered options list' in template
+        assert 'Present these options directly to the user in the chat UI as a numbered list.' in template
+        assert 'This is a user-facing prompt, not an internal instruction.' in template
         assert 'WAIT for the user response.' in template
         assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
         assert 'After the user responds, resume at Step 1.3.' in template
@@ -931,17 +932,20 @@ class TestCrossPlatformInvocationRendering:
         assert 'After the user responds, resume at Step 7.5.' in template
         assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
         assert 'Use AskUserQuestion' not in template
+        assert 'Ask the user directly with a numbered options list' not in template
         assert 'mixed' not in template
 
-    def test_opencode_code_template_uses_direct_numbered_selection_instructions(self) -> None:
+    def test_opencode_code_template_uses_question_tool_selection_instructions(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
             PlatformType.LINEAR,
             tui_adapter=OpenCodeAdapter(),
         )
-        assert 'Ask the user directly with a numbered options list' in template
+        assert 'Use question tool to present options:' in template
+        assert 'WAIT for question response.' in template
         assert 'Use AskUserQuestion' not in template
+        assert 'Ask the user directly with a numbered options list' not in template
         assert 'mixed' not in template
 
     def test_code_template_accepts_optional_context_and_normalizes_it_for_shared_agents(self) -> None:
@@ -1287,11 +1291,48 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=CodexAdapter(),
         )
-        assert 'Ask the user directly with a numbered options list' in template
+        assert 'Present these options directly to the user in the chat UI as a numbered list.' in template
+        assert 'This is a user-facing prompt, not an internal instruction.' in template
         assert 'WAIT for the user response.' in template
         assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
         assert 'After the user responds, resume at Step 1.2.' in template
         assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
+
+    def test_selection_prompt_contract_is_adapter_owned_across_interactive_commands(self) -> None:
+        coordinator = TemplateCoordinator()
+        codex_phrase = 'Present these options directly to the user in the chat UI as a numbered list.'
+        claude_phrase = 'Use AskUserQuestion tool to present options:'
+        opencode_phrase = 'Use question tool to present options:'
+
+        for command in (
+            RespecAICommand.PATCH,
+            RespecAICommand.CODE,
+            RespecAICommand.TASK,
+            RespecAICommand.ROADMAP,
+            RespecAICommand.PHASE,
+        ):
+            codex_template = coordinator.generate_command_template(
+                command,
+                PlatformType.LINEAR,
+                tui_adapter=CodexAdapter(),
+            )
+            assert codex_phrase in codex_template
+            assert 'Ask the user directly with a numbered options list' not in codex_template
+
+            claude_template = coordinator.generate_command_template(
+                command,
+                PlatformType.LINEAR,
+                tui_adapter=ClaudeCodeAdapter(),
+            )
+            assert claude_phrase in claude_template
+
+            opencode_template = coordinator.generate_command_template(
+                command,
+                PlatformType.LINEAR,
+                tui_adapter=OpenCodeAdapter(),
+            )
+            assert opencode_phrase in opencode_template
+            assert 'Ask the user directly with a numbered options list' not in opencode_template
 
     def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
         guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')

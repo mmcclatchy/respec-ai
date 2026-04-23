@@ -1,4 +1,4 @@
-"""Tool enums defining all valid tools across external platforms, built-in Claude Code tools, and respec-ai MCP tools."""
+"""Tool enums defining external platform tools, built-in tool capabilities, and respec-ai MCP tools."""
 
 from enum import StrEnum
 
@@ -48,37 +48,42 @@ class ExternalPlatformTool(StrEnum):
     GITHUB_LIST_FILES = f'{_GITHUB_PREFIX}list_files'
 
 
-class BuiltInTool(StrEnum):
+class BuiltInToolCapability(StrEnum):
+    # NOTE FOR MAINTAINERS:
+    # These are adapter-neutral capabilities, not concrete runtime tool names.
+    # Every new capability added here MUST be reviewed in every TUI adapter so
+    # each adapter explicitly declares the real runtime tool name or explicit
+    # non-support before the capability is used in shared platform code.
     # File Operations
-    READ = 'Read'
-    WRITE = 'Write'
-    EDIT = 'Edit'
-    MULTI_EDIT = 'MultiEdit'
-    NOTEBOOK_EDIT = 'NotebookEdit'
+    READ = 'read'
+    WRITE = 'write'
+    EDIT = 'edit'
+    MULTI_EDIT = 'multi_edit'
+    NOTEBOOK_EDIT = 'notebook_edit'
 
     # Search and Discovery
-    GLOB = 'Glob'
-    GREP = 'Grep'
+    GLOB = 'glob'
+    GREP = 'grep'
 
     # Agent and Task Management
-    TASK = 'Task'
+    TASK = 'task'
 
     # System Operations
-    BASH = 'Bash'
-    BASH_OUTPUT = 'BashOutput'
-    KILL_SHELL = 'KillShell'
+    BASH = 'bash'
+    BASH_OUTPUT = 'bash_output'
+    KILL_SHELL = 'kill_shell'
 
     # Web Operations
-    WEB_FETCH = 'WebFetch'
-    WEB_SEARCH = 'WebSearch'
+    WEB_FETCH = 'web_fetch'
+    WEB_SEARCH = 'web_search'
 
     # Plan Management
-    TODO_WRITE = 'TodoWrite'
-    EXIT_PLAN_MODE = 'ExitPlanMode'
-    SLASH_COMMAND = 'SlashCommand'
+    TODO_WRITE = 'todo_write'
+    EXIT_PLAN_MODE = 'exit_plan_mode'
+    SLASH_COMMAND = 'slash_command'
 
     # User Interaction
-    ASK_USER_QUESTION = 'AskUserQuestion'
+    ASK_USER_QUESTION = 'ask_user_question'
 
 
 class RespecAITool(StrEnum):
@@ -188,4 +193,4 @@ class RespecAICommand(StrEnum):
     STANDARDS = 'respec-standards'
 
 
-ToolEnums = ExternalPlatformTool | BuiltInTool | RespecAITool
+ToolEnums = ExternalPlatformTool | BuiltInToolCapability | RespecAITool

@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..tool_enums import BuiltInTool, ToolEnums
+from ..tool_enums import BuiltInToolCapability, ToolEnums
 from ..tui_adapters.base import TuiAdapter
 
 
@@ -28,6 +28,12 @@ class ToolReference(PlatformModel):
     parameters: str = Field(default='', description='Tool parameters like path patterns or agent names')
 
     def render(self) -> str:
+        """Render semantic tool references.
+
+        Built-in tool capabilities are rendered as capability identifiers here.
+        Concrete runtime tool names are resolved later by adapter-aware
+        rendering in `TemplateToolBuilder`.
+        """
         if self.parameters:
             return f'{self.tool}({self.parameters})'
         return self.tool
@@ -43,7 +49,12 @@ class ToolReference(PlatformModel):
             return v
 
         # Validate path patterns for file operations
-        if tool in [BuiltInTool.READ, BuiltInTool.WRITE, BuiltInTool.EDIT, BuiltInTool.GLOB]:
+        if tool in [
+            BuiltInToolCapability.READ,
+            BuiltInToolCapability.WRITE,
+            BuiltInToolCapability.EDIT,
+            BuiltInToolCapability.GLOB,
+        ]:
             if not v.strip():
                 raise ValueError(f'File operation tool {tool} requires non-empty path parameter')
             # Basic path pattern validation
@@ -51,7 +62,7 @@ class ToolReference(PlatformModel):
                 raise ValueError(f'Path parameter cannot contain directory traversal: {v}')
 
         # Validate agent names for Task tool
-        elif tool == BuiltInTool.TASK:
+        elif tool == BuiltInToolCapability.TASK:
             if not v.strip():
                 raise ValueError('Task tool requires non-empty agent name parameter')
             # Skip validation for special platform tool markers

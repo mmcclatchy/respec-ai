@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/patch-fail-closed-parity-template-typo-cleanup.md`
-- Objective: Harden `respec-patch` fail-closed behavior and remove malformed trailing-`)` command template lines.
+- Plan File: `./.codex/plans/adapter-neutral-builtin-tool-capability-refactor.md`
+- Objective: Refactor built-in tool handling to use adapter-neutral capabilities in shared code and adapter-owned runtime naming across Claude, OpenCode, and Codex.
 - Phase: completed
-- Last Updated: 2026-04-23T19:18:07Z
+- Last Updated: 2026-04-23T21:03:00Z
 
 ## Usage
 
