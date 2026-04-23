@@ -53,7 +53,7 @@ Fail closed on ambiguity:
   and additional task-planning guidance.
 - Ask the user a clarifying question or present options whenever multiple reasonable
   interpretations would change the selected phase, task scope, planning direction,
-  validation criteria, or what should be passed downstream as guidance.
+  validation criteria, or what to pass downstream as guidance.
 - Do NOT begin phase lookup until the phase reference is sufficiently clear.
 
 Once RAW_PHASE_REQUEST is sufficiently clear:
@@ -326,7 +326,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
 "complete"   → Proceed to next step. Do NOT ask for confirmation.
 
-VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 

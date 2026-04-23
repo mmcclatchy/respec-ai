@@ -300,7 +300,7 @@ Step 2: Validate reference readability
 Step 3: Validate Task plan-reference citation integrity
   FOR EACH `(per plan reference: ...)` citation in Task:
     - Filename must map to a successfully read canonical reference
-    - Citation should include section/line detail when available:
+    - Require each citation to include section/line detail when available:
       `§ "Section Name" (lines X-Y)` OR `(section/lines unavailable)`
     IF citation does not map to readable reference:
       Flag BLOCKING issue:

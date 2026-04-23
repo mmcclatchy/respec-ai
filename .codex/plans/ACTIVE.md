@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/remoterocketship-direct-api-settings-alignment.md`
-- Objective: Normalize clarification/resume wording across command-template hotspots so interactive prompts do not appear to stop workflows.
-- Phase: implementation
-- Last Updated: 2026-04-23T17:04:51Z
+- Plan File: `./.codex/plans/imperative-language-audit.md`
+- Objective: Audit and harden command and agent template instruction language so actionable sections use strong imperatives.
+- Phase: completed
+- Last Updated: 2026-04-23T17:57:00Z
 
 ## Usage
 

@@ -139,7 +139,7 @@ Fail closed on ambiguity:
   and additional architecture guidance.
 - Ask the user a clarifying question or present options whenever multiple reasonable
   interpretations would change the selected phase, phase-architect direction,
-  validation criteria, or what should be passed downstream as optional instructions.
+  validation criteria, or what to pass downstream as optional instructions.
 - Do NOT begin phase lookup until the phase reference is sufficiently clear.
 
 Once RAW_PHASE_REQUEST is sufficiently clear:
@@ -335,7 +335,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
 "complete"   → Proceed to next step. Do NOT ask for confirmation.
 
-VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 
@@ -566,7 +566,7 @@ ELIF validation_result shows invalid_count > 0:
     Display warning: "⚠️ Synthesized research paths invalid:"
     List INVALID_PATHS
     Display: "Check bp task output logs"
-    # Non-blocking - user can proceed
+    # Non-blocking - continue to Step 8 after displaying the warning.
 ELSE:
     Display: "✓ All research paths validated successfully"
 
@@ -900,7 +900,7 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Core sections (Overview, Architecture, Testing Strategy) MUST always be present
 - Domain-specific sections MUST only be included if relevant to the project type
 - No placeholder content ("TBD", "N/A") - omit sections instead
-- Content can use any markdown format (code blocks, lists, tables, diagrams)
+- Use any markdown format for content (code blocks, lists, tables, diagrams)
 
 ## Context Preservation
 

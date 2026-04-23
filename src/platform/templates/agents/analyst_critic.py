@@ -92,7 +92,7 @@ Lane 1 — Content score (`overall_score`):
 
 Lane 2 — Structural/procedural blockers (`### Blockers`):
 - Add blockers for hard-stop contract failures only (missing required sections, missing source traceability, malformed output contract).
-- Do not use blockers for ordinary quality gaps that should be handled by score deductions.
+- Do not use blockers for ordinary quality gaps. Handle those gaps through score deductions.
 
 ## Invocation Contract
 

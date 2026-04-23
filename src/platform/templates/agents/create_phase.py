@@ -78,7 +78,7 @@ SETUP: Roadmap Retrieval and Dual Storage
    (DO NOT create new content - just extract and save existing phase)
 
 TASKS:
-**Simple Extraction and Save - Should complete in seconds**
+**Simple Extraction and Save - Complete in seconds**
 
 STEP 1: Retrieve Roadmap
 CALL {tools.get_roadmap}
@@ -153,7 +153,7 @@ VIOLATION: Reporting "Both operations succeeded" when platform save failed.
 
 ## EXPECTED PHASE STRUCTURE
 
-The Phase you retrieve from the roadmap should have this structure (created by roadmap agent):
+Use the Phase structure below for the Phase retrieved from the roadmap (created by roadmap agent):
 
   ```markdown
 {indent(sparse_phase_example, '  ')}

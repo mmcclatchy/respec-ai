@@ -1,5 +1,6 @@
 """Tests for command template generation functions."""
 
+import re
 from pathlib import Path
 
 from src.platform.platform_selector import PlatformType
@@ -7,6 +8,95 @@ from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
+
+
+_BANNED_ACTION_PATTERNS = (
+    re.compile(r"\bshould\b", re.IGNORECASE),
+    re.compile(r"\bconsider\b", re.IGNORECASE),
+    re.compile(r"\bthink about\b", re.IGNORECASE),
+    re.compile(r"\btry to\b", re.IGNORECASE),
+    re.compile(r"\byou will\b", re.IGNORECASE),
+    re.compile(r"\byour role is\b", re.IGNORECASE),
+    re.compile(r"\bmay\b", re.IGNORECASE),
+    re.compile(r"\bcan\b", re.IGNORECASE),
+)
+
+_COMMAND_ACTION_SECTION_TOKENS = (
+    '## Workflow Steps',
+    '## How to Conduct This Conversation',
+    '## Step ',
+    '### Step ',
+    '#### Step ',
+    'MANDATORY ',
+    'FAIL-CLOSED RULE',
+    'Strategic plan creation process:',
+    'Option gating rules:',
+    '### Wait for user response and process decision',
+    '## Error Handling',
+    '## Quality Assessment',
+    '## Research Integration',
+    '### Final Step',
+)
+
+
+def _extract_actionable_sections(template: str, section_tokens: tuple[str, ...]) -> str:
+    actionable_lines: list[str] = []
+    active = False
+    in_fence = False
+    fence_lang = ''
+
+    for line in template.splitlines():
+        stripped = line.strip()
+
+        if stripped.startswith('```'):
+            if in_fence:
+                in_fence = False
+                fence_lang = ''
+            else:
+                in_fence = True
+                fence_lang = stripped.removeprefix('```').strip().lower()
+            continue
+
+        if stripped.startswith('#'):
+            active = any(token in stripped for token in section_tokens)
+        elif any(token in stripped for token in section_tokens):
+            active = True
+        elif stripped.startswith('VIOLATION:') or stripped.startswith('FAIL-CLOSED RULE'):
+            active = True
+        elif re.match(r'^(STEP|SUB-STEP)\b', stripped):
+            active = True
+
+        include_fence_line = in_fence and fence_lang in ('', 'text')
+        if active and stripped and (not in_fence or include_fence_line):
+            actionable_lines.append(stripped)
+
+    return '\n'.join(actionable_lines)
+
+
+def _assert_no_soft_action_language(template: str, section_tokens: tuple[str, ...]) -> None:
+    actionable = _extract_actionable_sections(template, section_tokens)
+    offenders = []
+    for line in actionable.splitlines():
+        if any(pattern.search(line) for pattern in _BANNED_ACTION_PATTERNS):
+            offenders.append(line)
+    assert not offenders, f'Found soft or ambiguous action language: {offenders}'
+
+
+def test_actionable_section_extraction_includes_text_fences_but_skips_markdown_examples() -> None:
+    template = """## Workflow Steps
+```text
+This should be flagged.
+```
+### Final Step
+```markdown
+This should stay ignored.
+```
+"""
+
+    actionable = _extract_actionable_sections(template, _COMMAND_ACTION_SECTION_TOKENS)
+
+    assert 'This should be flagged.' in actionable
+    assert 'This should stay ignored.' not in actionable
 
 
 class TestPlanRoadmapRespecAICommand:
@@ -743,6 +833,42 @@ class TestCrossPlatformInvocationRendering:
         assert 'STANDARDS_REVIEW_ITERATION = 1' in template
         assert 'REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION' in template
         assert 'phase2_mode: true' not in template
+
+    def test_patch_template_uses_explicit_wait_resume_contract_for_all_user_input_branches(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'After the user responds, resume at Step 1.2. Set EXECUTION_MODE.' in template
+        assert 'After the user responds, resume at Step 1.3. Clarify RAW_REQUEST.' in template
+        assert 'After the user responds, resume at Step 2.3. Set PHASE_FILE_PATH.' in template
+        assert 'After the user responds, resume at Step 3.6. Store the guidance with' in template
+        assert 'After the user responds, resume at Step 4.1.1. Set EXECUTION_MODE.' in template
+        assert 'After the user responds, resume at Step 6. Store the guidance with' in template
+        assert 'After the user responds, resume at Step 6.5.' in template
+        assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
+
+    def test_roadmap_template_uses_explicit_wait_resume_contract_for_guidance_and_user_input(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'resume at Step 0.1. Update PHASING_PREFERENCES. Continue to Step 0.2 immediately.' in template
+        assert 'resume at Step 4. Branch on the selected option.' in template
+        assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
+
+    def test_all_command_templates_use_imperative_language_in_actionable_sections(self) -> None:
+        coordinator = TemplateCoordinator()
+        adapters = (ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter())
+
+        for adapter in adapters:
+            for command in RespecAICommand:
+                template = coordinator.generate_command_template(command, PlatformType.LINEAR, tui_adapter=adapter)
+                _assert_no_soft_action_language(template, _COMMAND_ACTION_SECTION_TOKENS)
 
     def test_task_template_excludes_stale_create_task_target(self) -> None:
         coordinator = TemplateCoordinator()

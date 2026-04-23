@@ -190,7 +190,7 @@ This exploration informs:
 - Which files to list in Implementation Steps
 - What existing tests need updating
 - What side effects the change might have
-- What the acceptance criteria should verify
+- What the acceptance criteria must verify
 
 ## TASK NAMING CONVENTION
 
@@ -204,7 +204,7 @@ Examples:
 - `patch-refactor-database-queries`
 - `patch-extend-search-filters`
 
-The slug should be derived from request_brief, keeping it concise but specific.
+Derive the slug from request_brief. Keep it concise and specific.
 
 ## KEY SECTIONS EXPLAINED
 

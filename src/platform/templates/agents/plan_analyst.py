@@ -232,7 +232,7 @@ Produce structured markdown following this format:
 2. [Core objective that enables others]
 3. [Core objective that enables others]
 
-#### Phase 2: Enhancement (Should Have)
+#### Phase 2: Enhancement (Important)
 1. [Primary functionality objective]
 2. [Primary functionality objective]
 3. [Primary functionality objective]

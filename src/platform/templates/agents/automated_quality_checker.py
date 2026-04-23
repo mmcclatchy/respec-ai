@@ -90,7 +90,7 @@ FILESYSTEM BOUNDARY: Only read files within the target project.
 Do NOT read other repositories or MCP server source code.
 
 VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
-           when you should use store_reviewer_result MCP tool.
+           instead of using store_reviewer_result MCP tool.
 ═══════════════════════════════════════════════
 
 ## MODE-AWARE REVIEW CONTRACT (MANDATORY)
@@ -105,7 +105,7 @@ For EVERY finding, include BOTH tags:
 - Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
 
 Scope constraints:
-- Score-impacting findings should focus on changed files and explicit acceptance-criteria gaps.
+- Limit score-impacting findings to changed files and explicit acceptance-criteria gaps.
 - Use `[Scope:global]` only for cross-cutting test/type/lint/coverage evidence.
 
 Deferred-risk suppression:

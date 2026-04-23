@@ -686,7 +686,7 @@ Phases vary by project type. Evaluate based on project context:
 
 **If Structure Issues Found**:
 - Note in feedback which sections use wrong header levels
-- Recommend: "Section X should be nested under H2 'Y' as '### X' not standalone '## X'"
+- Recommend: "Nest Section X under H2 'Y' as '### X', not standalone '## X'"
 - This is implementation-blocking - phase will not parse correctly into model fields
 
 **Phase Naming and Scoping Compliance (included in assessment - not scored separately)**
@@ -816,7 +816,7 @@ Phases vary by project type. Evaluate based on project context:
 - If ANY invalid "Read:" paths found: raise blockers
 - This is a BLOCKING issue - invalid paths cause downstream task-planner failure
 - "Synthesize:" prompts are NOT penalized (converted to files in Step 7.5)
-- However, low-value or redundant "Synthesize:" prompts SHOULD be flagged as quality issues
+- However, flag low-value or redundant "Synthesize:" prompts as quality issues
 - If prompt set appears quota-driven (added to fill count rather than clear gaps), deduct points
 - Require prompt discipline: specific, high-value gaps only; avoid broad "research everything" prompts
 - All invalid "Read:" paths MUST be corrected before phase is considered ready
@@ -910,7 +910,7 @@ These sections vary by project type. Identify all sections beyond core sections,
 - Section is relevant but superficial (1-2 sentences for complex topics)
 
 **Flexible Content Principle:**
-- Content can use ANY markdown format (code blocks, lists, tables, diagrams)
+- Use ANY markdown format for content (code blocks, lists, tables, diagrams)
 - Evaluate substance, NOT formatting style
 - Focus on implementation value
 
@@ -972,7 +972,7 @@ Assess phase for implementation details that belong in Task:
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
 
 **Maximum possible: 105 points** (base 100 + 5 structure bonus)
-**Minimum possible: 0 points** (penalties can reduce to 0 but not below)
+**Minimum possible: 0 points** (penalties reduce the score to 0 but not below)
 
 **Convert to 0-100 scale**:
 1. Calculate Raw Score by adding all positive scores (Core Sections + Domain-Specific Sections + Structure Bonus)

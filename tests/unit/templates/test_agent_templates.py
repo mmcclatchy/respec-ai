@@ -1,5 +1,7 @@
 """Tests for agent template generation functions."""
 
+import re
+
 from src.platform.models import PlatformType
 from src.platform.tui_adapters import ClaudeCodeAdapter
 
@@ -32,6 +34,96 @@ from src.platform.templates.agents import (
 
 
 _adapter = ClaudeCodeAdapter()
+
+_BANNED_ACTION_PATTERNS = (
+    re.compile(r"\bshould\b", re.IGNORECASE),
+    re.compile(r"\bconsider\b", re.IGNORECASE),
+    re.compile(r"\bthink about\b", re.IGNORECASE),
+    re.compile(r"\btry to\b", re.IGNORECASE),
+    re.compile(r"\byou will\b", re.IGNORECASE),
+    re.compile(r"\byour role is\b", re.IGNORECASE),
+    re.compile(r"\bmay\b", re.IGNORECASE),
+    re.compile(r"\bcan\b", re.IGNORECASE),
+)
+
+_AGENT_ACTION_SECTION_TOKENS = (
+    'TASKS:',
+    '## WORKFLOW',
+    '## MODE-AWARE REVIEW CONTRACT',
+    '## PROJECT CONFIGURATION',
+    '## ASSESSMENT',
+    '## EXPECTED PHASE STRUCTURE',
+    '## TASK CONTEXT DISCOVERY',
+    '## TDD METHODOLOGY',
+    '## TODO LIST STRUCTURE',
+    '## CODING STANDARDS',
+    '## TASK AND PHASE ADHERENCE',
+    '## FEEDBACK INTEGRATION',
+    '## ITERATION STRATEGY',
+    '## ERROR HANDLING',
+    '## OUTPUT FORMAT',
+    'MANDATORY ',
+)
+
+
+def _extract_actionable_sections(template: str, section_tokens: tuple[str, ...]) -> str:
+    actionable_lines: list[str] = []
+    active = False
+    in_fence = False
+    fence_lang = ''
+
+    for line in template.splitlines():
+        stripped = line.strip()
+
+        if stripped.startswith('```'):
+            if in_fence:
+                in_fence = False
+                fence_lang = ''
+            else:
+                in_fence = True
+                fence_lang = stripped.removeprefix('```').strip().lower()
+            continue
+
+        if stripped.startswith('#'):
+            active = any(token in stripped for token in section_tokens)
+        elif any(token in stripped for token in section_tokens):
+            active = True
+        elif stripped.startswith('VIOLATION:'):
+            active = True
+        elif re.match(r'^(STEP|SUB-STEP)\b', stripped):
+            active = True
+
+        include_fence_line = in_fence and fence_lang in ('', 'text')
+        if active and stripped and (not in_fence or include_fence_line):
+            actionable_lines.append(stripped)
+
+    return '\n'.join(actionable_lines)
+
+
+def _assert_no_soft_action_language(template: str, section_tokens: tuple[str, ...]) -> None:
+    actionable = _extract_actionable_sections(template, section_tokens)
+    offenders = []
+    for line in actionable.splitlines():
+        if any(pattern.search(line) for pattern in _BANNED_ACTION_PATTERNS):
+            offenders.append(line)
+    assert not offenders, f'Found soft or ambiguous action language: {offenders}'
+
+
+def test_agent_actionable_section_extraction_includes_text_fences_but_skips_markdown_examples() -> None:
+    template = """TASKS:
+```text
+This should be flagged.
+```
+## OUTPUT FORMAT
+```markdown
+This should stay ignored.
+```
+"""
+
+    actionable = _extract_actionable_sections(template, _AGENT_ACTION_SECTION_TOKENS)
+
+    assert 'This should be flagged.' in actionable
+    assert 'This should stay ignored.' not in actionable
 
 
 class TestPlanRoadmapTemplate:
@@ -323,6 +415,30 @@ class TestPlanCriticTemplate:
         assert 'Progress Against Previous Feedback' in template
 
 
+class TestAgentImperativeLanguageAudit:
+    def test_non_review_agent_templates_use_imperative_language_in_actionable_sections(self) -> None:
+        templates = [
+            generate_roadmap_template(create_roadmap_agent_tools(_adapter)),
+            generate_roadmap_critic_template(create_roadmap_critic_agent_tools(_adapter)),
+            generate_create_phase_template(
+                create_create_phase_agent_tools(
+                    _adapter, ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit'], PlatformType.MARKDOWN
+                )
+            ),
+            generate_phase_critic_template(create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)),
+            generate_plan_critic_template(create_plan_critic_agent_tools(_adapter)),
+            generate_plan_analyst_template(create_plan_analyst_agent_tools(_adapter)),
+            generate_analyst_critic_template(create_analyst_critic_agent_tools(_adapter)),
+            generate_phase_architect_template(create_phase_architect_agent_tools(_adapter)),
+            generate_task_planner_template(create_task_planner_agent_tools(_adapter)),
+            generate_task_plan_critic_template(create_task_plan_critic_agent_tools(_adapter)),
+            generate_patch_planner_template(create_patch_planner_agent_tools(_adapter)),
+        ]
+
+        for template in templates:
+            _assert_no_soft_action_language(template, _AGENT_ACTION_SECTION_TOKENS)
+
+
 class TestAnalystCriticTemplate:
     def test_template_uses_invocation_contract_style(self) -> None:
         tools = create_analyst_critic_agent_tools(_adapter)
@@ -405,7 +521,7 @@ class TestTemplateConsistency:
     def test_roadmap_template_allows_reference_citation_exception_for_sparse_phase(self) -> None:
         roadmap_tools = create_roadmap_agent_tools(_adapter)
         template = generate_roadmap_template(roadmap_tools)
-        assert 'Exception: If plan references exist, you MAY add only:' in template
+        assert 'Exception: If plan references exist, add only:' in template
         assert '### Implementation Plan References' in template
         assert '(lines X-Y)' in template
 

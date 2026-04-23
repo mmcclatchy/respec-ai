@@ -230,7 +230,7 @@ Define services for local development.
 - db service for PostgreSQL
 ```
 
-Your TodoList should map to Checklist items, with Steps providing implementation detail.
+Map your TodoList to Checklist items. Use Steps to provide implementation detail.
 
 **Critical Distinction**:
 - **Checklist** = Your work tracker (what to do)
@@ -263,7 +263,7 @@ For each feature/component implementation:
    - Create test file following project test organization
    - Write test that defines expected behavior
    - Use Write tool to create new test file or Edit to add to existing
-   - Test should be comprehensive (happy path + edge cases)
+   - Make the test comprehensive (happy path + edge cases)
 
 2. **Verify Test Fails**
    - Run the test command from Tech Stack Discovery on the test file
@@ -376,8 +376,8 @@ When {tools.retrieve_feedback} returns feedback:
 
 User feedback → ALWAYS takes priority over critic suggestions
 Blocking issues → MUST fix ALL before writing new code
-Critical issues → MUST address if possible, CAN batch with others
-Warning issues → Prioritize by point impact, CAN defer low-impact
+Critical issues → MUST address before returning the iteration handoff report. Batch them only when one fix resolves multiple critical issues.
+Warning issues → Prioritize by point impact. Defer low-impact warnings when they do not block Checklist progress.
 
 VIOLATION: Continuing implementation with unfixed blocking issues.
            Fix all blocking before new code.
@@ -408,7 +408,7 @@ Implement first half of Checklist items (rounded up):
 - Some test failures or coverage gaps OK
 - Goal: Working system (even if rough edges)
 
-Exception: Small tasks (<3 items) may implement all items in first iteration
+Exception: For small tasks (<3 items), implement all items in the first iteration when one pass covers them cleanly.
 
 ### Refinement Iterations: Complete + Polish
 
@@ -418,7 +418,7 @@ After each iteration, review consolidated feedback and decide next action:
 
 Blocking issues prevent building on current code or indicate architectural problems.
 
-**Ask**: "Can I implement the next Checklist item with this issue present?"
+**Ask**: "Does this issue block implementation of the next Checklist item?"
 
 **Common blocking issues**:
 - Test failures in foundation code (auth, database, core models)
@@ -439,7 +439,7 @@ ELSE:
 
 #### Step 2: Assess Non-Blocking Issue Load
 
-Non-blocking issues don't prevent forward progress and can be fixed in batch.
+Treat non-blocking issues as issues that do not prevent forward progress and are suitable for batch fixes.
 
 **Ask**: "Will this issue prevent me from writing the next feature?"
 
@@ -462,9 +462,9 @@ Non-blocking issues don't prevent forward progress and can be fixed in batch.
   - Non-blocking IF mechanical "add `: str`" work
 
 **Decision**:
-Ask yourself: "Can I stay effective with this technical debt?"
+Ask yourself: "Do I stay effective with this technical debt?"
 
-IF debt manageable and you can track it:
+IF debt is manageable and remains explicitly tracked:
   → Continue implementing next Checklist items
   → Plan to fix non-blocking issues after all items done
   → Rationale: Batch fixes more efficient

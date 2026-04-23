@@ -63,7 +63,7 @@ Fail closed on ambiguity:
   and additional implementation guidance.
 - Ask the user a clarifying question or present options whenever multiple reasonable
   interpretations would change the selected phase, scope, implementation direction,
-  validation criteria, or what should be passed downstream as guidance.
+  validation criteria, or what to pass downstream as guidance.
 - Do NOT begin phase lookup until the phase reference is sufficiently clear.
 
 Once RAW_PHASE_REQUEST is sufficiently clear:
@@ -344,7 +344,7 @@ AMBIGUOUS_MODE = conflicting explicit values across task/phase/plan sources
 IF AMBIGUOUS_MODE:
   {selection_prompt_instructions}
     Header: "Resolve Mode"
-    Question: "Delivery intent sources conflict. Which mode should this coding loop use?"
+    Question: "Delivery intent sources conflict. Select the mode for this coding loop."
     multiSelect: false
     Options:
       - MVP
@@ -533,7 +533,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
 "complete"   → Proceed to next step. Do NOT ask for confirmation.
 
-VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 
@@ -834,7 +834,7 @@ IF PRECOMMIT_EXIT_CODE != 0:
     FINALIZATION_DECISION_SOURCE = "{{FINALIZATION_DECISION_SOURCE}}+external-gate-deferred"
     Display: "⚠ Proceeding to final completion commit with deferred external blocker: {{COMPLETION_GATE_FAILURE_SUMMARY}}"
 
-# pre-commit may rewrite tracked files or add cleanup-only changes.
+# pre-commit sometimes rewrites tracked files or adds cleanup-only changes.
 # Treat any resulting diffs as part of the final workflow output.
 # Do not question or call out these changes; stage the full tree and commit it.
 # pre-commit succeeded; compose dedicated completion commit.

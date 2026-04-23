@@ -178,7 +178,7 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    Precedence (highest to lowest):
    1. PHASE_DEVIATION_OVERRIDES — Explicitly approved revisions to source-plan constraints.
    2. IMPL_PLAN_CONSTRAINTS — Default constraints from implementation references.
-   3. Research documents parsed from `### Research File Paths` — Guidance. May adapt if justified.
+   3. Research documents parsed from `### Research File Paths` — Guidance. Adapt only with explicit justification.
    4. General knowledge — Lowest priority.
 
    VIOLATION: Ignoring a PHASE_DEVIATION_OVERRIDES entry when it applies.
@@ -407,14 +407,14 @@ Your Task Steps (with Objective/Actions structure):
 
 ## EDGE CASE: LARGE PHASES
 
-If a Phase is too large for a single Task (>6-8 Steps), you MAY decompose:
+If a Phase is too large for a single Task (>6-8 Steps), decompose it:
 
 **Decomposition Signal**:
 - Phase has 10+ sub-phases in Development Plan
 - Sub-phases are complex enough to each warrant multiple steps
 
 **Decomposition Response**:
-Report that Phase should be split into multiple Tasks:
+Report that the Phase must be split into multiple Tasks:
 ```markdown
 ## DECOMPOSITION REQUIRED
 
@@ -429,7 +429,7 @@ This Phase scope exceeds single-task capacity.
 **Next Action**: User must approve through the task workflow with split option
 ```
 
-**Keep It Simple**: If decomposition seems complicated, proceed with single larger Task. Don't over-engineer the split.
+**Keep It Simple**: If decomposition seems complicated, default to a single larger Task. Do not over-engineer the split.
 
 ## FEEDBACK INTEGRATION
 

@@ -1,3 +1,5 @@
+import re
+
 from src.platform.tui_adapters import ClaudeCodeAdapter
 from src.platform.template_helpers import (
     create_automated_quality_checker_agent_tools,
@@ -24,6 +26,90 @@ from src.platform.templates.agents import (
 
 
 _adapter = ClaudeCodeAdapter()
+
+_BANNED_ACTION_PATTERNS = (
+    re.compile(r"\bshould\b", re.IGNORECASE),
+    re.compile(r"\bconsider\b", re.IGNORECASE),
+    re.compile(r"\bthink about\b", re.IGNORECASE),
+    re.compile(r"\btry to\b", re.IGNORECASE),
+    re.compile(r"\byou will\b", re.IGNORECASE),
+    re.compile(r"\byour role is\b", re.IGNORECASE),
+    re.compile(r"\bmay\b", re.IGNORECASE),
+    re.compile(r"\bcan\b", re.IGNORECASE),
+)
+
+_REVIEW_ACTION_SECTION_TOKENS = (
+    'TASKS:',
+    '## MODE-AWARE REVIEW CONTRACT',
+    '## PROJECT CONFIGURATION',
+    '## ASSESSMENT',
+    '## REVIEWER FEEDBACK MARKDOWN FORMAT',
+    '## WORKFLOW',
+    '## TDD METHODOLOGY',
+    '## FEEDBACK INTEGRATION',
+    '## ITERATION STRATEGY',
+    'MANDATORY ',
+)
+
+
+def _extract_actionable_sections(template: str, section_tokens: tuple[str, ...]) -> str:
+    actionable_lines: list[str] = []
+    active = False
+    in_fence = False
+    fence_lang = ''
+
+    for line in template.splitlines():
+        stripped = line.strip()
+
+        if stripped.startswith('```'):
+            if in_fence:
+                in_fence = False
+                fence_lang = ''
+            else:
+                in_fence = True
+                fence_lang = stripped.removeprefix('```').strip().lower()
+            continue
+
+        if stripped.startswith('#'):
+            active = any(token in stripped for token in section_tokens)
+        elif any(token in stripped for token in section_tokens):
+            active = True
+        elif stripped.startswith('VIOLATION:'):
+            active = True
+        elif re.match(r'^(STEP|SUB-STEP)\b', stripped):
+            active = True
+
+        include_fence_line = in_fence and fence_lang in ('', 'text')
+        if active and stripped and (not in_fence or include_fence_line):
+            actionable_lines.append(stripped)
+
+    return '\n'.join(actionable_lines)
+
+
+def _assert_no_soft_action_language(template: str, section_tokens: tuple[str, ...]) -> None:
+    actionable = _extract_actionable_sections(template, section_tokens)
+    offenders = []
+    for line in actionable.splitlines():
+        if any(pattern.search(line) for pattern in _BANNED_ACTION_PATTERNS):
+            offenders.append(line)
+    assert not offenders, f'Found soft or ambiguous action language: {offenders}'
+
+
+def test_review_actionable_section_extraction_includes_text_fences_but_skips_markdown_examples() -> None:
+    template = """TASKS:
+```text
+This should be flagged.
+```
+## REVIEWER FEEDBACK MARKDOWN FORMAT
+```markdown
+This should stay ignored.
+```
+"""
+
+    actionable = _extract_actionable_sections(template, _REVIEW_ACTION_SECTION_TOKENS)
+
+    assert 'This should be flagged.' in actionable
+    assert 'This should stay ignored.' not in actionable
 
 
 class TestAutomatedQualityCheckerTemplate:
@@ -352,3 +438,21 @@ class TestCoderTemplateConfig:
         template = generate_coding_standards_reviewer_template(tools)
         assert 'Ignore `.respec-ai/config/standards/guides/*.md` for scoring' in template
         assert 'VIOLATION: Using guide markdown content as scoring authority.' in template
+
+    def test_shared_review_and_coder_templates_use_imperative_language_in_actionable_sections(self) -> None:
+        templates = [
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
+            generate_coder_template(
+                create_coder_agent_tools(_adapter, platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'])
+            ),
+        ]
+
+        for template in templates:
+            _assert_no_soft_action_language(template, _REVIEW_ACTION_SECTION_TOKENS)

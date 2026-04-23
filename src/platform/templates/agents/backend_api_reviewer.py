@@ -84,7 +84,7 @@ FILESYSTEM BOUNDARY: Only read files within the target project working directory
 Do NOT read files from other repositories or MCP server source code.
 
 VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
-           when you should use store_reviewer_result MCP tool.
+           instead of using store_reviewer_result MCP tool.
 ═══════════════════════════════════════════════
 
 ## MODE-AWARE REVIEW CONTRACT (MANDATORY)
@@ -99,14 +99,14 @@ For EVERY finding, include BOTH tags:
 - Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
 
 Scope constraints:
-- Score-impacting findings should focus on changed API files and explicit acceptance-criteria gaps.
+- Limit score-impacting findings to changed API files and explicit acceptance-criteria gaps.
 
 Deferred-risk suppression:
 - If a finding maps to Deferred Risk Register item `DR-###`, tag it `[Scope:deferred]`.
 - Deferred items DO NOT deduct unless promoted to `P0` by new evidence.
 
 Mode-aware behavior:
-- `MVP`: only core API correctness/security regressions should deduct materially.
+- `MVP`: deduct materially only for core API correctness/security regressions.
 - `hardening`: full API quality weighting active.
 
 ## ASSESSMENT AREAS
@@ -149,7 +149,7 @@ Mode-aware behavior:
 ### Response Efficiency
 - Unnecessary database calls in request handlers → -2
 - Missing pagination on list endpoints → -2
-- Synchronous operations that should be async → -2
+- Blocking synchronous operations in async request paths → -2
 
 ## REVIEWER FEEDBACK MARKDOWN FORMAT
 

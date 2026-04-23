@@ -77,7 +77,7 @@ CONSTRAINT_SECTIONS_FOUND = count of True values above
 
 IF CONSTRAINT_SECTIONS_FOUND == 0:
   Display: "⚠️ Plan has no constraint sections (Architecture Direction, Technology Decisions, Anti-Requirements, Quality Bar)"
-  Display: "Roadmap will proceed but phases may lack constraint guidance"
+  Display: "Roadmap will proceed without plan constraint guidance"
   Display: "Use the strategic planning workflow to add these sections for better phase quality"
   Display: "{tools.plan_command_invocation}"
 ELSE:
@@ -162,7 +162,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
 "complete"   → Proceed to next step. Do NOT ask for confirmation.
 
-VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 

@@ -77,7 +77,7 @@ Bash is for: git commands and static analysis ONLY.
 All review output goes through MCP tools.
 
 VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
-           when you should use MCP store tools.
+           instead of using MCP store tools.
 ═══════════════════════════════════════════════
 
 ## WORKFLOW

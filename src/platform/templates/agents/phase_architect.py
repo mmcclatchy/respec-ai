@@ -269,7 +269,7 @@ IF IMPL_PLAN_CONSTRAINTS is non-empty:
   IF CURRENT_PHASE_MARKDOWN does NOT contain "### Implementation Plan References":
     → In STEP 3 output, auto-create "### Implementation Plan References" under "## Additional Details"
     → List each file path read as a "- Constraint: `{{file_path}}`" entry
-    → This ensures the downstream task workflow can extract the paths
+    → This lets the downstream task workflow extract the paths deterministically
 
   IF CURRENT_PHASE_MARKDOWN DOES contain "### Implementation Plan References":
     → In STEP 3 output, preserve this section VERBATIM — do not modify, reword, or drop any entries
@@ -294,10 +294,10 @@ Plan context variables from STEP 0.55 are the default decision baseline.
 Preserve these decisions unless there is a concrete technical reason to deviate.
 
 PLAN_ARCHITECTURE → Architecture section refines and elaborates this baseline
-PLAN_TECHNOLOGY_DECISIONS → Technology Stack should align by default
-PLAN_ANTI_REQUIREMENTS → Scope exclusions should be preserved
-PLAN_QUALITY_BAR → Testing Strategy and NFRs should reference these targets
-PLAN_DELIVERY_INTENT_POLICY → Success Criteria should declare a phase-level override or explicit inheritance
+PLAN_TECHNOLOGY_DECISIONS → Align Technology Stack to this baseline by default
+PLAN_ANTI_REQUIREMENTS → Preserve these scope exclusions
+PLAN_QUALITY_BAR → Reference these targets in Testing Strategy and NFRs
+PLAN_DELIVERY_INTENT_POLICY → Declare a phase-level override or explicit inheritance in Success Criteria
 
 DEVIATION LOG PROTOCOL (MANDATORY WHEN DEVIATING):
 If you deviate from any plan/reference constraint, you MUST add an entry under:
@@ -453,7 +453,7 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Metadata: 0.5 pages
 
 **Quality Check**:
-- Can a developer understand system structure without implementation details? ✓
+- System structure is understandable without implementation details ✓
 - Are technology choices justified with trade-offs? ✓
 - Are interface contracts clear? ✓
 - Is this readable in 20-30 minutes? ✓
@@ -539,8 +539,8 @@ Phase names MUST follow this pattern to ensure:
 
 **Key Principles**:
 - Phase numbers indicate execution sequence, NOT parallelization groups
-- If decomposed phases CAN be parallelized, document in Dependencies section, NOT in naming
-- Example parallel note in Dependencies: "Can run in parallel with phase-2-api-integration"
+- If decomposed phases are parallelizable, document that in Dependencies section, NOT in naming
+- Example parallel note in Dependencies: "Runs in parallel with phase-2-api-integration"
 - NEVER use sub-numbering to indicate parallelization (e.g., phase-2a, phase-2b)
 - Sub-numbering (phase-2a, phase-2b) only for splitting single phase into sub-phases
 - Keep phase numbering simple and sequential: phase-1, phase-2, phase-3, etc.
@@ -599,7 +599,7 @@ Choose sections based on project needs. Examples:
 - Do NOT include sections not relevant to the project type
 - Do NOT use placeholder content like "TBD" or "N/A" - omit the section instead
 - DO include substantive, actionable content for each section you add
-- Content can use ANY markdown format (code blocks, lists, tables, diagrams)
+- Use ANY markdown format for content (code blocks, lists, tables, diagrams)
 
 ### REQUIRED MARKDOWN STRUCTURE
 
@@ -615,13 +615,13 @@ Choose sections based on project needs. Examples:
 - Use `##` for section headers (H2)
 - Use `###` for field headers (H3)
 - NEVER use `####` (H4) or `#####` (H5) for these core sections
-- Content within sections can use any markdown (code blocks, lists, tables, H4+ for subsections)
+- Use any markdown within sections (code blocks, lists, tables, H4+ for subsections)
 
 ### Core Sections vs Domain-Specific Sections
 
 **Core Sections** (above) are parsed into specific model fields. They MUST follow the H2 > H3 structure exactly.
 
-**Domain-Specific Sections** can be added after "Additional Details" and before "Metadata" using H2 headers:
+**Domain-Specific Sections**: Add these after "Additional Details" and before "Metadata" using H2 headers:
 
   ```markdown
   ## Data Models
@@ -828,7 +828,7 @@ When documenting Research Requirements:
 - **Example WRONG**: `.best-practices/MCP_Server_Best_Practices.md` (guessed name - WILL FAIL)
 - **Example RIGHT**: `.best-practices/fastmcp-server-best-practices-codegen.md` (actual from query/glob)
 
-**Consequence of Invalid Paths**: Phase-critic will raise structural blockers. Invalid paths cause downstream task-planner failure and must be corrected before the phase can pass review.
+**Consequence of Invalid Paths**: Phase-critic will raise structural blockers. Invalid paths cause downstream task-planner failure and must be corrected before the phase passes review.
 
 If KB query returns no results for a topic, document in "External Research Needed" section instead - do NOT guess file names.
 

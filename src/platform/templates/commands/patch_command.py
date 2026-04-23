@@ -56,7 +56,7 @@ Once RAW_REQUEST is sufficiently clear:
   - requested change
   - relevant supporting context and constraints
   - resume details or file references that must be preserved
-  - any clarified decisions that subagents should treat as settled
+  - any clarified decisions that subagents must treat as settled
 - Derive REQUEST_SUMMARY as a short one-line summary for commit/final reporting.
 
 #### Step 1.2: Capture Execution Mode (MANDATORY)
@@ -68,7 +68,7 @@ IF RAW_REQUEST already contains one unambiguous execution mode token:
 ELSE:
   {selection_prompt_instructions}
     Header: "Patch Mode"
-    Question: "Which delivery intent should this patch follow?"
+    Question: "Select the delivery intent for this patch."
     multiSelect: false
     Options:
       - MVP: Prioritize core functional/spec delivery, defer non-P0 hardening
@@ -178,7 +178,7 @@ IF clear best match (one phase strongly relevant, others weak):
   Display: "Auto-detected phase: {{name}}"
   Display: "Reason: [brief explanation of why this phase matches]"
   IF other phases have partial relevance:
-    Display: "Note: This change may also touch concerns from: [other phase names]"
+    Display: "Note: This change also touches concerns from: [other phase names]"
 ELSE:
   {selection_prompt_instructions}
     Question: "Which phase does this patch belong to? '{{REQUEST_SUMMARY}}'"
@@ -278,7 +278,12 @@ ELIF PLANNING_DECISION == "user_input":
   - Current quality score and iteration
   - Key issues requiring attention
 
-  Prompt user for guidance
+  Ask the user for specific amendment-task guidance.
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 3.6. Store the guidance with {tools.store_user_feedback}. Continue with replanning immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   Store user feedback: {tools.store_user_feedback}
   Re-invoke patch-planner agent (same parameters)
   Re-invoke task-plan-critic agent (same parameters)
@@ -304,7 +309,7 @@ TASK_MODE = extract from:
 IF TASK_MODE in {{MVP,hardening}} AND TASK_MODE != EXECUTION_MODE:
   {selection_prompt_instructions}
     Header: "Mode Mismatch"
-    Question: "Task policy mode differs from selected patch mode. Which should this loop use?"
+    Question: "Task policy mode differs from selected patch mode. Select the mode for this loop."
     Options: selected patch mode, task policy mode
   WAIT for {selection_response_source}.
   DO NOT treat this as workflow completion, cancellation, or failure.
@@ -569,7 +574,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
 "complete"   → Proceed to next step. Do NOT ask for confirmation.
 
-VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 
@@ -593,7 +598,12 @@ ELIF CODING_DECISION == "user_input":
   - Key issues requiring attention
   - Recommended improvements
 
-  Prompt user for guidance
+  Ask the user for implementation guidance.
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 6. Store the guidance with {tools.store_user_feedback}. Continue with the next refinement pass immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   Store user feedback: {tools.store_user_feedback}
   REVIEW_ITERATION = CODING_ITERATION + 1
   Return to Step 5.3
@@ -802,7 +812,7 @@ IF PRECOMMIT_EXIT_CODE != 0:
     FINALIZATION_DECISION_SOURCE = "{{FINALIZATION_DECISION_SOURCE}}+external-gate-deferred"
     Display: "⚠ Proceeding to final completion commit with deferred external blocker: {{COMPLETION_GATE_FAILURE_SUMMARY}}"
 
-# pre-commit may rewrite tracked files or add cleanup-only changes.
+# pre-commit sometimes rewrites tracked files or adds cleanup-only changes.
 # Treat any resulting diffs as part of the final workflow output.
 # Do not question or call out these changes; stage the full tree and commit it.
 # pre-commit succeeded; compose dedicated completion commit.

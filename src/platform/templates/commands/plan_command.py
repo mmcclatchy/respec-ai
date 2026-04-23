@@ -190,7 +190,7 @@ IF PLAN_REFERENCE_CONTEXT is None:
 ## Step 1.7: Canonical Reference Copy to Project
 
 Always persist accepted plan reference content into the project so downstream
-agents can reliably Read() the same source.
+agents reliably Read() the same source.
 
 ```text
 IF PLAN_REFERENCE_CONTEXT is not None:
@@ -361,7 +361,7 @@ The Plan model enforces H2 headers as its schema. Violating these constraints ca
 - Remove or rename any of the defined H2 headers
 - Add a Metadata section (the system manages this automatically)
 
-The H3 headers shown in the template (### Vision, ### Mission, etc.) are suggested structure, not enforced. You may add, rename, or reorganize H3+ headers within any H2 section.
+The H3 headers shown in the template (### Vision, ### Mission, etc.) are suggested structure, not enforced. Add, rename, or reorganize H3+ headers within any H2 section as needed.
 
 ═══════════════════════════════════════════════
 MANDATORY DOCUMENT STRUCTURE GATE
@@ -408,7 +408,7 @@ Write the strategic plan to the user's platform using the platform-specific tool
 This creates:
 - {tools.plan_resource_example}
 
-The user can now review the plan file before making their decision.
+The user now has the plan file for review before making a decision.
 
 ## Step 4: Quality Assessment
 
@@ -684,7 +684,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
 "completed"  → Proceed to next step. Do NOT ask for confirmation.
 
-VIOLATION: Asking the user "Should I continue refining?" when status is "refine"
+VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 

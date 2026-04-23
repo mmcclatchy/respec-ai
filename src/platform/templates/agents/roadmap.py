@@ -159,7 +159,7 @@ PLAN_TECHNOLOGY_REJECTIONS = extract content of "### Rejected Technologies" sect
 PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
 PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
 
-IF any section missing: set variable = None (plan may predate these sections)
+IF any section is missing: set the variable = None. Do NOT infer missing plan constraints from absent sections.
 
 STEP 2: Incorporate Feedback (if refinement iteration)
 
@@ -195,8 +195,8 @@ Break requirements into appropriately-sized implementation phases
 → Validate dependency relationships
 → IF PLAN_ARCHITECTURE exists: Phases MUST collectively implement this architecture
 → IF PLAN_TECHNOLOGY_DECISIONS exists: Phases touching decided tech MUST use it
-→ IF PLAN_TECHNOLOGY_REJECTIONS exists: No phase may include rejected technologies
-→ IF PLAN_ANTI_REQUIREMENTS exists: No phase may include explicitly excluded work
+→ IF PLAN_TECHNOLOGY_REJECTIONS exists: Phases MUST NOT include rejected technologies
+→ IF PLAN_ANTI_REQUIREMENTS exists: Phases MUST NOT include explicitly excluded work
 → IF PLAN_QUALITY_BAR exists: Quality targets inform phase sizing (budget testing time)
 
 STEP 3.5: Propagate Plan References to Sparse Phases
@@ -255,7 +255,7 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 - Manageable complexity with clear success criteria
 - Example: "Integrate payment processing with order management"
 
-#### Large Phase (May need splitting)
+#### Large Phase (Split if needed)
 - Complex feature set spanning multiple domains
 - Significant integration challenges across systems
 - High technical uncertainty or unknowns
@@ -305,8 +305,8 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 - **PHASE SEQUENCING REQUIREMENTS**:
   - Phases execute SEQUENTIALLY by default in numeric order (phase-1, then phase-2, then phase-3)
   - Phase numbers indicate execution sequence, NOT parallelization groups
-  - If phases CAN be parallelized, document in Dependencies section, NOT in naming
-  - Example parallel note in Dependencies: "Can run in parallel with phase-2-api-integration"
+  - If phases are parallelizable, document that in Dependencies section, NOT in naming
+  - Example parallel note in Dependencies: "Runs in parallel with phase-2-api-integration"
   - NEVER use sub-numbering to indicate parallelization (e.g., phase-2a, phase-2b)
   - Sub-numbering (phase-2a, phase-2b) only for splitting single phase into sub-phases
   - Keep phase numbering simple and sequential: phase-1, phase-2, phase-3, etc.
@@ -320,7 +320,7 @@ Extract requirements into appropriately sized phases based on WORK SCOPE and COH
 - **NEVER truncate phases** - output a sparse phase for EVERY phase you define
 - **NEVER use** "[Remaining phases omitted...]" text
 - Base sparse phase has 4 Overview fields (Objectives, Scope, Dependencies, Deliverables)
-- Exception: If plan references exist, you MAY add only:
+- Exception: If plan references exist, add only:
   - `## Additional Details`
   - `### Implementation Plan References`
   with citation entries as defined in STEP 3.5

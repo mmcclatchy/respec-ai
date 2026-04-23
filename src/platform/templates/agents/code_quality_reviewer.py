@@ -93,7 +93,7 @@ FILESYSTEM BOUNDARY: Only read files within the target project working directory
 Do NOT read files from other repositories or MCP server source code.
 
 VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
-           when you should use store_reviewer_result MCP tool.
+           instead of using store_reviewer_result MCP tool.
 ═══════════════════════════════════════════════
 
 ## MODE-AWARE REVIEW CONTRACT (MANDATORY)
@@ -108,7 +108,7 @@ For EVERY finding, include BOTH tags:
 - Scope tag: `[Scope:changed-file]`, `[Scope:acceptance-gap]`, `[Scope:global]`, `[Scope:deferred]`
 
 Scope constraints:
-- Score-impacting findings should focus on changed files and explicit acceptance-criteria gaps.
+- Limit score-impacting findings to changed files and explicit acceptance-criteria gaps.
 - Use `[Scope:global]` only for cross-cutting structural concerns that cannot be localized.
 
 Deferred-risk suppression:
@@ -205,7 +205,7 @@ Pattern-based bug detection. Check for specific, well-defined code shapes.
 **Resource Management** (-2 each, mark as [BLOCKING] if database/file connections affected):
 ```text
 Check for unmanaged resources — file handles, database connections, network sockets.
-The principle: any resource that must be released should be acquired inside a
+Require every releasable resource to be acquired inside a
 guaranteed-cleanup construct (try-finally, using, with, try-with-resources, defer, RAII).
 
 Read source files and look for resource acquisition (file open, DB connect, socket create)
@@ -244,8 +244,8 @@ IF project uses async patterns (detected from imports, function signatures, or f
 **None Safety** (-1 each):
 ```text
 Look for potential null/None/nil dereferences: accessing a property or calling a method
-on a value that may be null/None/nil without a guard check.
-Identify functions/methods that may return a nullable value (return type annotations,
+on a value that could be null/None/nil without a guard check.
+Identify functions/methods that return a nullable value or have branches that return a nullable value (return type annotations,
 documentation, or branching logic that sometimes returns nothing).
 Check their call sites for a null guard before attribute access or method call.
 Language examples:

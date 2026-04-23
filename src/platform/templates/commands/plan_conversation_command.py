@@ -101,17 +101,17 @@ VIOLATION: Asking 3 or more questions in a single message.
 **Depth over breadth:**
 - Follow up on what the user says. Dig into their answers before moving to new topics.
 - If the user mentions something interesting or uncertain, explore it before changing subjects.
-- It's better to deeply understand 3 topics than to superficially cover 6.
+- Deeply understand 3 topics before superficially covering 6.
 
 **When to move on:**
-- Move on when you can summarize the topic back to the user and they confirm your understanding.
-- Move on when the user gives short, confident answers — they've said what they need to say.
+- Move on only after you summarize the topic back to the user and receive confirmation.
+- Move on when the user gives short, confident answers — they have said what they need to say.
 - Move on if you've asked 2-3 follow-ups on the same point and the user isn't adding new information.
 - If the user signals they want to move forward ("that's about it", "let's move on", "yeah that covers it"), move on immediately.
 
 **Natural flow:**
 - Follow the user's lead — if they jump ahead to technology, go with it.
-- Transitions between stages should be invisible. Don't announce stage numbers.
+- Keep transitions between stages invisible. Do not announce stage numbers.
 - Do NOT present numbered question lists or bullet lists of questions.
 
 **Handoff:** Store all conversation results in the variable `CONVERSATION_CONTEXT` for handoff back to the calling command. The conversation completes when all six stages have been covered with meaningful depth.
@@ -178,10 +178,10 @@ with meaningful impact, use this pattern rather than open-ended questions:
 3. State your recommendation with reasoning tied to the project's requirements
 4. Ask the user which direction they'd like to go
 
-Frame as: "Here's what I'd consider — what resonates with you?"
+Frame as: "Here are the leading options. Which direction do you want to take?"
 NOT as: "I recommend X, shall I proceed?"
 
-The user may know things you don't. Their choice overrides your recommendation.
+Assume the user knows project constraints you do not. Their choice overrides your recommendation.
 If they choose something you wouldn't, ask one clarifying question to make sure they've
 considered the key trade-off — then honor their decision and record it with their reasoning.
 
@@ -279,8 +279,8 @@ Anti-requirements define what the system MUST NOT do — they prevent
 scope creep in downstream phases.
 
 IF the user has not mentioned any anti-requirements:
-  Ask directly: "What should the system explicitly NOT do?"
-  Provide examples from their context: "For example, should it NOT
+  Ask directly: "What must the system explicitly NOT do?"
+  Provide examples from their context: "For example, must it NOT
   replace [existing system]?"
 
 IF the user says "nothing comes to mind":
@@ -408,9 +408,9 @@ The {plan_command_name} workflow will:
 ### Scope Overwhelm
 #### If user seems overwhelmed by the scope of questions
 - Focus on one area at a time and reassure about the process
-- Emphasize that incomplete answers can be refined later
+- State that incomplete answers will be refined later
 - Suggest starting with what they're most confident about
-- Example: "Let's start with just the core problem you're trying to solve. We can build from there."
+- Example: "Let's start with just the core problem you're trying to solve. We'll build from there."
 
 ### Technical Confusion
 #### If user gets bogged down in technical details
@@ -423,7 +423,7 @@ The {plan_command_name} workflow will:
 #### If critical information is missing after all stages
 - Identify specific gaps and ask targeted follow-up questions
 - Use hypothetical scenarios to help user think through unclear areas
-- Suggest reasonable assumptions that can be validated later
+- State explicit assumptions and flag them for later validation
 - Document gaps clearly for strategic plan generation
 
 ### Conversation Recovery
