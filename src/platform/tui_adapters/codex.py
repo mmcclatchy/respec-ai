@@ -196,6 +196,10 @@ class CodexAdapter(TuiAdapter):
             lines.append('Input:')
             for name, value in params:
                 lines.append(f'  - {name}: {value}')
+        lines.append('When using a full-history or forked-context spawn, pass only the message plus the listed inputs.')
+        lines.append(
+            'Use the rendered runtime agent name exactly. Omit agent_type, model, and reasoning_effort because Codex inherits them from the parent context.'
+        )
         lines.append('Wait for completion, harvest output, then close the completed agent before continuing.')
         return '\n'.join(lines)
 

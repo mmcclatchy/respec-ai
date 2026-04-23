@@ -11,14 +11,14 @@ from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
 
 _BANNED_ACTION_PATTERNS = (
-    re.compile(r"\bshould\b", re.IGNORECASE),
-    re.compile(r"\bconsider\b", re.IGNORECASE),
-    re.compile(r"\bthink about\b", re.IGNORECASE),
-    re.compile(r"\btry to\b", re.IGNORECASE),
-    re.compile(r"\byou will\b", re.IGNORECASE),
-    re.compile(r"\byour role is\b", re.IGNORECASE),
-    re.compile(r"\bmay\b", re.IGNORECASE),
-    re.compile(r"\bcan\b", re.IGNORECASE),
+    re.compile(r'\bshould\b', re.IGNORECASE),
+    re.compile(r'\bconsider\b', re.IGNORECASE),
+    re.compile(r'\bthink about\b', re.IGNORECASE),
+    re.compile(r'\btry to\b', re.IGNORECASE),
+    re.compile(r'\byou will\b', re.IGNORECASE),
+    re.compile(r'\byour role is\b', re.IGNORECASE),
+    re.compile(r'\bmay\b', re.IGNORECASE),
+    re.compile(r'\bcan\b', re.IGNORECASE),
 )
 
 _COMMAND_ACTION_SECTION_TOKENS = (
@@ -977,6 +977,32 @@ class TestCrossPlatformInvocationRendering:
         assert 'git commit --amend --no-verify -F - <<' in template
         assert '#### Step 6.5.3: Exit to Completion Gate' in template
         assert '### 6.7 Completion Gate (Mandatory)' in template
+
+    def test_patch_template_fails_closed_when_planner_or_critic_persistence_breaks(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+
+        assert '#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Task Storage' in template
+        assert 'TASK_MARKDOWN = ' in template
+        assert 'Patch planner did not produce a retrievable amendment task' in template
+        assert 'Do NOT invoke task-plan-critic' in template
+        assert '#### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence' in template
+        assert 'PLANNING_FEEDBACK = ' in template
+        assert 'Task plan critic did not persist CriticFeedback' in template
+        assert 'Do NOT call decide_planning_action' in template
+        assert 'Do NOT continue into code reconnaissance, implementation, or alternate storage paths' in template
+        assert (
+            'Do NOT use store_reviewer_result for task-plan-critic; it is a critic workflow and MUST persist via store_critic_feedback'
+            in template
+        )
+        assert (
+            'Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision).'
+            in template
+        )
 
     def test_patch_template_loads_optional_standards_guides_for_coder(self) -> None:
         coordinator = TemplateCoordinator()

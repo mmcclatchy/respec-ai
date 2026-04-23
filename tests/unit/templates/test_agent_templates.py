@@ -36,14 +36,14 @@ from src.platform.templates.agents import (
 _adapter = ClaudeCodeAdapter()
 
 _BANNED_ACTION_PATTERNS = (
-    re.compile(r"\bshould\b", re.IGNORECASE),
-    re.compile(r"\bconsider\b", re.IGNORECASE),
-    re.compile(r"\bthink about\b", re.IGNORECASE),
-    re.compile(r"\btry to\b", re.IGNORECASE),
-    re.compile(r"\byou will\b", re.IGNORECASE),
-    re.compile(r"\byour role is\b", re.IGNORECASE),
-    re.compile(r"\bmay\b", re.IGNORECASE),
-    re.compile(r"\bcan\b", re.IGNORECASE),
+    re.compile(r'\bshould\b', re.IGNORECASE),
+    re.compile(r'\bconsider\b', re.IGNORECASE),
+    re.compile(r'\bthink about\b', re.IGNORECASE),
+    re.compile(r'\btry to\b', re.IGNORECASE),
+    re.compile(r'\byou will\b', re.IGNORECASE),
+    re.compile(r'\byour role is\b', re.IGNORECASE),
+    re.compile(r'\bmay\b', re.IGNORECASE),
+    re.compile(r'\bcan\b', re.IGNORECASE),
 )
 
 _AGENT_ACTION_SECTION_TOKENS = (
@@ -281,6 +281,20 @@ class TestTaskPlanCriticTemplate:
         assert '## Two-Lane Review Contract' in template
         assert 'Lane 1 — Content score (`overall_score`)' in template
         assert 'Lane 2 — Structural/procedural blockers (`### Blockers`)' in template
+
+    def test_template_requires_exact_critic_feedback_storage_contract(self) -> None:
+        tools = create_task_plan_critic_agent_tools(_adapter)
+        template = generate_task_plan_critic_template(tools)
+
+        assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
+        assert '# Critic Feedback: TASK-CRITIC' in template
+        assert '## Assessment Summary' in template
+        assert '## Analysis' in template
+        assert '## Issues and Recommendations' in template
+        assert '## Metadata' in template
+        assert 'Do NOT call `store_reviewer_result`.' in template
+        assert 'If storage fails: STOP and report the exact error. Do NOT call `store_reviewer_result`.' in template
+        assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
 
 
 class TestCreatePhaseTemplate:

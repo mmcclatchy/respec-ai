@@ -235,17 +235,54 @@ USER_FEEDBACK_MARKDOWN = (
 {tools.link_planning_loop}
 ```
 
-#### Step 3.3: Invoke Patch Planner Agent
+#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Task Storage
 
 {tools.invoke_patch_planner}
 
-Expected: Amendment task document stored in MCP and linked to loop
+```text
+IF patch-planner reports failure:
+  ERROR: "Patch planner failed"
+  DIAGNOSTIC: [surface the exact planner error/output]
+  FAIL-CLOSED:
+  - Do NOT invoke task-plan-critic
+  - Do NOT continue to Step 3.5
+  EXIT: Workflow terminated
 
-#### Step 3.4: Invoke Task Plan Critic Agent
+TASK_MARKDOWN = {tools.get_task_document}
+
+IF TASK_MARKDOWN not found or retrieval fails:
+  ERROR: "Patch planner did not produce a retrievable amendment task"
+  DIAGNOSTIC: [surface the exact retrieval error/output]
+  FAIL-CLOSED:
+  - Do NOT invoke task-plan-critic
+  - Do NOT continue to Step 3.5
+  EXIT: Workflow terminated
+```
+
+#### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence
 
 {tools.invoke_task_plan_critic}
 
-Expected: CriticFeedback stored in MCP planning loop
+```text
+IF task-plan-critic reports failure:
+  ERROR: "Task plan critic failed"
+  DIAGNOSTIC: [surface the exact critic error/output]
+  FAIL-CLOSED:
+  - Do NOT call decide_planning_action
+  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
+  EXIT: Workflow terminated
+
+PLANNING_FEEDBACK = {tools.get_feedback}
+
+IF PLANNING_FEEDBACK is empty OR retrieval fails:
+  ERROR: "Task plan critic did not persist CriticFeedback"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT call decide_planning_action
+  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
+  - Do NOT use store_reviewer_result for task-plan-critic; it is a critic workflow and MUST persist via store_critic_feedback
+  EXIT: Workflow terminated
+```
 
 #### Step 3.5: MCP Planning Decision
 
@@ -263,9 +300,7 @@ Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 ```text
 IF PLANNING_DECISION == "refine":
   Display: "⟳ Iteration {{PLANNING_ITERATION}} · Score: {{PLANNING_SCORE}}/100 — refining amendment task"
-  Re-invoke patch-planner agent (same parameters).
-  Re-invoke task-plan-critic agent (same parameters).
-  Call MCP decision again.
+  Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision).
 
 ELIF PLANNING_DECISION == "complete":
   Display: "✅ Score: {{PLANNING_SCORE}}/100 — amendment task approved"
@@ -285,9 +320,7 @@ ELIF PLANNING_DECISION == "user_input":
   DO NOT explain that the workflow is stopping unless the user asks why.
 
   Store user feedback: {tools.store_user_feedback}
-  Re-invoke patch-planner agent (same parameters)
-  Re-invoke task-plan-critic agent (same parameters)
-  Call MCP decision again
+  Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision)
 ```
 
 ### 4. Mode Extraction + Reviewer Resolution
