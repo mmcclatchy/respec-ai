@@ -521,9 +521,39 @@ class TestCrossPlatformInvocationRendering:
 
         assert 'PRIOR_CRITIC_FEEDBACK = CRITIC_FEEDBACK' in template
         assert 'previous_feedback_markdown' in template
-        assert 'Agent retrieves prior analyst-critic feedback' in template
-        assert 'Retrieve feedback using: mcp__respec-ai__get_feedback' in template
+        assert 'ANALYST_FEEDBACK = mcp__respec-ai__get_feedback' in template
         assert 'LATEST_FEEDBACK = mcp__respec-ai__get_feedback' in template
+
+    def test_plan_template_fails_closed_when_analyst_artifacts_are_missing(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        assert 'ANALYST_ANALYSIS = ' in template
+        assert 'Plan analyst did not confirm current-pass analysis storage' in template
+        assert 'Plan analyst did not persist a retrievable analysis' in template
+        assert 'No previous analysis found for loop' in template
+        assert 'PRE_ANALYST_LOOP_STATUS = ' in template
+        assert 'POST_ANALYST_LOOP_STATUS = ' in template
+        assert 'ANALYST_FEEDBACK = ' in template
+        assert 'Analyst critic did not persist CriticFeedback' in template
+        assert 'Analyst critic did not advance loop state' in template
+        assert 'Analyst critic did not persist fresh loop feedback' in template
+        assert 'Do NOT call decide_loop_action' in template
+
+    def test_plan_template_places_pre_loop_status_before_analyst_critic_invocation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        pre_loop_status_pos = template.find('PRE_ANALYST_LOOP_STATUS = ')
+        invoke_critic_pos = template.find('Invoke the analyst-critic agent with loop ID:')
+
+        assert pre_loop_status_pos != -1
+        assert invoke_critic_pos != -1
+        assert pre_loop_status_pos < invoke_critic_pos
 
     def test_phase_template_places_task_handoff_after_phase_storage(self) -> None:
         coordinator = TemplateCoordinator()
@@ -588,6 +618,22 @@ class TestCrossPlatformInvocationRendering:
         assert 'Invoke the `respec-code` skill with: `{PLAN_NAME} {PHASE_NAME}`."' not in template
         assert 'To reject:' in template
 
+    def test_code_template_fails_closed_before_decisions_and_commit_synthesis(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'IF coder reports failure:' in template
+        assert 'IF any required reviewer reports failure:' in template
+        assert 'CONSOLIDATION_RESPONSE = ' in template
+        assert 'Phase 1 review consolidation failed' in template
+        assert 'PHASE1_FEEDBACK = ' in template
+        assert 'Phase 1 consolidated feedback missing' in template
+        assert 'Phase 2 review consolidation failed' in template
+        assert 'STANDARDS_FEEDBACK = ' in template
+        assert 'Phase 2 consolidated feedback missing' in template
+        assert 'Do NOT synthesize commit metadata' in template
+
     def test_task_template_passes_structured_reference_metadata(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -596,6 +642,87 @@ class TestCrossPlatformInvocationRendering:
         assert 'IMPL_PLAN_REFERENCES = []' in template
         assert 'Constraint Precedence Contract' in template
         assert 'TUI Plan Deviation Log' in template
+
+    def test_task_template_fails_closed_when_task_or_feedback_is_missing(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Task planner did not confirm current-pass Task storage' in template
+        assert 'TASK_MARKDOWN = ' in template
+        assert 'Task planner did not produce a retrievable Task document' in template
+        assert 'PRE_TASK_LOOP_STATUS = ' in template
+        assert 'POST_TASK_LOOP_STATUS = ' in template
+        assert 'TASK_FEEDBACK = ' in template
+        assert 'Task plan critic did not persist CriticFeedback' in template
+        assert 'Task plan critic did not advance loop state' in template
+        assert 'Task plan critic did not persist fresh loop feedback' in template
+        assert (
+            'Return to Step 4.1 (task-planner → Task retrieval verification → task-plan-critic → feedback verification → decision)'
+            in template
+        )
+
+    def test_task_template_places_pre_loop_status_before_task_plan_critic_invocation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        pre_loop_status_pos = template.find('PRE_TASK_LOOP_STATUS = ')
+        invoke_critic_pos = template.find('Invoke the task-plan-critic workflow:')
+
+        assert pre_loop_status_pos != -1
+        assert invoke_critic_pos != -1
+        assert pre_loop_status_pos < invoke_critic_pos
+
+    def test_roadmap_template_fails_closed_when_roadmap_or_feedback_is_missing(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'Roadmap agent did not confirm current-pass roadmap storage' in template
+        assert 'ROADMAP_MARKDOWN = ' in template
+        assert 'Roadmap agent did not produce a retrievable roadmap' in template
+        assert 'PRE_ROADMAP_LOOP_STATUS = ' in template
+        assert 'POST_ROADMAP_LOOP_STATUS = ' in template
+        assert 'ROADMAP_FEEDBACK = ' in template
+        assert 'Roadmap critic did not persist CriticFeedback' in template
+        assert 'Roadmap critic did not advance loop state' in template
+        assert 'Roadmap critic did not persist fresh loop feedback' in template
+        assert 'Override MCP decision and proceed to Step 5' not in template
+        assert 'MCP will decide the next action after reevaluating stored feedback' in template
+
+    def test_roadmap_template_places_pre_loop_status_before_roadmap_critic_invocation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        pre_loop_status_pos = template.find('PRE_ROADMAP_LOOP_STATUS = ')
+        invoke_critic_pos = template.find('Invoke the roadmap-critic workflow with these instructions:')
+
+        assert pre_loop_status_pos != -1
+        assert invoke_critic_pos != -1
+        assert pre_loop_status_pos < invoke_critic_pos
+
+    def test_phase_template_fails_closed_on_main_and_post_synthesis_feedback_gaps(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'PRE_PHASE_LOOP_STATUS = ' in template
+        assert 'POST_PHASE_LOOP_STATUS = ' in template
+        assert 'PHASE_FEEDBACK = ' in template
+        assert 'Phase critic did not persist CriticFeedback' in template
+        assert 'Phase critic did not advance loop state' in template
+        assert 'Phase critic did not persist fresh loop feedback' in template
+        assert 'PRE_POST_SYNTHESIS_LOOP_STATUS = ' in template
+        assert 'POST_POST_SYNTHESIS_LOOP_STATUS = ' in template
+        assert 'POST_SYNTHESIS_FEEDBACK = ' in template
+        assert 'Post-synthesis validation feedback missing' in template
+        assert 'Post-synthesis phase critic did not advance loop state' in template
+        assert 'Post-synthesis phase critic did not persist fresh loop feedback' in template
+        assert 'validation_result contains' not in template
 
     def test_plan_conversation_allowed_tools_frontmatter_is_comma_separated(self) -> None:
         coordinator = TemplateCoordinator()
@@ -681,7 +808,7 @@ class TestCrossPlatformInvocationRendering:
         )
         assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
         assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
-        assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
+        assert 'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.' in template
         assert 'Source: MCP consolidated CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
         assert 'Review Score: {PHASE1_SCORE}/100' in template
@@ -991,8 +1118,12 @@ class TestCrossPlatformInvocationRendering:
         assert 'Patch planner did not produce a retrievable amendment task' in template
         assert 'Do NOT invoke task-plan-critic' in template
         assert '#### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence' in template
+        assert 'PRE_PLANNING_LOOP_STATUS = ' in template
+        assert 'POST_PLANNING_LOOP_STATUS = ' in template
         assert 'PLANNING_FEEDBACK = ' in template
         assert 'Task plan critic did not persist CriticFeedback' in template
+        assert 'Task plan critic did not advance loop state' in template
+        assert 'Task plan critic did not persist fresh loop feedback' in template
         assert 'Do NOT call decide_planning_action' in template
         assert 'Do NOT continue into code reconnaissance, implementation, or alternate storage paths' in template
         assert (
@@ -1003,6 +1134,41 @@ class TestCrossPlatformInvocationRendering:
             'Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision).'
             in template
         )
+
+    def test_patch_template_fails_closed_before_patch_loop_decisions(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+
+        assert 'IF coder reports failure:' in template
+        assert 'IF any required reviewer reports failure:' in template
+        assert 'CONSOLIDATION_RESPONSE = ' in template
+        assert 'Phase 1 review consolidation failed' in template
+        assert 'Phase 1 review consolidation iteration mismatch' in template
+        assert 'Phase 1 consolidated feedback missing' in template
+        assert 'Do NOT call decide_coding_action' in template
+        assert 'Do NOT synthesize commit metadata' in template
+        assert 'IF coding-standards-reviewer reports failure:' in template
+        assert 'Phase 2 review consolidation failed' in template
+        assert 'Phase 2 review consolidation iteration mismatch' in template
+        assert 'Phase 2 consolidated feedback missing' in template
+        assert 'Do NOT call decide_standards_action' in template
+
+    def test_phase_and_roadmap_templates_do_not_include_malformed_tool_calls(self) -> None:
+        coordinator = TemplateCoordinator()
+        roadmap_template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        phase_template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+
+        assert 'LOOP_DECISION_RESPONSE = {tools.decide_loop_action})' not in roadmap_template
+        assert 'LOOP_DECISION_RESPONSE = {tools.decide_loop_action})' not in phase_template
+        assert 'LOOP_STATUS = {tools.get_loop_status})' not in phase_template
 
     def test_patch_template_loads_optional_standards_guides_for_coder(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1142,9 +1308,8 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        exception_phrase = 'Narrow exception: command reads latest feedback only for commit metadata synthesis.'
-        assert exception_phrase in code_template
-        assert exception_phrase in patch_template
+        assert 'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.' in code_template
+        assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in patch_template
 
     def test_standards_command_template_is_render_first(self) -> None:
         coordinator = TemplateCoordinator()

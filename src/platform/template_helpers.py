@@ -313,6 +313,9 @@ def create_plan_command_tools(
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{ANALYST_LOOP_ID}'
+        ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{ANALYST_LOOP_ID}'
         ),
@@ -483,6 +486,9 @@ def create_code_command_tools(
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
         ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'
+        ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
         ),
@@ -560,6 +566,9 @@ def create_roadmap_tools(
         ),
         create_roadmap=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}', content='{ROADMAP_MARKDOWN}'
+        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{ROADMAP_LOOP_ID}'
         ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{ROADMAP_LOOP_ID}'
@@ -646,6 +655,9 @@ def create_task_tools(
             loop_id='{TASK_LOOP_ID}',
             doc_type='"phase"',
             key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{TASK_LOOP_ID}'
         ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{TASK_LOOP_ID}'
@@ -1484,6 +1496,9 @@ def create_patch_command_tools(
         ),
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
+        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'
         ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'

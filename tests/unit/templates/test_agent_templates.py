@@ -251,6 +251,20 @@ class TestRoadmapCriticTemplate:
         assert '- None' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
+    def test_template_requires_exact_storage_contract(self) -> None:
+        tools = create_roadmap_critic_agent_tools(_adapter)
+        template = generate_roadmap_critic_template(tools)
+
+        assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
+        assert '# Critic Feedback: ROADMAP-CRITIC' in template
+        assert '## Assessment Summary' in template
+        assert '## Analysis' in template
+        assert '## Issues and Recommendations' in template
+        assert '## Metadata' in template
+        assert 'Do NOT call `store_reviewer_result`.' in template
+        assert 'Do NOT retry with alternate storage' in template
+        assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
+
 
 class TestTaskPlanCriticTemplate:
     def test_template_enforces_tui_plan_reference_validation(self) -> None:
@@ -414,6 +428,20 @@ class TestPhaseCriticTemplate:
         assert 'Structural blockers gate readiness through `### Blockers`' in template
         assert 'do NOT change the content score' in template
 
+    def test_template_requires_exact_storage_contract(self) -> None:
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        template = generate_phase_critic_template(tools)
+
+        assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
+        assert '# Critic Feedback: PHASE-CRITIC' in template
+        assert '## Assessment Summary' in template
+        assert '## Analysis' in template
+        assert '## Issues and Recommendations' in template
+        assert '## Metadata' in template
+        assert 'Do NOT call `store_reviewer_result`.' in template
+        assert 'Do NOT retry with alternate storage' in template
+        assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
+
 
 class TestPlanCriticTemplate:
     def test_template_uses_invocation_contract_style(self) -> None:
@@ -467,6 +495,20 @@ class TestAnalystCriticTemplate:
         assert 'prior_feedback = ' in template
         assert 'Store your feedback via' in template
         assert 'store_critic_feedback' in template
+
+    def test_template_requires_exact_storage_contract(self) -> None:
+        tools = create_analyst_critic_agent_tools(_adapter)
+        template = generate_analyst_critic_template(tools)
+
+        assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
+        assert '# Critic Feedback: ANALYST-CRITIC' in template
+        assert '## Assessment Summary' in template
+        assert '## Analysis' in template
+        assert '## Issues and Recommendations' in template
+        assert '## Metadata' in template
+        assert 'Do NOT call `store_reviewer_result`.' in template
+        assert 'Do NOT retry with alternate storage' in template
+        assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
 
 
 class TestTemplateConsistency:

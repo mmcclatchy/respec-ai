@@ -291,18 +291,80 @@ Invoke the task-planner workflow:
 
 {tools.invoke_task_planner}
 
-Expected: Task document with:
-- Goal and Acceptance Criteria from Phase objectives
-- Technology Stack Reference from Phase
-- Implementation Steps (`#### Step N:` sections, typically 3-6)
-- Testing Strategy
-- Task naming following `task-N` pattern (matching phase number)
+```text
+IF task-planner reports failure:
+  ERROR: "Task planner failed"
+  DIAGNOSTIC: [surface the exact planner error/output]
+  FAIL-CLOSED:
+  - Do NOT invoke task-plan-critic
+  - Do NOT continue to Step 4.3
+  EXIT: Workflow terminated
+
+IF task-planner does NOT confirm "Task stored and verified.":
+  ERROR: "Task planner did not confirm current-pass Task storage"
+  DIAGNOSTIC: [surface the exact planner output]
+  FAIL-CLOSED:
+  - Do NOT invoke task-plan-critic
+  - Do NOT continue to Step 4.3
+  EXIT: Workflow terminated
+
+TASK_MARKDOWN = {tools.get_task}
+
+IF TASK_MARKDOWN not found or retrieval fails:
+  ERROR: "Task planner did not produce a retrievable Task document"
+  DIAGNOSTIC: [surface the exact retrieval error/output]
+  FAIL-CLOSED:
+  - Do NOT invoke task-plan-critic
+  - Do NOT continue to Step 4.3
+  EXIT: Workflow terminated
+```
 
 #### Step 4.2: Invoke Task-Plan-Critic Agent
+
+```text
+PRE_TASK_LOOP_STATUS = {tools.get_loop_status}
+```
 
 Invoke the task-plan-critic workflow:
 
 {tools.invoke_task_plan_critic}
+
+```text
+IF task-plan-critic reports failure:
+  ERROR: "Task plan critic failed"
+  DIAGNOSTIC: [surface the exact critic error/output]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 5
+  EXIT: Workflow terminated
+
+POST_TASK_LOOP_STATUS = {tools.get_loop_status}
+TASK_FEEDBACK = {tools.get_feedback}
+
+IF TASK_FEEDBACK is empty OR retrieval fails:
+  ERROR: "Task plan critic did not persist CriticFeedback"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 5
+  EXIT: Workflow terminated
+
+IF PRE_TASK_LOOP_STATUS.status == "initialized" AND POST_TASK_LOOP_STATUS.status == "initialized":
+  ERROR: "Task plan critic did not advance loop state"
+  DIAGNOSTIC: [surface PRE_TASK_LOOP_STATUS and POST_TASK_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 5
+  EXIT: Workflow terminated
+
+IF PRE_TASK_LOOP_STATUS.status != "initialized" AND POST_TASK_LOOP_STATUS.iteration <= PRE_TASK_LOOP_STATUS.iteration:
+  ERROR: "Task plan critic did not persist fresh loop feedback"
+  DIAGNOSTIC: [surface PRE_TASK_LOOP_STATUS and POST_TASK_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 5
+  EXIT: Workflow terminated
+```
 
 #### Step 4.3: Get Loop Decision
 
@@ -333,7 +395,7 @@ VIOLATION: Asking the user whether to continue refining when status is "refine"
 ```text
 IF LOOP_DECISION == "refine":
   Display: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining task"
-  Return to Step 4.1 (task-planner will retrieve feedback from MCP itself)
+  Return to Step 4.1 (task-planner → Task retrieval verification → task-plan-critic → feedback verification → decision)
 
 ELIF LOOP_DECISION == "user_input":
   Display: "⚠ Quality improvements needed - user input required"
@@ -379,7 +441,7 @@ ELIF LOOP_DECISION == "user_input":
     Prompt for specific guidance
     Store user feedback with guidance
 
-  Return to Step 4.1 (MCP Server will decide next action based on feedback)
+  Return to Step 4.1 (task-planner → Task retrieval verification → task-plan-critic → feedback verification → decision)
 
 ELIF LOOP_DECISION == "complete":
   Display: "✅ Score: {{LOOP_SCORE}}/100 — task approved"

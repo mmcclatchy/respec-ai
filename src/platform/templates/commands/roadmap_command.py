@@ -42,9 +42,8 @@ PHASING_PREFERENCES = [normalized roadmap-guidance brief derived from RAW_PHASIN
 
 Interpret trailing roadmap guidance as one payload:
 - Treat RAW_PHASING_REQUEST as the only user-authored roadmap guidance after PLAN_NAME.
-- If guidance is present, normalize it into PHASING_PREFERENCES as one preference brief; otherwise leave it empty.
-- If that guidance is ambiguous enough to materially change roadmap structure, {selection_prompt_instructions} or ask one direct clarification question when options are not cleaner.
-- WAIT for {selection_response_source}. DO NOT treat this as workflow completion, cancellation, or failure. After the user responds, resume at Step 0.1. Update PHASING_PREFERENCES. Continue to Step 0.2 immediately. DO NOT explain that the workflow is stopping unless the user asks why.
+- Normalize guidance into PHASING_PREFERENCES or leave it empty.
+- If ambiguity materially changes roadmap structure, {selection_prompt_instructions} or ask one direct clarification question. WAIT for {selection_response_source}. DO NOT treat this as workflow completion, cancellation, or failure. After the user responds, resume at Step 0.1. Update PHASING_PREFERENCES. Continue to Step 0.2 immediately. DO NOT explain that the workflow is stopping unless the user asks why.
 #### Step 0.2: Sync Plan from Platform to MCP
 
 **CRITICAL**: Sync the plan from platform storage to MCP before proceeding. This ensures any manual edits the user made to the plan file are captured.
@@ -88,8 +87,6 @@ ELSE:
   IF not PLAN_HAS_QUALITY_BAR: Display: "  ⚠️ Missing: Quality Bar"
 ```
 
-Note: PHASING_PREFERENCES already extracted from command arguments in Step 0.1.
-
 ### 2. Initialize Roadmap Generation Loop
 Set up MCP-managed quality refinement loop:
 {tools.initialize_refinement_loop_inline_doc}
@@ -106,44 +103,57 @@ Invoke the roadmap workflow with these instructions:
 
 {tools.invoke_roadmap_agent}
 
-Expected: Implementation roadmap with appropriately-sized phases using one of these strategies:
+```text
+IF roadmap agent reports failure:
+  ERROR: "Roadmap agent failed" DIAGNOSTIC: [surface the exact roadmap-agent error/output]
+  FAIL-CLOSED: Do NOT invoke roadmap-critic. Do NOT continue to Step 3.3. EXIT: Workflow terminated
 
-Strategy 1 - Feature-Based Phases (Most Common):
-- Each phase delivers a complete, functional capability
-- Phases align with natural feature or domain boundaries
-- Clear acceptance criteria and definition of "done"
-- Examples: "User Authentication", "Payment Integration", "Admin Dashboard"
+IF roadmap agent does NOT confirm "Roadmap generation complete. Stored to MCP.":
+  ERROR: "Roadmap agent did not confirm current-pass roadmap storage" DIAGNOSTIC: [surface the exact roadmap-agent output]
+  FAIL-CLOSED: Do NOT invoke roadmap-critic. Do NOT continue to Step 3.3. EXIT: Workflow terminated
 
-Strategy 2 - Technical Layer Phases:
-- Each phase completes a technical layer or infrastructure component
-- Useful for foundational projects or platform work
-- Examples: "Database Schema", "API Layer", "Frontend Components"
+ROADMAP_MARKDOWN = {tools.get_roadmap}
 
-Strategy 3 - Incremental Complexity Phases:
-- Start with MVP/simplest version, add complexity in subsequent phases
-- Useful for exploratory or evolving requirements
-- Examples: "Basic CRUD", "Add Validation & Error Handling", "Add Advanced Features"
+IF ROADMAP_MARKDOWN not found or retrieval fails:
+  ERROR: "Roadmap agent did not produce a retrievable roadmap" DIAGNOSTIC: [surface the exact retrieval error/output]
+  FAIL-CLOSED: Do NOT invoke roadmap-critic. Do NOT continue to Step 3.3. EXIT: Workflow terminated
+```
 
-Strategy 4 - Risk-Based Phases:
-- Tackle highest-risk or most uncertain work first
-- Later phases build on validated assumptions
-- Useful for innovative or technically challenging projects
-
-Choose strategy based on project characteristics. Phases MUST be:
-- Complete enough to test and validate independently
-- Small enough to maintain focus and clarity
-- Large enough to deliver meaningful functionality
-- Naturally ordered by dependencies
+Implementation roadmap requirements: feature-based where useful, technically coherent, incremental-complexity aware, risk-based, independently testable, meaningfully scoped, and dependency-ordered.
 
 #### Step 3.2: Invoke Roadmap-Critic Agent
+```text
+PRE_ROADMAP_LOOP_STATUS = {tools.get_loop_status}
+```
 
 Invoke the roadmap-critic workflow with these instructions:
 
 {tools.invoke_roadmap_critic}
 
+```text
+IF roadmap-critic reports failure:
+  ERROR: "Roadmap critic failed" DIAGNOSTIC: [surface the exact critic error/output]
+  FAIL-CLOSED: Do NOT call decide_loop_action. Do NOT continue to Step 4. EXIT: Workflow terminated
+
+POST_ROADMAP_LOOP_STATUS = {tools.get_loop_status}
+ROADMAP_FEEDBACK = {tools.get_feedback}
+
+IF ROADMAP_FEEDBACK is empty OR retrieval fails:
+  ERROR: "Roadmap critic did not persist CriticFeedback" DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED: Do NOT call decide_loop_action. Do NOT continue to Step 4. EXIT: Workflow terminated
+
+IF PRE_ROADMAP_LOOP_STATUS.status == "initialized" AND POST_ROADMAP_LOOP_STATUS.status == "initialized":
+  ERROR: "Roadmap critic did not advance loop state" DIAGNOSTIC: [surface PRE_ROADMAP_LOOP_STATUS and POST_ROADMAP_LOOP_STATUS]
+  FAIL-CLOSED: Do NOT call decide_loop_action. Do NOT continue to Step 4. EXIT: Workflow terminated
+
+IF PRE_ROADMAP_LOOP_STATUS.status != "initialized" AND POST_ROADMAP_LOOP_STATUS.iteration <= PRE_ROADMAP_LOOP_STATUS.iteration:
+  ERROR: "Roadmap critic did not persist fresh loop feedback" DIAGNOSTIC: [surface PRE_ROADMAP_LOOP_STATUS and POST_ROADMAP_LOOP_STATUS]
+  FAIL-CLOSED: Do NOT call decide_loop_action. Do NOT continue to Step 4. EXIT: Workflow terminated
+```
+
 #### Step 3.3: Get Loop Decision
 ```text
-LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
+LOOP_DECISION_RESPONSE = {tools.decide_loop_action}
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
 LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
@@ -169,18 +179,13 @@ VIOLATION: Asking the user whether to continue refining when status is "refine"
 ```text
 IF LOOP_DECISION == "refine":
   Display: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining roadmap"
-  Return to Step 3.1 (roadmap-analyst will retrieve feedback from MCP itself)
+  Return to Step 3.1 (roadmap generation → roadmap retrieval verification → roadmap-critic → feedback verification → decision)
 
 ELIF LOOP_DECISION == "user_input":
   Display: "⚠ Quality improvements needed - user input required"
 
-  (ONLY NOW retrieve feedback for user display)
   LATEST_FEEDBACK = {tools.get_feedback})
-
-  Display LATEST_FEEDBACK to user with:
-  - Current score and iteration
-  - Key issues identified by roadmap-critic
-  - Recommendations for improvement
+  Display LATEST_FEEDBACK to user with current score, iteration, key issues, and recommendations.
 
   {selection_prompt_instructions}
   Question: "The roadmap quality is at [SCORE]/100. How would you like to proceed?"
@@ -192,13 +197,15 @@ ELIF LOOP_DECISION == "user_input":
   After the user responds, resume at Step 4. Branch on the selected option. Continue with the matching roadmap action immediately. DO NOT explain that the workflow is stopping unless the user asks why.
 
   IF user selects option 1:
-    Override MCP decision and proceed to Step 5 (Phase Extraction Planning)
+    Store user feedback: "User confirmed current roadmap direction is acceptable"
+    Return to Step 3.1 (MCP will decide the next action after reevaluating stored feedback)
   ELIF user selects option 2:
-    Return to Step 3.1 for one more refinement iteration
+    Store user feedback: "User requested one more roadmap refinement iteration"
+    Return to Step 3.1 (roadmap generation → roadmap retrieval verification → roadmap-critic → feedback verification → decision)
   ELIF user selects option 3:
     Prompt for specific guidance
     Store as user feedback using store_user_feedback
-    Return to Step 3.1 with user guidance
+    Return to Step 3.1 (roadmap generation → roadmap retrieval verification → roadmap-critic → feedback verification → decision)
 
 ELIF LOOP_DECISION == "complete":
   Display: "✅ Score: {{LOOP_SCORE}}/100 — roadmap approved · extracting phases..."
@@ -208,16 +215,9 @@ ELIF LOOP_DECISION == "complete":
 ═══════════════════════════════════════════════
 MANDATORY: PHASE EXTRACTION IS NOT OPTIONAL
 ═══════════════════════════════════════════════
-The roadmap is internal working data stored in MCP only.
-
-Do NOT write a roadmap.md file or any roadmap file to disk.
-Do NOT stop here. Do NOT report the roadmap as a final output.
-Do NOT present a completion summary after the quality loop.
-
-The workflow is NOT complete until Steps 5-7 finish:
-  Step 5 → Plan phase extraction from roadmap
-  Step 6 → Launch create-phase agents to extract and save phases
-  Step 7 → Verify phases exist in platform storage
+The roadmap is internal MCP working data only.
+Do NOT write roadmap files to disk. Do NOT stop here. Do NOT report roadmap completion.
+The workflow is NOT complete until Steps 5-7 finish (plan extraction, create phases, verify storage).
 
 VIOLATION: Stopping after the roadmap quality loop without extracting
            phases is a workflow violation. The roadmap exists solely to

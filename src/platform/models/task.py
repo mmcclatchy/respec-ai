@@ -15,6 +15,7 @@ class TaskCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_LOOP_STATUS,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.LINK_LOOP_TO_DOCUMENT,
@@ -35,6 +36,7 @@ class TaskCommandTools(CommandToolsModel):
     store_phase_document: str = Field(..., description='Store phase document in MCP')
     initialize_loop: str = Field(..., description='Initialize task planning loop')
     link_loop: str = Field(..., description='Link loop to phase document')
+    get_loop_status: str = Field(..., description='Get loop status for iteration check')
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_task: str = Field(..., description='Get Task document')

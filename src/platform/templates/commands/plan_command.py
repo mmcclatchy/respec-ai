@@ -636,30 +636,81 @@ After plan acceptance, invoke the plan-analyst agent with analyst loop ID:
 
 {tools.invoke_plan_analyst}
 
-### Plan-analyst workflow
-1. **Agent retrieves strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
-2. **Agent checks for previous analysis** using get_previous_analysis(ANALYST_LOOP_ID)
-3. **Agent retrieves latest analyst-critic feedback** using get_feedback(ANALYST_LOOP_ID, count=1) on refinement iterations
-4. **Agent extracts structured objectives** from strategic plan
-5. **Agent stores analysis** using store_current_analysis(ANALYST_LOOP_ID, analysis)
+```text
+IF plan-analyst reports failure:
+  ERROR: "Plan analyst failed"
+  DIAGNOSTIC: [surface the exact analyst error/output]
+  FAIL-CLOSED:
+  - Do NOT invoke analyst-critic
+  - Do NOT continue to Step 8
+  EXIT: Workflow terminated
+
+IF plan-analyst does NOT confirm "Analysis stored to MCP.":
+  ERROR: "Plan analyst did not confirm current-pass analysis storage"
+  DIAGNOSTIC: [surface the exact analyst output]
+  FAIL-CLOSED:
+  - Do NOT invoke analyst-critic
+  - Do NOT continue to Step 8
+  EXIT: Workflow terminated
+
+ANALYST_ANALYSIS = {tools.get_previous_analysis}
+
+IF ANALYST_ANALYSIS is empty OR retrieval fails OR ANALYST_ANALYSIS contains "No previous analysis found for loop":
+  ERROR: "Plan analyst did not persist a retrievable analysis"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT invoke analyst-critic
+  - Do NOT continue to Step 8
+  EXIT: Workflow terminated
+```
 
 ## Step 8: Analyst Quality Assessment
+
+```text
+PRE_ANALYST_LOOP_STATUS = {tools.get_loop_status}
+```
 
 Invoke the analyst-critic agent with loop ID:
 
 {tools.invoke_analyst_critic}
 
-### Analyst-critic workflow
-1. **Agent retrieves business objectives analysis** from MCP using get_previous_analysis(ANALYST_LOOP_ID)
-2. **Agent retrieves original strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
-3. **Agent retrieves prior analyst-critic feedback** using get_feedback(ANALYST_LOOP_ID, count=2) when refinement history exists
-4. **Agent validates extraction quality** against validation framework
-5. **Agent stores CriticFeedback** using store_critic_feedback(ANALYST_LOOP_ID, feedback_markdown)
-
-### Extract analyst score for MCP decision
 ```text
-Retrieve feedback using: {tools.get_feedback}
-Extract ANALYST_SCORE from feedback overall_score field
+IF analyst-critic reports failure:
+  ERROR: "Analyst critic failed"
+  DIAGNOSTIC: [surface the exact critic error/output]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 9
+  EXIT: Workflow terminated
+
+POST_ANALYST_LOOP_STATUS = {tools.get_loop_status}
+ANALYST_FEEDBACK = {tools.get_feedback}
+
+IF ANALYST_FEEDBACK is empty OR retrieval fails:
+  ERROR: "Analyst critic did not persist CriticFeedback"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 9
+  EXIT: Workflow terminated
+
+IF PRE_ANALYST_LOOP_STATUS.status == "initialized" AND POST_ANALYST_LOOP_STATUS.status == "initialized":
+  ERROR: "Analyst critic did not advance loop state"
+  DIAGNOSTIC: [surface PRE_ANALYST_LOOP_STATUS and POST_ANALYST_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 9
+  EXIT: Workflow terminated
+
+IF PRE_ANALYST_LOOP_STATUS.status != "initialized" AND POST_ANALYST_LOOP_STATUS.iteration <= PRE_ANALYST_LOOP_STATUS.iteration:
+  ERROR: "Analyst critic did not persist fresh loop feedback"
+  DIAGNOSTIC: [surface PRE_ANALYST_LOOP_STATUS and POST_ANALYST_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 9
+  EXIT: Workflow terminated
+
+Extract ANALYST_SCORE from ANALYST_FEEDBACK overall_score field
 ```
 
 ## Step 9: Analyst Validation Loop

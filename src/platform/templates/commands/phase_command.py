@@ -263,7 +263,7 @@ IF LOOP_ID is None or LOOP_ID == "":
 )
 
 (Verify the link was created)
-LOOP_STATUS = {tools.get_loop_status})
+LOOP_STATUS = {tools.get_loop_status}
 
 IF LOOP_STATUS does not show linked phase:
     CRITICAL ERROR: "Loop linking failed - phase-architect and phase-critic will fail"
@@ -311,14 +311,55 @@ Display to user: "✓ Phase refined by phase-architect"
 
 #### Step 6.1: Invoke Phase-Critic Agent
 
+```text
+PRE_PHASE_LOOP_STATUS = {tools.get_loop_status}
+```
+
 {tools.invoke_phase_critic}
+
+```text
+IF phase-critic reports failure:
+  ERROR: "Phase critic failed"
+  DIAGNOSTIC: [surface the exact critic error/output]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 7
+  EXIT: Workflow terminated
+
+POST_PHASE_LOOP_STATUS = {tools.get_loop_status}
+PHASE_FEEDBACK = {tools.get_feedback}
+
+IF PHASE_FEEDBACK is empty OR retrieval fails:
+  ERROR: "Phase critic did not persist CriticFeedback"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 7
+  EXIT: Workflow terminated
+
+IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.status == "initialized":
+  ERROR: "Phase critic did not advance loop state"
+  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 7
+  EXIT: Workflow terminated
+
+IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iteration <= PRE_PHASE_LOOP_STATUS.iteration:
+  ERROR: "Phase critic did not persist fresh loop feedback"
+  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 7
+  EXIT: Workflow terminated
+```
 
 #### Step 6.2: Get Loop Decision
 
 **MCP Server handles score extraction and loop decision internally.**
 
 ```text
-LOOP_DECISION_RESPONSE = {tools.decide_loop_action})
+LOOP_DECISION_RESPONSE = {tools.decide_loop_action}
 LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
 LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
@@ -555,16 +596,41 @@ After research synthesis completes, validate all research paths exist:
 ```text
 Display to user: "🔍 Validating synthesized research paths..."
 
+PRE_POST_SYNTHESIS_LOOP_STATUS = {tools.get_loop_status}
+
 {tools.invoke_phase_critic_post_synthesis}
 
-IF validation_result contains "[API Research Final Docs Missing - BLOCKING]" OR
-   validation_result contains "[API Research Coverage Missing - BLOCKING]":
+IF phase-critic reports failure:
+    ERROR: "Post-synthesis phase critic failed"
+    DIAGNOSTIC: [surface the exact critic error/output]
+    EXIT: Workflow terminated
+
+POST_POST_SYNTHESIS_LOOP_STATUS = {tools.get_loop_status}
+POST_SYNTHESIS_FEEDBACK = {tools.get_feedback}
+
+IF POST_SYNTHESIS_FEEDBACK is empty OR retrieval fails:
+    ERROR: "Post-synthesis validation feedback missing"
+    DIAGNOSTIC: [surface the exact MCP/tool error]
+    EXIT: Workflow terminated
+
+IF PRE_POST_SYNTHESIS_LOOP_STATUS.status == "initialized" AND POST_POST_SYNTHESIS_LOOP_STATUS.status == "initialized":
+    ERROR: "Post-synthesis phase critic did not advance loop state"
+    DIAGNOSTIC: [surface PRE_POST_SYNTHESIS_LOOP_STATUS and POST_POST_SYNTHESIS_LOOP_STATUS]
+    EXIT: Workflow terminated
+
+IF PRE_POST_SYNTHESIS_LOOP_STATUS.status != "initialized" AND POST_POST_SYNTHESIS_LOOP_STATUS.iteration <= PRE_POST_SYNTHESIS_LOOP_STATUS.iteration:
+    ERROR: "Post-synthesis phase critic did not persist fresh loop feedback"
+    DIAGNOSTIC: [surface PRE_POST_SYNTHESIS_LOOP_STATUS and POST_POST_SYNTHESIS_LOOP_STATUS]
+    EXIT: Workflow terminated
+
+IF POST_SYNTHESIS_FEEDBACK contains "[API Research Final Docs Missing - BLOCKING]" OR
+   POST_SYNTHESIS_FEEDBACK contains "[API Research Coverage Missing - BLOCKING]":
     ERROR: "Post-synthesis API documentation coverage check failed"
     List blocking API coverage issues
     EXIT: Do NOT proceed to Step 8 with missing external API docs
-ELIF validation_result shows invalid_count > 0:
+ELIF POST_SYNTHESIS_FEEDBACK contains "Invalid \"Read:\" paths found: 0" == false:
     Display warning: "⚠️ Synthesized research paths invalid:"
-    List INVALID_PATHS
+    List invalid path findings extracted from POST_SYNTHESIS_FEEDBACK
     Display: "Check bp task output logs"
     # Non-blocking - continue to Step 8 after displaying the warning.
 ELSE:

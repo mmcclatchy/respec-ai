@@ -15,6 +15,7 @@ class PlanCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_LOOP_STATUS,
         RespecAITool.GET_PREVIOUS_ANALYSIS,
         RespecAITool.STORE_CURRENT_ANALYSIS,
         RespecAITool.STORE_DOCUMENT,
@@ -36,6 +37,7 @@ class PlanCommandTools(CommandToolsModel):
     store_plan: str = Field(..., description='Store strategic plan in MCP')
     store_plan_in_loop: str = Field(..., description='Store plan in analyst loop')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    get_loop_status: str = Field(..., description='Retrieve current analyst loop status')
     get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')
     get_feedback: str = Field(..., description='Retrieve prior critic feedback for analyst loop display')
     decide_loop_action: str = Field(..., description='Decide next loop action')

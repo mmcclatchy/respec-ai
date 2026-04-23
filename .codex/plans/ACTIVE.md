@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/respec-patch-codex-handoff-hardening.md`
-- Objective: Clean up Codex agent handoff wording and make respec-patch fail closed when task-plan-critic persistence breaks.
+- Plan File: `./.codex/plans/patch-fail-closed-parity-template-typo-cleanup.md`
+- Objective: Harden `respec-patch` fail-closed behavior and remove malformed trailing-`)` command template lines.
 - Phase: completed
-- Last Updated: 2026-04-23T18:23:00Z
+- Last Updated: 2026-04-23T19:18:07Z
 
 ## Usage
 

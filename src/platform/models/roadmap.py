@@ -15,6 +15,7 @@ class PlanRoadmapCommandTools(CommandToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_LOOP_STATUS,
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
@@ -31,6 +32,7 @@ class PlanRoadmapCommandTools(CommandToolsModel):
     get_plan: str = Field(..., description='Get strategic plan')
     initialize_loop: str = Field(..., description='Initialize roadmap loop')
     create_roadmap: str = Field(..., description='Create roadmap in MCP')
+    get_loop_status: str = Field(..., description='Get roadmap loop status for iteration check')
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_roadmap: str = Field(..., description='Get final roadmap')

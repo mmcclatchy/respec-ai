@@ -261,6 +261,10 @@ IF TASK_MARKDOWN not found or retrieval fails:
 
 #### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence
 
+```text
+PRE_PLANNING_LOOP_STATUS = {tools.get_loop_status}
+```
+
 {tools.invoke_task_plan_critic}
 
 ```text
@@ -272,6 +276,7 @@ IF task-plan-critic reports failure:
   - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
   EXIT: Workflow terminated
 
+POST_PLANNING_LOOP_STATUS = {tools.get_loop_status}
 PLANNING_FEEDBACK = {tools.get_feedback}
 
 IF PLANNING_FEEDBACK is empty OR retrieval fails:
@@ -281,6 +286,22 @@ IF PLANNING_FEEDBACK is empty OR retrieval fails:
   - Do NOT call decide_planning_action
   - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
   - Do NOT use store_reviewer_result for task-plan-critic; it is a critic workflow and MUST persist via store_critic_feedback
+  EXIT: Workflow terminated
+
+IF PRE_PLANNING_LOOP_STATUS.status == "initialized" AND POST_PLANNING_LOOP_STATUS.status == "initialized":
+  ERROR: "Task plan critic did not advance loop state"
+  DIAGNOSTIC: [surface PRE_PLANNING_LOOP_STATUS and POST_PLANNING_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_planning_action
+  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
+  EXIT: Workflow terminated
+
+IF PRE_PLANNING_LOOP_STATUS.status != "initialized" AND POST_PLANNING_LOOP_STATUS.iteration <= PRE_PLANNING_LOOP_STATUS.iteration:
+  ERROR: "Task plan critic did not persist fresh loop feedback"
+  DIAGNOSTIC: [surface PRE_PLANNING_LOOP_STATUS and POST_PLANNING_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_planning_action
+  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
   EXIT: Workflow terminated
 ```
 
@@ -493,7 +514,15 @@ Loop:
 
   # A) Coder pass
   {tools.invoke_coder}
-  Expected: Code implementation updated, task status synced, iteration handoff report returned
+  IF coder reports failure:
+    ERROR: "Coder failed"
+    DIAGNOSTIC: [surface the exact coder error/output]
+    FAIL-CLOSED:
+    - Do NOT invoke reviewers
+    - Do NOT call consolidate_review_cycle
+    - Do NOT call decide_coding_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
 
   # B) Phase 1 review team orchestration
   Launch ALL Phase 1 review agents in parallel.{tools.phase1_review_parallel_policy}
@@ -509,9 +538,42 @@ Loop:
   For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core:
     {tools.invoke_dynamic_reviewer_pattern}
 
+  IF any required reviewer reports failure:
+    ERROR: "Phase 1 review team failed"
+    DIAGNOSTIC: [surface the exact reviewer error/output]
+    FAIL-CLOSED:
+    - Do NOT call consolidate_review_cycle
+    - Do NOT call decide_coding_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
+
   LOOP_ID = CODING_LOOP_ID
   ACTIVE_REVIEWERS = PHASE1_REVIEWERS
-  {tools.consolidate_review_cycle}
+  CONSOLIDATION_RESPONSE = {tools.consolidate_review_cycle}
+  IF consolidate_review_cycle reports failure:
+    ERROR: "Phase 1 review consolidation failed"
+    DIAGNOSTIC: [surface the exact MCP/tool error]
+    FAIL-CLOSED:
+    - Do NOT call decide_coding_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
+
+  IF CONSOLIDATION_RESPONSE.iteration != REVIEW_ITERATION:
+    ERROR: "Phase 1 review consolidation iteration mismatch"
+    DIAGNOSTIC: [surface CONSOLIDATION_RESPONSE and REVIEW_ITERATION]
+    FAIL-CLOSED:
+    - Do NOT call decide_coding_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
+
+  PHASE1_FEEDBACK = {tools.get_feedback}
+  IF PHASE1_FEEDBACK is empty OR retrieval fails:
+    ERROR: "Phase 1 consolidated feedback missing"
+    DIAGNOSTIC: [surface the exact MCP/tool error]
+    FAIL-CLOSED:
+    - Do NOT call decide_coding_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
 
   # C) MCP coding decision
   CODING_DECISION_RESPONSE = {tools.decide_coding_action}
@@ -522,7 +584,6 @@ Loop:
 
   # D) Phase 1 commit orchestration (command-owned, every pass)
   # Narrow exception: command reads latest feedback only for commit metadata synthesis.
-  PHASE1_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=CODING_LOOP_ID, count=1)
   PHASE1_SCORE = [extract latest Overall Score from PHASE1_FEEDBACK]
   PHASE1_SUMMARY = [extract latest Assessment Summary from PHASE1_FEEDBACK]
   PHASE1_ACCOMPLISHED = [extract concise accomplished outcomes from PHASE1_FEEDBACK or coder handoff report]
@@ -682,12 +743,53 @@ Loop:
   REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION
 
   {tools.invoke_coder_standards}
+  IF coder reports failure:
+    ERROR: "Standards coder failed"
+    DIAGNOSTIC: [surface the exact coder error/output]
+    FAIL-CLOSED:
+    - Do NOT invoke coding-standards-reviewer
+    - Do NOT call consolidate_review_cycle
+    - Do NOT call decide_standards_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
 
   {tools.invoke_coding_standards_reviewer}
+  IF coding-standards-reviewer reports failure:
+    ERROR: "Coding standards reviewer failed"
+    DIAGNOSTIC: [surface the exact reviewer error/output]
+    FAIL-CLOSED:
+    - Do NOT call consolidate_review_cycle
+    - Do NOT call decide_standards_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
 
   LOOP_ID = STANDARDS_LOOP_ID
   ACTIVE_REVIEWERS = ["coding-standards-reviewer"]
-  {tools.consolidate_review_cycle}
+  CONSOLIDATION_RESPONSE = {tools.consolidate_review_cycle}
+  IF consolidate_review_cycle reports failure:
+    ERROR: "Phase 2 review consolidation failed"
+    DIAGNOSTIC: [surface the exact MCP/tool error]
+    FAIL-CLOSED:
+    - Do NOT call decide_standards_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
+
+  IF CONSOLIDATION_RESPONSE.iteration != REVIEW_ITERATION:
+    ERROR: "Phase 2 review consolidation iteration mismatch"
+    DIAGNOSTIC: [surface CONSOLIDATION_RESPONSE and REVIEW_ITERATION]
+    FAIL-CLOSED:
+    - Do NOT call decide_standards_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
+
+  STANDARDS_FEEDBACK = {tools.get_standards_feedback}
+  IF STANDARDS_FEEDBACK is empty OR retrieval fails:
+    ERROR: "Phase 2 consolidated feedback missing"
+    DIAGNOSTIC: [surface the exact MCP/tool error]
+    FAIL-CLOSED:
+    - Do NOT call decide_standards_action
+    - Do NOT synthesize commit metadata
+    EXIT: Workflow terminated
 
   STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
   STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status
@@ -695,7 +797,6 @@ Loop:
   STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
 
   # Phase 2 feedback source (coding-standards reviewer CriticFeedback):
-  STANDARDS_FEEDBACK = mcp__respec-ai__get_feedback(loop_id=STANDARDS_LOOP_ID, count=1)
   STANDARDS_SUMMARY = [extract latest Assessment Summary from STANDARDS_FEEDBACK]
   STANDARDS_ACCOMPLISHED = [extract concise accomplished outcomes from STANDARDS_FEEDBACK or coder handoff report]
   STANDARDS_KEY_ISSUES = [extract top key issues from STANDARDS_FEEDBACK]

@@ -16,6 +16,7 @@ class PatchCommandTools(CommandToolsModel):
         RespecAITool.INITIALIZE_REFINEMENT_LOOP,
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
         RespecAITool.CONSOLIDATE_REVIEW_CYCLE,
+        RespecAITool.GET_LOOP_STATUS,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.UPDATE_DOCUMENT,
@@ -54,6 +55,7 @@ class PatchCommandTools(CommandToolsModel):
     # Feedback
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
+    get_loop_status: str = Field(..., description='Get loop status for iteration check')
 
     # Task operations
     get_task_document: str = Field(..., description='Get task document')
