@@ -11,6 +11,7 @@ def generate_patch_command_template(tools: PatchCommandTools) -> str:
             'before continuing:'
         )
     )
+    selection_response_source = f'{ask_tool} response' if ask_tool else 'the user response'
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [request]
@@ -61,21 +62,30 @@ Once RAW_REQUEST is sufficiently clear:
 #### Step 1.2: Capture Execution Mode (MANDATORY)
 
 ```text
-{selection_prompt_instructions}
-  Header: "Patch Mode"
-  Question: "Which delivery intent should this patch follow?"
-  multiSelect: false
-  Options:
-    - MVP: Prioritize core functional/spec delivery, defer non-P0 hardening
-    - hardening: Prioritize full quality hardening and strict review
+IF RAW_REQUEST already contains one unambiguous execution mode token:
+  EXECUTION_MODE = [normalize explicit token to MVP|hardening]
+  EXECUTION_MODE_SOURCE = "raw-request"
+ELSE:
+  {selection_prompt_instructions}
+    Header: "Patch Mode"
+    Question: "Which delivery intent should this patch follow?"
+    multiSelect: false
+    Options:
+      - MVP: Prioritize core functional/spec delivery, defer non-P0 hardening
+      - hardening: Prioritize full quality hardening and strict review
 
-EXECUTION_MODE = [selected option label normalized to MVP|hardening]
-EXECUTION_MODE_SOURCE = "patch-mode-selection"
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 1.2. Set EXECUTION_MODE. Continue to Step 1.3 immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  EXECUTION_MODE = [selected option label normalized to MVP|hardening]
+  EXECUTION_MODE_SOURCE = "patch-mode-selection"
 
 Display: "Execution mode selected: {{EXECUTION_MODE}}"
 ```
 
-#### Step 1.1: Resolve Active Plan (if referenced)
+#### Step 1.3: Resolve Active Plan (if referenced)
 
 ```text
 IF RAW_REQUEST references an active plan (e.g., "use the active plan",
@@ -116,6 +126,11 @@ ELSE:
       Question: "Which interpretation matches the patch you want?"
       Options: [2-4 concrete options derived from plausible interpretations]
     OR ask one direct clarifying question when options are not cleaner.
+
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 1.3. Clarify RAW_REQUEST. Continue with PATCH_REQUEST_BRIEF normalization immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
   PATCH_REQUEST_BRIEF = compose normalized brief from the clarified RAW_REQUEST:
     - requested change
@@ -170,6 +185,11 @@ ELSE:
     Header: "Select Phase for Patch"
     multiSelect: false
     Options: [ranked phases with objectives summary as description]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 2.3. Set PHASE_FILE_PATH. Continue to Step 2.4 immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
 
   PHASE_FILE_PATH = [selected from response]
 ```
@@ -286,6 +306,10 @@ IF TASK_MODE in {{MVP,hardening}} AND TASK_MODE != EXECUTION_MODE:
     Header: "Mode Mismatch"
     Question: "Task policy mode differs from selected patch mode. Which should this loop use?"
     Options: selected patch mode, task policy mode
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 4.1.1. Set EXECUTION_MODE. Continue to the resolved-mode display immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
   EXECUTION_MODE = [user-selected mode]
   EXECUTION_MODE_SOURCE = "task-policy-mismatch-resolution"
 
@@ -704,6 +728,11 @@ Loop:
     {selection_prompt_instructions}
       1. Continue Phase 2 with more iterations
       2. Finalize current standards state now
+
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 6.5. Branch on the selected option. Continue with the matching standards action immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
     Store user choice and branch accordingly:
     - Option 1: STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1

@@ -704,6 +704,13 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=CodexAdapter(),
         )
         assert 'Ask the user directly with a numbered options list' in template
+        assert 'WAIT for the user response.' in template
+        assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
+        assert 'After the user responds, resume at Step 1.3.' in template
+        assert 'After the user responds, resume at Step 6.7.' in template
+        assert 'After the user responds, resume at Step 8.' in template
+        assert 'After the user responds, resume at Step 7.5.' in template
+        assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
         assert 'Use AskUserQuestion' not in template
         assert 'mixed' not in template
 
@@ -757,6 +764,8 @@ class TestCrossPlatformInvocationRendering:
         assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
         assert 'OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]' in template
         assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
+        assert 'After the user responds, resume at Step 0.1.3.' in template
+        assert 'After the user responds, resume at Step 5.' in template
         assert 'REFERENCE_CONTEXT_MARKDOWN = compose markdown:' in template
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
         assert 'reference_context_markdown: REFERENCE_CONTEXT_MARKDOWN' in template
@@ -773,6 +782,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
         assert 'OPTIONAL_INSTRUCTIONS = [empty until RAW_PHASE_REQUEST is clarified]' in template
         assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
+        assert 'After the user responds, resume at Step 1.3.' in template
 
     def test_roadmap_template_uses_raw_guidance_contract(self) -> None:
         coordinator = TemplateCoordinator()
@@ -787,6 +797,10 @@ class TestCrossPlatformInvocationRendering:
             'PHASING_PREFERENCES = [normalized roadmap-guidance brief derived from RAW_PHASING_REQUEST, or empty string]'
             in template
         )
+        assert 'WAIT for AskUserQuestion response.' in template
+        assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
+        assert 'After the user responds, resume at Step 0.1.' in template
+        assert 'After the user responds, resume at Step 4.' in template
 
     def test_patch_template_requires_upfront_mode_and_code_quality_core_reviewer(self) -> None:
         coordinator = TemplateCoordinator()
@@ -797,7 +811,16 @@ class TestCrossPlatformInvocationRendering:
         )
         assert '#### Step 1.2: Capture Execution Mode (MANDATORY)' in template
         assert 'Header: "Patch Mode"' in template
+        assert 'IF RAW_REQUEST already contains one unambiguous execution mode token:' in template
+        assert 'EXECUTION_MODE_SOURCE = "raw-request"' in template
         assert 'EXECUTION_MODE = [selected option label normalized to MVP|hardening]' in template
+        assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
+        assert 'After the user responds, resume at Step 1.2.' in template
+        assert 'After the user responds, resume at Step 1.3.' in template
+        assert 'After the user responds, resume at Step 2.3.' in template
+        assert 'After the user responds, resume at Step 4.1.1.' in template
+        assert 'After the user responds, resume at Step 6.5.' in template
+        assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
         assert '- mixed: Balance feature completion and targeted hardening' not in template
         assert 'mixed' not in template
         assert (
@@ -936,6 +959,19 @@ class TestCrossPlatformInvocationRendering:
         assert 'raw_request: RAW_REQUEST' not in template
         assert 'Do NOT derive execution inputs from an ambiguous RAW_REQUEST.' in template
         assert 'Do NOT invoke the patch planner until the request is sufficiently clear.' in template
+
+    def test_codex_patch_template_treats_missing_mode_as_resume_checkpoint(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'Ask the user directly with a numbered options list' in template
+        assert 'WAIT for the user response.' in template
+        assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
+        assert 'After the user responds, resume at Step 1.2.' in template
+        assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
 
     def test_guideline_exception_matches_code_and_patch_templates(self) -> None:
         guidelines = Path('docs/AGENT_DEVELOPMENT_GUIDELINES.md').read_text(encoding='utf-8')

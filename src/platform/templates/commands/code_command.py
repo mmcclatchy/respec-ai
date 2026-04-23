@@ -109,6 +109,11 @@ ELSE:
       ... for all matches
     ]
 
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 1.3. Set PHASE_FILE_PATH. Continue to Step 1.4 immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   PHASE_FILE_PATH = [selected file path from {selection_response_source}]
 ```
 
@@ -345,6 +350,11 @@ IF AMBIGUOUS_MODE:
       - MVP
       - hardening
 
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 6.7. Set RESOLVED_MODE. Continue to the resolved-mode display immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   RESOLVED_MODE = [user choice]
   RESOLVED_MODE_SOURCE = "user-selected-conflict-resolution"
 ```
@@ -571,6 +581,11 @@ ELIF CODING_DECISION == "user_input":
       2. Switch mode and continue refine
       3. Finalize now with deferred-risk summary
 
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 8. Branch on the selected option. Continue with the matching action immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   IF user selects option 1:
     USER_FEEDBACK_MARKDOWN = "User selected continue refine in mode={{RESOLVED_MODE}}"
     LOOP_ID = CODING_LOOP_ID
@@ -583,6 +598,10 @@ ELIF CODING_DECISION == "user_input":
       Header: "Switch Mode"
       Question: "Select new execution mode for this loop."
       Options: MVP, hardening
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 8. Set RESOLVED_MODE. Continue with the loop-feedback update immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
     RESOLVED_MODE = [user selection]
     RESOLVED_MODE_SOURCE = "user-switched-during-user_input"
     USER_FEEDBACK_MARKDOWN = "Execution Intent Snapshot updated: mode={{RESOLVED_MODE}} (switched by user)"
@@ -741,6 +760,11 @@ Loop:
     {selection_prompt_instructions}
       1. Continue Phase 2 with more iterations
       2. Finalize current standards state now
+
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 7.5. Branch on the selected option. Continue with the matching standards action immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
     Store user choice and branch accordingly:
     - Option 1: STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1

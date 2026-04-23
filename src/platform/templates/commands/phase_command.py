@@ -181,6 +181,11 @@ ELSE:
       ... for all matches
     ]
 
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 1.3. Set PHASE_FILE_PATH. Continue to Step 1.4 immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   PHASE_FILE_PATH = [selected file path from {selection_response_source}]
 ```
 

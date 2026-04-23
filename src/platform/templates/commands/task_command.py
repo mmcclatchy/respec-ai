@@ -94,6 +94,11 @@ ELSE:
       ... for all matches
     ]
 
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 0.1.3. Set PHASE_FILE_PATH. Continue to Step 0.1.4 immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
   PHASE_FILE_PATH = [selected file path from {selection_response_source}]
 ```
 
@@ -360,6 +365,11 @@ ELIF LOOP_DECISION == "user_input":
     1. "Proceed with current Task - quality is sufficient"
     2. "One more refinement iteration - address remaining issues"
     3. "Provide specific guidance for refinement"
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 5. Capture the selected guidance path. Continue with feedback storage immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
 
   IF user selects option 1:
     Store user feedback: "User confirmed current quality is acceptable"

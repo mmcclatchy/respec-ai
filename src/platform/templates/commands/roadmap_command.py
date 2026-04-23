@@ -11,6 +11,7 @@ def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
             'before continuing:'
         )
     )
+    selection_response_source = f'{ask_tool} response' if ask_tool else 'the user response'
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [optional: roadmap-guidance]
@@ -42,8 +43,8 @@ PHASING_PREFERENCES = [normalized roadmap-guidance brief derived from RAW_PHASIN
 Interpret trailing roadmap guidance as one payload:
 - Treat RAW_PHASING_REQUEST as the only user-authored roadmap guidance after PLAN_NAME.
 - If guidance is present, normalize it into PHASING_PREFERENCES as one preference brief; otherwise leave it empty.
-- If that guidance is ambiguous enough to materially change roadmap structure, ask the user to clarify before continuing.
-
+- If that guidance is ambiguous enough to materially change roadmap structure, {selection_prompt_instructions} or ask one direct clarification question when options are not cleaner.
+- WAIT for {selection_response_source}. DO NOT treat this as workflow completion, cancellation, or failure. After the user responds, resume at Step 0.1. Update PHASING_PREFERENCES. Continue to Step 0.2 immediately. DO NOT explain that the workflow is stopping unless the user asks why.
 #### Step 0.2: Sync Plan from Platform to MCP
 
 **CRITICAL**: Sync the plan from platform storage to MCP before proceeding. This ensures any manual edits the user made to the plan file are captured.
@@ -187,6 +188,8 @@ ELIF LOOP_DECISION == "user_input":
     1. "Proceed with current roadmap - quality is sufficient"
     2. "One more refinement iteration - address remaining issues"
     3. "Provide specific guidance for refinement"
+  WAIT for {selection_response_source}. DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 4. Branch on the selected option. Continue with the matching roadmap action immediately. DO NOT explain that the workflow is stopping unless the user asks why.
 
   IF user selects option 1:
     Override MCP decision and proceed to Step 5 (Phase Extraction Planning)
