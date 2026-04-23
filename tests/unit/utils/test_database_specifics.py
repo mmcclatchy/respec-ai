@@ -104,6 +104,7 @@ class TestDatabaseJSONBSerialization:
             assessment_summary='Good progress',
             detailed_feedback='Well structured with clear objectives but missing some details',
             key_issues=['Missing details'],
+            blockers=['Missing required section: Testing Strategy'],
             recommendations=['Add more context'],
         )
         feedback2 = CriticFeedback(
@@ -129,6 +130,7 @@ class TestDatabaseJSONBSerialization:
         assert retrieved_loop.feedback_history[0].overall_score == 85
         assert retrieved_loop.feedback_history[0].assessment_summary == 'Good progress'
         assert retrieved_loop.feedback_history[0].key_issues == ['Missing details']
+        assert retrieved_loop.feedback_history[0].blockers == ['Missing required section: Testing Strategy']
 
     @pytest.mark.asyncio
     async def test_phase_additional_sections_jsonb_roundtrip(self, db_state_manager: PostgresStateManager) -> None:

@@ -79,7 +79,7 @@ tools:
 | Agent Type | Single Responsibility | Input Focus | Output Focus |
 |-----------|---------------------|-------------|--------------|
 | **Generators** | Content creation | Context + requirements | Structured documents |
-| **Critics** | Quality assessment | Content for evaluation | Numerical scores + feedback |
+| **Critics** | Quality assessment | Content for evaluation | Content score + structural blockers + feedback |
 | **Analysts** | Information extraction | Raw data/documents | Structured analysis |
 | **Architects** | System design | Requirements | Technical specifications |
 | **Planners** | Implementation planning | Specifications + codebase | Detailed roadmaps |
@@ -135,16 +135,23 @@ TASKS:
 1. Retrieve specification using mcp__respec-ai__get_phase_markdown(loop_id)
 2. Evaluate specification against FSDD quality framework
 3. Assess technical completeness and clarity
-4. Identify gaps and improvement opportunities
-5. Calculate numerical quality score (0-100)
-6. Store feedback using mcp__respec-ai__store_critic_feedback(loop_id, feedback_markdown)
+4. Identify non-blocking content gaps (score lane)
+5. Identify hard-stop structural/procedural violations (blocker lane)
+6. Calculate numerical quality score (0-100) for content quality only
+7. Store feedback using mcp__respec-ai__store_critic_feedback(loop_id, feedback_markdown)
 
 OUTPUTS: Quality assessment containing:
 - Overall Quality Score: [numerical value 0-100]
+- Blockers: [structural/procedural hard-stop issues only]
 - Priority Improvements: [specific actionable suggestions]
 - Strengths: [well-executed areas to preserve]
 - Technical Concerns: [potential implementation risks]
 ```
+
+**Two-Lane Critic Contract (Required for document loops)**:
+- **Score lane** (`overall_score`): reflects content quality only.
+- **Blocker lane** (`blockers`): structural/procedural violations that hard-gate progression.
+- Content issues like over-detailing, tangents, weak rationale, or shallow analysis reduce score but do not become blockers by default.
 
 **Note**: Critic agents receive `loop_id` as input and retrieve content via MCP, then store feedback directly via MCP tools. They do NOT receive markdown content as direct input.
 

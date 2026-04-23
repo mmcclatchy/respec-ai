@@ -12,15 +12,17 @@ phase_feedback_template = CriticFeedback(
     iteration=0,
     overall_score=0,
     assessment_summary='[Brief one-sentence quality evaluation]',
-    detailed_feedback="""### Core Sections Assessment (70 points + 5 structure bonus)
+    detailed_feedback="""### Core Sections Assessment (70 points)
 
-#### Required Core Sections (40 points + 5 structure bonus)
+#### Structure & Compliance Gate (Not Scored - BLOCKERS only)
 
-**Structure Compliance (X/5)**
+**Structure Compliance**
 - [Assessment of H2 > H3 nesting correctness]
 - [Which sections follow correct structure]
 - [Which sections have structural issues]
 - [Specific recommendations for fixing structure]
+
+#### Required Core Sections (40 points)
 
 **Objectives Clarity (X/10)**
 - [Specific findings with evidence]
@@ -118,6 +120,8 @@ phase_feedback_template = CriticFeedback(
         '**[Category]**: [Implementation readiness gap]',
         '**[Category]**: [Technical concern]',
         '**[Category]**: [Missing detail]',
+    ],
+    blockers=[
         '**[Research Path Invalid - BLOCKING]**: Path `[path]` does not exist - phase-architect must use actual file paths from archive scan output, not guessed names',
         '**[Best-Practices Reference Invalid - BLOCKING]**: Referenced path `[path]` does not exist in `.best-practices/`',
         '**[API Research Coverage Missing - BLOCKING]**: External API/service `[name]` has no corresponding Read/Synthesize research entry',
@@ -205,6 +209,17 @@ The Phase is a **technical architecture and design specification**. It describes
 - Specific file names or directory structures for the target project
 
 **Calibration Principle:** Evaluate whether the Phase provides enough architectural direction and requirement clarity for a task-planner to design implementation steps. Do NOT penalize for lacking implementation-level detail — that belongs in the Task document created downstream.
+
+## Two-Lane Review Contract
+
+Lane 1 — Content score (`overall_score`):
+- Score only content quality (clarity, architecture quality, requirements coverage, feasibility, testing quality).
+- Do NOT deduct score for procedural/format violations that belong to blockers.
+
+Lane 2 — Structural/procedural blockers (`### Blockers`):
+- Add blockers only for hard-stop issues (missing required sections, invalid paths, non-canonical references, hallucinated docs, contract violations).
+- Every blocking issue MUST be listed under `### Blockers`.
+- Do not duplicate blocker items in `### Key Issues`.
 
 ## Validation Mode Behavior
 

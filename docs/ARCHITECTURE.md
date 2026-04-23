@@ -414,7 +414,7 @@ class MCPModel(BaseModel, ABC):
 3. **FeatureRequirements** (20 fields) - Technical translation
 4. **Roadmap** (19 fields) - Phase management
 5. **Task** (13 fields) - Implementation planning
-6. **CriticFeedback** (9 fields) - Quality feedback, custom parser
+6. **CriticFeedback** (10 fields) - Quality feedback with two-lane output (`overall_score` + `blockers`), custom parser
 
 ## Deployment System
 

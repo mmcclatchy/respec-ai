@@ -65,7 +65,18 @@ class TestPlatformOrchestrator:
         # Verify template contains Linear-specific tools
         assert 'mcp__linear-server__create_issue' in template
         assert 'mcp__linear-server__get_issue' in template
-        assert 'mcp__linear-server__update_issue' in template
+        assert 'mcp__linear-server__list_issues' in template
+
+    def test_generate_code_command_template_excludes_unused_planning_loop_tools(self) -> None:
+        self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)
+
+        request = TemplateGenerationRequest(
+            project_path=Path(self.test_project_path), command_name=RespecAICommand.CODE
+        )
+        template = self.orchestrator.generate_command_template(request)
+
+        assert 'initialize_planning_loop' not in template
+        assert 'decide_planning_action' not in template
 
     def test_generate_command_template_uses_configured_codex_tui(self) -> None:
         self.orchestrator.setup_project_with_defaults(self.test_project_path, PlatformType.LINEAR)

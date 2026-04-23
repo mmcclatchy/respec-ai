@@ -23,8 +23,12 @@ class CodeCommandStrategy(CommandStrategy[CodeCommandTools]):
         plans_dir: str = '',
     ) -> CodeCommandTools:
         adapter = get_platform_adapter(platform)
-        platform_tools = [adapter.retrieve_phase_tool, adapter.comment_phase_tool]
-        return create_code_command_tools(platform_tools, platform, tui_adapter)
+        return create_code_command_tools(
+            adapter.retrieve_phase_tool,
+            adapter.comment_phase_tool,
+            platform,
+            tui_adapter,
+        )
 
     def get_template_func(self) -> Callable[[CodeCommandTools], str]:
         return generate_code_command_template

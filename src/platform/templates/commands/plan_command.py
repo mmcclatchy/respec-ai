@@ -96,6 +96,10 @@ Example usage: `{tools.initialize_analyst_loop}`
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
+- **BLOCKERS_LIST**: List of structural/procedural blockers parsed from CRITIC_FEEDBACK `### Blockers`
+- **BLOCKERS_ACTIVE**: Boolean (`len(BLOCKERS_LIST) > 0`) controlling acceptance gating in human phase
+- **LAST_BLOCKER_SIGNATURE**: String fingerprint of blockers from previous iteration (for stagnation tracking)
+- **PLAN_BLOCKER_STAGNATION_COUNT**: Integer count of consecutive iterations with unchanged active blockers
 - **USER_DECISION**: String from user choice - values: "continue_conversation", "refine_plan", "accept_plan"
 - **PLAN_LOOP_ID**: String returned from MCP `{tools.initialize_plan_loop}` - used for feedback storage during human-driven plan refinement (Steps 3-5)
 - **ANALYST_LOOP_ID**: String returned from MCP `{tools.initialize_analyst_loop}` - required for MCP loop management during analyst validation (Steps 6-9)
@@ -128,6 +132,10 @@ Automated analyst phase (Steps 6-9):
 - Use remaining arguments as initial conversation context
 - If no conversation context provided, start with: "I need help creating a strategic plan for my project"
 - Initialize variables for state management throughout the human-driven process
+  - `BLOCKERS_LIST = []`
+  - `BLOCKERS_ACTIVE = false`
+  - `LAST_BLOCKER_SIGNATURE = ""`
+  - `PLAN_BLOCKER_STAGNATION_COUNT = 0`
 
 ## Step 1.5: Detect and Capture TUI Plan Reference (Fail-Closed)
 
@@ -422,6 +430,27 @@ Extract "Overall Score: [number]" from CRITIC_FEEDBACK markdown
 Store as QUALITY_SCORE variable
 ```
 
+Parse structural blockers separately from score:
+```text
+BLOCKERS_LIST = []
+Extract each bullet from "### Blockers" in CRITIC_FEEDBACK
+Ignore "None identified" placeholder rows
+BLOCKERS_ACTIVE = len(BLOCKERS_LIST) > 0
+
+CURRENT_BLOCKER_SIGNATURE = "|".join(sorted(lowercase(trim(BLOCKERS_LIST))))
+IF BLOCKERS_ACTIVE:
+  IF CURRENT_BLOCKER_SIGNATURE == LAST_BLOCKER_SIGNATURE:
+    PLAN_BLOCKER_STAGNATION_COUNT += 1
+  ELSE:
+    PLAN_BLOCKER_STAGNATION_COUNT = 1
+  LAST_BLOCKER_SIGNATURE = CURRENT_BLOCKER_SIGNATURE
+ELSE:
+  PLAN_BLOCKER_STAGNATION_COUNT = 0
+  LAST_BLOCKER_SIGNATURE = ""
+
+BLOCKER_STAGNATION = (PLAN_BLOCKER_STAGNATION_COUNT >= 3)
+```
+
 ## Step 5: Present Quality Assessment and User Decision
 
 ### Present the quality assessment to the user
@@ -442,26 +471,27 @@ Present options to user:
 
    #### Plan Overview
    - Quality Score: [QUALITY_SCORE from CRITIC_FEEDBACK]%
+   - Structural Blockers Active: [BLOCKERS_ACTIVE]
 
    #### Quality Summary
    [Display CRITIC_FEEDBACK markdown - the full feedback from plan-critic]
-
-   #### Your Options
-
-   1. **Continue conversation** - Add more details via {tools.conversation_workflow_name}
-      - Best if: Missing requirements, unclear scope, or need more context
-      - Action: Return to conversational discovery for specific areas
-
-   2. **Refine plan** - Generate improved version addressing feedback
-      - Best if: Content exists but needs better organization or clarity
-      - Action: Create new strategic plan version with targeted improvements
-
-   3. **Accept plan** - Proceed with current plan to objective extraction
-      - Best if: Plan meets your needs and you're ready to move forward
-      - Action: Continue to automated objective validation phase
-
-   #### Please choose your preferred option (1, 2, or 3)
    ```
+
+Option gating rules:
+```text
+IF BLOCKERS_ACTIVE and not BLOCKER_STAGNATION:
+  Display:
+    "Structural blockers are active. Auto-refining plan until blockers clear or stagnation is detected."
+  Set USER_DECISION = "refine_plan"
+  IMMEDIATELY return to Step 3 using CRITIC_FEEDBACK as refinement guidance
+  Do NOT prompt user in this state
+ELSE:
+  Present options:
+    1. Continue conversation
+    2. Refine plan
+    3. Accept plan
+  Prompt: "Please choose your preferred option (1, 2, or 3)"
+```
 
 ### Wait for user response and process decision
 

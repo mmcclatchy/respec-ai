@@ -79,6 +79,10 @@ class TestCriticAgent:
         assert CriticAgent.from_header('FRONTEND') == CriticAgent.FRONTEND_REVIEWER
         assert CriticAgent.from_header('CONSOLIDATOR') == CriticAgent.REVIEW_CONSOLIDATOR
 
-    def test_from_header_defaults_to_analyst_critic(self) -> None:
-        assert CriticAgent.from_header('UNKNOWN') == CriticAgent.ANALYST_CRITIC
-        assert CriticAgent.from_header('NONEXISTENT') == CriticAgent.ANALYST_CRITIC
+    def test_from_header_raises_for_unknown_values(self) -> None:
+        import pytest
+
+        with pytest.raises(ValueError, match='Unknown critic agent header'):
+            CriticAgent.from_header('UNKNOWN')
+        with pytest.raises(ValueError, match='Unknown critic agent header'):
+            CriticAgent.from_header('NONEXISTENT')

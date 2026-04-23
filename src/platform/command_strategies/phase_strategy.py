@@ -23,8 +23,14 @@ class PhaseCommandStrategy(CommandStrategy[PhaseCommandTools]):
         plans_dir: str = '',
     ) -> PhaseCommandTools:
         adapter = get_platform_adapter(platform)
-        platform_tools = [adapter.create_phase_tool, adapter.retrieve_phase_tool, adapter.update_phase_tool]
-        return create_phase_command_tools(platform_tools, platform, plans_dir, tui_adapter)
+        return create_phase_command_tools(
+            adapter.create_phase_tool,
+            adapter.retrieve_phase_tool,
+            adapter.list_phases_tool,
+            platform,
+            plans_dir,
+            tui_adapter,
+        )
 
     def get_template_func(self) -> Callable[[PhaseCommandTools], str]:
         return generate_phase_command_template

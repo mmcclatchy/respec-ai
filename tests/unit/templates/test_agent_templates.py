@@ -112,6 +112,7 @@ class TestRoadmapCriticTemplate:
         assert 'Overall Score' in template
         assert 'Assessment Summary' in template
         assert 'Issues and Recommendations' in template
+        assert '### Blockers' in template
 
     def test_template_includes_fsdd_criteria(self) -> None:
         tools = create_roadmap_critic_agent_tools(_adapter)
@@ -178,6 +179,14 @@ class TestTaskPlanCriticTemplate:
         assert 'Workflow Guidance Alignment' in template
         assert '## Invocation Contract' in template
         assert '## Workflow Guidance' in template
+
+    def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
+        tools = create_task_plan_critic_agent_tools(_adapter)
+        template = generate_task_plan_critic_template(tools)
+
+        assert '## Two-Lane Review Contract' in template
+        assert 'Lane 1 — Content score (`overall_score`)' in template
+        assert 'Lane 2 — Structural/procedural blockers (`### Blockers`)' in template
 
 
 class TestCreatePhaseTemplate:
@@ -286,6 +295,14 @@ class TestPhaseCriticTemplate:
         assert '### Grouped Markdown Inputs' in template
         assert '- None' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
+
+    def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        template = generate_phase_critic_template(tools)
+
+        assert '## Two-Lane Review Contract' in template
+        assert 'Lane 1 — Content score (`overall_score`):' in template
+        assert 'Lane 2 — Structural/procedural blockers (`### Blockers`):' in template
 
 
 class TestPlanCriticTemplate:

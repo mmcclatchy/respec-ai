@@ -857,3 +857,10 @@ class TestCodexAdapterInvocationRendering:
         assert '`respec-phase` skill is the ONLY workflow that runs bp synthesis' in phase_template
         assert '`/respec-task` consumes finalized research artifacts only.' not in task_template
         assert '`respec-task` skill consumes finalized research artifacts only.' in task_template
+
+    def test_codex_code_template_excludes_unused_planning_loop_tools(self) -> None:
+        code_template = TemplateCoordinator().generate_command_template(
+            RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=self.adapter
+        )
+        assert 'initialize_planning_loop' not in code_template
+        assert 'decide_planning_action' not in code_template

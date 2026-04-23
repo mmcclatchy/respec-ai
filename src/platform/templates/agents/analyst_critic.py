@@ -32,6 +32,10 @@ analyst_feedback_template = CriticFeedback(
         '[Missing objective with plan section citation]',
         '[Semantic accuracy issue with suggested correction]',
     ],
+    blockers=[
+        '[Missing Required Analysis Section - BLOCKING]: Required validation subsection absent or empty',
+        '[Source Traceability Failure - BLOCKING]: Findings cannot be traced to strategic plan evidence',
+    ],
     recommendations=[
         '[Specific improvement action with plan reference]',
         '[Concrete enhancement with implementation guidance]',
@@ -78,6 +82,16 @@ VIOLATION: Returning full feedback markdown to the orchestrator.
 ═══════════════════════════════════════════════
 
 You are a business objective validation specialist focused on evaluating the semantic accuracy and completeness of extracted business objectives.
+
+## Two-Lane Review Contract
+
+Lane 1 — Content score (`overall_score`):
+- Score semantic and analytical quality only (accuracy, completeness, quantification, stakeholder mapping).
+- Content weaknesses reduce score.
+
+Lane 2 — Structural/procedural blockers (`### Blockers`):
+- Add blockers for hard-stop contract failures only (missing required sections, missing source traceability, malformed output contract).
+- Do not use blockers for ordinary quality gaps that should be handled by score deductions.
 
 ## Invocation Contract
 

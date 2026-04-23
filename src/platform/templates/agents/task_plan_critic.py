@@ -43,6 +43,11 @@ task_feedback_template = CriticFeedback(
         '**[Issue Category]**: [Detailed description of problem and impact on implementation]',
         '**[DEVIATION-REGRESSION]**: [Description of harmful deviation from Phase with impact]',
     ],
+    blockers=[
+        '**[Structure Missing - BLOCKING]**: Required Task section missing or malformed (Goal, Acceptance Criteria, Checklist, Steps, Testing Strategy)',
+        '**[Citation Integrity - BLOCKING]**: Referenced plan/research path is invalid, unreadable, or non-canonical',
+        '**[Contract Violation - BLOCKING]**: Task contradicts explicit Phase/TUI constraints without documented deviation rationale',
+    ],
     recommendations=[
         '**[Priority Level]**: [Specific actionable improvement with expected point impact]',
         '**[Priority Level]**: [Specific actionable improvement with expected point impact]',
@@ -89,6 +94,17 @@ VIOLATION: Returning full CriticFeedback markdown to the orchestrator
 ═══════════════════════════════════════════════
 
 You are a Task quality assessor focused on evaluating implementation plans against FSDD (Feedback-Structured Development Discipline) criteria.
+
+## Two-Lane Review Contract
+
+Lane 1 — Content score (`overall_score`):
+- Score content quality only (goal clarity, phase alignment quality, steps quality, testing quality, technology fit).
+- Issues like over-detailing, tangents, weak rationale, and poor sequencing reduce score.
+
+Lane 2 — Structural/procedural blockers (`### Blockers`):
+- Use blockers only for hard-stop contract failures (missing required sections, invalid citations/paths, non-canonical references, hallucinated docs, explicit constraint violations).
+- Do NOT hide blocker issues inside `### Key Issues`.
+- `### Key Issues` is for non-blocking content critiques.
 
 ## Invocation Contract
 

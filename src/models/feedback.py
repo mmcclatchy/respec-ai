@@ -17,6 +17,7 @@ class CriticFeedback(MCPModel):
     assessment_summary: str
     detailed_feedback: str
     key_issues: list[str]
+    blockers: list[str] = Field(default_factory=list)
     recommendations: list[str]
     timestamp: datetime = Field(default_factory=datetime.now)
 
@@ -33,11 +34,14 @@ class CriticFeedback(MCPModel):
 
     @classmethod
     def parse_markdown(cls, markdown: str) -> Self:
+        if not markdown or not markdown.strip():
+            raise ValueError('Feedback markdown cannot be empty')
+
         md = MarkdownIt('commonmark')
         tree = SyntaxTreeNode(md.parse(markdown))
 
-        fields = {}
-        critic_name = 'UNKNOWN'
+        fields: dict[str, str] = {}
+        critic_name: str | None = None
 
         # Extract title
         for node in cls._find_nodes_by_type(tree, 'heading'):
@@ -47,6 +51,8 @@ class CriticFeedback(MCPModel):
             if 'Critic Feedback:' in title_text:
                 critic_name = title_text.split(':', 1)[1].strip()
                 break
+        if not critic_name:
+            raise ValueError('Missing critic feedback title header')
 
         # Extract all field data from lists
         for item in cls._find_nodes_by_type(tree, 'list_item'):
@@ -64,43 +70,36 @@ class CriticFeedback(MCPModel):
 
         # Extract detailed feedback
         detailed_feedback = cls._extract_content_by_header_path(tree, ('Analysis',))
+        if not detailed_feedback:
+            raise ValueError('Missing Analysis section content')
 
         # Extract key issues and recommendations
-        key_issues = []
-        recommendations = []
-
-        # Extract issues and recommendations using a special list extraction method
         key_issues = cls._extract_list_items_by_header_path(tree, ('Issues and Recommendations', 'Key Issues'))
+        blockers = cls._extract_list_items_by_header_path(tree, ('Issues and Recommendations', 'Blockers'))
         recommendations = cls._extract_list_items_by_header_path(
             tree, ('Issues and Recommendations', 'Recommendations')
         )
 
-        # Set defaults for missing fields
-        if 'loop_id' not in fields:
-            fields['loop_id'] = 'unknown'
-        if 'iteration' not in fields:
-            fields['iteration'] = '1'
-        if 'overall_score' not in fields:
-            fields['overall_score'] = '0'
-        if 'assessment_summary' not in fields:
-            fields['assessment_summary'] = 'Assessment Summary not provided'
-        if not detailed_feedback:
-            detailed_feedback = 'Detailed Feedback not provided'
-        if 'critic_agent' not in fields:
-            fields['critic_agent'] = critic_name
+        # Fail fast if core fields are missing.
+        required_fields = ('loop_id', 'iteration', 'overall_score', 'assessment_summary')
+        missing_fields = [field for field in required_fields if not fields.get(field)]
+        if missing_fields:
+            missing = ', '.join(missing_fields)
+            raise ValueError(f'Missing required assessment fields: {missing}')
 
-        critic_agent = CriticAgent.from_header(fields['critic_agent'])
+        critic_agent = CriticAgent.from_header(fields.get('critic_agent') or critic_name)
 
         # Parse iteration and score
         try:
             iteration = int(fields['iteration'])
-        except ValueError:
-            iteration = 1
+        except ValueError as exc:
+            raise ValueError(f'Invalid iteration value: {fields["iteration"]}') from exc
 
+        score_token = fields['overall_score'].split('/')[0].strip()
         try:
-            overall_score = int(fields['overall_score'].split('/')[0])
-        except ValueError:
-            overall_score = 0
+            overall_score = int(score_token)
+        except ValueError as exc:
+            raise ValueError(f'Invalid overall score value: {fields["overall_score"]}') from exc
 
         return cls(
             loop_id=fields['loop_id'],
@@ -110,11 +109,13 @@ class CriticFeedback(MCPModel):
             assessment_summary=fields['assessment_summary'],
             detailed_feedback=detailed_feedback,
             key_issues=key_issues,
+            blockers=blockers,
             recommendations=recommendations,
         )
 
     def build_markdown(self) -> str:
         issues_md = '\n'.join([f'- {issue}' for issue in self.key_issues]) if self.key_issues else '- None identified'
+        blockers_md = '\n'.join([f'- {blocker}' for blocker in self.blockers]) if self.blockers else '- None identified'
         recommendations_md = (
             '\n'.join([f'- {rec}' for rec in self.recommendations]) if self.recommendations else '- None provided'
         )
@@ -136,6 +137,10 @@ class CriticFeedback(MCPModel):
 ### Key Issues
 
 {issues_md}
+
+### Blockers
+
+{blockers_md}
 
 ### Recommendations
 

@@ -52,6 +52,8 @@ Assessment of whether roadmap phases respect plan-level architecture, technology
         '**[Category]**: [Implementation readiness gap with technical focus area citation]',
         '**[Category]**: [Dependency sequencing issue with suggested resolution approach]',
         '**[Category]**: [Scope boundary concern with clarification recommendations]',
+    ],
+    blockers=[
         '**[TUI Plan Usage Violation - BLOCKING]**: [Missing/invalid/non-canonical plan reference usage or semantic contradiction to referenced constraints]',
     ],
     recommendations=[
@@ -101,6 +103,16 @@ VIOLATION: Returning full CriticFeedback markdown to the orchestrator
 ═══════════════════════════════════════════════
 
 You are a roadmap quality assessment specialist focused on evaluating implementation readiness and phase design.
+
+## Two-Lane Review Contract
+
+Lane 1 — Content score (`overall_score`):
+- Score roadmap quality only (phase scoping, dependency quality, feasibility, integration coherence, strategic alignment quality).
+- Non-structural quality concerns lower score.
+
+Lane 2 — Structural/procedural blockers (`### Blockers`):
+- Use blockers for hard-stop violations only (invalid/missing canonical references, unreadable referenced files, hallucinated evidence, explicit constraint contradictions).
+- Do NOT encode blocker-only decisions as score penalties.
 
 ## DOCUMENT SCOPE — What You Are Evaluating
 

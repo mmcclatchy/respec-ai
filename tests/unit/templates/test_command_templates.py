@@ -317,6 +317,26 @@ class TestCrossPlatformInvocationRendering:
         assert '.respec-ai/plans/{PLAN_NAME}/references/{REFERENCE_FILENAME}' in template
         assert '/resources/' not in template
 
+    def test_plan_template_gates_acceptance_when_blockers_active(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'BLOCKERS_ACTIVE = len(BLOCKERS_LIST) > 0' in template
+        assert 'IF BLOCKERS_ACTIVE and not BLOCKER_STAGNATION:' in template
+        assert 'Auto-refining plan until blockers clear or stagnation is detected.' in template
+        assert 'Do NOT prompt user in this state' in template
+        assert 'Please choose your preferred option (1 or 2)' not in template
+        assert 'Cannot accept while structural blockers are active. Choose 1 or 2.' not in template
+
+    def test_code_template_does_not_reference_patch_style_planning_loop_tools(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert 'initialize_planning_loop' not in template
+        assert 'decide_planning_action' not in template
+
     def test_claude_code_phase_to_task_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(

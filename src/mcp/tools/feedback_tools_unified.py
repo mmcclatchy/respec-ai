@@ -393,17 +393,11 @@ class UnifiedFeedbackTools:
         except Exception as e:
             raise ToolError(f'Failed to parse feedback markdown: {str(e)}')
 
-        # Validation checks - look for template placeholders, not legitimate use of "unknown"
+        # Validation checks - look for obvious template placeholders.
         if 'Critic Feedback: UNKNOWN' in feedback_markdown or '# Critic Feedback: UNKNOWN' in feedback_markdown:
             raise ToolError('Feedback must specify a valid critic agent')
         if '# Critic Feedback:' not in feedback_markdown:
             raise ToolError('Feedback missing critic feedback header')
-        if (
-            feedback.loop_id == 'unknown'
-            and feedback.overall_score == 0
-            and feedback.assessment_summary == 'Assessment Summary not provided'
-        ):
-            raise ToolError('Feedback markdown structure is invalid')
 
         return feedback
 

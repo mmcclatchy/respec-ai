@@ -184,3 +184,58 @@ class TestEnhancedLoopState:
 
         response = loop_state.decide_next_loop_action()
         assert response.status == LoopStatus.COMPLETED
+
+    def test_structured_blockers_prevent_completion_for_document_critics(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.PHASE)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.PHASE_CRITIC,
+            iteration=1,
+            overall_score=98,
+            assessment_summary='Strong content quality but structural issue remains',
+            detailed_feedback='Quality is high but a required section is missing.',
+            key_issues=['Minor clarity concern'],
+            blockers=['Missing required section: Testing Strategy'],
+            recommendations=['Add the missing section'],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.REFINE
+
+    def test_repeated_structured_blockers_trigger_user_input_stagnation_for_document_critics(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.PHASE)
+        for i, score in enumerate((60, 70, 80, 89), start=1):
+            feedback = CriticFeedback(
+                loop_id=loop_state.id,
+                critic_agent=CriticAgent.PHASE_CRITIC,
+                iteration=i,
+                overall_score=score,
+                assessment_summary=f'Iteration {i} with unresolved blocker',
+                detailed_feedback='Content quality acceptable; blocker unresolved.',
+                key_issues=['Non-blocking content issue'],
+                blockers=['Missing required section: Risk Management'],
+                recommendations=['Add Risk Management section'],
+            )
+            loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.USER_INPUT
+
+    def test_repeated_review_consolidator_blockers_do_not_use_document_blocker_stagnation(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.PHASE)
+        for i, score in enumerate((60, 70, 80, 89), start=1):
+            feedback = CriticFeedback(
+                loop_id=loop_state.id,
+                critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
+                iteration=i,
+                overall_score=score,
+                assessment_summary=f'Iteration {i} with unresolved blocker marker',
+                detailed_feedback='Blocking condition persists: [BLOCKING]',
+                key_issues=['Blocking issue still active'],
+                recommendations=['Resolve blocker'],
+            )
+            loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.REFINE

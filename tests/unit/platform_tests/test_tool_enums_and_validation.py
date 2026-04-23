@@ -111,14 +111,13 @@ class TestTemplateHelpers:
 
     def test_create_phase_command_tools(self) -> None:
         # Simulate what TemplateCoordinator does for LINEAR platform
-        platform_tools = [
+        tools = create_phase_command_tools(
             'mcp__linear-server__create_issue',
             'mcp__linear-server__get_issue',
-            'mcp__linear-server__update_issue',
-        ]
-
-        tools = create_phase_command_tools(
-            platform_tools, PlatformType.LINEAR, plans_dir='~/.claude/plans', tui_adapter=ClaudeCodeAdapter()
+            'mcp__linear-server__list_issues',
+            PlatformType.LINEAR,
+            plans_dir='~/.claude/plans',
+            tui_adapter=ClaudeCodeAdapter(),
         )
 
         assert 'Task(respec-phase-architect)' in tools.tools_yaml
@@ -160,7 +159,12 @@ class TestTemplateHelpers:
             'mcp__linear-server__get_issue',
             'mcp__linear-server__create_comment',
         ]
-        tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+        tools = create_code_command_tools(
+            platform_tools[0],
+            platform_tools[1],
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
         assert 'Bash' in tools.tools_yaml
 
     def test_create_patch_command_tools_include_unrestricted_bash(self) -> None:
@@ -178,25 +182,51 @@ class TestTemplateHelpers:
             'mcp__linear-server__get_issue',
             'mcp__linear-server__create_comment',
         ]
-        claude_tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
-        codex_tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter())
-        opencode_tools = create_code_command_tools(platform_tools, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter())
+        claude_tools = create_code_command_tools(
+            platform_tools[0],
+            platform_tools[1],
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+        codex_tools = create_code_command_tools(
+            platform_tools[0],
+            platform_tools[1],
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        opencode_tools = create_code_command_tools(
+            platform_tools[0],
+            platform_tools[1],
+            PlatformType.LINEAR,
+            tui_adapter=OpenCodeAdapter(),
+        )
 
         assert 'AskUserQuestion' in claude_tools.tools_yaml
         assert 'AskUserQuestion' not in codex_tools.tools_yaml
         assert 'AskUserQuestion' not in opencode_tools.tools_yaml
 
     def test_create_task_and_roadmap_tools_include_ask_tool_only_when_adapter_supports_it(self) -> None:
-        platform_tools = [
-            'mcp__linear-server__get_issue',
-            'mcp__linear-server__list_issues',
-        ]
-        claude_task_tools = create_task_tools(platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
-        codex_task_tools = create_task_tools(platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter())
-        claude_roadmap_tools = create_roadmap_tools(
-            platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        phase_retrieval_tool = 'mcp__linear-server__get_issue'
+        phase_listing_tool = 'mcp__linear-server__list_issues'
+        roadmap_platform_tools = [phase_retrieval_tool, phase_listing_tool]
+        claude_task_tools = create_task_tools(
+            phase_retrieval_tool,
+            phase_listing_tool,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
         )
-        codex_roadmap_tools = create_roadmap_tools(platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter())
+        codex_task_tools = create_task_tools(
+            phase_retrieval_tool,
+            phase_listing_tool,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        claude_roadmap_tools = create_roadmap_tools(
+            roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        codex_roadmap_tools = create_roadmap_tools(
+            roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
 
         assert 'AskUserQuestion' in claude_task_tools.tools_yaml
         assert 'AskUserQuestion' not in codex_task_tools.tools_yaml

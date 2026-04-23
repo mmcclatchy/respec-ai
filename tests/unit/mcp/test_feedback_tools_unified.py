@@ -107,6 +107,38 @@ class TestUnifiedFeedbackToolsMemoryBoundaries:
         with pytest.raises(ResourceError, match='Loop does not exist'):
             await tools.get_feedback(stale_loop.id, count=1)
 
+    @pytest.mark.asyncio
+    async def test_store_critic_feedback_fails_fast_on_missing_required_markdown_fields(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        invalid_feedback_markdown = """# Critic Feedback: PHASE-CRITIC
+
+## Assessment Summary
+- **Loop ID**: test-loop
+- **Iteration**: 1
+- **Assessment Summary**: Missing score should fail fast
+
+## Analysis
+
+Detailed feedback present.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- Example issue
+
+### Recommendations
+
+- Example recommendation
+"""
+
+        with pytest.raises(ToolError, match='Missing required assessment fields: overall_score'):
+            await tools.store_critic_feedback(loop.id, invalid_feedback_markdown)
+
 
 class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio

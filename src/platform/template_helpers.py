@@ -124,7 +124,9 @@ def _resolve_tui_adapter(tui_adapter: 'TuiAdapter | None') -> 'TuiAdapter':
 
 
 def create_phase_command_tools(
-    platform_tools: list[str],
+    create_phase_tool: str,
+    phase_retrieval_tool: str,
+    phase_listing_tool: str,
     platform_type: 'PlatformType',
     plans_dir: str = '~/.claude/plans',
     tui_adapter: 'TuiAdapter | None' = None,
@@ -138,15 +140,13 @@ def create_phase_command_tools(
     for tool in PhaseCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
-    builder.add_platform_tools(platform_tools)
+    builder.add_platform_tools([create_phase_tool, phase_retrieval_tool, phase_listing_tool])
 
     adapter = _resolve_tui_adapter(tui_adapter)
     return PhaseCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
-        create_phase_tool=platform_tools[0],
-        get_phase_tool=platform_tools[1],
-        update_phase_tool=platform_tools[2],
+        create_phase_tool=create_phase_tool,
         platform=platform_type,
         plans_dir=plans_dir,
         invoke_phase_architect=adapter.render_agent_invocation(
@@ -326,7 +326,8 @@ def create_plan_command_tools(
 
 
 def create_code_command_tools(
-    platform_tools: list[str],
+    phase_retrieval_tool: str,
+    phase_comment_tool: str,
     platform_type: 'PlatformType',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'CodeCommandTools':
@@ -349,7 +350,7 @@ def create_code_command_tools(
     for tool in CodeCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
-    builder.add_platform_tools(platform_tools)
+    builder.add_platform_tools([phase_retrieval_tool, phase_comment_tool])
 
     _reviewer_params = [
         ('coding_loop_id', 'CODING_LOOP_ID'),
@@ -362,8 +363,6 @@ def create_code_command_tools(
     return CodeCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
-        get_phase_tool=platform_tools[0],
-        comment_phase_tool=platform_tools[1],
         platform=platform_type,
         invoke_coder=adapter.render_agent_invocation(
             'respec-coder',
@@ -460,17 +459,11 @@ def create_code_command_tools(
         get_phase_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
-        initialize_planning_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
-        ),
         initialize_coding_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
         ),
         initialize_standards_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
-        ),
-        decide_planning_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{PLANNING_LOOP_ID}'
         ),
         decide_coding_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{CODING_LOOP_ID}'
@@ -578,7 +571,8 @@ def create_roadmap_tools(
 
 
 def create_task_tools(
-    platform_tools: list[str],
+    phase_retrieval_tool: str,
+    phase_listing_tool: str,
     platform_type: 'PlatformType',
     tui_adapter: 'TuiAdapter | None' = None,
 ) -> 'TaskCommandTools':
@@ -595,13 +589,11 @@ def create_task_tools(
     for builtin_tool, params in TaskCommandTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
 
-    builder.add_platform_tools(platform_tools)
+    builder.add_platform_tools([phase_retrieval_tool, phase_listing_tool])
 
     return TaskCommandTools(
         tui_adapter=adapter,
         tools_yaml=builder.render_comma_separated_tools(),
-        get_phase_tool=platform_tools[0],
-        list_phase_tasks_tool=platform_tools[1],
         platform=platform_type,
         invoke_task_planner=adapter.render_agent_invocation(
             'respec-task-planner',

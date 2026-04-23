@@ -103,7 +103,10 @@ class CriticAgent(str, Enum):
             'CONSOLIDATOR': cls.REVIEW_CONSOLIDATOR,
         }
 
-        return aliases.get(normalized) or cls.ANALYST_CRITIC
+        alias = aliases.get(normalized)
+        if alias:
+            return alias
+        raise ValueError(f'Unknown critic agent header: {name}')
 
 
 class Priority(str, Enum):

@@ -142,6 +142,7 @@ The specification demonstrates thorough understanding of requirements and provid
         assert len(feedback.key_issues) == 2
         assert 'Missing performance benchmarks' in feedback.key_issues
         assert 'API versioning strategy unclear' in feedback.key_issues
+        assert feedback.blockers == []
         assert len(feedback.recommendations) == 3
         assert 'Add performance requirements section' in feedback.recommendations
 
@@ -188,6 +189,7 @@ The roadmap provides a foundation but requires refinement in several critical ar
         assert 'requires refinement in several critical areas' in feedback.detailed_feedback
         assert len(feedback.key_issues) == 2
         assert 'Phase scoping too broad in Phase 1' in feedback.key_issues
+        assert feedback.blockers == []
         assert len(feedback.recommendations) == 2
         assert 'Break Phase 1 into smaller deliverables' in feedback.recommendations
 
@@ -214,6 +216,8 @@ The roadmap provides a foundation but requires refinement in several critical ar
         assert '## Issues and Recommendations' in markdown
         assert '### Key Issues' in markdown
         assert '- Missing data validation' in markdown
+        assert '### Blockers' in markdown
+        assert '- None identified' in markdown
         assert '### Recommendations' in markdown
         assert '- Add comprehensive data validation' in markdown
 
@@ -242,7 +246,7 @@ The roadmap provides a foundation but requires refinement in several critical ar
         assert parsed_feedback.key_issues == original_feedback.key_issues
         assert parsed_feedback.recommendations == original_feedback.recommendations
 
-    def test_parse_markdown_with_unknown_critic_defaults_to_analyst(self) -> None:
+    def test_parse_markdown_with_unknown_critic_raises_validation_error(self) -> None:
         markdown = """# Critic Feedback: UNKNOWN
 
 ## Assessment Summary
@@ -271,11 +275,8 @@ Test analysis content.
 - **Status**: completed
 """
 
-        feedback = CriticFeedback.parse_markdown(markdown)
-
-        # Should default to ANALYST_CRITIC for unknown types
-        assert feedback.critic_agent == CriticAgent.ANALYST_CRITIC
-        assert feedback.loop_id == 'test-loop-123'
+        with pytest.raises(ValueError, match='Unknown critic agent header'):
+            CriticFeedback.parse_markdown(markdown)
 
     def test_parse_markdown_recognizes_coding_standards_reviewer(self) -> None:
         markdown = """# Critic Feedback: CODING-STANDARDS-REVIEWER
@@ -316,3 +317,66 @@ Imports properly grouped and ordered.
         assert feedback.loop_id == 'csr-loop-001'
         assert feedback.iteration == 2
         assert feedback.overall_score == 93
+
+    def test_parse_markdown_extracts_blockers_section(self) -> None:
+        markdown = """# Critic Feedback: PHASE-CRITIC
+
+## Assessment Summary
+- **Loop ID**: phase-loop-001
+- **Iteration**: 2
+- **Overall Score**: 78/100
+- **Assessment Summary**: Solid content quality with hard-stop compliance issues.
+
+## Analysis
+
+Content is generally good, but structural contract violations remain.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- Testing strategy lacks edge-case depth
+
+### Blockers
+
+- Missing required H2 section: Risk Management
+- Invalid best-practices path: .best-practices/missing.md
+
+### Recommendations
+
+- Add Risk Management section
+- Replace invalid path with existing documentation
+"""
+        feedback = CriticFeedback.parse_markdown(markdown)
+
+        assert feedback.critic_agent == CriticAgent.PHASE_CRITIC
+        assert feedback.blockers == [
+            'Missing required H2 section: Risk Management',
+            'Invalid best-practices path: .best-practices/missing.md',
+        ]
+        assert feedback.overall_score == 78
+
+    def test_parse_markdown_missing_required_fields_fails_fast(self) -> None:
+        markdown_missing_score = """# Critic Feedback: PHASE-CRITIC
+
+## Assessment Summary
+- **Loop ID**: phase-loop-001
+- **Iteration**: 1
+- **Assessment Summary**: Summary present
+
+## Analysis
+
+Detailed analysis present.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- Example issue
+
+### Recommendations
+
+- Example recommendation
+"""
+        with pytest.raises(ValueError, match='Missing required assessment fields: overall_score'):
+            CriticFeedback.parse_markdown(markdown_missing_score)

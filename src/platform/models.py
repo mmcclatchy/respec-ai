@@ -176,8 +176,6 @@ class PhaseCommandTools(CommandToolsModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
     create_phase_tool: str = Field(..., description='Platform-specific tool for creating phases')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
-    update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     platform: PlatformType = Field(..., description='Selected platform type')
     plans_dir: str = Field(..., description='TUI-specific plans directory path')
 
@@ -219,18 +217,6 @@ class PhaseCommandTools(CommandToolsModel):
         if '*' not in self.create_phase_tool:
             return self.create_phase_tool
         return self.create_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def get_phase_tool_interpolated(self) -> str:
-        if '*' not in self.get_phase_tool:
-            return self.get_phase_tool
-        return self.get_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def update_phase_tool_interpolated(self) -> str:
-        if '*' not in self.update_phase_tool:
-            return self.update_phase_tool
-        return self.update_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def sync_plan_instructions(self) -> str:
@@ -522,18 +508,14 @@ class CodeCommandTools(CommandToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
-    comment_phase_tool: str = Field(..., description='Platform-specific tool for commenting on phases')
     platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
     store_document: str = Field(..., description='Store task build plan')
     store_phase_document: str = Field(..., description='Store phase specification in MCP')
     get_phase_document: str = Field(..., description='Get phase specification')
-    initialize_planning_loop: str = Field(..., description='Initialize planning loop')
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
     initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
-    decide_planning_action: str = Field(..., description='Decide planning loop action')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
     decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
     consolidate_review_cycle: str = Field(..., description='Consolidate structured reviewer results for an iteration')
@@ -570,18 +552,6 @@ class CodeCommandTools(CommandToolsModel):
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
         cls._tool_extractor = ToolDocumentationExtractor(mcp)
-
-    @computed_field
-    def get_phase_tool_interpolated(self) -> str:
-        if '*' not in self.get_phase_tool:
-            return self.get_phase_tool
-        return self.get_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def comment_phase_tool_interpolated(self) -> str:
-        if '*' not in self.comment_phase_tool:
-            return self.comment_phase_tool
-        return self.comment_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def sync_phase_instructions(self) -> str:
@@ -891,8 +861,6 @@ class TaskCommandTools(CommandToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
-    list_phase_tasks_tool: str = Field(..., description='Platform-specific tool for listing tasks')
     platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
@@ -920,23 +888,6 @@ class TaskCommandTools(CommandToolsModel):
     @classmethod
     def initialize_tool_docs(cls, mcp: FastMCP) -> None:
         cls._tool_extractor = ToolDocumentationExtractor(mcp)
-
-    @computed_field
-    def get_phase_tool_interpolated(self) -> str:
-        if '*' not in self.get_phase_tool:
-            return self.get_phase_tool
-        return self.get_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def list_phase_tasks_tool_interpolated(self) -> str:
-        """Interpolate task listing tool path.
-
-        Tasks are stored flat under phases/tasks/ (not nested per phase).
-        Only plan_name wildcard needs replacement.
-        """
-        if '*' not in self.list_phase_tasks_tool:
-            return self.list_phase_tasks_tool
-        return self.list_phase_tasks_tool.replace('*', '{plan_name}', 1)
 
     @computed_field
     def mcp_tools_reference(self) -> str:
