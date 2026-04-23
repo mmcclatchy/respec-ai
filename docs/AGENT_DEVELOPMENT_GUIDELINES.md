@@ -143,7 +143,8 @@ TASKS:
 OUTPUTS: Quality assessment containing:
 - Overall Quality Score: [numerical value 0-100]
 - Blockers: [structural/procedural hard-stop issues only]
-- Priority Improvements: [specific actionable suggestions]
+- Key Issues: [non-blocking content gaps]
+- Recommendations: [specific actionable suggestions]
 - Strengths: [well-executed areas to preserve]
 - Technical Concerns: [potential implementation risks]
 ```
@@ -152,6 +153,15 @@ OUTPUTS: Quality assessment containing:
 - **Score lane** (`overall_score`): reflects content quality only.
 - **Blocker lane** (`blockers`): structural/procedural violations that hard-gate progression.
 - Content issues like over-detailing, tangents, weak rationale, or shallow analysis reduce score but do not become blockers by default.
+- Do **not** apply blocker-linked score penalties, bonuses, caps, or clamps.
+- Missing sections, malformed contracts, invalid references, hallucinated citations, and undocumented source contradictions belong in `blockers`, not in score math.
+
+**Required Document-Critic Patterns**:
+- **Prior-feedback retrieval**: critics should retrieve prior feedback from MCP when the loop supports refinement memory.
+- **Progress review**: when prior feedback exists, add a `Progress Against Previous Feedback` subsection that explicitly covers resolved issues, unresolved issues, and regressions.
+- **Source grounding**: critics must state and use their higher-level source documents as the comparison baseline instead of critiquing in a vacuum.
+- **Blocker taxonomy**: blockers are for structural/procedural hard stops only; scope creep, premature hardening, verbosity, weak sequencing, and shallow analysis stay in the score lane.
+- **Producer feedback consumption**: refining producers should resolve blockers first, then address key issues, then implement recommendations. They should not rely on stale section names such as `Priority Improvements`.
 
 **Note**: Critic agents receive `loop_id` as input and retrieve content via MCP, then store feedback directly via MCP tools. They do NOT receive markdown content as direct input.
 
@@ -735,7 +745,7 @@ The agent uses the feedback retrieved in STEP 0 to guide improvements. All data 
 STEP 2: Incorporate Feedback (if refinement iteration)
 IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Analyze specific issues identified by critic
-  → Address ALL items in "Priority Improvements" section
+  → Resolve all active blockers first, then address key issues and recommendations
   → Maintain strengths noted in feedback
   → Focus improvements on areas critic flagged as deficient
 ```
@@ -1219,7 +1229,9 @@ TASKS:
 
 OUTPUTS: Quality assessment containing:
 - Overall Quality Score: [0-100 numerical value]
-- Priority Improvements: [specific actionable suggestions]
+- Blockers: [structural/procedural hard-stop issues only]
+- Key Issues: [non-blocking content gaps]
+- Recommendations: [specific actionable suggestions]
 - Strengths: [well-executed areas to preserve]
 - [Domain-specific concerns]: [relevant risk areas]
 
@@ -1266,7 +1278,9 @@ TASKS:
 
 OUTPUTS: Quality assessment containing:
 - Overall Quality Score: [0-100 numerical value]
-- Priority Improvements: [specific technical gaps to address]
+- Blockers: [structural/procedural hard-stop issues only]
+- Key Issues: [specific technical gaps to address]
+- Recommendations: [specific refinement actions]
 - Strengths: [well-designed areas to preserve]
 - Technical Concerns: [implementation risks and challenges]
 

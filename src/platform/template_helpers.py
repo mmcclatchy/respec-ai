@@ -264,7 +264,7 @@ def create_plan_command_tools(
         invoke_plan_critic=adapter.render_agent_invocation(
             'respec-plan-critic',
             'evaluate strategic plan quality',
-            [('plan_name', 'PLAN_NAME')],
+            [('plan_name', 'PLAN_NAME'), ('previous_feedback_markdown', 'PRIOR_CRITIC_FEEDBACK')],
         ),
         invoke_plan_analyst=adapter.render_agent_invocation(
             'respec-plan-analyst',
@@ -315,6 +315,9 @@ def create_plan_command_tools(
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{ANALYST_LOOP_ID}'
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{ANALYST_LOOP_ID}', count='1'
         ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{ANALYST_LOOP_ID}'
@@ -738,6 +741,9 @@ def create_phase_critic_agent_tools(tui_adapter: TuiAdapter, phase_length_soft_c
         get_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='None', loop_id='{LOOP_ID}'
         ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='2'
+        ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),
@@ -762,8 +768,11 @@ def create_analyst_critic_agent_tools(tui_adapter: TuiAdapter) -> AnalystCriticA
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
         ),
-        store_current_analysis=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='{LOOP_ID}', analysis='{ANALYSIS}'
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='2'
+        ),
+        store_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),
     )
 
@@ -785,6 +794,9 @@ def create_plan_analyst_agent_tools(tui_adapter: TuiAdapter) -> PlanAnalystAgent
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
         store_current_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='{LOOP_ID}', analysis='{ANALYSIS}'
@@ -850,6 +862,9 @@ def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticA
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='2'
         ),
         get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, plan_name='{PLAN_NAME}'),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(

@@ -222,6 +222,25 @@ class TestEnhancedLoopState:
         response = loop_state.decide_next_loop_action()
         assert response.status == LoopStatus.USER_INPUT
 
+    def test_analyst_critic_blockers_prevent_completion_and_trigger_document_stagnation(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.ANALYST)
+        for i, score in enumerate((72, 81, 89), start=1):
+            feedback = CriticFeedback(
+                loop_id=loop_state.id,
+                critic_agent=CriticAgent.ANALYST_CRITIC,
+                iteration=i,
+                overall_score=score,
+                assessment_summary=f'Analyst iteration {i} with unresolved structural blocker',
+                detailed_feedback='Extraction quality is improving, but one required section is still missing.',
+                key_issues=['Expand stakeholder traceability'],
+                blockers=['Missing required section: Stakeholder Analysis'],
+                recommendations=['Add the missing section and cite source evidence'],
+            )
+            loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.USER_INPUT
+
     def test_repeated_review_consolidator_blockers_do_not_use_document_blocker_stagnation(self) -> None:
         loop_state = LoopState(loop_type=LoopType.PHASE)
         for i, score in enumerate((60, 70, 80, 89), start=1):

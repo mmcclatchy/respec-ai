@@ -154,13 +154,18 @@ class UnifiedFeedbackTools:
                 )
                 feedback_parts.append(f'## Iteration {i} - Score: {critic_feedback.overall_score}\n')
                 feedback_parts.append(f'{critic_feedback.assessment_summary}\n')
+                if critic_feedback.blockers:
+                    feedback_parts.append('### Blockers')
+                    for blocker in critic_feedback.blockers:
+                        feedback_parts.append(f'- {blocker}')
+                    feedback_parts.append('')
                 if critic_feedback.key_issues:
-                    feedback_parts.append('**Key Issues:**')
+                    feedback_parts.append('### Key Issues')
                     for issue in critic_feedback.key_issues:
                         feedback_parts.append(f'- {issue}')
                     feedback_parts.append('')
                 if critic_feedback.recommendations:
-                    feedback_parts.append('**Recommendations:**')
+                    feedback_parts.append('### Recommendations')
                     for rec in critic_feedback.recommendations:
                         feedback_parts.append(f'- {rec}')
                     feedback_parts.append('')

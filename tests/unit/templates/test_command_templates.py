@@ -423,6 +423,18 @@ class TestCrossPlatformInvocationRendering:
             assert 'IF ROADMAP_INVOCATION_METHOD == "shell"' in template
             assert 'roadmap_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)' in template
 
+    def test_plan_template_uses_feedback_memory_for_plan_and_analyst_refinement(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert 'PRIOR_CRITIC_FEEDBACK = CRITIC_FEEDBACK' in template
+        assert 'previous_feedback_markdown' in template
+        assert 'Agent retrieves prior analyst-critic feedback' in template
+        assert 'Retrieve feedback using: mcp__respec-ai__get_feedback' in template
+        assert 'LATEST_FEEDBACK = mcp__respec-ai__get_feedback' in template
+
     def test_phase_template_places_task_handoff_after_phase_storage(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(

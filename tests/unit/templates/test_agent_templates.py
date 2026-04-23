@@ -142,8 +142,10 @@ class TestRoadmapCriticTemplate:
         assert 'STEP 1.7: Detect and Validate TUI Plan References' in template
         assert '.respec-ai/plans/{PLAN_NAME}/references/*.md' in template
         assert 'CALL Read(path)' in template
-        assert 'TUI Plan Usage Penalty (BLOCKING' in template
-        assert 'cap overall score at 80' in template
+        assert 'TUI Plan Usage Blockers' in template
+        assert 'do NOT convert them into score penalties or caps' in template
+        assert 'Sparse Phase Contract Missing - BLOCKING' in template
+        assert 'Refinement Output Contract Violation - BLOCKING' in template
 
     def test_template_uses_invocation_contract_style(self) -> None:
         tools = create_roadmap_critic_agent_tools(_adapter)
@@ -167,7 +169,7 @@ class TestTaskPlanCriticTemplate:
         assert '.respec-ai/plans/{PLAN_NAME}/references/' in template
         assert '(per plan reference: ...)' in template
         assert 'TUI Plan Deviation Log' in template
-        assert 'cap score at 80' in template
+        assert 'Do NOT reduce the score or cap the score because of blockers' in template
 
     def test_template_uses_single_workflow_guidance_contract(self) -> None:
         tools = create_task_plan_critic_agent_tools(_adapter)
@@ -255,7 +257,7 @@ class TestPhaseCriticTemplate:
         assert '.best-practices/*.md' in template
         assert 'API Research Coverage Missing - BLOCKING' in template
         assert 'Best-Practices Reference Invalid - BLOCKING' in template
-        assert 'API_RESEARCH_FRESHNESS_PENALTY' in template
+        assert 'API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT' in template
 
     def test_template_enforces_deterministic_api_detection_and_mode_aware_coverage(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
@@ -303,6 +305,8 @@ class TestPhaseCriticTemplate:
         assert '## Two-Lane Review Contract' in template
         assert 'Lane 1 — Content score (`overall_score`):' in template
         assert 'Lane 2 — Structural/procedural blockers (`### Blockers`):' in template
+        assert 'Structural blockers gate readiness through `### Blockers`' in template
+        assert 'do NOT change the content score' in template
 
 
 class TestPlanCriticTemplate:
@@ -314,8 +318,9 @@ class TestPlanCriticTemplate:
         assert '### Scalar Inputs' in template
         assert '- plan_name: Plan name for MCP plan retrieval' in template
         assert '### Grouped Markdown Inputs' in template
-        assert '- None' in template
+        assert 'previous_feedback_markdown' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
+        assert 'Progress Against Previous Feedback' in template
 
 
 class TestAnalystCriticTemplate:
@@ -329,6 +334,9 @@ class TestAnalystCriticTemplate:
         assert '### Grouped Markdown Inputs' in template
         assert '- None' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
+        assert 'prior_feedback = ' in template
+        assert 'Store your feedback via' in template
+        assert 'store_critic_feedback' in template
 
 
 class TestTemplateConsistency:
@@ -485,3 +493,15 @@ class TestTemplateConsistency:
         assert '### Grouped Markdown Inputs' in template
         assert '- None' in template
         assert 'Business context, requirements, success criteria, and constraints embedded' in template
+        assert 'Resolve EVERY active item under `### Blockers` before any optional refinement' in template
+        assert 'CALL ' in template and 'get_feedback' in template
+
+    def test_producer_templates_use_current_feedback_schema(self) -> None:
+        roadmap_template = generate_roadmap_template(create_roadmap_agent_tools(_adapter))
+        phase_template = generate_phase_architect_template(create_phase_architect_agent_tools(_adapter))
+        task_template = generate_task_planner_template(create_task_planner_agent_tools(_adapter))
+
+        assert 'resolve EVERY active item in `### Blockers`' in roadmap_template
+        assert '"Priority Improvements"' not in phase_template
+        assert 'Resolve ALL active items' in task_template
+        assert 'CriticFeedback `### Blockers`' in task_template

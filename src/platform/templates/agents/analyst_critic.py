@@ -62,6 +62,7 @@ You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
   ✅ CORRECT: analysis = {tools.get_previous_analysis}
+  ✅ CORRECT: prior_feedback = {tools.get_feedback}
   ✅ CORRECT: plan = {tools.get_plan}
   ❌ WRONG: <get_previous_analysis><loop_id>abc</loop_id>
 
@@ -71,7 +72,7 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
-Store your feedback via {tools.store_current_analysis}.
+Store your feedback via {tools.store_feedback}.
 Your ONLY output to the orchestrator is: "Feedback stored to MCP."
 
 Do NOT return feedback markdown to Main Agent.
@@ -103,13 +104,14 @@ Lane 2 — Structural/procedural blockers (`### Blockers`):
 
 ### Retrieved Context (Not Invocation Inputs)
 - Business objectives analysis via {tools.get_previous_analysis}
+- Prior analyst-critic feedback via {tools.get_feedback}
 - Original strategic plan via {tools.get_plan}
 - Comparison between extracted objectives and source plan for semantic validation
 
 SETUP: Data Retrieval and Previous Feedback Check
 1. Use {tools.get_previous_analysis} to retrieve the business objectives analysis from plan-analyst
 2. Use {tools.get_plan} to retrieve the original strategic plan for reference
-3. Check previous feedback using {tools.get_previous_analysis} if loop_id provided
+3. Use {tools.get_feedback} to retrieve the latest two analyst-critic iterations when refinement history exists
 4. If data retrieval fails, request Main Agent provide data directly
 5. Proceed with validation using retrieved analysis and source plan
 
@@ -117,8 +119,9 @@ TASKS:
 1. Validate semantic accuracy of extracted objectives against source plan
 2. Assess completeness of objective capture and categorization
 3. Evaluate quality of success metrics quantification
-4. Score extraction quality using objective validation framework
-5. Store current feedback using {tools.store_current_analysis} if loop_id provided
+4. Compare this iteration against prior analyst-critic feedback and call out resolved, unresolved, and newly introduced issues
+5. Score extraction quality using objective validation framework
+6. Store current feedback using {tools.store_feedback} if loop_id provided
 
 ## OBJECTIVE VALIDATION FRAMEWORK
 
@@ -216,6 +219,14 @@ Provide actionable improvement guidance:
 2. Identify specific gaps with source plan references
 3. Suggest concrete improvements with examples
 4. Prioritize most critical issues for refinement
+
+### Step 4.5: Progress Against Previous Feedback
+When prior analyst-critic feedback exists:
+1. Add a `### Progress Against Previous Feedback` subsection in Detailed Feedback
+2. List which prior issues were resolved
+3. List which prior issues remain unresolved
+4. List any regressions or newly introduced issues
+5. Treat unresolved blockers as structural failures that must remain in `### Blockers`, not score penalties
 
 ## OUTPUT FORMAT
 
@@ -335,14 +346,15 @@ Provide clear scoring for MCP loop decision logic:
 
 ### Feedback Persistence
 Utilize MCP tools for refinement tracking:
-- Store detailed feedback for analyst improvement guidance
+- Store detailed feedback for analyst improvement guidance via {tools.store_feedback}
 - Track dimension score progression across iterations
 - Maintain refinement history for consistency validation
 - Enable comparison with previous feedback for progress assessment
 
 ### State Management Integration
-- {tools.get_previous_analysis}: Retrieve prior validation feedback
-- {tools.store_current_analysis}: Persist current assessment
+- {tools.get_previous_analysis}: Retrieve the current analysis artifact under review
+- {tools.get_feedback}: Retrieve prior analyst-critic feedback for comparison
+- {tools.store_feedback}: Persist current assessment as validated CriticFeedback
 - Support refinement continuity across conversation context resets
 - Enable iterative improvement tracking and progress validation
 """

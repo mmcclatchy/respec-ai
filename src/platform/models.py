@@ -334,6 +334,7 @@ class PlanCommandTools(CommandToolsModel):
     store_plan_in_loop: str = Field(..., description='Store plan in analyst loop')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')
+    get_feedback: str = Field(..., description='Retrieve prior critic feedback for analyst loop display')
     decide_loop_action: str = Field(..., description='Decide next loop action')
     store_user_feedback: str = Field(..., description='Store user feedback during plan refinement')
 
@@ -999,6 +1000,7 @@ class PhaseCriticAgentTools(AgentToolsModel):
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
+    get_feedback: str = Field(..., description='Retrieve prior critic feedback')
     store_feedback: str = Field(..., description='Store critic feedback')
 
 
@@ -1088,7 +1090,8 @@ class AnalystCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_PREVIOUS_ANALYSIS,
-        RespecAITool.STORE_CURRENT_ANALYSIS,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInTool, str]]] = []
@@ -1096,13 +1099,15 @@ class AnalystCriticAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_previous_analysis: str = Field(..., description='Get previous analysis iteration')
-    store_current_analysis: str = Field(..., description='Store current analysis results')
+    get_feedback: str = Field(..., description='Retrieve previous critic feedback iterations')
+    store_feedback: str = Field(..., description='Store current critic feedback')
 
 
 class PlanAnalystAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_PREVIOUS_ANALYSIS,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_CURRENT_ANALYSIS,
     ]
 
@@ -1111,6 +1116,7 @@ class PlanAnalystAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_previous_analysis: str = Field(..., description='Get previous analysis iteration')
+    get_feedback: str = Field(..., description='Retrieve previous critic feedback iterations')
     store_current_analysis: str = Field(..., description='Store current analysis results')
 
 
@@ -1148,6 +1154,7 @@ class RoadmapAgentTools(AgentToolsModel):
 class RoadmapCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.GET_ROADMAP,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
@@ -1158,6 +1165,7 @@ class RoadmapCriticAgentTools(AgentToolsModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    get_feedback: str = Field(..., description='Retrieve prior critic feedback')
     get_roadmap: str = Field(..., description='Retrieve roadmap from MCP')
     store_feedback: str = Field(..., description='Store critic feedback')
 

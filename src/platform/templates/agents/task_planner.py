@@ -434,8 +434,9 @@ This Phase scope exceeds single-task capacity.
 ## FEEDBACK INTEGRATION
 
 ### Critic Feedback Processing
-- **Address ALL items** in CriticFeedback "Key Issues"
-- **Implement ALL items** in CriticFeedback "Recommendations"
+- **Resolve ALL active items** in CriticFeedback `### Blockers` before optional quality improvements
+- **Address ALL items** in CriticFeedback `### Key Issues`
+- **Implement ALL items** in CriticFeedback `### Recommendations`
 - Document responses for traceability
 
 ### User Feedback Priority

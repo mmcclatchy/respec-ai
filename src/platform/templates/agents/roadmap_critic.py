@@ -54,7 +54,10 @@ Assessment of whether roadmap phases respect plan-level architecture, technology
         '**[Category]**: [Scope boundary concern with clarification recommendations]',
     ],
     blockers=[
-        '**[TUI Plan Usage Violation - BLOCKING]**: [Missing/invalid/non-canonical plan reference usage or semantic contradiction to referenced constraints]',
+        '**[Sparse Phase Contract Missing - BLOCKING]**: [Required Overview field missing, malformed, or empty for one or more phases]',
+        '**[Refinement Output Contract Violation - BLOCKING]**: [Duplicate stale phases, replaced phases still present, or non-final roadmap output during refinement]',
+        '**[Reference Integrity Failure - BLOCKING]**: [Missing/invalid/non-canonical plan reference usage, unreadable files, or hallucinated citations]',
+        '**[Constraint Contradiction - BLOCKING]**: [Roadmap conflicts with plan/reference constraints without explicit approved deviation]',
     ],
     recommendations=[
         '**[Priority Level]**: [Specific improvement action with implementation guidance]',
@@ -83,6 +86,7 @@ You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
   ✅ CORRECT: roadmap = {tools.get_roadmap}
+  ✅ CORRECT: prior_feedback = {tools.get_feedback}
   ❌ WRONG: <{tools.get_roadmap}><plan_name>rag-poc</plan_name>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
@@ -141,6 +145,7 @@ The Roadmap decomposes a strategic plan into sprint-sized phases with dependency
 
 ### Retrieved Context (Not Invocation Inputs)
 - Roadmap markdown via {tools.get_roadmap}
+- Prior roadmap-critic feedback via {tools.get_feedback}
 - Strategic plan via {tools.get_plan}
 - Loaded TUI plan references when present
 
@@ -150,6 +155,11 @@ STEP 1: Retrieve Roadmap
 CALL {tools.get_roadmap}
 → Verify: Roadmap markdown received
 → If failed: Request orchestrator provide roadmap directly
+
+STEP 1.25: Retrieve Previous Critic Feedback
+CALL {tools.get_feedback}
+→ If prior feedback exists, compare this roadmap against the latest two iterations
+→ If no prior feedback exists, continue with first-iteration assessment
 
 STEP 1.5: Retrieve Strategic Plan
 CALL {tools.get_plan}
@@ -232,6 +242,11 @@ Assess roadmap against FSDD quality framework criteria
 → Implementation feasibility
 → Dependency relationships
 → Sequencing logic
+→ Structural blocker taxonomy:
+  → Missing or malformed sparse phase Overview fields are blockers
+  → Duplicate stale phases or non-final refinement output are blockers
+  → Malformed `### Implementation Plan References`, unreadable references, or hallucinated citations are blockers
+  → Explicit contradictions to plan/reference constraints without approved deviation are blockers
 
 STEP 3: Calculate Quality Score
 Use objective assessment criteria to calculate numerical score (0-100)
@@ -243,6 +258,7 @@ Create specific improvement recommendations
 → Prioritize by implementation impact
 → Provide actionable guidance
 → Reference specific roadmap sections
+→ If prior feedback exists, add `### Progress Against Previous Feedback` covering resolved issues, unresolved issues, and regressions
 
 STEP 5: Store Feedback
 CALL {tools.store_feedback}
@@ -406,12 +422,12 @@ MANDATORY SCORING PROTOCOL above.
 - No rejected technologies appear in any phase: +10 points
 - **Deductions**: Architecture contradiction (-30), rejected tech included (-20), anti-requirement violated (-20)
 
-#### TUI Plan Usage Penalty (BLOCKING, only when references are present)
-- If any non-canonical reference path is used: -20 points
-- If any canonical reference path is unreadable: -20 points
-- If citation evidence is missing/invalid for referenced constraints: -20 points
-- If phase content contradicts referenced constraints: -20 points
-- IF any TUI plan usage violation occurs: cap overall score at 80 until corrected
+#### TUI Plan Usage Blockers (references are structural, not scoring)
+- If any non-canonical reference path is used: raise a blocker
+- If any canonical reference path is unreadable: raise a blocker
+- If citation evidence is missing/invalid for referenced constraints: raise a blocker
+- If phase content contradicts referenced constraints: raise a blocker
+- Keep these failures in `### Blockers`; do NOT convert them into score penalties or caps
 
 ### Score Interpretation
 - **90-100**: Exceptional - Ready for immediate implementation
@@ -440,7 +456,7 @@ MANDATORY SCORING PROTOCOL above.
 
 #### Incomplete Roadmap Structure
 - Score based on present content quality and completeness
-- Document missing phases or sections explicitly in issues
+- Document missing phases or sections explicitly in blockers when they break the sparse roadmap contract
 - Provide structural guidance for standard roadmap patterns
 - Focus evaluation on available content without penalizing gaps unfairly
 

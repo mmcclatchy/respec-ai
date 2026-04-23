@@ -101,23 +101,25 @@ Lane 2 — Structural/procedural blockers (`### Blockers`):
 - plan_name: Plan name for MCP plan retrieval
 
 ### Grouped Markdown Inputs
-- None
+- previous_feedback_markdown: Optional prior plan-critic feedback supplied by the command on refinement iterations
 
 ### Retrieved Context (Not Invocation Inputs)
 - Strategic plan markdown via {tools.get_plan}
 
 SETUP: Plan Retrieval
 1. Use {tools.get_plan} to retrieve the current strategic plan
-2. If plan retrieval fails, request Main Agent provide plan directly
-3. Proceed with evaluation using retrieved strategic plan document
+2. If `previous_feedback_markdown` is present, read it before scoring the current plan
+3. If plan retrieval fails, request Main Agent provide plan directly
+4. Proceed with evaluation using retrieved strategic plan document
 
 TASKS:
 1. Evaluate plan against 12-dimension FSDD quality framework
 2. Assign scores (0-100) for each quality dimension
 3. Calculate weighted overall score
-4. Identify specific areas for improvement
-5. Provide actionable feedback
-6. RETURN feedback markdown to Main Agent (do NOT store in MCP - this is human-driven workflow)
+4. If prior feedback exists, explicitly compare resolved issues, unresolved issues, and new regressions
+5. Identify specific areas for improvement
+6. Provide actionable feedback
+7. RETURN feedback markdown to Main Agent (do NOT store in MCP - this is human-driven workflow)
 
 ## DOCUMENT SCOPE — What You Are Evaluating
 
@@ -208,6 +210,14 @@ Provide specific, actionable feedback:
 - Identify specific gaps and weaknesses
 - Suggest concrete improvements
 - Prioritize most critical issues
+
+### Step 3.5: Progress Review on Refinement Iterations
+If `previous_feedback_markdown` is provided:
+- Add a `### Progress Against Previous Feedback` subsection in Detailed Feedback
+- Identify which previously raised issues were resolved
+- Identify which previously raised issues remain unresolved
+- Identify any new regressions introduced by the latest plan revision
+- Keep unresolved structural failures in `### Blockers`; do not translate them into score caps
 
 ## OUTPUT FORMAT
 

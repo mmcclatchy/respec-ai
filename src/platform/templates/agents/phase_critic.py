@@ -155,6 +155,7 @@ You have access to MCP tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
   ✅ CORRECT: phase = {tools.get_document}
+  ✅ CORRECT: prior_feedback = {tools.get_feedback}
   ❌ WRONG: <get_document><loop_id>...</loop_id>
 
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
@@ -189,7 +190,7 @@ You are a Phase quality specialist.
 ### Retrieved Context (Not Invocation Inputs)
 - Phase markdown via {tools.get_document}
 - Strategic plan via {tools.get_plan}
-- Prior feedback from the current loop
+- Prior feedback from the current loop via {tools.get_feedback}
 
 ## DOCUMENT SCOPE — What You Are Evaluating
 
@@ -274,6 +275,12 @@ IF loop_id is None or loop_id == "":
     EXIT: Agent terminated
 → Verify: loop_id is valid (non-empty string)
 
+STEP 1.5: Retrieve Previous Critic Feedback
+CALL {tools.get_feedback}
+→ If prior feedback exists, compare against the latest two iterations
+→ Use prior feedback to document resolved issues, unresolved issues, and regressions
+→ If no prior feedback exists, continue with first-iteration assessment
+
 STEP 2: Retrieve Phase via loop_id
 CALL {tools.get_document}
 → Verify: Phase markdown received
@@ -355,10 +362,10 @@ Extract Research Requirements section from PHASE_MARKDOWN:
 
 Search PHASE_MARKDOWN for "### Research Requirements" section
 IF section not found:
-    RESEARCH_PATH_PENALTY = 0
-    BP_DOC_REFERENCE_PENALTY = 0
-    API_RESEARCH_COVERAGE_PENALTY = 0
-    API_RESEARCH_FRESHNESS_PENALTY = 0
+    RESEARCH_PATH_BLOCKERS_PRESENT = false
+    BP_DOC_REFERENCE_BLOCKERS_PRESENT = false
+    API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
+    API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = false
     RESEARCH_PATH_VALIDATION = {{
         "validated_count": 0,
         "valid_count": 0,
@@ -427,11 +434,11 @@ RESEARCH_PATH_VALIDATION = {{
     "external_research_found": ("**External Research Needed**" in research_section)
 }}
 
-## SEVERE PENALTY for invalid "Read:" paths in Research Requirements
+## Structural blocker detection for invalid "Read:" paths in Research Requirements
 IF len(INVALID_PATHS) > 0:
-    RESEARCH_PATH_PENALTY = -20  # Blocking penalty
+    RESEARCH_PATH_BLOCKERS_PRESENT = true
 ELSE:
-    RESEARCH_PATH_PENALTY = 0
+    RESEARCH_PATH_BLOCKERS_PRESENT = false
 
 ## GLOBAL best-practices path validation across entire phase (hallucination guard)
 ALL_BP_PATH_MENTIONS = extract all unique `.best-practices/*.md` path mentions from PHASE_MARKDOWN
@@ -446,11 +453,11 @@ For each path in ALL_BP_PATH_MENTIONS:
         INVALID_BP_REFERENCES.append(path)
 
 IF len(INVALID_BP_REFERENCES) > 0:
-    BP_DOC_REFERENCE_PENALTY = -20  # Blocking penalty
-    Add key issue for each invalid path:
+    BP_DOC_REFERENCE_BLOCKERS_PRESENT = true
+    Add blocker for each invalid path:
       "[Best-Practices Reference Invalid - BLOCKING]: Referenced path `{{path}}` does not exist in .best-practices/"
 ELSE:
-    BP_DOC_REFERENCE_PENALTY = 0
+    BP_DOC_REFERENCE_BLOCKERS_PRESENT = false
 
 ## Deterministic external API detection and per-service research coverage
 API_STALE_SOFT_DAYS = 30
@@ -514,15 +521,15 @@ IF API_INTEGRATION_TRIGGER is true:
                 APIS_MISSING_COVERAGE.append(api_name)
 
     IF validation_mode == "post_synthesis" AND len(APIS_MISSING_FINAL_DOCS) > 0:
-        API_RESEARCH_COVERAGE_PENALTY = -20  # Blocking penalty
-        Add key issue for each api_name:
+        API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = true
+        Add blocker for each api_name:
           "[API Research Final Docs Missing - BLOCKING]: External API/service `{{api_name}}` has no valid Read: best-practices document after synthesis"
     ELIF validation_mode != "post_synthesis" AND len(APIS_MISSING_COVERAGE) > 0:
-        API_RESEARCH_COVERAGE_PENALTY = -20  # Blocking penalty
-        Add key issue for each api_name:
+        API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = true
+        Add blocker for each api_name:
           "[API Research Coverage Missing - BLOCKING]: External API/service `{{api_name}}` has no corresponding Read/Synthesize research entry"
     ELSE:
-        API_RESEARCH_COVERAGE_PENALTY = 0
+        API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
 
     ## Freshness checks for API-related existing docs
     SOFT_STALE_WARNINGS = []
@@ -542,14 +549,14 @@ IF API_INTEGRATION_TRIGGER is true:
             SOFT_STALE_WARNINGS.append(api_name)
 
     IF len(HARD_STALE_BLOCKING) > 0:
-        API_RESEARCH_FRESHNESS_PENALTY = -20  # Blocking penalty
-        Add key issue for each item:
+        API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = true
+        Add blocker for each item:
           "[API Research Stale - BLOCKING]: API reference exceeds hard freshness threshold (365 days) or refresh failed without reliable doc"
     ELSE:
-        API_RESEARCH_FRESHNESS_PENALTY = 0
+        API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = false
 ELSE:
-    API_RESEARCH_COVERAGE_PENALTY = 0
-    API_RESEARCH_FRESHNESS_PENALTY = 0
+    API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
+    API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = false
     APIS_WITH_VALID_BP_READ_COVERAGE = []
     APIS_MISSING_COVERAGE = []
     APIS_MISSING_FINAL_DOCS = []
@@ -576,7 +583,7 @@ STEP 2.7: Verify Implementation Plan Reference Paths
 
 Search PHASE_MARKDOWN for "### Implementation Plan References" section.
 IF section not found:
-  IMPL_PLAN_PATH_PENALTY = 0
+  IMPL_PLAN_PATH_BLOCKERS_PRESENT = false
   Skip to STEP 3
 
 Extract all paths from "- Constraint: `<path>`" lines within the section.
@@ -592,14 +599,14 @@ For each extracted path:
     INVALID_IMPL_PATHS.append(path)
 
 IF len(INVALID_IMPL_PATHS) > 0:
-  IMPL_PLAN_PATH_PENALTY = -20  # Blocking penalty — same severity as research paths
-  Add to key_issues for each invalid path:
+  IMPL_PLAN_PATH_BLOCKERS_PRESENT = true
+  Add blocker for each invalid path:
     "[Implementation Plan Reference Invalid - BLOCKING]: Path `{{path}}` does not exist"
 ELSE:
-  IMPL_PLAN_PATH_PENALTY = 0
+  IMPL_PLAN_PATH_BLOCKERS_PRESENT = false
 
-# Apply alongside RESEARCH_PATH_PENALTY and API/BP penalties.
-# Any blocking research/path/freshness violation caps score at 80.
+# Structural blockers gate readiness through `### Blockers`.
+# They do NOT change the content score.
 
 STEP 2.8: Retrieve Plan for Constraint Validation
 CALL {tools.get_plan}
@@ -639,6 +646,7 @@ Create specific improvement recommendations
 → Prioritize by implementation impact
 → Provide actionable guidance
 → Reference specific phase sections
+→ If prior feedback exists, add `### Progress Against Previous Feedback` covering resolved issues, unresolved issues, and regressions
 
 STEP 6: Store Feedback
 CALL {tools.store_feedback}
@@ -804,41 +812,37 @@ Phases vary by project type. Evaluate based on project context:
 - Soft stale warnings (>30d): {{RESEARCH_PATH_VALIDATION.soft_stale_warnings}}
 - Hard stale blocking (>365d or refresh without reliable doc): {{RESEARCH_PATH_VALIDATION.hard_stale_blocking}}
 
-**SEVERE PENALTY FOR INVALID ARCHIVE PATHS**:
-- If ANY invalid "Read:" paths found: Apply RESEARCH_PATH_PENALTY (-20 points)
+**BLOCKER RULE FOR INVALID ARCHIVE PATHS**:
+- If ANY invalid "Read:" paths found: raise blockers
 - This is a BLOCKING issue - invalid paths cause downstream task-planner failure
-- Phase CANNOT score above 80 with any invalid archive paths
 - "Synthesize:" prompts are NOT penalized (converted to files in Step 7.5)
 - However, low-value or redundant "Synthesize:" prompts SHOULD be flagged as quality issues
 - If prompt set appears quota-driven (added to fill count rather than clear gaps), deduct points
 - Require prompt discipline: specific, high-value gaps only; avoid broad "research everything" prompts
 - All invalid "Read:" paths MUST be corrected before phase is considered ready
-- List each invalid path in Key Issues section
+- List each invalid path in `### Blockers`
 
-**SEVERE PENALTY FOR HALLUCINATED BEST-PRACTICES REFERENCES**:
-- If ANY `.best-practices/*.md` path mentioned anywhere in phase does not exist: Apply BP_DOC_REFERENCE_PENALTY (-20 points)
+**BLOCKER RULE FOR HALLUCINATED BEST-PRACTICES REFERENCES**:
+- If ANY `.best-practices/*.md` path mentioned anywhere in phase does not exist: raise blockers
 - This is a BLOCKING issue - hallucinated references make guidance unverifiable
-- Phase CANNOT score above 80 with any invalid `.best-practices` reference
 
-**SEVERE PENALTY FOR API RESEARCH COVERAGE GAPS**:
-- In `validation_mode == "full"`: if ANY external API/service lacks corresponding Read/Synthesize research entry: Apply API_RESEARCH_COVERAGE_PENALTY (-20 points)
-- In `validation_mode == "post_synthesis"`: if ANY external API/service lacks a valid `Read:` `.best-practices/*.md` doc: Apply API_RESEARCH_COVERAGE_PENALTY (-20 points)
+**BLOCKER RULE FOR API RESEARCH COVERAGE GAPS**:
+- In `validation_mode == "full"`: if ANY external API/service lacks corresponding Read/Synthesize research entry: raise blockers
+- In `validation_mode == "post_synthesis"`: if ANY external API/service lacks a valid `Read:` `.best-practices/*.md` doc: raise blockers
 - This is a BLOCKING issue - missing API lookups risks hallucinated integration logic
-- Phase CANNOT score above 80 until all external APIs/services have explicit research coverage
 
 **API DOC FRESHNESS POLICY (for API integrations)**:
 - Soft threshold: 30 days → attempt `best-practices-rag query-kb ... --force-refresh`
 - Hard threshold: 365 days → stale beyond this is BLOCKING unless refreshed/updated
 - If refresh fails but existing doc is present and younger than 365 days: advisory warning (non-blocking)
 - If refresh fails and no reliable existing doc is available: BLOCKING
-- Hard-stale or no-reliable-doc refresh failures apply API_RESEARCH_FRESHNESS_PENALTY (-20)
+- Hard-stale or no-reliable-doc refresh failures raise blockers
 
-**SEVERE PENALTY FOR INVALID IMPLEMENTATION PLAN REFERENCE PATHS**:
-- If ANY invalid "- Constraint: `<path>`" paths found: Apply IMPL_PLAN_PATH_PENALTY (-20 points)
+**BLOCKER RULE FOR INVALID IMPLEMENTATION PLAN REFERENCE PATHS**:
+- If ANY invalid "- Constraint: `<path>`" paths found: raise blockers
 - This is a BLOCKING issue - invalid paths prevent task-planner from loading hard constraints
-- Phase CANNOT score above 80 with any invalid implementation plan reference paths
 - All invalid constraint paths MUST be corrected before phase is considered ready
-- List each invalid path in Key Issues section (from STEP 2.7 validation)
+- List each invalid path in `### Blockers` (from STEP 2.7 validation)
 
 **Root Cause**: Phase author likely guessed filename instead of using actual archive scan output.
 **Solution**: Re-run archive scan and use exact file paths returned.
@@ -947,34 +951,16 @@ Assess phase for implementation details that belong in Task:
 
 ### Overall Score Calculation
 
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty - Research Path Penalty - Best-Practices Reference Penalty - API Research Coverage Penalty - API Research Freshness Penalty - Impl Plan Path Penalty - Plan Constraint Penalty**
+**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty**
 
 **Core Sections (70 points)**:
 - Required sections (Objectives, Scope, Architecture, Testing): 40 points
 - Structure compliance bonus: 5 points (if H2 > H3 nesting correct)
 - Optional core sections present and substantive: 30 points (6 points each x 5 sections)
 
-**Research Path Penalty (BLOCKING)**:
-- If ANY invalid research file paths found: -20 points (from STEP 2.6)
-- Caps maximum score at 80 until all paths are corrected
-
-**Best-Practices Reference Penalty (BLOCKING)**:
-- If ANY `.best-practices/*.md` mention in phase does not exist: -20 points
-- Caps maximum score at 80 until all invalid references are corrected
-
-**API Research Coverage Penalty (BLOCKING)**:
-- In full mode: if API integrations are present and any external API/service lacks Read/Synthesize coverage: -20 points
-- In post-synthesis mode: if any detected external API/service lacks valid `Read:` `.best-practices` docs: -20 points
-- Caps maximum score at 80 until coverage is complete
-
-**API Research Freshness Penalty (BLOCKING for hard stale / no reliable doc)**:
-- If hard stale (>365d) API docs remain unresolved OR refresh fails without reliable doc: -20 points
-- Caps maximum score at 80 until freshness/reliability is restored
-
-**Plan Constraint Penalty (BLOCKING)**:
-- If PLAN_CONSTRAINTS_AVAILABLE AND phase contradicts plan constraints WITHOUT documented deviation rationale: -20 points
-- Caps maximum score at 80 until violations are corrected
-- If PLAN_CONSTRAINTS_AVAILABLE is False: 0 points (graceful degradation)
+**Structural Blockers (not scored)**:
+- Invalid research file paths, invalid `.best-practices` references, missing API research coverage, hard-stale API docs, invalid implementation plan references, and undocumented plan-constraint contradictions MUST be emitted in `### Blockers`
+- These structural failures block readiness but do NOT reduce or cap `overall_score`
 
 **Domain-Specific Sections (30 points)**:
 - Section presence: 15 points (3 points each x 5 RELEVANT sections only)
@@ -984,34 +970,21 @@ Assess phase for implementation details that belong in Task:
 - Length penalty: 0 to -50 points based on phase size (SOFT_CAP=40k chars, WARNING=50k, CONCERNING=60k, CRITICAL=80k, SEVERE=80k+)
 - Over-detailing penalty: Up to -10 points for implementation details
 - Irrelevant section penalty: -2 points per irrelevant domain-specific section
-- **Research path penalty: -20 points if ANY invalid research file paths (BLOCKING)**
-- **Best-practices reference penalty: -20 points if ANY `.best-practices` reference is invalid (BLOCKING)**
-- **API research coverage penalty: -20 points if any integrated external API lacks required mode-specific coverage (BLOCKING)**
-- **API research freshness penalty: -20 points for unresolved hard-stale/no-reliable-doc API references (BLOCKING)**
-- **Plan constraint penalty: -20 points if phase contradicts plan constraints without documented deviation (BLOCKING)**
 
 **Maximum possible: 105 points** (base 100 + 5 structure bonus)
 **Minimum possible: 0 points** (penalties can reduce to 0 but not below)
 
 **Convert to 0-100 scale**:
 1. Calculate Raw Score by adding all positive scores (Core Sections + Domain-Specific Sections + Structure Bonus)
-2. Subtract all penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty + Research Path Penalty + Best-Practices Reference Penalty + API Research Coverage Penalty + API Research Freshness Penalty + Plan Constraint Penalty)
+2. Subtract all content-quality penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty)
 3. Ensure Overall Score stays between 0 and 100 by capping at maximum 100 and minimum 0
-4. **BLOCKING**: If Research Path Penalty applied, cap score at 80 maximum
-5. **BLOCKING**: If Best-Practices Reference Penalty applied, cap score at 80 maximum
-6. **BLOCKING**: If API Research Coverage Penalty applied, cap score at 80 maximum
-7. **BLOCKING**: If API Research Freshness Penalty applied, cap score at 80 maximum
-8. **BLOCKING**: If Plan Constraint Penalty applied, cap score at 80 maximum
+4. Separately emit structural failures in `### Blockers`
 
 **Note**:
 - Structure bonus allows phases to reach 100/100 even with minor gaps in optional sections
 - Length penalty escalates dramatically for oversized phases (0, -5, -15, -30, -50 points)
 - Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
-- **Research path penalty is BLOCKING** - invalid paths cause downstream task-planner failure
-- **Best-practices reference penalty is BLOCKING** - hallucinated docs invalidate research grounding
-- **API research coverage penalty is BLOCKING** - missing API coverage (full mode: Read/Synthesize, post-synthesis: valid Read docs) allows hallucinated integration behavior
-- **API research freshness penalty is BLOCKING for hard stale/no reliable docs** - outdated API guidance can be unsafe
-- **Plan constraint penalty is BLOCKING** - undocumented contradictions to plan/reference decisions cause downstream failures
+- Structural blockers gate readiness through `### Blockers`
 - Score cannot go below 0 or above 100
 
 ### Score Interpretation

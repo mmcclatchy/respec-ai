@@ -59,6 +59,7 @@ class TestUnifiedFeedbackToolsMemoryBoundaries:
             overall_score=75,
             assessment_summary='Assessment 2',
             detailed_feedback='Details 2',
+            blockers=['Missing required section: Risk Management'],
             key_issues=[],
             recommendations=[],
         )
@@ -74,6 +75,8 @@ class TestUnifiedFeedbackToolsMemoryBoundaries:
 
         assert 'Assessment 2' in response.message
         assert 'Assessment 1' not in response.message
+        assert '### Blockers' in response.message
+        assert 'Missing required section: Risk Management' in response.message
         assert 'user feedback 1' in response.message
         assert 'user feedback 2' in response.message
 
@@ -90,6 +93,75 @@ class TestUnifiedFeedbackToolsMemoryBoundaries:
         result = await tools.get_previous_analysis(loop.id)
         assert 'analysis v2' in result.message
         assert 'analysis v1' not in result.message
+
+    @pytest.mark.asyncio
+    async def test_analyst_loop_critic_feedback_updates_loop_state_and_feedback_history(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.ANALYST)
+        await state.add_loop(loop, plan_name)
+
+        tools = UnifiedFeedbackTools(state)
+        await tools.store_current_analysis(loop.id, 'analysis artifact v1')
+
+        feedback_markdown = """# Critic Feedback: ANALYST-CRITIC
+
+## Assessment Summary
+- **Loop ID**: analyst-loop
+- **Iteration**: 1
+- **Overall Score**: 84
+- **Assessment Summary**: Extraction quality is solid, but one structural issue remains.
+
+## Analysis
+
+### Semantic Accuracy Assessment
+
+Analysis maps well to the source plan.
+
+### Completeness Evaluation
+
+One required subsection is still missing.
+
+### Quantification Quality
+
+Metrics are mostly grounded in the source plan.
+
+### Evidence and Findings
+
+Findings trace back to the strategic plan.
+
+## Issues and Recommendations
+
+### Blockers
+
+- Missing Required Analysis Section - BLOCKING: Stakeholder Analysis subsection is absent
+
+### Key Issues
+
+- Stakeholder mapping is thinner than the source plan.
+
+### Recommendations
+
+- Add the missing stakeholder analysis subsection and expand role coverage.
+"""
+
+        response = await tools.store_critic_feedback(loop.id, feedback_markdown)
+        assert 'Stored critic feedback for loop' in response.message
+
+        feedback_response = await tools.get_feedback(loop.id, count=1)
+        assert '## Iteration 1 - Score: 84' in feedback_response.message
+        assert '### Blockers' in feedback_response.message
+        assert 'Stakeholder Analysis subsection is absent' in feedback_response.message
+
+        analysis_response = await tools.get_previous_analysis(loop.id)
+        assert 'analysis artifact v1' in analysis_response.message
+
+        stored_loop = await state.get_loop(loop.id)
+        assert stored_loop.current_score == 84
+        assert len(stored_loop.feedback_history) == 1
+        assert stored_loop.feedback_history[0].critic_agent == CriticAgent.ANALYST_CRITIC
+        assert stored_loop.feedback_history[0].blockers == [
+            'Missing Required Analysis Section - BLOCKING: Stakeholder Analysis subsection is absent'
+        ]
 
     @pytest.mark.asyncio
     async def test_stale_loop_lookup_returns_resource_error(self, plan_name: str) -> None:

@@ -418,10 +418,19 @@ Invoke the plan-critic agent with project name for plan retrieval:
 
 ### Plan-critic workflow
 1. **Agent retrieves strategic plan** from MCP using `{tools.get_plan}`
-2. **Agent evaluates plan** against FSDD framework
-3. **Agent returns feedback markdown** to Main Agent (human-driven workflow)
+2. **If refinement iteration**: agent reads `previous_feedback_markdown` grouped input and compares resolved vs unresolved issues
+3. **Agent evaluates plan** against FSDD framework
+4. **Agent returns feedback markdown** to Main Agent (human-driven workflow)
 
 ### Extract quality score from returned feedback
+Before invocation:
+```text
+IF CRITIC_FEEDBACK exists from a previous iteration:
+  PRIOR_CRITIC_FEEDBACK = CRITIC_FEEDBACK
+ELSE:
+  PRIOR_CRITIC_FEEDBACK = ""
+```
+
 Store the returned feedback markdown as CRITIC_FEEDBACK variable.
 
 Parse the QUALITY_SCORE from the markdown:
@@ -630,8 +639,9 @@ After plan acceptance, invoke the plan-analyst agent with analyst loop ID:
 ### Plan-analyst workflow
 1. **Agent retrieves strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
 2. **Agent checks for previous analysis** using get_previous_analysis(ANALYST_LOOP_ID)
-3. **Agent extracts structured objectives** from strategic plan
-4. **Agent stores analysis** using store_current_analysis(ANALYST_LOOP_ID, analysis)
+3. **Agent retrieves latest analyst-critic feedback** using get_feedback(ANALYST_LOOP_ID, count=1) on refinement iterations
+4. **Agent extracts structured objectives** from strategic plan
+5. **Agent stores analysis** using store_current_analysis(ANALYST_LOOP_ID, analysis)
 
 ## Step 8: Analyst Quality Assessment
 
@@ -642,12 +652,13 @@ Invoke the analyst-critic agent with loop ID:
 ### Analyst-critic workflow
 1. **Agent retrieves business objectives analysis** from MCP using get_previous_analysis(ANALYST_LOOP_ID)
 2. **Agent retrieves original strategic plan** from MCP using get_plan_markdown(ANALYST_LOOP_ID)
-3. **Agent validates extraction quality** against validation framework
-4. **Agent stores analysis feedback** using store_current_analysis(ANALYST_LOOP_ID, analysis)
+3. **Agent retrieves prior analyst-critic feedback** using get_feedback(ANALYST_LOOP_ID, count=2) when refinement history exists
+4. **Agent validates extraction quality** against validation framework
+5. **Agent stores CriticFeedback** using store_critic_feedback(ANALYST_LOOP_ID, feedback_markdown)
 
 ### Extract analyst score for MCP decision
 ```text
-Retrieve feedback using: {tools.get_previous_analysis}
+Retrieve feedback using: {tools.get_feedback}
 Extract ANALYST_SCORE from feedback overall_score field
 ```
 
@@ -684,7 +695,7 @@ IF ANALYST_LOOP_STATUS == "refine":
 
 ELIF ANALYST_LOOP_STATUS == "user_input":
   Display: "⚠ Iteration {{ANALYST_ITERATION}} · Score: {{ANALYST_SCORE}}/100 — user input required"
-  LATEST_FEEDBACK = {tools.get_previous_analysis}
+  LATEST_FEEDBACK = {tools.get_feedback}
   Present LATEST_FEEDBACK to user with current score and iteration
   Wait for user response
   Store user feedback: {tools.store_user_feedback}

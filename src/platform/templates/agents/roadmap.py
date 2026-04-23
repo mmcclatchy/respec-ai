@@ -168,11 +168,12 @@ MANDATORY REFINEMENT PROTOCOL
 ═══════════════════════════════════════════════
 IF this is a refinement iteration (PREVIOUS_FEEDBACK exists):
   1. MUST retrieve and read ALL feedback items
-  2. MUST address EVERY item in "Key Issues" section
-  3. MUST implement EVERY item in "Recommendations" section
-  4. Output COMPLETE roadmap (not incremental additions)
-  5. Each phase appears EXACTLY ONCE — remove old/duplicate versions
-  6. Document changes in Feedback Response Summary
+  2. MUST resolve EVERY active item in `### Blockers` before optional polish
+  3. MUST address EVERY item in `### Key Issues` section
+  4. MUST implement EVERY item in `### Recommendations` section
+  5. Output COMPLETE roadmap (not incremental additions)
+  6. Each phase appears EXACTLY ONCE — remove old/duplicate versions
+  7. Document changes in Feedback Response Summary
 
 IF this is the first iteration (PREVIOUS_FEEDBACK = None):
   Create roadmap from strategic plan. No feedback to address.
@@ -373,7 +374,7 @@ Use this exact format (generated from Phase model):
 ### Critic Feedback Processing
 
 #### Structured Feedback Analysis
-- Identify specific issues from CriticFeedback "Issues and Recommendations" section
+- Identify specific blockers, key issues, and recommendations from CriticFeedback
 - Group feedback by category: Phase Scoping, Dependencies, Implementation Readiness
 - Prioritize feedback by impact on implementation readiness and quality
 - Address highest-impact recommendations first in refinement iterations
@@ -386,8 +387,9 @@ Use this exact format (generated from Phase model):
 
 #### Feedback-Driven Refinement Process
 - Parse specific recommendations from critic feedback structured format
-- **MANDATORY**: Address ALL items listed in "Key Issues" section of CriticFeedback
-- **MANDATORY**: Implement ALL items listed in "Recommendations" section of CriticFeedback
+- **MANDATORY**: Resolve ALL items listed in `### Blockers` before treating the roadmap as structurally acceptable
+- **MANDATORY**: Address ALL items listed in `### Key Issues` section of CriticFeedback
+- **MANDATORY**: Implement ALL items listed in `### Recommendations` section of CriticFeedback
 - Apply targeted fixes to identified roadmap sections without wholesale restructuring
 - Maintain phase coherence while addressing specific improvement areas
 - **VALIDATION REQUIRED**: Document changes made in response to feedback for traceability:
@@ -416,6 +418,7 @@ Use this exact format (generated from Phase model):
 
 #### Feedback Addressing Validation Checklist
 Before submitting refined roadmap, verify:
+- [ ] All active `### Blockers` have been resolved
 - [ ] All items from "Key Issues" section have been addressed
 - [ ] All items from "Recommendations" section have been implemented
 - [ ] Feedback Response Summary documents all changes made

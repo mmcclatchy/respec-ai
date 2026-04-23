@@ -143,9 +143,10 @@ WORKFLOW: Task Assessment → CriticFeedback
      - CALL Read(path) for canonical references
      - Track readable vs unreadable references for validation
 4. Assess Task against FSDD criteria
-5. Calculate quality score (0-100 scale)
-6. Generate CriticFeedback markdown
-7. Store feedback: {tools.store_feedback}
+5. Compare current output against previous feedback and document resolved, unresolved, and newly introduced issues
+6. Calculate quality score (0-100 scale)
+7. Generate CriticFeedback markdown
+8. Store feedback: {tools.store_feedback}
 
 ## TASK STRUCTURE REMINDER
 
@@ -311,7 +312,7 @@ Step 4: Validate semantic alignment to referenced constraints
   - If `TUI Plan Deviation Log` in Phase explicitly revises a constraint, treat revised decision as source of truth
   - Any undocumented contradiction is BLOCKING
 
-Impact: Apply TUI plan blocking penalty and cap score at 80 until corrected.
+Impact: Raise blockers for TUI plan integrity failures. Keep them out of the score calculation.
 ═══════════════════════════════════════════════
 
 ### 9. Workflow Guidance Alignment (Informational - Not Scored)
@@ -338,9 +339,9 @@ When workflow_guidance_markdown is NOT provided, skip this section.
 Generate objective score (0-100) based on evaluation criteria.
 Loop decisions made by MCP Server based on configuration.
 
-TUI Plan Blocking Penalty (when references are present):
-- If any TUI-plan blocking issue is detected: apply -20 points
-- Cap score at 80 until TUI-plan blocking issues are resolved
+TUI Plan Blocking Handling (when references are present):
+- If any TUI-plan blocking issue is detected: record it in `### Blockers`
+- Do NOT reduce the score or cap the score because of blockers
 
 ## CRITICAL: EXACT FEEDBACK FORMAT REQUIRED
 
@@ -383,6 +384,7 @@ When previous CriticFeedback exists:
 - **Compare current score to previous score**
 - **Note which issues were addressed** from previous feedback
 - **Identify which issues remain unresolved**
+- **Identify any blockers that were cleared vs blockers still active**
 - **Flag stagnation** if improvement <5 points
 - Example: "Score improved from 72 to 76 (+4 points). Step sequencing addressed. Acceptance Criteria still vague."
 

@@ -277,7 +277,9 @@ IF IMPL_PLAN_CONSTRAINTS is non-empty:
 STEP 2: Incorporate Feedback (if refinement iteration)
 IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Analyze specific issues identified by critic
-  → Address ALL items in "Priority Improvements" section
+  → Resolve ALL active items in `### Blockers` first
+  → Address ALL items in `### Key Issues`
+  → Implement all actionable items in `### Recommendations`
   → Maintain strengths noted in feedback
   → Focus improvements on areas critic flagged as deficient
 
@@ -826,7 +828,7 @@ When documenting Research Requirements:
 - **Example WRONG**: `.best-practices/MCP_Server_Best_Practices.md` (guessed name - WILL FAIL)
 - **Example RIGHT**: `.best-practices/fastmcp-server-best-practices-codegen.md` (actual from query/glob)
 
-**Consequence of Invalid Paths**: Phase-critic will apply a SEVERE -20 point penalty and cap your score at 80. Invalid paths cause downstream task-planner failure.
+**Consequence of Invalid Paths**: Phase-critic will raise structural blockers. Invalid paths cause downstream task-planner failure and must be corrected before the phase can pass review.
 
 If KB query returns no results for a topic, document in "External Research Needed" section instead - do NOT guess file names.
 
