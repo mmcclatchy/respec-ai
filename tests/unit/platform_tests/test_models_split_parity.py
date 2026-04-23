@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 import src.platform.models as legacy_models
 
+
 try:
     split_models = import_module('src.platform.models_next')
 except ModuleNotFoundError:

@@ -28,14 +28,14 @@ from src.platform.templates.agents import (
 _adapter = ClaudeCodeAdapter()
 
 _BANNED_ACTION_PATTERNS = (
-    re.compile(r"\bshould\b", re.IGNORECASE),
-    re.compile(r"\bconsider\b", re.IGNORECASE),
-    re.compile(r"\bthink about\b", re.IGNORECASE),
-    re.compile(r"\btry to\b", re.IGNORECASE),
-    re.compile(r"\byou will\b", re.IGNORECASE),
-    re.compile(r"\byour role is\b", re.IGNORECASE),
-    re.compile(r"\bmay\b", re.IGNORECASE),
-    re.compile(r"\bcan\b", re.IGNORECASE),
+    re.compile(r'\bshould\b', re.IGNORECASE),
+    re.compile(r'\bconsider\b', re.IGNORECASE),
+    re.compile(r'\bthink about\b', re.IGNORECASE),
+    re.compile(r'\btry to\b', re.IGNORECASE),
+    re.compile(r'\byou will\b', re.IGNORECASE),
+    re.compile(r'\byour role is\b', re.IGNORECASE),
+    re.compile(r'\bmay\b', re.IGNORECASE),
+    re.compile(r'\bcan\b', re.IGNORECASE),
 )
 
 _REVIEW_ACTION_SECTION_TOKENS = (

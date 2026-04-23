@@ -808,7 +808,9 @@ class TestCrossPlatformInvocationRendering:
         )
         assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
         assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
-        assert 'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.' in template
+        assert (
+            'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.' in template
+        )
         assert 'Source: MCP consolidated CriticFeedback' in template
         assert 'Source: coding-standards-reviewer CriticFeedback' in template
         assert 'Review Score: {PHASE1_SCORE}/100' in template
@@ -1308,7 +1310,10 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.' in code_template
+        assert (
+            'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.'
+            in code_template
+        )
         assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in patch_template
 
     def test_standards_command_template_is_render_first(self) -> None:

@@ -486,9 +486,6 @@ def create_code_command_tools(
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
         ),
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'
-        ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
         ),
@@ -1497,9 +1494,7 @@ def create_patch_command_tools(
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
         ),
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'
-        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
         ),

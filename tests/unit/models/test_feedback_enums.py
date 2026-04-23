@@ -1,6 +1,9 @@
 from src.models.enums import CriticAgent, FSSDCriteria
 
 
+import pytest
+
+
 class TestFSSDCriteria:
     def test_fssd_criteria_has_all_twelve_criteria(self) -> None:
         expected_criteria = {
@@ -80,8 +83,6 @@ class TestCriticAgent:
         assert CriticAgent.from_header('CONSOLIDATOR') == CriticAgent.REVIEW_CONSOLIDATOR
 
     def test_from_header_raises_for_unknown_values(self) -> None:
-        import pytest
-
         with pytest.raises(ValueError, match='Unknown critic agent header'):
             CriticAgent.from_header('UNKNOWN')
         with pytest.raises(ValueError, match='Unknown critic agent header'):
