@@ -1298,6 +1298,22 @@ class TestCrossPlatformInvocationRendering:
         assert 'After the user responds, resume at Step 1.2.' in template
         assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
 
+    def test_codex_patch_template_uses_isolated_agent_handoff_wording(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+        assert 'Use the rendered runtime agent name exactly.' in template
+        assert 'Pass only the listed explicit inputs.' in template
+        assert 'Do not rely on any unlisted conversation history or prior thread context.' in template
+        assert 'Require the agent to retrieve any additional needed context through its own tools.' in template
+        assert 'forked-context' not in template
+        assert 'full-history' not in template
+        assert 'parent context' not in template
+        assert 'inherits' not in template
+
     def test_selection_prompt_contract_is_adapter_owned_across_interactive_commands(self) -> None:
         coordinator = TemplateCoordinator()
         codex_phrase = 'Present these options directly to the user in the chat UI as a numbered list.'

@@ -234,10 +234,10 @@ class CodexAdapter(TuiAdapter):
             lines.append('Input:')
             for name, value in params:
                 lines.append(f'  - {name}: {value}')
-        lines.append('When using a full-history or forked-context spawn, pass only the message plus the listed inputs.')
-        lines.append(
-            'Use the rendered runtime agent name exactly. Omit agent_type, model, and reasoning_effort because Codex inherits them from the parent context.'
-        )
+        lines.append('Use the rendered runtime agent name exactly.')
+        lines.append('Pass only the listed explicit inputs.')
+        lines.append('Do not rely on any unlisted conversation history or prior thread context.')
+        lines.append('Require the agent to retrieve any additional needed context through its own tools.')
         lines.append('Wait for completion, harvest output, then close the completed agent before continuing.')
         return '\n'.join(lines)
 

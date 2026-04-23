@@ -818,20 +818,20 @@ class TestCodexAdapterInvocationRendering:
         result = self.adapter.render_agent_invocation('respec-roadmap', 'generate roadmap', [])
         assert 'close the completed agent' in result
 
-    def test_render_agent_invocation_uses_minimal_forked_context_guidance(self) -> None:
+    def test_render_agent_invocation_enforces_isolated_agent_handoff(self) -> None:
         result = self.adapter.render_agent_invocation(
             'respec-patch-planner',
             'generate amendment task document',
             [('task_loop_id', 'PLANNING_LOOP_ID')],
         )
-        assert (
-            'When using a full-history or forked-context spawn, pass only the message plus the listed inputs.' in result
-        )
         assert 'Use the rendered runtime agent name exactly.' in result
-        assert (
-            'Omit agent_type, model, and reasoning_effort because Codex inherits them from the parent context.'
-            in result
-        )
+        assert 'Pass only the listed explicit inputs.' in result
+        assert 'Do not rely on any unlisted conversation history or prior thread context.' in result
+        assert 'Require the agent to retrieve any additional needed context through its own tools.' in result
+        assert 'forked-context' not in result
+        assert 'full-history' not in result
+        assert 'parent context' not in result
+        assert 'inherits' not in result
 
     def test_parallel_worker_limit_defaults_to_six(self) -> None:
         assert self.adapter.parallel_worker_limit() == 6

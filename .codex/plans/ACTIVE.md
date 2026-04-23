@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/adapter-neutral-builtin-tool-capability-refactor.md`
-- Objective: Refactor built-in tool handling to use adapter-neutral capabilities in shared code and adapter-owned runtime naming across Claude, OpenCode, and Codex.
+- Plan File: `./.codex/plans/remove-fork-context-guidance-from-codex-agent-handoffs.md`
+- Objective: Remove Codex-generated fork-context handoff wording and restore isolated-agent invocation guidance.
 - Phase: completed
-- Last Updated: 2026-04-23T21:03:00Z
+- Last Updated: 2026-04-23T21:22:00Z
 
 ## Usage
 
