@@ -25,58 +25,13 @@ _CACHE_TTL_SECONDS = 12 * 60 * 60
 _REASONING_INDEX = 'artificial_analysis_intelligence_index'
 _CODING_INDEX = 'artificial_analysis_coding_index'
 _CODEX_APP_SERVER_CMD = ['codex', 'app-server', '--listen', 'stdio://']
+_CODEX_UPDATE_CMD = ['npm', 'install', '-g', '@openai/codex']
 _CODEX_DISCOVERY_CACHE_KEY = 'codex_models_discovered'
 _CODEX_DISCOVERY_TIMEOUT_SECONDS = 15
 _CODEX_DISCOVERY_PAGE_LIMIT = 100
 
-_KNOWN_PRIORS: dict[str, dict[str, Any]] = {
-    'gpt-5.4': {'reasoning_prior': 1.0, 'speed_prior': 0.35, 'cost_prior': 0.2, 'aliases': ['gpt 5.4']},
-    'gpt-5.4-mini': {
-        'reasoning_prior': 0.65,
-        'speed_prior': 0.9,
-        'cost_prior': 0.9,
-        'aliases': ['gpt 5.4 mini'],
-    },
-    'gpt-5.3-codex': {
-        'reasoning_prior': 0.75,
-        'speed_prior': 0.6,
-        'cost_prior': 0.55,
-        'aliases': ['gpt 5.3 codex'],
-    },
-    'gpt-5.3-codex-spark': {
-        'reasoning_prior': 0.6,
-        'speed_prior': 0.98,
-        'cost_prior': 0.95,
-        'aliases': ['gpt 5.3 codex spark'],
-    },
-    'gpt-5.2-codex': {
-        'reasoning_prior': 0.7,
-        'speed_prior': 0.72,
-        'cost_prior': 0.65,
-        'aliases': ['gpt 5.2 codex'],
-    },
-    'gpt-5.2': {'reasoning_prior': 0.8, 'speed_prior': 0.55, 'cost_prior': 0.4, 'aliases': ['gpt 5.2']},
-    'gpt-5.1-codex-max': {
-        'reasoning_prior': 0.82,
-        'speed_prior': 0.45,
-        'cost_prior': 0.3,
-        'aliases': ['gpt 5.1 codex max'],
-    },
-    'gpt-5.1-codex-mini': {
-        'reasoning_prior': 0.58,
-        'speed_prior': 0.88,
-        'cost_prior': 0.88,
-        'aliases': ['gpt 5.1 codex mini'],
-    },
-    'gpt-5': {'reasoning_prior': 0.72, 'speed_prior': 0.65, 'cost_prior': 0.5, 'aliases': ['gpt 5']},
-}
-
-
-_MODEL_VERSION_RE = re.compile(r'^gpt-(\d+)(?:\.(\d+))?(?:\.(\d+))?')
-
 
 def add_arguments(parser: ArgumentParser) -> None:
-    parser.add_argument('--yes', '-y', action='store_true', help='Accept recommended mapping without prompting')
     parser.add_argument(
         '--aa-key',
         help='Artificial Analysis API key (overrides ARTIFICIAL_ANALYSIS_API_KEY env var)',
@@ -87,6 +42,17 @@ def add_arguments(parser: ArgumentParser) -> None:
         '--include-hidden',
         action='store_true',
         help='Include hidden models that do not appear in the default Codex picker',
+    )
+    update_group = parser.add_mutually_exclusive_group()
+    update_group.add_argument(
+        '--update-codex',
+        action='store_true',
+        help='Update Codex CLI with npm before discovering models',
+    )
+    update_group.add_argument(
+        '--no-update-codex',
+        action='store_true',
+        help='Skip the Codex CLI update prompt before discovering models',
     )
     parser.add_argument('--reasoning-model', help='Set reasoning model directly')
     parser.add_argument('--orchestration-model', help='Set orchestration model directly')
@@ -106,15 +72,7 @@ def run(args: Namespace) -> int:
     direct_coding = getattr(args, 'coding_model', None)
     direct_review = getattr(args, 'review_model', None)
     if direct_reasoning or direct_orchestration or direct_coding or direct_review:
-        if not any(hasattr(args, name) for name in ('orchestration_model', 'coding_model', 'review_model')):
-            reasoning = str((direct_reasoning or direct_orchestration or '')).strip()
-            task = str((direct_orchestration or direct_reasoning or '')).strip()
-            if not reasoning or not task:
-                print_warning('Could not derive both reasoning and task models from provided arguments')
-                return 1
-            mapping = {'reasoning': reasoning, 'task': task}
-        else:
-            mapping = _build_direct_mapping(direct_reasoning, direct_orchestration, direct_coding, direct_review)
+        mapping = _build_direct_mapping(direct_reasoning, direct_orchestration, direct_coding, direct_review)
         if mapping is None:
             return 1
         _warn_if_unknown_mapping(mapping)
@@ -133,12 +91,14 @@ def run(args: Namespace) -> int:
     debug = getattr(args, 'debug', False)
     include_hidden = bool(getattr(args, 'include_hidden', False))
 
+    if not _maybe_update_codex_cli(args):
+        return 1
+
     discovered = _discover_codex_models(include_hidden=include_hidden, debug=debug)
     if not discovered:
         return 1
 
     models = [entry['id'] for entry in discovered]
-    model_metadata = {entry['id']: entry for entry in discovered}
 
     console.print('Provider: [cyan]codex[/cyan]')
     console.print(f'Available models: {", ".join(models)}\n')
@@ -146,14 +106,12 @@ def run(args: Namespace) -> int:
     if aa_key:
         print_info('Fetching benchmark data from Artificial Analysis...')
         aa_data = _fetch_aa_data(aa_key, debug=debug)
+        if aa_data:
+            _display_aa_table(discovered, aa_data)
     else:
-        print_warning('ARTIFICIAL_ANALYSIS_API_KEY not set — using local priors for recommendations')
-        aa_data = {}
+        print_info('ARTIFICIAL_ANALYSIS_API_KEY not set — skipping benchmark context.')
 
-    scored = _score_models(models, aa_data, model_metadata=model_metadata)
-    suggestion = _suggest_tiers(scored)
-    _display_model_table(scored, suggestion)
-    mapping = suggestion if getattr(args, 'yes', False) else _interactive_override(scored)
+    mapping = _interactive_select_models(discovered)
     if mapping is None:
         print_warning('Mapping not saved')
         return 1
@@ -168,12 +126,15 @@ def _build_direct_mapping(
     coding: str | None,
     review: str | None,
 ) -> dict[str, str] | None:
-    reasoning_value = str(reasoning or orchestration or coding or review or '').strip()
-    orchestration_value = str(orchestration or coding or review or reasoning_value).strip()
-    coding_value = str(coding or orchestration_value or reasoning_value or review or '').strip()
-    review_value = str(review or reasoning_value or coding_value or orchestration_value or '').strip()
+    reasoning_value = str(reasoning or '').strip()
+    orchestration_value = str(orchestration or '').strip()
+    coding_value = str(coding or '').strip()
+    review_value = str(review or '').strip()
     if not reasoning_value or not orchestration_value or not coding_value or not review_value:
-        print_warning('Could not derive all four model categories from provided arguments')
+        print_warning(
+            'Direct Codex model setup requires --reasoning-model, --orchestration-model '
+            '(or --task-model), --coding-model, and --review-model'
+        )
         return None
     return {
         'reasoning': reasoning_value,
@@ -217,6 +178,41 @@ def _auto_apply_to_current_project(*, no_apply: bool) -> int:
 
 def _run_forced_regenerate() -> int:
     return regenerate.run(Namespace(force=True))
+
+
+def _maybe_update_codex_cli(args: Namespace) -> bool:
+    if bool(getattr(args, 'no_update_codex', False)):
+        print_info('Codex CLI update skipped (--no-update-codex).')
+        return True
+
+    should_update = bool(getattr(args, 'update_codex', False))
+    if not should_update:
+        response = (
+            console.input(
+                'Update Codex CLI before discovering models? [dim]Runs: npm install -g @openai/codex[/dim] [y/N] '
+            )
+            .strip()
+            .lower()
+        )
+        should_update = response in ('y', 'yes')
+
+    if not should_update:
+        print_info('Codex CLI update skipped.')
+        return True
+
+    print_info('Updating Codex CLI with npm install -g @openai/codex...')
+    try:
+        result = subprocess.run(_CODEX_UPDATE_CMD)
+    except (FileNotFoundError, OSError) as exc:
+        print_error(f'Could not update Codex CLI: {exc}')
+        return False
+
+    if result.returncode != 0:
+        print_error(f'Codex CLI update failed with exit code {result.returncode}')
+        return False
+
+    print_info('Codex CLI update completed.')
+    return True
 
 
 def _warn_if_unknown_mapping(mapping: dict[str, str], known_models: set[str] | None = None) -> None:
@@ -530,44 +526,13 @@ def _fetch_aa_data(aa_key: str, *, debug: bool = False) -> dict[str, dict[str, f
         _write_cache('aa_data_codex', result)
         return result
     except (urllib.error.URLError, OSError, json.JSONDecodeError, KeyError):
-        print_warning('Could not fetch Artificial Analysis data — using local priors')
+        print_warning('Could not fetch Artificial Analysis data — skipping benchmark context')
         return {}
 
 
 def _normalize_name(name: str) -> str:
     lowered = name.lower().replace('-', ' ').replace('_', ' ')
     return re.sub(r'\s+', ' ', lowered).strip()
-
-
-def _prior_profile(model_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
-    known = _KNOWN_PRIORS.get(model_id)
-    if known is not None:
-        return dict(known)
-
-    description = str(metadata.get('description') or '').lower()
-    display_name = str(metadata.get('display_name') or '').lower()
-    text = f'{model_id.lower()} {display_name} {description}'
-
-    profile = {
-        'reasoning_prior': 0.72,
-        'speed_prior': 0.65,
-        'cost_prior': 0.5,
-        'aliases': [_normalize_name(model_id)],
-    }
-
-    if 'spark' in text:
-        profile.update({'reasoning_prior': 0.6, 'speed_prior': 0.98, 'cost_prior': 0.95})
-    elif 'mini' in text:
-        profile.update({'reasoning_prior': 0.62, 'speed_prior': 0.9, 'cost_prior': 0.88})
-    elif 'max' in text:
-        profile.update({'reasoning_prior': 0.84, 'speed_prior': 0.45, 'cost_prior': 0.3})
-    elif 'codex' in text:
-        profile.update({'reasoning_prior': 0.78, 'speed_prior': 0.63, 'cost_prior': 0.55})
-
-    if bool(metadata.get('is_default')):
-        profile['reasoning_prior'] = max(profile['reasoning_prior'], 0.95)
-
-    return profile
 
 
 def _find_aa_match(model_id: str, aa_data: dict[str, dict[str, float]], aliases: set[str] | None = None) -> str:
@@ -587,264 +552,46 @@ def _find_aa_match(model_id: str, aa_data: dict[str, dict[str, float]], aliases:
     return ''
 
 
-def _score_models(
-    models: list[str],
-    aa_data: dict[str, dict[str, float]],
-    *,
-    model_metadata: dict[str, dict[str, Any]] | None = None,
-) -> list[dict[str, Any]]:
-    metadata_map = model_metadata or {}
-    scored: list[dict[str, Any]] = []
+def _display_aa_table(models: list[dict[str, Any]], aa_data: dict[str, dict[str, float]]) -> None:
+    table = Table(title='Codex Model Benchmarks', show_header=True, header_style='bold cyan')
+    table.add_column('Model')
+    table.add_column('Intelligence', justify='right')
+    table.add_column('Coding', justify='right')
+    table.add_column('Match', justify='right')
 
-    for model_id in models:
-        metadata = metadata_map.get(model_id, {})
-        profile = _prior_profile(model_id, metadata)
-        aliases = set(profile.get('aliases', []))
-        display_name = str(metadata.get('display_name') or '')
-        if display_name:
-            aliases.add(display_name)
-
+    for model in models:
+        model_id = str(model['id'])
+        aliases = {str(model.get('display_name') or '')}
         match = _find_aa_match(model_id, aa_data, aliases=aliases)
         intelligence = aa_data.get(match, {}).get(_REASONING_INDEX, 0.0)
         coding = aa_data.get(match, {}).get(_CODING_INDEX, 0.0)
-
-        reasoning_prior = float(profile['reasoning_prior'])
-        speed_prior = float(profile['speed_prior'])
-        cost_prior = float(profile['cost_prior'])
-
-        # Prefer AA metrics when available, but preserve deterministic local fallback.
-        capability_score = intelligence if intelligence > 0 else reasoning_prior * 100
-        speed_score = coding if coding > 0 else speed_prior * 100
-        reasoning_score = capability_score
-        orchestration_score = speed_score
-        coding_score = coding if coding > 0 else speed_score
-        review_score = (capability_score + coding_score) / 2
-
-        if intelligence >= 85:
-            insight = 'Strong for complex planning; may trade off speed/cost.'
-        elif coding >= 80:
-            insight = 'Strong coding throughput; good implementation default.'
-        elif speed_prior >= 0.8:
-            insight = 'Fast/cost-efficient profile; suited for high-volume orchestration.'
-        else:
-            insight = 'Balanced profile; solid general-purpose fallback.'
-
-        scored.append(
-            {
-                'model_id': model_id,
-                'intelligence': intelligence,
-                'coding': coding,
-                'capability_score': capability_score,
-                'speed_score': speed_score,
-                'cost_affordability': cost_prior * 100,
-                'has_aa_capability': intelligence > 0,
-                'has_aa_speed': coding > 0,
-                'reasoning_score': reasoning_score,
-                'task_score': orchestration_score,
-                'orchestration_score': orchestration_score,
-                'coding_score': coding_score,
-                'review_score': review_score,
-                'task': orchestration_score,
-                'insight': insight,
-            }
-        )
-
-    return scored
-
-
-def _display_model_table(scored: list[dict[str, Any]], suggestion: dict[str, str]) -> None:
-    table = Table(title='Codex Model Comparison', show_header=True, header_style='bold cyan')
-    table.add_column('Model')
-    table.add_column('Capability', justify='right')
-    table.add_column('Speed', justify='right')
-    table.add_column('Coding', justify='right')
-    table.add_column('Cost', justify='right')
-    table.add_column('Data', justify='right')
-    table.add_column('Recommended Tier')
-    table.add_column('Insight')
-
-    reasoning_top = suggestion.get('reasoning', '')
-    orchestration_top = suggestion.get('orchestration', '')
-    coding_top = suggestion.get('coding', '')
-    review_top = suggestion.get('review', '')
-    for row in scored:
-        model_id = row['model_id']
-        tiers: list[str] = []
-        if model_id == reasoning_top:
-            tiers.append('Reasoning')
-        if model_id == orchestration_top:
-            tiers.append('Orchestration')
-        if model_id == coding_top:
-            tiers.append('Coding')
-        if model_id == review_top:
-            tiers.append('Review')
-        tier_text = ', '.join(tiers) if tiers else '-'
-        capability_score = float(row['capability_score'])
-        speed_score = float(row['speed_score'])
-        cost_affordability = float(row['cost_affordability'])
-        intelligence = float(row['intelligence'])
-        coding = float(row['coding'])
-        data_source = _format_data_source(
-            has_aa_capability=bool(row['has_aa_capability']),
-            has_aa_speed=bool(row['has_aa_speed']),
-        )
-        capability = _format_metric(
-            score=capability_score,
-            aa_score=intelligence,
-            has_aa=bool(row['has_aa_capability']),
-        )
-        speed = _format_metric(
-            score=speed_score,
-            aa_score=coding,
-            has_aa=bool(row['has_aa_speed']),
-        )
-        coding_text = f'{coding:.1f}' if bool(row['has_aa_speed']) else '[dim]n/a[/dim]'
         table.add_row(
             model_id,
-            capability,
-            speed,
-            coding_text,
-            _cost_symbol(cost_affordability),
-            data_source,
-            tier_text,
-            row['insight'],
+            f'{intelligence:.1f}' if intelligence else '[dim]no data[/dim]',
+            f'{coding:.1f}' if coding else '[dim]no data[/dim]',
+            'AA' if match else '[dim]none[/dim]',
         )
+
     console.print()
     console.print(table)
-    console.print('[dim]Legend: Data=AA (benchmark-backed), Inferred (local priors).[/dim]')
-    console.print('[dim]Coding is the raw AA coding benchmark when available.[/dim]')
-    console.print('[dim]Auto-recommendations prioritize AA-backed models when available.[/dim]')
+    console.print('[dim]Artificial Analysis metrics are informational only; choose each tier manually.[/dim]')
 
 
-def _suggest_tiers(scored: list[dict[str, Any]]) -> dict[str, str]:
-    if not scored:
-        return {}
-
-    if not all('orchestration_score' in row and 'coding_score' in row and 'review_score' in row for row in scored):
-        reasoning_candidates = [row for row in scored if row.get('has_aa_capability')]
-        if reasoning_candidates:
-            reasoning = max(reasoning_candidates, key=lambda r: r.get('reasoning_score', 0.0))['model_id']
-        else:
-            fallback_reasoning = _pick_reasoning_fallback([str(row['model_id']) for row in scored])
-            reasoning = fallback_reasoning or max(scored, key=lambda r: r.get('reasoning_score', 0.0))['model_id']
-
-        codex_scored = [row for row in scored if _is_codex_model(str(row['model_id']))]
-        task_candidates = [row for row in codex_scored if row.get('has_aa_speed')]
-        if task_candidates:
-            task = max(task_candidates, key=lambda r: r.get('task_score', 0.0))['model_id']
-        else:
-            fallback_task = _pick_task_codex_fallback([str(row['model_id']) for row in codex_scored])
-            if fallback_task:
-                task = fallback_task
-            elif len(reasoning_candidates) >= 2:
-                task = sorted(reasoning_candidates, key=lambda r: r.get('reasoning_score', 0.0), reverse=True)[1][
-                    'model_id'
-                ]
-            else:
-                task = reasoning
-        return {'reasoning': reasoning, 'task': task}
-
-    reasoning_candidates = [row for row in scored if row['has_aa_capability']]
-    if reasoning_candidates:
-        reasoning = max(reasoning_candidates, key=lambda r: r['reasoning_score'])['model_id']
-    else:
-        fallback_reasoning = _pick_reasoning_fallback([str(row['model_id']) for row in scored])
-        reasoning = fallback_reasoning or max(scored, key=lambda r: r['reasoning_score'])['model_id']
-
-    orchestration = max(scored, key=lambda r: (float(r['orchestration_score']), float(r['speed_score'])))['model_id']
-    coding_candidates = [row for row in scored if row['has_aa_speed']]
-    if coding_candidates:
-        coding = max(coding_candidates, key=lambda r: (float(r['coding_score']), float(r['task_score'])))['model_id']
-    else:
-        coding = max(scored, key=lambda r: float(r['coding_score']))['model_id']
-
-    review = max(scored, key=lambda r: (float(r['review_score']), float(r['reasoning_score'])))['model_id']
-
-    return {'reasoning': reasoning, 'orchestration': orchestration, 'coding': coding, 'review': review}
-
-
-def _interactive_override(scored: list[dict[str, Any]]) -> dict[str, str] | None:
-    if not all('orchestration_score' in row and 'coding_score' in row and 'review_score' in row for row in scored):
-        reasoning_sorted = sorted(
-            scored,
-            key=lambda r: (bool(r.get('has_aa_capability')), float(r.get('reasoning_score', 0.0))),
-            reverse=True,
-        )
-        task_sorted = sorted(
-            scored,
-            key=lambda r: (bool(r.get('has_aa_speed')), float(r.get('task_score', 0.0))),
-            reverse=True,
-        )
-        mapping: dict[str, str] = {}
-
-        for tier, options, score_key in (
-            ('reasoning', reasoning_sorted, 'reasoning_score'),
-            ('task', task_sorted, 'task_score'),
-        ):
-            console.print(f'\n[bold]{tier.title()} model:[/bold]')
-            for i, row in enumerate(options, 1):
-                source = _format_data_source(
-                    has_aa_capability=bool(row.get('has_aa_capability')),
-                    has_aa_speed=bool(row.get('has_aa_speed')),
-                )
-                console.print(f'  [bold][{i}][/bold] {row["model_id"]}  ({row[score_key]:.1f}, {source})')
-
-            while True:
-                raw = console.input(f'  Select [1-{len(options)}]: ').strip()
-                if raw.isdigit():
-                    index = int(raw)
-                    if 1 <= index <= len(options):
-                        mapping[tier] = options[index - 1]['model_id']
-                        break
-                console.print(f'  [red]Enter a number 1-{len(options)}.[/red]')
-
-        response = console.input('\nAccept this mapping? [Y/n] ').strip().lower()
-        if response in ('n', 'no'):
-            return None
-        return mapping
-
-    reasoning_sorted = sorted(
-        scored,
-        key=lambda r: (bool(r['has_aa_capability']), float(r['reasoning_score'])),
-        reverse=True,
-    )
-    orchestration_sorted = sorted(
-        scored,
-        key=lambda r: float(r['orchestration_score']),
-        reverse=True,
-    )
-    coding_sorted = sorted(
-        scored,
-        key=lambda r: (bool(r['has_aa_speed']), float(r['coding_score'])),
-        reverse=True,
-    )
-    review_sorted = sorted(
-        scored,
-        key=lambda r: (float(r['review_score']), float(r['reasoning_score'])),
-        reverse=True,
-    )
+def _interactive_select_models(models: list[dict[str, Any]]) -> dict[str, str] | None:
     mapping: dict[str, str] = {}
+    options = [str(model['id']) for model in models]
 
-    for tier, options, score_key in (
-        ('reasoning', reasoning_sorted, 'reasoning_score'),
-        ('orchestration', orchestration_sorted, 'orchestration_score'),
-        ('coding', coding_sorted, 'coding_score'),
-        ('review', review_sorted, 'review_score'),
-    ):
+    for tier in ('reasoning', 'orchestration', 'coding', 'review'):
         console.print(f'\n[bold]{tier.title()} model:[/bold]')
-        for i, row in enumerate(options, 1):
-            source = _format_data_source(
-                has_aa_capability=bool(row['has_aa_capability']),
-                has_aa_speed=bool(row['has_aa_speed']),
-            )
-            console.print(f'  [bold][{i}][/bold] {row["model_id"]}  ({row[score_key]:.1f}, {source})')
+        for i, model_id in enumerate(options, 1):
+            console.print(f'  [bold][{i}][/bold] {model_id}')
 
         while True:
             raw = console.input(f'  Select [1-{len(options)}]: ').strip()
             if raw.isdigit():
                 index = int(raw)
                 if 1 <= index <= len(options):
-                    mapping[tier] = options[index - 1]['model_id']
+                    mapping[tier] = options[index - 1]
                     break
             console.print(f'  [red]Enter a number 1-{len(options)}.[/red]')
 
@@ -856,106 +603,6 @@ def _interactive_override(scored: list[dict[str, Any]]) -> dict[str, str] | None
 
 def _config_path() -> str:
     return str(GLOBAL_MODELS_PATH)
-
-
-def _format_metric(*, score: float, aa_score: float, has_aa: bool) -> str:
-    if has_aa:
-        band = _metric_band(score)
-        return f'{band} ({aa_score:.1f})'
-    conservative_score = _conservative_inferred_score(score)
-    band = _metric_band(conservative_score)
-    return f'{band} [dim](inferred, conservative)[/dim]'
-
-
-def _metric_band(score: float) -> str:
-    if score >= 75:
-        return 'Very High'
-    if score >= 60:
-        return 'High'
-    if score >= 45:
-        return 'Medium'
-    if score >= 30:
-        return 'Low'
-    return 'Very Low'
-
-
-def _conservative_inferred_score(score: float) -> float:
-    # Inferred priors are useful for relative ordering, but we present them conservatively
-    # to avoid implying benchmark-level certainty.
-    return 35.0 + (max(0.0, min(score, 100.0)) * 0.35)
-
-
-def _cost_symbol(cost_affordability: float) -> str:
-    if cost_affordability >= 90:
-        return '$'
-    if cost_affordability >= 75:
-        return '$$'
-    if cost_affordability >= 60:
-        return '$$$'
-    if cost_affordability >= 45:
-        return '$$$$'
-    return '$$$$$'
-
-
-def _format_data_source(*, has_aa_capability: bool, has_aa_speed: bool) -> str:
-    if has_aa_capability and has_aa_speed:
-        return 'AA'
-    if has_aa_capability or has_aa_speed:
-        return 'AA partial'
-    return 'Inferred'
-
-
-def _extract_model_version(model_id: str) -> tuple[int, int, int] | None:
-    match = _MODEL_VERSION_RE.match(model_id)
-    if not match:
-        return None
-    major = int(match.group(1))
-    minor = int(match.group(2) or 0)
-    patch = int(match.group(3) or 0)
-    return (major, minor, patch)
-
-
-def _pick_reasoning_fallback(models: list[str]) -> str:
-    candidates: list[str] = []
-    for model_id in models:
-        if _extract_model_version(model_id) is None:
-            continue
-        lowered = model_id.lower()
-        if '-mini' in lowered or '-spark' in lowered:
-            continue
-        candidates.append(model_id)
-
-    if not candidates:
-        return ''
-    return max(candidates, key=_fallback_sort_key)
-
-
-def _fallback_sort_key(model_id: str) -> tuple[tuple[int, int, int], int, int]:
-    version = _extract_model_version(model_id) or (-1, -1, -1)
-    lowered = model_id.lower()
-    variant_rank = 0
-    if '-mini' in lowered:
-        variant_rank = -3
-    elif '-spark' in lowered:
-        variant_rank = -2
-    elif '-max' in lowered:
-        variant_rank = -1
-    return (version, variant_rank, -len(model_id))
-
-
-def _pick_task_codex_fallback(models: list[str]) -> str:
-    base_codex = [model_id for model_id in models if model_id.lower().endswith('-codex')]
-    if base_codex:
-        return max(base_codex, key=_fallback_sort_key)
-
-    codex_variants = [model_id for model_id in models if '-codex' in model_id.lower()]
-    if codex_variants:
-        return max(codex_variants, key=_fallback_sort_key)
-    return ''
-
-
-def _is_codex_model(model_id: str) -> bool:
-    return '-codex' in model_id.lower()
 
 
 if __name__ == '__main__':

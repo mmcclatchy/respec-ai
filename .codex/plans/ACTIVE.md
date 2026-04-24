@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/commit-command-refactor.md`
-- Objective: Replace the internal commit agent with a commit command and slim code/patch commit sections.
+- Plan File: `./.codex/plans/codex-model-manual-selection.md`
+- Objective: Remove Codex model recommendations, add optional Codex CLI update prompting, and keep model options dynamically discovered.
 - Phase: completed
-- Last Updated: 2026-04-24T21:34:02Z
+- Last Updated: 2026-04-24T22:31:16Z
 
 ## Usage
 

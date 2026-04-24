@@ -23,10 +23,23 @@ class TestModelsArguments:
     def test_parses_codex_subcommand(self) -> None:
         parser = ArgumentParser()
         models.add_arguments(parser)
-        args = parser.parse_args(['codex', '--yes', '--include-hidden'])
+        args = parser.parse_args(['codex', '--include-hidden', '--no-update-codex'])
         assert args.models_command == 'codex'
-        assert args.yes is True
         assert args.include_hidden is True
+        assert args.no_update_codex is True
+
+    def test_parses_codex_update_flag(self) -> None:
+        parser = ArgumentParser()
+        models.add_arguments(parser)
+        args = parser.parse_args(['codex', '--update-codex'])
+        assert args.models_command == 'codex'
+        assert args.update_codex is True
+
+    def test_rejects_codex_yes_flag(self) -> None:
+        parser = ArgumentParser()
+        models.add_arguments(parser)
+        with pytest.raises(SystemExit):
+            parser.parse_args(['codex', '--yes'])
 
 
 class TestModelsRun:
