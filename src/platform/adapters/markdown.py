@@ -27,7 +27,7 @@ EXCEPT:
     @property
     def task_sync_instructions(self) -> str:
         return f"""TRY:
-  TASK_MARKDOWN = Read({self.base_path}/plans/{{PLAN_NAME}}/phases/tasks/{{TASK_NAME}}.md)
+  TASK_MARKDOWN = Read({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md)
   mcp__respec-ai__store_document(
     doc_type="task",
     key=f"{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}",

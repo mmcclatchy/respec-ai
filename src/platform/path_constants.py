@@ -24,15 +24,20 @@ class PathComponent(StrEnum):
         return f'{cls.RESPEC_AI_DIR}/{cls.PLANS_DIR}/{proj}/{cls.PHASES_DIR}/{phase}'
 
     @classmethod
-    def build_task_path(cls, plan_name: str | None = None, task_name: str | None = None) -> str:
+    def build_task_path(
+        cls,
+        plan_name: str | None = None,
+        phase_name: str | None = None,
+        task_name: str | None = None,
+    ) -> str:
         """Build path to task file.
 
-        Tasks are stored directly under phases/tasks/ (not nested per phase).
-        Task naming convention (task-{phase_number}-{description}) identifies the parent phase.
+        Tasks are stored under their parent phase directory.
         """
         plan = plan_name or '*'
+        phase = phase_name or '*'
         task = f'{task_name}.md' if task_name else '*.md'
-        return f'{cls.RESPEC_AI_DIR}/{cls.PLANS_DIR}/{plan}/{cls.PHASES_DIR}/{cls.TASKS_DIR}/{task}'
+        return f'{cls.RESPEC_AI_DIR}/{cls.PLANS_DIR}/{plan}/{cls.PHASES_DIR}/{phase}/{cls.TASKS_DIR}/{task}'
 
     @classmethod
     def build_completion_path(cls, plan_name: str | None = None) -> str:

@@ -126,6 +126,20 @@ This should stay ignored.
     assert 'This should stay ignored.' not in actionable
 
 
+def test_task_planner_tools_use_full_task_document_keys() -> None:
+    tools = create_task_planner_agent_tools(_adapter)
+
+    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.store_task
+    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.link_loop
+
+
+def test_patch_planner_tools_use_full_task_document_keys() -> None:
+    tools = create_patch_planner_agent_tools(_adapter)
+
+    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.store_task
+    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.link_loop
+
+
 class TestPlanRoadmapTemplate:
     def test_template_structure(self) -> None:
         tools = create_roadmap_agent_tools(_adapter)
@@ -635,6 +649,8 @@ class TestTemplateConsistency:
         assert '#### Execution Intent Policy' in template
         assert '#### Deferred Risk Register' in template
         assert 'DR-001' in template
+        assert '{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in template
+        assert 'compute TASK_NAME explicitly' in template
 
     def test_patch_planner_template_requires_execution_intent_and_deferred_risks(self) -> None:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)
@@ -644,6 +660,8 @@ class TestTemplateConsistency:
         assert '#### Execution Intent Policy' in template
         assert '#### Deferred Risk Register' in template
         assert 'patch-mode-selection' in template
+        assert '{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in template
+        assert 'Derive `TASK_NAME` from the amendment task title before storage' in template
 
     def test_patch_planner_treats_request_brief_as_authoritative(self) -> None:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)

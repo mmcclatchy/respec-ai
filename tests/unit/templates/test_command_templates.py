@@ -1421,3 +1421,49 @@ class TestCrossPlatformInvocationRendering:
         assert 'N+1) all' in template
         assert '- respec-standards <language>' in template
         assert '- respec-standards all' in template
+
+    def test_task_command_persists_actual_task_identity_from_final_task_document(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.TASK,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+
+        assert 'Parse FINAL_TASK as Task markdown.' in template
+        assert 'TASK_NAME = [extract the H1 title value after "# Task:" from FINAL_TASK]' in template
+        assert 'PHASE_NAME.replace("phase-", "task-", 1)' not in template
+
+    def test_phase_command_verifies_actual_created_task_identity(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+
+        assert 'mcp__respec-ai__list_documents(' in template
+        assert 'TASK_DOC_KEY = [extract the single returned task document key from TASK_RESULT]' in template
+        assert 'TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)' not in template
+
+    def test_code_command_requires_explicit_task_selection_for_multi_task_phase(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+
+        assert 'mcp__respec-ai__list_documents(doc_type="task", parent_key={PLAN_NAME}/{PHASE_NAME})' in template
+        assert (
+            "Multiple Task documents exist for phase '{PHASE_NAME}'. Select the task for this coding loop." in template
+        )
+        assert (
+            'TASK_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(plan_name={PLAN_NAME}, loop_type="task")'
+            in template
+        )
+        assert (
+            'mcp__respec-ai__link_loop_to_document(loop_id={TASK_LOOP_ID}, doc_type="task", key={TASK_DOC_KEY})'
+            in template
+        )
+        assert 'use plan_name/phase_name to find active task loop' not in template

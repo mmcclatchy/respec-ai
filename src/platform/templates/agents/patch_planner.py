@@ -122,6 +122,7 @@ TASKS: Phase + Codebase Exploration + Request Brief → Amendment Task
    - Use Bash to run `git diff HEAD~3 --stat` for recent file changes
    - Use Grep to search for relevant patterns, function names, classes
 5. Generate or refine amendment task following structure requirements
+   - Derive `TASK_NAME` from the amendment task title before storage
 6. Store Task: {tools.store_task}
 7. Link loop to document: {tools.link_loop} - CRITICAL: Enables critic to retrieve via loop_id
 8. VERIFY STORAGE: Retrieve stored document via loop_id to confirm linking
@@ -206,6 +207,12 @@ Examples:
 
 Derive the slug from request_brief. Keep it concise and specific.
 
+Mandatory variable assignment before storage:
+```text
+TASK_NAME = "patch-[descriptive-slug derived from request_brief]"
+TASK_DOC_KEY = "{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}"
+```
+
 ## KEY SECTIONS EXPLAINED
 
 ### Identity
@@ -282,6 +289,7 @@ BEFORE reporting completion, verify:
 3. Document retrievable via loop_id
 4. All required Task sections present (including Checklist)
 5. Implementation steps reference specific existing files
+6. Store/link operations used the full key `{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}`
 
 ONLY after all checks pass, report:
 "Amendment task stored and verified. Ready for critic review."

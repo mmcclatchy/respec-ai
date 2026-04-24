@@ -281,7 +281,7 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   ```
 
 # Loop IDs in this command:
-#   PLANNING_LOOP_ID  — task breakdown loop (from respec-task)
+#   TASK_LOOP_ID      — task retrieval loop linked to the selected Task document
 #   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
 #   STANDARDS_LOOP_ID — Phase 2 standards loop (coding-standards-reviewer only)
 # Coder receives the loop ID matching its current phase.
@@ -358,14 +358,75 @@ Display:
 ### 7. Coding Loop Initialization and Refinement
 Set up and execute MCP-managed code quality refinement:
 
-#### Step 7.1: Retrieve Task Loop ID from Task Workflow
+#### Step 7.1: Resolve Concrete Task Identity and Link Task Retrieval Loop
 
-Retrieve the task_loop_id that was created during respec-task:
+Resolve the exact Task document for this Phase before coding:
 
 ```text
-TASK_INFO = {tools.get_task_document}
+TASK_DOCS = {tools.list_task_documents}
 
-TASK_LOOP_ID = [Extract loop_id from task metadata or use plan_name/phase_name to find active task loop]
+IF TASK_DOCS retrieval fails:
+  ERROR: "Task listing failed for phase {{PLAN_NAME}}/{{PHASE_NAME}}"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT initialize coding loop
+  - Do NOT invoke coder
+  EXIT: Workflow terminated
+
+IF TASK_DOCS reports zero task documents:
+  ERROR: "No Task documents exist for phase {{PLAN_NAME}}/{{PHASE_NAME}}"
+  SUGGEST: "Run respec-task for this phase before coding"
+  {tools.task_command_invocation}
+  EXIT: Workflow terminated
+
+IF TASK_DOCS reports exactly one task document:
+  TASK_DOC_KEY = [extract the single task key from TASK_DOCS]
+
+ELSE:
+  {selection_prompt_instructions}
+    Header: "Select Task"
+    Question: "Multiple Task documents exist for phase '{{PHASE_NAME}}'. Select the task for this coding loop."
+    multiSelect: false
+    Options: [task document keys returned in TASK_DOCS]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 7.1. Set TASK_DOC_KEY. Continue to Task retrieval immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  TASK_DOC_KEY = [selected task document key]
+
+TASK_MARKDOWN = {tools.get_task_document_by_key}
+
+IF TASK_MARKDOWN retrieval fails:
+  ERROR: "Selected Task document could not be retrieved"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT initialize coding loop
+  - Do NOT invoke coder
+  EXIT: Workflow terminated
+
+TASK_NAME = [extract the H1 title value after "# Task:" from TASK_MARKDOWN]
+
+IF TASK_NAME is empty OR extraction fails:
+  ERROR: "Selected Task document is missing a usable task name"
+  DIAGNOSTIC: [surface the exact parse/extraction failure]
+  FAIL-CLOSED:
+  - Do NOT initialize coding loop
+  - Do NOT invoke coder
+  EXIT: Workflow terminated
+
+TASK_LOOP_ID = {tools.initialize_task_loop}
+{tools.link_task_loop}
+TASK_MARKDOWN = {tools.get_task_document}
+
+IF TASK_MARKDOWN retrieval fails after loop linking:
+  ERROR: "Task retrieval loop could not retrieve the selected Task document"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT initialize coding loop
+  - Do NOT invoke coder
+  EXIT: Workflow terminated
 ```
 
 #### Step 7.2: Initialize Coding Loop
@@ -378,7 +439,7 @@ CODING_LOOP_ID = {tools.initialize_coding_loop}
 You now have TWO active loop IDs - DO NOT confuse them:
 
 **task_loop_id = {{TASK_LOOP_ID}}**
-- Purpose: Retrieve Task document (created during respec-task)
+- Purpose: Retrieve the selected Task document for this coding run
 - Used by: coder (to get implementation plan), reviewers (to verify against Task/Phase)
 - Storage: Task document linked to this loop
 
@@ -1014,6 +1075,7 @@ Code Implementation:
 - Linter: {{LINTER_STATUS}}
 
 Implementation artifacts:
+- Task: {{TASK_DOC_KEY}}
 - Phase: Available via task_loop_id={{TASK_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
@@ -1126,8 +1188,8 @@ All specialized work delegated to appropriate agents:
 ## Workflow Enhancements
 
 ### Dual Loop Architecture
-- Separate task loop (from respec-task) and coding loop (code refinement)
-- task_loop_id used to retrieve Task document created by task workflow
+- Separate task retrieval loop and coding loop (code refinement)
+- task_loop_id used to retrieve the selected Task document
 - coding_loop_id used for code feedback storage/retrieval
 - Coding agents receive both IDs and use appropriately
 

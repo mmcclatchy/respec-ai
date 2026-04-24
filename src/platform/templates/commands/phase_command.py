@@ -732,25 +732,32 @@ IF task workflow invocation returns error:
   TASK_ERROR_SUMMARY = [captured error summary]
 
 ELSE:
-  IF PHASE_NAME starts with "phase-":
-    TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)
-  ELSE:
-    TASK_NAME = f"task-{{PHASE_NAME}}"
-
-  TASK_DOC_KEY = f"{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}"
-
-  Verify task exists in MCP:
-  mcp__respec-ai__get_document(
+  TASK_RESULT = mcp__respec-ai__list_documents(
     doc_type="task",
-    key=TASK_DOC_KEY
+    parent_key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
   )
 
-  IF verification succeeds:
-    TASK_INVOCATION_STATUS = "succeeded"
-    TASK_IDENTIFIER = TASK_DOC_KEY
-  ELSE:
+  IF TASK_RESULT reports zero task documents:
     TASK_INVOCATION_STATUS = "failed"
-    TASK_ERROR_SUMMARY = "Task workflow returned but task retrieval verification failed"
+    TASK_ERROR_SUMMARY = "Task workflow returned but no task document exists under the phase"
+  ELIF TASK_RESULT reports more than one task document:
+    TASK_INVOCATION_STATUS = "failed"
+    TASK_ERROR_SUMMARY = "Task workflow returned but produced multiple task documents; chained verification is ambiguous"
+  ELSE:
+    TASK_DOC_KEY = [extract the single returned task document key from TASK_RESULT]
+
+    Verify task exists in MCP:
+    mcp__respec-ai__get_document(
+      doc_type="task",
+      key=TASK_DOC_KEY
+    )
+
+    IF verification succeeds:
+      TASK_INVOCATION_STATUS = "succeeded"
+      TASK_IDENTIFIER = TASK_DOC_KEY
+    ELSE:
+      TASK_INVOCATION_STATUS = "failed"
+      TASK_ERROR_SUMMARY = "Task workflow returned but task retrieval verification failed"
 ```
 
 ### Step 10: Completion Contract and Final Reporting

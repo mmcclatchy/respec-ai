@@ -454,16 +454,17 @@ Write Task to platform file for user review and version control:
 
 ```text
 ═══════════════════════════════════════════════
-MANDATORY TASK NAME GENERATION PROTOCOL
+MANDATORY TASK IDENTITY EXTRACTION PROTOCOL
 ═══════════════════════════════════════════════
-IF PHASE_NAME starts with "phase-":
-  TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)
-  Display: "✓ Task name: {{TASK_NAME}}"
+Parse FINAL_TASK as Task markdown.
+TASK_NAME = [extract the H1 title value after "# Task:" from FINAL_TASK]
 
-ELIF PHASE_NAME does NOT start with "phase-":
-  ERROR: "Phase name format unexpected: '{{PHASE_NAME}}' does not start with 'phase-'"
-  GUIDANCE: "Verify phase follows naming convention: phase-N-descriptive-name"
+IF TASK_NAME is empty OR extraction fails:
+  ERROR: "Final Task document is missing a usable task name"
+  DIAGNOSTIC: [surface parse/extraction failure]
   EXIT with error message
+
+Display: "✓ Task name: {{TASK_NAME}}"
 ═══════════════════════════════════════════════
 
 TASK_FILE_PATH = {tools.task_resource_pattern}

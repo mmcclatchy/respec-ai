@@ -1024,6 +1024,15 @@ class TestInMemoryDeletePlanCascade:
         assert await state_manager.list_tasks('my-plan/phase-1') == []
 
     @pytest.mark.asyncio
+    async def test_phase_can_store_multiple_distinct_tasks(self, state_manager: InMemoryStateManager) -> None:
+        await state_manager.store_plan('my-plan', self._make_plan())
+        await state_manager.store_phase('my-plan', self._make_phase('phase-1'))
+        await state_manager.store_task('my-plan/phase-1', self._make_task('task-1', 'my-plan/phase-1'))
+        await state_manager.store_task('my-plan/phase-1', self._make_task('task-1a-followup', 'my-plan/phase-1'))
+
+        assert await state_manager.list_tasks('my-plan/phase-1') == ['task-1', 'task-1a-followup']
+
+    @pytest.mark.asyncio
     async def test_delete_plan_removes_loops(self, state_manager: InMemoryStateManager) -> None:
         await state_manager.store_plan('my-plan', self._make_plan())
         loop = LoopState(loop_type=LoopType.PLAN)

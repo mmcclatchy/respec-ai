@@ -19,6 +19,7 @@ class CodeCommandTools(CommandToolsModel):
         RespecAITool.GET_DOCUMENT,
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.LIST_DOCUMENTS,
+        RespecAITool.LINK_LOOP_TO_DOCUMENT,
         RespecAITool.STORE_USER_FEEDBACK,
         RespecAITool.STORE_CRITIC_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
@@ -33,6 +34,7 @@ class CodeCommandTools(CommandToolsModel):
     store_phase_document: str = Field(..., description='Store phase specification in MCP')
     get_phase_document: str = Field(..., description='Get phase specification')
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
+    initialize_task_loop: str = Field(..., description='Initialize task retrieval loop for the selected task')
     initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
     decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
@@ -40,7 +42,10 @@ class CodeCommandTools(CommandToolsModel):
     get_standards_feedback: str = Field(..., description='Get feedback from Phase 2 standards loop')
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
-    get_task_document: str = Field(..., description='Get task document')
+    get_task_document: str = Field(..., description='Get task document through task-linked loop retrieval')
+    get_task_document_by_key: str = Field(..., description='Get task document by explicit task key')
+    list_task_documents: str = Field(..., description='List task documents under a phase')
+    link_task_loop: str = Field(..., description='Link task retrieval loop to selected task document')
 
     # Agent invocations
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')

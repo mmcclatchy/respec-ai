@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/remove-fork-context-guidance-from-codex-agent-handoffs.md`
-- Objective: Remove Codex-generated fork-context handoff wording and restore isolated-agent invocation guidance.
+- Plan File: `./.codex/plans/phase-task-cardinality-explicit-task-identity.md`
+- Objective: Remove single-task-per-phase workflow assumptions and make task identity explicit across planning, patching, coding, and path helpers.
 - Phase: completed
-- Last Updated: 2026-04-23T21:22:00Z
+- Last Updated: 2026-04-23T22:08:00Z
 
 ## Usage
 

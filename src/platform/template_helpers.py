@@ -490,6 +490,9 @@ def create_code_command_tools(
         initialize_coding_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
         ),
+        initialize_task_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
+        ),
         initialize_standards_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"task"'
         ),
@@ -515,7 +518,19 @@ def create_code_command_tools(
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
         get_task_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
+        ),
+        get_task_document_by_key=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', key='{TASK_DOC_KEY}'
+        ),
+        list_task_documents=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LIST_DOCUMENTS, doc_type='"task"', parent_key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        link_task_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LINK_LOOP_TO_DOCUMENT,
+            loop_id='{TASK_LOOP_ID}',
+            doc_type='"task"',
+            key='{TASK_DOC_KEY}',
         ),
     )
 
@@ -925,14 +940,14 @@ def create_task_planner_agent_tools(tui_adapter: TuiAdapter) -> TaskPlannerAgent
         store_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type=DocumentType.TASK.quoted,
-            key='{PLAN_NAME}/{PHASE_NAME}',
+            key='{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}',
             content='{TASK_MARKDOWN}',
         ),
         link_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.LINK_LOOP_TO_DOCUMENT,
             loop_id='{TASK_LOOP_ID}',
             doc_type='"task"',
-            key='{PLAN_NAME}/{PHASE_NAME}',
+            key='{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}',
         ),
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_LOOP_STATUS, loop_id='{TASK_LOOP_ID}'
@@ -1310,14 +1325,14 @@ def create_patch_planner_agent_tools(tui_adapter: TuiAdapter) -> PatchPlannerAge
         store_task=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type=DocumentType.TASK.quoted,
-            key='{PLAN_NAME}/{PHASE_NAME}',
+            key='{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}',
             content='{TASK_MARKDOWN}',
         ),
         link_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.LINK_LOOP_TO_DOCUMENT,
             loop_id='{TASK_LOOP_ID}',
             doc_type='"task"',
-            key='{PLAN_NAME}/{PHASE_NAME}',
+            key='{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}',
         ),
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_LOOP_STATUS, loop_id='{TASK_LOOP_ID}'
@@ -1525,7 +1540,7 @@ def create_patch_command_tools(
         store_task_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"task"',
-            key='{PLAN_NAME}/{PHASE_NAME}',
+            key='{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}',
             content='{TASK_MARKDOWN}',
         ),
     )

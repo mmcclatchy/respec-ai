@@ -5,6 +5,7 @@ from typing import Generator
 import pytest
 
 from src.platform.models import PlanSetupRequest, PlatformRequirements, TemplateGenerationRequest
+from src.platform.adapters.markdown import MarkdownAdapter
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.tool_enums import RespecAICommand
@@ -188,3 +189,12 @@ class TestMarkdownPlatformScoping:
 
         # Plan should be valid
         assert info['config_valid'] is True
+
+    def test_task_sync_instructions_use_phase_scoped_task_path(self) -> None:
+        adapter = MarkdownAdapter()
+
+        assert (
+            'Read(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/tasks/{TASK_NAME}.md)'
+            in adapter.task_sync_instructions
+        )
+        assert 'phases/tasks/{TASK_NAME}.md' not in adapter.task_sync_instructions

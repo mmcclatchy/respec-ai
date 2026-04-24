@@ -102,6 +102,9 @@ MANDATORY OUTPUT SCOPE
 Store your Task via {tools.store_task}, then link via {tools.link_loop},
 then verify retrieval via {tools.retrieve_task}.
 
+Before calling store/link, compute TASK_NAME explicitly from the Phase name
+and treat `{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}` as the required Task key.
+
 Your ONLY output to the orchestrator is: "Task stored and verified.
 Ready for critic review."
 
@@ -339,6 +342,12 @@ Examples:
 - `phase-1-foundation-and-infrastructure` → `task-1-foundation-and-infrastructure`
 - `phase-2-core-implementation` → `task-2-core-implementation`
 
+Mandatory variable assignment before storage:
+```text
+TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)
+TASK_DOC_KEY = "{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}"
+```
+
 ## KEY SECTIONS EXPLAINED
 
 ### Identity
@@ -381,7 +390,7 @@ Contains two subsections:
 ## CONVERTING PHASE TO TASK
 
 1. Read Phase's "Development Plan" section
-2. Derive Task name from Phase name (replace phase- with task-)
+2. Derive `TASK_NAME` from Phase name (replace phase- with task-)
 3. Extract Goal from Phase objectives (one sentence)
 4. Convert Phase deliverables to Acceptance Criteria
 5. Create Checklist from high-level action items
@@ -468,6 +477,7 @@ BEFORE reporting completion, verify:
 3. ✅ Document retrievable via loop_id
 4. ✅ All required Task sections present (including Checklist)
 5. ✅ Task name mirrors phase name
+6. ✅ Store/link operations used the full key `{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}`
 
 ONLY after all checks pass, report:
 "Task stored and verified. Ready for critic review."
