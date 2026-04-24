@@ -471,7 +471,7 @@ Exclude internal/local-only candidates:
 
 EXTERNAL_APIS = unique normalized candidates after exclusions
 
-BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
+BP_PATH_REGEX = '(\\\\.best-practices/[A-Za-z0-9._/-]+\\\\.md)'
 EXISTING_BP_READ_PATHS = []
 
 For each read_path in EXISTING_READ_PATHS:

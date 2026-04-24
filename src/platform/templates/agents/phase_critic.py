@@ -505,7 +505,7 @@ Exclude internal/local-only candidates:
 EXTERNAL_APIS = unique normalized candidates after exclusions
 API_INTEGRATION_TRIGGER = len(EXTERNAL_APIS) > 0
 
-BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
+BP_PATH_REGEX = '(\\\\.best-practices/[A-Za-z0-9._/-]+\\\\.md)'
 VALID_BP_READ_PATHS = []
 
 For each path in VALID_PATHS:
