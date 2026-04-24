@@ -70,6 +70,7 @@ _COMMAND_TEMPLATES = [
     RespecAICommand.TASK,
     RespecAICommand.CODE,
     RespecAICommand.PATCH,
+    RespecAICommand.COMMIT,
     RespecAICommand.ROADMAP,
     RespecAICommand.PLAN_CONVERSATION,
     RespecAICommand.STANDARDS,
@@ -82,6 +83,7 @@ _COMMAND_CATEGORY_BY_NAME: dict[RespecAICommand, str] = {
     RespecAICommand.TASK: 'orchestration',
     RespecAICommand.CODE: 'orchestration',
     RespecAICommand.PATCH: 'orchestration',
+    RespecAICommand.COMMIT: 'orchestration',
     RespecAICommand.ROADMAP: 'orchestration',
     RespecAICommand.STANDARDS: 'orchestration',
 }

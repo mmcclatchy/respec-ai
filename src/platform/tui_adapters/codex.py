@@ -27,7 +27,7 @@ class CodexAdapter(TuiAdapter):
 
 Use fresh isolated subagents only.
 - NEVER invoke a subagent with forked context.
-- NEVER invoke a subagent with full-history context.
+- NEVER invoke a subagent with the full conversation history.
 - NEVER rely on inherited conversation context.
 - Pass only explicit invocation inputs.
 - Require each subagent to retrieve any additional context through its own tools.

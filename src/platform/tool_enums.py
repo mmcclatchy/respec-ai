@@ -188,6 +188,7 @@ class RespecAICommand(StrEnum):
     TASK = 'respec-task'
     CODE = 'respec-code'
     PATCH = 'respec-patch'
+    COMMIT = 'respec-commit'
     ROADMAP = 'respec-roadmap'
     PLAN_CONVERSATION = 'respec-plan-conversation'
     STANDARDS = 'respec-standards'

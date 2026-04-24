@@ -65,6 +65,7 @@ class PatchCommandTools(CommandToolsModel):
     invoke_patch_planner: str = Field(..., description='Invocation text for respec-patch-planner agent')
     invoke_task_plan_critic: str = Field(..., description='Invocation text for respec-task-plan-critic agent')
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
+    commit_command_invocation: str = Field(..., description='Invocation text for respec-commit command')
     invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
     invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')

@@ -6,7 +6,7 @@ from pytest_mock import MockerFixture
 
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
-from src.platform.template_generator import EXPECTED_AGENTS_COUNT, generate_templates
+from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT, generate_templates
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
 
@@ -33,9 +33,10 @@ class TestGenerateTemplates:
         )
 
         commands_dir = tmp_path / '.claude' / 'commands'
-        assert commands_count == 8
-        assert len(list(commands_dir.glob('*.md'))) == 8
+        assert commands_count == EXPECTED_COMMANDS_COUNT
+        assert len(list(commands_dir.glob('*.md'))) == EXPECTED_COMMANDS_COUNT
         assert (commands_dir / 'respec-standards.md').exists()
+        assert (commands_dir / 'respec-commit.md').exists()
 
     def test_generates_expected_agents(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
@@ -48,6 +49,7 @@ class TestGenerateTemplates:
         agents_dir = tmp_path / '.claude' / 'agents'
         assert agents_count == EXPECTED_AGENTS_COUNT
         assert len(list(agents_dir.glob('*.md'))) == EXPECTED_AGENTS_COUNT
+        assert not (agents_dir / 'respec-commit.md').exists()
 
     def test_returns_file_paths(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
@@ -57,7 +59,7 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR
         )
 
-        assert len(files_written) == (8 + EXPECTED_AGENTS_COUNT)
+        assert len(files_written) == (EXPECTED_COMMANDS_COUNT + EXPECTED_AGENTS_COUNT)
         assert all(isinstance(f, Path) for f in files_written)
         assert all(f.suffix == '.md' for f in files_written)
 
@@ -68,7 +70,7 @@ class TestGenerateTemplates:
         for platform in [PlatformType.LINEAR, PlatformType.GITHUB, PlatformType.MARKDOWN]:
             files_written, commands_count, agents_count = generate_templates(mock_orchestrator, tmp_path, platform)
 
-            assert commands_count == 8
+            assert commands_count == EXPECTED_COMMANDS_COUNT
             assert agents_count == EXPECTED_AGENTS_COUNT
 
     def test_removes_stale_respec_files_before_writing(self, mocker: MockerFixture, tmp_path: Path) -> None:
@@ -154,12 +156,14 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter
         )
 
-        assert commands_count == 8
+        assert commands_count == EXPECTED_COMMANDS_COUNT
         assert agents_count == EXPECTED_AGENTS_COUNT
         assert (tmp_path / '.codex' / 'skills' / 'respec-standards' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()
         assert (tmp_path / '.codex' / 'agents' / 'respec-plan-analyst-agent.toml').exists()
+        assert (tmp_path / '.codex' / 'skills' / 'respec-commit' / 'SKILL.md').exists()
+        assert not (tmp_path / '.codex' / 'agents' / 'respec-commit-agent.toml').exists()
         assert not (tmp_path / '.codex' / 'skills' / 'respec-plan-analyst-agent').exists()
         assert not (tmp_path / '.codex' / 'commands' / 'respec-plan.md').exists()
         assert not (tmp_path / '.codex' / 'agents' / 'respec-plan-analyst.md').exists()
@@ -221,5 +225,7 @@ class TestGenerateTemplates:
         patch_prompt = (project_path / '.opencode' / 'prompts' / 'commands' / 'respec-patch.md').read_text(
             encoding='utf-8'
         )
+        assert (project_path / '.opencode' / 'prompts' / 'commands' / 'respec-commit.md').exists()
+        assert not (project_path / '.opencode' / 'prompts' / 'agents' / 'respec-commit.md').exists()
         assert 'Use question tool to present options:' in patch_prompt
         assert 'WAIT for question response.' in patch_prompt

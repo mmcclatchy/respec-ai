@@ -112,6 +112,26 @@ This should stay ignored.
     assert 'This should stay ignored.' not in actionable
 
 
+def test_implementation_and_review_agents_retrieve_task_by_task_loop_id() -> None:
+    templates = [
+        generate_coder_template(
+            create_coder_agent_tools(_adapter, platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'])
+        ),
+        generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+        generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+        generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+        generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+        generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+        generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+        generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+        generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
+    ]
+
+    for template in templates:
+        assert 'mcp__respec-ai__get_document(doc_type="task", loop_id={TASK_LOOP_ID})' in template
+        assert 'mcp__respec-ai__get_document(doc_type="task", loop_id={PLANNING_LOOP_ID})' not in template
+
+
 class TestAutomatedQualityCheckerTemplate:
     def test_template_structure(self) -> None:
         tools = create_automated_quality_checker_agent_tools(_adapter)

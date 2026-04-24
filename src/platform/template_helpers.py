@@ -6,6 +6,7 @@ from .models import (
     AutomatedQualityCheckerAgentTools,
     BackendApiReviewerAgentTools,
     CodeCommandTools,
+    CommitCommandTools,
     CoderAgentTools,
     CodeQualityReviewerAgentTools,
     CodingStandardsReviewerAgentTools,
@@ -404,6 +405,11 @@ def create_code_command_tools(
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
+        ),
+        commit_command_invocation=adapter.render_command_invocation(
+            'respec-commit',
+            '{COMMIT_KIND}',
+            'Use the respec-commit command with COMMIT_KIND from current context.',
         ),
         invoke_quality_checker=adapter.render_agent_invocation(
             'respec-automated-quality-checker',
@@ -1001,7 +1007,7 @@ def create_coder_agent_tools(
         tools_yaml=builder.render_comma_separated_tools(),
         update_task_status=platform_tools[0],
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1041,6 +1047,17 @@ def create_create_phase_agent_tools(
     )
 
 
+def create_commit_command_tools(tui_adapter: TuiAdapter) -> CommitCommandTools:
+    builder = TemplateToolBuilder(tui_adapter)
+    for builtin_tool, params in CommitCommandTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return CommitCommandTools(
+        tui_adapter=tui_adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+    )
+
+
 def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> AutomatedQualityCheckerAgentTools:
     builder = TemplateToolBuilder(tui_adapter)
 
@@ -1054,7 +1071,7 @@ def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> Aut
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1088,7 +1105,7 @@ def create_spec_alignment_reviewer_agent_tools(tui_adapter: TuiAdapter) -> SpecA
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1122,7 +1139,7 @@ def create_code_quality_reviewer_agent_tools(tui_adapter: TuiAdapter) -> CodeQua
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1156,7 +1173,7 @@ def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendRev
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1187,7 +1204,7 @@ def create_backend_api_reviewer_agent_tools(tui_adapter: TuiAdapter) -> BackendA
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1218,7 +1235,7 @@ def create_database_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DatabaseRev
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1249,7 +1266,7 @@ def create_infrastructure_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Infra
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1280,7 +1297,7 @@ def create_coding_standards_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Cod
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         retrieve_task=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{PLANNING_LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"task"', loop_id='{TASK_LOOP_ID}'
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
@@ -1374,7 +1391,7 @@ def create_patch_command_tools(
     _reviewer_params = [
         ('coding_loop_id', 'CODING_LOOP_ID'),
         ('review_iteration', 'REVIEW_ITERATION'),
-        ('task_loop_id', 'PLANNING_LOOP_ID'),
+        ('task_loop_id', 'TASK_LOOP_ID'),
         ('plan_name', 'PLAN_NAME'),
         ('phase_name', 'PHASE_NAME'),
         ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
@@ -1410,13 +1427,18 @@ def create_patch_command_tools(
             'implement code changes following TDD methodology',
             [
                 ('coding_loop_id', 'CODING_LOOP_ID'),
-                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('mode', 'None'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
+        ),
+        commit_command_invocation=adapter.render_command_invocation(
+            'respec-commit',
+            '{COMMIT_KIND}',
+            'Use the respec-commit command with COMMIT_KIND from current context.',
         ),
         invoke_quality_checker=adapter.render_agent_invocation(
             'respec-automated-quality-checker',
@@ -1447,7 +1469,7 @@ def create_patch_command_tools(
             'apply coding standards fixes',
             [
                 ('coding_loop_id', 'STANDARDS_LOOP_ID'),
-                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('mode', '"standards-only"'),
@@ -1461,7 +1483,7 @@ def create_patch_command_tools(
             [
                 ('coding_loop_id', 'STANDARDS_LOOP_ID'),
                 ('review_iteration', 'REVIEW_ITERATION'),
-                ('task_loop_id', 'PLANNING_LOOP_ID'),
+                ('task_loop_id', 'TASK_LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),

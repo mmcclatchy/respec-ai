@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/codex-command-level-no-fork-guardrail.md`
-- Objective: Add an early Codex-only command guardrail that forbids forked subagent invocation before any first spawn attempt.
+- Plan File: `./.codex/plans/commit-command-refactor.md`
+- Objective: Replace the internal commit agent with a commit command and slim code/patch commit sections.
 - Phase: completed
-- Last Updated: 2026-04-23T22:30:00Z
+- Last Updated: 2026-04-24T21:34:02Z
 
 ## Usage
 

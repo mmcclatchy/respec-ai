@@ -19,6 +19,44 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 {tools.tui_adapter.subagent_invocation_guardrail}
 
+═══════════════════════════════════════════════
+TOOL INVOCATION
+═══════════════════════════════════════════════
+You have access to MCP tools listed above.
+
+When instructions say "CALL tool_name", execute the tool:
+  ✅ CORRECT: result = tool_name(param="value")
+  ❌ WRONG: <tool_name><param>value</param>
+
+DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
+ORCHESTRATOR BOUNDARY
+═══════════════════════════════════════════════
+This command is an orchestrator, not an implementation agent.
+
+Allowed command responsibilities:
+- Parse and clarify user inputs
+- Resolve execution mode, Phase, Task identity, and active reviewers
+- CALL MCP tools
+- Invoke specialized agents
+- Consolidate review results
+- Run git, commit, and pre-commit orchestration
+- Update Phase evolution log and workflow documentation artifacts
+
+Forbidden command responsibilities:
+- Do NOT directly edit source code.
+- Do NOT directly edit tests.
+- Do NOT manually implement the requested patch.
+- Do NOT substitute command-local implementation for a missing or failed coder agent.
+
+Implementation responsibility:
+- ALL source-code and test implementation MUST be delegated to `respec-coder`.
+- If `respec-coder` cannot be invoked, fail closed with diagnostics.
+- If `respec-coder` fails, follow the coder failure branch; do not continue by implementing code in this command.
+═══════════════════════════════════════════════
+
 ## Workflow Steps
 
 ### 1. Parse User Inputs
@@ -251,6 +289,8 @@ IF TASK_MARKDOWN not found or retrieval fails:
   - Do NOT invoke task-plan-critic
   - Do NOT continue to Step 3.5
   EXIT: Workflow terminated
+
+TASK_LOOP_ID = PLANNING_LOOP_ID
 ```
 
 #### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence
@@ -345,7 +385,7 @@ Parse amendment task to determine which specialist reviewers to activate:
 #### Step 4.1: Retrieve Amendment Task
 
 ```text
-TASK_MARKDOWN = {tools.get_task_document}
+TASK_MARKDOWN = mcp__respec-ai__get_document(doc_type="task", loop_id={{TASK_LOOP_ID}})
 ```
 
 #### Step 4.1.1: Validate Resolved Mode Against Task Policy
@@ -452,6 +492,7 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
 
 # Loop IDs in this command:
 #   PLANNING_LOOP_ID  — planning loop (amendment task creation)
+#   TASK_LOOP_ID      — selected amendment task retrieval loop (alias of PLANNING_LOOP_ID)
 #   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
 #   STANDARDS_LOOP_ID — Phase 2 standards loop (coding-standards-reviewer only)
 
@@ -484,10 +525,11 @@ USER_FEEDBACK_MARKDOWN = (
 
 You now have TWO active loop IDs - DO NOT confuse them:
 
-**task_loop_id = {{PLANNING_LOOP_ID}}**
+**task_loop_id = {{TASK_LOOP_ID}}**
 - Purpose: Retrieve amendment task document (created during planning loop)
 - Used by: coder (to get implementation plan), reviewers (to verify against Task/Phase)
-- Storage: Task document linked to this loop
+- Storage: Task document linked to TASK_LOOP_ID
+- Alias: TASK_LOOP_ID = PLANNING_LOOP_ID for respec-patch amendment tasks
 
 **coding_loop_id = {{CODING_LOOP_ID}}**
 - Purpose: Phase 1 functional feedback
@@ -515,7 +557,7 @@ Loop:
     - Do NOT invoke reviewers
     - Do NOT call consolidate_review_cycle
     - Do NOT call decide_coding_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   # B) Phase 1 review team orchestration
@@ -538,7 +580,7 @@ Loop:
     FAIL-CLOSED:
     - Do NOT call consolidate_review_cycle
     - Do NOT call decide_coding_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   LOOP_ID = CODING_LOOP_ID
@@ -549,7 +591,7 @@ Loop:
     DIAGNOSTIC: [surface the exact MCP/tool error]
     FAIL-CLOSED:
     - Do NOT call decide_coding_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   IF CONSOLIDATION_RESPONSE.iteration != REVIEW_ITERATION:
@@ -557,7 +599,7 @@ Loop:
     DIAGNOSTIC: [surface CONSOLIDATION_RESPONSE and REVIEW_ITERATION]
     FAIL-CLOSED:
     - Do NOT call decide_coding_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   PHASE1_FEEDBACK = {tools.get_feedback}
@@ -566,7 +608,7 @@ Loop:
     DIAGNOSTIC: [surface the exact MCP/tool error]
     FAIL-CLOSED:
     - Do NOT call decide_coding_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   # C) MCP coding decision
@@ -576,68 +618,13 @@ Loop:
   CODING_ITERATION = CODING_DECISION_RESPONSE.iteration
   Decision options: "COMPLETE", "REFINE", "USER_INPUT"
 
-  # D) Phase 1 commit orchestration (command-owned, every pass)
-  # Narrow exception: command reads latest feedback only for commit metadata synthesis.
-  PHASE1_SCORE = [extract latest Overall Score from PHASE1_FEEDBACK]
-  PHASE1_SUMMARY = [extract latest Assessment Summary from PHASE1_FEEDBACK]
-  PHASE1_ACCOMPLISHED = [extract concise accomplished outcomes from PHASE1_FEEDBACK or coder handoff report]
-  PHASE1_KEY_ISSUES = [extract top key issues from PHASE1_FEEDBACK]
-  PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:
-    "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
-  IF PHASE1_BLOCKERS_ACTIVE:
-    PHASE1_REVIEW_STATUS = "blocked by active blockers"
-  ELIF CODING_DECISION == "complete":
-    PHASE1_REVIEW_STATUS = "ready for completion gate"
-  ELSE:
-    PHASE1_REVIEW_STATUS = "below completion threshold"
-
+  # D) Phase 1 commit orchestration (every pass)
   # Loop commits are progress checkpoints only.
   # Completion commit is owned by Step 6.7 finalization gate.
-  COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 1 iter {{CODING_ITERATION}}]"
-
-  COMMIT_MESSAGE_BLOCK = compose:
-    {{COMMIT_SUBJECT}}
-
-    Summary:
-    {{PHASE1_SUMMARY}}
-
-    Review Score: {{PHASE1_SCORE}}/100
-
-    Accomplished:
-    {{PHASE1_ACCOMPLISHED}}
-
-    Remaining Issues/Blockers:
-    {{PHASE1_KEY_ISSUES}}
-
-    Change: {{REQUEST_SUMMARY}}
-    Phase: {{PHASE_NAME}}
-    Loop: Phase 1 (coding_loop_id={{CODING_LOOP_ID}})
-    Decision: {{CODING_DECISION}}
-    Review Status: {{PHASE1_REVIEW_STATUS}}
-
-    Source: MCP consolidated CriticFeedback
-
-  COMMIT_MESSAGE_RULES:
-  - Commit body MUST be exactly COMMIT_MESSAGE_BLOCK.
-  - Do NOT append attribution trailers like Co-Authored-By, Signed-off-by, Generated-by, or similar.
-
-  HAS_CHANGES = `git status --porcelain` has any output
-
-  IF HAS_CHANGES:
-    git add -A
-    git commit --no-verify -F - <<'EOF'
-    {{COMMIT_MESSAGE_BLOCK}}
-    EOF
-  ELSE:
-    git commit --allow-empty --no-verify -F - <<'EOF'
-    {{COMMIT_MESSAGE_BLOCK}}
-    EOF
-
-  LATEST_COMMIT_BODY = `git log -1 --pretty=%B`
-  IF LATEST_COMMIT_BODY contains any prohibited attribution trailer:
-    git commit --amend --no-verify -F - <<'EOF'
-    {{COMMIT_MESSAGE_BLOCK}}
-    EOF
+  COMMIT_KIND = "phase1-checkpoint"
+  COMMIT_WORKFLOW_KIND = "patch"
+  ALLOW_EMPTY = true
+  {tools.commit_command_invocation}
 
   # E) Decision handling after commit
   IF CODING_DECISION == "refine":
@@ -668,7 +655,7 @@ VIOLATION: Asking the user whether to continue refining when status is "refine"
 
 ```text
 IF CODING_DECISION == "refine":
-  Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Rubric Score: {{CODING_SCORE}}/100 — {{PHASE1_REVIEW_STATUS}}; refining"
+  Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Rubric Score: {{CODING_SCORE}}/100 — decision={{CODING_DECISION}}; refining"
   Return to Step 5.3 (next loop pass runs coder -> reviews -> decision -> commit).
 
 ELIF CODING_DECISION == "complete":
@@ -744,7 +731,7 @@ Loop:
     - Do NOT invoke coding-standards-reviewer
     - Do NOT call consolidate_review_cycle
     - Do NOT call decide_standards_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   {tools.invoke_coding_standards_reviewer}
@@ -754,7 +741,7 @@ Loop:
     FAIL-CLOSED:
     - Do NOT call consolidate_review_cycle
     - Do NOT call decide_standards_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   LOOP_ID = STANDARDS_LOOP_ID
@@ -765,7 +752,7 @@ Loop:
     DIAGNOSTIC: [surface the exact MCP/tool error]
     FAIL-CLOSED:
     - Do NOT call decide_standards_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   IF CONSOLIDATION_RESPONSE.iteration != REVIEW_ITERATION:
@@ -773,7 +760,7 @@ Loop:
     DIAGNOSTIC: [surface CONSOLIDATION_RESPONSE and REVIEW_ITERATION]
     FAIL-CLOSED:
     - Do NOT call decide_standards_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   STANDARDS_FEEDBACK = {tools.get_standards_feedback}
@@ -782,7 +769,7 @@ Loop:
     DIAGNOSTIC: [surface the exact MCP/tool error]
     FAIL-CLOSED:
     - Do NOT call decide_standards_action
-    - Do NOT synthesize commit metadata
+    - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
   STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
@@ -790,65 +777,12 @@ Loop:
   STANDARDS_SCORE = STANDARDS_DECISION_RESPONSE.current_score
   STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
 
-  # Phase 2 feedback source (coding-standards reviewer CriticFeedback):
-  STANDARDS_SUMMARY = [extract latest Assessment Summary from STANDARDS_FEEDBACK]
-  STANDARDS_ACCOMPLISHED = [extract concise accomplished outcomes from STANDARDS_FEEDBACK or coder handoff report]
-  STANDARDS_KEY_ISSUES = [extract top key issues from STANDARDS_FEEDBACK]
-  STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:
-    "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
-  IF STANDARDS_BLOCKERS_ACTIVE:
-    STANDARDS_REVIEW_STATUS = "blocked by active blockers"
-  ELIF STANDARDS_DECISION == "complete":
-    STANDARDS_REVIEW_STATUS = "ready for completion gate"
-  ELSE:
-    STANDARDS_REVIEW_STATUS = "below completion threshold"
-
   # Loop commits are progress checkpoints only.
   # Completion commit is owned by Step 6.7 finalization gate.
-  STANDARDS_COMMIT_SUBJECT = "[WIP] patch {{PHASE_NAME}} [Phase 2 iter {{STANDARDS_ITERATION}}]"
-
-  STANDARDS_COMMIT_MESSAGE_BLOCK = compose:
-    {{STANDARDS_COMMIT_SUBJECT}}
-
-    Summary:
-    {{STANDARDS_SUMMARY}}
-
-    Review Score: {{STANDARDS_SCORE}}/100
-
-    Accomplished:
-    {{STANDARDS_ACCOMPLISHED}}
-
-    Remaining Issues/Blockers:
-    {{STANDARDS_KEY_ISSUES}}
-
-    Change: {{REQUEST_SUMMARY}}
-    Phase: {{PHASE_NAME}}
-    Loop: Phase 2 standards (loop_id={{STANDARDS_LOOP_ID}})
-    Decision: {{STANDARDS_DECISION}}
-    Review Status: {{STANDARDS_REVIEW_STATUS}}
-
-    Source: coding-standards-reviewer CriticFeedback
-
-  STANDARDS_COMMIT_MESSAGE_RULES:
-  - Commit body MUST be exactly STANDARDS_COMMIT_MESSAGE_BLOCK.
-  - Do NOT append attribution trailers like Co-Authored-By, Signed-off-by, Generated-by, or similar.
-
-  HAS_CHANGES = `git status --porcelain` has any output
-  IF HAS_CHANGES:
-    git add -A
-    git commit --no-verify -F - <<'EOF'
-    {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
-    EOF
-  ELSE:
-    git commit --allow-empty --no-verify -F - <<'EOF'
-    {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
-    EOF
-
-  LATEST_COMMIT_BODY = `git log -1 --pretty=%B`
-  IF LATEST_COMMIT_BODY contains any prohibited attribution trailer:
-    git commit --amend --no-verify -F - <<'EOF'
-    {{STANDARDS_COMMIT_MESSAGE_BLOCK}}
-    EOF
+  COMMIT_KIND = "phase2-checkpoint"
+  COMMIT_WORKFLOW_KIND = "patch"
+  ALLOW_EMPTY = true
+  {tools.commit_command_invocation}
 
   IF STANDARDS_DECISION == "complete":
     Display: "🟣 [Phase 2 · Complete] ✅ Rubric Score: {{STANDARDS_SCORE}}/100 — ready for completion gate (threshold met, no active blockers)"
@@ -856,7 +790,7 @@ Loop:
 
   IF STANDARDS_DECISION == "refine":
     STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1
-    Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Rubric Score: {{STANDARDS_SCORE}}/100 — {{STANDARDS_REVIEW_STATUS}}; refining standards"
+    Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Rubric Score: {{STANDARDS_SCORE}}/100 — decision={{STANDARDS_DECISION}}; refining standards"
     continue loop
 
   IF STANDARDS_DECISION == "user_input":
@@ -955,48 +889,10 @@ ELSE:
   FINAL_LOOP_ID = CODING_LOOP_ID
   FINAL_SOURCE = "MCP consolidated CriticFeedback"
 
-FINAL_SCORE = [extract latest Overall Score from FINAL_FEEDBACK]
-FINAL_SUMMARY = [extract latest Assessment Summary from FINAL_FEEDBACK]
-FINAL_ACCOMPLISHED = [extract concise accomplished outcomes from FINAL_FEEDBACK or coder handoff report]
-FINAL_KEY_ISSUES = [extract top key issues from FINAL_FEEDBACK]
-
-FINAL_COMMIT_MESSAGE_BLOCK = compose:
-  fix: complete {{REQUEST_SUMMARY}}
-
-  Summary:
-  {{FINAL_SUMMARY}}
-
-  Review Score: {{FINAL_SCORE}}/100
-
-  Accomplished:
-  {{FINAL_ACCOMPLISHED}}
-
-  Remaining Issues/Blockers:
-  {{FINAL_KEY_ISSUES}}
-
-  Change: {{REQUEST_SUMMARY}}
-  Phase: {{PHASE_NAME}}
-  Finalization Source: {{FINALIZATION_DECISION_SOURCE}}
-  Final Loop: {{FINAL_LOOP_LABEL}} (loop_id={{FINAL_LOOP_ID}})
-  Completion Gate: {{COMPLETION_GATE_STATUS}}
-  Completion Gate Summary: {{COMPLETION_GATE_SUMMARY}}
-
-  Source: {{FINAL_SOURCE}}
-
-FINAL_COMMIT_MESSAGE_RULES:
-- Commit body MUST be exactly FINAL_COMMIT_MESSAGE_BLOCK.
-- Do NOT append attribution trailers like Co-Authored-By, Signed-off-by, Generated-by, or similar.
-
-git add -A
-git commit --allow-empty --no-verify -F - <<'EOF'
-{{FINAL_COMMIT_MESSAGE_BLOCK}}
-EOF
-
-LATEST_COMMIT_BODY = `git log -1 --pretty=%B`
-IF LATEST_COMMIT_BODY contains any prohibited attribution trailer:
-  git commit --amend --no-verify -F - <<'EOF'
-  {{FINAL_COMMIT_MESSAGE_BLOCK}}
-  EOF
+COMMIT_KIND = "final"
+COMMIT_WORKFLOW_KIND = "patch"
+ALLOW_EMPTY = true
+{tools.commit_command_invocation}
 
 Proceed to Step 7 (Update Phase Evolution Log)
 ```
@@ -1058,76 +954,4 @@ Amendment artifacts:
 Ready for deployment."
 ```
 
-## Phase Name Normalization Rules
-
-**IMPORTANT:** Phase names are automatically normalized to kebab-case:
-
-**File System to MCP Normalization:**
-- Convert to lowercase: `Phase-1` -> `phase-1`
-- Replace spaces/underscores with hyphens: `phase 1` -> `phase-1`
-- Remove special characters: `phase-1!` -> `phase-1`
-- Collapse multiple hyphens: `phase--1` -> `phase-1`
-- Strip leading/trailing hyphens: `-phase-1-` -> `phase-1`
-
-**Critical:** The H1 header in phase markdown MUST match the normalized file name.
-
-## Quality Gates
-
-### Quality Assessment
-- **Amendment Task Evaluation**: Assessed by task-plan-critic agent (reused from respec-task)
-- **Code Quality Evaluation**: Assessed by review team (same as respec-code)
-- **Loop Decisions**: Made by MCP Server based on configuration
-- **Thresholds and Limits**: Managed by MCP Server
-
-## Error Handling
-
-### Graceful Degradation Patterns
-
-#### Phase Not Available
-```text
-Display: "No Phase found: [PHASE_NAME]"
-Suggest: "Use phase workflow to create Phase"
-{tools.phase_command_invocation}
-Exit gracefully with guidance
-```
-
-#### Planning Loop Failures
-```text
-IF patch-planner fails:
-  Report failure with context
-  Suggest manual task creation
-  Provide diagnostic information
-```
-
-#### Coding Loop Failures
-```text
-IF coder fails:
-  Preserve git commits for rollback
-  Report failure with TodoList state
-  Provide diagnostic information
-  Suggest manual intervention
-
-IF review team fails:
-  Run static analysis manually
-  Report test results without quality score
-  Continue with manual quality assessment
-```
-
-## Coordination Pattern
-
-The command maintains orchestration focus by:
-- **Running planning, coding, and standards loops** sequentially
-- **Coordinating agent invocations** without defining their behavior
-- **Maintaining triple loop IDs** (planning_loop_id + coding_loop_id + standards_loop_id)
-- **Separating Phase 1 (functional) from Phase 2 (standards)** reviews
-- **Handling MCP Server responses** without evaluating quality scores
-- **Updating Phase evolution log** for traceability
-- **Storing amendment task** to filesystem for documentation
-
-All specialized work delegated to appropriate agents:
-- **patch-planner**: Codebase exploration and amendment task creation
-- **task-plan-critic**: Amendment task quality evaluation (reused)
-- **coder**: TDD code implementation (reused)
-- **review team**: Code quality evaluation (reused)
-- **MCP Server**: Decision logic, threshold management, state storage
 """

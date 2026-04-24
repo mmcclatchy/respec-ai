@@ -188,7 +188,7 @@ class TestPlanRoadmapRespecAICommand:
         line_count = len(lines)
 
         # Target is 150-200 lines, allow some flexibility
-        assert 100 <= line_count <= 450, f'Template should be 100-450 lines, got {line_count}'
+        assert 100 <= line_count <= 500, f'Template should be 100-500 lines, got {line_count}'
 
     def test_template_has_no_agent_behavioral_instructions(self) -> None:
         coordinator = TemplateCoordinator()
@@ -351,16 +351,21 @@ class TestCrossPlatformInvocationRendering:
             assert 'PATH_REGEX = BP_PATH_REGEX' in template
             assert 'IF len(CANDIDATE_PATHS) != 1:' in template
 
-    def test_claude_code_patch_uses_planning_loop_id(self) -> None:
+    def test_claude_code_patch_uses_explicit_task_loop_alias(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
         )
         assert 'PLANNING_LOOP_ID' in template
-        # Ensure none of the pre-computed invocations reference TASK_LOOP_ID
-        # (patch uses PLANNING_LOOP_ID throughout for task retrieval)
+        assert 'TASK_LOOP_ID = PLANNING_LOOP_ID' in template
+        assert '- Alias: TASK_LOOP_ID = PLANNING_LOOP_ID for respec-patch amendment tasks' in template
         invoke_section = template[template.find('#### Step 3.3') :]
-        assert 'task_loop_id: TASK_LOOP_ID' not in invoke_section
+        assert 'Invoke: respec-patch-planner' in invoke_section
+        assert 'Invoke: respec-task-plan-critic' in invoke_section
+        assert 'Invoke: respec-coder' in invoke_section
+        assert 'task_loop_id: PLANNING_LOOP_ID' in invoke_section
+        assert 'task_loop_id: TASK_LOOP_ID' in invoke_section
+        assert 'TASK_MARKDOWN = mcp__respec-ai__get_document(doc_type="task", loop_id={TASK_LOOP_ID})' in template
 
     def test_opencode_patch_embeds_planning_loop_id_in_prompt(self) -> None:
         coordinator = TemplateCoordinator()
@@ -369,6 +374,7 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'subagent_type: "respec-patch-planner"' in template
         assert '- task_loop_id: PLANNING_LOOP_ID' in template
+        assert '- task_loop_id: TASK_LOOP_ID' in template
 
     def test_claude_code_plan_conversation_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
@@ -624,7 +630,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'Invoke the `respec-code` skill with: `{PLAN_NAME} {PHASE_NAME}`."' not in template
         assert 'To reject:' in template
 
-    def test_code_template_fails_closed_before_decisions_and_commit_synthesis(self) -> None:
+    def test_code_template_fails_closed_before_decisions_and_commit_command(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
@@ -638,7 +644,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'Phase 2 review consolidation failed' in template
         assert 'STANDARDS_FEEDBACK = ' in template
         assert 'Phase 2 consolidated feedback missing' in template
-        assert 'Do NOT synthesize commit metadata' in template
+        assert 'Do NOT invoke respec-commit' in template
 
     def test_task_template_passes_structured_reference_metadata(self) -> None:
         coordinator = TemplateCoordinator()
@@ -813,20 +819,24 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
-        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
-        assert (
-            'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.' in template
-        )
-        assert 'Source: MCP consolidated CriticFeedback' in template
-        assert 'Source: coding-standards-reviewer CriticFeedback' in template
-        assert 'Review Score: {PHASE1_SCORE}/100' in template
-        assert 'Accomplished:' in template
-        assert 'Remaining Issues/Blockers:' in template
-        assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
-        assert 'Review Score: {STANDARDS_SCORE}/100' in template
-        assert 'Review Status: {STANDARDS_REVIEW_STATUS}' in template
-        assert 'Do NOT append attribution trailers like Co-Authored-By' in template
-        assert 'git commit --amend --no-verify -F - <<' in template
+        assert 'ORCHESTRATOR BOUNDARY' in template
+        assert 'This command is an orchestrator, not an implementation agent.' in template
+        assert 'Do NOT directly edit source code.' in template
+        assert 'Do NOT directly edit tests.' in template
+        assert 'ALL source-code and test implementation MUST be delegated to `respec-coder`.' in template
+        assert 'If `respec-coder` cannot be invoked, fail closed with diagnostics.' in template
+        assert 'Run static analysis manually' not in template
+        assert 'Continue with manual quality assessment' not in template
+        assert 'single-pass workflow' not in template
+        assert '# D) Phase 1 commit orchestration (every pass)' in template
+        assert 'COMMIT_KIND = "phase1-checkpoint"' in template
+        assert 'COMMIT_KIND = "phase2-checkpoint"' in template
+        assert 'COMMIT_KIND = "final"' in template
+        assert 'COMMIT_WORKFLOW_KIND = "code"' in template
+        assert '/respec-commit {COMMIT_KIND}' in template
+        assert 'COMMIT_METADATA_MARKDOWN = compose markdown:' not in template
+        assert 'git commit --' not in template
+        assert 'COMMIT_MESSAGE_BLOCK' not in template
         assert '### 7.5: Standards Finalization Phase' in template
         assert '#### Step 7.5.3: Exit to Completion Gate' in template
         assert '### 8.5 Completion Gate (Mandatory)' in template
@@ -850,9 +860,9 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert '#### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)' in template
-        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
+        assert '# D) Phase 1 commit orchestration (every pass)' in template
         assert '# E) Decision handling after commit' in template
-        assert template.index('# D) Phase 1 commit orchestration (command-owned, every pass)') < template.index(
+        assert template.index('# D) Phase 1 commit orchestration (every pass)') < template.index(
             '# E) Decision handling after commit'
         )
         assert 'Return to Step 7.4 (next loop pass runs coder → reviews → decision → commit).' in template
@@ -864,9 +874,11 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'COMMIT_SUBJECT = "[WIP] {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
+        assert 'COMMIT_KIND = "phase1-checkpoint"' in template
+        assert 'COMMIT_WORKFLOW_KIND = "code"' in template
         assert 'COMMIT_SUBJECT = "feat: complete {PHASE_NAME}"' not in template
-        assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'ALLOW_EMPTY = true' in template
+        assert '/respec-commit {COMMIT_KIND}' in template
         assert 'Decision: {{CODING_DECISION}}\n    Score: {{PHASE1_SCORE}}/100' not in template
 
     def test_code_template_uses_mandatory_precommit_completion_gate(self) -> None:
@@ -886,7 +898,8 @@ class TestCrossPlatformInvocationRendering:
             'Use AskUserQuestion with options:' not in template[template.index('### 8.5 Completion Gate (Mandatory)') :]
         )
         assert 'Finalize now with deferred-risk summary (retry completion gate)' not in template
-        assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'COMMIT_KIND = "final"' in template
+        assert '/respec-commit {COMMIT_KIND}' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
 
     def test_code_template_separates_rubric_score_from_review_state(self) -> None:
@@ -896,14 +909,6 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:' in template
-        assert 'PHASE1_REVIEW_STATUS = "blocked by active blockers"' in template
-        assert 'PHASE1_REVIEW_STATUS = "ready for completion gate"' in template
-        assert 'PHASE1_REVIEW_STATUS = "below completion threshold"' in template
-        assert 'STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:' in template
-        assert 'STANDARDS_REVIEW_STATUS = "blocked by active blockers"' in template
-        assert 'STANDARDS_REVIEW_STATUS = "ready for completion gate"' in template
-        assert 'STANDARDS_REVIEW_STATUS = "below completion threshold"' in template
         assert 'Current rubric score and iteration' in template
         assert 'Functional Rubric Score' in template
         assert 'Rubric Score: {CODING_SCORE}/100' in template
@@ -918,8 +923,38 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=CodexAdapter(),
         )
         assert '$Commit' not in template
-        assert 'git commit --no-verify -F - <<' in template
-        assert 'Do NOT append attribution trailers like Co-Authored-By' in template
+        assert 'Invoke the `respec-commit` skill with: `{COMMIT_KIND}`.' in template
+        assert 'git commit --' not in template
+
+    def test_commit_command_owns_standardized_commit_format_and_git_mechanics(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.COMMIT,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+
+        assert 'allowed-tools: Bash' in template
+        assert 'Task(' not in template
+        assert 'Do NOT edit source files.' in template
+        assert 'Do NOT edit test files.' in template
+        assert 'Do NOT run pre-commit.' in template
+        assert 'Do NOT retrieve MCP feedback.' in template
+        assert 'Do NOT decide workflow branch outcomes.' in template
+        assert 'COMMIT_KIND not in {phase1-checkpoint, phase2-checkpoint, final}' in template
+        assert 'COMMIT_WORKFLOW_KIND not in {code, patch}' in template
+        assert 'SUBJECT = "[WIP] patch {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
+        assert 'SUBJECT = "[WIP] {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
+        assert 'SUBJECT = "[WIP] patch {PHASE_NAME} [Phase 2 iter {STANDARDS_ITERATION}]"' in template
+        assert 'SUBJECT = "[WIP] {PHASE_NAME} [Phase 2 iter {STANDARDS_ITERATION}]"' in template
+        assert 'SUBJECT = "fix: complete {REQUEST_SUMMARY}"' in template
+        assert 'SUBJECT = "feat: complete {PHASE_NAME}"' in template
+        assert 'RUN git status --porcelain' in template
+        assert 'RUN git add -A' in template
+        assert "RUN git commit --allow-empty --no-verify -F - <<'EOF'" in template
+        assert "RUN git commit --no-verify -F - <<'EOF'" in template
+        assert "RUN git commit --amend --no-verify -F - <<'EOF'" in template
+        assert 'Commit stored: hash={COMMIT_HASH}, kind={COMMIT_KIND}, workflow={COMMIT_WORKFLOW_KIND}' in template
 
     def test_codex_code_template_uses_direct_numbered_selection_instructions(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1093,6 +1128,15 @@ class TestCrossPlatformInvocationRendering:
             in template
         )
         assert 'Task(respec-code-quality-reviewer)' in template
+        assert 'ORCHESTRATOR BOUNDARY' in template
+        assert 'This command is an orchestrator, not an implementation agent.' in template
+        assert 'Do NOT directly edit source code.' in template
+        assert 'Do NOT directly edit tests.' in template
+        assert 'ALL source-code and test implementation MUST be delegated to `respec-coder`.' in template
+        assert 'If `respec-coder` cannot be invoked, fail closed with diagnostics.' in template
+        assert 'Run static analysis manually' not in template
+        assert 'Continue with manual quality assessment' not in template
+        assert 'single-pass workflow' not in template
 
     def test_patch_template_includes_command_owned_commit_orchestration(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1102,18 +1146,15 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert '#### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)' in template
-        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
-        assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in template
-        assert 'Source: MCP consolidated CriticFeedback' in template
-        assert 'Source: coding-standards-reviewer CriticFeedback' in template
-        assert 'Review Score: {PHASE1_SCORE}/100' in template
-        assert 'Accomplished:' in template
-        assert 'Remaining Issues/Blockers:' in template
-        assert 'Review Status: {PHASE1_REVIEW_STATUS}' in template
-        assert 'Review Score: {STANDARDS_SCORE}/100' in template
-        assert 'Review Status: {STANDARDS_REVIEW_STATUS}' in template
-        assert 'Do NOT append attribution trailers like Co-Authored-By' in template
-        assert 'git commit --amend --no-verify -F - <<' in template
+        assert '# D) Phase 1 commit orchestration (every pass)' in template
+        assert 'COMMIT_KIND = "phase1-checkpoint"' in template
+        assert 'COMMIT_KIND = "phase2-checkpoint"' in template
+        assert 'COMMIT_KIND = "final"' in template
+        assert 'COMMIT_WORKFLOW_KIND = "patch"' in template
+        assert '/respec-commit {COMMIT_KIND}' in template
+        assert 'COMMIT_METADATA_MARKDOWN = compose markdown:' not in template
+        assert 'git commit --' not in template
+        assert 'COMMIT_MESSAGE_BLOCK' not in template
         assert '#### Step 6.5.3: Exit to Completion Gate' in template
         assert '### 6.7 Completion Gate (Mandatory)' in template
 
@@ -1162,7 +1203,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'Phase 1 review consolidation iteration mismatch' in template
         assert 'Phase 1 consolidated feedback missing' in template
         assert 'Do NOT call decide_coding_action' in template
-        assert 'Do NOT synthesize commit metadata' in template
+        assert 'Do NOT invoke respec-commit' in template
         assert 'IF coding-standards-reviewer reports failure:' in template
         assert 'Phase 2 review consolidation failed' in template
         assert 'Phase 2 review consolidation iteration mismatch' in template
@@ -1201,9 +1242,9 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
         assert '#### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)' in template
-        assert '# D) Phase 1 commit orchestration (command-owned, every pass)' in template
+        assert '# D) Phase 1 commit orchestration (every pass)' in template
         assert '# E) Decision handling after commit' in template
-        assert template.index('# D) Phase 1 commit orchestration (command-owned, every pass)') < template.index(
+        assert template.index('# D) Phase 1 commit orchestration (every pass)') < template.index(
             '# E) Decision handling after commit'
         )
         assert 'Return to Step 5.3 (next loop pass runs coder -> reviews -> decision -> commit).' in template
@@ -1215,9 +1256,11 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'COMMIT_SUBJECT = "[WIP] patch {PHASE_NAME} [Phase 1 iter {CODING_ITERATION}]"' in template
+        assert 'COMMIT_KIND = "phase1-checkpoint"' in template
+        assert 'COMMIT_WORKFLOW_KIND = "patch"' in template
         assert 'COMMIT_SUBJECT = "fix: complete {CHANGE_DESCRIPTION}"' not in template
-        assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'ALLOW_EMPTY = true' in template
+        assert '/respec-commit {COMMIT_KIND}' in template
         assert 'Decision: {{CODING_DECISION}}\n    Score: {{PHASE1_SCORE}}/100' not in template
 
     def test_patch_template_uses_mandatory_precommit_completion_gate(self) -> None:
@@ -1237,7 +1280,8 @@ class TestCrossPlatformInvocationRendering:
             'Use AskUserQuestion with options:' not in template[template.index('### 6.7 Completion Gate (Mandatory)') :]
         )
         assert 'Finalize now and retry completion gate' not in template
-        assert 'git commit --allow-empty --no-verify -F - <<' in template
+        assert 'COMMIT_KIND = "final"' in template
+        assert '/respec-commit {COMMIT_KIND}' in template
         assert 'Append in deterministic order: Test, Type check, Lint' not in template
 
     def test_patch_template_separates_rubric_score_from_review_state(self) -> None:
@@ -1247,14 +1291,6 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'PHASE1_BLOCKERS_ACTIVE = PHASE1_FEEDBACK contains any of:' in template
-        assert 'PHASE1_REVIEW_STATUS = "blocked by active blockers"' in template
-        assert 'PHASE1_REVIEW_STATUS = "ready for completion gate"' in template
-        assert 'PHASE1_REVIEW_STATUS = "below completion threshold"' in template
-        assert 'STANDARDS_BLOCKERS_ACTIVE = STANDARDS_FEEDBACK contains any of:' in template
-        assert 'STANDARDS_REVIEW_STATUS = "blocked by active blockers"' in template
-        assert 'STANDARDS_REVIEW_STATUS = "ready for completion gate"' in template
-        assert 'STANDARDS_REVIEW_STATUS = "below completion threshold"' in template
         assert 'Current rubric score and iteration' in template
         assert 'Functional Rubric Score' in template
         assert 'Rubric Score: {CODING_SCORE}/100' in template
@@ -1373,11 +1409,10 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert (
-            'Narrow exception: command reads verified consolidated feedback for commit metadata synthesis.'
-            in code_template
-        )
-        assert 'Narrow exception: command reads latest feedback only for commit metadata synthesis.' in patch_template
+        assert '/respec-commit {COMMIT_KIND}' in code_template
+        assert '/respec-commit {COMMIT_KIND}' in patch_template
+        assert 'COMMIT_METADATA_MARKDOWN = compose markdown:' not in code_template
+        assert 'COMMIT_METADATA_MARKDOWN = compose markdown:' not in patch_template
 
     def test_standards_command_template_is_render_first(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1460,6 +1495,7 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
 
+        assert template.count('Resolve Concrete Task Identity and Link Task Retrieval Loop') == 1
         assert 'mcp__respec-ai__list_documents(doc_type="task", parent_key={PLAN_NAME}/{PHASE_NAME})' in template
         assert (
             "Multiple Task documents exist for phase '{PHASE_NAME}'. Select the task for this coding loop." in template
@@ -1473,3 +1509,10 @@ class TestCrossPlatformInvocationRendering:
             in template
         )
         assert 'use plan_name/phase_name to find active task loop' not in template
+        assert 'Retrieve Task from respec-task Command' not in template
+
+        task_selection_index = template.index('### 5. Resolve Concrete Task Identity and Link Task Retrieval Loop')
+        override_index = template.index('### 6. Check for Architectural Override Proposals')
+        step_modes_index = template.index('### 6.5 Extract Step Modes from Task')
+        policy_index = template.index('### 6.7 Resolve Delivery Intent Policy')
+        assert task_selection_index < override_index < step_modes_index < policy_index

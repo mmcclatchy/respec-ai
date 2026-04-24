@@ -49,6 +49,7 @@ class CodeCommandTools(CommandToolsModel):
 
     # Agent invocations
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
+    commit_command_invocation: str = Field(..., description='Invocation text for respec-commit command')
     invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
     invoke_code_quality: str = Field(..., description='Invocation text for respec-code-quality-reviewer agent')
@@ -169,6 +170,14 @@ class CoderAgentTools(AgentToolsModel):
     @computed_field
     def research_example_path(self) -> str:
         return '.best-practices/htmx-patterns-codegen.md'
+
+
+class CommitCommandTools(CommandToolsModel):
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for command allowed-tools section')
 
 
 class AutomatedQualityCheckerAgentTools(AgentToolsModel):

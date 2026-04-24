@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 from .command_strategies import (
     CodeCommandStrategy,
     CommandStrategy,
+    CommitCommandStrategy,
     PatchCommandStrategy,
     PhaseCommandStrategy,
     PlanCommandStrategy,
@@ -28,6 +29,7 @@ class TemplateCoordinator:
             RespecAICommand.TASK: TaskCommandStrategy(),
             RespecAICommand.CODE: CodeCommandStrategy(),
             RespecAICommand.PATCH: PatchCommandStrategy(),
+            RespecAICommand.COMMIT: CommitCommandStrategy(),
             RespecAICommand.ROADMAP: PlanRoadmapCommandStrategy(),
             RespecAICommand.PLAN_CONVERSATION: PlanConversationCommandStrategy(),
             RespecAICommand.STANDARDS: StandardsCommandStrategy(),

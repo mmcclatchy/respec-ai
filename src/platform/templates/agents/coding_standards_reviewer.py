@@ -82,6 +82,15 @@ VIOLATION: Writing any file (*.md, *.txt, *.json) to disk
 
 ## WORKFLOW
 
+### Step 0: Retrieve Task Context
+
+```text
+TASK_MARKDOWN = {tools.retrieve_task}
+```
+
+Use TASK_MARKDOWN only as task scope/context while assessing configured coding standards.
+Do not infer standards from the task document.
+
 ═══════════════════════════════════════════════
 MANDATORY CONFIG-DRIVEN ASSESSMENT PROTOCOL
 ═══════════════════════════════════════════════
