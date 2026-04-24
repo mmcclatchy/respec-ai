@@ -17,6 +17,8 @@ Orchestrate the complete implementation workflow, transforming Phases into produ
 
 {tools.mcp_tools_reference}
 
+{tools.tui_adapter.subagent_invocation_guardrail}
+
 ═══════════════════════════════════════════════
 TOOL INVOCATION
 ═══════════════════════════════════════════════

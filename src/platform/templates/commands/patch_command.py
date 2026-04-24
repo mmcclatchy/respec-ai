@@ -17,6 +17,8 @@ Orchestrate bug fixes, feature extensions, and refactoring of existing code thro
 
 {tools.mcp_tools_reference}
 
+{tools.tui_adapter.subagent_invocation_guardrail}
+
 ## Workflow Steps
 
 ### 1. Parse User Inputs

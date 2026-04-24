@@ -862,6 +862,36 @@ class TestCodexAdapterInvocationRendering:
         )
         assert result == guide
 
+    def test_render_command_prepends_no_fork_guardrail_for_delegating_commands(self) -> None:
+        rendered = self.adapter.render_command(
+            CommandSpec(
+                name='respec-code',
+                description='desc',
+                argument_hint='args',
+                tools=['Task'],
+                body='## Workflow Steps\nBody',
+                delegated_agents=['respec-coder'],
+            )
+        )
+
+        assert '## Codex Subagent Guardrail' in rendered
+        assert 'NEVER invoke a subagent with forked context.' in rendered
+        assert rendered.index('## Codex Subagent Guardrail') < rendered.index('## Workflow Steps')
+
+    def test_render_command_skips_no_fork_guardrail_when_no_delegated_agents(self) -> None:
+        rendered = self.adapter.render_command(
+            CommandSpec(
+                name='respec-standards',
+                description='desc',
+                argument_hint='args',
+                tools=['Read'],
+                body='## Workflow Steps\nBody',
+                delegated_agents=[],
+            )
+        )
+
+        assert '## Codex Subagent Guardrail' not in rendered
+
     def test_render_command_invocation_non_interactive_references_skill(self) -> None:
         result = self.adapter.render_command_invocation(
             'respec-roadmap',

@@ -23,6 +23,16 @@ _INTERNAL_COMMAND_SKILLS = {'respec-plan-conversation'}
 
 
 class CodexAdapter(TuiAdapter):
+    _NO_FORK_GUARDRAIL = """## Codex Subagent Guardrail
+
+Use fresh isolated subagents only.
+- NEVER invoke a subagent with forked context.
+- NEVER invoke a subagent with full-history context.
+- NEVER rely on inherited conversation context.
+- Pass only explicit invocation inputs.
+- Require each subagent to retrieve any additional context through its own tools.
+"""
+
     @property
     def display_name(self) -> str:
         return 'OpenAI Codex'
@@ -30,6 +40,10 @@ class CodexAdapter(TuiAdapter):
     @property
     def conversation_workflow_name(self) -> str:
         return 'the conversation workflow'
+
+    @property
+    def subagent_invocation_guardrail(self) -> str:
+        return self._NO_FORK_GUARDRAIL
 
     @property
     def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
@@ -96,7 +110,10 @@ class CodexAdapter(TuiAdapter):
             f'description: {spec.description}',
             '---',
         ]
-        return '\n'.join(parts) + '\n\n' + spec.body
+        body = spec.body
+        if spec.delegated_agents:
+            body = f'{self.subagent_invocation_guardrail}\n\n{body}'
+        return '\n'.join(parts) + '\n\n' + body
 
     def write_all(
         self,

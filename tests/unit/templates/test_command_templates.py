@@ -269,6 +269,9 @@ class TestCrossPlatformInvocationRendering:
         template = coordinator.generate_command_template(
             RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
+        assert '## Codex Subagent Guardrail' in template
+        assert 'NEVER invoke a subagent with forked context.' in template
+        assert template.index('## Codex Subagent Guardrail') < template.index('## Workflow Steps')
         assert 'MAX_ACTIVE_WORKERS =' in template
         assert 'If spawn fails' in template
         assert 'close it' in template
@@ -285,6 +288,8 @@ class TestCrossPlatformInvocationRendering:
         assert 'MAX_ACTIVE_WORKERS =' not in opencode_template
         assert 'If spawn fails' not in claude_template
         assert 'If spawn fails' not in opencode_template
+        assert '## Codex Subagent Guardrail' not in claude_template
+        assert '## Codex Subagent Guardrail' not in opencode_template
 
     def test_non_codex_roadmap_retains_legacy_parallel_wording(self) -> None:
         coordinator = TemplateCoordinator()
@@ -311,6 +316,7 @@ class TestCrossPlatformInvocationRendering:
         template = coordinator.generate_command_template(
             RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
+        assert '## Codex Subagent Guardrail' in template
         assert 'Phase 1 review agents' in template
         assert 'close the completed worker' in template
 

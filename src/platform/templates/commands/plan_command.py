@@ -72,6 +72,8 @@ description: Orchestrate strategic planning workflow
 
 # Strategic Planning Orchestration
 
+{tools.tui_adapter.subagent_invocation_guardrail}
+
 ## Step 0: Load Existing Plan from Platform
 
 Load existing project plan from platform (if exists):

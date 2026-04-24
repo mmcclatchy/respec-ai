@@ -59,6 +59,8 @@ description: Transform strategic plans into detailed Phases
 ## Overview
 Transform strategic plans into detailed Phases through quality-driven refinement. This command orchestrates technical architecture design, research integration, and platform-specific Phase storage.
 
+{tools.tui_adapter.subagent_invocation_guardrail}
+
 ## Primary Responsibilities
 
 ### 1. Initialize Technical Design Process

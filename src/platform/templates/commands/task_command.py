@@ -17,6 +17,8 @@ Orchestrate transformation of Phase architecture into a detailed, implementable 
 
 {tools.mcp_tools_reference}
 
+{tools.tui_adapter.subagent_invocation_guardrail}
+
 ## Workflow Steps
 
 ### 0. Setup and Initialization

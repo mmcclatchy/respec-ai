@@ -74,6 +74,10 @@ class TuiAdapter(ABC):
         ask_tool = self.ask_user_question_tool_name
         return f'{ask_tool} response' if ask_tool else 'the user response'
 
+    @property
+    def subagent_invocation_guardrail(self) -> str:
+        return ''
+
     @abstractmethod
     def commands_dir(self, project_path: Path) -> Path: ...
 

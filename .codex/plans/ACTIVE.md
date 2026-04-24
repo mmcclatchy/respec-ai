@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/phase-task-cardinality-explicit-task-identity.md`
-- Objective: Remove single-task-per-phase workflow assumptions and make task identity explicit across planning, patching, coding, and path helpers.
+- Plan File: `./.codex/plans/codex-command-level-no-fork-guardrail.md`
+- Objective: Add an early Codex-only command guardrail that forbids forked subagent invocation before any first spawn attempt.
 - Phase: completed
-- Last Updated: 2026-04-23T22:08:00Z
+- Last Updated: 2026-04-23T22:30:00Z
 
 ## Usage
 
