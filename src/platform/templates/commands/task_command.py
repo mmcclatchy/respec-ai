@@ -368,7 +368,7 @@ LOOP_DECISION = LOOP_DECISION_RESPONSE.status
 LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
 LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
 
-Decision options: "complete", "refine", "user_input"
+Decision options: "completed", "refine", "user_input"
 ```
 
 ### 5. MCP Decision Handling
@@ -380,7 +380,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 
 "refine"     → Execute refinement. Do NOT ask, confirm, or present options to the user.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
-"complete"   → Proceed to next step. Do NOT ask for confirmation.
+"completed"  → Proceed to next step. Do NOT ask for confirmation.
 
 VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
@@ -437,7 +437,7 @@ ELIF LOOP_DECISION == "user_input":
 
   Return to Step 4.1 (task-planner → Task retrieval verification → task-plan-critic → feedback verification → decision)
 
-ELIF LOOP_DECISION == "complete":
+ELIF LOOP_DECISION == "completed":
   Display: "✅ Score: {{LOOP_SCORE}}/100 — task approved"
   Proceed to Step 6.
 ```

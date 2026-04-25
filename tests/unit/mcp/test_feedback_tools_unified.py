@@ -81,6 +81,45 @@ class TestUnifiedFeedbackToolsMemoryBoundaries:
         assert 'user feedback 2' in response.message
 
     @pytest.mark.asyncio
+    async def test_get_feedback_preserves_stored_iteration_numbers(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PLAN)
+        await state.add_loop(loop, plan_name)
+
+        loop.add_feedback(
+            CriticFeedback(
+                loop_id=loop.id,
+                critic_agent=CriticAgent.PLAN_CRITIC,
+                iteration=2,
+                overall_score=82,
+                assessment_summary='Assessment 2',
+                detailed_feedback='Details 2',
+                key_issues=[],
+                recommendations=[],
+            )
+        )
+        loop.add_feedback(
+            CriticFeedback(
+                loop_id=loop.id,
+                critic_agent=CriticAgent.PLAN_CRITIC,
+                iteration=4,
+                overall_score=91,
+                assessment_summary='Assessment 4',
+                detailed_feedback='Details 4',
+                key_issues=[],
+                recommendations=[],
+            )
+        )
+        await state.save_loop(loop)
+
+        tools = UnifiedFeedbackTools(state)
+        response = await tools.get_feedback(loop.id, count=2)
+
+        assert '## Iteration 2 - Score: 82' in response.message
+        assert '## Iteration 4 - Score: 91' in response.message
+        assert '## Iteration 1 - Score: 82' not in response.message
+
+    @pytest.mark.asyncio
     async def test_analysis_upsert_and_retrieve_via_state_manager(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
         loop = LoopState(loop_type=LoopType.ANALYST)
@@ -211,6 +250,47 @@ Detailed feedback present.
         with pytest.raises(ToolError, match='Missing required assessment fields: overall_score'):
             await tools.store_critic_feedback(loop.id, invalid_feedback_markdown)
 
+    @pytest.mark.asyncio
+    async def test_store_critic_feedback_rejects_placeholder_blockers_without_persisting(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        invalid_feedback_markdown = """# Critic Feedback: TASK-CRITIC
+
+## Assessment Summary
+- **Loop ID**: task-loop
+- **Iteration**: 1
+- **Overall Score**: 100
+- **Assessment Summary**: Task is ready and has no blockers.
+
+## Analysis
+
+The task is implementation-ready.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- None identified
+
+### Blockers
+
+- None.
+
+### Recommendations
+
+- None provided
+"""
+
+        with pytest.raises(ToolError, match='Blockers must be actionable non-empty strings'):
+            await tools.store_critic_feedback(loop.id, invalid_feedback_markdown)
+
+        stored_loop = await state.get_loop(loop.id)
+        assert stored_loop.current_score == 0
+        assert stored_loop.feedback_history == []
+
 
 class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
@@ -225,7 +305,8 @@ class TestDeterministicReviewConsolidation:
             review_iteration=1,
             reviewer_name='automated-quality-checker',
             feedback_markdown='### Automated Quality Check (Score: 45/50)',
-            score=90,
+            score=45,
+            max_score=50,
             blockers=[],
             findings=[{'priority': 'P2', 'feedback': 'Minor lint issue in src/main.py:10'}],
         )
@@ -234,7 +315,8 @@ class TestDeterministicReviewConsolidation:
             review_iteration=1,
             reviewer_name='spec-alignment-reviewer',
             feedback_markdown='### Spec Alignment (Score: 47/50)',
-            score=94,
+            score=47,
+            max_score=50,
             blockers=[],
             findings=[{'priority': 'P1', 'feedback': 'Acceptance criterion AC-3 partially implemented'}],
         )
@@ -242,8 +324,9 @@ class TestDeterministicReviewConsolidation:
             loop_id=loop.id,
             review_iteration=1,
             reviewer_name='code-quality-reviewer',
-            feedback_markdown='### Code Quality (Adjustment: -1)',
-            score=88,
+            feedback_markdown='### Code Quality (Score: 22/25)',
+            score=22,
+            max_score=25,
             blockers=[],
             findings=[],
         )
@@ -258,11 +341,222 @@ class TestDeterministicReviewConsolidation:
             ],
         )
 
-        assert consolidate_response.current_score > 0
+        assert consolidate_response.current_score == 91
         feedback = await tools.get_feedback(loop.id, count=1)
         assert 'Consolidated 3 reviewer result(s) for iteration 1.' in feedback.message
         assert '[Severity:P1]' in feedback.message
         assert '[Severity:P2]' in feedback.message
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '- Score: 45/50' in detailed_feedback
+        assert '- Normalized Score: 90/100' in detailed_feedback
+        assert '- Weighted Contribution:' in detailed_feedback
+
+    @pytest.mark.asyncio
+    async def test_reviewer_local_max_score_normalizes_to_composite_percentage(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='automated-quality-checker',
+            feedback_markdown='### Automated Quality Check (Score: 50/50)',
+            score=50,
+            max_score=50,
+            blockers=[],
+            findings=[],
+        )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=['automated-quality-checker'],
+        )
+
+        assert consolidate_response.current_score == 100
+        feedback = await tools.get_feedback(loop.id, count=1)
+        assert 'Composite score=100/100.' in feedback.message
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '- Score: 50/50' in detailed_feedback
+        assert '- Normalized Score: 100/100' in detailed_feedback
+
+    @pytest.mark.asyncio
+    async def test_all_active_phase1_reviewers_perfect_returns_composite_100(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+        reviewers = [
+            ('automated-quality-checker', 50),
+            ('spec-alignment-reviewer', 50),
+            ('code-quality-reviewer', 25),
+            ('frontend-reviewer', 25),
+            ('backend-api-reviewer', 25),
+            ('database-reviewer', 25),
+            ('infrastructure-reviewer', 25),
+        ]
+
+        for reviewer_name, max_score in reviewers:
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {max_score}/{max_score})',
+                score=max_score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[reviewer_name for reviewer_name, _ in reviewers],
+        )
+
+        assert consolidate_response.current_score == 100
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '- Weighted Contribution:' in detailed_feedback
+
+    @pytest.mark.asyncio
+    async def test_non_perfect_phase1_reviewers_cannot_round_up_to_composite_100(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+        reviewers = [
+            ('automated-quality-checker', 50, 50),
+            ('spec-alignment-reviewer', 50, 50),
+            ('code-quality-reviewer', 25, 25),
+            ('frontend-reviewer', 25, 24),
+            ('backend-api-reviewer', 25, 25),
+            ('database-reviewer', 25, 25),
+            ('infrastructure-reviewer', 25, 25),
+        ]
+
+        for reviewer_name, max_score, score in reviewers:
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                score=score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[reviewer_name for reviewer_name, _, _ in reviewers],
+        )
+
+        assert consolidate_response.current_score == 99
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '- Score: 24/25' in detailed_feedback
+        assert '- Weighted Contribution: 3.60/100' in detailed_feedback
+
+    @pytest.mark.asyncio
+    async def test_store_reviewer_result_rejects_placeholder_blockers_without_persisting(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        with pytest.raises(ToolError, match='Reviewer blockers must be actionable non-empty strings'):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name='automated-quality-checker',
+                feedback_markdown='### Automated Quality Check (Score: 50/50)',
+                score=50,
+                max_score=50,
+                blockers=['No blockers'],
+                findings=[],
+            )
+
+        stored_results = await state.list_reviewer_results(loop.id, 1)
+        assert stored_results == []
+
+    @pytest.mark.asyncio
+    async def test_store_reviewer_result_rejects_blank_blockers_without_persisting(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        with pytest.raises(ToolError, match='Reviewer blockers must be actionable non-empty strings'):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name='automated-quality-checker',
+                feedback_markdown='### Automated Quality Check (Score: 50/50)',
+                score=50,
+                max_score=50,
+                blockers=[' '],
+                findings=[],
+            )
+
+        stored_results = await state.list_reviewer_results(loop.id, 1)
+        assert stored_results == []
+
+    @pytest.mark.asyncio
+    async def test_consolidate_persists_reviewer_blockers_structurally(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='automated-quality-checker',
+            feedback_markdown='### Automated Quality Check (Score: 50/50)',
+            score=50,
+            max_score=50,
+            blockers=['Required integration test is failing.'],
+            findings=[],
+        )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=['automated-quality-checker'],
+        )
+
+        assert consolidate_response.current_score == 100
+        stored_loop = await state.get_loop(loop.id)
+        consolidated_feedback = stored_loop.feedback_history[-1]
+        assert consolidated_feedback.blockers == ['[automated-quality-checker] Required integration test is failing.']
+        assert '[BLOCKING] [automated-quality-checker] Required integration test is failing.' in (
+            consolidated_feedback.key_issues
+        )
+
+    @pytest.mark.asyncio
+    async def test_store_reviewer_result_rejects_wrong_max_score(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        with pytest.raises(ToolError, match='max_score for automated-quality-checker must be 50'):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name='automated-quality-checker',
+                feedback_markdown='### Automated Quality Check (Score: 100/100)',
+                score=100,
+                max_score=100,
+                blockers=[],
+                findings=[],
+            )
 
     @pytest.mark.asyncio
     async def test_consolidate_requires_all_active_reviewers(self, plan_name: str) -> None:
@@ -275,8 +569,9 @@ class TestDeterministicReviewConsolidation:
             loop_id=loop.id,
             review_iteration=1,
             reviewer_name='coding-standards-reviewer',
-            feedback_markdown='### Coding Standards Review (Adjustment: -2)',
-            score=82,
+            feedback_markdown='### Coding Standards Review (Score: 23/25)',
+            score=23,
+            max_score=25,
             blockers=[],
             findings=[],
         )

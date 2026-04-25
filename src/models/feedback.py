@@ -1,15 +1,27 @@
 from datetime import datetime
-from typing import Self
+from typing import ClassVar, Self
 
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .base import MCPModel
 from .enums import CriticAgent, Priority
 
 
 class CriticFeedback(MCPModel):
+    EMPTY_BLOCKER_SENTINELS: ClassVar[frozenset[str]] = frozenset(
+        {
+            'none',
+            'none identified',
+            'none provided',
+            'no blockers',
+            'no active blockers',
+            'n/a',
+            'na',
+        }
+    )
+
     loop_id: str
     critic_agent: CriticAgent
     iteration: int
@@ -28,9 +40,34 @@ class CriticFeedback(MCPModel):
             raise ValueError('Overall score must be between 0 and 100')
         return score
 
+    @field_validator('blockers')
+    @classmethod
+    def validate_blockers_are_actionable(cls, blockers: list[str]) -> list[str]:
+        invalid_blockers = cls.invalid_blocker_values(blockers)
+        if invalid_blockers:
+            invalid_values = ', '.join(repr(blocker) for blocker in invalid_blockers)
+            raise ValueError(
+                'Blockers must be actionable non-empty strings; use [] when no blockers exist. '
+                f'Remove invalid blocker entries: {invalid_values}'
+            )
+        return blockers
+
     @property
     def quality_score(self) -> int:
         return self.overall_score
+
+    @classmethod
+    def is_empty_blocker_sentinel(cls, value: str) -> bool:
+        normalized = value.strip().lower().strip(' .:-')
+        return normalized in cls.EMPTY_BLOCKER_SENTINELS
+
+    @classmethod
+    def is_invalid_blocker_value(cls, value: str) -> bool:
+        return not value.strip() or cls.is_empty_blocker_sentinel(value)
+
+    @classmethod
+    def invalid_blocker_values(cls, blockers: list[str]) -> list[str]:
+        return [blocker for blocker in blockers if cls.is_invalid_blocker_value(blocker)]
 
     @classmethod
     def parse_markdown(cls, markdown: str) -> Self:
@@ -115,7 +152,7 @@ class CriticFeedback(MCPModel):
 
     def build_markdown(self) -> str:
         issues_md = '\n'.join([f'- {issue}' for issue in self.key_issues]) if self.key_issues else '- None identified'
-        blockers_md = '\n'.join([f'- {blocker}' for blocker in self.blockers]) if self.blockers else '- None identified'
+        blockers_md = '\n'.join([f'- {blocker}' for blocker in self.blockers])
         recommendations_md = (
             '\n'.join([f'- {rec}' for rec in self.recommendations]) if self.recommendations else '- None provided'
         )
@@ -164,6 +201,7 @@ class ReviewerResult(BaseModel):
     reviewer_name: CriticAgent
     feedback_markdown: str
     score: int
+    max_score: int
     blockers: list[str] = Field(default_factory=list)
     findings: list[ReviewFinding] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=datetime.now)
@@ -171,6 +209,35 @@ class ReviewerResult(BaseModel):
     @field_validator('score')
     @classmethod
     def validate_score_range(cls, score: int) -> int:
-        if not (0 <= score <= 100):
-            raise ValueError('Reviewer score must be between 0 and 100')
+        if score < 0:
+            raise ValueError('Reviewer score must be >= 0')
         return score
+
+    @field_validator('max_score')
+    @classmethod
+    def validate_max_score(cls, max_score: int) -> int:
+        if max_score <= 0:
+            raise ValueError('Reviewer max_score must be > 0')
+        return max_score
+
+    @field_validator('blockers')
+    @classmethod
+    def validate_blockers_are_actionable(cls, blockers: list[str]) -> list[str]:
+        invalid_blockers = CriticFeedback.invalid_blocker_values(blockers)
+        if invalid_blockers:
+            invalid_values = ', '.join(repr(blocker) for blocker in invalid_blockers)
+            raise ValueError(
+                'Reviewer blockers must be actionable non-empty strings; use [] when no blockers exist. '
+                f'Remove invalid blocker entries: {invalid_values}'
+            )
+        return blockers
+
+    @model_validator(mode='after')
+    def validate_score_within_max(self) -> Self:
+        if self.score > self.max_score:
+            raise ValueError('Reviewer score must be <= max_score')
+        return self
+
+    @property
+    def normalized_score(self) -> int:
+        return int(round((self.score / self.max_score) * 100))

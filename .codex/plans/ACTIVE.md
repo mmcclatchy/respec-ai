@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/codex-model-manual-selection.md`
-- Objective: Remove Codex model recommendations, add optional Codex CLI update prompting, and keep model options dynamically discovered.
+- Plan File: `./.codex/plans/composite-score-blocker-contract-cleanup.md`
+- Objective: Enforce strict composite 100 semantics and reject blank blocker data.
 - Phase: completed
-- Last Updated: 2026-04-24T22:31:16Z
+- Last Updated: 2026-04-25T17:59:01Z
 
 ## Usage
 

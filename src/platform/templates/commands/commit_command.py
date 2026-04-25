@@ -80,7 +80,7 @@ IF COMMIT_KIND == "phase1-checkpoint":
     "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
   IF BLOCKERS_ACTIVE:
     REVIEW_STATUS = "blocked by active blockers"
-  ELIF CODING_DECISION == "complete":
+  ELIF CODING_DECISION == "completed":
     REVIEW_STATUS = "ready for completion gate"
   ELSE:
     REVIEW_STATUS = "below completion threshold"
@@ -110,7 +110,7 @@ IF COMMIT_KIND == "phase2-checkpoint":
     "[Severity:P0]", "severity=P0", "**[P0]**", "[BLOCKING]"
   IF BLOCKERS_ACTIVE:
     REVIEW_STATUS = "blocked by active blockers"
-  ELIF STANDARDS_DECISION == "complete":
+  ELIF STANDARDS_DECISION == "completed":
     REVIEW_STATUS = "ready for completion gate"
   ELSE:
     REVIEW_STATUS = "below completion threshold"

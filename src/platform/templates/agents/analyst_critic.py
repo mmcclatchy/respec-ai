@@ -83,6 +83,7 @@ It MUST include these exact top-level sections:
 - `## Analysis`
 - `## Issues and Recommendations`
 - `## Metadata`
+When no blockers exist, leave the `### Blockers` section empty. Do NOT write placeholder bullets such as `- None`, `- None.`, `- None identified`, or `- No blockers`.
 
 Do NOT return feedback markdown to Main Agent.
 Do NOT write files to disk.
@@ -110,6 +111,7 @@ Lane 1 — Content score (`overall_score`):
 Lane 2 — Structural/procedural blockers (`### Blockers`):
 - Add blockers for hard-stop contract failures only (missing required sections, missing source traceability, malformed output contract).
 - Do not use blockers for ordinary quality gaps. Handle those gaps through score deductions.
+- If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
 
 ## Invocation Contract
 

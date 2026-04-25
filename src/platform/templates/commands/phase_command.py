@@ -98,7 +98,7 @@ Main Agent (via respec-phase)
     │
     ├── 3. Handle Loop Decision
     │   ├── IF "refine" → Pass feedback to phase-architect
-    │   ├── IF "complete" → Proceed to storage
+    │   ├── IF "completed" → Proceed to storage
     │   └── IF "user_input" → Request technical clarification
     │
     └── 4. Store Phase
@@ -368,14 +368,14 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 
 "refine"     → Execute refinement. Do NOT ask, confirm, or present options to the user.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
-"complete"   → Proceed to next step. Do NOT ask for confirmation.
+"completed"  → Proceed to next step. Do NOT ask for confirmation.
 
 VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
 ═══════════════════════════════════════════════
 
 ```text
-IF LOOP_DECISION == "COMPLETE":
+IF LOOP_DECISION == "completed":
   Display to user: "✅ Score: {{LOOP_SCORE}}/100 — Phase meets quality standards"
   Proceed to Step 8.
 
@@ -471,7 +471,7 @@ Exclude internal/local-only candidates:
 
 EXTERNAL_APIS = unique normalized candidates after exclusions
 
-BP_PATH_REGEX = '(\\\\.best-practices/[A-Za-z0-9._/-]+\\\\.md)'
+BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
 EXISTING_BP_READ_PATHS = []
 
 For each read_path in EXISTING_READ_PATHS:

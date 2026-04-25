@@ -78,6 +78,7 @@ Return feedback markdown to Main Agent. This is a human-driven workflow.
 Your ONLY output is the CriticFeedback markdown specified in OUTPUT FORMAT.
 Do NOT store feedback in MCP. Do NOT write files to disk.
 Do NOT add commentary before or after the feedback markdown.
+When no blockers exist, leave the `### Blockers` section empty. Do NOT write placeholder bullets such as `- None`, `- None.`, `- None identified`, or `- No blockers`.
 
 VIOLATION: Storing feedback via MCP tools in this human-driven workflow.
            Plan-critic returns feedback to Main Agent for user presentation.
@@ -94,6 +95,7 @@ Lane 1 — Content score (`overall_score`):
 Lane 2 — Structural/procedural blockers (`### Blockers`):
 - Use blockers only for hard-stop contract failures (missing mandatory plan sections, malformed output structure, unrecoverable evidence/traceability gaps).
 - Do not treat normal quality deficits as blockers.
+- If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
 
 ## Invocation Contract
 

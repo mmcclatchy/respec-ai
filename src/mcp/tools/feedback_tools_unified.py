@@ -23,11 +23,22 @@ class UnifiedFeedbackTools:
 
     def __init__(self, state: StateManager) -> None:
         self.state = state
-        self._phase1_core_weights: dict[CriticAgent, float] = {
-            CriticAgent.AUTOMATED_QUALITY_CHECKER: 0.30,
-            CriticAgent.SPEC_ALIGNMENT_REVIEWER: 0.35,
-            CriticAgent.CODE_QUALITY_REVIEWER: 0.15,
+        self._reviewer_max_scores: dict[CriticAgent, int] = {
+            CriticAgent.AUTOMATED_QUALITY_CHECKER: 50,
+            CriticAgent.SPEC_ALIGNMENT_REVIEWER: 50,
+            CriticAgent.CODE_QUALITY_REVIEWER: 25,
+            CriticAgent.FRONTEND_REVIEWER: 25,
+            CriticAgent.BACKEND_API_REVIEWER: 25,
+            CriticAgent.DATABASE_REVIEWER: 25,
+            CriticAgent.INFRASTRUCTURE_REVIEWER: 25,
+            CriticAgent.CODING_STANDARDS_REVIEWER: 25,
         }
+        self._phase1_core_weights: dict[CriticAgent, float] = {
+            CriticAgent.AUTOMATED_QUALITY_CHECKER: 25.0,
+            CriticAgent.SPEC_ALIGNMENT_REVIEWER: 35.0,
+            CriticAgent.CODE_QUALITY_REVIEWER: 25.0,
+        }
+        self._phase1_domain_weight_pool = 15.0
         self._phase1_specialists: set[CriticAgent] = {
             CriticAgent.FRONTEND_REVIEWER,
             CriticAgent.BACKEND_API_REVIEWER,
@@ -147,12 +158,15 @@ class UnifiedFeedbackTools:
         # Add critic feedback history
         if critic_feedback_list:
             feedback_parts.append('# Critic Feedback History\n')
-            for i, critic_feedback in enumerate(critic_feedback_list, 1):
+            for critic_feedback in critic_feedback_list:
                 logger.debug(
-                    f'get_feedback: formatting iteration {i} with score={critic_feedback.overall_score}, '
+                    'get_feedback: formatting stored iteration '
+                    f'{critic_feedback.iteration} with score={critic_feedback.overall_score}, '
                     f'iteration={critic_feedback.iteration}'
                 )
-                feedback_parts.append(f'## Iteration {i} - Score: {critic_feedback.overall_score}\n')
+                feedback_parts.append(
+                    f'## Iteration {critic_feedback.iteration} - Score: {critic_feedback.overall_score}\n'
+                )
                 feedback_parts.append(f'{critic_feedback.assessment_summary}\n')
                 if critic_feedback.blockers:
                     feedback_parts.append('### Blockers')
@@ -237,6 +251,7 @@ class UnifiedFeedbackTools:
         reviewer_name: str,
         feedback_markdown: str,
         score: int,
+        max_score: int,
         blockers: list[str],
         findings: list[dict[str, str]],
     ) -> MCPResponse:
@@ -254,6 +269,14 @@ class UnifiedFeedbackTools:
         except LoopNotFoundError:
             raise ResourceError('Loop does not exist')
 
+        parsed_reviewer_name = self._parse_reviewer_name(reviewer_name)
+        expected_max_score = self._reviewer_max_scores.get(parsed_reviewer_name)
+        if expected_max_score is not None and max_score != expected_max_score:
+            raise ToolError(
+                f'max_score for {parsed_reviewer_name.value} must be {expected_max_score}; received {max_score}'
+            )
+        validated_blockers = self._validate_reviewer_blockers(blockers or [])
+
         review_findings = [
             ReviewFinding(
                 priority=Priority(item['priority']),
@@ -264,10 +287,11 @@ class UnifiedFeedbackTools:
         reviewer_result = ReviewerResult(
             loop_id=loop_id,
             review_iteration=review_iteration,
-            reviewer_name=self._parse_reviewer_name(reviewer_name),
+            reviewer_name=parsed_reviewer_name,
             feedback_markdown=feedback_markdown,
             score=score,
-            blockers=blockers or [],
+            max_score=max_score,
+            blockers=validated_blockers,
             findings=review_findings,
         )
         await self.state.upsert_reviewer_result(reviewer_result)
@@ -276,7 +300,7 @@ class UnifiedFeedbackTools:
             status=loop_state.status,
             message=(
                 f'Stored reviewer result for {reviewer_result.reviewer_name.value} '
-                f'(iteration={review_iteration}, score={reviewer_result.score})'
+                f'(iteration={review_iteration}, score={reviewer_result.score}/{reviewer_result.max_score})'
             ),
         )
 
@@ -311,9 +335,11 @@ class UnifiedFeedbackTools:
         universe = self._phase2_review_universe if is_phase2 else self._phase1_review_universe
 
         active_results = [results_by_reviewer[name] for name in active_critic_agents]
-        overall_score = (
-            self._compute_phase2_score(active_results) if is_phase2 else self._compute_phase1_score(active_results)
-        )
+        if is_phase2:
+            weights_by_reviewer = self._phase2_weights_for_results(active_results)
+        else:
+            weights_by_reviewer = self._phase1_weights_for_results(active_results)
+        overall_score, weighted_contributions = self._compute_weighted_score(active_results, weights_by_reviewer)
 
         all_blockers = [
             f'[{result.reviewer_name.value}] {blocker}'
@@ -357,7 +383,11 @@ class UnifiedFeedbackTools:
             result = results_by_reviewer.get(reviewer)
             if result:
                 detail_lines.append(f'#### {reviewer.value}')
-                detail_lines.append(f'- Score: {result.score}/100')
+                reviewer_weight = weights_by_reviewer.get(reviewer, 0.0)
+                detail_lines.append(f'- Score: {result.score}/{result.max_score}')
+                detail_lines.append(f'- Normalized Score: {result.normalized_score}/100')
+                detail_lines.append(f'- Configured Weight: {reviewer_weight:g}')
+                detail_lines.append(f'- Weighted Contribution: {weighted_contributions.get(reviewer, 0.0):.2f}/100')
                 if result.blockers:
                     detail_lines.append('- Blockers:')
                     detail_lines.extend([f'  - {blocker}' for blocker in result.blockers])
@@ -379,6 +409,7 @@ class UnifiedFeedbackTools:
             assessment_summary=summary,
             detailed_feedback='\n'.join(detail_lines).strip(),
             key_issues=issues[:50],
+            blockers=all_blockers,
             recommendations=recommendations,
         )
         loop_state.upsert_feedback(feedback)
@@ -406,33 +437,71 @@ class UnifiedFeedbackTools:
 
         return feedback
 
-    def _compute_phase1_score(self, active_results: list[ReviewerResult]) -> int:
-        score_by_reviewer = {result.reviewer_name: result.score for result in active_results}
-        core_weights = dict(self._phase1_core_weights)
-
-        specialist_weights: dict[CriticAgent, float] = {}
-        active_specialists = [reviewer for reviewer in self._phase1_specialists if reviewer in score_by_reviewer]
+    def _phase1_weights_for_results(self, active_results: list[ReviewerResult]) -> dict[CriticAgent, float]:
+        active_reviewers = {result.reviewer_name for result in active_results}
+        weights = {
+            reviewer: weight for reviewer, weight in self._phase1_core_weights.items() if reviewer in active_reviewers
+        }
+        active_specialists = sorted(
+            [reviewer for reviewer in self._phase1_specialists if reviewer in active_reviewers],
+            key=lambda reviewer: reviewer.value,
+        )
         if active_specialists:
-            per_specialist_weight = 0.20 / len(active_specialists)
-            specialist_weights = {reviewer: per_specialist_weight for reviewer in active_specialists}
-        else:
-            # Re-normalize core reviewers when no specialists are active.
-            core_weight_total = sum(core_weights.values())
-            specialist_weights = {}
-            core_weights = {reviewer: weight / core_weight_total for reviewer, weight in core_weights.items()}
+            per_specialist_weight = self._phase1_domain_weight_pool / len(active_specialists)
+            weights.update({reviewer: per_specialist_weight for reviewer in active_specialists})
 
-        weighted_total = 0.0
-        for reviewer, weight in core_weights.items():
-            if reviewer in score_by_reviewer:
-                weighted_total += score_by_reviewer[reviewer] * weight
-        for reviewer, weight in specialist_weights.items():
-            weighted_total += score_by_reviewer[reviewer] * weight
-        return int(round(weighted_total))
+        unweighted_reviewers = active_reviewers - set(weights)
+        if unweighted_reviewers:
+            reviewers = ', '.join(sorted(reviewer.value for reviewer in unweighted_reviewers))
+            raise ToolError(f'Cannot compute Phase 1 score: no configured weight for reviewer(s): {reviewers}')
+        return weights
 
-    def _compute_phase2_score(self, active_results: list[ReviewerResult]) -> int:
+    def _phase2_weights_for_results(self, active_results: list[ReviewerResult]) -> dict[CriticAgent, float]:
+        active_reviewers = {result.reviewer_name for result in active_results}
+        weights = {CriticAgent.CODING_STANDARDS_REVIEWER: 100.0}
+        unweighted_reviewers = active_reviewers - set(weights)
+        if unweighted_reviewers:
+            reviewers = ', '.join(sorted(reviewer.value for reviewer in unweighted_reviewers))
+            raise ToolError(f'Cannot compute Phase 2 score: no configured weight for reviewer(s): {reviewers}')
+        return {reviewer: weight for reviewer, weight in weights.items() if reviewer in active_reviewers}
+
+    def _compute_weighted_score(
+        self,
+        active_results: list[ReviewerResult],
+        weights_by_reviewer: dict[CriticAgent, float],
+    ) -> tuple[int, dict[CriticAgent, float]]:
         if not active_results:
-            return 0
-        return int(round(sum(result.score for result in active_results) / len(active_results)))
+            return 0, {}
+
+        active_weight_total = sum(weights_by_reviewer.get(result.reviewer_name, 0.0) for result in active_results)
+        if active_weight_total <= 0:
+            raise ToolError('Cannot compute review score: active reviewer weight total is zero')
+
+        weighted_contributions: dict[CriticAgent, float] = {}
+        for result in active_results:
+            reviewer_weight = weights_by_reviewer[result.reviewer_name]
+            weighted_contributions[result.reviewer_name] = (
+                (result.score / result.max_score) * reviewer_weight / active_weight_total * 100
+            )
+
+        raw_score = sum(weighted_contributions.values())
+        all_reviewers_perfect = all(result.score == result.max_score for result in active_results)
+        score = int(round(raw_score))
+        if all_reviewers_perfect:
+            score = 100
+        else:
+            score = min(99, score)
+        return max(0, min(100, score)), weighted_contributions
+
+    def _validate_reviewer_blockers(self, blockers: list[str]) -> list[str]:
+        invalid_blockers = CriticFeedback.invalid_blocker_values(blockers)
+        if invalid_blockers:
+            invalid_values = ', '.join(repr(blocker) for blocker in invalid_blockers)
+            raise ToolError(
+                'Reviewer blockers must be actionable non-empty strings; use [] when no blockers exist. '
+                f'Remove invalid blocker entries: {invalid_values}'
+            )
+        return blockers
 
     def _parse_reviewer_name(self, reviewer_name: str) -> CriticAgent:
         normalized = reviewer_name.strip()
@@ -458,6 +527,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         reviewer_name: str,
         feedback_markdown: str,
         score: int,
+        max_score: int,
         blockers: list[str],
         findings: list[dict[str, str]],
         ctx: Context,
@@ -469,7 +539,8 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         - review_iteration: Explicit review pass number for this loop
         - reviewer_name: Reviewer agent name (e.g., code-quality-reviewer)
         - feedback_markdown: Full reviewer section markdown
-        - score: Reviewer-local score (0..100)
+        - score: Reviewer-local earned score
+        - max_score: Reviewer-local maximum score
         - blockers: Reviewer blocker list
         - findings: List of finding objects with `priority` and `feedback`
 
@@ -486,6 +557,7 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
                 reviewer_name=reviewer_name,
                 feedback_markdown=feedback_markdown,
                 score=score,
+                max_score=max_score,
                 blockers=blockers,
                 findings=findings,
             )

@@ -107,6 +107,7 @@ It MUST include these exact top-level sections:
 - `## Analysis`
 - `## Issues and Recommendations`
 - `## Metadata`
+When no blockers exist, leave the `### Blockers` section empty. Do NOT write placeholder bullets such as `- None`, `- None.`, `- None identified`, or `- No blockers`.
 
 Do NOT return feedback markdown to the orchestrator.
 Do NOT write files to disk.
@@ -134,6 +135,7 @@ Lane 1 — Content score (`overall_score`):
 Lane 2 — Structural/procedural blockers (`### Blockers`):
 - Use blockers for hard-stop violations only (invalid/missing canonical references, unreadable referenced files, hallucinated evidence, explicit constraint contradictions).
 - Do NOT encode blocker-only decisions as score penalties.
+- If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
 
 ## DOCUMENT SCOPE — What You Are Evaluating
 

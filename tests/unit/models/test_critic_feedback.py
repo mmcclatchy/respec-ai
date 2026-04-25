@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from src.models.enums import CriticAgent
-from src.models.feedback import CriticFeedback
+from src.models.feedback import CriticFeedback, ReviewerResult
 
 
 class TestCriticFeedback:
@@ -217,9 +217,137 @@ The roadmap provides a foundation but requires refinement in several critical ar
         assert '### Key Issues' in markdown
         assert '- Missing data validation' in markdown
         assert '### Blockers' in markdown
-        assert '- None identified' in markdown
+        blockers_section = markdown.split('### Blockers', 1)[1].split('### Recommendations', 1)[0]
+        assert '- None' not in blockers_section
         assert '### Recommendations' in markdown
         assert '- Add comprehensive data validation' in markdown
+
+    def test_empty_blockers_section_parses_to_empty_list(self) -> None:
+        markdown = """# Critic Feedback: TASK-CRITIC
+
+## Assessment Summary
+- **Loop ID**: task-loop-001
+- **Iteration**: 3
+- **Overall Score**: 100/100
+- **Assessment Summary**: Task is implementation-ready with no blockers.
+
+## Analysis
+
+The task is complete and ready.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- None identified
+
+### Blockers
+
+### Recommendations
+
+- None provided
+"""
+
+        feedback = CriticFeedback.parse_markdown(markdown)
+
+        assert feedback.blockers == []
+        assert feedback.overall_score == 100
+
+    def test_placeholder_blocker_values_are_rejected(self) -> None:
+        with pytest.raises(ValueError, match='Blockers must be actionable non-empty strings'):
+            CriticFeedback(
+                loop_id='test-loop',
+                critic_agent=CriticAgent.TASK_CRITIC,
+                iteration=1,
+                overall_score=100,
+                assessment_summary='No blockers were found.',
+                detailed_feedback='Ready.',
+                key_issues=[],
+                blockers=['None.'],
+                recommendations=[],
+            )
+
+    def test_blank_blocker_values_are_rejected(self) -> None:
+        with pytest.raises(ValueError, match='Blockers must be actionable non-empty strings'):
+            CriticFeedback(
+                loop_id='test-loop',
+                critic_agent=CriticAgent.TASK_CRITIC,
+                iteration=1,
+                overall_score=100,
+                assessment_summary='No blockers were found.',
+                detailed_feedback='Ready.',
+                key_issues=[],
+                blockers=[' '],
+                recommendations=[],
+            )
+
+    def test_reviewer_result_accepts_local_max_score_and_normalizes(self) -> None:
+        result = ReviewerResult(
+            loop_id='coding-loop',
+            review_iteration=1,
+            reviewer_name=CriticAgent.AUTOMATED_QUALITY_CHECKER,
+            feedback_markdown='### Automated Quality Check (Score: 50/50)',
+            score=50,
+            max_score=50,
+            blockers=[],
+            findings=[],
+        )
+
+        assert result.score == 50
+        assert result.max_score == 50
+        assert result.normalized_score == 100
+
+    def test_reviewer_result_rejects_placeholder_blockers(self) -> None:
+        with pytest.raises(ValueError, match='Reviewer blockers must be actionable non-empty strings'):
+            ReviewerResult(
+                loop_id='coding-loop',
+                review_iteration=1,
+                reviewer_name=CriticAgent.AUTOMATED_QUALITY_CHECKER,
+                feedback_markdown='### Automated Quality Check (Score: 50/50)',
+                score=50,
+                max_score=50,
+                blockers=['None.'],
+                findings=[],
+            )
+
+    def test_reviewer_result_rejects_blank_blockers(self) -> None:
+        with pytest.raises(ValueError, match='Reviewer blockers must be actionable non-empty strings'):
+            ReviewerResult(
+                loop_id='coding-loop',
+                review_iteration=1,
+                reviewer_name=CriticAgent.AUTOMATED_QUALITY_CHECKER,
+                feedback_markdown='### Automated Quality Check (Score: 50/50)',
+                score=50,
+                max_score=50,
+                blockers=[''],
+                findings=[],
+            )
+
+    def test_reviewer_result_rejects_score_above_local_max(self) -> None:
+        with pytest.raises(ValueError, match='Reviewer score must be <= max_score'):
+            ReviewerResult(
+                loop_id='coding-loop',
+                review_iteration=1,
+                reviewer_name=CriticAgent.CODE_QUALITY_REVIEWER,
+                feedback_markdown='### Code Quality (Score: 26/25)',
+                score=26,
+                max_score=25,
+                blockers=[],
+                findings=[],
+            )
+
+    def test_reviewer_result_rejects_invalid_local_max_score(self) -> None:
+        with pytest.raises(ValueError, match='Reviewer max_score must be > 0'):
+            ReviewerResult(
+                loop_id='coding-loop',
+                review_iteration=1,
+                reviewer_name=CriticAgent.CODE_QUALITY_REVIEWER,
+                feedback_markdown='### Code Quality (Score: 0/0)',
+                score=0,
+                max_score=0,
+                blockers=[],
+                findings=[],
+            )
 
     def test_round_trip_parse_and_build_markdown(self) -> None:
         original_feedback = CriticFeedback(

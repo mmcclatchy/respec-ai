@@ -235,6 +235,15 @@ class TestBackendApiReviewerTemplate:
         assert 'API' in template
         assert 'validation' in template.lower() or 'Validation' in template
 
+    def test_template_uses_stack_api_style_key(self) -> None:
+        tools = create_backend_api_reviewer_agent_tools(_adapter)
+        template = generate_backend_api_reviewer_template(tools)
+
+        assert '`api_style`' in template
+        assert 'use `api_style` as the selected API style when present' in template
+        assert 'If `api_style` is absent' in template
+        assert '- api_style: [REST/GraphQL/gRPC/RPC/provider/internal/absent]' in template
+
 
 class TestDatabaseReviewerTemplate:
     def test_template_structure(self) -> None:
@@ -278,6 +287,12 @@ class TestCodingStandardsTemplate:
         tools = create_coding_standards_reviewer_agent_tools(_adapter)
         template = generate_coding_standards_reviewer_template(tools)
         assert 'Preserve `[BLOCKING]` or `[Severity:P0]` markers in findings for critical violations.' in template
+
+    def test_coding_standards_excludes_best_practices_scoring_authority(self) -> None:
+        tools = create_coding_standards_reviewer_agent_tools(_adapter)
+        template = generate_coding_standards_reviewer_template(tools)
+
+        assert '.best-practices' not in template
 
 
 class TestReviewAgentConsistency:
@@ -377,14 +392,85 @@ class TestReviewAgentConsistency:
             generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
             generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
             generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
         ]
         for template in templates:
             assert 'workflow_guidance_markdown' in template
+            assert 'project_config_context_markdown' in template
             assert '## Workflow Guidance' in template
             assert '### Guidance Summary' in template
             assert '### Constraints' in template
             assert '### Resume Context' in template
             assert '### Settled Decisions' in template
+
+    def test_applicable_reviewers_include_full_best_practices_research_protocol(self) -> None:
+        templates = {
+            'spec-alignment': generate_spec_alignment_reviewer_template(
+                create_spec_alignment_reviewer_agent_tools(_adapter)
+            ),
+            'code-quality': generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            'frontend': generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            'backend-api': generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            'database': generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            'infrastructure': generate_infrastructure_reviewer_template(
+                create_infrastructure_reviewer_agent_tools(_adapter)
+            ),
+        }
+        required_terms = [
+            '`Existing Documentation`',
+            '`External Research Needed`',
+            '`- Read: .best-practices/*.md`',
+            '`Purpose:`',
+            '`Application:`',
+            '`## Research`',
+            '`### Research Read Log`',
+            'Resolve stack evidence in this order: `project_config_context_markdown`, direct `.respec-ai/config/stack.toml`, Phase Technology Stack, implementation evidence only when explicit config is absent.',
+            'prefer docs marked successfully read and applied',
+            '`- Synthesize:` entries as non-readable prompts',
+            'Do NOT run `bp`, browse, synthesize, or invent missing docs during review.',
+            'Read only docs relevant to reviewer domain, configured stack, changed files, task citations, or workflow guidance.',
+            'Report missing or unreadable docs as skipped context',
+        ]
+
+        for reviewer_name, template in templates.items():
+            for term in required_terms:
+                assert term in template, f'{reviewer_name} missing research protocol term: {term}'
+
+    def test_reviewers_use_bounded_scores_instead_of_adjustments(self) -> None:
+        templates = [
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
+        ]
+        forbidden_terms = [
+            'Adjustment',
+            'NET_ADJUSTMENT',
+            'bonus',
+            'Bonus',
+            '[-10 to +5]',
+            '[-15 to +5]',
+            '+5 points',
+            'score 100',
+            '0-100',
+        ]
+
+        for template in templates:
+            for term in forbidden_terms:
+                assert term not in template
+
+    def test_backend_api_reviewer_is_api_style_neutral(self) -> None:
+        template = generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter))
+
+        assert 'REST conventions' not in template
+        assert 'RESTful' not in template
+        assert 'Do NOT require REST semantics unless the project selected REST.' in template
+        assert 'GraphQL' in template
+        assert 'gRPC' in template
 
 
 class TestCoderTemplateConfig:

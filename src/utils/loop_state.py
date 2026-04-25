@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime
 
@@ -6,6 +7,9 @@ from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.models.roadmap import Roadmap
 from src.utils.enums import HealthState, LoopStatus, LoopType, OperationStatus
+
+
+logger = logging.getLogger(__name__)
 
 
 class MCPRoadMapResponse(BaseModel):
@@ -68,18 +72,44 @@ class LoopState(BaseModel):
         self.current_score = score
 
     def decide_next_loop_action(self) -> MCPResponse:
-        if self.current_score >= self.loop_type.threshold and not self._latest_feedback_has_blockers():
+        latest_feedback = self.feedback_history[-1] if self.feedback_history else None
+        latest_blockers = self._effective_blockers_for_feedback(latest_feedback) if latest_feedback else []
+        logger.info(
+            'decide_next_loop_action inputs: loop_id=%s score=%s threshold=%s critic=%s '
+            'feedback_iteration=%s blocker_count=%s status_before=%s',
+            self.id,
+            self.current_score,
+            self.loop_type.threshold,
+            latest_feedback.critic_agent.value if latest_feedback else 'none',
+            latest_feedback.iteration if latest_feedback else 0,
+            len(latest_blockers),
+            self.status.value,
+        )
+
+        if self.current_score >= self.loop_type.threshold and not latest_blockers:
             self.status = LoopStatus.COMPLETED
+            self._log_decision_result()
             return self.mcp_response
 
         if (
             self.iteration > 0 and self.iteration % self.loop_type.checkpoint_frequency == 0
         ) or self._detect_stagnation():
             self.status = LoopStatus.USER_INPUT
+            self._log_decision_result()
             return self.mcp_response
 
         self.status = LoopStatus.REFINE
+        self._log_decision_result()
         return self.mcp_response
+
+    def _log_decision_result(self) -> None:
+        logger.info(
+            'decide_next_loop_action decision: loop_id=%s decision=%s score=%s iteration=%s',
+            self.id,
+            self.status.value,
+            self.current_score,
+            self.iteration,
+        )
 
     def _latest_feedback_has_blockers(self) -> bool:
         if not self.feedback_history:

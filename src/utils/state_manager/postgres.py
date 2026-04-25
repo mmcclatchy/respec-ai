@@ -222,7 +222,26 @@ class PostgresStateManager(StateManager):
                 f'No feedback available for loop {loop_id} - cannot make decision without quality assessment'
             )
 
+        latest_feedback = loop_state.feedback_history[-1]
+        logger.info(
+            'decide_loop_next_action inputs: loop_id=%s score=%s threshold=%s critic=%s '
+            'feedback_iteration=%s blocker_count=%s status_before=%s',
+            loop_id,
+            loop_state.current_score,
+            loop_state.loop_type.threshold,
+            latest_feedback.critic_agent.value,
+            latest_feedback.iteration,
+            len(latest_feedback.blockers),
+            loop_state.status.value,
+        )
         response = loop_state.decide_next_loop_action()
+        logger.info(
+            'decide_loop_next_action decision: loop_id=%s decision=%s score=%s iteration=%s',
+            loop_id,
+            response.status.value,
+            response.current_score,
+            response.iteration,
+        )
         await self.save_loop(loop_state)
         return response
 
@@ -883,22 +902,24 @@ class PostgresStateManager(StateManager):
             async with conn.transaction():
                 await conn.execute(
                     """
-                    INSERT INTO reviewer_results (
-                        loop_id, review_iteration, reviewer_name, feedback_markdown,
-                        score, blockers, created_at, updated_at
-                    )
-                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, CURRENT_TIMESTAMP)
-                    ON CONFLICT (loop_id, review_iteration, reviewer_name) DO UPDATE SET
-                        feedback_markdown = EXCLUDED.feedback_markdown,
-                        score = EXCLUDED.score,
-                        blockers = EXCLUDED.blockers,
-                        updated_at = CURRENT_TIMESTAMP
-                    """,
+	                    INSERT INTO reviewer_results (
+	                        loop_id, review_iteration, reviewer_name, feedback_markdown,
+	                        score, max_score, blockers, created_at, updated_at
+	                    )
+	                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, CURRENT_TIMESTAMP)
+	                    ON CONFLICT (loop_id, review_iteration, reviewer_name) DO UPDATE SET
+	                        feedback_markdown = EXCLUDED.feedback_markdown,
+	                        score = EXCLUDED.score,
+	                        max_score = EXCLUDED.max_score,
+	                        blockers = EXCLUDED.blockers,
+	                        updated_at = CURRENT_TIMESTAMP
+	                    """,
                     reviewer_result.loop_id,
                     reviewer_result.review_iteration,
                     reviewer_result.reviewer_name.value,
                     reviewer_result.feedback_markdown,
                     reviewer_result.score,
+                    reviewer_result.max_score,
                     blockers_json,
                     reviewer_result.timestamp,
                 )
@@ -935,8 +956,10 @@ class PostgresStateManager(StateManager):
         async with db_pool.acquire() as conn:
             result_rows = await conn.fetch(
                 """
-                SELECT loop_id, review_iteration, reviewer_name, feedback_markdown, score, blockers, updated_at
-                FROM reviewer_results
+	                SELECT
+	                    loop_id, review_iteration, reviewer_name, feedback_markdown,
+	                    score, max_score, blockers, updated_at
+	                FROM reviewer_results
                 WHERE loop_id = $1 AND review_iteration = $2
                 ORDER BY reviewer_name
                 """,
@@ -972,6 +995,7 @@ class PostgresStateManager(StateManager):
                     reviewer_name=reviewer_name,
                     feedback_markdown=row['feedback_markdown'],
                     score=row['score'],
+                    max_score=row['max_score'],
                     blockers=list(blockers or []),
                     findings=findings_by_reviewer.get(reviewer_name, []),
                     timestamp=row['updated_at'],

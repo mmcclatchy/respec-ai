@@ -150,6 +150,42 @@ class TestEnhancedLoopState:
         response = loop_state.decide_next_loop_action()
         assert response.status == LoopStatus.COMPLETED
 
+    def test_review_consolidator_structured_blocker_prevents_completion_without_marker(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
+            iteration=1,
+            overall_score=100,
+            assessment_summary='Perfect score with one active reviewer blocker.',
+            detailed_feedback='Reviewer found a concrete unresolved issue.',
+            key_issues=['Reviewer blocker remains'],
+            blockers=['[automated-quality-checker] Required integration test is failing.'],
+            recommendations=['Resolve the failing integration test.'],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.REFINE
+
+    def test_task_critic_high_score_without_structured_blockers_completes(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.TASK)
+        feedback = CriticFeedback(
+            loop_id=loop_state.id,
+            critic_agent=CriticAgent.TASK_CRITIC,
+            iteration=3,
+            overall_score=100,
+            assessment_summary='Task is implementation-ready with no structural blockers.',
+            detailed_feedback='All required task sections and citations are present.',
+            key_issues=[],
+            blockers=[],
+            recommendations=[],
+        )
+        loop_state.add_feedback(feedback)
+
+        response = loop_state.decide_next_loop_action()
+        assert response.status == LoopStatus.COMPLETED
+
     def test_blocker_with_checkpoint_returns_user_input(self) -> None:
         loop_state = LoopState(loop_type=LoopType.TASK)
         for i in range(1, 6):

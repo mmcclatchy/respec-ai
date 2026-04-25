@@ -439,6 +439,26 @@ class TestCrossPlatformInvocationRendering:
         assert 'initialize_planning_loop' not in template
         assert 'decide_planning_action' not in template
 
+    def test_generated_commands_use_completed_loop_status_token(self) -> None:
+        coordinator = TemplateCoordinator()
+        commands = (
+            RespecAICommand.PHASE,
+            RespecAICommand.TASK,
+            RespecAICommand.ROADMAP,
+            RespecAICommand.CODE,
+            RespecAICommand.PATCH,
+            RespecAICommand.COMMIT,
+        )
+
+        for command in commands:
+            template = coordinator.generate_command_template(
+                command,
+                PlatformType.LINEAR,
+                tui_adapter=CodexAdapter(),
+            )
+            assert '"completed"' in template, f'{command.value} should branch on completed'
+            assert '"complete"' not in template, f'{command.value} should not branch on complete'
+
     def test_claude_code_phase_to_task_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(

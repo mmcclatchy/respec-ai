@@ -175,6 +175,7 @@ It MUST include these exact top-level sections:
 - `## Analysis`
 - `## Issues and Recommendations`
 - `## Metadata`
+When no blockers exist, leave the `### Blockers` section empty. Do NOT write placeholder bullets such as `- None`, `- None.`, `- None identified`, or `- No blockers`.
 
 Do NOT return feedback markdown to the orchestrator.
 Do NOT write files to disk.
@@ -238,6 +239,7 @@ Lane 2 — Structural/procedural blockers (`### Blockers`):
 - Add blockers only for hard-stop issues (missing required sections, invalid paths, non-canonical references, hallucinated docs, contract violations).
 - Every blocking issue MUST be listed under `### Blockers`.
 - Do not duplicate blocker items in `### Key Issues`.
+- If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
 
 ## Validation Mode Behavior
 

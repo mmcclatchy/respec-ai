@@ -557,7 +557,7 @@ Loop:
   CODING_DECISION = CODING_DECISION_RESPONSE.status
   CODING_SCORE = CODING_DECISION_RESPONSE.current_score
   CODING_ITERATION = CODING_DECISION_RESPONSE.iteration
-  Decision options: "COMPLETE", "REFINE", "USER_INPUT"
+  Decision options: "completed", "refine", "user_input"
 
   # D) Phase 1 commit orchestration (every pass)
   # Loop commits are progress checkpoints only.
@@ -572,7 +572,7 @@ Loop:
     REVIEW_ITERATION = CODING_ITERATION + 1
     continue loop
 
-  IF CODING_DECISION == "complete":
+  IF CODING_DECISION == "completed":
     exit loop to Step 8
 
   IF CODING_DECISION == "user_input":
@@ -588,7 +588,7 @@ The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
 
 "refine"     → Execute refinement. Do NOT ask, confirm, or present options to the user.
 "user_input" → ONLY status that involves the user. Present feedback and wait for response.
-"complete"   → Proceed to next step. Do NOT ask for confirmation.
+"completed"  → Proceed to next step. Do NOT ask for confirmation.
 
 VIOLATION: Asking the user whether to continue refining when status is "refine"
            is a workflow violation. The decision has already been made by the MCP server.
@@ -609,7 +609,7 @@ IF CODING_DECISION == "refine":
   Display: "🔵 [Phase 1 · Iteration {{CODING_ITERATION}}] ⟳ Rubric Score: {{CODING_SCORE}}/100 — decision={{CODING_DECISION}}; refining"
   Return to Step 7.4 (next loop pass runs coder → reviews → decision → commit).
 
-ELIF CODING_DECISION == "complete":
+ELIF CODING_DECISION == "completed":
   Display: "🔵 [Phase 1 · Complete] ✅ Rubric Score: {{CODING_SCORE}}/100 — ready for next phase (threshold met, no active blockers)"
   IF "coding-standards-reviewer" in ACTIVE_REVIEWERS:
     → IMMEDIATELY execute Step 7.5 (Standards Finalization Phase)
@@ -789,7 +789,7 @@ Loop:
     Display: "⚠ Standards loop reached iteration limit (5)"
   ═══════════════════════════════════════════════
 
-  IF STANDARDS_DECISION == "complete":
+  IF STANDARDS_DECISION == "completed":
     Display: "🟣 [Phase 2 · Complete] ✅ Rubric Score: {{STANDARDS_SCORE}}/100 — ready for completion gate (threshold met, no active blockers)"
     exit loop
 
@@ -821,7 +821,7 @@ Loop:
 #### Step 7.5.3: Exit to Completion Gate
 
 ```text
-IF STANDARDS_DECISION == "complete":
+IF STANDARDS_DECISION == "completed":
   FINALIZATION_DECISION_SOURCE = "phase2-complete"
   Proceed to Step 8.5 (Completion Gate)
 ```
