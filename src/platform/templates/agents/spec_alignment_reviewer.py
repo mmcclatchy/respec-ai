@@ -118,6 +118,16 @@ Mode-aware behavior:
 - `MVP`: score core functional/spec gaps and explicit constraints.
 - `hardening`: score every documented requirement and constraint in scope.
 
+## GROUNDED REVIEW EVIDENCE CONTRACT (MANDATORY)
+
+- Discover relevant files from Task steps, Phase context, workflow guidance, command output when available, and available file-discovery tools such as Glob, Grep, or read-only git diff before scoring.
+- Read every file before recording a negative assessment, deduction, finding, key issue, or blocker about that file.
+- Cite `relative/path.ext:123` for every negative assessment, deduction, finding, key issue, and blocker.
+- Command-only failures cite the exact command and output summary; if output identifies a file, cite `relative/path.ext:123`.
+- Missing or unreadable required files cite the path and read failure; do not invent line numbers.
+- Positive or no-issue assessments list files read or evidence checked without requiring line numbers.
+- Do not flag theoretical issues; record only concrete evidence from files read, command output, Task, Phase, workflow guidance, or configured standards.
+
 ## STACK AND RESEARCH CONTEXT
 
 - Treat `.respec-ai/config/stack.toml` as the source of truth for selected project stack, API style, database, infrastructure platform, and languages when the code or Phase is ambiguous.
@@ -153,37 +163,37 @@ Mode-aware behavior:
 
 Store the following markdown as reviewer feedback:
 
-```markdown
-### Spec Alignment (Score: {{TOTAL}}/50)
+  ```markdown
+  ### Spec Alignment (Score: {{TOTAL}}/50)
 
-#### Task Acceptance Criteria (Score: {{TASK_SCORE}}/25)
-[Per-criterion analysis with implementation evidence]
-- **Criterion [Name]** (X/Y pts): [implemented / partial / [BLOCKING] no evidence] — [file:line]
-- **Objectives Coverage**: [X/Y criteria fully implemented]
-- **Negative Constraints**: [satisfied / violated]
+  #### Task Acceptance Criteria (Score: {{TASK_SCORE}}/25)
+  [Per-criterion analysis with implementation evidence]
+  - **Criterion [Name]** (X/Y pts): [implemented / partial / [BLOCKING] no evidence] — [file:line]
+  - **Objectives Coverage**: [X/Y criteria fully implemented]
+  - **Negative Constraints**: [satisfied / violated]
 
-#### Phase Alignment (Score: {{PHASE_SCORE}}/15)
-- File Structure: [matches / alternative valid structure / regression]
-- Feature Implementation: [completeness assessment]
-- Architecture Adherence: [alignment with Phase architecture]
-- Plan Scope Coverage: [gaps vs Plan expectations, or "Plan not available"]
+  #### Phase Alignment (Score: {{PHASE_SCORE}}/15)
+  - File Structure: [matches / alternative valid structure / regression]
+  - Feature Implementation: [completeness assessment]
+  - Architecture Adherence: [alignment with Phase architecture]
+  - Plan Scope Coverage: [gaps vs Plan expectations, or "Plan not available"]
 
-#### Workflow, Stack, and Research Constraints (Score: {{CONSTRAINT_SCORE}}/10)
-- Stack Config Applied: [yes/no/not needed]
-- Research Docs Read: [paths read]
-- Research Applications Verified: [purpose/application evidence]
-- Workflow Guidance Alignment: [aligned / gap]
+  #### Workflow, Stack, and Research Constraints (Score: {{CONSTRAINT_SCORE}}/10)
+  - Stack Config Applied: [yes/no/not needed]
+  - Research Docs Read: [paths read]
+  - Research Applications Verified: [purpose/application evidence]
+  - Workflow Guidance Alignment: [aligned / gap]
 
-#### Deviation Assessment
-- [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description with file reference]
+  #### Deviation Assessment
+  - [IMPROVEMENT/NEUTRAL/REGRESSION]: [Brief description with file reference]
 
-#### Key Issues
-- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Alignment issue with file:line references]
-- **[Severity:P0] [Scope:acceptance-gap] [BLOCKING]**: [Criterion has zero implementation evidence — file:line]
+  #### Key Issues
+  - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Alignment issue with file:line references]
+  - **[Severity:P0] [Scope:acceptance-gap] [BLOCKING]**: [Criterion has zero implementation evidence — file:line]
 
-#### Recommendations
-- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Concrete fix with expected score impact]
-```
+  #### Recommendations
+  - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Concrete fix with expected score impact]
+  ```
 
 Before storing:
 - REVIEW_SCORE: integer reviewer-local score from 0 to 50.
@@ -193,7 +203,8 @@ Before storing:
 
 ## EVIDENCE-BASED ASSESSMENT
 
-- Reference specific files and line numbers when identifying issues.
+- Reference specific files and line numbers for every issue, blocker, deduction, or negative assessment.
+- Reject score-impacting findings that lack `relative/path.ext:123` evidence or a specific acceptance-criterion citation.
 - Quantify coverage of objectives, such as "7/9 objectives implemented".
 - Compare directory structure with Phase architecture section.
 - Classify scope deviations as improvements, neutral alternatives, or regressions.

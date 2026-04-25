@@ -111,6 +111,11 @@ VIOLATION: Proceeding to Step 1 without creating TodoList.
 4. Retrieve all feedback: {tools.retrieve_feedback}
 5. Use Commands from language config for test/check/lint
 6. Assess current implementation state (Read/Glob)
+6.1. Complete codebase grounding before edits:
+   - Discover source, test, config, and integration files referenced by Task Checklist, Task Steps, Acceptance Criteria, Phase, workflow guidance, and previous feedback
+   - Read primary files that define current behavior and tests before writing or editing implementation files
+   - Keep a concise Grounding Evidence list in working notes: `path:line — observed fact`
+   - Do NOT write or edit files until source/test/config evidence has been read for the active Checklist item
 6.5. Apply workflow_guidance_markdown when provided:
    - Treat it as already clarified by the orchestrator
    - Read `## Workflow Guidance` sections in order:
@@ -174,10 +179,10 @@ When project_config_context_markdown is provided, parse it using the exact headi
 - Ignore research citations in Task Steps
 
 **Example**:
-```markdown
-#### Step 2: HTMX Button Implementation
-Action: Add hx-get to button (per research: hx-target pattern from htmx-patterns.md)
-```
+  ```markdown
+  #### Step 2: HTMX Button Implementation
+  Action: Add hx-get to button (per research: hx-target pattern from htmx-patterns.md)
+  ```
 
 **Implementation**:
 ```python
@@ -191,12 +196,12 @@ Action: Add hx-get to button (per research: hx-target pattern from htmx-patterns
 The Task includes a prioritized Checklist under `## Implementation > ### Checklist`.
 
 **Checklist Format Example**:
-```markdown
-### Checklist
-- [ ] Create Dockerfile with multi-stage build (verify: docker build .)
-- [ ] Configure docker-compose.yml with health checks (verify: docker compose up -d)
-- [ ] Test container lifecycle (verify: docker compose down && docker compose up)
-```
+  ```markdown
+  ### Checklist
+  - [ ] Create Dockerfile with multi-stage build (verify: docker build .)
+  - [ ] Configure docker-compose.yml with health checks (verify: docker compose up -d)
+  - [ ] Test container lifecycle (verify: docker compose down && docker compose up)
+  ```
 
 **How to Use**:
 1. **Start from Checklist**: Use Checklist items as your primary work tracker
@@ -217,18 +222,18 @@ For each Step:
 4. Mark Step complete before moving to next
 
 Example Task Steps:
-```markdown
-#### Step 1: Create Dockerfile
-Create a multi-stage Dockerfile for Python application.
-- Base image: python:3.13-slim (per research: version pinning from docker-best-practices.md)
-- Install uv package manager
-- Configure working directory
+  ```markdown
+  #### Step 1: Create Dockerfile
+  Create a multi-stage Dockerfile for Python application.
+  - Base image: python:3.13-slim (per research: version pinning from docker-best-practices.md)
+  - Install uv package manager
+  - Configure working directory
 
-#### Step 2: Create docker-compose.yml
-Define services for local development.
-- app service with volume mounts
-- db service for PostgreSQL
-```
+  #### Step 2: Create docker-compose.yml
+  Define services for local development.
+  - app service with volume mounts
+  - db service for PostgreSQL
+  ```
 
 Map your TodoList to Checklist items. Use Steps to provide implementation detail.
 
@@ -504,30 +509,30 @@ After you complete iteration and store feedback:
 
 Return exactly one markdown block with the following structure:
 
-```markdown
-## Iteration Handoff
-- Mode: [normal|standards-only]
-- Steps completed: [Step numbers/titles completed this pass]
-- Files changed: [comma-separated list, or "none"]
-- Tests:
-  - Command: [test command run]
-  - Result: [pass|fail]
-  - Summary: [X passed, Y failed]
-- Coverage:
-  - Command: [coverage command run]
-  - Result: [pass|fail|not-run]
-  - Percent: [number or "n/a"]
-- Type Check:
-  - Command: [type check command run]
-  - Result: [pass|fail|not-run]
-  - Errors: [count]
-- Lint:
-  - Command: [lint command run]
-  - Result: [pass|fail|not-run]
-  - Issues: [count]
-- Blocking issues remaining: [none or concise list]
-- Notes for commit context: [1-3 concise bullets]
-```
+  ```markdown
+  ## Iteration Handoff
+  - Mode: [normal|standards-only]
+  - Steps completed: [Step numbers/titles completed this pass]
+  - Files changed: [comma-separated list, or "none"]
+  - Tests:
+    - Command: [test command run]
+    - Result: [pass|fail]
+    - Summary: [X passed, Y failed]
+  - Coverage:
+    - Command: [coverage command run]
+    - Result: [pass|fail|not-run]
+    - Percent: [number or "n/a"]
+  - Type Check:
+    - Command: [type check command run]
+    - Result: [pass|fail|not-run]
+    - Errors: [count]
+  - Lint:
+    - Command: [lint command run]
+    - Result: [pass|fail|not-run]
+    - Issues: [count]
+  - Blocking issues remaining: [none or concise list]
+  - Notes for commit context: [1-3 concise bullets]
+  ```
 
 Do NOT run git commit commands.
 Do NOT push branches/remotes.

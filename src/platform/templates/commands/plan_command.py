@@ -237,99 +237,99 @@ ELSE:
 {tools.conversation_workflow_name.capitalize()} will conduct the multi-stage conversation and return structured conversation context in the CONVERSATION_CONTEXT variable.
 
 Expected structured format from plan-conversation (markdown document):
-```markdown
-## Vision and Objectives
-### Problem Statement
-[Description of problem or opportunity]
+  ```markdown
+  ## Vision and Objectives
+  ### Problem Statement
+  [Description of problem or opportunity]
 
-### Desired Outcome
-[What success looks like]
+  ### Desired Outcome
+  [What success looks like]
 
-### Success Metrics
-[How success will be measured]
+  ### Success Metrics
+  [How success will be measured]
 
-## Business Context
-### Business Drivers
-[Key business motivations]
+  ## Business Context
+  ### Business Drivers
+  [Key business motivations]
 
-### Stakeholder Needs
-[Primary stakeholders and needs]
+  ### Stakeholder Needs
+  [Primary stakeholders and needs]
 
-### Organizational Constraints
-[Organizational limitations]
+  ### Organizational Constraints
+  [Organizational limitations]
 
-## Requirements
-### Functional Requirements
-- [Specific capabilities]
+  ## Requirements
+  ### Functional Requirements
+  - [Specific capabilities]
 
-### User Experience Requirements
-- [User-facing requirements]
+  ### User Experience Requirements
+  - [User-facing requirements]
 
-### Integration Requirements
-- [System integrations]
+  ### Integration Requirements
+  - [System integrations]
 
-### Performance Requirements
-- [Performance targets]
+  ### Performance Requirements
+  - [Performance targets]
 
-### Security Requirements
-- [Security needs]
+  ### Security Requirements
+  - [Security needs]
 
-### Technical Constraints
-- [Technical limitations]
+  ### Technical Constraints
+  - [Technical limitations]
 
-## Constraints
-### Timeline Constraints
-- [Time-related constraints]
+  ## Constraints
+  ### Timeline Constraints
+  - [Time-related constraints]
 
-### Resource Constraints
-- [Resource limitations]
+  ### Resource Constraints
+  - [Resource limitations]
 
-### Business Constraints
-- [Business policies]
+  ### Business Constraints
+  - [Business policies]
 
-## Priorities
-### Must-Have Features
-- [Critical requirements]
+  ## Priorities
+  ### Must-Have Features
+  - [Critical requirements]
 
-### Nice-to-Have Features
-- [Desirable features]
+  ### Nice-to-Have Features
+  - [Desirable features]
 
-## Technology Context
+  ## Technology Context
 
-### Preferred Stack
-[Deployment target and general technology preferences]
+  ### Preferred Stack
+  [Deployment target and general technology preferences]
 
-### Technology Decisions
-- [Technology chosen — justification]
+  ### Technology Decisions
+  - [Technology chosen — justification]
 
-### Rejected Technologies
-- [Technology rejected — specific reason]
+  ### Rejected Technologies
+  - [Technology rejected — specific reason]
 
-## Architecture Direction
-[High-level component structure, integration points, deployment model, data flow]
+  ## Architecture Direction
+  [High-level component structure, integration points, deployment model, data flow]
 
-## Scope Boundaries
+  ## Scope Boundaries
 
-### Anti-Requirements
-- [Thing system must NOT do]
+  ### Anti-Requirements
+  - [Thing system must NOT do]
 
-### Performance Targets
-- [Quantified performance/scale target]
+  ### Performance Targets
+  - [Quantified performance/scale target]
 
-## Risk Assessment
-- [Technical risk with severity/likelihood/mitigation]
+  ## Risk Assessment
+  - [Technical risk with severity/likelihood/mitigation]
 
-## Quality Bar
-[Test coverage minimum, security requirements, accessibility standards]
-Delivery Intent Default: [MVP|hardening]
-Intent Tie-Break Policy: [How to resolve MVP vs hardening conflicts]
+  ## Quality Bar
+  [Test coverage minimum, security requirements, accessibility standards]
+  Delivery Intent Default: [MVP|hardening]
+  Intent Tie-Break Policy: [How to resolve MVP vs hardening conflicts]
 
-## Conversation Summary
-- **Total Stages Completed**: 6
-- **Key Insights**: [Main discoveries]
-- **Areas of Emphasis**: [Topics focused on]
-- **User Engagement Level**: [High/Medium/Low]
-```
+  ## Conversation Summary
+  - **Total Stages Completed**: 6
+  - **Key Insights**: [Main discoveries]
+  - **Areas of Emphasis**: [Topics focused on]
+  - **User Engagement Level**: [High/Medium/Low]
+  ```
 
 ## Step 3: Create Strategic Plan Document
 

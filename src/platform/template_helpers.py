@@ -1183,6 +1183,9 @@ def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendRev
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
         store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_REVIEWER_RESULT,
             loop_id='{CODING_LOOP_ID}',
@@ -1214,6 +1217,9 @@ def create_backend_api_reviewer_agent_tools(tui_adapter: TuiAdapter) -> BackendA
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
         store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_REVIEWER_RESULT,
@@ -1247,6 +1253,9 @@ def create_database_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DatabaseRev
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
         store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_REVIEWER_RESULT,
             loop_id='{CODING_LOOP_ID}',
@@ -1278,6 +1287,9 @@ def create_infrastructure_reviewer_agent_tools(tui_adapter: TuiAdapter) -> Infra
         ),
         retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
         ),
         store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_REVIEWER_RESULT,

@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/composite-score-blocker-contract-cleanup.md`
-- Objective: Enforce strict composite 100 semantics and reject blank blocker data.
+- Plan File: `./.codex/plans/grounded-code-patch-agent-evidence-contract.md`
+- Objective: Ground code and patch agents in codebase evidence and require reviewer file-line findings.
 - Phase: completed
-- Last Updated: 2026-04-25T17:59:01Z
+- Last Updated: 2026-04-25T14:46:20-04:00
 
 ## Usage
 

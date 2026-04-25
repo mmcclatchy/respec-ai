@@ -48,9 +48,10 @@ TASKS: Run Static Analysis → Generate Reviewer Feedback → Store
 5. Apply project_config_context_markdown when provided; otherwise read `.respec-ai/config/stack.toml` and relevant `.respec-ai/config/standards/*.toml` files directly.
 6. Extract configured `[commands]` values for test, coverage, type_check, and lint from standards TOML files.
 7. Run configured test, type_check, lint, and coverage commands; capture exact command output.
-8. Inspect test quality for blocking integrity problems in changed or relevant test files.
-9. Calculate a reviewer-local score out of 50, with 50/50 reserved for all configured checks passing and no test integrity blockers.
-10. Store reviewer result: {tools.store_reviewer_result}
+8. Identify changed or relevant source and test files from git diff, command output, Task, and Phase context; Read each file before test-integrity findings.
+9. Inspect test quality for blocking integrity problems in changed or relevant test files.
+10. Calculate a reviewer-local score out of 50, with 50/50 reserved for all configured checks passing and no test integrity blockers.
+11. Store reviewer result: {tools.store_reviewer_result}
 
 **CRITICAL**: Use task_loop_id for Task retrieval, coding_loop_id for feedback operations. Never swap them.
 
@@ -117,6 +118,16 @@ Mode-aware behavior:
 - `MVP`: score configured command failures and core test integrity problems.
 - `hardening`: score all configured command failures and all relevant test integrity problems.
 
+## GROUNDED REVIEW EVIDENCE CONTRACT (MANDATORY)
+
+- Discover relevant files from Task steps, Phase context, workflow guidance, command output when available, and available file-discovery tools such as Glob, Grep, or read-only git diff before scoring.
+- Read every file before recording a negative assessment, deduction, finding, key issue, or blocker about that file.
+- Cite `relative/path.ext:123` for every negative assessment, deduction, finding, key issue, and blocker.
+- Command-only failures cite the exact command and output summary; if output identifies a file, cite `relative/path.ext:123`.
+- Missing or unreadable required files cite the path and read failure; do not invent line numbers.
+- Positive or no-issue assessments list files read or evidence checked without requiring line numbers.
+- Do not flag theoretical issues; record only concrete evidence from files read, command output, Task, Phase, workflow guidance, or configured standards.
+
 ## PROJECT CONFIGURATION
 
 Resolve project configuration at workflow start:
@@ -168,45 +179,45 @@ Fallback:
 
 Store the following markdown as reviewer feedback:
 
-```markdown
-### Automated Quality Check (Score: {{TOTAL}}/50)
+  ```markdown
+  ### Automated Quality Check (Score: {{TOTAL}}/50)
 
-#### Tests Passing (Score: {{TEST_SCORE}}/20)
-- Test Command(s): {{TEST_COMMANDS}}
-- Result: [pass/fail/not configured]
-- Total Tests: [count]
-- Passing: [count]
-- Failing: [count]
-- Output Summary: [brief command evidence]
+  #### Tests Passing (Score: {{TEST_SCORE}}/20)
+  - Test Command(s): {{TEST_COMMANDS}}
+  - Result: [pass/fail/not configured]
+  - Total Tests: [count]
+  - Passing: [count]
+  - Failing: [count]
+  - Output Summary: [brief command evidence]
 
-#### Type Checking (Score: {{TYPE_SCORE}}/10)
-- Type Command(s): {{TYPE_COMMANDS}}
-- Result: [pass/fail/not configured]
-- Output Summary: [brief command evidence]
+  #### Type Checking (Score: {{TYPE_SCORE}}/10)
+  - Type Command(s): {{TYPE_COMMANDS}}
+  - Result: [pass/fail/not configured]
+  - Output Summary: [brief command evidence]
 
-#### Linting (Score: {{LINT_SCORE}}/8)
-- Lint Command(s): {{LINT_COMMANDS}}
-- Result: [pass/fail/not configured]
-- Output Summary: [brief command evidence]
+  #### Linting (Score: {{LINT_SCORE}}/8)
+  - Lint Command(s): {{LINT_COMMANDS}}
+  - Result: [pass/fail/not configured]
+  - Output Summary: [brief command evidence]
 
-#### Coverage Evidence (Score: {{COVERAGE_SCORE}}/7)
-- Coverage Command(s): {{COVERAGE_COMMANDS}}
-- Result: [pass/fail/not configured]
-- Coverage Percentage: [value when available]
-- Threshold: [configured threshold or "not configured"]
+  #### Coverage Evidence (Score: {{COVERAGE_SCORE}}/7)
+  - Coverage Command(s): {{COVERAGE_COMMANDS}}
+  - Result: [pass/fail/not configured]
+  - Coverage Percentage: [value when available]
+  - Threshold: [configured threshold or "not configured"]
 
-#### Test Evidence Integrity (Score: {{TEST_EVIDENCE_SCORE}}/5)
-- Production imports test code: [none / [BLOCKING] file:line]
-- Tests mock module under test: [none / [BLOCKING] file:line]
-- Tests validate third-party package behavior: [none / file:line]
-- Implementation-detail assertions: [none / file:line]
+  #### Test Evidence Integrity (Score: {{TEST_EVIDENCE_SCORE}}/5)
+  - Production imports test code: [none / [BLOCKING] file:line]
+  - Tests mock module under test: [none / [BLOCKING] file:line]
+  - Tests validate third-party package behavior: [none / file:line]
+  - Implementation-detail assertions: [none / file:line]
 
-#### Key Issues
-- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Issue with file:line references]
+  #### Key Issues
+  - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Issue with file:line references]
 
-#### Recommendations
-- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Concrete fix with expected score impact]
-```
+  #### Recommendations
+  - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Concrete fix with expected score impact]
+  ```
 
 Before storing:
 - REVIEW_SCORE: integer reviewer-local score from 0 to 50.
@@ -218,7 +229,7 @@ Before storing:
 
 - Run actual commands; do not assume results.
 - Include command output summaries in feedback for transparency.
-- Reference specific files and line numbers for every issue.
+- Reference specific files and line numbers for every issue, blocker, deduction, or negative assessment.
 - Quantify problems with exact counts when command output provides them.
 
 ## PROGRESS TRACKING

@@ -365,9 +365,9 @@ You MUST populate EVERY field in the template below.
 IF a field has no relevant information from the conversation, set it to "Not discussed — requires follow-up".
 Do NOT leave any field with placeholder text like "[Description]".
 
-```markdown
+    ```markdown
 {indent(conversation_context_template, '    ')}
-```
+    ```
 
 ### Handoff Protocol
 Once `CONVERSATION_CONTEXT` is populated:
@@ -377,24 +377,25 @@ plan generation using this structured context.
 
 **If called standalone**: Display the following message to the user:
 
-```markdown
-## Conversation Complete
+    ```markdown
+    ## Conversation Complete
 
-I've gathered comprehensive context for your project plan.
+    I've gathered comprehensive context for your project plan.
 
-### Next Steps
-The {plan_command_name} workflow is designed to call this command internally. To use this workflow:
+    ### Next Steps
+    The {plan_command_name} workflow is designed to call this command internally. To use this workflow:
 
-{plan_command_invocation}
+{indent(plan_command_invocation, '    ')}
 
-The {plan_command_name} workflow will:
-1. Call {plan_conversation_command_name} to gather requirements (if needed)
-2. Transform the conversation into a structured strategic plan
-3. Create a plan file/project for your review
-4. Evaluate the plan quality using the FSDD framework
-5. Guide you through refinement or acceptance
+    The {plan_command_name} workflow will:
+    1. Call {plan_conversation_command_name} to gather requirements (if needed)
+    2. Transform the conversation into a structured strategic plan
+    3. Create a plan file/project for your review
+    4. Evaluate the plan quality using the FSDD framework
+    5. Guide you through refinement or acceptance
 
-**Note**: Run {plan_command_name} directly for the full workflow.
+    **Note**: Run {plan_command_name} directly for the full workflow.
+    ```
 
 ## Error Handling and Recovery
 

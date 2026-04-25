@@ -118,6 +118,16 @@ Mode-aware behavior:
 - `MVP`: score issues that threaten core behavior, reliability, or future modification of the implemented goal.
 - `hardening`: score all concrete maintainability and reliability issues in reviewed code.
 
+## GROUNDED REVIEW EVIDENCE CONTRACT (MANDATORY)
+
+- Discover relevant files from Task steps, Phase context, workflow guidance, command output when available, and available file-discovery tools such as Glob, Grep, or read-only git diff before scoring.
+- Read every file before recording a negative assessment, deduction, finding, key issue, or blocker about that file.
+- Cite `relative/path.ext:123` for every negative assessment, deduction, finding, key issue, and blocker.
+- Command-only failures cite the exact command and output summary; if output identifies a file, cite `relative/path.ext:123`.
+- Missing or unreadable required files cite the path and read failure; do not invent line numbers.
+- Positive or no-issue assessments list files read or evidence checked without requiring line numbers.
+- Do not flag theoretical issues; record only concrete evidence from files read, command output, Task, Phase, workflow guidance, or configured standards.
+
 ## STACK AND RESEARCH CONTEXT
 
 - Treat `.respec-ai/config/stack.toml` as the source of truth for selected languages, frameworks, API style, data layer, and runtime when ambiguity exists.
@@ -158,41 +168,41 @@ Mode-aware behavior:
 
 Store the following markdown as reviewer feedback:
 
-```markdown
-### Code Quality (Score: {{TOTAL}}/25)
+  ```markdown
+  ### Code Quality (Score: {{TOTAL}}/25)
 
-#### Goal-Fit and Behavioral Design (Score: {{GOAL_FIT_SCORE}}/7)
-- [Assessment of whether implementation achieves the task goal cleanly]
-- [Data flow and boundary observations with file:line references]
+  #### Goal-Fit and Behavioral Design (Score: {{GOAL_FIT_SCORE}}/7)
+  - [Assessment of whether implementation achieves the task goal cleanly]
+  - [Data flow and boundary observations with file:line references]
 
-#### Correctness and Reliability Patterns (Score: {{CORRECTNESS_SCORE}}/7)
-- Resource management: [safe / issue with file:line]
-- Error handling: [safe / issue with file:line]
-- Async boundaries: [safe / issue with file:line / not applicable]
-- Null safety: [safe / issue with file:line]
-- State safety: [safe / issue with file:line]
+  #### Correctness and Reliability Patterns (Score: {{CORRECTNESS_SCORE}}/7)
+  - Resource management: [safe / issue with file:line]
+  - Error handling: [safe / issue with file:line]
+  - Async boundaries: [safe / issue with file:line / not applicable]
+  - Null safety: [safe / issue with file:line]
+  - State safety: [safe / issue with file:line]
 
-#### Maintainability and Modifiability (Score: {{MAINTAINABILITY_SCORE}}/5)
-- Cohesion: [assessment]
-- Complexity: [assessment]
-- Change locality: [assessment]
+  #### Maintainability and Modifiability (Score: {{MAINTAINABILITY_SCORE}}/5)
+  - Cohesion: [assessment]
+  - Complexity: [assessment]
+  - Change locality: [assessment]
 
-#### Stack-Idiomatic Simplicity (Score: {{STACK_SCORE}}/3)
-- Stack config applied: [yes/no/not needed]
-- Pattern fit: [assessment]
+  #### Stack-Idiomatic Simplicity (Score: {{STACK_SCORE}}/3)
+  - Stack config applied: [yes/no/not needed]
+  - Pattern fit: [assessment]
 
-#### Research Pattern Application (Score: {{RESEARCH_SCORE}}/3)
-- Research docs read: [paths]
-- Citations verified: [count verified]/[total relevant citations]
-- Missing pattern evidence: [list with step references]
+  #### Research Pattern Application (Score: {{RESEARCH_SCORE}}/3)
+  - Research docs read: [paths]
+  - Citations verified: [count verified]/[total relevant citations]
+  - Missing pattern evidence: [list with step references]
 
-#### Key Issues
-- **[Severity:P0] [Scope:changed-file|acceptance-gap] [BLOCKING]**: [Any blocking correctness issues listed first]
-- [Severity:P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Other issues with file:line references, sorted by severity]
+  #### Key Issues
+  - **[Severity:P0] [Scope:changed-file|acceptance-gap] [BLOCKING]**: [Any blocking correctness issues listed first]
+  - [Severity:P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Other issues with file:line references, sorted by severity]
 
-#### Recommendations
-- [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Concrete fix with expected score impact]
-```
+  #### Recommendations
+  - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Concrete fix with expected score impact]
+  ```
 
 Before storing:
 - REVIEW_SCORE: integer reviewer-local score from 0 to 25.
@@ -202,7 +212,7 @@ Before storing:
 
 ## EVIDENCE-BASED ASSESSMENT
 
-- Reference specific files and line numbers for every finding.
+- Reference specific files and line numbers for every finding, blocker, deduction, or negative assessment.
 - Use Grep results as starting evidence, then Read files to verify before flagging.
 - Quantify findings, such as "4 functions exceed nesting threshold".
 - Do not flag theoretical issues; only flag concrete patterns in code.

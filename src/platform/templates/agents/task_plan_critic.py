@@ -46,6 +46,7 @@ task_feedback_template = CriticFeedback(
     blockers=[
         '**[Structure Missing - BLOCKING]**: Required Task section missing or malformed (Goal, Acceptance Criteria, Checklist, Steps, Testing Strategy)',
         '**[Citation Integrity - BLOCKING]**: Referenced plan/research path is invalid, unreadable, or non-canonical',
+        '**[Codebase Evidence Invalid - BLOCKING]**: Patch task Codebase Evidence references an unreadable file, invalid line, or unsupported source claim',
         '**[Contract Violation - BLOCKING]**: Task contradicts explicit Phase/TUI constraints without documented deviation rationale',
     ],
     recommendations=[
@@ -333,6 +334,46 @@ Step 4: Validate semantic alignment to referenced constraints
   - Any undocumented contradiction is BLOCKING
 
 Impact: Raise blockers for TUI plan integrity failures. Keep them out of the score calculation.
+═══════════════════════════════════════════════
+
+### 8.5. Codebase Evidence Validity (BLOCKING for patch tasks)
+
+═══════════════════════════════════════════════
+MANDATORY CODEBASE EVIDENCE VALIDATION
+═══════════════════════════════════════════════
+Apply this section when Task name starts with `patch-` OR Task Acceptance Criteria contains `#### Codebase Evidence`.
+
+Step 1: Require Codebase Evidence for patch tasks
+  IF Task name starts with `patch-` AND `#### Codebase Evidence` is missing:
+    Flag BLOCKING issue:
+    "**[Codebase Evidence Missing - BLOCKING]**: Patch task lacks `#### Codebase Evidence` with `path:line` facts from files read."
+
+Step 2: Parse Codebase Evidence entries
+  FOR EACH bullet under `#### Codebase Evidence`:
+    - Require format: `- path/to/file.ext:123 — observed fact`
+    - Extract file path, line number, and observed fact
+    - Reject bullets without a numeric line number
+
+Step 3: Validate file and line evidence
+  FOR EACH parsed evidence entry:
+    - CALL Read(path)
+    - IF Read(path) fails:
+      Flag BLOCKING issue:
+      "**[Codebase Evidence Unreadable - BLOCKING]**: Could not read '{{path}}'."
+    - IF line number is outside the file range:
+      Flag BLOCKING issue:
+      "**[Codebase Evidence Line Invalid - BLOCKING]**: '{{path}}:{{line}}' is outside the file."
+    - IF the observed fact is not supported by the cited file content:
+      Flag BLOCKING issue:
+      "**[Codebase Evidence Unsupported - BLOCKING]**: '{{path}}:{{line}}' does not support the stated task scope."
+
+Step 4: Validate implementation references
+  FOR EACH concrete source/test/config file named in Implementation Steps:
+    IF file is absent from Codebase Evidence and no other readable citation supports it:
+      Flag Key Issue:
+      "**[Codebase Evidence Gap]**: Implementation Step references '{{path}}' without supporting Codebase Evidence."
+
+Impact: Raise blockers for invalid or missing patch Codebase Evidence. Keep them out of the score calculation.
 ═══════════════════════════════════════════════
 
 ### 9. Workflow Guidance Alignment (Informational - Not Scored)

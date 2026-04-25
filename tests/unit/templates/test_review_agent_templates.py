@@ -325,6 +325,60 @@ class TestReviewAgentConsistency:
             assert '## Invocation Contract' in template
             assert 'TASKS:' in template
 
+    def test_all_code_reviewers_enforce_grounded_file_line_evidence(self) -> None:
+        templates = {
+            'automated-quality-checker': generate_automated_quality_checker_template(
+                create_automated_quality_checker_agent_tools(_adapter)
+            ),
+            'spec-alignment': generate_spec_alignment_reviewer_template(
+                create_spec_alignment_reviewer_agent_tools(_adapter)
+            ),
+            'code-quality': generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            'frontend': generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            'backend-api': generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            'database': generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            'infrastructure': generate_infrastructure_reviewer_template(
+                create_infrastructure_reviewer_agent_tools(_adapter)
+            ),
+            'coding-standards': generate_coding_standards_reviewer_template(
+                create_coding_standards_reviewer_agent_tools(_adapter)
+            ),
+        }
+        required_terms = [
+            'GROUNDED REVIEW EVIDENCE CONTRACT (MANDATORY)',
+            'available file-discovery tools such as Glob, Grep, or read-only git diff before scoring',
+            'Read every file before recording a negative assessment, deduction, finding, key issue, or blocker',
+            'Cite `relative/path.ext:123` for every negative assessment, deduction, finding, key issue, and blocker.',
+            'Command-only failures cite the exact command and output summary',
+            'Missing or unreadable required files cite the path and read failure; do not invent line numbers.',
+            'Do not flag theoretical issues; record only concrete evidence',
+        ]
+
+        for reviewer_name, template in templates.items():
+            for term in required_terms:
+                assert term in template, f'{reviewer_name} missing grounded evidence term: {term}'
+
+    def test_domain_reviewers_retrieve_previous_feedback(self) -> None:
+        templates = {
+            'frontend': generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            'backend-api': generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            'database': generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            'infrastructure': generate_infrastructure_reviewer_template(
+                create_infrastructure_reviewer_agent_tools(_adapter)
+            ),
+        }
+
+        for reviewer_name, template in templates.items():
+            assert 'Previous feedback from coding_loop_id' in template
+            assert 'Retrieve previous feedback: mcp__respec-ai__get_feedback(loop_id={CODING_LOOP_ID})' in template
+            assert 'mcp__respec-ai__get_feedback' in template, f'{reviewer_name} missing feedback tool'
+
+    def test_infrastructure_reviewer_requires_file_line_issue_evidence(self) -> None:
+        template = generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter))
+
+        assert '[Infrastructure issue with file:line references]' in template
+        assert '[Infrastructure issue with file references]' not in template
+
     def test_no_review_agent_contains_behavioral_descriptions(self) -> None:
         templates = [
             generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),

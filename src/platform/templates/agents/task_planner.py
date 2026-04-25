@@ -424,19 +424,19 @@ If a Phase is too large for a single Task (>6-8 Steps), decompose it:
 
 **Decomposition Response**:
 Report that the Phase must be split into multiple Tasks:
-```markdown
-## DECOMPOSITION REQUIRED
+  ```markdown
+  ## DECOMPOSITION REQUIRED
 
-This Phase scope exceeds single-task capacity.
+  This Phase scope exceeds single-task capacity.
 
-**Recommended Split**:
-- task-1a-docker-setup: Sub-phases 1.1-1.3
-- task-1b-python-environment: Sub-phases 1.4-1.6
+  **Recommended Split**:
+  - task-1a-docker-setup: Sub-phases 1.1-1.3
+  - task-1b-python-environment: Sub-phases 1.4-1.6
 
-**Reasoning**: [Why the split is necessary]
+  **Reasoning**: [Why the split is necessary]
 
-**Next Action**: User must approve through the task workflow with split option
-```
+  **Next Action**: User must approve through the task workflow with split option
+  ```
 
 **Keep It Simple**: If decomposition seems complicated, default to a single larger Task. Do not over-engineer the split.
 

@@ -248,6 +248,7 @@ class CodeQualityReviewerAgentTools(AgentToolsModel):
 class FrontendReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
@@ -260,12 +261,14 @@ class FrontendReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store frontend reviewer result')
 
 
 class BackendApiReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
@@ -277,12 +280,14 @@ class BackendApiReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store backend API reviewer result')
 
 
 class DatabaseReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
@@ -295,12 +300,14 @@ class DatabaseReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store database reviewer result')
 
 
 class InfrastructureReviewerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
@@ -313,6 +320,7 @@ class InfrastructureReviewerAgentTools(AgentToolsModel):
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store infrastructure reviewer result')
 
 

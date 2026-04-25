@@ -20,7 +20,10 @@ amendment_task_example = Task(
         '- Source: patch-mode-selection\n'
         '- Tie-Break Policy: Prioritize core functional/spec delivery; defer non-P0 hardening gaps.\n\n'
         '#### Deferred Risk Register\n'
-        '- DR-001 | status=accepted | severity=P2 | scope=deferred | reason=Token rotation hardening deferred to follow-up patch'
+        '- DR-001 | status=accepted | severity=P2 | scope=deferred | reason=Token rotation hardening deferred to follow-up patch\n\n'
+        '#### Codebase Evidence\n'
+        '- src/auth/jwt_service.py:42 — current expiry calculation mixes seconds and milliseconds.\n'
+        '- tests/auth/test_jwt.py:18 — existing token validation tests cover expiry behavior.'
     ),
     tech_stack_reference='PyJWT 2.x, Python 3.13+',
     implementation_checklist=(
@@ -156,7 +159,7 @@ The Task document MUST follow the EXACT structure below for MCP validation.
 
 ### Acceptance Criteria Contract (MANDATORY)
 
-Within `### Acceptance Criteria`, include BOTH sub-blocks exactly once:
+Within `### Acceptance Criteria`, include these sub-blocks exactly once:
 
 1. `#### Execution Intent Policy`
 - Mode: MVP | hardening
@@ -168,6 +171,11 @@ Within `### Acceptance Criteria`, include BOTH sub-blocks exactly once:
 - Each line format:
   `- DR-### | status=accepted|open | severity=P0|P1|P2|P3 | scope=changed-file|acceptance-gap|global|deferred | reason=...`
 - If no deferred risks: add `- None`
+
+3. `#### Codebase Evidence`
+- Use bullets formatted as `- path/to/file.ext:123 — observed fact`
+- Include source, test, config, caller, or integration facts that justify amendment scope
+- Cite only files read during codebase exploration
 
 ## TASK STRUCTURE (CONCRETE EXAMPLE)
 
@@ -224,6 +232,7 @@ TASK_DOC_KEY = "{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}"
 - **Acceptance Criteria**: Specific conditions verified through codebase exploration PLUS:
   - `#### Execution Intent Policy` block
   - `#### Deferred Risk Register` block with stable DR IDs
+  - `#### Codebase Evidence` block with `path:line` facts from files read
 - **Technology Stack Reference**: Technologies used by this Task's Steps
 
 ### Implementation (CRITICAL)
@@ -289,7 +298,8 @@ BEFORE reporting completion, verify:
 3. Document retrievable via loop_id
 4. All required Task sections present (including Checklist)
 5. Implementation steps reference specific existing files
-6. Store/link operations used the full key `{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}`
+6. Codebase Evidence includes `path:line` facts for source/test/config files read
+7. Store/link operations used the full key `{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}`
 
 ONLY after all checks pass, report:
 "Amendment task stored and verified. Ready for critic review."

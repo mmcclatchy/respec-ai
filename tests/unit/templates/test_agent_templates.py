@@ -8,6 +8,7 @@ from src.platform.tui_adapters import ClaudeCodeAdapter
 from src.platform.template_helpers import (
     create_analyst_critic_agent_tools,
     create_create_phase_agent_tools,
+    create_coder_agent_tools,
     create_patch_planner_agent_tools,
     create_plan_analyst_agent_tools,
     create_plan_critic_agent_tools,
@@ -20,6 +21,7 @@ from src.platform.template_helpers import (
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
+    generate_coder_template,
     generate_create_phase_template,
     generate_patch_planner_template,
     generate_plan_analyst_template,
@@ -323,6 +325,29 @@ class TestTaskPlanCriticTemplate:
         assert 'Do NOT call `store_reviewer_result`.' in template
         assert 'If storage fails: STOP and report the exact error. Do NOT call `store_reviewer_result`.' in template
         assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
+
+    def test_template_validates_patch_codebase_evidence(self) -> None:
+        tools = create_task_plan_critic_agent_tools(_adapter)
+        template = generate_task_plan_critic_template(tools)
+
+        assert 'MANDATORY CODEBASE EVIDENCE VALIDATION' in template
+        assert '`#### Codebase Evidence`' in template
+        assert '`- path/to/file.ext:123 — observed fact`' in template
+        assert '**[Codebase Evidence Missing - BLOCKING]**' in template
+        assert '**[Codebase Evidence Unsupported - BLOCKING]**' in template
+
+
+class TestCoderGroundingTemplate:
+    def test_coder_template_requires_no_edit_before_grounding(self) -> None:
+        tools = create_coder_agent_tools(
+            _adapter,
+            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+        )
+        template = generate_coder_template(tools)
+
+        assert 'Complete codebase grounding before edits' in template
+        assert 'Keep a concise Grounding Evidence list in working notes: `path:line — observed fact`' in template
+        assert 'Do NOT write or edit files until source/test/config evidence has been read' in template
 
 
 class TestCreatePhaseTemplate:
@@ -662,6 +687,15 @@ class TestTemplateConsistency:
         assert 'patch-mode-selection' in template
         assert '{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in template
         assert 'Derive `TASK_NAME` from the amendment task title before storage' in template
+
+    def test_patch_planner_template_requires_codebase_evidence(self) -> None:
+        patch_planner_tools = create_patch_planner_agent_tools(_adapter)
+        template = generate_patch_planner_template(patch_planner_tools)
+
+        assert '#### Codebase Evidence' in template
+        assert '`- path/to/file.ext:123 — observed fact`' in template
+        assert 'Cite only files read during codebase exploration' in template
+        assert 'Codebase Evidence includes `path:line` facts for source/test/config files read' in template
 
     def test_patch_planner_treats_request_brief_as_authoritative(self) -> None:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)
