@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/grounded-code-patch-agent-evidence-contract.md`
-- Objective: Ground code and patch agents in codebase evidence and require reviewer file-line findings.
+- Plan File: `./.codex/plans/official-api-research-slug-marker-validation.md`
+- Objective: Ground external API phase planning in official API docs via best-practices-rag marker validation.
 - Phase: completed
-- Last Updated: 2026-04-25T14:46:20-04:00
+- Last Updated: 2026-04-25
 
 ## Usage
 

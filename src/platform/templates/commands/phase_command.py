@@ -482,8 +482,21 @@ APIS_WITH_VALID_BP_DOCS = []
 APIS_MISSING_BP_DOCS = []
 
 For each api_name in EXTERNAL_APIS:
-  API_SLUG_TOKEN = api_name with spaces replaced by `-`
-  IF any EXISTING_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN:
+  ## Slug markers are candidate filters only. Procedural best-practices slug
+  ## sorting/truncation sometimes removes API/provider names, so do not require api_name in the path.
+  CANDIDATE_MARKER_PATHS = []
+  For each read_path in EXISTING_BP_READ_PATHS:
+    IF read_path contains both `apidocs` and `apiintegration`:
+      CANDIDATE_MARKER_PATHS.append(read_path)
+
+  ## Prefer existing Read: docs only when their content confirms official API coverage.
+  VALIDATED_API_DOCS = []
+  For each read_path in CANDIDATE_MARKER_PATHS:
+    CALL Read(read_path)
+    IF document content identifies api_name or its official API host AND includes official API integration guidance:
+      VALIDATED_API_DOCS.append(read_path)
+
+  IF len(VALIDATED_API_DOCS) > 0:
     APIS_WITH_VALID_BP_DOCS.append(api_name)
   ELSE:
     APIS_MISSING_BP_DOCS.append(api_name)
@@ -491,13 +504,13 @@ For each api_name in EXTERNAL_APIS:
 AUTO_API_PROMPTS = []
 For each api_name in APIS_MISSING_BP_DOCS:
   AUTO_API_PROMPTS.append(
-    "Synthesize API integration guidance for {{api_name}} covering authentication, SDK/client usage, rate limits, retries, pagination, and error handling."
+    "Synthesize official API integration docs for {{api_name}} using lowercase slug marker topics apidocs apiintegration; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity."
   )
 
 SYNTHESIS_QUEUE = deduplicated list of SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS
 
 IF SYNTHESIS_QUEUE is empty:
-  Display: "✓ No bp synthesis required (all detected APIs already covered by valid .best-practices docs)"
+  Display: "✓ No bp synthesis required (all detected APIs already covered by content-validated official .best-practices API docs)"
   Proceed to Step 7.6.
 
 ═══════════════════════════════════════════════
@@ -999,5 +1012,4 @@ Maintain conversation flow while processing complex backend refinement:
 - **Research Coverage**: All knowledge gaps identified with clear paths
 - **Implementation Ready**: Sufficient detail for development teams
 - **Integration**: Seamless storage and retrieval
-
 """

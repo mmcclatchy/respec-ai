@@ -29,7 +29,8 @@ technical_phase_template = Phase(
         '  - Purpose: [what knowledge it provides]\n'
         '  - Application: [how it applies to this phase]\n\n'
         '**External Research Needed** (when KB has no matching docs):\n'
-        '- Synthesize: [research prompts with technology names]'
+        '- Synthesize: [research prompts with technology names]\n'
+        '- Synthesize: Official API integration docs for [provider] with slug marker topics `apidocs` and `apiintegration`'
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
@@ -191,6 +192,33 @@ IF query-kb fails:
   → Set: KB_RESULTS = "Knowledge base unavailable - rely on external research"
   → Continue with phase generation
   → Note limitation in Research Requirements section
+
+═══════════════════════════════════════════════
+OFFICIAL API DOCUMENTATION RESEARCH PROTOCOL
+═══════════════════════════════════════════════
+When the phase includes an external API/provider integration:
+- Treat official API documentation as required research input, not optional background context.
+- Use `best-practices-rag` as the research owner. Do NOT browse the web directly from this agent.
+- Query or synthesize with lowercase procedural slug marker topics: `apidocs` and `apiintegration`.
+- Keep the marker topics short and explicit because `best-practices-rag generate-slug` is procedural, sorted, and truncated.
+- Do NOT use PascalCase marker variants such as `OfficialDocs` or `ApiIntegration`.
+- Do NOT rely on the API/provider name appearing in the generated slug; procedural sorting/truncation sometimes removes it.
+
+For each external API/provider, first search for existing candidate docs:
+  CALL Glob: .best-practices/*apidocs*apiintegration*.md
+  CALL Glob: .best-practices/*apiintegration*apidocs*.md
+  CALL Grep: "{{provider_name}}" .best-practices/*apidocs*apiintegration*.md
+  CALL Grep: "{{provider_name}}" .best-practices/*apiintegration*apidocs*.md
+
+Only cite a `Read:` doc when reading it confirms it covers the target API/provider and official integration details.
+Filename marker matches are candidate filters only; content validation is authoritative.
+
+If no validated doc exists, add a specific External Research Needed prompt:
+  - Synthesize: Official API integration docs for {{provider_name}} using slug marker topics `apidocs` and `apiintegration`; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.
+
+Do not prefer SDKs globally. Select SDK/client library vs direct HTTP only when official documentation and project constraints justify it.
+Reflect the selected approach and rationale in Technology Stack, Dependencies, Integration Context, and API Design when relevant.
+═══════════════════════════════════════════════
 
 STEP 1: Retrieve Current Phase
 CALL mcp__respec-ai__get_document(
@@ -872,6 +900,8 @@ When unsure about research needs:
 2. Include a `Synthesize:` prompt only when existing docs cannot answer the gap
 3. It is valid to produce zero `Synthesize:` prompts when gaps are already covered
 4. Never add prompts to fill a target count or quota
+5. For external API/provider integrations, include `apidocs` and `apiintegration` as actual lowercase topic words in the `Synthesize:` prompt so procedural slug generation preserves them when truncation permits
+6. Do not rely on "Required output slug marker" wording to force slug output; marker words must be part of the actual topic set
 
 ### Incomplete Feedback
 If feedback history unavailable:

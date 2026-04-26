@@ -514,16 +514,53 @@ For each path in VALID_PATHS:
     IF path matches BP_PATH_REGEX:
         VALID_BP_READ_PATHS.append(path)
 
+API_DOC_MARKER_GLOB_PATHS = []
+CALL Glob: .best-practices/*apidocs*apiintegration*.md
+→ Append matching paths to API_DOC_MARKER_GLOB_PATHS
+CALL Glob: .best-practices/*apiintegration*apidocs*.md
+→ Append matching paths to API_DOC_MARKER_GLOB_PATHS
+
 APIS_WITH_COVERAGE = []
 APIS_WITH_VALID_BP_READ_COVERAGE = []
 APIS_MISSING_COVERAGE = []
 APIS_MISSING_FINAL_DOCS = []
+API_DOC_VALIDATION_FAILURES = []
 
 IF API_INTEGRATION_TRIGGER is true:
     For each api_name in EXTERNAL_APIS:
         API_SLUG_TOKEN = api_name with spaces replaced by "-"
-        HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN
-        HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item contains api_name OR API_SLUG_TOKEN
+        ## Slug markers identify candidate official API docs only.
+        ## Procedural slug sorting/truncation sometimes removes API/provider names, so API name in the filename is not required.
+        API_MARKER_READ_CANDIDATES = VALID_BP_READ_PATHS items containing both `apidocs` and `apiintegration`
+        API_MARKER_GLOB_CANDIDATES = API_DOC_MARKER_GLOB_PATHS items containing both `apidocs` and `apiintegration`
+        API_DOC_CANDIDATES = deduplicated list of API_MARKER_READ_CANDIDATES + API_MARKER_GLOB_CANDIDATES
+
+        VALIDATED_API_DOC_PATHS = []
+        VALIDATED_API_READ_PATHS = []
+
+        For each doc_path in API_DOC_CANDIDATES:
+            CALL Read(doc_path)
+            IF Read fails:
+                API_DOC_VALIDATION_FAILURES.append(f"unreadable:{{doc_path}}")
+                Continue
+
+            CONTENT_MATCHES_API = content identifies api_name, API_SLUG_TOKEN, or the official API host/provider
+            CONTENT_HAS_OFFICIAL_SOURCE = content includes official source URLs or explicit official documentation references
+            CONTENT_HAS_AUTH = content describes authentication model
+            CONTENT_HAS_OPERATIONS = content describes endpoints/operations or SDK/client method contracts
+            CONTENT_HAS_CONTRACTS = content describes request/response schemas, payload contracts, or explains why not applicable
+            CONTENT_HAS_FAILURE_GUIDANCE = content covers relevant rate limits, retries, pagination, webhooks, errors, or versioning
+            CONTENT_HAS_CLIENT_DECISION = content recommends SDK/client library vs direct HTTP with rationale
+
+            IF all content validation booleans are true:
+                VALIDATED_API_DOC_PATHS.append(doc_path)
+                IF doc_path in VALID_BP_READ_PATHS:
+                    VALIDATED_API_READ_PATHS.append(doc_path)
+            ELSE:
+                API_DOC_VALIDATION_FAILURES.append(f"insufficient_official_api_coverage:{{doc_path}}")
+
+        HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0
+        HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item contains api_name or API_SLUG_TOKEN AND contains both `apidocs` and `apiintegration`
 
         IF HAS_VALID_BP_READ_COVERAGE:
             APIS_WITH_VALID_BP_READ_COVERAGE.append(api_name)
@@ -593,6 +630,7 @@ RESEARCH_PATH_VALIDATION = {{
     "detected_external_apis": EXTERNAL_APIS,
     "apis_missing_coverage": APIS_MISSING_COVERAGE,
     "apis_missing_final_docs": APIS_MISSING_FINAL_DOCS,
+    "api_doc_validation_failures": API_DOC_VALIDATION_FAILURES,
     "soft_stale_warnings": SOFT_STALE_WARNINGS,
     "hard_stale_blocking": HARD_STALE_BLOCKING,
     "invalid_bp_references": INVALID_BP_REFERENCES
@@ -827,6 +865,7 @@ Phases vary by project type. Evaluate based on project context:
 - Detected external APIs/services: {{RESEARCH_PATH_VALIDATION.detected_external_apis}}
 - APIs missing coverage: {{RESEARCH_PATH_VALIDATION.apis_missing_coverage}}
 - APIs missing final docs: {{RESEARCH_PATH_VALIDATION.apis_missing_final_docs}}
+- API official-doc validation failures: {{RESEARCH_PATH_VALIDATION.api_doc_validation_failures}}
 - Invalid `.best-practices` references anywhere in phase: {{RESEARCH_PATH_VALIDATION.invalid_bp_references}}
 - Soft stale warnings (>30d): {{RESEARCH_PATH_VALIDATION.soft_stale_warnings}}
 - Hard stale blocking (>365d or refresh without reliable doc): {{RESEARCH_PATH_VALIDATION.hard_stale_blocking}}
@@ -849,6 +888,10 @@ Phases vary by project type. Evaluate based on project context:
 - In `validation_mode == "full"`: if ANY external API/service lacks corresponding Read/Synthesize research entry: raise blockers
 - In `validation_mode == "post_synthesis"`: if ANY external API/service lacks a valid `Read:` `.best-practices/*.md` doc: raise blockers
 - This is a BLOCKING issue - missing API lookups risks hallucinated integration logic
+- API doc filenames are candidate filters only; never approve coverage from filename/API-name substring matches alone
+- Candidate official API docs must contain both lowercase slug marker tokens: `apidocs` and `apiintegration`
+- The API/provider name does NOT need to appear in the slug because procedural sorting/truncation sometimes removes it
+- Approval requires reading the candidate doc and validating target API/provider identity, official source URLs or official-doc references, auth model, endpoints/operations or SDK/client method contracts, payload/schema contracts where relevant, failure/rate-limit/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP recommendation with rationale
 
 **API DOC FRESHNESS POLICY (for API integrations)**:
 - Soft threshold: 30 days → attempt `best-practices-rag query-kb ... --force-refresh`

@@ -431,9 +431,19 @@ class TestPhaseCriticTemplate:
         assert "line.startswith('- Read:')" in template
         assert 'IF validation_mode == "post_synthesis":' in template
         assert (
-            'HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN' in template
+            'API_MARKER_READ_CANDIDATES = VALID_BP_READ_PATHS items containing both `apidocs` and `apiintegration`'
+            in template
         )
-        assert 'HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item contains api_name OR API_SLUG_TOKEN' in template
+        assert 'API_DOC_MARKER_GLOB_PATHS = []' in template
+        assert 'CONTENT_HAS_OFFICIAL_SOURCE' in template
+        assert 'CONTENT_HAS_CLIENT_DECISION' in template
+        assert 'HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0' in template
+        assert 'contains both `apidocs` and `apiintegration`' in template
+        assert 'filename/API-name substring matches alone' in template
+        assert (
+            'HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN'
+            not in template
+        )
         assert 'For each api_name in APIS_WITH_VALID_BP_READ_COVERAGE:' in template
         assert 'APIS_MISSING_FINAL_DOCS = []' in template
         assert 'API Research Coverage Missing - BLOCKING' in template
@@ -657,6 +667,21 @@ class TestTemplateConsistency:
         assert '### Grouped Markdown Inputs' in template
         assert '- None' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
+
+    def test_phase_architect_template_requires_official_api_doc_research_markers(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert 'OFFICIAL API DOCUMENTATION RESEARCH PROTOCOL' in template
+        assert '`apidocs` and `apiintegration`' in template
+        assert 'Do NOT browse the web directly from this agent.' in template
+        assert 'Do NOT use PascalCase marker variants' in template
+        assert 'filename marker matches are candidate filters only' in template.lower()
+        assert 'official source URLs' in template
+        assert 'authentication, endpoints/operations or SDK/client method contracts' in template
+        assert 'request/response schemas or payload contracts' in template
+        assert 'SDK/client library vs direct HTTP based on official docs' in template
+        assert 'Do not prefer SDKs globally.' in template
 
     def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:
         task_planner_tools = create_task_planner_agent_tools(_adapter)

@@ -499,10 +499,17 @@ class TestCrossPlatformInvocationRendering:
         assert 'EXISTING_BP_READ_PATHS = []' in template
         assert 'APIS_WITH_VALID_BP_DOCS = []' in template
         assert 'APIS_MISSING_BP_DOCS = []' in template
+        assert 'CANDIDATE_MARKER_PATHS = []' in template
+        assert 'read_path contains both `apidocs` and `apiintegration`' in template
+        assert 'VALIDATED_API_DOCS = []' in template
+        assert 'official API integration guidance' in template
+        assert 'lowercase slug marker topics apidocs apiintegration' in template
+        assert 'SDK/client library vs direct HTTP based on official docs' in template
         assert 'AUTO_API_PROMPTS = []' in template
         assert 'SYNTHESIS_QUEUE = deduplicated list of SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS' in template
         assert 'PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)' in template
-        assert 'covered by valid .best-practices docs' in template
+        assert 'covered by content-validated official .best-practices API docs' in template
+        assert 'any EXISTING_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN' not in template
 
     def test_phase_template_uses_post_synthesis_critic_and_fail_closed_api_blockers(self) -> None:
         coordinator = TemplateCoordinator()
