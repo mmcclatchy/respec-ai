@@ -663,7 +663,9 @@ class TestCrossPlatformInvocationRendering:
             RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
         assert 'IF coder reports failure:' in template
-        assert 'IF any required reviewer reports failure:' in template
+        assert (
+            'IF any invoked reviewer reports failure, returns no run summary, reports run_status=incomplete' in template
+        )
         assert 'CONSOLIDATION_RESPONSE = ' in template
         assert 'Phase 1 review consolidation failed' in template
         assert 'PHASE1_FEEDBACK = ' in template
@@ -893,6 +895,28 @@ class TestCrossPlatformInvocationRendering:
             '# E) Decision handling after commit'
         )
         assert 'Return to Step 7.4 (next loop pass runs coder → reviews → decision → commit).' in template
+
+    def test_code_template_reuses_signed_off_reviewers_with_full_roster_consolidation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE,
+            PlatformType.LINEAR,
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+
+        assert 'PHASE1_SIGNED_OFF_REVIEWERS = PHASE1_SIGNED_OFF_REVIEWERS if defined else []' in template
+        assert 'PHASE1_REVIEWERS_TO_INVOKE = []' in template
+        assert (
+            'Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS'
+        ) in template
+        assert 'Add all Phase 1 reviewers when the Task document, Phase document' in template
+        assert 'Rerun on uncertainty by adding the uncertain reviewer.' in template
+        assert 'Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.' in template
+        assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
+        assert 'returns no run summary, reports run_status=incomplete' in template
+        assert 'Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections' in template
+        assert 'STANDARDS_REVIEWER_SIGNED_OFF = STANDARDS_REVIEWER_SIGNED_OFF if defined else false' in template
+        assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' in template
 
     def test_code_template_phase1_commit_subject_is_checkpoint_only(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1247,18 +1271,43 @@ class TestCrossPlatformInvocationRendering:
         )
 
         assert 'IF coder reports failure:' in template
-        assert 'IF any required reviewer reports failure:' in template
+        assert (
+            'IF any invoked reviewer reports failure, returns no run summary, reports run_status=incomplete' in template
+        )
         assert 'CONSOLIDATION_RESPONSE = ' in template
         assert 'Phase 1 review consolidation failed' in template
         assert 'Phase 1 review consolidation iteration mismatch' in template
         assert 'Phase 1 consolidated feedback missing' in template
         assert 'Do NOT call decide_coding_action' in template
         assert 'Do NOT invoke respec-commit' in template
-        assert 'IF coding-standards-reviewer reports failure:' in template
+        assert 'IF invoked coding-standards-reviewer reports failure, returns no run summary,' in template
         assert 'Phase 2 review consolidation failed' in template
         assert 'Phase 2 review consolidation iteration mismatch' in template
         assert 'Phase 2 consolidated feedback missing' in template
         assert 'Do NOT call decide_standards_action' in template
+
+    def test_patch_template_reuses_signed_off_reviewers_with_full_roster_consolidation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+
+        assert 'PHASE1_SIGNED_OFF_REVIEWERS = PHASE1_SIGNED_OFF_REVIEWERS if defined else []' in template
+        assert 'PHASE1_REVIEWERS_TO_INVOKE = []' in template
+        assert 'amendment-task context changes, patch scope changes' in template
+        assert (
+            'Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS'
+        ) in template
+        assert 'Add all Phase 1 reviewers when the Task document, Phase document' in template
+        assert 'Rerun on uncertainty by adding the uncertain reviewer.' in template
+        assert 'Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.' in template
+        assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
+        assert 'returns no run summary, reports run_status=incomplete' in template
+        assert 'Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections' in template
+        assert 'STANDARDS_REVIEWER_SIGNED_OFF = STANDARDS_REVIEWER_SIGNED_OFF if defined else false' in template
+        assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' in template
 
     def test_phase_and_roadmap_templates_do_not_include_malformed_tool_calls(self) -> None:
         coordinator = TemplateCoordinator()

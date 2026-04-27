@@ -201,6 +201,14 @@ class StateManager(ABC):
     @abstractmethod
     async def list_reviewer_results(self, loop_id: str, review_iteration: int) -> list[ReviewerResult]: ...
 
+    @abstractmethod
+    async def list_latest_reviewer_results(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_names: list[str],
+    ) -> list[ReviewerResult]: ...
+
     # Plan Plan Management
     @abstractmethod
     async def store_plan(self, plan_name: str, plan: Plan) -> str: ...

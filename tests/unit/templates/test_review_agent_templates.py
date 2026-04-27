@@ -474,6 +474,26 @@ class TestReviewAgentConsistency:
             assert '### Resume Context' in template
             assert '### Settled Decisions' in template
 
+    def test_reviewer_templates_include_run_summary_and_execution_notes(self) -> None:
+        templates = [
+            generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
+            generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
+            generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
+            generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
+            generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
+            generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
+            generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
+        ]
+        for template in templates:
+            assert 'run_status=clean|warnings|incomplete' in template
+            assert 'stored_result=yes|no' in template
+            assert 'execution_notes=[none, or concise tool/read/command limitation]' in template
+            assert '#### Review Execution Notes' in template
+            assert 'Orchestrator action needed: [none/rerun/fail-closed]' in template
+            assert 'Review Execution Notes are observational.' in template
+            assert 'Do NOT return review markdown to the orchestrator.' in template
+
     def test_applicable_reviewers_include_full_best_practices_research_protocol(self) -> None:
         templates = {
             'spec-alignment': generate_spec_alignment_reviewer_template(

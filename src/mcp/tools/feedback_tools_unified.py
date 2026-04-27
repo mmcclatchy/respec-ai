@@ -323,7 +323,11 @@ class UnifiedFeedbackTools:
             raise ResourceError('Loop does not exist')
 
         active_critic_agents = [self._parse_reviewer_name(name) for name in active_reviewers]
-        stored_results = await self.state.list_reviewer_results(loop_id, review_iteration)
+        stored_results = await self.state.list_latest_reviewer_results(
+            loop_id,
+            review_iteration,
+            [name.value for name in active_critic_agents],
+        )
         results_by_reviewer = {result.reviewer_name: result for result in stored_results}
 
         missing_reviewers = [name for name in active_critic_agents if name not in results_by_reviewer]
@@ -358,11 +362,14 @@ class UnifiedFeedbackTools:
                 findings_by_priority[finding.priority].append(f'[{result.reviewer_name.value}] {finding.feedback}')
 
         blocker_active = bool(all_blockers)
+        reused_count = sum(1 for result in active_results if result.review_iteration < review_iteration)
         summary = (
             f'Consolidated {len(active_results)} reviewer result(s) for iteration {review_iteration}. '
             f'Composite score={overall_score}/100. '
             + ('[BLOCKING] Active blockers detected.' if blocker_active else 'No active blockers detected.')
         )
+        if reused_count:
+            summary += f' Reused reviewer results from prior iterations: {reused_count}.'
         if blocker_active:
             summary += f' Blockers: {len(all_blockers)}'
 
@@ -384,6 +391,12 @@ class UnifiedFeedbackTools:
             if result:
                 detail_lines.append(f'#### {reviewer.value}')
                 reviewer_weight = weights_by_reviewer.get(reviewer, 0.0)
+                result_source = (
+                    'current iteration'
+                    if result.review_iteration == review_iteration
+                    else f'reused from iteration {result.review_iteration}'
+                )
+                detail_lines.append(f'- Result Source: {result_source}')
                 detail_lines.append(f'- Score: {result.score}/{result.max_score}')
                 detail_lines.append(f'- Normalized Score: {result.normalized_score}/100')
                 detail_lines.append(f'- Configured Weight: {reviewer_weight:g}')
@@ -579,7 +592,8 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         Parameters:
         - loop_id: Loop identifier
         - review_iteration: Explicit review pass number for this loop
-        - active_reviewers: Reviewer names invoked for this pass
+        - active_reviewers: Full reviewer roster to consolidate for this pass. Each reviewer uses the latest stored
+          result at or before review_iteration.
 
         Returns:
         - MCPResponse: Consolidation confirmation with score/iteration metadata

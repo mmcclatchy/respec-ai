@@ -759,3 +759,25 @@ class InMemoryStateManager(StateManager):
             for (stored_loop_id, stored_iteration, _), result in self._reviewer_results.items()
             if stored_loop_id == loop_id and stored_iteration == review_iteration
         ]
+
+    async def list_latest_reviewer_results(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_names: list[str],
+    ) -> list[ReviewerResult]:
+        await self.get_loop(loop_id)
+        reviewer_roster = set(reviewer_names)
+        latest_by_reviewer: dict[str, ReviewerResult] = {}
+        for (stored_loop_id, stored_iteration, reviewer_name), result in self._reviewer_results.items():
+            if stored_loop_id != loop_id:
+                continue
+            if stored_iteration > review_iteration:
+                continue
+            if reviewer_name not in reviewer_roster:
+                continue
+            current = latest_by_reviewer.get(reviewer_name)
+            if current is None or stored_iteration > current.review_iteration:
+                latest_by_reviewer[reviewer_name] = result
+
+        return [latest_by_reviewer[name] for name in sorted(latest_by_reviewer)]

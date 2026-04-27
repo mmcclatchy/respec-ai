@@ -73,6 +73,9 @@ MANDATORY OUTPUT SCOPE
 Store reviewer result via {tools.store_reviewer_result}.
 Your ONLY output to the orchestrator is:
   "Reviewer result stored: code-quality-reviewer (score=[REVIEW_SCORE], iteration=[review_iteration])"
+  "run_status=clean|warnings|incomplete"
+  "stored_result=yes|no"
+  "execution_notes=[none, or concise tool/read/command limitation]"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -196,6 +199,12 @@ Store the following markdown as reviewer feedback:
   - Citations verified: [count verified]/[total relevant citations]
   - Missing pattern evidence: [list with step references]
 
+  #### Review Execution Notes
+  - Run Status: [clean/warnings/incomplete]
+  - Tool/command/read limitations: [None or concise issue]
+  - Fallbacks used: [None or concise fallback]
+  - Orchestrator action needed: [none/rerun/fail-closed]
+
   #### Key Issues
   - **[Severity:P0] [Scope:changed-file|acceptance-gap] [BLOCKING]**: [Any blocking correctness issues listed first]
   - [Severity:P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Other issues with file:line references, sorted by severity]
@@ -208,6 +217,7 @@ Before storing:
 - REVIEW_SCORE: integer reviewer-local score from 0 to 25.
 - BLOCKERS: list[str] of blocking findings; use [] when none exist.
 - FINDINGS: list[{{priority, feedback}}] grouped as P0/P1/P2/P3.
+- Review Execution Notes are observational. Do NOT use them as coder fix guidance unless the same issue appears in blockers, findings, or Key Issues.
 - Preserve `[BLOCKING]` or `[Severity:P0]` markers in findings for critical violations.
 
 ## EVIDENCE-BASED ASSESSMENT

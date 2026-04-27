@@ -71,6 +71,9 @@ MANDATORY OUTPUT SCOPE
 Store reviewer result via {tools.store_reviewer_result}.
 Your ONLY output to the orchestrator is:
   "Reviewer result stored: coding-standards-reviewer (score=[REVIEW_SCORE], iteration=[review_iteration])"
+  "run_status=clean|warnings|incomplete"
+  "stored_result=yes|no"
+  "execution_notes=[none, or concise tool/read/command limitation]"
 
 Do NOT return review markdown to the orchestrator.
 Do NOT write files to disk.
@@ -239,6 +242,12 @@ Store the following markdown as reviewer feedback:
   - Finding: [Assessment with file:line references]
   - Violations: [Count and severity]
 
+  #### Review Execution Notes
+  - Run Status: [clean/warnings/incomplete]
+  - Tool/command/read limitations: [None or concise issue]
+  - Fallbacks used: [None or concise fallback]
+  - Orchestrator action needed: [none/rerun/fail-closed]
+
   #### Key Issues
   - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Configured standards issue with file:line reference]
 
@@ -249,6 +258,9 @@ Store the following markdown as reviewer feedback:
   - Overall: [Compliant|Minor Violations|Major Violations|Critical Violations]
   - Score: {{TOTAL}}/25
   ```
+
+Before storing:
+- Review Execution Notes are observational. Do NOT use them as coder fix guidance unless the same issue appears in blockers, findings, or Key Issues.
 
 ## EDGE CASES
 

@@ -4,7 +4,7 @@ import pytest
 from asyncpg.exceptions import CheckViolationError, UniqueViolationError
 
 from src.models.enums import CriticAgent, PhaseStatus
-from src.models.feedback import CriticFeedback
+from src.models.feedback import CriticFeedback, ReviewFinding, ReviewerResult
 from src.models.phase import Phase
 from src.utils.database_pool import db_pool
 from src.utils.enums import LoopType
@@ -502,6 +502,46 @@ class TestDatabaseJSONBSerialization:
             assert violating_rows == 0
         finally:
             await restore_schema()
+
+
+class TestReviewerResultStateManager:
+    @pytest.mark.asyncio
+    async def test_postgres_lists_latest_reviewer_results_at_or_before_iteration(
+        self, db_state_manager: PostgresStateManager
+    ) -> None:
+        loop = LoopState(loop_type=LoopType.TASK)
+        await db_state_manager.add_loop(loop, 'test-project')
+
+        for iteration, score in [(1, 20), (2, 24), (4, 10)]:
+            await db_state_manager.upsert_reviewer_result(
+                ReviewerResult(
+                    loop_id=loop.id,
+                    review_iteration=iteration,
+                    reviewer_name=CriticAgent.CODE_QUALITY_REVIEWER,
+                    feedback_markdown=f'### Code Quality (Score: {score}/25)',
+                    score=score,
+                    max_score=25,
+                    blockers=[],
+                    findings=[
+                        ReviewFinding(
+                            priority='P3',
+                            feedback=f'Iteration {iteration} advisory in src/main.py:10',
+                        )
+                    ],
+                )
+            )
+
+        latest_results = await db_state_manager.list_latest_reviewer_results(
+            loop.id,
+            3,
+            ['code-quality-reviewer'],
+        )
+
+        assert len(latest_results) == 1
+        latest = latest_results[0]
+        assert latest.review_iteration == 2
+        assert latest.score == 24
+        assert latest.findings[0].feedback == 'Iteration 2 advisory in src/main.py:10'
 
 
 class TestDatabaseConstraints:

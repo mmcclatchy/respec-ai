@@ -485,6 +485,8 @@ USER_FEEDBACK_MARKDOWN = MODE_SNAPSHOT_MARKDOWN
 #### Step 7.4: Phase 1 Iteration Loop (Coder → Reviews → Decision → Commit)
 
 ```text
+PHASE1_SIGNED_OFF_REVIEWERS = PHASE1_SIGNED_OFF_REVIEWERS if defined else []
+
 Loop:
   REVIEW_ITERATION = REVIEW_ITERATION if defined else 1
 
@@ -501,20 +503,42 @@ Loop:
     EXIT: Workflow terminated
 
   # B) Phase 1 review team orchestration
-  Launch ALL Phase 1 review agents in parallel.{tools.phase1_review_parallel_policy}
-  Core reviewers always run; optional specialists based on PHASE1_REVIEWERS from Step 6.6.
-  coding-standards-reviewer is excluded from Phase 1 and runs in Phase 2 only.
+  PHASE1_REVIEWERS_TO_INVOKE = []
+  PHASE1_INVALIDATED_REVIEWERS = []
 
-  Core reviewers (always active):
-  {tools.invoke_quality_checker}
-  {tools.invoke_spec_alignment}
-  {tools.invoke_code_quality}
+  Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS:
+  - Compare the coder run summary, changed files, task/phase context changes, and prior consolidated feedback.
+  - Add a signed-off reviewer when new or changed work touches that reviewer's responsibility.
+  - Add all Phase 1 reviewers when the Task document, Phase document, execution mode, public behavior,
+    API contracts, persistence behavior, integration boundaries, dependency wiring, migrations, build tooling,
+    test harness, or security-sensitive behavior changed since that reviewer signed off.
+  - Rerun on uncertainty by adding the uncertain reviewer.
+
+  For each REVIEWER in PHASE1_REVIEWERS:
+    IF REVIEWER not in PHASE1_SIGNED_OFF_REVIEWERS:
+      add REVIEWER to PHASE1_REVIEWERS_TO_INVOKE
+    ELSE IF REVIEWER is in PHASE1_INVALIDATED_REVIEWERS:
+      add REVIEWER to PHASE1_REVIEWERS_TO_INVOKE
+
+  IF PHASE1_REVIEWERS_TO_INVOKE is empty:
+    Display: "✓ Reusing prior Phase 1 reviewer sign-offs for this iteration"
+  ELSE:
+    Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.{tools.phase1_review_parallel_policy}
+
+  Core reviewers:
+  IF "automated-quality-checker" in PHASE1_REVIEWERS_TO_INVOKE:
+    {tools.invoke_quality_checker}
+  IF "spec-alignment-reviewer" in PHASE1_REVIEWERS_TO_INVOKE:
+    {tools.invoke_spec_alignment}
+  IF "code-quality-reviewer" in PHASE1_REVIEWERS_TO_INVOKE:
+    {tools.invoke_code_quality}
 
   Optional specialists:
-  For each REVIEWER in PHASE1_REVIEWERS where REVIEWER is not core:
+  For each REVIEWER in PHASE1_REVIEWERS_TO_INVOKE where REVIEWER is not core:
     {tools.invoke_dynamic_reviewer_pattern}
 
-  IF any required reviewer reports failure:
+  IF any invoked reviewer reports failure, returns no run summary, reports run_status=incomplete,
+  or fails to confirm stored reviewer result:
     ERROR: "Phase 1 review team failed"
     DIAGNOSTIC: [surface the exact reviewer error/output]
     FAIL-CLOSED:
@@ -551,6 +575,11 @@ Loop:
     - Do NOT call decide_coding_action
     - Do NOT invoke respec-commit
     EXIT: Workflow terminated
+
+  Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections:
+  - Add a reviewer when its latest result has full score, no blockers, and no P0/P1 findings.
+  - Remove a reviewer when its latest result has any blocker, any P0/P1 finding, or less than full score.
+  - Keep a reused reviewer signed off only when it was not invalidated this iteration.
 
   # C) MCP coding decision
   CODING_DECISION_RESPONSE = {tools.decide_coding_action}
@@ -715,6 +744,8 @@ Display:
 #### Step 7.5.2: Standards Review Cycle
 
 ```text
+STANDARDS_REVIEWER_SIGNED_OFF = STANDARDS_REVIEWER_SIGNED_OFF if defined else false
+
 Loop:
   REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION
 
@@ -729,8 +760,20 @@ Loop:
     - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
-  {tools.invoke_coding_standards_reviewer}
-  IF coding-standards-reviewer reports failure:
+  STANDARDS_REVIEWERS_TO_INVOKE = []
+  IF STANDARDS_REVIEWER_SIGNED_OFF is false:
+    add "coding-standards-reviewer" to STANDARDS_REVIEWERS_TO_INVOKE
+  ELSE IF standards-relevant files, standards TOML files, formatting, naming, imports, type hints,
+  docstrings, lint configuration, or generated artifacts changed since sign-off:
+    add "coding-standards-reviewer" to STANDARDS_REVIEWERS_TO_INVOKE
+
+  IF STANDARDS_REVIEWERS_TO_INVOKE is empty:
+    Display: "✓ Reusing prior coding-standards-reviewer sign-off for this iteration"
+  ELSE:
+    {tools.invoke_coding_standards_reviewer}
+
+  IF invoked coding-standards-reviewer reports failure, returns no run summary,
+  reports run_status=incomplete, or fails to confirm stored reviewer result:
     ERROR: "Coding standards reviewer failed"
     DIAGNOSTIC: [surface the exact reviewer error/output]
     FAIL-CLOSED:
@@ -766,6 +809,10 @@ Loop:
     - Do NOT call decide_standards_action
     - Do NOT invoke respec-commit
     EXIT: Workflow terminated
+
+  Update STANDARDS_REVIEWER_SIGNED_OFF from the consolidated reviewer section:
+  - Set true when coding-standards-reviewer has full score, no blockers, and no P0/P1 findings.
+  - Set false when coding-standards-reviewer has any blocker, any P0/P1 finding, or less than full score.
 
   STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
   STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status

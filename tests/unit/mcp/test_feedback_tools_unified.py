@@ -353,6 +353,119 @@ class TestDeterministicReviewConsolidation:
         assert '- Weighted Contribution:' in detailed_feedback
 
     @pytest.mark.asyncio
+    async def test_consolidate_reuses_latest_prior_reviewer_result(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='code-quality-reviewer',
+            feedback_markdown='### Code Quality (Score: 25/25)',
+            score=25,
+            max_score=25,
+            blockers=[],
+            findings=[{'priority': 'P3', 'feedback': 'Prior advisory in src/main.py:10'}],
+        )
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=2,
+            reviewer_name='automated-quality-checker',
+            feedback_markdown='### Automated Quality Check (Score: 50/50)',
+            score=50,
+            max_score=50,
+            blockers=[],
+            findings=[],
+        )
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=2,
+            reviewer_name='spec-alignment-reviewer',
+            feedback_markdown='### Spec Alignment (Score: 50/50)',
+            score=50,
+            max_score=50,
+            blockers=[],
+            findings=[],
+        )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=2,
+            active_reviewers=[
+                'automated-quality-checker',
+                'spec-alignment-reviewer',
+                'code-quality-reviewer',
+            ],
+        )
+
+        assert consolidate_response.current_score == 100
+        stored_loop = await state.get_loop(loop.id)
+        consolidated_feedback = stored_loop.feedback_history[-1]
+        assert 'Reused reviewer results from prior iterations: 1.' in consolidated_feedback.assessment_summary
+        assert '#### code-quality-reviewer' in consolidated_feedback.detailed_feedback
+        assert '- Result Source: reused from iteration 1' in consolidated_feedback.detailed_feedback
+        assert '- Result Source: current iteration' in consolidated_feedback.detailed_feedback
+        assert '[Severity:P3] [code-quality-reviewer] Prior advisory in src/main.py:10' in (
+            consolidated_feedback.key_issues
+        )
+
+    @pytest.mark.asyncio
+    async def test_consolidate_uses_newest_prior_reviewer_result_and_ignores_future(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        for iteration, score in [(1, 20), (2, 24), (4, 10)]:
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=iteration,
+                reviewer_name='code-quality-reviewer',
+                feedback_markdown=f'### Code Quality (Score: {score}/25)',
+                score=score,
+                max_score=25,
+                blockers=[],
+                findings=[],
+            )
+
+        latest_results = await state.list_latest_reviewer_results(
+            loop.id,
+            3,
+            ['code-quality-reviewer'],
+        )
+
+        assert len(latest_results) == 1
+        assert latest_results[0].review_iteration == 2
+        assert latest_results[0].score == 24
+
+    @pytest.mark.asyncio
+    async def test_consolidate_fails_when_only_future_reviewer_result_exists(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=3,
+            reviewer_name='code-quality-reviewer',
+            feedback_markdown='### Code Quality (Score: 25/25)',
+            score=25,
+            max_score=25,
+            blockers=[],
+            findings=[],
+        )
+
+        with pytest.raises(ToolError, match='missing reviewer submissions: code-quality-reviewer'):
+            await tools.consolidate_review_cycle(
+                loop_id=loop.id,
+                review_iteration=2,
+                active_reviewers=['code-quality-reviewer'],
+            )
+
+    @pytest.mark.asyncio
     async def test_reviewer_local_max_score_normalizes_to_composite_percentage(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
         loop = LoopState(loop_type=LoopType.TASK)

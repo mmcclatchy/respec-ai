@@ -1003,3 +1003,82 @@ class PostgresStateManager(StateManager):
             )
 
         return reviewer_results
+
+    async def list_latest_reviewer_results(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_names: list[str],
+    ) -> list[ReviewerResult]:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            result_rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (reviewer_name)
+                    loop_id, review_iteration, reviewer_name, feedback_markdown,
+                    score, max_score, blockers, updated_at
+                FROM reviewer_results
+                WHERE loop_id = $1
+                  AND review_iteration <= $2
+                  AND reviewer_name = ANY($3::text[])
+                ORDER BY reviewer_name, review_iteration DESC
+                """,
+                loop_id,
+                review_iteration,
+                reviewer_names,
+            )
+
+            finding_rows = []
+            if result_rows:
+                selected_loop_ids = [row['loop_id'] for row in result_rows]
+                selected_iterations = [row['review_iteration'] for row in result_rows]
+                selected_reviewers = [row['reviewer_name'] for row in result_rows]
+                finding_rows = await conn.fetch(
+                    """
+                    WITH selected(loop_id, review_iteration, reviewer_name) AS (
+                        SELECT * FROM unnest($1::text[], $2::int[], $3::text[])
+                    )
+                    SELECT
+                        rf.reviewer_name,
+                        rf.review_iteration,
+                        rf.priority,
+                        rf.feedback
+                    FROM review_findings rf
+                    JOIN selected s
+                      ON rf.loop_id = s.loop_id
+                     AND rf.review_iteration = s.review_iteration
+                     AND rf.reviewer_name = s.reviewer_name
+                    ORDER BY rf.reviewer_name, rf.review_iteration, rf.sort_order
+                    """,
+                    selected_loop_ids,
+                    selected_iterations,
+                    selected_reviewers,
+                )
+
+        findings_by_result: dict[tuple[str, int], list[ReviewFinding]] = {}
+        for row in finding_rows:
+            key = (row['reviewer_name'], row['review_iteration'])
+            findings_by_result.setdefault(key, []).append(
+                ReviewFinding(priority=row['priority'], feedback=row['feedback'])
+            )
+
+        reviewer_results: list[ReviewerResult] = []
+        for row in result_rows:
+            blockers = json.loads(row['blockers']) if isinstance(row['blockers'], str) else row['blockers']
+            reviewer_name = row['reviewer_name']
+            result_key = (reviewer_name, row['review_iteration'])
+            reviewer_results.append(
+                ReviewerResult(
+                    loop_id=row['loop_id'],
+                    review_iteration=row['review_iteration'],
+                    reviewer_name=reviewer_name,
+                    feedback_markdown=row['feedback_markdown'],
+                    score=row['score'],
+                    max_score=row['max_score'],
+                    blockers=list(blockers or []),
+                    findings=findings_by_result.get(result_key, []),
+                    timestamp=row['updated_at'],
+                )
+            )
+
+        return reviewer_results
