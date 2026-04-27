@@ -496,29 +496,49 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'SUB-STEP 2.1: Detect external APIs/services from phase content' in template
         assert "BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
+        assert 'EXISTING_READ_BLOCKS' in template
+        assert 'SYNTHESIZE_PROMPT_METADATA' in template
         assert 'EXISTING_BP_READ_PATHS = []' in template
         assert 'APIS_WITH_VALID_BP_DOCS = []' in template
         assert 'APIS_MISSING_BP_DOCS = []' in template
-        assert 'CANDIDATE_MARKER_PATHS = []' in template
-        assert 'read_path contains both `apidocs` and `apiintegration`' in template
         assert 'VALIDATED_API_DOCS = []' in template
+        assert 'METADATA_MATCHES_API' in template
+        assert 'CONTENT_MATCHES_API' in template
         assert 'official API integration guidance' in template
-        assert 'lowercase slug marker topics apidocs apiintegration' in template
+        assert 'Technologies: {api_name} API' in template
+        assert 'Topics: apidocs, apiintegration, authentication, endpoints' in template
         assert 'SDK/client library vs direct HTTP based on official docs' in template
         assert 'AUTO_API_PROMPTS = []' in template
-        assert 'SYNTHESIS_QUEUE = deduplicated list of SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS' in template
+        assert 'SYNTHESIS_QUEUE = deduplicated list of normalized SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS' in template
         assert 'PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)' in template
+        assert 'SYNTHESIZED_READ_BLOCKS = []' in template
+        assert '- "  - Source: synthesized"' in template
+        assert 'Covers API' in template
         assert 'covered by content-validated official .best-practices API docs' in template
+        assert 'CANDIDATE_MARKER_PATHS' not in template
+        assert 'read_path contains both `apidocs` and `apiintegration`' not in template
+        assert 'lowercase slug marker topics apidocs apiintegration' not in template
         assert 'any EXISTING_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN' not in template
 
-    def test_phase_template_uses_post_synthesis_critic_and_fail_closed_api_blockers(self) -> None:
+    def test_phase_template_completed_quality_loop_runs_synthesis_before_storage(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
+        )
+        assert 'IF LOOP_DECISION == "completed":' in template
+        assert 'Proceed to Step 7.5.' in template
+
+    def test_phase_template_uses_post_synthesis_critic_and_routes_api_blockers_to_loop(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
         assert 'validation_mode: post_synthesis' in template
         assert '[API Research Final Docs Missing - BLOCKING]' in template
-        assert 'EXIT: Do NOT proceed to Step 8 with missing external API docs' in template
+        assert 'POST_SYNTHESIS_DECISION_RESPONSE = ' in template
+        assert 'Return to Step 5 (phase-architect will retrieve post-synthesis feedback from MCP itself)' in template
+        assert 'Proceed to Step 8.' in template
+        assert 'EXIT: Do NOT proceed to Step 8 with missing external API docs' not in template
 
     def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
         coordinator = TemplateCoordinator()

@@ -480,17 +480,24 @@ class TestPhaseCriticTemplate:
             in template
         )
         assert "line.startswith('- Read:')" in template
+        assert 'READ_BLOCKS = []' in template
+        assert 'READ_BLOCK_METADATA_BY_PATH = {}' in template
         assert 'IF validation_mode == "post_synthesis":' in template
-        assert (
-            'API_MARKER_READ_CANDIDATES = VALID_BP_READ_PATHS items containing both `apidocs` and `apiintegration`'
-            in template
-        )
-        assert 'API_DOC_MARKER_GLOB_PATHS = []' in template
+        assert 'API_POTENTIAL_MATCHES = []' in template
+        assert 'rg -il --fixed-strings "{api_name}" .best-practices/ || true' in template
+        assert 'cat "{potential_path}" | head -n 25' in template
+        assert 'OVERVIEW_HEAD contains `## Overview`' in template
+        assert 'quick-scan matches are not coverage evidence by themselves' in template
+        assert 'API_DOC_CANDIDATES = VALID_BP_READ_PATHS' in template
+        assert 'METADATA_MATCHES_API' in template
         assert 'CONTENT_HAS_OFFICIAL_SOURCE' in template
         assert 'CONTENT_HAS_CLIENT_DECISION' in template
         assert 'HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0' in template
-        assert 'contains both `apidocs` and `apiintegration`' in template
-        assert 'filename/API-name substring matches alone' in template
+        assert 'API doc filenames are never authoritative' in template
+        assert 'phase-cited `Read:` `.best-practices/*.md` paths' in template
+        assert 'API_DOC_MARKER_GLOB_PATHS' not in template
+        assert 'API_MARKER_READ_CANDIDATES' not in template
+        assert '.best-practices/*apidocs*apiintegration*.md' not in template
         assert (
             'HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN'
             not in template
@@ -501,6 +508,7 @@ class TestPhaseCriticTemplate:
         assert 'API Research Final Docs Missing - BLOCKING' in template
         assert '"detected_external_apis": EXTERNAL_APIS' in template
         assert '"apis_missing_final_docs": APIS_MISSING_FINAL_DOCS' in template
+        assert '"api_potential_matches": API_POTENTIAL_MATCHES' in template
 
     def test_template_grants_bash_and_glob_tools(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
@@ -743,12 +751,53 @@ class TestTemplateConsistency:
         assert '`apidocs` and `apiintegration`' in template
         assert 'Do NOT browse the web directly from this agent.' in template
         assert 'Do NOT use PascalCase marker variants' in template
-        assert 'filename marker matches are candidate filters only' in template.lower()
+        assert (
+            'Filename matches are never authoritative for API coverage. Content validation is authoritative.'
+            in template
+        )
+        assert 'Treat `apidocs` and `apiintegration` as topic metadata only' in template
+        assert '*apidocs*apiintegration*' not in template
+        assert 'filename marker matches are candidate filters only' not in template.lower()
         assert 'official source URLs' in template
         assert 'authentication, endpoints/operations or SDK/client method contracts' in template
         assert 'request/response schemas or payload contracts' in template
         assert 'SDK/client library vs direct HTTP based on official docs' in template
         assert 'Do not prefer SDKs globally.' in template
+
+    def test_phase_architect_template_requires_structured_synthesize_prompts(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert (
+            '- Synthesize: Technologies: <comma-separated technology names>; '
+            'Topics: <comma-separated topic keywords>; Query: <specific research request>'
+        ) in template
+        assert '`Technologies:` MUST be present and non-empty.' in template
+        assert '`Topics:` MUST be present and non-empty.' in template
+        assert (
+            '`Query:` MUST be specific enough for the bp skill to run without inferring technologies or topics.'
+            in template
+        )
+        assert 'Use the `TECH` and `TOPICS` values from the archive scan as the baseline fields' in template
+        assert 'Do NOT emit vague free-form synthesis prompts without these structured fields.' in template
+
+        synthesize_lines = [line.strip() for line in template.splitlines() if '- Synthesize:' in line]
+        assert synthesize_lines
+        for line in synthesize_lines:
+            assert 'Technologies:' in line
+            assert 'Topics:' in line
+            assert 'Query:' in line
+
+    def test_phase_architect_template_uses_structured_api_synthesize_topics(self) -> None:
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert 'Technologies: {provider_name} API' in template
+        assert (
+            'Topics: apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, '
+            'webhooks, errors, versioning'
+        ) in template
+        assert 'include `apidocs` and `apiintegration` in `Topics:` as intent metadata only' in template
 
     def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:
         task_planner_tools = create_task_planner_agent_tools(_adapter)

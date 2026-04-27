@@ -27,7 +27,7 @@ technical_phase_template = Phase(
         '**Existing Documentation**:\n'
         '- Read: [paths to .best-practices/ docs]\n\n'
         '**External Research Needed**:\n'
-        '- Synthesize: [research prompts with technology names]'
+        '- Synthesize: Technologies: [comma-separated technology names]; Topics: [comma-separated topic keywords]; Query: [specific research request]'
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
@@ -377,7 +377,7 @@ VIOLATION: Asking the user whether to continue refining when status is "refine"
 ```text
 IF LOOP_DECISION == "completed":
   Display to user: "✅ Score: {{LOOP_SCORE}}/100 — Phase meets quality standards"
-  Proceed to Step 8.
+  Proceed to Step 7.5.
 
 ELIF LOOP_DECISION == "REFINE":
   Display to user: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining Phase"
@@ -441,8 +441,19 @@ PHASE_MARKDOWN = PHASE_RESPONSE.message
 SUB-STEP 2: Parse Research Requirements
 Extract "### Research Requirements" section from PHASE_MARKDOWN.
 Collect:
-- "Read:" entries → EXISTING_READ_PATHS (keep as-is)
+- "Read:" entries plus following indented metadata lines → EXISTING_READ_BLOCKS (keep as-is)
+- Paths from "Read:" entries → EXISTING_READ_PATHS
 - "Synthesize:" entries → SYNTHESIZE_PROMPTS
+- Parsed `Synthesize:` fields when present → SYNTHESIZE_PROMPT_METADATA
+
+Read block parsing:
+- A read block starts at a line beginning `- Read:`
+- Include following indented metadata lines until the next `- Read:`, `- Synthesize:`, or section heading
+- Preserve existing read blocks verbatim when rewriting Research Requirements
+
+Synthesize prompt parsing:
+- Extract `Technologies:`, `Topics:`, and `Query:` fields when present
+- Preserve original prompt text for Task(bp)
 
 SUB-STEP 2.1: Detect external APIs/services from phase content
 API_DETECTION_TEXT = concatenate text from:
@@ -482,18 +493,15 @@ APIS_WITH_VALID_BP_DOCS = []
 APIS_MISSING_BP_DOCS = []
 
 For each api_name in EXTERNAL_APIS:
-  ## Slug markers are candidate filters only. Procedural best-practices slug
-  ## sorting/truncation sometimes removes API/provider names, so do not require api_name in the path.
-  CANDIDATE_MARKER_PATHS = []
-  For each read_path in EXISTING_BP_READ_PATHS:
-    IF read_path contains both `apidocs` and `apiintegration`:
-      CANDIDATE_MARKER_PATHS.append(read_path)
-
-  ## Prefer existing Read: docs only when their content confirms official API coverage.
+  ## Prefer existing Read: docs only when metadata or content confirms official API coverage.
   VALIDATED_API_DOCS = []
-  For each read_path in CANDIDATE_MARKER_PATHS:
+  For each read_path in EXISTING_BP_READ_PATHS:
+    READ_METADATA = metadata lines from matching EXISTING_READ_BLOCKS
+    METADATA_MATCHES_API = READ_METADATA `Covers API`, `Technologies`, or `Query` identifies api_name or its official API host/provider
     CALL Read(read_path)
-    IF document content identifies api_name or its official API host AND includes official API integration guidance:
+    CONTENT_MATCHES_API = document content identifies api_name or its official API host/provider
+    CONTENT_HAS_OFFICIAL_API_GUIDANCE = document content includes official API integration guidance: official source URLs or official-doc references, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts where relevant, failure/rate-limit/retry/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP rationale
+    IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND CONTENT_HAS_OFFICIAL_API_GUIDANCE:
       VALIDATED_API_DOCS.append(read_path)
 
   IF len(VALIDATED_API_DOCS) > 0:
@@ -504,10 +512,23 @@ For each api_name in EXTERNAL_APIS:
 AUTO_API_PROMPTS = []
 For each api_name in APIS_MISSING_BP_DOCS:
   AUTO_API_PROMPTS.append(
-    "Synthesize official API integration docs for {{api_name}} using lowercase slug marker topics apidocs apiintegration; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity."
+    {{
+      "prompt_text": "Synthesize: Technologies: {{api_name}} API; Topics: apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{api_name}}; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.",
+      "technologies": "{{api_name}} API",
+      "topics": "apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, webhooks, errors, versioning",
+      "query": "Official API integration docs for {{api_name}}",
+      "covers_api": "{{api_name}}"
+    }}
   )
 
-SYNTHESIS_QUEUE = deduplicated list of SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS
+Normalize SYNTHESIZE_PROMPTS into queue items:
+- prompt_text: original `Synthesize:` line text
+- technologies: parsed `Technologies:` field if present, otherwise empty
+- topics: parsed `Topics:` field if present, otherwise empty
+- query: parsed `Query:` field if present, otherwise original prompt text
+- covers_api: matching api_name from EXTERNAL_APIS when technologies/query identifies that API, otherwise empty
+
+SYNTHESIS_QUEUE = deduplicated list of normalized SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS
 
 IF SYNTHESIS_QUEUE is empty:
   Display: "✓ No bp synthesis required (all detected APIs already covered by content-validated official .best-practices API docs)"
@@ -545,10 +566,10 @@ Execute PENDING_PROMPTS with bounded concurrency:
 While PENDING_PROMPTS not empty OR ACTIVE_WORKERS not empty:
   - Launch new bp task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
   - Wait for one task completion
-  - Record completion result and free slot
+	  - Record completion result and free slot
 
-  Task(bp):
-  <original synthesize prompt text>
+	  Task(bp):
+	  <queue item prompt_text>
 
 ═══════════════════════════════════════════════
 MANDATORY BP OUTPUT VALIDATION GATE
@@ -561,25 +582,40 @@ For EACH completed bp task result:
     DIAGNOSTIC: Show prompt, candidate path count, and task output excerpt
     EXIT: Do NOT proceed with partial research updates
 
-  RESOLVED_PATH = CANDIDATE_PATHS[0]
-  IF file at RESOLVED_PATH does NOT exist:
-    ERROR: "bp returned non-existent output path"
-    DIAGNOSTIC: Show prompt and RESOLVED_PATH
-    EXIT: Do NOT proceed with partial research updates
+	  RESOLVED_PATH = CANDIDATE_PATHS[0]
+	  IF file at RESOLVED_PATH does NOT exist:
+	    ERROR: "bp returned non-existent output path"
+	    DIAGNOSTIC: Show prompt and RESOLVED_PATH
+	    EXIT: Do NOT proceed with partial research updates
 
-  Record RESOLVED_PATH in SUCCEEDED_SYNTHESIS for this prompt
+	  Record in SUCCEEDED_SYNTHESIS:
+	  - path: RESOLVED_PATH
+	  - prompt_text: queue item prompt_text
+	  - technologies: queue item technologies
+	  - topics: queue item topics
+	  - query: queue item query
+	  - covers_api: queue item covers_api
 
 VIOLATION: Displaying bp synthesis errors but continuing to update
            the phase with incomplete research paths.
 ═══════════════════════════════════════════════
 
 SUB-STEP 6: Update Phase with synthesized paths
-SYNTHESIZED_PATHS = paths from SUCCEEDED_SYNTHESIS
-COMPLETE_PATHS = EXISTING_READ_PATHS + SYNTHESIZED_PATHS
+SYNTHESIZED_READ_BLOCKS = []
+For each item in SUCCEEDED_SYNTHESIS:
+  Add block:
+  - "- Read: `{{item.path}}`"
+  - "  - Source: synthesized"
+  - "  - Technologies: {{item.technologies}}" when non-empty
+  - "  - Topics: {{item.topics}}" when non-empty
+  - "  - Query: {{item.query}}" when non-empty
+  - "  - Covers API: {{item.covers_api}}" when non-empty
 
-Reconstruct Research Requirements section with ONLY "Read:" entries:
-For each PATH in COMPLETE_PATHS:
-  "- Read: `{{PATH}}`"
+COMPLETE_READ_BLOCKS = EXISTING_READ_BLOCKS + SYNTHESIZED_READ_BLOCKS
+
+Reconstruct Research Requirements section with ONLY `Read:` blocks:
+For each BLOCK in COMPLETE_READ_BLOCKS:
+  emit BLOCK exactly, preserving metadata lines
 
 Replace "### Research Requirements" section in PHASE_MARKDOWN with updated content.
 
@@ -632,9 +668,32 @@ IF PRE_POST_SYNTHESIS_LOOP_STATUS.status != "initialized" AND POST_POST_SYNTHESI
 
 IF POST_SYNTHESIS_FEEDBACK contains "[API Research Final Docs Missing - BLOCKING]" OR
    POST_SYNTHESIS_FEEDBACK contains "[API Research Coverage Missing - BLOCKING]":
-    ERROR: "Post-synthesis API documentation coverage check failed"
+    Display: "⟳ Post-synthesis API documentation coverage needs refinement"
     List blocking API coverage issues
-    EXIT: Do NOT proceed to Step 8 with missing external API docs
+    POST_SYNTHESIS_DECISION_RESPONSE = {tools.decide_loop_action}
+    POST_SYNTHESIS_DECISION = POST_SYNTHESIS_DECISION_RESPONSE.status
+    POST_SYNTHESIS_SCORE = POST_SYNTHESIS_DECISION_RESPONSE.current_score
+    POST_SYNTHESIS_ITERATION = POST_SYNTHESIS_DECISION_RESPONSE.iteration
+
+    IF POST_SYNTHESIS_DECISION == "refine":
+      Display: "⟳ Iteration {{POST_SYNTHESIS_ITERATION}} · Score: {{POST_SYNTHESIS_SCORE}}/100 — refining Phase from post-synthesis feedback"
+      Return to Step 5 (phase-architect will retrieve post-synthesis feedback from MCP itself)
+
+    ELIF POST_SYNTHESIS_DECISION == "user_input":
+      Display POST_SYNTHESIS_FEEDBACK to user with:
+      - Current score and iteration
+      - API documentation coverage blockers
+      - Request for technical clarification only if needed by feedback
+      Return to Step 5 after user guidance is available
+
+    ELIF POST_SYNTHESIS_DECISION == "completed":
+      Display: "✓ Post-synthesis API documentation coverage validated after loop decision"
+      Proceed to Step 8.
+
+    ELSE:
+      ERROR: "Unexpected post-synthesis loop decision"
+      DIAGNOSTIC: Show POST_SYNTHESIS_DECISION_RESPONSE
+      EXIT: Workflow terminated
 ELIF POST_SYNTHESIS_FEEDBACK contains "Invalid \"Read:\" paths found: 0" == false:
     Display warning: "⚠️ Synthesized research paths invalid:"
     List invalid path findings extracted from POST_SYNTHESIS_FEEDBACK
@@ -837,8 +896,8 @@ Knowledge base scanning performed via `best-practices-rag query-kb` and `Glob: .
   - Read: .best-practices/postgresql-optimization-codegen.md
 
   ### External Research Needed
-  - Synthesize: Best practices for integrating React with GraphQL in 2025
-  - Synthesize: PostgreSQL connection pooling strategies for microservices
+  - Synthesize: Technologies: React, GraphQL; Topics: integration, hooks, client state; Query: Best practices for integrating React with GraphQL in 2025
+  - Synthesize: Technologies: PostgreSQL; Topics: connection pooling, microservices, production operations; Query: PostgreSQL connection pooling strategies for microservices
   ```
 
   ## Error Handling

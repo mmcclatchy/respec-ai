@@ -29,8 +29,8 @@ technical_phase_template = Phase(
         '  - Purpose: [what knowledge it provides]\n'
         '  - Application: [how it applies to this phase]\n\n'
         '**External Research Needed** (when KB has no matching docs):\n'
-        '- Synthesize: [research prompts with technology names]\n'
-        '- Synthesize: Official API integration docs for [provider] with slug marker topics `apidocs` and `apiintegration`'
+        '- Synthesize: Technologies: [comma-separated technology names]; Topics: [comma-separated topic keywords]; Query: [specific research request]\n'
+        '- Synthesize: Technologies: [provider API name]; Topics: apidocs, apiintegration, authentication, endpoints; Query: Official API integration docs for [provider]'
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
@@ -177,6 +177,11 @@ Combine technologies and topics:
 TECH = "technology1,technology2"
 TOPICS = "pattern1,pattern2"
 
+Retain these exact values for unresolved research gaps:
+- Use TECH as the `Technologies:` value in each related `Synthesize:` prompt.
+- Use TOPICS as the starting `Topics:` value in each related `Synthesize:` prompt.
+- Add only gap-specific topic words needed to make the synthesis request precise.
+
 Execute knowledge base query with BOTH required flags:
  - `--tech` must always contain the comma-separated technology names
  - `--topics` must always contain the comma-separated topic keywords
@@ -199,22 +204,22 @@ OFFICIAL API DOCUMENTATION RESEARCH PROTOCOL
 When the phase includes an external API/provider integration:
 - Treat official API documentation as required research input, not optional background context.
 - Use `best-practices-rag` as the research owner. Do NOT browse the web directly from this agent.
-- Query or synthesize with lowercase procedural slug marker topics: `apidocs` and `apiintegration`.
-- Keep the marker topics short and explicit because `best-practices-rag generate-slug` is procedural, sorted, and truncated.
+- Query or synthesize with lowercase API-intent topics: `apidocs` and `apiintegration`.
+- Treat `apidocs` and `apiintegration` as topic metadata only. Do NOT use them as generated filename requirements or filename filters.
 - Do NOT use PascalCase marker variants such as `OfficialDocs` or `ApiIntegration`.
-- Do NOT rely on the API/provider name appearing in the generated slug; procedural sorting/truncation sometimes removes it.
+- Do NOT rely on the API/provider name or API-intent topics appearing in the generated slug; `bp` controls the output filename.
 
-For each external API/provider, first search for existing candidate docs:
-  CALL Glob: .best-practices/*apidocs*apiintegration*.md
-  CALL Glob: .best-practices/*apiintegration*apidocs*.md
-  CALL Grep: "{{provider_name}}" .best-practices/*apidocs*apiintegration*.md
-  CALL Grep: "{{provider_name}}" .best-practices/*apiintegration*apidocs*.md
+For each external API/provider, first validate existing candidate docs by content:
+  CALL Glob: .best-practices/*.md
+  For each candidate path:
+    CALL Read(candidate_path)
+    Treat the candidate as valid only when content identifies {{provider_name}} or its official API host/provider AND includes official API integration details.
 
 Only cite a `Read:` doc when reading it confirms it covers the target API/provider and official integration details.
-Filename marker matches are candidate filters only; content validation is authoritative.
+Filename matches are never authoritative for API coverage. Content validation is authoritative.
 
 If no validated doc exists, add a specific External Research Needed prompt:
-  - Synthesize: Official API integration docs for {{provider_name}} using slug marker topics `apidocs` and `apiintegration`; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.
+  - Synthesize: Technologies: {{provider_name}} API; Topics: apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{provider_name}}; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.
 
 Do not prefer SDKs globally. Select SDK/client library vs direct HTTP only when official documentation and project constraints justify it.
 Reflect the selected approach and rationale in Technology Stack, Dependencies, Integration Context, and API Design when relevant.
@@ -864,7 +869,24 @@ When documenting Research Requirements:
 
 **Consequence of Invalid Paths**: Phase-critic will raise structural blockers. Invalid paths cause downstream task-planner failure and must be corrected before the phase passes review.
 
-If KB query returns no results for a topic, document in "External Research Needed" section instead - do NOT guess file names.
+If KB query returns no results for a topic, document it in "External Research Needed" with the structured `Synthesize:` format instead - do NOT guess file names.
+
+### CRITICAL: Structured Synthesize Prompt Format
+
+Every `Synthesize:` prompt MUST use this exact field structure:
+
+```text
+- Synthesize: Technologies: <comma-separated technology names>; Topics: <comma-separated topic keywords>; Query: <specific research request>
+```
+
+Rules:
+- `Technologies:` MUST be present and non-empty.
+- `Topics:` MUST be present and non-empty.
+- `Query:` MUST be specific enough for the bp skill to run without inferring technologies or topics.
+- Use the `TECH` and `TOPICS` values from the archive scan as the baseline fields for related gaps.
+- For API/provider research, include `apidocs` and `apiintegration` in `Topics:` as intent metadata only.
+- Do NOT require, predict, or filter on generated `.best-practices` filenames containing topic words.
+- Do NOT emit vague free-form synthesis prompts without these structured fields.
 
 ### Scanning Process
 
@@ -881,7 +903,7 @@ If KB query returns no results for a topic, document in "External Research Neede
    ```
 4. **Catalog Results**: Document all found documents - USE EXACT PATHS FROM OUTPUT
 5. **Identify Gaps**: Compare required knowledge against existing docs
-6. **Format Requirements**: Create Research Requirements section with ACTUAL paths only
+6. **Format Requirements**: Create Research Requirements section with ACTUAL paths and structured `Synthesize:` prompts only
 
 ### Pattern Searching
 
@@ -896,7 +918,7 @@ Glob: .best-practices/*authentication*.md
 ### Knowledge Base Access Issues
 If `best-practices-rag query-kb` fails:
 1. Note the issue in Phase
-2. Add all topics to "External Research Needed"
+2. Add all topics to "External Research Needed" using the structured `Synthesize:` format with explicit `Technologies:` and `Topics:` fields
 3. Continue with Phase
 4. Suggest user run `best-practices-rag check` to diagnose
 
@@ -906,8 +928,10 @@ When unsure about research needs:
 2. Include a `Synthesize:` prompt only when existing docs cannot answer the gap
 3. It is valid to produce zero `Synthesize:` prompts when gaps are already covered
 4. Never add prompts to fill a target count or quota
-5. For external API/provider integrations, include `apidocs` and `apiintegration` as actual lowercase topic words in the `Synthesize:` prompt so procedural slug generation preserves them when truncation permits
-6. Do not rely on "Required output slug marker" wording to force slug output; marker words must be part of the actual topic set
+5. Every `Synthesize:` prompt must include explicit `Technologies:`, `Topics:`, and `Query:` fields
+6. For external API/provider integrations, include `apidocs` and `apiintegration` as actual lowercase topic words in the `Topics:` field to communicate API-doc intent to `bp`
+7. Do not rely on "Required output slug marker" wording to force slug output; topic words are metadata, not filename controls
+8. Do not validate API research coverage by generated filename; validate phase-cited `Read:` docs by metadata and content
 
 ### Incomplete Feedback
 If feedback history unavailable:

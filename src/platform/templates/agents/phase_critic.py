@@ -250,6 +250,9 @@ validation_mode is set by the CALLING COMMAND, not agent decision.
 
 "full" (default) → Execute ALL steps (Steps 2-6). Full quality assessment.
 "post_synthesis" → Execute ONLY Steps 2, 2.6, and 6. Lightweight path check.
+                     API documentation blockers produced here are repair feedback
+                     for phase-architect in the refinement loop, not immediate
+                     user-escalation conditions.
 
 Do NOT override or select an alternative mode.
 Do NOT run full assessment when post_synthesis was specified.
@@ -396,6 +399,7 @@ IF section not found:
         "detected_external_apis": [],
         "apis_missing_coverage": [],
         "apis_missing_final_docs": [],
+        "api_potential_matches": [],
         "soft_stale_warnings": [],
         "hard_stale_blocking": [],
         "invalid_bp_references": [],
@@ -408,12 +412,23 @@ Parse section to distinguish subsections:
 
 PATHS_TO_VALIDATE = []
 SYNTHESIZE_LINES = []
+READ_BLOCKS = []
+READ_BLOCK_METADATA_BY_PATH = {{}}
 
 ## Line-by-line parser (header-independent for post-synthesis robustness)
 ## Validate all "- Read:" lines found under Research Requirements regardless of subsection headers.
 
-For each line in research_section.split('\\n'):
-    line = line.strip()
+current_read_path = None
+current_read_metadata = []
+
+For each raw_line in research_section.split('\\n'):
+    line = raw_line.strip()
+
+    IF line.startswith('- Read:') AND current_read_path is not None:
+        READ_BLOCK_METADATA_BY_PATH[current_read_path] = current_read_metadata
+        READ_BLOCKS.append({{"path": current_read_path, "metadata": current_read_metadata}})
+        current_read_path = None
+        current_read_metadata = []
 
     IF line.startswith('- Read:'):
         # Extract path from: "- Read: `.best-practices/file.md`"
@@ -422,15 +437,28 @@ For each line in research_section.split('\\n'):
             # Extract from backticks
             match = regex search for `([^`]+)`
             IF match found:
-                PATHS_TO_VALIDATE.append(match.group(1))
+                current_read_path = match.group(1)
+                PATHS_TO_VALIDATE.append(current_read_path)
         ELSE:
             # Extract plain text after "- Read: "
             path = line.replace('- Read:', '').strip()
             IF path:
-                PATHS_TO_VALIDATE.append(path)
+                current_read_path = path
+                PATHS_TO_VALIDATE.append(current_read_path)
     ELIF line.startswith('- Synthesize:'):
+        IF current_read_path is not None:
+            READ_BLOCK_METADATA_BY_PATH[current_read_path] = current_read_metadata
+            READ_BLOCKS.append({{"path": current_read_path, "metadata": current_read_metadata}})
+            current_read_path = None
+            current_read_metadata = []
         SYNTHESIZE_LINES.append(line)
+    ELIF current_read_path is not None AND raw_line.startswith('  ') AND ':' in line:
+        current_read_metadata.append(line.lstrip('- ').strip())
     # Ignore all other lines in Research Requirements.
+
+IF current_read_path is not None:
+    READ_BLOCK_METADATA_BY_PATH[current_read_path] = current_read_metadata
+    READ_BLOCKS.append({{"path": current_read_path, "metadata": current_read_metadata}})
 
 ## Validate all "Read:" paths from Research Requirements
 VALID_PATHS = []
@@ -450,6 +478,8 @@ RESEARCH_PATH_VALIDATION = {{
     "invalid_count": len(INVALID_PATHS),
     "valid_paths": VALID_PATHS,
     "invalid_paths": INVALID_PATHS,
+    "read_blocks": READ_BLOCKS,
+    "read_metadata_by_path": READ_BLOCK_METADATA_BY_PATH,
     "external_research_found": ("**External Research Needed**" in research_section)
 }}
 
@@ -514,31 +544,38 @@ For each path in VALID_PATHS:
     IF path matches BP_PATH_REGEX:
         VALID_BP_READ_PATHS.append(path)
 
-API_DOC_MARKER_GLOB_PATHS = []
-CALL Glob: .best-practices/*apidocs*apiintegration*.md
-→ Append matching paths to API_DOC_MARKER_GLOB_PATHS
-CALL Glob: .best-practices/*apiintegration*apidocs*.md
-→ Append matching paths to API_DOC_MARKER_GLOB_PATHS
-
 APIS_WITH_COVERAGE = []
 APIS_WITH_VALID_BP_READ_COVERAGE = []
 APIS_MISSING_COVERAGE = []
 APIS_MISSING_FINAL_DOCS = []
 API_DOC_VALIDATION_FAILURES = []
+API_POTENTIAL_MATCHES = []
 
 IF API_INTEGRATION_TRIGGER is true:
     For each api_name in EXTERNAL_APIS:
         API_SLUG_TOKEN = api_name with spaces replaced by "-"
-        ## Slug markers identify candidate official API docs only.
-        ## Procedural slug sorting/truncation sometimes removes API/provider names, so API name in the filename is not required.
-        API_MARKER_READ_CANDIDATES = VALID_BP_READ_PATHS items containing both `apidocs` and `apiintegration`
-        API_MARKER_GLOB_CANDIDATES = API_DOC_MARKER_GLOB_PATHS items containing both `apidocs` and `apiintegration`
-        API_DOC_CANDIDATES = deduplicated list of API_MARKER_READ_CANDIDATES + API_MARKER_GLOB_CANDIDATES
+        ## Quick advisory scan for repair hints. This helps identify likely docs without trusting generated filenames.
+        ## These matches are NOT coverage evidence unless the path is also cited in phase `Read:` entries and passes full validation below.
+        API_KEYWORD_MATCH_PATHS = []
+        CALL Bash: rg -il --fixed-strings "{{api_name}}" .best-practices/ || true
+        → Append matching `.best-practices/*.md` paths to API_KEYWORD_MATCH_PATHS
+        For each potential_path in API_KEYWORD_MATCH_PATHS:
+            CALL Bash: cat "{{potential_path}}" | head -n 25
+            OVERVIEW_HEAD = command output
+            OVERVIEW_MATCHES_API = OVERVIEW_HEAD contains `## Overview` AND identifies api_name, API_SLUG_TOKEN, or the official API host/provider
+            IF OVERVIEW_MATCHES_API:
+                API_POTENTIAL_MATCHES.append({{"api": api_name, "path": potential_path, "phase_cited": potential_path in VALID_BP_READ_PATHS}})
+
+        ## Generated filenames are not authoritative because bp controls output slugs.
+        ## Validate only phase-cited Read: best-practices documents using metadata and content.
+        API_DOC_CANDIDATES = VALID_BP_READ_PATHS
 
         VALIDATED_API_DOC_PATHS = []
         VALIDATED_API_READ_PATHS = []
 
         For each doc_path in API_DOC_CANDIDATES:
+            READ_METADATA = READ_BLOCK_METADATA_BY_PATH.get(doc_path, [])
+            METADATA_MATCHES_API = READ_METADATA `Covers API`, `Technologies`, or `Query` identifies api_name, API_SLUG_TOKEN, or the official API host/provider
             CALL Read(doc_path)
             IF Read fails:
                 API_DOC_VALIDATION_FAILURES.append(f"unreadable:{{doc_path}}")
@@ -552,7 +589,7 @@ IF API_INTEGRATION_TRIGGER is true:
             CONTENT_HAS_FAILURE_GUIDANCE = content covers relevant rate limits, retries, pagination, webhooks, errors, or versioning
             CONTENT_HAS_CLIENT_DECISION = content recommends SDK/client library vs direct HTTP with rationale
 
-            IF all content validation booleans are true:
+            IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND all content validation booleans are true:
                 VALIDATED_API_DOC_PATHS.append(doc_path)
                 IF doc_path in VALID_BP_READ_PATHS:
                     VALIDATED_API_READ_PATHS.append(doc_path)
@@ -560,7 +597,7 @@ IF API_INTEGRATION_TRIGGER is true:
                 API_DOC_VALIDATION_FAILURES.append(f"insufficient_official_api_coverage:{{doc_path}}")
 
         HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0
-        HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item contains api_name or API_SLUG_TOKEN AND contains both `apidocs` and `apiintegration`
+        HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item has structured Technologies/Query identifying api_name or API_SLUG_TOKEN AND structured Topics indicating official API docs/API integration intent (`apidocs`, `apiintegration`, or equivalent API-doc terms)
 
         IF HAS_VALID_BP_READ_COVERAGE:
             APIS_WITH_VALID_BP_READ_COVERAGE.append(api_name)
@@ -630,6 +667,7 @@ RESEARCH_PATH_VALIDATION = {{
     "detected_external_apis": EXTERNAL_APIS,
     "apis_missing_coverage": APIS_MISSING_COVERAGE,
     "apis_missing_final_docs": APIS_MISSING_FINAL_DOCS,
+    "api_potential_matches": API_POTENTIAL_MATCHES,
     "api_doc_validation_failures": API_DOC_VALIDATION_FAILURES,
     "soft_stale_warnings": SOFT_STALE_WARNINGS,
     "hard_stale_blocking": HARD_STALE_BLOCKING,
@@ -887,6 +925,7 @@ Phases vary by project type. Evaluate based on project context:
 - Detected external APIs/services: {{RESEARCH_PATH_VALIDATION.detected_external_apis}}
 - APIs missing coverage: {{RESEARCH_PATH_VALIDATION.apis_missing_coverage}}
 - APIs missing final docs: {{RESEARCH_PATH_VALIDATION.apis_missing_final_docs}}
+- API potential matches from quick overview scan: {{RESEARCH_PATH_VALIDATION.api_potential_matches}}
 - API official-doc validation failures: {{RESEARCH_PATH_VALIDATION.api_doc_validation_failures}}
 - Invalid `.best-practices` references anywhere in phase: {{RESEARCH_PATH_VALIDATION.invalid_bp_references}}
 - Soft stale warnings (>30d): {{RESEARCH_PATH_VALIDATION.soft_stale_warnings}}
@@ -910,10 +949,12 @@ Phases vary by project type. Evaluate based on project context:
 - In `validation_mode == "full"`: if ANY external API/service lacks corresponding Read/Synthesize research entry: raise blockers
 - In `validation_mode == "post_synthesis"`: if ANY external API/service lacks a valid `Read:` `.best-practices/*.md` doc: raise blockers
 - This is a BLOCKING issue - missing API lookups risks hallucinated integration logic
-- API doc filenames are candidate filters only; never approve coverage from filename/API-name substring matches alone
-- Candidate official API docs must contain both lowercase slug marker tokens: `apidocs` and `apiintegration`
-- The API/provider name does NOT need to appear in the slug because procedural sorting/truncation sometimes removes it
-- Approval requires reading the candidate doc and validating target API/provider identity, official source URLs or official-doc references, auth model, endpoints/operations or SDK/client method contracts, payload/schema contracts where relevant, failure/rate-limit/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP recommendation with rationale
+- API doc filenames are never authoritative; never approve or reject coverage from generated filename markers
+- Candidate official API docs come only from phase-cited `Read:` `.best-practices/*.md` paths
+- Use API-keyword quick scans plus `cat "{{path}}" | head -n 25` `## Overview` checks only as repair hints for likely docs to cite; quick-scan matches are not coverage evidence by themselves
+- Approval requires metadata/content validation of target API/provider identity, official source URLs or official-doc references, auth model, endpoints/operations or SDK/client method contracts, payload/schema contracts where relevant, failure/rate-limit/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP recommendation with rationale
+- In `validation_mode == "full"`, structured `Synthesize:` prompts satisfy planned coverage only when `Technologies:`, `Topics:`, and `Query:` make the API-doc/API-integration intent explicit
+- Post-synthesis API blockers are refinement-loop repair feedback for phase-architect; command routing decides whether to refine, ask for user input, or continue
 
 **API DOC FRESHNESS POLICY (for API integrations)**:
 - Soft threshold: 30 days → attempt `best-practices-rag query-kb ... --force-refresh`
