@@ -490,8 +490,14 @@ class TestPhaseCriticTemplate:
         assert 'quick-scan matches are not coverage evidence by themselves' in template
         assert 'API_DOC_CANDIDATES = VALID_BP_READ_PATHS' in template
         assert 'METADATA_MATCHES_API' in template
+        assert 'METADATA_MATCHES_RUNTIME' in template
+        assert 'CONTENT_MATCHES_RUNTIME' in template
         assert 'CONTENT_HAS_OFFICIAL_SOURCE' in template
         assert 'CONTENT_HAS_CLIENT_DECISION' in template
+        assert (
+            '(METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME)'
+        ) in template
+        assert 'Generic provider docs are insufficient' in template
         assert 'HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0' in template
         assert 'API doc filenames are never authoritative' in template
         assert 'phase-cited `Read:` `.best-practices/*.md` paths' in template
@@ -509,11 +515,19 @@ class TestPhaseCriticTemplate:
         assert '"detected_external_apis": EXTERNAL_APIS' in template
         assert '"apis_missing_final_docs": APIS_MISSING_FINAL_DOCS' in template
         assert '"api_potential_matches": API_POTENTIAL_MATCHES' in template
+        assert 'POST_SYNTHESIS_LOOP_STATUS = ' in template
+        assert 'POST_SYNTHESIS_ITERATION = POST_SYNTHESIS_LOOP_STATUS.iteration + 1' in template
+        assert 'POST_SYNTHESIS_SCORE = POST_SYNTHESIS_LOOP_STATUS.current_score' in template
+        assert 'ERROR: "Post-synthesis validation cannot preserve a non-zero phase score"' in template
+        assert 'MUST NOT store feedback with iteration=0.' in template
+        assert 'MUST NOT store feedback with overall_score=0.' in template
+        assert 'Set `overall_score` to `POST_SYNTHESIS_SCORE`, never `0`' in template
 
     def test_template_grants_bash_and_glob_tools(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
         assert 'Bash' in tools.tools_yaml
         assert 'Glob' in tools.tools_yaml
+        assert 'mcp__respec-ai__get_loop_status' in tools.tools_yaml
 
     def test_template_uses_invocation_contract_style(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
@@ -748,6 +762,11 @@ class TestTemplateConsistency:
         template = generate_phase_architect_template(architect_tools)
 
         assert 'OFFICIAL API DOCUMENTATION RESEARCH PROTOCOL' in template
+        assert 'Build an explicit external API inventory before deciding research coverage:' in template
+        assert 'Store as EXTERNAL_API_INVENTORY.' in template
+        assert 'Provider/API name and official host when discoverable' in template
+        assert 'Implementation language/runtime from the project stack' in template
+        assert 'official SDK/client library, direct HTTP endpoints, auth, file upload/import' in template
         assert '`apidocs` and `apiintegration`' in template
         assert 'Do NOT browse the web directly from this agent.' in template
         assert 'Do NOT use PascalCase marker variants' in template
@@ -759,8 +778,11 @@ class TestTemplateConsistency:
         assert '*apidocs*apiintegration*' not in template
         assert 'filename marker matches are candidate filters only' not in template.lower()
         assert 'official source URLs' in template
-        assert 'authentication, endpoints/operations or SDK/client method contracts' in template
+        assert 'direct HTTP endpoint contracts' in template
         assert 'request/response schemas or payload contracts' in template
+        assert 'payload schemas' in template
+        assert 'http endpoints' in template
+        assert 'webhooks, errors, versioning' in template
         assert 'SDK/client library vs direct HTTP based on official docs' in template
         assert 'Do not prefer SDKs globally.' in template
 
@@ -792,11 +814,12 @@ class TestTemplateConsistency:
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)
 
-        assert 'Technologies: {provider_name} API' in template
+        assert 'Technologies: {provider_name} API, {implementation_language_runtime}' in template
         assert (
-            'Topics: apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, '
-            'webhooks, errors, versioning'
+            'Topics: apidocs, apiintegration, official sdk, client library, http endpoints, '
+            'authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning'
         ) in template
+        assert 'Official API integration docs for {provider_name} in {implementation_language_runtime}' in template
         assert 'include `apidocs` and `apiintegration` in `Topics:` as intent metadata only' in template
 
     def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:

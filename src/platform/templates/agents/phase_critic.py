@@ -264,6 +264,7 @@ VIOLATION: Agent choosing post_synthesis "to save time" when
 
 IF validation_mode == "post_synthesis":
     EXECUTE ONLY:
+    - Step 1.5: Retrieve Previous Critic Feedback
     - Step 2: Retrieve Phase from MCP
     - Step 2.6: Verify Research File Paths
       - Validate ALL paths (both "Existing" and previously "External")
@@ -278,11 +279,28 @@ IF validation_mode == "post_synthesis":
     FEEDBACK FORMAT (simplified):
     - loop_id: {{loop_id}}
     - critic_agent: PHASE_CRITIC
-    - overall_score: {{preserve score from last full assessment}}
+    - iteration: {{POST_SYNTHESIS_ITERATION}}
+    - overall_score: {{POST_SYNTHESIS_SCORE}}
     - assessment_summary: "Post-synthesis path validation"
     - detailed_feedback: Only path verification results
     - key_issues: List any invalid paths found (if any)
     - recommendations: [] (empty)
+
+    FRESH FEEDBACK REQUIREMENTS:
+    POST_SYNTHESIS_LOOP_STATUS = {tools.get_loop_status}
+    POST_SYNTHESIS_PRIOR_FEEDBACK = {tools.get_feedback}
+    POST_SYNTHESIS_ITERATION = POST_SYNTHESIS_LOOP_STATUS.iteration + 1
+    POST_SYNTHESIS_SCORE = POST_SYNTHESIS_LOOP_STATUS.current_score
+    IF POST_SYNTHESIS_SCORE == 0:
+      Extract the most recent non-post-synthesis PHASE_CRITIC score from POST_SYNTHESIS_PRIOR_FEEDBACK.
+      Set POST_SYNTHESIS_SCORE to that score.
+    IF POST_SYNTHESIS_SCORE == 0 OR no prior non-zero full critic score exists:
+      ERROR: "Post-synthesis validation cannot preserve a non-zero phase score"
+      DIAGNOSTIC: Show POST_SYNTHESIS_LOOP_STATUS and POST_SYNTHESIS_PRIOR_FEEDBACK excerpt
+      EXIT: Do NOT store score-0 post-synthesis feedback
+    MUST NOT store feedback with iteration=0.
+    MUST NOT store feedback with overall_score=0.
+    MUST append fresh feedback; do not reuse the prior full critic iteration.
 
 ELSE (default "full" mode):
     Execute all steps normally (current behavior)
@@ -576,12 +594,14 @@ IF API_INTEGRATION_TRIGGER is true:
         For each doc_path in API_DOC_CANDIDATES:
             READ_METADATA = READ_BLOCK_METADATA_BY_PATH.get(doc_path, [])
             METADATA_MATCHES_API = READ_METADATA `Covers API`, `Technologies`, or `Query` identifies api_name, API_SLUG_TOKEN, or the official API host/provider
+            METADATA_MATCHES_RUNTIME = READ_METADATA `Technologies` or `Query` identifies the implementation language/runtime required by the phase, or explicitly states direct HTTP/no language-specific SDK is required
             CALL Read(doc_path)
             IF Read fails:
                 API_DOC_VALIDATION_FAILURES.append(f"unreadable:{{doc_path}}")
                 Continue
 
             CONTENT_MATCHES_API = content identifies api_name, API_SLUG_TOKEN, or the official API host/provider
+            CONTENT_MATCHES_RUNTIME = content identifies the implementation language/runtime required by the phase, language-specific SDK/client guidance, or explicit direct HTTP/no SDK guidance
             CONTENT_HAS_OFFICIAL_SOURCE = content includes official source URLs or explicit official documentation references
             CONTENT_HAS_AUTH = content describes authentication model
             CONTENT_HAS_OPERATIONS = content describes endpoints/operations or SDK/client method contracts
@@ -589,7 +609,7 @@ IF API_INTEGRATION_TRIGGER is true:
             CONTENT_HAS_FAILURE_GUIDANCE = content covers relevant rate limits, retries, pagination, webhooks, errors, or versioning
             CONTENT_HAS_CLIENT_DECISION = content recommends SDK/client library vs direct HTTP with rationale
 
-            IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND all content validation booleans are true:
+            IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME) AND all content validation booleans are true:
                 VALIDATED_API_DOC_PATHS.append(doc_path)
                 IF doc_path in VALID_BP_READ_PATHS:
                     VALIDATED_API_READ_PATHS.append(doc_path)
@@ -952,6 +972,7 @@ Phases vary by project type. Evaluate based on project context:
 - API doc filenames are never authoritative; never approve or reject coverage from generated filename markers
 - Candidate official API docs come only from phase-cited `Read:` `.best-practices/*.md` paths
 - Use API-keyword quick scans plus `cat "{{path}}" | head -n 25` `## Overview` checks only as repair hints for likely docs to cite; quick-scan matches are not coverage evidence by themselves
+- Generic provider docs are insufficient when the phase requires language/runtime-specific SDK/client or HTTP integration guidance
 - Approval requires metadata/content validation of target API/provider identity, official source URLs or official-doc references, auth model, endpoints/operations or SDK/client method contracts, payload/schema contracts where relevant, failure/rate-limit/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP recommendation with rationale
 - In `validation_mode == "full"`, structured `Synthesize:` prompts satisfy planned coverage only when `Technologies:`, `Topics:`, and `Query:` make the API-doc/API-integration intent explicit
 - Post-synthesis API blockers are refinement-loop repair feedback for phase-architect; command routing decides whether to refine, ask for user input, or continue
@@ -1147,6 +1168,11 @@ The feedback markdown must include overall_score for MCP database auto-populatio
 ### Important Notes
 - **overall_score** field is critical - auto-populates MCP database
 - Replace [bracketed placeholders] with actual values
+- In `validation_mode == "post_synthesis"`, override the template defaults:
+  - Set `iteration` to `POST_SYNTHESIS_ITERATION`, never `0`
+  - Set `overall_score` to `POST_SYNTHESIS_SCORE`, never `0`
+  - Set `assessment_summary` exactly to `Post-synthesis path validation`
+  - Store only after confirming `POST_SYNTHESIS_SCORE > 0`
 - **Core Sections**: Evaluate all 4 required sections (Objectives, Scope, Architecture, Testing)
 - **Optional Core Sections**: Only evaluate sections that are present in the phase (up to 5 sections max)
 - **Domain-Specific Sections**: Identify ALL sections beyond core sections, evaluate for presence and substance

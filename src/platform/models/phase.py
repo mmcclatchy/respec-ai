@@ -183,6 +183,7 @@ class PhaseCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
+        RespecAITool.GET_LOOP_STATUS,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
@@ -196,4 +197,5 @@ class PhaseCriticAgentTools(AgentToolsModel):
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     get_feedback: str = Field(..., description='Retrieve prior critic feedback')
+    get_loop_status: str = Field(..., description='Get loop status for post-synthesis score and iteration')
     store_feedback: str = Field(..., description='Store critic feedback')

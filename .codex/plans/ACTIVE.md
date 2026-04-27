@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/robust-api-research-validation-repair-loop.md`
-- Objective: Replace filename-marker API research validation with content metadata validation and repair-loop routing.
+- Plan File: `./.codex/plans/post-synthesis-feedback-api-research-detection.md`
+- Objective: Fix post-synthesis feedback freshness and strengthen external API research detection.
 - Phase: complete
-- Last Updated: 2026-04-27T20:28:55Z
+- Last Updated: 2026-04-27T21:38:31Z
 
 ## Usage
 

@@ -503,10 +503,17 @@ class TestCrossPlatformInvocationRendering:
         assert 'APIS_MISSING_BP_DOCS = []' in template
         assert 'VALIDATED_API_DOCS = []' in template
         assert 'METADATA_MATCHES_API' in template
+        assert 'METADATA_MATCHES_RUNTIME' in template
         assert 'CONTENT_MATCHES_API' in template
+        assert 'CONTENT_MATCHES_RUNTIME' in template
+        assert (
+            '(METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME)'
+        ) in template
         assert 'official API integration guidance' in template
-        assert 'Technologies: {api_name} API' in template
-        assert 'Topics: apidocs, apiintegration, authentication, endpoints' in template
+        assert 'IMPLEMENTATION_LANGUAGE_RUNTIME' in template
+        assert 'Technologies: {api_name} API, {IMPLEMENTATION_LANGUAGE_RUNTIME}' in template
+        assert 'Topics: apidocs, apiintegration, official sdk, client library, http endpoints' in template
+        assert 'Official API integration docs for {api_name} in {IMPLEMENTATION_LANGUAGE_RUNTIME}' in template
         assert 'SDK/client library vs direct HTTP based on official docs' in template
         assert 'AUTO_API_PROMPTS = []' in template
         assert 'SYNTHESIS_QUEUE = deduplicated list of normalized SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS' in template
@@ -781,6 +788,10 @@ class TestCrossPlatformInvocationRendering:
         assert 'POST_POST_SYNTHESIS_LOOP_STATUS = ' in template
         assert 'POST_SYNTHESIS_FEEDBACK = ' in template
         assert 'Post-synthesis validation feedback missing' in template
+        assert 'LATEST_POST_SYNTHESIS_SCORE = parse score from LATEST_POST_SYNTHESIS_FEEDBACK' in template
+        assert 'Post-synthesis validation feedback preserved score 0' in template
+        assert 'LATEST_POST_SYNTHESIS_SUMMARY != "Post-synthesis path validation"' in template
+        assert 'Post-synthesis validation feedback summary mismatch' in template
         assert 'Post-synthesis phase critic did not advance loop state' in template
         assert 'Post-synthesis phase critic did not persist fresh loop feedback' in template
         assert 'validation_result contains' not in template

@@ -173,6 +173,17 @@ Keywords to query: Extract technical topics from strategic plan
 - Identify architectural patterns (microservices, event-driven, etc.)
 - Identify integration points (APIs, message queues, etc.)
 
+Build an explicit external API inventory before deciding research coverage:
+- Scan PLAN_MARKDOWN, phase context, Dependencies, Technology Stack, API Design, Integration Context, and implementation references for external APIs/providers/services.
+- For each external API/provider, record:
+  - Provider/API name and official host when discoverable
+  - Implementation language/runtime from the project stack (for example Python, TypeScript, Node.js, browser, AWS Lambda)
+  - Protocol surface needed by the phase: official SDK/client library, direct HTTP endpoints, auth, file upload/import, webhooks, pagination, rate limits, retries, errors, versioning, and request/response or payload schemas
+  - Whether the phase must choose between official SDK/client usage and direct HTTP
+- Exclude internal routes such as `/api/*`, localhost, private `.internal` or `.local` hosts, and project-owned service boundaries.
+- Store as EXTERNAL_API_INVENTORY.
+- If EXTERNAL_API_INVENTORY is non-empty, each entry MUST have official-doc research coverage through either validated `Read:` docs or structured `Synthesize:` prompts.
+
 Combine technologies and topics:
 TECH = "technology1,technology2"
 TOPICS = "pattern1,pattern2"
@@ -201,7 +212,7 @@ IF query-kb fails:
 ═══════════════════════════════════════════════
 OFFICIAL API DOCUMENTATION RESEARCH PROTOCOL
 ═══════════════════════════════════════════════
-When the phase includes an external API/provider integration:
+When EXTERNAL_API_INVENTORY includes an external API/provider integration:
 - Treat official API documentation as required research input, not optional background context.
 - Use `best-practices-rag` as the research owner. Do NOT browse the web directly from this agent.
 - Query or synthesize with lowercase API-intent topics: `apidocs` and `apiintegration`.
@@ -209,17 +220,17 @@ When the phase includes an external API/provider integration:
 - Do NOT use PascalCase marker variants such as `OfficialDocs` or `ApiIntegration`.
 - Do NOT rely on the API/provider name or API-intent topics appearing in the generated slug; `bp` controls the output filename.
 
-For each external API/provider, first validate existing candidate docs by content:
+For each EXTERNAL_API_INVENTORY entry, first validate existing candidate docs by content:
   CALL Glob: .best-practices/*.md
   For each candidate path:
     CALL Read(candidate_path)
-    Treat the candidate as valid only when content identifies {{provider_name}} or its official API host/provider AND includes official API integration details.
+    Treat the candidate as valid only when content identifies {{provider_name}} or its official API host/provider, matches the implementation language/runtime when language-specific docs are needed, and includes official API integration details for the required protocol surface.
 
-Only cite a `Read:` doc when reading it confirms it covers the target API/provider and official integration details.
+Only cite a `Read:` doc when reading it confirms it covers the target API/provider, implementation language/runtime, and official integration details.
 Filename matches are never authoritative for API coverage. Content validation is authoritative.
 
 If no validated doc exists, add a specific External Research Needed prompt:
-  - Synthesize: Technologies: {{provider_name}} API; Topics: apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{provider_name}}; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.
+  - Synthesize: Technologies: {{provider_name}} API, {{implementation_language_runtime}}; Topics: apidocs, apiintegration, official sdk, client library, http endpoints, authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{provider_name}} in {{implementation_language_runtime}}; include official source URLs, official SDK/client guidance, direct HTTP endpoint contracts, authentication, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.
 
 Do not prefer SDKs globally. Select SDK/client library vs direct HTTP only when official documentation and project constraints justify it.
 Reflect the selected approach and rationale in Technology Stack, Dependencies, Integration Context, and API Design when relevant.

@@ -460,7 +460,18 @@ API_DETECTION_TEXT = concatenate text from:
 - "### Integration Context"
 - "## API Design" and/or "### API Design"
 - "### Dependencies"
+- "### Technology Stack"
 - "## System Design" and API-related subsections
+
+LANGUAGE_RUNTIME_TEXT = concatenate text from:
+- "### Technology Stack"
+- "### Dependencies"
+- "### Deployment Architecture"
+- "### Integration Context"
+
+IMPLEMENTATION_LANGUAGE_RUNTIME = infer language/runtime from LANGUAGE_RUNTIME_TEXT (examples: Python, TypeScript, Node.js, browser, AWS Lambda)
+IF no language/runtime is inferred:
+  IMPLEMENTATION_LANGUAGE_RUNTIME = "project implementation language/runtime"
 
 API_CANDIDATES = []
 - Extract URL hosts from API_DETECTION_TEXT using regex:
@@ -498,10 +509,12 @@ For each api_name in EXTERNAL_APIS:
   For each read_path in EXISTING_BP_READ_PATHS:
     READ_METADATA = metadata lines from matching EXISTING_READ_BLOCKS
     METADATA_MATCHES_API = READ_METADATA `Covers API`, `Technologies`, or `Query` identifies api_name or its official API host/provider
+    METADATA_MATCHES_RUNTIME = READ_METADATA `Technologies` or `Query` identifies IMPLEMENTATION_LANGUAGE_RUNTIME, or explicitly states direct HTTP/no language-specific SDK is required
     CALL Read(read_path)
     CONTENT_MATCHES_API = document content identifies api_name or its official API host/provider
-    CONTENT_HAS_OFFICIAL_API_GUIDANCE = document content includes official API integration guidance: official source URLs or official-doc references, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts where relevant, failure/rate-limit/retry/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP rationale
-    IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND CONTENT_HAS_OFFICIAL_API_GUIDANCE:
+    CONTENT_MATCHES_RUNTIME = document content identifies IMPLEMENTATION_LANGUAGE_RUNTIME, language-specific SDK/client guidance, or explicit direct HTTP/no SDK guidance
+    CONTENT_HAS_OFFICIAL_API_GUIDANCE = document content includes official API integration guidance for both the provider and implementation runtime: official source URLs or official-doc references, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts where relevant, failure/rate-limit/retry/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP rationale
+    IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME) AND CONTENT_HAS_OFFICIAL_API_GUIDANCE:
       VALIDATED_API_DOCS.append(read_path)
 
   IF len(VALIDATED_API_DOCS) > 0:
@@ -513,10 +526,10 @@ AUTO_API_PROMPTS = []
 For each api_name in APIS_MISSING_BP_DOCS:
   AUTO_API_PROMPTS.append(
     {{
-      "prompt_text": "Synthesize: Technologies: {{api_name}} API; Topics: apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{api_name}}; include official source URLs, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.",
-      "technologies": "{{api_name}} API",
-      "topics": "apidocs, apiintegration, authentication, endpoints, rate limits, retries, pagination, webhooks, errors, versioning",
-      "query": "Official API integration docs for {{api_name}}",
+      "prompt_text": "Synthesize: Technologies: {{api_name}} API, {{IMPLEMENTATION_LANGUAGE_RUNTIME}}; Topics: apidocs, apiintegration, official sdk, client library, http endpoints, authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{api_name}} in {{IMPLEMENTATION_LANGUAGE_RUNTIME}}; include official source URLs, official SDK/client guidance, direct HTTP endpoint contracts, authentication, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.",
+      "technologies": "{{api_name}} API, {{IMPLEMENTATION_LANGUAGE_RUNTIME}}",
+      "topics": "apidocs, apiintegration, official sdk, client library, http endpoints, authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning",
+      "query": "Official API integration docs for {{api_name}} in {{IMPLEMENTATION_LANGUAGE_RUNTIME}}",
       "covers_api": "{{api_name}}"
     }}
   )
@@ -654,6 +667,20 @@ POST_SYNTHESIS_FEEDBACK = {tools.get_feedback}
 IF POST_SYNTHESIS_FEEDBACK is empty OR retrieval fails:
     ERROR: "Post-synthesis validation feedback missing"
     DIAGNOSTIC: [surface the exact MCP/tool error]
+    EXIT: Workflow terminated
+
+LATEST_POST_SYNTHESIS_FEEDBACK = extract most recent PHASE_CRITIC feedback block from POST_SYNTHESIS_FEEDBACK
+LATEST_POST_SYNTHESIS_SCORE = parse score from LATEST_POST_SYNTHESIS_FEEDBACK
+LATEST_POST_SYNTHESIS_SUMMARY = parse assessment summary from LATEST_POST_SYNTHESIS_FEEDBACK
+
+IF LATEST_POST_SYNTHESIS_SCORE == 0:
+    ERROR: "Post-synthesis validation feedback preserved score 0"
+    DIAGNOSTIC: [surface LATEST_POST_SYNTHESIS_FEEDBACK and POST_POST_SYNTHESIS_LOOP_STATUS]
+    EXIT: Workflow terminated
+
+IF LATEST_POST_SYNTHESIS_SUMMARY != "Post-synthesis path validation":
+    ERROR: "Post-synthesis validation feedback summary mismatch"
+    DIAGNOSTIC: [surface LATEST_POST_SYNTHESIS_SUMMARY and LATEST_POST_SYNTHESIS_FEEDBACK]
     EXIT: Workflow terminated
 
 IF PRE_POST_SYNTHESIS_LOOP_STATUS.status == "initialized" AND POST_POST_SYNTHESIS_LOOP_STATUS.status == "initialized":
