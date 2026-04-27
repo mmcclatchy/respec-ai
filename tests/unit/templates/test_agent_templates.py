@@ -312,6 +312,18 @@ class TestTaskPlanCriticTemplate:
         assert 'Lane 1 — Content score (`overall_score`)' in template
         assert 'Lane 2 — Structural/procedural blockers (`### Blockers`)' in template
 
+    def test_template_blocks_unverifiable_task_requirements(self) -> None:
+        tools = create_task_plan_critic_agent_tools(_adapter)
+        template = generate_task_plan_critic_template(tools)
+
+        assert 'Implementation Verifiability Gate' in template
+        assert 'objective verification path' in template
+        assert 'Map each explicit Phase objective, scope item, and deliverable' in template
+        assert ('Task acceptance criteria, checklist items, implementation steps, and testing strategy') in template
+        assert 'Implementation Verifiability Failure - BLOCKING' in template
+        assert 'Phase Mapping Gap - BLOCKING' in template
+        assert ('vague verbs such as "support", "handle", "integrate", "improve", and "ensure"') in template
+
     def test_template_requires_exact_critic_feedback_storage_contract(self) -> None:
         tools = create_task_plan_critic_agent_tools(_adapter)
         template = generate_task_plan_critic_template(tools)

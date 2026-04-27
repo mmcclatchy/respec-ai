@@ -198,6 +198,26 @@ class TestSpecAlignmentReviewerTemplate:
         assert 'Requirements' in template
         assert '50 Points Total' in template
 
+    def test_template_includes_completion_certification_contract(self) -> None:
+        tools = create_spec_alignment_reviewer_agent_tools(_adapter)
+        template = generate_spec_alignment_reviewer_template(tools)
+
+        assert 'COMPLETION CERTIFICATION CONTRACT (MANDATORY)' in template
+        assert 'Completion Certification Matrix' in template
+        assert 'Phase-To-Task Coverage' in template
+        assert 'Unverifiable Requirements' in template
+        assert '`complete`' in template
+        assert '`partial`' in template
+        assert '`missing`' in template
+        assert '`unverifiable`' in template
+        assert '`deferred`' in template
+        assert 'Deferred Risk Register' in template
+        assert (
+            'functional behavior, API contract behavior, persistence behavior, integration behavior, '
+            'user-visible behavior, or explicit negative constraints'
+        ) in template
+        assert 'mark `[Severity:P0]` and add a blocker' in template
+
 
 class TestFrontendReviewerTemplate:
     def test_template_structure(self) -> None:

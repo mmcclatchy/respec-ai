@@ -23,6 +23,9 @@ task_feedback_template = CriticFeedback(
 #### Workflow Guidance Alignment
 [If workflow_guidance_markdown provided: scope coverage and intent preservation analysis. If not provided: "N/A - Phase is sole source of truth"]
 
+### Implementation Verifiability
+[Assessment of whether Task requirements can be objectively certified from code, tests, commands, or documented evidence]
+
 ### Implementation Checklist Quality (Score: X/10)
 [Assessment of Checklist structure - are items prioritized, checkable, and verification methods included?]
 
@@ -48,6 +51,8 @@ task_feedback_template = CriticFeedback(
         '**[Citation Integrity - BLOCKING]**: Referenced plan/research path is invalid, unreadable, or non-canonical',
         '**[Codebase Evidence Invalid - BLOCKING]**: Patch task Codebase Evidence references an unreadable file, invalid line, or unsupported source claim',
         '**[Contract Violation - BLOCKING]**: Task contradicts explicit Phase/TUI constraints without documented deviation rationale',
+        '**[Implementation Verifiability Failure - BLOCKING]**: Acceptance criteria are too vague, subjective, or unmeasurable to objectively certify completion',
+        '**[Phase Mapping Gap - BLOCKING]**: Phase objective, scope item, or deliverable is not mapped into Task acceptance criteria, checklist, steps, and testing strategy',
     ],
     recommendations=[
         '**[Priority Level]**: [Specific actionable improvement with expected point impact]',
@@ -121,9 +126,10 @@ Lane 1 — Content score (`overall_score`):
 - Issues like over-detailing, tangents, weak rationale, and poor sequencing reduce score.
 
 Lane 2 — Structural/procedural blockers (`### Blockers`):
-- Use blockers only for hard-stop contract failures (missing required sections, invalid citations/paths, non-canonical references, hallucinated docs, explicit constraint violations).
+- Use blockers only for hard-stop contract failures (missing required sections, invalid citations/paths, non-canonical references, hallucinated docs, explicit constraint violations, or requirements that cannot be verified for completion).
 - Do NOT hide blocker issues inside `### Key Issues`.
 - `### Key Issues` is for non-blocking content critiques.
+- If Task wording prevents objective implementation certification, record a blocker; do not treat it only as a low score.
 - If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
 
 ## Invocation Contract
@@ -162,6 +168,12 @@ WORKFLOW: Task Assessment → CriticFeedback
      - Require canonical form: `.respec-ai/plans/{{PLAN_NAME}}/references/*.md`
      - CALL Read(path) for canonical references
      - Track readable vs unreadable references for validation
+3.6. Apply the Implementation Verifiability Gate:
+   - Map each explicit Phase objective, scope item, and deliverable to Task acceptance criteria, checklist items, implementation steps, and testing strategy.
+   - For each Task acceptance criterion, identify the observable completion signal: code behavior, test assertion, command result, persisted state, API contract, UI behavior, or explicit documented evidence.
+   - If a Phase item has no Task mapping, add a blocker.
+   - If an acceptance criterion cannot be objectively verified, add a blocker.
+   - Treat vague verbs such as "support", "handle", "integrate", "improve", and "ensure" as blockers when no observable outcome or verification method is specified.
 4. Assess Task against FSDD criteria
 5. Compare current output against previous feedback and document resolved, unresolved, and newly introduced issues
 6. Calculate quality score (0-100 scale)
@@ -191,9 +203,12 @@ The Task document follows this structure:
 - Acceptance Criteria are concrete and verifiable
 - Success conditions are unambiguous
 - No vague or subjective criteria
+- Each criterion identifies an observable completion signal
 
 **Partial Points (12-17)**: Goals present but could be more specific
 **Low Points (0-11)**: Vague goals or missing/unmeasurable acceptance criteria
+
+**Blocking overlay**: If vague, subjective, missing, or unmeasurable acceptance criteria make implementation completion impossible to certify, record an `Implementation Verifiability Failure` blocker in `### Blockers`.
 
 ### 2. Phase Alignment (20 Points)
 **Full Points (18-20)**: Task accurately reflects Phase requirements
@@ -202,6 +217,7 @@ The Task document follows this structure:
 - Scope boundaries respected (addresses in-scope requirements)
 - Technology Stack Reference aligns with Phase tech_stack
 - If implementation plan references exist in Phase: constrained decisions include valid plan-reference citations
+- Each explicit Phase objective, scope item, and deliverable is represented in Task acceptance criteria, checklist items, implementation steps, and testing strategy
 
 **Deviation Classification**: When Task deviates from Phase, classify each deviation:
 - **Improvement**: Deviation adds clarity, fixes ambiguity, or strengthens the plan beyond Phase intent. No penalty.
@@ -223,6 +239,21 @@ When workflow_guidance_markdown is NOT provided, skip this subsection entirely.
 
 **Partial Points (12-17)**: General alignment with minor gaps or neutral deviations
 **Low Points (0-11)**: Regressions from Phase without justification
+
+**Blocking overlay**: If a dropped or unmapped Phase requirement prevents downstream completion certification, record a `Phase Mapping Gap` blocker in `### Blockers`.
+
+### 2.5 Implementation Verifiability Gate (Blocker Overlay - Not Separately Scored)
+**Pass condition**: Every requirement has an objective verification path
+- Acceptance criteria can be certified from code, tests, command output, persisted state, API/UI behavior, or documented evidence.
+- Verification methods are specific enough for a reviewer to decide complete vs partial vs missing.
+- Broad verbs are paired with observable outcomes and verification methods.
+
+**Non-blocking weakness**: Some criteria need more precision, but completion remains objectively reviewable.
+**Blocking failure**: One or more criteria are vague, subjective, or missing verification paths such that completion cannot be certified.
+
+**Blocking overlay**: Any requirement that cannot be objectively certified from the Task and Phase docs must be listed in `### Blockers` as an implementation-verifiability failure.
+
+**Score accounting**: Include this section in the qualitative analysis without changing the total 100-point formula; apply its findings through the existing Goal/Acceptance Criteria, Phase Alignment, Steps, and Testing Strategy categories.
 
 ### 3. Implementation Checklist Quality (10 Points)
 **Full Points (9-10)**: Clear, prioritized, actionable
