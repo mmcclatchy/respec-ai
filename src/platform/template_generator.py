@@ -219,7 +219,7 @@ def _get_agent_specs(
     ]
 
     coder_platform_tools = [
-        platform_adapter.update_phase_tool,
+        platform_adapter.update_task_tool,
     ]
 
     plan_analyst_tools = create_plan_analyst_agent_tools(tui_adapter)

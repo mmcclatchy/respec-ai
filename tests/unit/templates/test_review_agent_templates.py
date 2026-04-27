@@ -26,6 +26,7 @@ from src.platform.templates.agents import (
 
 
 _adapter = ClaudeCodeAdapter()
+_TASK_UPDATE_TOOL = 'Edit(.respec-ai/plans/*/phases/*/tasks/*.md)'
 
 _BANNED_ACTION_PATTERNS = (
     re.compile(r'\bshould\b', re.IGNORECASE),
@@ -114,9 +115,7 @@ This should stay ignored.
 
 def test_implementation_and_review_agents_retrieve_task_by_task_loop_id() -> None:
     templates = [
-        generate_coder_template(
-            create_coder_agent_tools(_adapter, platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'])
-        ),
+        generate_coder_template(create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])),
         generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
         generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
         generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
@@ -446,9 +445,7 @@ class TestReviewAgentConsistency:
             generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
             generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
             generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
-            generate_coder_template(
-                create_coder_agent_tools(_adapter, platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'])
-            ),
+            generate_coder_template(create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])),
             generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
         ]
         for template in templates:
@@ -551,7 +548,7 @@ class TestCoderTemplateConfig:
     def test_coder_template_has_project_configuration(self) -> None:
         tools = create_coder_agent_tools(
             _adapter,
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_tools=[_TASK_UPDATE_TOOL],
         )
         template = generate_coder_template(tools)
 
@@ -564,7 +561,7 @@ class TestCoderTemplateConfig:
     def test_coder_template_no_pseudocode_remains(self) -> None:
         tools = create_coder_agent_tools(
             _adapter,
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_tools=[_TASK_UPDATE_TOOL],
         )
         template = generate_coder_template(tools)
 
@@ -584,7 +581,7 @@ class TestCoderTemplateConfig:
     def test_coder_template_removes_agent_owned_commit_execution(self) -> None:
         tools = create_coder_agent_tools(
             _adapter,
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_tools=[_TASK_UPDATE_TOOL],
         )
         template = generate_coder_template(tools)
 
@@ -595,7 +592,7 @@ class TestCoderTemplateConfig:
     def test_coder_template_requires_structured_iteration_handoff(self) -> None:
         tools = create_coder_agent_tools(
             _adapter,
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_tools=[_TASK_UPDATE_TOOL],
         )
         template = generate_coder_template(tools)
 
@@ -606,7 +603,7 @@ class TestCoderTemplateConfig:
     def test_coder_template_removes_orchestration_aware_wording(self) -> None:
         tools = create_coder_agent_tools(
             _adapter,
-            platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'],
+            platform_tools=[_TASK_UPDATE_TOOL],
         )
         template = generate_coder_template(tools)
 
@@ -629,9 +626,7 @@ class TestCoderTemplateConfig:
             generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
             generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
             generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
-            generate_coder_template(
-                create_coder_agent_tools(_adapter, platform_tools=['Write(.respec-ai/plans/*/phases/*.md)'])
-            ),
+            generate_coder_template(create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])),
         ]
 
         for template in templates:

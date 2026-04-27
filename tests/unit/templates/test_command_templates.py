@@ -1194,6 +1194,10 @@ class TestCrossPlatformInvocationRendering:
         )
 
         assert '#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Task Storage' in template
+        assert 'PHASE_AMENDMENT_REQUIRED' in template
+        assert 'Phase amendment required before patch coding' in template
+        assert 'Do NOT retrieve TASK_MARKDOWN' in template
+        assert 'run the Phase refinement workflow (`respec-phase`) before resuming patch work' in template
         assert 'TASK_MARKDOWN = ' in template
         assert 'Patch planner did not produce a retrievable amendment task' in template
         assert 'Do NOT invoke task-plan-critic' in template
@@ -1212,6 +1216,25 @@ class TestCrossPlatformInvocationRendering:
         )
         assert (
             'Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision).'
+            in template
+        )
+
+    def test_patch_template_phase_evolution_log_update_is_append_only(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PATCH,
+            PlatformType.LINEAR,
+            tui_adapter=CodexAdapter(),
+        )
+
+        assert '### 7. Append Phase Evolution Log Only' in template
+        assert 'This is an append-only trace update.' in template
+        assert 'Strip only the `## Evolution Log` section from PHASE_MARKDOWN and UPDATED_PHASE_MARKDOWN.' in template
+        assert 'The stripped documents MUST match exactly byte-for-byte.' in template
+        assert 'Research Requirements, Implementation Plan References, metadata, headings' in template
+        assert 'Do NOT call update_phase_document' in template
+        assert (
+            'Direct user to run the Phase refinement workflow (`respec-phase`) for substantive Phase changes'
             in template
         )
 

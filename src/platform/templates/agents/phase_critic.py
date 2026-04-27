@@ -662,6 +662,28 @@ IF len(INVALID_IMPL_PATHS) > 0:
 ELSE:
   IMPL_PLAN_PATH_BLOCKERS_PRESENT = false
 
+STEP 2.7.5: Verify Implementation Plan Reference Semantic Application
+
+Apply only when `### Implementation Plan References` exists and referenced
+paths are readable.
+
+For each readable implementation-plan reference:
+  - Identify the referenced section or full-file constraints relevant to this Phase
+  - Verify those constraints are semantically reflected in Phase Objectives,
+    Scope, Architecture, Research Requirements, Success Criteria, deliverables,
+    implementation constraints, or an explicit TUI Plan Deviation Log entry
+  - Citation-only preservation is insufficient; the Phase must show how the
+    referenced requirement changes what will be built, tested, researched, or
+    excluded
+
+IF a referenced constraint is relevant but not reflected in Phase content:
+  Add blocker:
+    "[Implementation Plan Reference Not Applied - BLOCKING]: `{{path}}` is cited but the relevant constraint is not reflected in Phase objectives/scope/architecture/research/success criteria."
+
+IF a referenced constraint is omitted because it is not applicable:
+  Require an explicit not-applicable rationale in the Phase; otherwise add the
+  same blocker.
+
 # Structural blockers gate readiness through `### Blockers`.
 # They do NOT change the content score.
 

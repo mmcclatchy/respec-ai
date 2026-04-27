@@ -293,6 +293,12 @@ IF IMPL_PLAN_CONSTRAINTS is non-empty:
   → In STEP 3, treat IMPL_PLAN_CONSTRAINTS as default constraints.
   → Do NOT ignore or silently bypass decisions documented here.
   → Deviations are allowed ONLY when explicitly justified and logged (see DEVIATION LOG PROTOCOL).
+  → For every referenced implementation-plan section relevant to this Phase,
+    apply the constraint into Objectives, Scope, Architecture, Research
+    Requirements, Success Criteria, or explicit implementation constraints.
+  → If a referenced implementation-plan section is read but not applicable to
+    this Phase, record a short "not applicable" rationale in the TUI Plan
+    Deviation Log or Additional Details instead of silently dropping it.
 
   IF CURRENT_PHASE_MARKDOWN does NOT contain "### Implementation Plan References":
     → In STEP 3 output, auto-create "### Implementation Plan References" under "## Additional Details"

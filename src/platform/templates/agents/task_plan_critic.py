@@ -170,8 +170,10 @@ WORKFLOW: Task Assessment → CriticFeedback
      - Track readable vs unreadable references for validation
 3.6. Apply the Implementation Verifiability Gate:
    - Map each explicit Phase objective, scope item, and deliverable to Task acceptance criteria, checklist items, implementation steps, and testing strategy.
+   - Map each relevant implementation-plan reference or TUI-derived Phase constraint to Task acceptance criteria, checklist items, implementation steps, and testing strategy.
    - For each Task acceptance criterion, identify the observable completion signal: code behavior, test assertion, command result, persisted state, API contract, UI behavior, or explicit documented evidence.
    - If a Phase item has no Task mapping, add a blocker.
+   - If a relevant TUI/Phase constraint is dropped or only cited without a concrete Task mapping, add a blocker.
    - If an acceptance criterion cannot be objectively verified, add a blocker.
    - Treat vague verbs such as "support", "handle", "integrate", "improve", and "ensure" as blockers when no observable outcome or verification method is specified.
 4. Assess Task against FSDD criteria

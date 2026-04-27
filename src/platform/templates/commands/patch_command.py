@@ -280,6 +280,15 @@ IF patch-planner reports failure:
   - Do NOT continue to Step 3.5
   EXIT: Workflow terminated
 
+IF patch-planner output contains exact marker `PHASE_AMENDMENT_REQUIRED`:
+  STATUS: "Phase amendment required before patch coding"
+  DIAGNOSTIC: [surface the planner Rationale, Evidence, and Next Step]
+  FAIL-CLOSED:
+  - Do NOT retrieve TASK_MARKDOWN
+  - Do NOT invoke task-plan-critic
+  - Do NOT continue into code reconnaissance, implementation, review, commit, or Phase Evolution Log update
+  EXIT: Workflow paused; run the Phase refinement workflow (`respec-phase`) before resuming patch work
+
 TASK_MARKDOWN = {tools.get_task_document}
 
 IF TASK_MARKDOWN not found or retrieval fails:
@@ -897,16 +906,19 @@ ALLOW_EMPTY = true
 Proceed to Step 7 (Update Phase Evolution Log)
 ```
 
-### 7. Update Phase Evolution Log
+### 7. Append Phase Evolution Log Only
 
-Record the amendment in the Phase document for traceability:
+Record the amendment in the Phase document for traceability without changing
+any substantive Phase content:
 
 ```text
 PHASE_MARKDOWN = {tools.get_phase_document}
 
 TASK_NAME = [Extract task name from amendment task document]
 
-Append Evolution Log section (or update existing):
+Build UPDATED_PHASE_MARKDOWN by appending a new entry under existing
+`## Evolution Log`, or by appending a new `## Evolution Log` section at the end
+of the document if none exists. This is an append-only trace update.
 
 ## Evolution Log
 
@@ -915,7 +927,23 @@ Append Evolution Log section (or update existing):
 - Code Quality Score: {{CODE_QUALITY_SCORE}}%
 - Files Changed: {{FILE_LIST}}
 
-Store updated Phase:
+Integrity gate before storing:
+- Strip only the `## Evolution Log` section from PHASE_MARKDOWN and UPDATED_PHASE_MARKDOWN.
+- The stripped documents MUST match exactly byte-for-byte.
+- Research Requirements, Implementation Plan References, metadata, headings,
+  objectives, scope, architecture, success criteria, deliverables, and every
+  other non-Evolution Log section MUST remain unchanged.
+
+IF any non-Evolution Log content changed:
+  ERROR: "Phase Evolution Log update attempted to modify substantive Phase content"
+  DIAGNOSTIC: [surface the first changed non-log section]
+  FAIL-CLOSED:
+  - Do NOT call update_phase_document
+  - Do NOT continue to Step 8
+  - Direct user to run the Phase refinement workflow (`respec-phase`) for substantive Phase changes
+  EXIT: Workflow paused
+
+Store updated Phase only after integrity gate passes:
 {tools.update_phase_document}
 ```
 

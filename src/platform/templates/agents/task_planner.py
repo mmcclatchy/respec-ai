@@ -187,6 +187,20 @@ WORKFLOW: Phase + Research → Task with Checklist and Steps
    VIOLATION: Ignoring a PHASE_DEVIATION_OVERRIDES entry when it applies.
    VIOLATION: Suggesting an alternative to IMPL_PLAN_CONSTRAINTS without matching deviation entry.
    ═══════════════════════════════════════════════
+   MANDATORY CONSTRAINT CARRY-FORWARD:
+   For every IMPL_PLAN_CONSTRAINTS item relevant to this Task, carry the
+   constraint into at least one concrete Task artifact:
+   - Acceptance Criteria: observable completion requirement
+   - Checklist: implementation work item
+   - Steps: concrete implementation action
+   - Testing Strategy: verification method
+
+   If a referenced constraint is read but not relevant to this Task, state the
+   not-applicable rationale in Research Read Log or Acceptance Criteria notes.
+   Do NOT silently drop relevant TUI/Phase constraints.
+
+   VIOLATION: Reading an implementation plan reference but omitting its relevant
+              constraints from criteria, checklist, steps, and tests.
 1.75 Resolve execution intent policy from Phase:
    Parse `### Success Criteria > #### Delivery Intent Override` from PHASE_MARKDOWN.
    - If explicit override mode exists: use it.

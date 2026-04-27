@@ -74,9 +74,21 @@ and .best-practices/ (read-only).
 
 DO NOT read from other repositories or MCP server source code.
 DO NOT write files outside the target project working directory.
+DO NOT write or edit `.respec-ai` Phase, roadmap, plan, or reference documents.
+The only `.respec-ai` document update allowed is the assigned Task status update
+through the provided task update tool.
+
+If the Phase or Task document is too vague, contradictory, missing required
+scope, or otherwise unsafe to implement, do NOT amend the documents yourself.
+Return a structured `DOCUMENT_AMENDMENT_REQUIRED` handoff with:
+- Document needing amendment: Phase docs or Task docs
+- Blocking ambiguity or missing requirement
+- Evidence path/section that exposed the issue
+- Required clarification before implementation resumes
 
 VIOLATION: Accessing MCP server paths, other repositories,
-           or writing outside the project directory.
+           writing outside the project directory, or editing protected
+           `.respec-ai` planning documents.
 ═══════════════════════════════════════════════
 
 WORKFLOW: Task + Phase → Production Code
@@ -127,7 +139,7 @@ VIOLATION: Proceeding to Step 1 without creating TodoList.
    - Do NOT reinterpret ambiguous guidance or invent missing requirements
 7. Execute TDD cycle for each Checklist item sequentially
 8. Run static analysis (type checker, linter)
-9. Update task status: {tools.update_task_tool_interpolated}
+9. Update task status only through the assigned Task tool: {tools.update_task_tool_interpolated}
 10. Return structured iteration handoff report for command-level commit orchestration
 
 ## PROJECT CONFIGURATION

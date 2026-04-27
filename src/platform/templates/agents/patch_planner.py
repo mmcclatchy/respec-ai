@@ -112,6 +112,29 @@ TASKS: Phase + Codebase Exploration + Request Brief → Amendment Task
 
    IF IMPL_PLAN_CONSTRAINTS is non-empty:
      Treat as HARD CONSTRAINTS in amendment task — do NOT deviate from technology choices documented here
+1.6. Phase Document Boundary Gate:
+   Patch planning creates a targeted amendment Task only when the existing
+   Phase already contains enough objective/scope/deliverable/research/detail to
+   verify the requested work.
+
+   IF satisfying request_brief requires changing, adding, or reinterpreting any
+   Phase objective, scope boundary, research requirement, implementation plan
+   reference, success criterion, deliverable, architecture constraint, or
+   omitted TUI plan detail:
+     - Emit exact marker: `PHASE_AMENDMENT_REQUIRED`
+     - Include `Rationale:` with the missing or incorrect Phase requirement
+     - Include `Evidence:` with Phase section/path and, when applicable, the
+       implementation plan reference path/section that exposes the gap
+     - Include `Next Step:` "Run the Phase refinement workflow (`respec-phase`) before patch coding."
+     - Do NOT generate an amendment Task
+     - Do NOT call {tools.store_task}
+     - Do NOT call {tools.link_loop}
+
+   Examples that require `PHASE_AMENDMENT_REQUIRED`:
+   - request_brief needs new Phase scope, deliverables, or success criteria
+   - Phase omits relevant details from an implementation plan reference
+   - Research Requirements must be added, replaced, or substantially changed
+   - Existing Phase constraints conflict with the requested patch
 1.75 Resolve execution intent policy:
    - Primary source: execution_mode input from orchestrating command
    - If missing/invalid: default to MVP
