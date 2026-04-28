@@ -23,6 +23,11 @@ from src.platform.templates.agents import (
     generate_infrastructure_reviewer_template,
     generate_spec_alignment_reviewer_template,
 )
+from src.platform.templates.agents.reviewer_contracts import (
+    render_reviewer_execution_report_contract,
+    render_reviewer_mcp_retry_contract,
+    render_reviewer_output_contract,
+)
 
 
 _adapter = ClaudeCodeAdapter()
@@ -129,6 +134,68 @@ def test_implementation_and_review_agents_retrieve_task_by_task_loop_id() -> Non
     for template in templates:
         assert 'mcp__respec-ai__get_document(doc_type="task", loop_id={TASK_LOOP_ID})' in template
         assert 'mcp__respec-ai__get_document(doc_type="task", loop_id={PLANNING_LOOP_ID})' not in template
+
+
+def test_reviewer_output_contract_has_consistent_success_and_failure_format() -> None:
+    contract = render_reviewer_output_contract(
+        'backend-api-reviewer',
+        'mcp__respec-ai__store_reviewer_result(...)',
+    )
+
+    assert (
+        '"Reviewer result stored: backend-api-reviewer (score=[REVIEW_SCORE], iteration=[review_iteration])"'
+        in contract
+    )
+    assert '"run_status=clean|warnings"' in contract
+    assert '"stored_result=yes"' in contract
+    assert '"Reviewer result NOT stored: backend-api-reviewer (iteration=[review_iteration])"' in contract
+    assert '"run_status=incomplete"' in contract
+    assert '"stored_result=no"' in contract
+    assert 'Do NOT output "Reviewer result stored" when `stored_result=no`.' in contract
+    assert 'stored_result=yes|no' not in contract
+
+
+def test_reviewer_mcp_retry_contract_targets_transient_mcp_failures_only() -> None:
+    contract = render_reviewer_mcp_retry_contract()
+
+    for transient_failure in (
+        'handshake timeout',
+        'startup timeout',
+        'server unavailable',
+        'transient transport error',
+    ):
+        assert transient_failure in contract
+
+    assert 'Retry the same MCP tool call once.' in contract
+    assert 'get_document' in contract
+    assert 'get_feedback' in contract
+    assert 'store_reviewer_result' in contract
+    assert 'Do NOT retry deterministic MCP validation errors' in contract
+    assert 'project test failures' in contract
+    assert 'file-read failures' in contract
+
+
+def test_reviewer_execution_report_contract_is_non_actionable() -> None:
+    contract = render_reviewer_execution_report_contract()
+
+    assert '#### Reviewer Execution Report (Non-Actionable)' in contract
+    assert '- Run Status: [clean/warnings]' in contract
+    assert '- Stored Result: [yes]' in contract
+    assert '- Run Status: [clean/warnings/incomplete]' not in contract
+    assert '- Stored Result: [yes/no]' not in contract
+    for field in (
+        'Run Status',
+        'Stored Result',
+        'MCP Retry Attempts',
+        'Tool/Command/Read Limitations',
+        'Fallbacks Used',
+        'Challenges',
+        'Orchestrator Action Needed',
+    ):
+        assert field in contract
+
+    assert 'workflow visibility and audit history only' in contract
+    assert 'Do NOT copy execution-report-only problems into `Key Issues`' in contract
 
 
 class TestAutomatedQualityCheckerTemplate:
@@ -486,12 +553,26 @@ class TestReviewAgentConsistency:
             generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
         ]
         for template in templates:
-            assert 'run_status=clean|warnings|incomplete' in template
-            assert 'stored_result=yes|no' in template
-            assert 'execution_notes=[none, or concise tool/read/command limitation]' in template
-            assert '#### Review Execution Notes' in template
-            assert 'Orchestrator action needed: [none/rerun/fail-closed]' in template
-            assert 'Review Execution Notes are observational.' in template
+            assert 'MANDATORY MCP RETRY CONTRACT' in template
+            assert 'handshake timeout' in template
+            assert 'startup timeout' in template
+            assert 'server unavailable' in template
+            assert 'transient transport error' in template
+            assert '"run_status=clean|warnings"' in template
+            assert '"stored_result=yes"' in template
+            assert '"run_status=incomplete"' in template
+            assert '"stored_result=no"' in template
+            assert 'stored_result=yes|no' not in template
+            assert 'Reviewer result NOT stored:' in template
+            assert 'Do NOT output "Reviewer result stored" when `stored_result=no`.' in template
+            assert '#### Reviewer Execution Report (Non-Actionable)' in template
+            assert 'Run Status: [clean/warnings]' in template
+            assert 'Run Status: [clean/warnings/incomplete]' not in template
+            assert 'Stored Result: [yes/no]' not in template
+            assert 'MCP Retry Attempts' in template
+            assert 'Orchestrator Action Needed: [none/rerun/fail-closed]' in template
+            assert 'Review Execution Notes' not in template
+            assert '`Reviewer Execution Report (Non-Actionable)` is observational.' in template
             assert 'Do NOT return review markdown to the orchestrator.' in template
 
     def test_applicable_reviewers_include_full_best_practices_research_protocol(self) -> None:
@@ -629,6 +710,17 @@ class TestCoderTemplateConfig:
 
         assert 'Main command owns git commit execution' not in template
         assert 'Main Agent review' not in template
+
+    def test_coder_template_ignores_reviewer_execution_report(self) -> None:
+        tools = create_coder_agent_tools(
+            _adapter,
+            platform_tools=[_TASK_UPDATE_TOOL],
+        )
+        template = generate_coder_template(tools)
+
+        assert 'Reviewer Execution Report (Non-Actionable)' in template
+        assert 'Do NOT use reviewer execution reports as implementation guidance.' in template
+        assert 'Use only user feedback, blockers, critical findings, key issues, and recommendations' in template
 
     def test_coding_standards_reviewer_rejects_guide_markdown_scoring_authority(self) -> None:
         tools = create_coding_standards_reviewer_agent_tools(_adapter)

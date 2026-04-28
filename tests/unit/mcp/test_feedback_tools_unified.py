@@ -304,7 +304,17 @@ class TestDeterministicReviewConsolidation:
             loop_id=loop.id,
             review_iteration=1,
             reviewer_name='automated-quality-checker',
-            feedback_markdown='### Automated Quality Check (Score: 45/50)',
+            feedback_markdown="""### Automated Quality Check (Score: 45/50)
+
+#### Reviewer Execution Report (Non-Actionable)
+- Run Status: warnings
+- Stored Result: yes
+- MCP Retry Attempts: get_feedback retried once and succeeded
+- Tool/Command/Read Limitations: none
+- Fallbacks Used: none
+- Challenges: transient MCP startup timeout
+- Orchestrator Action Needed: none
+""",
             score=45,
             max_score=50,
             blockers=[],
@@ -346,11 +356,18 @@ class TestDeterministicReviewConsolidation:
         assert 'Consolidated 3 reviewer result(s) for iteration 1.' in feedback.message
         assert '[Severity:P1]' in feedback.message
         assert '[Severity:P2]' in feedback.message
+        assert 'Reviewer Execution Report (Non-Actionable)' not in feedback.message
+        assert 'transient MCP startup timeout' not in feedback.message
         stored_loop = await state.get_loop(loop.id)
         detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
         assert '- Score: 45/50' in detailed_feedback
         assert '- Normalized Score: 90/100' in detailed_feedback
         assert '- Weighted Contribution:' in detailed_feedback
+        assert 'Reviewer Execution Report (Non-Actionable)' in detailed_feedback
+        stored_results = await state.list_reviewer_results(loop.id, 1)
+        assert any(
+            'Reviewer Execution Report (Non-Actionable)' in result.feedback_markdown for result in stored_results
+        )
 
     @pytest.mark.asyncio
     async def test_consolidate_reuses_latest_prior_reviewer_result(self, plan_name: str) -> None:
@@ -615,6 +632,45 @@ class TestDeterministicReviewConsolidation:
                 max_score=50,
                 blockers=[' '],
                 findings=[],
+            )
+
+        stored_results = await state.list_reviewer_results(loop.id, 1)
+        assert stored_results == []
+
+    @pytest.mark.asyncio
+    async def test_store_reviewer_result_rejects_execution_report_in_structured_fields(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        with pytest.raises(ToolError, match='execution-report content from blockers'):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name='automated-quality-checker',
+                feedback_markdown='### Automated Quality Check (Score: 45/50)',
+                score=45,
+                max_score=50,
+                blockers=['Reviewer Execution Report (Non-Actionable): MCP retry succeeded'],
+                findings=[],
+            )
+
+        with pytest.raises(ToolError, match='execution-report content from findings'):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name='automated-quality-checker',
+                feedback_markdown='### Automated Quality Check (Score: 45/50)',
+                score=45,
+                max_score=50,
+                blockers=[],
+                findings=[
+                    {
+                        'priority': 'P2',
+                        'feedback': 'Reviewer Execution Report (Non-Actionable): command fallback used',
+                    }
+                ],
             )
 
         stored_results = await state.list_reviewer_results(loop.id, 1)

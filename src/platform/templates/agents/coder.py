@@ -396,6 +396,10 @@ Blocking issues → MUST fix ALL before writing new code
 Critical issues → MUST address before returning the iteration handoff report. Batch them only when one fix resolves multiple critical issues.
 Warning issues → Prioritize by point impact. Defer low-impact warnings when they do not block Checklist progress.
 
+Ignore any `Reviewer Execution Report (Non-Actionable)` section in retrieved feedback.
+Do NOT use reviewer execution reports as implementation guidance.
+Use only user feedback, blockers, critical findings, key issues, and recommendations as implementation guidance.
+
 VIOLATION: Continuing implementation with unfixed blocking issues.
            Fix all blocking before new code.
 ═══════════════════════════════════════════════

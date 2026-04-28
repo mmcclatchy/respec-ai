@@ -12,6 +12,8 @@ from src.utils.state_manager import StateManager
 
 logger = logging.getLogger(__name__)
 
+_REVIEWER_EXECUTION_REPORT_MARKER = 'Reviewer Execution Report (Non-Actionable)'
+
 
 class UnifiedFeedbackTools:
     """Unified feedback management for both critic and user feedback.
@@ -280,7 +282,7 @@ class UnifiedFeedbackTools:
         review_findings = [
             ReviewFinding(
                 priority=Priority(item['priority']),
-                feedback=item['feedback'],
+                feedback=self._validate_reviewer_finding_feedback(item['feedback']),
             )
             for item in findings
         ]
@@ -514,7 +516,22 @@ class UnifiedFeedbackTools:
                 'Reviewer blockers must be actionable non-empty strings; use [] when no blockers exist. '
                 f'Remove invalid blocker entries: {invalid_values}'
             )
+        contaminated_blockers = [blocker for blocker in blockers if _REVIEWER_EXECUTION_REPORT_MARKER in blocker]
+        if contaminated_blockers:
+            invalid_values = ', '.join(repr(blocker) for blocker in contaminated_blockers)
+            raise ToolError(
+                'Reviewer blockers must contain actionable implementation issues only. '
+                f'Remove non-actionable execution-report content from blockers: {invalid_values}'
+            )
         return blockers
+
+    def _validate_reviewer_finding_feedback(self, feedback: str) -> str:
+        if _REVIEWER_EXECUTION_REPORT_MARKER in feedback:
+            raise ToolError(
+                'Reviewer findings must contain actionable implementation issues only. '
+                'Remove non-actionable execution-report content from findings.'
+            )
+        return feedback
 
     def _parse_reviewer_name(self, reviewer_name: str) -> CriticAgent:
         normalized = reviewer_name.strip()

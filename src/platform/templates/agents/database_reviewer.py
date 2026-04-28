@@ -1,7 +1,16 @@
 from src.platform.models import DatabaseReviewerAgentTools
+from src.platform.templates.agents.reviewer_contracts import (
+    render_reviewer_execution_report_contract,
+    render_reviewer_mcp_retry_contract,
+    render_reviewer_output_contract,
+)
 
 
 def generate_database_reviewer_template(tools: DatabaseReviewerAgentTools) -> str:
+    retry_contract = render_reviewer_mcp_retry_contract()
+    output_contract = render_reviewer_output_contract('database-reviewer', tools.store_reviewer_result)
+    execution_report_contract = render_reviewer_execution_report_contract()
+
     return f"""---
 name: respec-database-reviewer
 description: Review selected data store design, migrations, constraints, and query behavior
@@ -66,22 +75,9 @@ When instructions say "CALL tool_name", you execute the tool:
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 
-═══════════════════════════════════════════════
-MANDATORY OUTPUT SCOPE
-═══════════════════════════════════════════════
-Store reviewer result via {tools.store_reviewer_result}.
-Your ONLY output to the orchestrator is:
-  "Reviewer result stored: database-reviewer (score=[REVIEW_SCORE], iteration=[review_iteration])"
-  "run_status=clean|warnings|incomplete"
-  "stored_result=yes|no"
-  "execution_notes=[none, or concise tool/read/command limitation]"
+{retry_contract}
 
-Do NOT return review markdown to the orchestrator.
-Do NOT write files to disk.
-
-VIOLATION: Returning full reviewer feedback markdown to the orchestrator
-           instead of storing via MCP tool.
-═══════════════════════════════════════════════
+{output_contract}
 
 ═══════════════════════════════════════════════
 MANDATORY FILESYSTEM BOUNDARY RESTRICTION
@@ -165,6 +161,8 @@ Mode-aware behavior:
 - Award full credit when indexes, TTL/retention, pagination, and connection behavior fit documented usage.
 - Score down for missing required indexes, excessive write amplification, or runtime config mismatches.
 
+{execution_report_contract}
+
 ## REVIEWER FEEDBACK MARKDOWN FORMAT
 
 Store the following markdown as reviewer feedback:
@@ -192,11 +190,14 @@ Store the following markdown as reviewer feedback:
   - Index/TTL/pagination fit: [assessment]
   - Connection/runtime behavior: [assessment]
 
-  #### Review Execution Notes
-  - Run Status: [clean/warnings/incomplete]
-  - Tool/command/read limitations: [None or concise issue]
-  - Fallbacks used: [None or concise fallback]
-  - Orchestrator action needed: [none/rerun/fail-closed]
+  #### Reviewer Execution Report (Non-Actionable)
+  - Run Status: [clean/warnings]
+  - Stored Result: [yes]
+  - MCP Retry Attempts: [none / operation retried once with result]
+  - Tool/Command/Read Limitations: [none / concise limitations]
+  - Fallbacks Used: [none / concise fallback]
+  - Challenges: [none / concise execution challenge]
+  - Orchestrator Action Needed: [none/rerun/fail-closed]
 
   #### Key Issues
   - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Database issue with file:line references]
@@ -210,5 +211,5 @@ Before storing:
 - BLOCKERS: list[str] of blocking findings; use [] when none exist.
 - FINDINGS: list[{{priority, feedback}}] grouped as P0/P1/P2/P3.
 - Preserve `[BLOCKING]` or `[Severity:P0]` markers in findings for critical violations.
-- Review Execution Notes are observational. Do NOT use them as coder fix guidance unless the same issue appears in blockers, findings, or Key Issues.
+- `Reviewer Execution Report (Non-Actionable)` is observational. Do NOT use it as coder fix guidance unless the same issue appears in blockers, findings, or Key Issues.
 """

@@ -1,7 +1,16 @@
 from src.platform.models import AutomatedQualityCheckerAgentTools
+from src.platform.templates.agents.reviewer_contracts import (
+    render_reviewer_execution_report_contract,
+    render_reviewer_mcp_retry_contract,
+    render_reviewer_output_contract,
+)
 
 
 def generate_automated_quality_checker_template(tools: AutomatedQualityCheckerAgentTools) -> str:
+    retry_contract = render_reviewer_mcp_retry_contract()
+    output_contract = render_reviewer_output_contract('automated-quality-checker', tools.store_reviewer_result)
+    execution_report_contract = render_reviewer_execution_report_contract()
+
     return f"""---
 name: respec-automated-quality-checker
 description: Run configured static analysis and produce an objective reviewer result
@@ -67,22 +76,9 @@ When instructions say "CALL tool_name", you execute the tool:
 DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 
-═══════════════════════════════════════════════
-MANDATORY OUTPUT SCOPE
-═══════════════════════════════════════════════
-Store reviewer result via {tools.store_reviewer_result}.
-Your ONLY output to the orchestrator is:
-  "Reviewer result stored: automated-quality-checker (score=[REVIEW_SCORE], iteration=[review_iteration])"
-  "run_status=clean|warnings|incomplete"
-  "stored_result=yes|no"
-  "execution_notes=[none, or concise tool/read/command limitation]"
+{retry_contract}
 
-Do NOT return review markdown to the orchestrator.
-Do NOT write files to disk.
-
-VIOLATION: Returning full reviewer feedback markdown to the orchestrator
-           instead of storing via MCP tool.
-═══════════════════════════════════════════════
+{output_contract}
 
 ═══════════════════════════════════════════════
 MANDATORY FILESYSTEM BOUNDARY RESTRICTION
@@ -178,6 +174,8 @@ Fallback:
 - Record `[BLOCKING]` for production imports from tests or mocking the module under test.
 - Record `[Severity:P1]` for systematic implementation-detail assertions that hide behavior regressions.
 
+{execution_report_contract}
+
 ## REVIEWER FEEDBACK MARKDOWN FORMAT
 
 Store the following markdown as reviewer feedback:
@@ -215,11 +213,14 @@ Store the following markdown as reviewer feedback:
   - Tests validate third-party package behavior: [none / file:line]
   - Implementation-detail assertions: [none / file:line]
 
-  #### Review Execution Notes
-  - Run Status: [clean/warnings/incomplete]
-  - Tool/command/read limitations: [None or concise issue]
-  - Fallbacks used: [None or concise fallback]
-  - Orchestrator action needed: [none/rerun/fail-closed]
+  #### Reviewer Execution Report (Non-Actionable)
+  - Run Status: [clean/warnings]
+  - Stored Result: [yes]
+  - MCP Retry Attempts: [none / operation retried once with result]
+  - Tool/Command/Read Limitations: [none / concise limitations]
+  - Fallbacks Used: [none / concise fallback]
+  - Challenges: [none / concise execution challenge]
+  - Orchestrator Action Needed: [none/rerun/fail-closed]
 
   #### Key Issues
   - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Issue with file:line references]
@@ -233,7 +234,7 @@ Before storing:
 - BLOCKERS: list[str] of blocking findings; use [] when none exist.
 - FINDINGS: list[{{priority, feedback}}] grouped as P0/P1/P2/P3.
 - Preserve `[BLOCKING]` or `[Severity:P0]` markers in findings for critical violations.
-- Review Execution Notes are observational. Do NOT use them as coder fix guidance unless the same issue appears in blockers, findings, or Key Issues.
+- `Reviewer Execution Report (Non-Actionable)` is observational. Do NOT use it as coder fix guidance unless the same issue appears in blockers, findings, or Key Issues.
 
 ## EVIDENCE-BASED ASSESSMENT
 
