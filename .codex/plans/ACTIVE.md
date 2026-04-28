@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/post-synthesis-feedback-api-research-detection.md`
-- Objective: Fix post-synthesis feedback freshness and strengthen external API research detection.
+- Plan File: `./.codex/plans/reviewer-execution-reporting-mcp-retry.md`
+- Objective: Centralize reviewer execution reporting and MCP retry instructions.
 - Phase: complete
-- Last Updated: 2026-04-27T21:38:31Z
+- Last Updated: 2026-04-28T11:33:52-04:00
 
 ## Usage
 
