@@ -693,10 +693,12 @@ IF PRE_POST_SYNTHESIS_LOOP_STATUS.status != "initialized" AND POST_POST_SYNTHESI
     DIAGNOSTIC: [surface PRE_POST_SYNTHESIS_LOOP_STATUS and POST_POST_SYNTHESIS_LOOP_STATUS]
     EXIT: Workflow terminated
 
-IF POST_SYNTHESIS_FEEDBACK contains "[API Research Final Docs Missing - BLOCKING]" OR
+IF POST_SYNTHESIS_FEEDBACK contains "[Research Path Invalid - BLOCKING]" OR
+   POST_SYNTHESIS_FEEDBACK contains "[Best-Practices Reference Invalid - BLOCKING]" OR
+   POST_SYNTHESIS_FEEDBACK contains "[API Research Final Docs Missing - BLOCKING]" OR
    POST_SYNTHESIS_FEEDBACK contains "[API Research Coverage Missing - BLOCKING]":
-    Display: "⟳ Post-synthesis API documentation coverage needs refinement"
-    List blocking API coverage issues
+    Display: "⟳ Post-synthesis research coverage needs refinement"
+    List blocking research path, best-practices reference, and API coverage issues
     POST_SYNTHESIS_DECISION_RESPONSE = {tools.decide_loop_action}
     POST_SYNTHESIS_DECISION = POST_SYNTHESIS_DECISION_RESPONSE.status
     POST_SYNTHESIS_SCORE = POST_SYNTHESIS_DECISION_RESPONSE.current_score
@@ -709,23 +711,18 @@ IF POST_SYNTHESIS_FEEDBACK contains "[API Research Final Docs Missing - BLOCKING
     ELIF POST_SYNTHESIS_DECISION == "user_input":
       Display POST_SYNTHESIS_FEEDBACK to user with:
       - Current score and iteration
-      - API documentation coverage blockers
+      - Research path, best-practices reference, and API documentation coverage blockers
       - Request for technical clarification only if needed by feedback
       Return to Step 5 after user guidance is available
 
     ELIF POST_SYNTHESIS_DECISION == "completed":
-      Display: "✓ Post-synthesis API documentation coverage validated after loop decision"
+      Display: "✓ Post-synthesis research coverage validated after loop decision"
       Proceed to Step 8.
 
     ELSE:
       ERROR: "Unexpected post-synthesis loop decision"
       DIAGNOSTIC: Show POST_SYNTHESIS_DECISION_RESPONSE
       EXIT: Workflow terminated
-ELIF POST_SYNTHESIS_FEEDBACK contains "Invalid \"Read:\" paths found: 0" == false:
-    Display warning: "⚠️ Synthesized research paths invalid:"
-    List invalid path findings extracted from POST_SYNTHESIS_FEEDBACK
-    Display: "Check bp task output logs"
-    # Non-blocking - continue to Step 8 after displaying the warning.
 ELSE:
     Display: "✓ All research paths validated successfully"
 

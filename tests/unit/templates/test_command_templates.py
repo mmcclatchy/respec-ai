@@ -535,16 +535,21 @@ class TestCrossPlatformInvocationRendering:
         assert 'IF LOOP_DECISION == "completed":' in template
         assert 'Proceed to Step 7.5.' in template
 
-    def test_phase_template_uses_post_synthesis_critic_and_routes_api_blockers_to_loop(self) -> None:
+    def test_phase_template_uses_post_synthesis_critic_and_routes_research_blockers_to_loop(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
         assert 'validation_mode: post_synthesis' in template
+        assert '[Research Path Invalid - BLOCKING]' in template
+        assert '[Best-Practices Reference Invalid - BLOCKING]' in template
         assert '[API Research Final Docs Missing - BLOCKING]' in template
+        assert '[API Research Coverage Missing - BLOCKING]' in template
+        assert 'Post-synthesis research coverage needs refinement' in template
         assert 'POST_SYNTHESIS_DECISION_RESPONSE = ' in template
         assert 'Return to Step 5 (phase-architect will retrieve post-synthesis feedback from MCP itself)' in template
         assert 'Proceed to Step 8.' in template
+        assert 'Invalid "Read:" paths found: 0' not in template
         assert 'EXIT: Do NOT proceed to Step 8 with missing external API docs' not in template
 
     def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
@@ -795,6 +800,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'Post-synthesis phase critic did not advance loop state' in template
         assert 'Post-synthesis phase critic did not persist fresh loop feedback' in template
         assert 'validation_result contains' not in template
+        assert 'Invalid "Read:" paths found: 0' not in template
 
     def test_plan_conversation_allowed_tools_frontmatter_is_comma_separated(self) -> None:
         coordinator = TemplateCoordinator()

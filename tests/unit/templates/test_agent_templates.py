@@ -457,17 +457,18 @@ class TestCreatePhaseTemplate:
 
 
 class TestPhaseCriticTemplate:
-    def test_template_includes_api_research_freshness_gates(self) -> None:
+    def test_template_treats_best_practices_paths_as_blocking_verification(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
         template = generate_phase_critic_template(tools)
-        assert 'API_STALE_SOFT_DAYS = 30' in template
-        assert 'API_STALE_HARD_DAYS = 365' in template
-        assert '--force-refresh' in template
+        assert 'best-practices-rag query-kb' not in template
+        assert '--force-refresh' not in template
         assert 'per-service research coverage' in template
         assert '.best-practices/*.md' in template
+        assert '[Research Path Invalid - BLOCKING]: Path `{path}` does not exist' in template
         assert 'API Research Coverage Missing - BLOCKING' in template
         assert 'Best-Practices Reference Invalid - BLOCKING' in template
-        assert 'API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT' in template
+        assert 'API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT' not in template
+        assert 'Hard stale blocking' not in template
 
     def test_template_enforces_deterministic_api_detection_and_mode_aware_coverage(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
@@ -508,7 +509,6 @@ class TestPhaseCriticTemplate:
             'HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN'
             not in template
         )
-        assert 'For each api_name in APIS_WITH_VALID_BP_READ_COVERAGE:' in template
         assert 'APIS_MISSING_FINAL_DOCS = []' in template
         assert 'API Research Coverage Missing - BLOCKING' in template
         assert 'API Research Final Docs Missing - BLOCKING' in template

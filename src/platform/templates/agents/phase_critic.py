@@ -405,7 +405,6 @@ IF section not found:
     RESEARCH_PATH_BLOCKERS_PRESENT = false
     BP_DOC_REFERENCE_BLOCKERS_PRESENT = false
     API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
-    API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = false
     RESEARCH_PATH_VALIDATION = {{
         "validated_count": 0,
         "valid_count": 0,
@@ -418,8 +417,6 @@ IF section not found:
         "apis_missing_coverage": [],
         "apis_missing_final_docs": [],
         "api_potential_matches": [],
-        "soft_stale_warnings": [],
-        "hard_stale_blocking": [],
         "invalid_bp_references": [],
     }}
     # Continue because global best-practices path scanning still applies
@@ -504,6 +501,8 @@ RESEARCH_PATH_VALIDATION = {{
 ## Structural blocker detection for invalid "Read:" paths in Research Requirements
 IF len(INVALID_PATHS) > 0:
     RESEARCH_PATH_BLOCKERS_PRESENT = true
+    Add blocker for each invalid path:
+      "[Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist"
 ELSE:
     RESEARCH_PATH_BLOCKERS_PRESENT = false
 
@@ -527,9 +526,6 @@ ELSE:
     BP_DOC_REFERENCE_BLOCKERS_PRESENT = false
 
 ## Deterministic external API detection and per-service research coverage
-API_STALE_SOFT_DAYS = 30
-API_STALE_HARD_DAYS = 365
-
 API_DETECTION_TEXT = concatenate text from:
 - "### Integration Context"
 - "## API Design" and/or "### API Design"
@@ -643,38 +639,11 @@ IF API_INTEGRATION_TRIGGER is true:
           "[API Research Coverage Missing - BLOCKING]: External API/service `{{api_name}}` has no corresponding Read/Synthesize research entry"
     ELSE:
         API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
-
-    ## Freshness checks for API-related existing docs
-    SOFT_STALE_WARNINGS = []
-    HARD_STALE_BLOCKING = []
-
-    For each api_name in APIS_WITH_VALID_BP_READ_COVERAGE:
-        CALL Bash: best-practices-rag query-kb --tech "{{api_name}}" --topics "official docs, sdk, api usage" --force-refresh
-        IF command fails:
-            SOFT_STALE_WARNINGS.append(f"refresh_failed_existing_doc:{{api_name}}")
-            Continue
-
-        DOC_AGE_DAYS = parse age/staleness from command output (or metadata)
-
-        IF DOC_AGE_DAYS > API_STALE_HARD_DAYS:
-            HARD_STALE_BLOCKING.append(api_name)
-        ELIF DOC_AGE_DAYS > API_STALE_SOFT_DAYS:
-            SOFT_STALE_WARNINGS.append(api_name)
-
-    IF len(HARD_STALE_BLOCKING) > 0:
-        API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = true
-        Add blocker for each item:
-          "[API Research Stale - BLOCKING]: API reference exceeds hard freshness threshold (365 days) or refresh failed without reliable doc"
-    ELSE:
-        API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = false
 ELSE:
     API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
-    API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT = false
     APIS_WITH_VALID_BP_READ_COVERAGE = []
     APIS_MISSING_COVERAGE = []
     APIS_MISSING_FINAL_DOCS = []
-    SOFT_STALE_WARNINGS = []
-    HARD_STALE_BLOCKING = []
 
 RESEARCH_PATH_VALIDATION = {{
     "validated_count": len(PATHS_TO_VALIDATE),
@@ -689,8 +658,6 @@ RESEARCH_PATH_VALIDATION = {{
     "apis_missing_final_docs": APIS_MISSING_FINAL_DOCS,
     "api_potential_matches": API_POTENTIAL_MATCHES,
     "api_doc_validation_failures": API_DOC_VALIDATION_FAILURES,
-    "soft_stale_warnings": SOFT_STALE_WARNINGS,
-    "hard_stale_blocking": HARD_STALE_BLOCKING,
     "invalid_bp_references": INVALID_BP_REFERENCES
 }}
 
@@ -932,7 +899,7 @@ Phases vary by project type. Evaluate based on project context:
 - Dependencies between phases mapped
 - Resource implications noted
 
-**11. Research Requirements (5 points + SEVERE penalties for invalid/stale API research)**
+**11. Research Requirements (5 points + SEVERE penalties for invalid or missing research)**
 - Knowledge gaps identified
 - Existing documentation paths verified (from STEP 2.6 validation)
 - External research prompts identified (will be synthesized in Step 7.5)
@@ -948,8 +915,6 @@ Phases vary by project type. Evaluate based on project context:
 - API potential matches from quick overview scan: {{RESEARCH_PATH_VALIDATION.api_potential_matches}}
 - API official-doc validation failures: {{RESEARCH_PATH_VALIDATION.api_doc_validation_failures}}
 - Invalid `.best-practices` references anywhere in phase: {{RESEARCH_PATH_VALIDATION.invalid_bp_references}}
-- Soft stale warnings (>30d): {{RESEARCH_PATH_VALIDATION.soft_stale_warnings}}
-- Hard stale blocking (>365d or refresh without reliable doc): {{RESEARCH_PATH_VALIDATION.hard_stale_blocking}}
 
 **BLOCKER RULE FOR INVALID ARCHIVE PATHS**:
 - If ANY invalid "Read:" paths found: raise blockers
@@ -959,7 +924,8 @@ Phases vary by project type. Evaluate based on project context:
 - If prompt set appears quota-driven (added to fill count rather than clear gaps), deduct points
 - Require prompt discipline: specific, high-value gaps only; avoid broad "research everything" prompts
 - All invalid "Read:" paths MUST be corrected before phase is considered ready
-- List each invalid path in `### Blockers`
+- List each invalid path in `### Blockers` using this exact marker:
+  [Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist
 
 **BLOCKER RULE FOR HALLUCINATED BEST-PRACTICES REFERENCES**:
 - If ANY `.best-practices/*.md` path mentioned anywhere in phase does not exist: raise blockers
@@ -976,13 +942,6 @@ Phases vary by project type. Evaluate based on project context:
 - Approval requires metadata/content validation of target API/provider identity, official source URLs or official-doc references, auth model, endpoints/operations or SDK/client method contracts, payload/schema contracts where relevant, failure/rate-limit/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP recommendation with rationale
 - In `validation_mode == "full"`, structured `Synthesize:` prompts satisfy planned coverage only when `Technologies:`, `Topics:`, and `Query:` make the API-doc/API-integration intent explicit
 - Post-synthesis API blockers are refinement-loop repair feedback for phase-architect; command routing decides whether to refine, ask for user input, or continue
-
-**API DOC FRESHNESS POLICY (for API integrations)**:
-- Soft threshold: 30 days → attempt `best-practices-rag query-kb ... --force-refresh`
-- Hard threshold: 365 days → stale beyond this is BLOCKING unless refreshed/updated
-- If refresh fails but existing doc is present and younger than 365 days: advisory warning (non-blocking)
-- If refresh fails and no reliable existing doc is available: BLOCKING
-- Hard-stale or no-reliable-doc refresh failures raise blockers
 
 **BLOCKER RULE FOR INVALID IMPLEMENTATION PLAN REFERENCE PATHS**:
 - If ANY invalid "- Constraint: `<path>`" paths found: raise blockers
@@ -1105,7 +1064,7 @@ Assess phase for implementation details that belong in Task:
 - Optional core sections present and substantive: 30 points (6 points each x 5 sections)
 
 **Structural Blockers (not scored)**:
-- Invalid research file paths, invalid `.best-practices` references, missing API research coverage, hard-stale API docs, invalid implementation plan references, and undocumented plan-constraint contradictions MUST be emitted in `### Blockers`
+- Invalid research file paths, invalid `.best-practices` references, missing API research coverage, invalid implementation plan references, and undocumented plan-constraint contradictions MUST be emitted in `### Blockers`
 - These structural failures block readiness but do NOT reduce or cap `overall_score`
 
 **Domain-Specific Sections (30 points)**:
@@ -1251,7 +1210,6 @@ Adjust focus based on iteration and improvement trend.
 - Validate "2025" appears in Synthesize prompts
 - Validate per-API coverage when external API integrations are present
 - Validate all `.best-practices/*.md` mentions in phase actually exist
-- For API docs older than 30 days, require `--force-refresh`; older than 365 days unresolved is blocking
 
 ## QUALITY CRITERIA
 
