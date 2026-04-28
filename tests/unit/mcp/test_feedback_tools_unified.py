@@ -370,6 +370,169 @@ class TestDeterministicReviewConsolidation:
         )
 
     @pytest.mark.asyncio
+    async def test_get_reviewer_feedback_context_returns_active_curated_latest_results(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='coding-standards-reviewer',
+            feedback_markdown="""### Coding Standards Review (Score: 20/25)
+
+#### Assessment Results
+##### Imports (Score: 3/5)
+- Standard: `.respec-ai/config/standards/python.toml:rules.imports`
+- Finding: src/example.py:12 imports violate configured grouping.
+- Expected Correction Pattern: group standard-library imports before local imports.
+
+#### Reviewer Execution Report (Non-Actionable)
+- Run Status: warnings
+- Stored Result: yes
+- MCP Retry Attempts: none
+- Tool/Command/Read Limitations: fallback diff used
+- Fallbacks Used: git diff fallback
+- Challenges: none
+- Orchestrator Action Needed: none
+
+#### Recommendations
+- [Severity:P1] [Scope:changed-file] Use configured import grouping in src/example.py:12.
+""",
+            score=20,
+            max_score=25,
+            blockers=['[Severity:P1] src/example.py:12 violates configured import grouping'],
+            findings=[
+                {
+                    'priority': 'P1',
+                    'feedback': (
+                        '.respec-ai/config/standards/python.toml:rules.imports src/example.py:12 '
+                        'Violation: imports are not grouped. Expected correction pattern: group standard-library '
+                        'imports before local imports. Before: local then stdlib. After: stdlib then local.'
+                    ),
+                }
+            ],
+        )
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='code-quality-reviewer',
+            feedback_markdown='### Code Quality (Score: 25/25)',
+            score=25,
+            max_score=25,
+            blockers=[],
+            findings=[],
+        )
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=2,
+            reviewer_name='coding-standards-reviewer',
+            feedback_markdown="""### Coding Standards Review (Score: 25/25)
+
+#### Assessment Results
+- All active standards pass.
+
+#### Reviewer Execution Report (Non-Actionable)
+- Run Status: clean
+- Stored Result: yes
+""",
+            score=25,
+            max_score=25,
+            blockers=[],
+            findings=[],
+        )
+
+        response = await tools.get_reviewer_feedback_context(
+            loop_id=loop.id,
+            review_iteration=2,
+            active_reviewers=['coding-standards-reviewer'],
+        )
+
+        assert '# Curated Reviewer Feedback Context' in response.message
+        assert '## coding-standards-reviewer' in response.message
+        assert '- Result Source: current iteration' in response.message
+        assert '- Score: 25/25' in response.message
+        assert '- Blockers:' in response.message
+        assert '  - none' in response.message
+        assert '- Findings:' in response.message
+        assert 'All active standards pass.' in response.message
+        assert 'code-quality-reviewer' not in response.message
+        assert 'Reviewer Execution Report (Non-Actionable)' not in response.message
+        assert 'Run Status: clean' not in response.message
+
+    @pytest.mark.asyncio
+    async def test_get_reviewer_feedback_context_reuses_prior_result_at_or_before_iteration(
+        self, plan_name: str
+    ) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='coding-standards-reviewer',
+            feedback_markdown="""### Coding Standards Review (Score: 20/25)
+
+#### Recommendations
+- [Severity:P1] [Scope:changed-file] Apply configured correction pattern in src/example.py:12.
+""",
+            score=20,
+            max_score=25,
+            blockers=[],
+            findings=[
+                {
+                    'priority': 'P1',
+                    'feedback': (
+                        '.respec-ai/config/standards/python.toml:rules.imports src/example.py:12 '
+                        'Violation: import grouping mismatch. Expected correction pattern: group configured imports.'
+                    ),
+                }
+            ],
+        )
+
+        response = await tools.get_reviewer_feedback_context(
+            loop_id=loop.id,
+            review_iteration=3,
+            active_reviewers=['coding-standards-reviewer'],
+        )
+
+        assert '- Result Source: reused from iteration 1' in response.message
+        assert '- Score: 20/25' in response.message
+        assert '- Findings:' in response.message
+        assert 'Expected correction pattern: group configured imports.' in response.message
+
+    @pytest.mark.asyncio
+    async def test_get_reviewer_feedback_context_requires_all_active_reviewer_results(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='coding-standards-reviewer',
+            feedback_markdown='### Coding Standards Review (Score: 25/25)',
+            score=25,
+            max_score=25,
+            blockers=[],
+            findings=[],
+        )
+
+        with pytest.raises(
+            ToolError,
+            match='Cannot retrieve reviewer feedback context: missing reviewer submissions: code-quality-reviewer',
+        ):
+            await tools.get_reviewer_feedback_context(
+                loop_id=loop.id,
+                review_iteration=1,
+                active_reviewers=['coding-standards-reviewer', 'code-quality-reviewer'],
+            )
+
+    @pytest.mark.asyncio
     async def test_consolidate_reuses_latest_prior_reviewer_result(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
         loop = LoopState(loop_type=LoopType.TASK)

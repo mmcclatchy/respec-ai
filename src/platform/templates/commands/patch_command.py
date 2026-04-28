@@ -554,6 +554,7 @@ Pass BOTH IDs to coding agents. Never swap them.
 #### Step 5.3: Phase 1 Iteration Loop (Coder -> Reviews -> Decision -> Commit)
 
 ```text
+RUN_BASE_REF = RUN_BASE_REF if defined else [result of: git rev-parse HEAD]
 PHASE1_SIGNED_OFF_REVIEWERS = PHASE1_SIGNED_OFF_REVIEWERS if defined else []
 
 Loop:
@@ -759,33 +760,32 @@ Display:
 #### Step 6.5.2: Standards Review Cycle
 
 ```text
-STANDARDS_REVIEWER_SIGNED_OFF = STANDARDS_REVIEWER_SIGNED_OFF if defined else false
-
 Loop:
   REVIEW_ITERATION = STANDARDS_REVIEW_ITERATION
 
-  {tools.invoke_coder_standards}
-  IF coder reports failure:
-    ERROR: "Standards coder failed"
-    DIAGNOSTIC: [surface the exact coder error/output]
-    FAIL-CLOSED:
-    - Do NOT invoke coding-standards-reviewer
-    - Do NOT call consolidate_review_cycle
-    - Do NOT call decide_standards_action
-    - Do NOT invoke respec-commit
-    EXIT: Workflow terminated
+  # A) Build deterministic changed-file scope for the standards reviewer
+  CHANGED_FILES_FROM_BASE = [result of: git diff --name-only RUN_BASE_REF..HEAD --diff-filter=AM]
+  CHANGED_FILES_UNSTAGED = [result of: git diff --name-only --diff-filter=AM]
+  CHANGED_FILES_STAGED = [result of: git diff --cached --name-only --diff-filter=AM]
+  CHANGED_FILES_SCOPE = de-duplicated union of:
+    1. CHANGED_FILES_FROM_BASE
+    2. CHANGED_FILES_UNSTAGED
+    3. CHANGED_FILES_STAGED
+  CHANGED_FILES_SCOPE_MARKDOWN = compose markdown:
+    ## Changed Files Scope
+    ### Baseline
+    - RUN_BASE_REF: {{RUN_BASE_REF}}
+    ### Files Changed Since Baseline
+    - [each path from CHANGED_FILES_FROM_BASE, or "none"]
+    ### Unstaged Changed Files
+    - [each path from CHANGED_FILES_UNSTAGED, or "none"]
+    ### Staged Changed Files
+    - [each path from CHANGED_FILES_STAGED, or "none"]
+    ### Review Scope Files
+    - [each path from CHANGED_FILES_SCOPE, or "none"]
 
-  STANDARDS_REVIEWERS_TO_INVOKE = []
-  IF STANDARDS_REVIEWER_SIGNED_OFF is false:
-    add "coding-standards-reviewer" to STANDARDS_REVIEWERS_TO_INVOKE
-  ELSE IF standards-relevant files, standards TOML files, formatting, naming, imports, type hints,
-  docstrings, lint configuration, or generated artifacts changed since sign-off:
-    add "coding-standards-reviewer" to STANDARDS_REVIEWERS_TO_INVOKE
-
-  IF STANDARDS_REVIEWERS_TO_INVOKE is empty:
-    Display: "✓ Reusing prior coding-standards-reviewer sign-off for this iteration"
-  ELSE:
-    {tools.invoke_coding_standards_reviewer}
+  # B) Standards review pass runs before standards-only coding
+  {tools.invoke_coding_standards_reviewer}
 
   IF invoked coding-standards-reviewer reports failure, returns no run summary,
   reports run_status=incomplete, or fails to confirm stored reviewer result:
@@ -797,6 +797,7 @@ Loop:
     - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
+  # C) Consolidate standards reviewer result
   LOOP_ID = STANDARDS_LOOP_ID
   ACTIVE_REVIEWERS = ["coding-standards-reviewer"]
   CONSOLIDATION_RESPONSE = {tools.consolidate_review_cycle}
@@ -816,6 +817,7 @@ Loop:
     - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
+  # D) Retrieve consolidated standards feedback
   STANDARDS_FEEDBACK = {tools.get_standards_feedback}
   IF STANDARDS_FEEDBACK is empty OR retrieval fails:
     ERROR: "Phase 2 consolidated feedback missing"
@@ -825,27 +827,41 @@ Loop:
     - Do NOT invoke respec-commit
     EXIT: Workflow terminated
 
-  Update STANDARDS_REVIEWER_SIGNED_OFF from the consolidated reviewer section:
-  - Set true when coding-standards-reviewer has full score, no blockers, and no P0/P1 findings.
-  - Set false when coding-standards-reviewer has any blocker, any P0/P1 finding, or less than full score.
-
+  # E) Decide whether standards-only coding is required
   STANDARDS_DECISION_RESPONSE = {tools.decide_standards_action}
   STANDARDS_DECISION = STANDARDS_DECISION_RESPONSE.status
   STANDARDS_SCORE = STANDARDS_DECISION_RESPONSE.current_score
   STANDARDS_ITERATION = STANDARDS_DECISION_RESPONSE.iteration
-
-  # Loop commits are progress checkpoints only.
-  # Completion commit is owned by Step 6.7 finalization gate.
-  COMMIT_KIND = "phase2-checkpoint"
-  COMMIT_WORKFLOW_KIND = "patch"
-  ALLOW_EMPTY = true
-  {tools.commit_command_invocation}
 
   IF STANDARDS_DECISION == "completed":
     Display: "🟣 [Phase 2 · Complete] ✅ Rubric Score: {{STANDARDS_SCORE}}/100 — ready for completion gate (threshold met, no active blockers)"
     exit loop
 
   IF STANDARDS_DECISION == "refine":
+    REVIEWER_FEEDBACK_CONTEXT_MARKDOWN = {tools.get_reviewer_feedback_context}
+    IF REVIEWER_FEEDBACK_CONTEXT_MARKDOWN is empty OR retrieval fails:
+      ERROR: "Phase 2 reviewer feedback context missing"
+      DIAGNOSTIC: [surface the exact MCP/tool error]
+      FAIL-CLOSED:
+      - Do NOT invoke standards-only coder
+      - Do NOT invoke respec-commit
+      EXIT: Workflow terminated
+
+    {tools.invoke_coder_standards}
+    IF coder reports failure:
+      ERROR: "Standards coder failed"
+      DIAGNOSTIC: [surface the exact coder error/output]
+      FAIL-CLOSED:
+      - Do NOT invoke respec-commit
+      EXIT: Workflow terminated
+
+    # Loop commits are progress checkpoints only.
+    # Completion commit is owned by Step 6.7 finalization gate.
+    COMMIT_KIND = "phase2-checkpoint"
+    COMMIT_WORKFLOW_KIND = "patch"
+    ALLOW_EMPTY = true
+    {tools.commit_command_invocation}
+
     STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1
     Display: "🟣 [Phase 2 · Iteration {{STANDARDS_ITERATION}}] ⟳ Rubric Score: {{STANDARDS_SCORE}}/100 — decision={{STANDARDS_DECISION}}; refining standards"
     continue loop
@@ -864,7 +880,26 @@ Loop:
     DO NOT explain that the workflow is stopping unless the user asks why.
 
     Store user choice and branch accordingly:
-    - Option 1: STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1
+    - Option 1: REVIEWER_FEEDBACK_CONTEXT_MARKDOWN = {tools.get_reviewer_feedback_context}
+                IF REVIEWER_FEEDBACK_CONTEXT_MARKDOWN is empty OR retrieval fails:
+                  ERROR: "Phase 2 reviewer feedback context missing"
+                  DIAGNOSTIC: [surface the exact MCP/tool error]
+                  FAIL-CLOSED:
+                  - Do NOT invoke standards-only coder
+                  - Do NOT invoke respec-commit
+                  EXIT: Workflow terminated
+                {tools.invoke_coder_standards}
+                IF coder reports failure:
+                  ERROR: "Standards coder failed"
+                  DIAGNOSTIC: [surface the exact coder error/output]
+                  FAIL-CLOSED:
+                  - Do NOT invoke respec-commit
+                  EXIT: Workflow terminated
+                COMMIT_KIND = "phase2-checkpoint"
+                COMMIT_WORKFLOW_KIND = "patch"
+                ALLOW_EMPTY = true
+                {tools.commit_command_invocation}
+                STANDARDS_REVIEW_ITERATION = STANDARDS_ITERATION + 1
                 continue loop
     - Option 2: FINALIZATION_DECISION_SOURCE = "phase2-user-finalized"
                 EXIT Phase 2 loop → Step 6.7

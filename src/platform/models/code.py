@@ -24,6 +24,7 @@ class CodeCommandTools(CommandToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
         RespecAITool.GET_FEEDBACK,
+        RespecAITool.GET_REVIEWER_FEEDBACK_CONTEXT,
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -40,6 +41,7 @@ class CodeCommandTools(CommandToolsModel):
     decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
     consolidate_review_cycle: str = Field(..., description='Consolidate structured reviewer results for an iteration')
     get_standards_feedback: str = Field(..., description='Get feedback from Phase 2 standards loop')
+    get_reviewer_feedback_context: str = Field(..., description='Get curated active-reviewer feedback context')
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_task_document: str = Field(..., description='Get task document through task-linked loop retrieval')

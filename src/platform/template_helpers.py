@@ -447,6 +447,7 @@ def create_code_command_tools(
                 ('mode', '"standards-only"'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+                ('reviewer_feedback_context_markdown', 'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN'),
             ],
         ),
         invoke_coding_standards_reviewer=adapter.render_agent_invocation(
@@ -460,6 +461,7 @@ def create_code_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+                ('changed_files_scope_markdown', 'CHANGED_FILES_SCOPE_MARKDOWN'),
             ],
         ),
         task_command_invocation=adapter.render_command_invocation(
@@ -518,6 +520,12 @@ def create_code_command_tools(
         ),
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
+        ),
+        get_reviewer_feedback_context=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_REVIEWER_FEEDBACK_CONTEXT,
+            loop_id='{STANDARDS_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            active_reviewers='["coding-standards-reviewer"]',
         ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
@@ -1499,6 +1507,7 @@ def create_patch_command_tools(
                 ('mode', '"standards-only"'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+                ('reviewer_feedback_context_markdown', 'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN'),
             ],
         ),
         invoke_coding_standards_reviewer=adapter.render_agent_invocation(
@@ -1512,6 +1521,7 @@ def create_patch_command_tools(
                 ('phase_name', 'PHASE_NAME'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+                ('changed_files_scope_markdown', 'CHANGED_FILES_SCOPE_MARKDOWN'),
             ],
         ),
         roadmap_command_invocation=adapter.render_command_invocation(
@@ -1573,6 +1583,12 @@ def create_patch_command_tools(
         ),
         get_standards_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{STANDARDS_LOOP_ID}', count='1'
+        ),
+        get_reviewer_feedback_context=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_REVIEWER_FEEDBACK_CONTEXT,
+            loop_id='{STANDARDS_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            active_reviewers='["coding-standards-reviewer"]',
         ),
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(

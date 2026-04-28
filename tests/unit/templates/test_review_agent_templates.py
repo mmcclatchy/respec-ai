@@ -721,12 +721,36 @@ class TestCoderTemplateConfig:
         assert 'Reviewer Execution Report (Non-Actionable)' in template
         assert 'Do NOT use reviewer execution reports as implementation guidance.' in template
         assert 'Use only user feedback, blockers, critical findings, key issues, and recommendations' in template
+        assert 'reviewer_feedback_context_markdown' in template
+        assert 'Read reviewer_feedback_context_markdown completely before editing files.' in template
+        assert 'return a structured failure that says curated standards reviewer context is missing.' in template
+        assert 'read feedback from coding_loop_id as fallback' not in template
+        assert 'Use only coding-standards-reviewer blockers, findings, key issues, recommendations' in template
 
     def test_coding_standards_reviewer_rejects_guide_markdown_scoring_authority(self) -> None:
         tools = create_coding_standards_reviewer_agent_tools(_adapter)
         template = generate_coding_standards_reviewer_template(tools)
         assert 'Ignore `.respec-ai/config/standards/guides/*.md` for scoring' in template
         assert 'VIOLATION: Using guide markdown content as scoring authority.' in template
+
+    def test_coding_standards_reviewer_uses_orchestrator_changed_file_scope_first(self) -> None:
+        tools = create_coding_standards_reviewer_agent_tools(_adapter)
+        template = generate_coding_standards_reviewer_template(tools)
+
+        assert 'changed_files_scope_markdown' in template
+        assert 'Use `### Review Scope Files` as the primary changed-file list.' in template
+        assert 'Run fallback command: git diff --name-only --diff-filter=AM' in template
+        assert 'Record the fallback in Reviewer Execution Report under Fallbacks Used.' in template
+
+    def test_coding_standards_reviewer_requires_correction_patterns_in_findings(self) -> None:
+        tools = create_coding_standards_reviewer_agent_tools(_adapter)
+        template = generate_coding_standards_reviewer_template(tools)
+
+        assert 'Config reference: `.respec-ai/config/standards/<file>.toml:<section-or-key>`' in template
+        assert 'File reference: `relative/path.ext:123`' in template
+        assert 'Expected correction pattern: what compliant code looks like' in template
+        assert 'Before/after snippet when useful and concise' in template
+        assert 'Expected Correction Pattern: [Config-driven correction pattern]' in template
 
     def test_shared_review_and_coder_templates_use_imperative_language_in_actionable_sections(self) -> None:
         templates = [

@@ -35,6 +35,10 @@ You are a software implementation specialist focused on producing production-rea
   - `### Stack Config TOML`
   - `### Language Config TOMLs`
   - `### Standards Guide Markdown`
+- reviewer_feedback_context_markdown: Required in `"standards-only"` mode. Curated reviewer feedback using this exact schema:
+  - `# Curated Reviewer Feedback Context`
+  - `## coding-standards-reviewer`
+  - `### Actionable Review Excerpts`
 
 ### Retrieved Context (Not Invocation Inputs)
 - Task document from task_loop_id
@@ -45,13 +49,16 @@ You are a software implementation specialist focused on producing production-rea
 ## STANDARDS-ONLY MODE
 
 IF mode == "standards-only":
-  1. Read feedback from coding_loop_id (standards feedback only): {tools.retrieve_feedback}
-  2. Read language config files from .respec-ai/config/ (same files the standards reviewer used)
-  3. Fix ONLY the issues identified in the feedback — these map to rules from config files
+  1. Read reviewer_feedback_context_markdown completely before editing files.
+     IF reviewer_feedback_context_markdown is missing or empty:
+       return a structured failure that says curated standards reviewer context is missing.
+  2. Use only coding-standards-reviewer blockers, findings, key issues, recommendations, and actionable excerpts as standards fix guidance.
+  3. Read language config files from .respec-ai/config/ (same files the standards reviewer used)
+  4. Fix ONLY the issues identified in the curated reviewer context — these map to rules from config files
      Do NOT apply fixes for rules not in the config files
      Do NOT apply hardcoded language-specific fixes
-  4. Run project-specific check commands from config (test, lint, type check) to confirm fixes
-  5. Return a standards iteration handoff report using ITERATION HANDOFF OUTPUT FORMAT
+  5. Run project-specific check commands from config (test, lint, type check) to confirm fixes
+  6. Return a standards iteration handoff report using ITERATION HANDOFF OUTPUT FORMAT
   EXIT — do not proceed to TDD cycle or feature implementation
 
 ═══════════════════════════════════════════════

@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/reviewer-execution-reporting-mcp-retry.md`
-- Objective: Centralize reviewer execution reporting and MCP retry instructions.
+- Plan File: `./.codex/plans/reviewer-first-standards-curated-context.md`
+- Objective: Reorder Phase 2 standards review and add curated reviewer context.
 - Phase: complete
-- Last Updated: 2026-04-28T11:33:52-04:00
+- Last Updated: 2026-04-28T12:30:00-04:00
 
 ## Usage
 

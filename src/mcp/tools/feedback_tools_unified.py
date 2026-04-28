@@ -1,4 +1,5 @@
 import logging
+import re
 
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
@@ -438,6 +439,142 @@ class UnifiedFeedbackTools:
             message=f'Consolidated review cycle for loop {loop_id} iteration {review_iteration}',
         )
 
+    async def get_reviewer_feedback_context(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        active_reviewers: list[str],
+    ) -> MCPResponse:
+        """Get curated reviewer context for active reviewers at or before an iteration."""
+        if not loop_id or not loop_id.strip():
+            raise ToolError('Loop ID cannot be empty')
+        if review_iteration < 1:
+            raise ToolError('review_iteration must be >= 1')
+        if not active_reviewers:
+            raise ToolError('active_reviewers must not be empty')
+
+        try:
+            loop_state = await self.state.get_loop(loop_id)
+        except LoopNotFoundError:
+            raise ResourceError('Loop does not exist')
+
+        active_critic_agents = [self._parse_reviewer_name(name) for name in active_reviewers]
+        stored_results = await self.state.list_latest_reviewer_results(
+            loop_id,
+            review_iteration,
+            [name.value for name in active_critic_agents],
+        )
+        results_by_reviewer = {result.reviewer_name: result for result in stored_results}
+        missing_reviewers = [name for name in active_critic_agents if name not in results_by_reviewer]
+        if missing_reviewers:
+            missing = ', '.join(name.value for name in missing_reviewers)
+            raise ToolError(f'Cannot retrieve reviewer feedback context: missing reviewer submissions: {missing}')
+
+        context_lines = [
+            '# Curated Reviewer Feedback Context',
+            '',
+            f'- Loop ID: {loop_id}',
+            f'- Review Iteration: {review_iteration}',
+            '- Scope: active reviewers only',
+            '- Excludes: non-actionable execution reports, rubric weights, and consolidation bookkeeping',
+            '',
+        ]
+
+        for reviewer in active_critic_agents:
+            result = results_by_reviewer[reviewer]
+            context_lines.append(f'## {reviewer.value}')
+
+            result_source = (
+                'current iteration'
+                if result.review_iteration == review_iteration
+                else f'reused from iteration {result.review_iteration}'
+            )
+            context_lines.append(f'- Result Source: {result_source}')
+            context_lines.append(f'- Score: {result.score}/{result.max_score}')
+            context_lines.append('- Blockers:')
+            if result.blockers:
+                context_lines.extend([f'  - {blocker}' for blocker in result.blockers])
+            else:
+                context_lines.append('  - none')
+            context_lines.append('- Findings:')
+            if result.findings:
+                context_lines.extend(
+                    [f'  - [Severity:{finding.priority.value}] {finding.feedback}' for finding in result.findings]
+                )
+            else:
+                context_lines.append('  - none')
+            context_lines.append('')
+            actionable_excerpt = self._extract_actionable_reviewer_excerpt(result.feedback_markdown)
+            context_lines.append('### Actionable Review Excerpts')
+            context_lines.append(
+                actionable_excerpt or 'No actionable markdown excerpts found; use structured findings.'
+            )
+            context_lines.append('')
+
+        return MCPResponse(
+            id=loop_id,
+            status=loop_state.status,
+            message='\n'.join(context_lines).strip(),
+        )
+
+    def _extract_actionable_reviewer_excerpt(self, feedback_markdown: str) -> str:
+        sanitized = self._strip_reviewer_execution_report(feedback_markdown)
+        actionable_sections = {
+            'assessment results',
+            'key issues',
+            'recommendations',
+            'findings',
+            'required corrections',
+        }
+        sections: list[str] = []
+        lines = sanitized.splitlines()
+        index = 0
+        while index < len(lines):
+            line = lines[index]
+            heading_match = re.match(r'^(#{1,6})\s+(.+?)\s*$', line)
+            if not heading_match:
+                index += 1
+                continue
+            heading_level = len(heading_match.group(1))
+            heading_text = heading_match.group(2).strip().lower()
+            if heading_text not in actionable_sections:
+                index += 1
+                continue
+
+            section_lines = [line]
+            index += 1
+            while index < len(lines):
+                next_match = re.match(r'^(#{1,6})\s+(.+?)\s*$', lines[index])
+                if next_match and len(next_match.group(1)) <= heading_level:
+                    break
+                section_lines.append(lines[index])
+                index += 1
+            sections.append('\n'.join(section_lines).strip())
+
+        return '\n\n'.join(section for section in sections if section).strip()
+
+    def _strip_reviewer_execution_report(self, feedback_markdown: str) -> str:
+        lines = feedback_markdown.splitlines()
+        kept_lines: list[str] = []
+        index = 0
+        while index < len(lines):
+            line = lines[index]
+            if _REVIEWER_EXECUTION_REPORT_MARKER not in line:
+                kept_lines.append(line)
+                index += 1
+                continue
+
+            heading_match = re.match(r'^(#{1,6})\s+', line)
+            heading_level = len(heading_match.group(1)) if heading_match else 6
+            index += 1
+            while index < len(lines):
+                next_match = re.match(r'^(#{1,6})\s+', lines[index])
+                if next_match and len(next_match.group(1)) <= heading_level:
+                    break
+                index += 1
+
+        return '\n'.join(kept_lines).strip()
+
     def _parse_and_validate_feedback(self, feedback_markdown: str) -> CriticFeedback:
         try:
             feedback = CriticFeedback.parse_markdown(feedback_markdown)
@@ -706,6 +843,39 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         except Exception as e:
             await ctx.error(f'Unexpected error: {str(e)}')
             raise ResourceError(f'Feedback unavailable for loop {loop_id}: {str(e)}')
+
+    @mcp.tool()
+    async def get_reviewer_feedback_context(
+        loop_id: str,
+        review_iteration: int,
+        active_reviewers: list[str],
+        ctx: Context,
+    ) -> MCPResponse:
+        """Get curated reviewer feedback context for the active reviewers in one iteration.
+
+        Parameters:
+        - loop_id: Loop identifier
+        - review_iteration: Review iteration to retrieve context for
+        - active_reviewers: Reviewer names to include; only these reviewers are returned
+
+        Returns:
+        - MCPResponse: Curated markdown with score, source, blockers, findings, and actionable excerpts
+        """
+        await ctx.info(f'Retrieving reviewer feedback context for loop {loop_id} iteration {review_iteration}')
+        try:
+            result = await _get_tools(ctx).get_reviewer_feedback_context(
+                loop_id=loop_id,
+                review_iteration=review_iteration,
+                active_reviewers=active_reviewers,
+            )
+            await ctx.info(f'Retrieved reviewer feedback context for loop {loop_id}')
+            return result
+        except (ToolError, ResourceError) as e:
+            await ctx.error(f'Failed to retrieve reviewer feedback context: {str(e)}')
+            raise
+        except Exception as e:
+            await ctx.error(f'Unexpected error: {str(e)}')
+            raise ResourceError(f'Reviewer feedback context unavailable for loop {loop_id}: {str(e)}')
 
     @mcp.tool()
     async def store_current_analysis(loop_id: str, analysis: str, ctx: Context) -> MCPResponse:

@@ -933,7 +933,7 @@ class TestCrossPlatformInvocationRendering:
         )
         assert 'Return to Step 7.4 (next loop pass runs coder → reviews → decision → commit).' in template
 
-    def test_code_template_reuses_signed_off_reviewers_with_full_roster_consolidation(self) -> None:
+    def test_code_template_reuses_phase1_reviewers_and_runs_phase2_reviewer_first(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
@@ -952,8 +952,23 @@ class TestCrossPlatformInvocationRendering:
         assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
         assert 'returns no run summary, reports run_status=incomplete' in template
         assert 'Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections' in template
-        assert 'STANDARDS_REVIEWER_SIGNED_OFF = STANDARDS_REVIEWER_SIGNED_OFF if defined else false' in template
-        assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' in template
+        assert 'STANDARDS_REVIEWER_SIGNED_OFF' not in template
+        assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' not in template
+        assert 'RUN_BASE_REF = RUN_BASE_REF if defined else [result of: git rev-parse HEAD]' in template
+        assert 'CHANGED_FILES_SCOPE_MARKDOWN = compose markdown:' in template
+        assert (
+            'IF STANDARDS_ITERATION >= 5 AND STANDARDS_DECISION == "refine":\n    STANDARDS_DECISION = "user_input"'
+            in template
+        )
+        assert '# B) Standards review pass runs before standards-only coding' in template
+        assert '# E) Decide whether standards-only coding is required' in template
+        assert 'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN = ' in template
+        assert template.index('# B) Standards review pass runs before standards-only coding') < template.index(
+            '# E) Decide whether standards-only coding is required'
+        )
+        assert template.index('# E) Decide whether standards-only coding is required') < template.index(
+            'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN = '
+        )
 
     def test_code_template_phase1_commit_subject_is_checkpoint_only(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1323,7 +1338,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'Phase 2 consolidated feedback missing' in template
         assert 'Do NOT call decide_standards_action' in template
 
-    def test_patch_template_reuses_signed_off_reviewers_with_full_roster_consolidation(self) -> None:
+    def test_patch_template_reuses_phase1_reviewers_and_runs_phase2_reviewer_first(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH,
@@ -1343,8 +1358,19 @@ class TestCrossPlatformInvocationRendering:
         assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
         assert 'returns no run summary, reports run_status=incomplete' in template
         assert 'Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections' in template
-        assert 'STANDARDS_REVIEWER_SIGNED_OFF = STANDARDS_REVIEWER_SIGNED_OFF if defined else false' in template
-        assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' in template
+        assert 'STANDARDS_REVIEWER_SIGNED_OFF' not in template
+        assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' not in template
+        assert 'RUN_BASE_REF = RUN_BASE_REF if defined else [result of: git rev-parse HEAD]' in template
+        assert 'CHANGED_FILES_SCOPE_MARKDOWN = compose markdown:' in template
+        assert '# B) Standards review pass runs before standards-only coding' in template
+        assert '# E) Decide whether standards-only coding is required' in template
+        assert 'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN = ' in template
+        assert template.index('# B) Standards review pass runs before standards-only coding') < template.index(
+            '# E) Decide whether standards-only coding is required'
+        )
+        assert template.index('# E) Decide whether standards-only coding is required') < template.index(
+            'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN = '
+        )
 
     def test_phase_and_roadmap_templates_do_not_include_malformed_tool_calls(self) -> None:
         coordinator = TemplateCoordinator()

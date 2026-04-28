@@ -26,6 +26,7 @@ class PatchCommandTools(CommandToolsModel):
         RespecAITool.STORE_CRITIC_FEEDBACK,
         RespecAITool.STORE_REVIEWER_RESULT,
         RespecAITool.GET_FEEDBACK,
+        RespecAITool.GET_REVIEWER_FEEDBACK_CONTEXT,
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -51,6 +52,7 @@ class PatchCommandTools(CommandToolsModel):
     initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
     decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
     get_standards_feedback: str = Field(..., description='Get feedback from Phase 2 standards loop')
+    get_reviewer_feedback_context: str = Field(..., description='Get curated active-reviewer feedback context')
 
     # Feedback
     store_user_feedback: str = Field(..., description='Store user feedback')
