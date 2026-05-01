@@ -230,11 +230,16 @@ Store the following markdown as reviewer feedback:
   #### Reviewer Execution Report (Non-Actionable)
   - Run Status: [clean/warnings]
   - Stored Result: [yes]
+  - Failed Step: [none / concise step name]
+  - Tools Or Commands Used: [tool names or command strings used]
+  - Prompt Or Invocation Inputs: [concise summary of scalar inputs and markdown payload names received]
+  - Exact Error: [none / exact non-actionable tool/read/command error]
+  - Error Response: [none / retry or fallback performed]
   - MCP Retry Attempts: [none / operation retried once with result]
   - Tool/Command/Read Limitations: [none / concise limitations]
   - Fallbacks Used: [none / concise fallback]
   - Challenges: [none / concise execution challenge]
-  - Orchestrator Action Needed: [none/rerun/fail-closed]
+  - Orchestrator Action Needed: [none/restart-reviewer/rerun-review-cycle/fail-closed]
 
   #### Key Issues
   - [Severity:P0|P1|P2|P3] [Scope:changed-file|acceptance-gap|global|deferred] [Alignment issue with file:line references]

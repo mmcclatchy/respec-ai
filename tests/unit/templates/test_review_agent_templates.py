@@ -148,9 +148,19 @@ def test_reviewer_output_contract_has_consistent_success_and_failure_format() ->
     )
     assert '"run_status=clean|warnings"' in contract
     assert '"stored_result=yes"' in contract
+    assert 'On failed reviewer execution or failed reviewer-result storage after the mandatory MCP retry' in contract
     assert '"Reviewer result NOT stored: backend-api-reviewer (iteration=[review_iteration])"' in contract
     assert '"run_status=incomplete"' in contract
     assert '"stored_result=no"' in contract
+    assert '"failed_step=[specific retrieval, inspection, command, scoring, or storage step]"' in contract
+    assert '"tools_or_commands=[tool names or command strings in use when failure occurred]"' in contract
+    assert (
+        '"prompt_or_invocation_inputs=[concise summary of scalar inputs and markdown payload names received]"'
+        in contract
+    )
+    assert '"exact_error=[exact MCP/tool/command/read error message or output]"' in contract
+    assert '"error_response=[retry/fallback attempted, or none with reason]"' in contract
+    assert '"orchestrator_action=restart-reviewer|rerun-review-cycle|fail-closed"' in contract
     assert 'Do NOT output "Reviewer result stored" when `stored_result=no`.' in contract
     assert 'stored_result=yes|no' not in contract
 
@@ -181,11 +191,24 @@ def test_reviewer_execution_report_contract_is_non_actionable() -> None:
     assert '#### Reviewer Execution Report (Non-Actionable)' in contract
     assert '- Run Status: [clean/warnings]' in contract
     assert '- Stored Result: [yes]' in contract
+    assert '- Failed Step: [none / concise step name]' in contract
+    assert '- Tools Or Commands Used: [tool names or command strings used]' in contract
+    assert (
+        '- Prompt Or Invocation Inputs: [concise summary of scalar inputs and markdown payload names received]'
+        in contract
+    )
+    assert '- Exact Error: [none / exact non-actionable tool/read/command error]' in contract
+    assert '- Error Response: [none / retry or fallback performed]' in contract
     assert '- Run Status: [clean/warnings/incomplete]' not in contract
     assert '- Stored Result: [yes/no]' not in contract
     for field in (
         'Run Status',
         'Stored Result',
+        'Failed Step',
+        'Tools Or Commands Used',
+        'Prompt Or Invocation Inputs',
+        'Exact Error',
+        'Error Response',
         'MCP Retry Attempts',
         'Tool/Command/Read Limitations',
         'Fallbacks Used',
@@ -569,8 +592,16 @@ class TestReviewAgentConsistency:
             assert 'Run Status: [clean/warnings]' in template
             assert 'Run Status: [clean/warnings/incomplete]' not in template
             assert 'Stored Result: [yes/no]' not in template
+            assert 'Failed Step: [none / concise step name]' in template
+            assert 'Tools Or Commands Used: [tool names or command strings used]' in template
+            assert (
+                'Prompt Or Invocation Inputs: [concise summary of scalar inputs and markdown payload names received]'
+                in template
+            )
+            assert 'Exact Error: [none / exact non-actionable tool/read/command error]' in template
+            assert 'Error Response: [none / retry or fallback performed]' in template
             assert 'MCP Retry Attempts' in template
-            assert 'Orchestrator Action Needed: [none/rerun/fail-closed]' in template
+            assert 'Orchestrator Action Needed: [none/restart-reviewer/rerun-review-cycle/fail-closed]' in template
             assert 'Review Execution Notes' not in template
             assert '`Reviewer Execution Report (Non-Actionable)` is observational.' in template
             assert 'Do NOT return review markdown to the orchestrator.' in template

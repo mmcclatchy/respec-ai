@@ -33,10 +33,17 @@ On successful reviewer-result storage, your ONLY output to the orchestrator is:
   "stored_result=yes"
   "execution_notes=[none, or concise non-actionable tool/read/command limitation]"
 
-On failed reviewer-result storage after the mandatory MCP retry, your ONLY output to the orchestrator is:
+On failed reviewer execution or failed reviewer-result storage after the mandatory MCP retry,
+your ONLY output to the orchestrator is:
   "Reviewer result NOT stored: {reviewer_name} (iteration=[review_iteration])"
   "run_status=incomplete"
   "stored_result=no"
+  "failed_step=[specific retrieval, inspection, command, scoring, or storage step]"
+  "tools_or_commands=[tool names or command strings in use when failure occurred]"
+  "prompt_or_invocation_inputs=[concise summary of scalar inputs and markdown payload names received]"
+  "exact_error=[exact MCP/tool/command/read error message or output]"
+  "error_response=[retry/fallback attempted, or none with reason]"
+  "orchestrator_action=restart-reviewer|rerun-review-cycle|fail-closed"
   "execution_notes=[exact MCP operation and error, or concise non-actionable tool/read/command limitation]"
 
 Do NOT output "Reviewer result stored" when `stored_result=no`.
@@ -58,11 +65,16 @@ Include this section in `REVIEW_SECTION_MARKDOWN` before successful `store_revie
 #### Reviewer Execution Report (Non-Actionable)
 - Run Status: [clean/warnings]
 - Stored Result: [yes]
+- Failed Step: [none / concise step name]
+- Tools Or Commands Used: [tool names or command strings used]
+- Prompt Or Invocation Inputs: [concise summary of scalar inputs and markdown payload names received]
+- Exact Error: [none / exact non-actionable tool/read/command error]
+- Error Response: [none / retry or fallback performed]
 - MCP Retry Attempts: [none / operation retried once with result]
 - Tool/Command/Read Limitations: [none / concise limitations]
 - Fallbacks Used: [none / concise fallback]
 - Challenges: [none / concise execution challenge]
-- Orchestrator Action Needed: [none/rerun/fail-closed]
+- Orchestrator Action Needed: [none/restart-reviewer/rerun-review-cycle/fail-closed]
 ```
 
 This section is for workflow visibility and audit history only.

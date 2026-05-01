@@ -608,15 +608,49 @@ Loop:
   For each REVIEWER in PHASE1_REVIEWERS_TO_INVOKE where REVIEWER is not core:
     {tools.invoke_dynamic_reviewer_pattern}
 
-  IF any invoked reviewer reports failure, returns no run summary, reports run_status=incomplete,
-  or fails to confirm stored reviewer result:
-    ERROR: "Phase 1 review team failed"
-    DIAGNOSTIC: [surface the exact reviewer error/output]
-    FAIL-CLOSED:
-    - Do NOT call consolidate_review_cycle
-    - Do NOT call decide_coding_action
-    - Do NOT invoke respec-commit
-    EXIT: Workflow terminated
+  REVIEW_FAILURE_REPORTS = collect invoked reviewers that report failure, return no run summary,
+  report run_status=incomplete, fail to confirm stored_result=yes, or fail to confirm stored reviewer result.
+
+  IF REVIEW_FAILURE_REPORTS is not empty:
+    FAILED_REVIEWERS = [reviewer names from REVIEW_FAILURE_REPORTS]
+    Display: "Phase 1 reviewer failure detected. Restarting failed reviewer(s) once: {{FAILED_REVIEWERS}}"
+
+    For each FAILED_REVIEWER in FAILED_REVIEWERS:
+      Close the failed reviewer subagent handle if the runtime exposes one.
+      Restart only FAILED_REVIEWER with the same invocation inputs and same REVIEW_ITERATION.
+      Use this deterministic invocation mapping:
+      - automated-quality-checker: rerun the automated-quality-checker core reviewer block above.
+      - spec-alignment-reviewer: rerun the spec-alignment-reviewer core reviewer block above.
+      - code-quality-reviewer: rerun the code-quality-reviewer core reviewer block above.
+      - any optional specialist: set REVIEWER = FAILED_REVIEWER, then run the optional specialist dynamic invocation pattern above.
+      Do NOT restart unaffected reviewers in this recovery step.
+
+    REVIEW_RESTART_FAILURE_REPORTS = collect restarted reviewers that report failure, return no run summary,
+    report run_status=incomplete, fail to confirm stored_result=yes, or fail to confirm stored reviewer result.
+
+    IF REVIEW_RESTART_FAILURE_REPORTS is not empty:
+      Display: "Reviewer restart did not clear all failures. Rerunning full Phase 1 review pass once."
+      Rerun every reviewer in PHASE1_REVIEWERS_TO_INVOKE with the same invocation inputs and same REVIEW_ITERATION.
+      Use the deterministic invocation mapping from the failed-reviewer restart step for each reviewer.
+      The rerun intentionally reuses REVIEW_ITERATION because reviewer-result storage upserts by loop, iteration, and reviewer.
+
+      FULL_REVIEW_RERUN_FAILURE_REPORTS = collect rerun reviewers that report failure, return no run summary,
+      report run_status=incomplete, fail to confirm stored_result=yes, or fail to confirm stored reviewer result.
+
+      IF FULL_REVIEW_RERUN_FAILURE_REPORTS is not empty:
+        ERROR: "Phase 1 review team failed after bounded recovery"
+        DIAGNOSTIC: compose detailed report containing:
+        - initial REVIEW_FAILURE_REPORTS
+        - restart REVIEW_RESTART_FAILURE_REPORTS
+        - full rerun FULL_REVIEW_RERUN_FAILURE_REPORTS
+        - reviewer names, review iteration, failed step/stage, tool/command in use,
+          prompt/invocation inputs, exact error output, retry/fallback response,
+          storage status, and recommended orchestrator action from each reviewer
+        FAIL-CLOSED:
+        - Do NOT call consolidate_review_cycle
+        - Do NOT call decide_coding_action
+        - Do NOT invoke respec-commit
+        EXIT: Workflow terminated
 
   LOOP_ID = CODING_LOOP_ID
   ACTIVE_REVIEWERS = PHASE1_REVIEWERS
@@ -787,15 +821,44 @@ Loop:
   # B) Standards review pass runs before standards-only coding
   {tools.invoke_coding_standards_reviewer}
 
-  IF invoked coding-standards-reviewer reports failure, returns no run summary,
-  reports run_status=incomplete, or fails to confirm stored reviewer result:
-    ERROR: "Coding standards reviewer failed"
-    DIAGNOSTIC: [surface the exact reviewer error/output]
-    FAIL-CLOSED:
-    - Do NOT call consolidate_review_cycle
-    - Do NOT call decide_standards_action
-    - Do NOT invoke respec-commit
-    EXIT: Workflow terminated
+  STANDARDS_REVIEW_FAILURE_REPORT = collect coding-standards-reviewer failure when it reports failure,
+  returns no run summary, reports run_status=incomplete, fails to confirm stored_result=yes,
+  or fails to confirm stored reviewer result.
+
+  IF STANDARDS_REVIEW_FAILURE_REPORT is not empty:
+    Display: "Coding standards reviewer failure detected. Restarting reviewer once."
+    Close the failed coding-standards-reviewer subagent handle if the runtime exposes one.
+    Restart coding-standards-reviewer with the same invocation inputs and same REVIEW_ITERATION.
+    {tools.invoke_coding_standards_reviewer}
+
+    STANDARDS_RESTART_FAILURE_REPORT = collect restarted coding-standards-reviewer failure when it reports failure,
+    returns no run summary, reports run_status=incomplete, fails to confirm stored_result=yes,
+    or fails to confirm stored reviewer result.
+
+    IF STANDARDS_RESTART_FAILURE_REPORT is not empty:
+      Display: "Coding standards reviewer restart failed. Rerunning the full standards review once."
+      Rerun coding-standards-reviewer with the same invocation inputs and same REVIEW_ITERATION.
+      The rerun intentionally reuses REVIEW_ITERATION because reviewer-result storage upserts by loop, iteration, and reviewer.
+      {tools.invoke_coding_standards_reviewer}
+
+      STANDARDS_FULL_RERUN_FAILURE_REPORT = collect rerun coding-standards-reviewer failure when it reports failure,
+      returns no run summary, reports run_status=incomplete, fails to confirm stored_result=yes,
+      or fails to confirm stored reviewer result.
+
+      IF STANDARDS_FULL_RERUN_FAILURE_REPORT is not empty:
+        ERROR: "Coding standards reviewer failed after bounded recovery"
+        DIAGNOSTIC: compose detailed report containing:
+        - initial STANDARDS_REVIEW_FAILURE_REPORT
+        - restart STANDARDS_RESTART_FAILURE_REPORT
+        - full rerun STANDARDS_FULL_RERUN_FAILURE_REPORT
+        - review iteration, failed step/stage, tool/command in use,
+          prompt/invocation inputs, exact error output, retry/fallback response,
+          storage status, and recommended orchestrator action from the reviewer
+        FAIL-CLOSED:
+        - Do NOT call consolidate_review_cycle
+        - Do NOT call decide_standards_action
+        - Do NOT invoke respec-commit
+        EXIT: Workflow terminated
 
   # C) Consolidate standards reviewer result
   LOOP_ID = STANDARDS_LOOP_ID

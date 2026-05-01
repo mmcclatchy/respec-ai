@@ -695,9 +695,15 @@ class TestCrossPlatformInvocationRendering:
             RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
         assert 'IF coder reports failure:' in template
-        assert (
-            'IF any invoked reviewer reports failure, returns no run summary, reports run_status=incomplete' in template
-        )
+        assert 'REVIEW_FAILURE_REPORTS = collect invoked reviewers that report failure' in template
+        assert 'Restart only FAILED_REVIEWER with the same invocation inputs and same REVIEW_ITERATION.' in template
+        assert 'Use this deterministic invocation mapping:' in template
+        assert 'any optional specialist: set REVIEWER = FAILED_REVIEWER' in template
+        assert 'Rerun every reviewer in PHASE1_REVIEWERS_TO_INVOKE with the same invocation inputs' in template
+        assert 'Use the deterministic invocation mapping from the failed-reviewer restart step' in template
+        assert 'Phase 1 review team failed after bounded recovery' in template
+        assert 'STANDARDS_REVIEW_FAILURE_REPORT = collect coding-standards-reviewer failure' in template
+        assert 'Coding standards reviewer failed after bounded recovery' in template
         assert 'CONSOLIDATION_RESPONSE = ' in template
         assert 'Phase 1 review consolidation failed' in template
         assert 'PHASE1_FEEDBACK = ' in template
@@ -950,7 +956,9 @@ class TestCrossPlatformInvocationRendering:
         assert 'Rerun on uncertainty by adding the uncertain reviewer.' in template
         assert 'Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.' in template
         assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
-        assert 'returns no run summary, reports run_status=incomplete' in template
+        assert 'REVIEW_RESTART_FAILURE_REPORTS = collect restarted reviewers' in template
+        assert 'FULL_REVIEW_RERUN_FAILURE_REPORTS = collect rerun reviewers' in template
+        assert 'The rerun intentionally reuses REVIEW_ITERATION because reviewer-result storage upserts' in template
         assert 'Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections' in template
         assert 'STANDARDS_REVIEWER_SIGNED_OFF' not in template
         assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' not in template
@@ -1323,16 +1331,21 @@ class TestCrossPlatformInvocationRendering:
         )
 
         assert 'IF coder reports failure:' in template
-        assert (
-            'IF any invoked reviewer reports failure, returns no run summary, reports run_status=incomplete' in template
-        )
+        assert 'REVIEW_FAILURE_REPORTS = collect invoked reviewers that report failure' in template
+        assert 'Restart only FAILED_REVIEWER with the same invocation inputs and same REVIEW_ITERATION.' in template
+        assert 'Use this deterministic invocation mapping:' in template
+        assert 'any optional specialist: set REVIEWER = FAILED_REVIEWER' in template
+        assert 'Rerun every reviewer in PHASE1_REVIEWERS_TO_INVOKE with the same invocation inputs' in template
+        assert 'Use the deterministic invocation mapping from the failed-reviewer restart step' in template
+        assert 'Phase 1 review team failed after bounded recovery' in template
         assert 'CONSOLIDATION_RESPONSE = ' in template
         assert 'Phase 1 review consolidation failed' in template
         assert 'Phase 1 review consolidation iteration mismatch' in template
         assert 'Phase 1 consolidated feedback missing' in template
         assert 'Do NOT call decide_coding_action' in template
         assert 'Do NOT invoke respec-commit' in template
-        assert 'IF invoked coding-standards-reviewer reports failure, returns no run summary,' in template
+        assert 'STANDARDS_REVIEW_FAILURE_REPORT = collect coding-standards-reviewer failure' in template
+        assert 'Coding standards reviewer failed after bounded recovery' in template
         assert 'Phase 2 review consolidation failed' in template
         assert 'Phase 2 review consolidation iteration mismatch' in template
         assert 'Phase 2 consolidated feedback missing' in template
@@ -1356,7 +1369,9 @@ class TestCrossPlatformInvocationRendering:
         assert 'Rerun on uncertainty by adding the uncertain reviewer.' in template
         assert 'Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.' in template
         assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
-        assert 'returns no run summary, reports run_status=incomplete' in template
+        assert 'REVIEW_RESTART_FAILURE_REPORTS = collect restarted reviewers' in template
+        assert 'FULL_REVIEW_RERUN_FAILURE_REPORTS = collect rerun reviewers' in template
+        assert 'The rerun intentionally reuses REVIEW_ITERATION because reviewer-result storage upserts' in template
         assert 'Update PHASE1_SIGNED_OFF_REVIEWERS from the consolidated reviewer sections' in template
         assert 'STANDARDS_REVIEWER_SIGNED_OFF' not in template
         assert 'Reusing prior coding-standards-reviewer sign-off for this iteration' not in template
