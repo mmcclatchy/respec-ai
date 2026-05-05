@@ -16,4 +16,6 @@ RUN chmod +x scripts/entrypoint.sh
 # Install MCP server dependencies (generates lock file from pyproject.toml)
 RUN uv sync --no-dev
 
+EXPOSE 9876
+
 ENTRYPOINT ["scripts/entrypoint.sh"]

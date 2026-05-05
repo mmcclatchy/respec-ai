@@ -1,11 +1,12 @@
 import logging
 import sys
 import json
+import time
 from typing import Any, Callable
 from pathlib import Path
 
 from fastmcp import FastMCP
-from fastmcp.server.middleware import MiddlewareContext
+from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.server.middleware.error_handling import ErrorHandlingMiddleware
 from fastmcp.server.middleware.logging import LoggingMiddleware, default_serializer
 
@@ -13,7 +14,7 @@ from src.mcp.lifespan import mcp_lifespan
 from src.mcp.tools import register_all_tools
 from src.utils.enums import HealthState
 from src.utils.loop_state import HealthStatus
-from src.utils.setting_configs import mcp_settings
+from src.utils.setting_configs import LogPayloadMode, mcp_settings
 
 
 REDACTED_PAYLOAD_KEYS = {
@@ -55,6 +56,123 @@ def _build_payload_serializer(include_full_payloads: bool) -> Callable[[Any], st
         return json.dumps(_redact_payload_value(parsed))
 
     return payload_serializer
+
+
+def _get_message_value(message: Any, key: str) -> Any:
+    if isinstance(message, dict):
+        return message.get(key)
+    return getattr(message, key, None)
+
+
+def _metadata_length(value: Any) -> str:
+    try:
+        return str(len(value))
+    except Exception:
+        return 'unknown'
+
+
+def _summarize_metadata_value(key: str, value: Any, depth: int = 0) -> Any:
+    if key.lower() in REDACTED_PAYLOAD_KEYS:
+        value_type = type(value).__name__
+        return f'<redacted:{_metadata_length(value)} {value_type}>'
+
+    if isinstance(value, str):
+        return value if len(value) <= 200 else f'{value[:200]}...'
+
+    if value is None or isinstance(value, bool | int | float):
+        return value
+
+    if isinstance(value, dict):
+        keys = sorted(str(item_key) for item_key in value)
+        if depth >= 2:
+            return {'type': 'dict', 'keys': keys, 'size': len(value)}
+        return {
+            str(item_key): _summarize_metadata_value(str(item_key), item_value, depth + 1)
+            for item_key, item_value in value.items()
+        }
+
+    if isinstance(value, list):
+        item_types = sorted({type(item).__name__ for item in value[:10]})
+        return {'type': 'list', 'size': len(value), 'item_types': item_types}
+
+    if isinstance(value, tuple | set):
+        item_types = sorted({type(item).__name__ for item in list(value)[:10]})
+        return {'type': type(value).__name__, 'size': len(value), 'item_types': item_types}
+
+    return {'type': type(value).__name__}
+
+
+def _summarize_message_metadata(message: Any) -> dict[str, Any]:
+    metadata: dict[str, Any] = {'message_type': type(message).__name__}
+
+    name = _get_message_value(message, 'name')
+    if name is not None:
+        metadata['tool_name'] = str(name)
+
+    uri = _get_message_value(message, 'uri')
+    if uri is not None:
+        metadata['uri'] = str(uri)
+
+    arguments = _get_message_value(message, 'arguments')
+    if isinstance(arguments, dict):
+        metadata['argument_keys'] = sorted(str(key) for key in arguments)
+        metadata['arguments'] = {
+            str(key): _summarize_metadata_value(str(key), value) for key, value in arguments.items()
+        }
+    elif arguments is not None:
+        metadata['arguments'] = {'type': type(arguments).__name__}
+
+    return metadata
+
+
+class MetadataLoggingMiddleware(Middleware):
+    def __init__(
+        self,
+        *,
+        logger: logging.Logger,
+        log_level: int = logging.INFO,
+        methods: list[str] | None = None,
+    ) -> None:
+        self.logger = logger
+        self.log_level = log_level
+        self.methods = methods
+
+    async def on_message(self, context: MiddlewareContext[Any], call_next: Any) -> Any:
+        if self.methods and context.method not in self.methods:
+            return await call_next(context)
+
+        metadata = _summarize_message_metadata(context.message)
+        self.logger.log(
+            self.log_level,
+            'event=%s method=%s source=%s metadata=%s',
+            f'{context.type}_start',
+            context.method or 'unknown',
+            context.source,
+            metadata,
+        )
+
+        start_time = time.perf_counter()
+        try:
+            result = await call_next(context)
+            self.logger.log(
+                self.log_level,
+                'event=%s method=%s source=%s duration_ms=%.3f status=success',
+                f'{context.type}_success',
+                context.method or 'unknown',
+                context.source,
+                (time.perf_counter() - start_time) * 1000,
+            )
+            return result
+        except Exception as e:
+            self.logger.error(
+                'event=%s method=%s source=%s duration_ms=%.3f status=error error=%s',
+                f'{context.type}_error',
+                context.method or 'unknown',
+                context.source,
+                (time.perf_counter() - start_time) * 1000,
+                e,
+            )
+            raise
 
 
 class MCPRequestFilter(logging.Filter):
@@ -159,7 +277,7 @@ def _configure_logging() -> logging.Logger:
 def create_mcp_server() -> FastMCP:
     tool_logger = _configure_logging()
     log_level = getattr(logging, mcp_settings.log_level.upper(), logging.INFO)
-    include_full_payloads = log_level == logging.DEBUG
+    payload_mode = mcp_settings.log_payload_mode
 
     mcp = FastMCP(mcp_settings.server_name, lifespan=mcp_lifespan)
     error_logger = logging.getLogger('mcp_errors')
@@ -188,15 +306,19 @@ def create_mcp_server() -> FastMCP:
         )
     )
 
-    mcp.add_middleware(
-        LoggingMiddleware(
-            logger=tool_logger,
-            log_level=log_level,
-            include_payloads=True,
-            max_payload_length=50000,
-            payload_serializer=_build_payload_serializer(include_full_payloads),
+    if payload_mode == LogPayloadMode.METADATA:
+        mcp.add_middleware(MetadataLoggingMiddleware(logger=tool_logger, log_level=log_level))
+    else:
+        include_full_payloads = payload_mode == LogPayloadMode.FULL
+        mcp.add_middleware(
+            LoggingMiddleware(
+                logger=tool_logger,
+                log_level=log_level,
+                include_payloads=True,
+                max_payload_length=50000,
+                payload_serializer=_build_payload_serializer(include_full_payloads),
+            )
         )
-    )
 
     # Register all tools
     register_all_tools(mcp)
@@ -204,19 +326,24 @@ def create_mcp_server() -> FastMCP:
     return mcp
 
 
-def run_local_server() -> None:
-    logger = logging.getLogger(__name__)
-
+def _log_server_startup(logger: logging.Logger, transport: str) -> None:
     logger.info('=' * 60)
     logger.info('respec-ai MCP Server Starting')
     logger.info(f'Server Name: {mcp_settings.server_name}')
+    logger.info(f'Transport: {transport}')
     logger.info(f'Working Directory: {Path.cwd()}')
     logger.info(f'Log Level: {mcp_settings.log_level}')
+    logger.info(f'Log Payload Mode: {mcp_settings.log_payload_mode}')
     logger.info(f'Debug Mode: {mcp_settings.debug}')
     logger.info('=' * 60)
 
+
+def run_local_server() -> None:
+    logger = logging.getLogger(__name__)
+
     try:
         server = create_mcp_server()
+        _log_server_startup(logger, 'stdio')
         logger.info('MCP Server initialized successfully')
         logger.info('Waiting for client connection...')
 
@@ -228,6 +355,37 @@ def run_local_server() -> None:
     except Exception as e:
         logger.error('=' * 60)
         logger.error('FATAL ERROR: MCP Server failed')
+        logger.error(f'Error Type: {type(e).__name__}')
+        logger.error(f'Error Message: {e}')
+        logger.error(f'Working Directory: {Path.cwd()}')
+        logger.error('=' * 60)
+        if mcp_settings.debug:
+            logger.exception('Full traceback:')
+        sys.exit(1)
+
+
+def run_http_server() -> None:
+    logger = logging.getLogger(__name__)
+
+    try:
+        server = create_mcp_server()
+        _log_server_startup(logger, 'streamable-http')
+        logger.info('MCP Server initialized successfully')
+        logger.info(f'Listening on {mcp_settings.host}:{mcp_settings.port}/mcp')
+
+        server.run(
+            transport='streamable-http',
+            host=mcp_settings.host,
+            port=mcp_settings.port,
+            path='/mcp',
+        )
+
+    except KeyboardInterrupt:
+        logger.info('MCP Server shutdown requested')
+        sys.exit(0)
+    except Exception as e:
+        logger.error('=' * 60)
+        logger.error('FATAL ERROR: MCP HTTP Server failed')
         logger.error(f'Error Type: {type(e).__name__}')
         logger.error(f'Error Message: {e}')
         logger.error(f'Working Directory: {Path.cwd()}')

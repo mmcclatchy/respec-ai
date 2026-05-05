@@ -363,11 +363,21 @@ class TestDeterministicReviewConsolidation:
         assert '- Score: 45/50' in detailed_feedback
         assert '- Normalized Score: 90/100' in detailed_feedback
         assert '- Weighted Contribution:' in detailed_feedback
-        assert 'Reviewer Execution Report (Non-Actionable)' in detailed_feedback
+        assert 'get_reviewer_result(loop_id=' in detailed_feedback
+        assert 'Minor lint issue in src/main.py:10' in detailed_feedback
+        assert 'Reviewer Execution Report (Non-Actionable)' not in detailed_feedback
+        assert 'transient MCP startup timeout' not in detailed_feedback
         stored_results = await state.list_reviewer_results(loop.id, 1)
         assert any(
             'Reviewer Execution Report (Non-Actionable)' in result.feedback_markdown for result in stored_results
         )
+        reviewer_result = await tools.get_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='automated-quality-checker',
+        )
+        assert 'Reviewer Execution Report (Non-Actionable)' in reviewer_result.message
+        assert 'transient MCP startup timeout' in reviewer_result.message
 
     @pytest.mark.asyncio
     async def test_get_reviewer_feedback_context_returns_active_curated_latest_results(self, plan_name: str) -> None:

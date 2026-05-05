@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/workflow-guidance-document-paths.md`
-- Objective: Teach generated workflows to preserve and read user-provided guidance document paths.
+- Plan File: `./.codex/plans/mcp-reliability-infrastructure-fix.md`
+- Objective: Stabilize MCP server lifecycle, logging, feedback storage, and lookup indexes.
 - Phase: complete
-- Last Updated: 2026-05-01T20:32:17Z
+- Last Updated: 2026-05-05T16:52:00Z
 
 ## Usage
 

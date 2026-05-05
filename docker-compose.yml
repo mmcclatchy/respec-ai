@@ -11,7 +11,11 @@ services:
       - DATABASE_URL=postgresql://respec:respec_prod@respec-ai-db-prod:5432/respec_prod
       # Production logging
       - MCP_LOG_LEVEL=INFO
+      - MCP_LOG_PAYLOAD_MODE=metadata
+      - MCP_PORT=9876
       - MCP_DEBUG=false
+    ports:
+      - "127.0.0.1:9876:9876"
     depends_on:
       db:
         condition: service_healthy
@@ -21,8 +25,6 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    # No ports needed - communication via docker exec (stdio)
-    # Container stays alive waiting for MCP requests via docker exec
     networks:
       - respec-prod-network
 

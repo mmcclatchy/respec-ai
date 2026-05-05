@@ -15,15 +15,14 @@ services:
       - MCP_STATE_MANAGER=database
       - DATABASE_URL=postgresql://respec:respec_dev@db:5432/respec_dev
       - MCP_LOG_LEVEL=DEBUG
+      - MCP_LOG_PAYLOAD_MODE=metadata
+      - MCP_PORT=9876
       - MCP_DEBUG=true
     depends_on:
       db:
         condition: service_healthy
-    # Port 9876 can be exposed for debugging if needed
-    # ports:
-    #   - "9876:9876"
-    # Container uses tail -f /dev/null from Dockerfile
-    # MCP server started via docker exec when needed
+    ports:
+      - "127.0.0.1:9876:9876"
     stdin_open: true
     tty: true
 

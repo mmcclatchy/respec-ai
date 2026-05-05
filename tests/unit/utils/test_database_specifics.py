@@ -543,6 +543,69 @@ class TestReviewerResultStateManager:
         assert latest.score == 24
         assert latest.findings[0].feedback == 'Iteration 2 advisory in src/main.py:10'
 
+    @pytest.mark.asyncio
+    async def test_postgres_get_reviewer_result_returns_exact_full_markdown(
+        self, db_state_manager: PostgresStateManager
+    ) -> None:
+        loop = LoopState(loop_type=LoopType.TASK)
+        await db_state_manager.add_loop(loop, 'test-project')
+
+        await db_state_manager.upsert_reviewer_result(
+            ReviewerResult(
+                loop_id=loop.id,
+                review_iteration=2,
+                reviewer_name=CriticAgent.CODE_QUALITY_REVIEWER,
+                feedback_markdown='### Code Quality\n\nFull reviewer rationale and citations.',
+                score=23,
+                max_score=25,
+                blockers=['Fix src/main.py:10'],
+                findings=[
+                    ReviewFinding(
+                        priority='P1',
+                        feedback='src/main.py:10 violates project style.',
+                    )
+                ],
+            )
+        )
+
+        result = await db_state_manager.get_reviewer_result(
+            loop.id,
+            2,
+            'code-quality-reviewer',
+        )
+
+        assert result.feedback_markdown == '### Code Quality\n\nFull reviewer rationale and citations.'
+        assert result.score == 23
+        assert result.blockers == ['Fix src/main.py:10']
+        assert result.findings[0].feedback == 'src/main.py:10 violates project style.'
+
+
+class TestReviewLookupIndexes:
+    @pytest.mark.asyncio
+    async def test_review_lookup_indexes_exist(self, db_state_manager: PostgresStateManager) -> None:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT indexname, indexdef
+                FROM pg_indexes
+                WHERE schemaname = current_schema()
+                  AND indexname = ANY($1::text[])
+                """,
+                [
+                    'idx_reviewer_results_latest_by_reviewer',
+                    'idx_tasks_phase_lower_name_active',
+                ],
+            )
+
+        indexes = {row['indexname']: row['indexdef'] for row in rows}
+        assert 'idx_reviewer_results_latest_by_reviewer' in indexes
+        assert 'reviewer_results' in indexes['idx_reviewer_results_latest_by_reviewer']
+        assert 'review_iteration DESC' in indexes['idx_reviewer_results_latest_by_reviewer']
+        assert 'idx_tasks_phase_lower_name_active' in indexes
+        assert 'lower' in indexes['idx_tasks_phase_lower_name_active'].lower()
+        assert 'name' in indexes['idx_tasks_phase_lower_name_active'].lower()
+        assert 'WHERE (active = true)' in indexes['idx_tasks_phase_lower_name_active']
+
 
 class TestDatabaseConstraints:
     @pytest.mark.asyncio

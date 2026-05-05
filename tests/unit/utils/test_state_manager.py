@@ -1,6 +1,7 @@
 import pytest
 
-from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
+from src.models.enums import CriticAgent, PhaseStatus, PlanStatus, RoadmapStatus
+from src.models.feedback import ReviewFinding, ReviewerResult
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
@@ -931,6 +932,50 @@ class TestReviewSectionManagement(TestInMemoryStateManager):
 
         retrieved = await state_manager.get_review_section(key)
         assert retrieved == 'new content'
+
+
+class TestReviewerResultManagement(TestInMemoryStateManager):
+    @pytest.mark.asyncio
+    async def test_get_reviewer_result_returns_exact_stored_result(
+        self, state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state_manager.add_loop(loop, plan_name)
+
+        await state_manager.upsert_reviewer_result(
+            ReviewerResult(
+                loop_id=loop.id,
+                review_iteration=2,
+                reviewer_name=CriticAgent.CODE_QUALITY_REVIEWER,
+                feedback_markdown='### Code Quality\n\nFull reviewer rationale.',
+                score=23,
+                max_score=25,
+                blockers=['Fix src/main.py:10'],
+                findings=[
+                    ReviewFinding(
+                        priority='P1',
+                        feedback='src/main.py:10 violates project style.',
+                    )
+                ],
+            )
+        )
+
+        result = await state_manager.get_reviewer_result(loop.id, 2, 'code-quality-reviewer')
+
+        assert result.feedback_markdown == '### Code Quality\n\nFull reviewer rationale.'
+        assert result.score == 23
+        assert result.blockers == ['Fix src/main.py:10']
+        assert result.findings[0].feedback == 'src/main.py:10 violates project style.'
+
+    @pytest.mark.asyncio
+    async def test_get_reviewer_result_raises_when_missing(
+        self, state_manager: InMemoryStateManager, plan_name: str
+    ) -> None:
+        loop = LoopState(loop_type=LoopType.TASK)
+        await state_manager.add_loop(loop, plan_name)
+
+        with pytest.raises(ValueError, match='Reviewer result not found'):
+            await state_manager.get_reviewer_result(loop.id, 1, 'code-quality-reviewer')
 
 
 class TestInMemoryDeletePlanCascade:

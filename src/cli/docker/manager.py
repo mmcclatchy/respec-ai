@@ -27,8 +27,13 @@ class DockerManager:
         'MCP_STATE_MANAGER': 'database',
         'DATABASE_URL': 'postgresql://respec:respec_prod@respec-ai-db-prod:5432/respec_prod',
         'MCP_LOG_LEVEL': 'INFO',
+        'MCP_LOG_PAYLOAD_MODE': 'metadata',
+        'MCP_PORT': '9876',
         'MCP_DEBUG': 'false',
     }
+    MCP_DAEMON_HOST = '127.0.0.1'
+    MCP_DAEMON_PORT = 9876
+    MCP_DAEMON_PATH = '/mcp'
     CONTAINER_LOG_DRIVER = 'json-file'
     CONTAINER_LOG_OPTIONS = {
         'max-size': '10m',
@@ -196,6 +201,7 @@ class DockerManager:
                 restart_policy={'Name': 'unless-stopped'},
                 environment=self.CONTAINER_ENV,
                 network=self.DB_NETWORK_NAME,
+                ports={'9876/tcp': (self.MCP_DAEMON_HOST, self.MCP_DAEMON_PORT)},
                 log_config=LogConfig(type=self.CONTAINER_LOG_DRIVER, config=self.CONTAINER_LOG_OPTIONS),
             )
             print(f'✓ Container {container_name} started')

@@ -760,6 +760,22 @@ class InMemoryStateManager(StateManager):
             if stored_loop_id == loop_id and stored_iteration == review_iteration
         ]
 
+    async def get_reviewer_result(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+    ) -> ReviewerResult:
+        await self.get_loop(loop_id)
+        key = (loop_id, review_iteration, reviewer_name)
+        try:
+            return self._reviewer_results[key]
+        except KeyError as exc:
+            raise ValueError(
+                f'Reviewer result not found: loop_id={loop_id}, '
+                f'review_iteration={review_iteration}, reviewer_name={reviewer_name}'
+            ) from exc
+
     async def list_latest_reviewer_results(
         self,
         loop_id: str,

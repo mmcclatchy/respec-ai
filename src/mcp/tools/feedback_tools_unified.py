@@ -404,13 +404,23 @@ class UnifiedFeedbackTools:
                 detail_lines.append(f'- Normalized Score: {result.normalized_score}/100')
                 detail_lines.append(f'- Configured Weight: {reviewer_weight:g}')
                 detail_lines.append(f'- Weighted Contribution: {weighted_contributions.get(reviewer, 0.0):.2f}/100')
+                detail_lines.append(
+                    '- Full Reviewer Feedback: retrieve with '
+                    f'get_reviewer_result(loop_id="{loop_id}", '
+                    f'review_iteration={result.review_iteration}, reviewer_name="{reviewer.value}")'
+                )
                 if result.blockers:
                     detail_lines.append('- Blockers:')
                     detail_lines.extend([f'  - {blocker}' for blocker in result.blockers])
                 else:
                     detail_lines.append('- Blockers: none')
-                detail_lines.append('')
-                detail_lines.append(result.feedback_markdown)
+                if result.findings:
+                    detail_lines.append('- Findings:')
+                    detail_lines.extend(
+                        [f'  - [Severity:{finding.priority.value}] {finding.feedback}' for finding in result.findings]
+                    )
+                else:
+                    detail_lines.append('- Findings: none')
                 detail_lines.append('')
             else:
                 detail_lines.append(f'#### {reviewer.value}')
@@ -437,6 +447,53 @@ class UnifiedFeedbackTools:
             current_score=overall_score,
             iteration=review_iteration,
             message=f'Consolidated review cycle for loop {loop_id} iteration {review_iteration}',
+        )
+
+    async def get_reviewer_result(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+    ) -> MCPResponse:
+        if not loop_id or not loop_id.strip():
+            raise ToolError('Loop ID cannot be empty')
+        if review_iteration < 1:
+            raise ToolError('review_iteration must be >= 1')
+        if not reviewer_name or not reviewer_name.strip():
+            raise ToolError('reviewer_name cannot be empty')
+
+        try:
+            loop_state = await self.state.get_loop(loop_id)
+        except LoopNotFoundError:
+            raise ResourceError('Loop does not exist')
+
+        parsed_reviewer_name = self._parse_reviewer_name(reviewer_name)
+        try:
+            reviewer_result = await self.state.get_reviewer_result(
+                loop_id,
+                review_iteration,
+                parsed_reviewer_name.value,
+            )
+        except ValueError as e:
+            raise ResourceError(str(e)) from e
+
+        message = (
+            '# Reviewer Result\n\n'
+            f'- Loop ID: {loop_id}\n'
+            f'- Review Iteration: {review_iteration}\n'
+            f'- Reviewer: {reviewer_result.reviewer_name.value}\n'
+            f'- Score: {reviewer_result.score}/{reviewer_result.max_score}\n'
+            f'- Normalized Score: {reviewer_result.normalized_score}/100\n'
+            f'- Blockers: {len(reviewer_result.blockers)}\n'
+            f'- Findings: {len(reviewer_result.findings)}\n\n'
+            '## Full Feedback Markdown\n\n'
+            f'{reviewer_result.feedback_markdown}'
+        )
+
+        return MCPResponse(
+            id=loop_id,
+            status=loop_state.status,
+            message=message,
         )
 
     async def get_reviewer_feedback_context(
@@ -736,6 +793,41 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
         except Exception as e:
             await ctx.error(f'Unexpected error: {str(e)}')
             raise ToolError(f'Unexpected error storing reviewer result: {str(e)}')
+
+    @mcp.tool()
+    async def get_reviewer_result(
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+        ctx: Context,
+    ) -> MCPResponse:
+        """Retrieve one stored reviewer result including its full markdown payload.
+
+        Parameters:
+        - loop_id: Loop identifier
+        - review_iteration: Explicit review pass number for this loop
+        - reviewer_name: Reviewer agent name (e.g., code-quality-reviewer)
+
+        Returns:
+        - MCPResponse: Reviewer metadata plus full feedback markdown
+        """
+        await ctx.info(
+            f'Retrieving reviewer result for loop {loop_id} (iteration={review_iteration}, reviewer={reviewer_name})'
+        )
+        try:
+            result = await _get_tools(ctx).get_reviewer_result(
+                loop_id=loop_id,
+                review_iteration=review_iteration,
+                reviewer_name=reviewer_name,
+            )
+            await ctx.info(f'Retrieved reviewer result for loop {loop_id}')
+            return result
+        except (ToolError, ResourceError) as e:
+            await ctx.error(f'Failed to retrieve reviewer result: {str(e)}')
+            raise
+        except Exception as e:
+            await ctx.error(f'Unexpected error: {str(e)}')
+            raise ResourceError(f'Reviewer result unavailable for loop {loop_id}: {str(e)}')
 
     @mcp.tool()
     async def consolidate_review_cycle(

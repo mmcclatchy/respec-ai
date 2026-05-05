@@ -41,6 +41,12 @@ class LogLevel(StrEnum):
     ERROR = 'ERROR'
 
 
+class LogPayloadMode(StrEnum):
+    METADATA = 'metadata'
+    REDACTED = 'redacted'
+    FULL = 'full'
+
+
 class MCPSettings(BaseSettings):
     model_config = SettingsConfigDict(
         extra='forbid',
@@ -57,6 +63,10 @@ class MCPSettings(BaseSettings):
     log_file: str | None = Field(
         default='logs/mcp-server.log',
         description='Log file path. Set to "stdout" for container environments, or absolute path for file logging. None = stderr only',
+    )
+    log_payload_mode: LogPayloadMode = Field(
+        default=LogPayloadMode.METADATA,
+        description='MCP request payload logging mode: metadata, redacted, or full',
     )
 
     # State Manager Configuration

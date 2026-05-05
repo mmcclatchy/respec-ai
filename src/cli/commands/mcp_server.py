@@ -1,7 +1,8 @@
-import subprocess
 import sys
 from argparse import ArgumentParser, Namespace
 from contextlib import redirect_stdout
+
+from fastmcp.server import create_proxy
 
 from src.cli.docker.manager import DockerManager, DockerManagerError
 
@@ -41,6 +42,10 @@ def _find_running_server_container_name(manager: DockerManager) -> str | None:
     return name_fallback
 
 
+def _backend_url(manager: DockerManager) -> str:
+    return f'http://{manager.MCP_DAEMON_HOST}:{manager.MCP_DAEMON_PORT}{manager.MCP_DAEMON_PATH}'
+
+
 def run(args: Namespace) -> int:
     try:
         manager = DockerManager()
@@ -61,25 +66,9 @@ def run(args: Namespace) -> int:
         if target_container_name is None:
             raise DockerManagerError('Failed to resolve MCP server container')
 
-        result = subprocess.run(
-            ['docker', 'exec', '-i', target_container_name, 'uv', 'run', 'respec-server'],
-            stdin=sys.stdin,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            check=False,
-        )
-
-        # Fallback entrypoint for images where script shim resolution can fail.
-        if result.returncode != 0:
-            result = subprocess.run(
-                ['docker', 'exec', '-i', target_container_name, 'uv', 'run', 'python', '-m', 'src.mcp'],
-                stdin=sys.stdin,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                check=False,
-            )
-
-        return result.returncode
+        proxy = create_proxy(_backend_url(manager), name='respec-ai')
+        proxy.run(transport='stdio', show_banner=False)
+        return 0
 
     except DockerManagerError as e:
         _stderr(f'Docker error: {e}')

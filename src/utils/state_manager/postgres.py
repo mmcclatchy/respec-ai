@@ -951,6 +951,39 @@ class PostgresStateManager(StateManager):
                         sort_order,
                     )
 
+    def _build_reviewer_results(
+        self,
+        result_rows: list[Record],
+        finding_rows: list[Record],
+    ) -> list[ReviewerResult]:
+        findings_by_result: dict[tuple[str, int], list[ReviewFinding]] = {}
+        for row in finding_rows:
+            key = (row['reviewer_name'], row['review_iteration'])
+            findings_by_result.setdefault(key, []).append(
+                ReviewFinding(priority=row['priority'], feedback=row['feedback'])
+            )
+
+        reviewer_results: list[ReviewerResult] = []
+        for row in result_rows:
+            blockers = json.loads(row['blockers']) if isinstance(row['blockers'], str) else row['blockers']
+            reviewer_name = row['reviewer_name']
+            result_key = (reviewer_name, row['review_iteration'])
+            reviewer_results.append(
+                ReviewerResult(
+                    loop_id=row['loop_id'],
+                    review_iteration=row['review_iteration'],
+                    reviewer_name=reviewer_name,
+                    feedback_markdown=row['feedback_markdown'],
+                    score=row['score'],
+                    max_score=row['max_score'],
+                    blockers=list(blockers or []),
+                    findings=findings_by_result.get(result_key, []),
+                    timestamp=row['updated_at'],
+                )
+            )
+
+        return reviewer_results
+
     async def list_reviewer_results(self, loop_id: str, review_iteration: int) -> list[ReviewerResult]:
         await self._get_loop_status_row(loop_id)
         async with db_pool.acquire() as conn:
@@ -977,32 +1010,46 @@ class PostgresStateManager(StateManager):
                 review_iteration,
             )
 
-        findings_by_reviewer: dict[str, list[ReviewFinding]] = {}
-        for row in finding_rows:
-            reviewer_name = row['reviewer_name']
-            findings_by_reviewer.setdefault(reviewer_name, []).append(
-                ReviewFinding(priority=row['priority'], feedback=row['feedback'])
-            )
+        return self._build_reviewer_results(result_rows, finding_rows)
 
-        reviewer_results: list[ReviewerResult] = []
-        for row in result_rows:
-            blockers = json.loads(row['blockers']) if isinstance(row['blockers'], str) else row['blockers']
-            reviewer_name = row['reviewer_name']
-            reviewer_results.append(
-                ReviewerResult(
-                    loop_id=row['loop_id'],
-                    review_iteration=row['review_iteration'],
-                    reviewer_name=reviewer_name,
-                    feedback_markdown=row['feedback_markdown'],
-                    score=row['score'],
-                    max_score=row['max_score'],
-                    blockers=list(blockers or []),
-                    findings=findings_by_reviewer.get(reviewer_name, []),
-                    timestamp=row['updated_at'],
+    async def get_reviewer_result(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+    ) -> ReviewerResult:
+        await self._get_loop_status_row(loop_id)
+        async with db_pool.acquire() as conn:
+            result_row = await conn.fetchrow(
+                """
+                SELECT
+                    loop_id, review_iteration, reviewer_name, feedback_markdown,
+                    score, max_score, blockers, updated_at
+                FROM reviewer_results
+                WHERE loop_id = $1 AND review_iteration = $2 AND reviewer_name = $3
+                """,
+                loop_id,
+                review_iteration,
+                reviewer_name,
+            )
+            if result_row is None:
+                raise ValueError(
+                    f'Reviewer result not found: loop_id={loop_id}, '
+                    f'review_iteration={review_iteration}, reviewer_name={reviewer_name}'
                 )
+            finding_rows = await conn.fetch(
+                """
+                SELECT reviewer_name, review_iteration, priority, feedback
+                FROM review_findings
+                WHERE loop_id = $1 AND review_iteration = $2 AND reviewer_name = $3
+                ORDER BY sort_order
+                """,
+                loop_id,
+                review_iteration,
+                reviewer_name,
             )
 
-        return reviewer_results
+        return self._build_reviewer_results([result_row], finding_rows)[0]
 
     async def list_latest_reviewer_results(
         self,
@@ -1055,30 +1102,4 @@ class PostgresStateManager(StateManager):
                     selected_reviewers,
                 )
 
-        findings_by_result: dict[tuple[str, int], list[ReviewFinding]] = {}
-        for row in finding_rows:
-            key = (row['reviewer_name'], row['review_iteration'])
-            findings_by_result.setdefault(key, []).append(
-                ReviewFinding(priority=row['priority'], feedback=row['feedback'])
-            )
-
-        reviewer_results: list[ReviewerResult] = []
-        for row in result_rows:
-            blockers = json.loads(row['blockers']) if isinstance(row['blockers'], str) else row['blockers']
-            reviewer_name = row['reviewer_name']
-            result_key = (reviewer_name, row['review_iteration'])
-            reviewer_results.append(
-                ReviewerResult(
-                    loop_id=row['loop_id'],
-                    review_iteration=row['review_iteration'],
-                    reviewer_name=reviewer_name,
-                    feedback_markdown=row['feedback_markdown'],
-                    score=row['score'],
-                    max_score=row['max_score'],
-                    blockers=list(blockers or []),
-                    findings=findings_by_result.get(result_key, []),
-                    timestamp=row['updated_at'],
-                )
-            )
-
-        return reviewer_results
+        return self._build_reviewer_results(result_rows, finding_rows)

@@ -73,6 +73,7 @@ packages = ["src"]
 [project.scripts]
 respec-ai = "src.cli.main:main"
 respec-server = "src.mcp.server:run_local_server"
+respec-server-http = "src.mcp.server:run_http_server"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

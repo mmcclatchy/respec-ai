@@ -101,6 +101,7 @@ class RespecAITool(StrEnum):
     CONSOLIDATE_REVIEW_CYCLE = f'{_RESPEC_AI_PREFIX}consolidate_review_cycle'
     STORE_USER_FEEDBACK = f'{_RESPEC_AI_PREFIX}store_user_feedback'
     GET_FEEDBACK = f'{_RESPEC_AI_PREFIX}get_feedback'
+    GET_REVIEWER_RESULT = f'{_RESPEC_AI_PREFIX}get_reviewer_result'
     GET_REVIEWER_FEEDBACK_CONTEXT = f'{_RESPEC_AI_PREFIX}get_reviewer_feedback_context'
     STORE_CURRENT_ANALYSIS = f'{_RESPEC_AI_PREFIX}store_current_analysis'
     GET_PREVIOUS_ANALYSIS = f'{_RESPEC_AI_PREFIX}get_previous_analysis'

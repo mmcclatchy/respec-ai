@@ -925,6 +925,8 @@ Loop:
       - Do NOT invoke standards-only coder
       - Do NOT invoke respec-commit
       EXIT: Workflow terminated
+    Treat REVIEWER_FEEDBACK_CONTEXT_MARKDOWN as the primary standards action list.
+    Instruct the coder to retrieve full reviewer markdown from reviewer_results only when a point needs original rationale/citations.
 
     {tools.invoke_coder_standards}
     IF coder reports failure:
@@ -967,6 +969,8 @@ Loop:
                   - Do NOT invoke standards-only coder
                   - Do NOT invoke respec-commit
                   EXIT: Workflow terminated
+                Treat REVIEWER_FEEDBACK_CONTEXT_MARKDOWN as the primary standards action list.
+                Instruct the coder to retrieve full reviewer markdown from reviewer_results only when a point needs original rationale/citations.
                 {tools.invoke_coder_standards}
                 IF coder reports failure:
                   ERROR: "Standards coder failed"

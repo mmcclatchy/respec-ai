@@ -202,6 +202,14 @@ class StateManager(ABC):
     async def list_reviewer_results(self, loop_id: str, review_iteration: int) -> list[ReviewerResult]: ...
 
     @abstractmethod
+    async def get_reviewer_result(
+        self,
+        loop_id: str,
+        review_iteration: int,
+        reviewer_name: str,
+    ) -> ReviewerResult: ...
+
+    @abstractmethod
     async def list_latest_reviewer_results(
         self,
         loop_id: str,
