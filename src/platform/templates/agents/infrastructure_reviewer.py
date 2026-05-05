@@ -36,6 +36,7 @@ You are an infrastructure specialist focused on whether runtime configuration, d
 - workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
   - `## Workflow Guidance`
   - `### Guidance Summary`
+  - `### Guidance Document Paths`
   - `### Constraints`
   - `### Resume Context`
   - `### Settled Decisions`
@@ -54,6 +55,9 @@ TASKS: Retrieve Specs → Inspect Infrastructure Files → Assess Quality → St
 4. Apply workflow_guidance_markdown when provided:
    - Treat it as already clarified by the orchestrator
    - Use its sections to focus infrastructure review scope and preserve user-specified constraints
+   - Read every project-local path listed under `### Guidance Document Paths` before scoring when it affects deployment, CI, runtime, or operational scope
+   - Treat successfully read guidance documents as user-authored context below Task and Phase, but above general assumptions
+   - If a listed guidance document cannot be read, report it as skipped context unless it is necessary to certify infrastructure behavior
    - Do NOT reinterpret ambiguous guidance or invent missing requirements
 5. Apply project_config_context_markdown when provided; read `.respec-ai/config/stack.toml` directly when deployment platform, container model, or CI tool is ambiguous.
 6. Extract runtime platform, deployment mechanism, secret source, CI commands, and environment wiring from stack config, Phase, Task, and workflow guidance.

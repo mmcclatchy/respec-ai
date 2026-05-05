@@ -1,9 +1,9 @@
 # Active Codex Plan
 
-- Plan File: `./.codex/plans/reviewer-first-standards-curated-context.md`
-- Objective: Reorder Phase 2 standards review and add curated reviewer context.
+- Plan File: `./.codex/plans/workflow-guidance-document-paths.md`
+- Objective: Teach generated workflows to preserve and read user-provided guidance document paths.
 - Phase: complete
-- Last Updated: 2026-04-28T12:30:00-04:00
+- Last Updated: 2026-05-01T20:32:17Z
 
 ## Usage
 

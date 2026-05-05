@@ -75,6 +75,7 @@ RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]
 ```text
 PHASE_NAME_PARTIAL = [empty until RAW_PHASE_REQUEST is clarified]
 OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]
+GUIDANCE_DOCUMENT_PATHS = []
 ```
 
 Fail closed on ambiguity:
@@ -89,6 +90,22 @@ Fail closed on ambiguity:
 Once RAW_PHASE_REQUEST is sufficiently clear:
 - PHASE_NAME_PARTIAL = [clarified phase selector derived from RAW_PHASE_REQUEST]
 - OPTIONAL_CONTEXT = [remaining clarified implementation guidance, otherwise empty string]
+
+Guidance document path handling:
+- If RAW_PHASE_REQUEST or OPTIONAL_CONTEXT contains readable project-local document paths
+  intended to guide implementation (for example `.md`, `.txt`, `.rst`, or `.adoc` files),
+  add each path to GUIDANCE_DOCUMENT_PATHS.
+- Do NOT use a guidance document path as PHASE_NAME_PARTIAL unless it is itself a valid
+  Phase file under the configured phase location.
+- Validate each guidance document path before invoking subagents:
+  - Relative paths are resolved from the target project working directory.
+  - Paths MUST stay inside the target project working directory.
+  - Paths MUST exist and be readable.
+  - Invalid or outside-project paths are preserved in OPTIONAL_CONTEXT as reported user intent,
+    but are NOT passed as readable guidance paths; ask for clarification if the missing path
+    changes scope or implementation direction.
+- Keep GUIDANCE_DOCUMENT_PATHS separate from implementation files to edit. These are read-only
+  context documents that inform agent work.
 
 If OPTIONAL_CONTEXT is present after clarification, preserve it for the full
 code-implementation loop and pass it through to the coder, all reviewers, and
@@ -344,6 +361,9 @@ WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
   ## Workflow Guidance
   ### Guidance Summary
   [OPTIONAL_CONTEXT if present, otherwise "None"]
+  ### Guidance Document Paths
+  - [each validated path from GUIDANCE_DOCUMENT_PATHS]
+  - None
   ### Constraints
   - [preserved constraint from OPTIONAL_CONTEXT]
   - None

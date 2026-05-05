@@ -125,6 +125,7 @@ RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]
 ```text
 PHASE_NAME_PARTIAL = [empty until RAW_PHASE_REQUEST is clarified]
 OPTIONAL_INSTRUCTIONS = [empty until RAW_PHASE_REQUEST is clarified]
+GUIDANCE_DOCUMENT_PATHS = []
 ```
 
 Fail closed on ambiguity:
@@ -139,6 +140,42 @@ Fail closed on ambiguity:
 Once RAW_PHASE_REQUEST is sufficiently clear:
 - PHASE_NAME_PARTIAL = [clarified phase selector derived from RAW_PHASE_REQUEST]
 - OPTIONAL_INSTRUCTIONS = [remaining clarified phase-development guidance, otherwise empty string]
+
+Guidance document path handling:
+- If RAW_PHASE_REQUEST or OPTIONAL_INSTRUCTIONS contains readable project-local document paths
+  intended to guide phase development (for example `.md`, `.txt`, `.rst`, or `.adoc` files),
+  add each path to GUIDANCE_DOCUMENT_PATHS.
+- Do NOT use a guidance document path as PHASE_NAME_PARTIAL unless it is itself a valid
+  Phase file under the configured phase location.
+- Validate each guidance document path before invoking subagents:
+  - Relative paths are resolved from the target project working directory.
+  - Paths MUST stay inside the target project working directory.
+  - Paths MUST exist and be readable.
+  - Invalid or outside-project paths are preserved in OPTIONAL_INSTRUCTIONS as reported user intent,
+    but are NOT passed as readable guidance paths; ask for clarification if the missing path
+    changes architecture scope or phase direction.
+- Keep GUIDANCE_DOCUMENT_PATHS separate from Phase files to update. These are read-only
+  context documents that inform agent work.
+
+Compose phase workflow guidance:
+```text
+WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
+  ## Workflow Guidance
+  ### Guidance Summary
+  [OPTIONAL_INSTRUCTIONS if present, otherwise "None"]
+  ### Guidance Document Paths
+  - [each validated path from GUIDANCE_DOCUMENT_PATHS]
+  - None
+  ### Constraints
+  - [preserved constraint from OPTIONAL_INSTRUCTIONS]
+  - None
+  ### Resume Context
+  - [resume detail from OPTIONAL_INSTRUCTIONS]
+  - None
+  ### Settled Decisions
+  - [clarified decision from OPTIONAL_INSTRUCTIONS]
+  - None
+```
 
 #### Step 1.2: Search file system for matching phase files
 
@@ -199,6 +236,7 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 - PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
 - PLAN_NAME from config is used for all MCP storage operations
 - OPTIONAL_INSTRUCTIONS provides only the clarified guidance that remains after phase resolution
+- WORKFLOW_GUIDANCE_MARKDOWN passes clarified guidance document paths and instructions to phase agents
 - All subsequent operations use PHASE_NAME (canonical)
 
 ### Step 2: Load and Store Existing Documents

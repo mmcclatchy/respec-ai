@@ -210,6 +210,7 @@ OUTPUTS: Quality assessment containing:
 workflow_guidance_markdown
 - ## Workflow Guidance
 - ### Guidance Summary
+- ### Guidance Document Paths
 - ### Constraints
 - ### Resume Context
 - ### Settled Decisions
@@ -237,6 +238,14 @@ review_scope_markdown
 - Users should **not** be required to author markdown payloads.
 - Commands/skills may accept raw trailing text, clarify ambiguity, and normalize it before invoking internal agents.
 - Only internal command-to-agent invocations should use grouped markdown payloads.
+
+**Guidance Document Path Contract**:
+- When a user supplies a project-local document path as workflow guidance, commands must preserve the path explicitly instead of only summarizing its contents.
+- Valid guidance paths belong under `workflow_guidance_markdown > ### Guidance Document Paths` unless the agent uses a more specific payload such as `reference_context_markdown`.
+- Agents that receive guidance paths and have read capability must read those documents before planning, coding, or review work that depends on the guidance.
+- Guidance documents are read-only context. They do not authorize source edits, planning-document edits, or cross-repository file access.
+- If a path is outside the target project, missing, or unreadable, the command should preserve the user intent in the guidance summary but not pass it as a readable guidance path. Ask for clarification when the missing document changes scope or implementation direction.
+- Self-contained exceptions are agents that do not consume user-authored workflow guidance or do not perform domain work from project context, such as commit metadata synthesis, deterministic review consolidation, platform phase creation, and research synthesis workers that operate from explicit research prompts.
 
 **Anti-Pattern**:
 ```markdown
@@ -582,6 +591,9 @@ WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
   ## Workflow Guidance
   ### Guidance Summary
   [...]
+  ### Guidance Document Paths
+  - [validated project-local guidance document paths]
+  - None
   ### Constraints
   [...]
   ### Resume Context

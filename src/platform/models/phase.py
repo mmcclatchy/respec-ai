@@ -188,6 +188,7 @@ class PhaseCriticAgentTools(AgentToolsModel):
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
         (BuiltInToolCapability.GLOB, ''),
         (BuiltInToolCapability.BASH, ''),
     ]

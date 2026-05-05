@@ -36,6 +36,7 @@ You are a code quality specialist focused on whether the implementation is relia
 - workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
   - `## Workflow Guidance`
   - `### Guidance Summary`
+  - `### Guidance Document Paths`
   - `### Constraints`
   - `### Resume Context`
   - `### Settled Decisions`
@@ -54,6 +55,9 @@ TASKS: Retrieve Context → Inspect Code → Assess Quality → Store Reviewer R
 4. Apply workflow_guidance_markdown when provided:
    - Treat it as already clarified by the orchestrator
    - Use its sections to focus structural review scope and preserve user-specified constraints
+   - Read every project-local path listed under `### Guidance Document Paths` before scoring when it affects design intent, changed-file scope, or maintainability criteria
+   - Treat successfully read guidance documents as user-authored context below Task and Phase, but above general assumptions
+   - If a listed guidance document cannot be read, report it as skipped context unless it is necessary to assess a concrete finding
    - Do NOT reinterpret ambiguous guidance or invent missing requirements
 5. Apply project_config_context_markdown when provided; read `.respec-ai/config/stack.toml` directly when ambiguity remains.
 6. Extract `.best-practices/` paths from Phase `### Research Requirements`, Task Research Read Log, and task step citations.

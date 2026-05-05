@@ -130,6 +130,7 @@ class TaskPlannerAgentTools(AgentToolsModel):
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
         (BuiltInToolCapability.READ, '.best-practices/*.md'),
         (BuiltInToolCapability.READ, '.respec-ai/plans/*/references/*.md'),
         (BuiltInToolCapability.GREP, ''),
@@ -153,6 +154,7 @@ class TaskPlanCriticAgentTools(AgentToolsModel):
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
         (BuiltInToolCapability.READ, '.respec-ai/plans/*/references/*.md'),
     ]
 

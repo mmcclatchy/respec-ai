@@ -71,6 +71,7 @@ RAW_REQUEST = [all remaining input after PLAN_NAME]
 ```text
 PATCH_REQUEST_BRIEF = [normalized request produced after clarification]
 REQUEST_SUMMARY = [one-line summary produced from PATCH_REQUEST_BRIEF]
+GUIDANCE_DOCUMENT_PATHS = []
 ```
 
 Fail closed on ambiguity:
@@ -88,8 +89,24 @@ Once RAW_REQUEST is sufficiently clear:
   - requested change
   - relevant supporting context and constraints
   - resume details or file references that must be preserved
+  - guidance document paths from GUIDANCE_DOCUMENT_PATHS under a clear `Guidance Document Paths` subsection
   - any clarified decisions that subagents must treat as settled
 - Derive REQUEST_SUMMARY as a short one-line summary for commit/final reporting.
+
+Guidance document path handling:
+- If RAW_REQUEST contains readable project-local document paths intended to guide the patch
+  (for example `.md`, `.txt`, `.rst`, or `.adoc` files), add each path to GUIDANCE_DOCUMENT_PATHS.
+- Guidance document paths are read-only context for subagents. They are not implementation files
+  to edit unless the clarified patch request explicitly says to edit that file.
+- Validate each guidance document path before invoking subagents:
+  - Relative paths are resolved from the target project working directory.
+  - Paths MUST stay inside the target project working directory.
+  - Paths MUST exist and be readable.
+  - Invalid or outside-project paths are preserved in PATCH_REQUEST_BRIEF as reported user intent,
+    but are NOT passed as readable guidance paths; ask for clarification if the missing path
+    changes scope, target area, or implementation direction.
+- Do NOT block solely because a valid project-local guidance document is outside `.respec-ai`.
+  Preserve the boundary by passing the path to subagents and requiring read-only use.
 
 #### Step 1.2: Capture Execution Mode (MANDATORY)
 
@@ -133,7 +150,10 @@ IF RAW_REQUEST references an active plan (e.g., "use the active plan",
 
   PATCH_REQUEST_BRIEF = compose normalized brief from:
     - plan content as primary requested work
+    - guidance document path: PLAN_FILE_PATH
+    - `Guidance Document Paths` subsection containing PLAN_FILE_PATH and any other validated paths from RAW_REQUEST
     - any explicit constraints or resume instructions present in RAW_REQUEST
+  GUIDANCE_DOCUMENT_PATHS.append(PLAN_FILE_PATH)
   REQUEST_SUMMARY = [short summary derived from PATCH_REQUEST_BRIEF]
 
 ELIF recent system message contains "exited Plan Mode" with a plan file path:
@@ -144,7 +164,10 @@ ELIF recent system message contains "exited Plan Mode" with a plan file path:
 
   PATCH_REQUEST_BRIEF = compose normalized brief from:
     - plan content as primary requested work
+    - guidance document path: PLAN_FILE_PATH
+    - `Guidance Document Paths` subsection containing PLAN_FILE_PATH and any other validated paths from RAW_REQUEST
     - any explicit constraints or resume instructions present in RAW_REQUEST
+  GUIDANCE_DOCUMENT_PATHS.append(PLAN_FILE_PATH)
   REQUEST_SUMMARY = [short summary derived from PATCH_REQUEST_BRIEF]
 
 ELSE:
@@ -168,6 +191,7 @@ ELSE:
     - requested change
     - constraints and supporting context
     - affected area, if known
+    - `Guidance Document Paths` subsection containing each validated path from GUIDANCE_DOCUMENT_PATHS, or "None"
     - resume details, if any
     - clarified decisions that downstream agents must honor
   REQUEST_SUMMARY = [short summary derived from PATCH_REQUEST_BRIEF]
@@ -474,6 +498,9 @@ WORKFLOW_GUIDANCE_MARKDOWN = compose markdown from PATCH_REQUEST_BRIEF:
   ## Workflow Guidance
   ### Guidance Summary
   [normalized request summary from PATCH_REQUEST_BRIEF, otherwise "None"]
+  ### Guidance Document Paths
+  - [each validated path from GUIDANCE_DOCUMENT_PATHS]
+  - None
   ### Constraints
   - [constraint or supporting context preserved from PATCH_REQUEST_BRIEF]
   - None

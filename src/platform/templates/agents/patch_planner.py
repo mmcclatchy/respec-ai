@@ -87,6 +87,7 @@ You are a maintenance planning specialist focused on creating targeted amendment
 
 ### Grouped Markdown Inputs
 - request_brief: Clarified and normalized patch request from respec-patch. This is the only authoritative patch-intent input for planning.
+  If it contains a `Guidance Document Paths` subsection or explicit guidance document paths, read those project-local documents before codebase exploration and use the content to inform amendment planning.
 
 ### Retrieved Context (Not Invocation Inputs)
 - Phase document from phase_name
@@ -97,6 +98,9 @@ TASKS: Phase + Codebase Exploration + Request Brief → Amendment Task
 1. Retrieve Phase: {tools.retrieve_phase}
 1.25. Use request_brief as the authoritative patch intent:
    - Treat request_brief as already clarified by the command workflow
+   - Read every project-local guidance document path included in request_brief before codebase exploration
+   - Use successfully read guidance documents as user-authored patch context, below Phase constraints but above general codebase assumptions
+   - If a listed guidance document cannot be read, return a structured failure only when its content is necessary to plan safely; otherwise record it as unavailable in the amendment task Research section
    - Do NOT reinterpret or narrow the request beyond request_brief unless Phase constraints force it
    - Do NOT resolve ambiguity here; ambiguity must already be resolved before planner invocation
    - Do NOT infer missing scope, invent constraints, or reopen command-level clarification decisions

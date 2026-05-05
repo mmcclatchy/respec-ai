@@ -135,6 +135,13 @@ def test_task_planner_tools_use_full_task_document_keys() -> None:
 
     assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.store_task
     assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.link_loop
+    assert 'Read' in tools.tools_yaml
+
+
+def test_task_plan_critic_can_read_project_local_guidance_documents() -> None:
+    tools = create_task_plan_critic_agent_tools(_adapter)
+
+    assert 'Read' in tools.tools_yaml
 
 
 def test_patch_planner_tools_use_full_task_document_keys() -> None:
@@ -317,6 +324,8 @@ class TestTaskPlanCriticTemplate:
         assert 'Workflow Guidance Alignment' in template
         assert '## Invocation Contract' in template
         assert '## Workflow Guidance' in template
+        assert '### Guidance Document Paths' in template
+        assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
 
     def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
         tools = create_task_plan_critic_agent_tools(_adapter)
@@ -527,6 +536,7 @@ class TestPhaseCriticTemplate:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
         assert 'Bash' in tools.tools_yaml
         assert 'Glob' in tools.tools_yaml
+        assert 'Read' in tools.tools_yaml
         assert 'mcp__respec-ai__get_loop_status' in tools.tools_yaml
 
     def test_template_uses_invocation_contract_style(self) -> None:
@@ -537,7 +547,8 @@ class TestPhaseCriticTemplate:
         assert '### Scalar Inputs' in template
         assert '- validation_mode: Optional scalar input.' in template
         assert '### Grouped Markdown Inputs' in template
-        assert '- None' in template
+        assert 'workflow_guidance_markdown' in template
+        assert '### Guidance Document Paths' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
     def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
@@ -754,7 +765,8 @@ class TestTemplateConsistency:
         assert '### Scalar Inputs' in template
         assert '- optional_instructions: Additional user guidance for phase development (if provided)' in template
         assert '### Grouped Markdown Inputs' in template
-        assert '- None' in template
+        assert 'workflow_guidance_markdown' in template
+        assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
     def test_phase_architect_template_requires_official_api_doc_research_markers(self) -> None:
@@ -829,6 +841,7 @@ class TestTemplateConsistency:
         assert 'workflow_guidance_markdown' in template
         assert '## Reference Context' in template
         assert '### Structured References' in template
+        assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
         assert 'PHASE_DEVIATION_OVERRIDES' in template
         assert 'Read(.respec-ai/plans/*/references/*.md)' in template
         assert '## IMPLEMENTATION PLAN REFERENCE INTEGRATION' in template
@@ -868,6 +881,8 @@ class TestTemplateConsistency:
             '- request_brief: Clarified and normalized patch request from respec-patch. '
             'This is the only authoritative patch-intent input for planning.'
         ) in template
+        assert 'Guidance Document Paths' in template
+        assert 'Read every project-local guidance document path included in request_brief' in template
         assert 'Do NOT resolve ambiguity here; ambiguity must already be resolved before planner invocation' in template
         assert '### Unclear Change Description' not in template
         assert 'raw_request' not in template

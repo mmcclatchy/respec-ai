@@ -143,6 +143,7 @@ Lane 2 — Structural/procedural blockers (`### Blockers`):
 - workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
   - `## Workflow Guidance`
   - `### Guidance Summary`
+  - `### Guidance Document Paths`
   - `### Constraints`
   - `### Resume Context`
   - `### Settled Decisions`
@@ -155,6 +156,9 @@ Lane 2 — Structural/procedural blockers (`### Blockers`):
 Guidance contract:
 - Treat workflow_guidance_markdown as already clarified by the orchestrator.
 - Use its sections as supporting scope context alongside Phase requirements.
+- Read every project-local path listed under `### Guidance Document Paths` before assessing guidance alignment.
+- Treat successfully read guidance documents as user-authored context that can expose dropped requirements, but never as permission to contradict Phase or Task source-of-truth constraints without an explicit documented override.
+- If a listed guidance document cannot be read, record a citation-integrity blocker only when the Task depends on that document for scope, requirements, or verification.
 - Do NOT reinterpret ambiguous guidance or invent missing requirements.
 
 WORKFLOW: Task Assessment → CriticFeedback

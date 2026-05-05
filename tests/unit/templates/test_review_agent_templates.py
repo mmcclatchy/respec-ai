@@ -560,6 +560,7 @@ class TestReviewAgentConsistency:
             assert 'project_config_context_markdown' in template
             assert '## Workflow Guidance' in template
             assert '### Guidance Summary' in template
+            assert '### Guidance Document Paths' in template
             assert '### Constraints' in template
             assert '### Resume Context' in template
             assert '### Settled Decisions' in template

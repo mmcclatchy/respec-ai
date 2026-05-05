@@ -232,6 +232,13 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 **Specialized Agents:**
 - **create-phase** - External platform phase creation
 
+**Guidance Document Path Handling**
+- Commands preserve user-provided project-local guidance document paths in grouped markdown payloads instead of treating them as source files to edit or as malformed phase/task selectors.
+- `workflow_guidance_markdown` includes `### Guidance Document Paths`; relevant agents read those paths before planning, coding, or review work.
+- `respec-task` continues to use `reference_context_markdown` for Phase-derived research and implementation-plan references; user-supplied guidance paths remain in workflow guidance.
+- Self-contained exceptions do not need guidance documents: commit metadata synthesis, deterministic review consolidation, platform-only create-phase handoff, and research synthesis workers operating from explicit synthesis prompts.
+- Boundary behavior remains fail-closed for missing/outside-project paths that affect scope; valid project-local guidance documents are read-only context and should not block the workflow.
+
 ### Frontmatter Formatting Standards
 
 **Agent Frontmatter** uses `tools:` key with comma-separated tool list:

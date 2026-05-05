@@ -1110,8 +1110,11 @@ class TestCrossPlatformInvocationRendering:
         assert 'argument-hint: [plan-name] [phase request]' in template
         assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
         assert 'OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]' in template
+        assert 'GUIDANCE_DOCUMENT_PATHS = []' in template
+        assert 'Do NOT use a guidance document path as PHASE_NAME_PARTIAL' in template
         assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
+        assert '### Guidance Document Paths' in template
         assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
         assert 'project_config_context_markdown: PROJECT_CONFIG_CONTEXT_MARKDOWN' in template
         assert 'review_iteration: REVIEW_ITERATION' in template
@@ -1174,11 +1177,14 @@ class TestCrossPlatformInvocationRendering:
         assert 'argument-hint: [plan-name] [phase request]' in template
         assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
         assert 'OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]' in template
+        assert 'GUIDANCE_DOCUMENT_PATHS = []' in template
+        assert 'Do NOT use a guidance document path as PHASE_NAME_PARTIAL' in template
         assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
         assert 'After the user responds, resume at Step 0.1.3.' in template
         assert 'After the user responds, resume at Step 5.' in template
         assert 'REFERENCE_CONTEXT_MARKDOWN = compose markdown:' in template
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
+        assert '### Guidance Document Paths' in template
         assert 'reference_context_markdown: REFERENCE_CONTEXT_MARKDOWN' in template
         assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
 
@@ -1192,6 +1198,10 @@ class TestCrossPlatformInvocationRendering:
         assert 'argument-hint: [plan-name] [phase request]' in template
         assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
         assert 'OPTIONAL_INSTRUCTIONS = [empty until RAW_PHASE_REQUEST is clarified]' in template
+        assert 'GUIDANCE_DOCUMENT_PATHS = []' in template
+        assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
+        assert '### Guidance Document Paths' in template
+        assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
         assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
         assert 'After the user responds, resume at Step 1.3.' in template
 
@@ -1488,12 +1498,23 @@ class TestCrossPlatformInvocationRendering:
         assert '#### Step 1.1: Initialize Workflow Variables' in template
         assert 'PATCH_REQUEST_BRIEF = [normalized request produced after clarification]' in template
         assert 'REQUEST_SUMMARY = [one-line summary produced from PATCH_REQUEST_BRIEF]' in template
+        assert 'GUIDANCE_DOCUMENT_PATHS = []' in template
+        assert 'GUIDANCE_DOCUMENT_PATHS.append(PLAN_FILE_PATH)' in template
+        assert (
+            '- guidance document paths from GUIDANCE_DOCUMENT_PATHS under a clear `Guidance Document Paths` subsection'
+            in template
+        )
+        assert (
+            '- `Guidance Document Paths` subsection containing each validated path from GUIDANCE_DOCUMENT_PATHS, or "None"'
+            in template
+        )
         assert 'REQUEST_TEXT = [second argument from command - full patch request]' not in template
         assert 'CHANGE_DESCRIPTION = [explicit change inferred from REQUEST_TEXT]' not in template
         assert (
             'OPTIONAL_CONTEXT = [supporting context inferred from REQUEST_TEXT, otherwise empty string]' not in template
         )
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown from PATCH_REQUEST_BRIEF:' in template
+        assert '### Guidance Document Paths' in template
         assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
         assert 'review_iteration: REVIEW_ITERATION' in template
         assert 'STANDARDS_REVIEW_ITERATION = 1' in template

@@ -181,12 +181,18 @@ def create_phase_command_tools(
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
                 ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
         ),
         invoke_phase_critic=adapter.render_agent_invocation(
             'respec-phase-critic',
             'evaluate phase quality against FSDD framework',
-            [('plan_name', 'PLAN_NAME'), ('loop_id', 'LOOP_ID'), ('phase_name', 'PHASE_NAME')],
+            [
+                ('plan_name', 'PLAN_NAME'),
+                ('loop_id', 'LOOP_ID'),
+                ('phase_name', 'PHASE_NAME'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+            ],
         ),
         invoke_phase_critic_post_synthesis=adapter.render_agent_invocation(
             'respec-phase-critic',
@@ -196,6 +202,7 @@ def create_phase_command_tools(
                 ('loop_id', 'LOOP_ID'),
                 ('phase_name', 'PHASE_NAME'),
                 ('validation_mode', 'post_synthesis'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
         ),
         task_command_invocation=adapter.render_command_invocation(
