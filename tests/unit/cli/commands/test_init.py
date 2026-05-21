@@ -154,6 +154,62 @@ class TestInitCommand:
 
         assert result == 1
 
+    def test_force_without_platform_does_not_delete_existing_config_dir(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        config_path = respec_ai_dir / 'config.json'
+        config_path.write_text(json.dumps({'project_name': 'test-project', 'platform': 'linear'}))
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        stack_path = config_dir / 'stack.toml'
+        stack_path.write_text('schema_version = 2\n')
+
+        args = Namespace(platform=None, project_name=None, skip_mcp_registration=False, yes=True, force=True)
+        result = init.run(args)
+
+        assert result == 1
+        assert config_dir.exists()
+        assert stack_path.exists()
+        assert config_path.exists()
+
+    def test_force_with_platform_reinitializes_successfully(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir(parents=True)
+        (respec_ai_dir / 'config.json').write_text(json.dumps({'project_name': 'old', 'platform': 'linear'}))
+        marker = config_dir / 'marker.txt'
+        marker.write_text('old-marker')
+
+        mock_adapter = mocker.MagicMock()
+        mock_adapter.register_mcp_server.return_value = True
+        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
+        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
+        mocker.patch('src.cli.commands.init.DockerManager')
+
+        args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=True)
+        result = init.run(args)
+
+        assert result == 0
+        assert (tmp_path / '.respec-ai' / 'config.json').exists()
+        config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
+        assert config['platform'] == 'linear'
+        assert not marker.exists()
+
     def test_skip_mcp_registration(
         self,
         mocker: MockerFixture,

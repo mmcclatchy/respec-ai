@@ -79,6 +79,7 @@ def run(args: Namespace) -> int:
         platform = args.platform
         project_name = args.project_name or project_path.name
         should_reconfigure_stack = False
+        should_force_reinitialize = False
 
         respec_ai_dir = project_path / '.respec-ai'
         config_path = respec_ai_dir / 'config.json'
@@ -86,7 +87,7 @@ def run(args: Namespace) -> int:
         if config_path.exists():
             if args.force:
                 print_warning('Force flag detected - reinitializing project')
-                shutil.rmtree(respec_ai_dir)
+                should_force_reinitialize = True
             else:
                 result = _handle_existing_config(args, project_path)
                 if result is None:
@@ -111,6 +112,9 @@ def run(args: Namespace) -> int:
             print_error('Platform is required for first-time initialization.')
             print_warning('Run: respec-ai init --platform [linear|github|markdown]')
             return 1
+
+        if should_force_reinitialize:
+            shutil.rmtree(respec_ai_dir)
 
         if should_reconfigure_stack:
             config_dir = project_path / '.respec-ai' / 'config'
