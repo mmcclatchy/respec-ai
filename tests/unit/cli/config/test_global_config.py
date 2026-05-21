@@ -13,22 +13,24 @@ class TestLoadGlobalModels:
     def test_returns_opencode_section(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
         models_path.write_text(
-            json.dumps({'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'}}),
+            json.dumps(
+                {'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'}}
+            ),
             encoding='utf-8',
         )
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
             result = load_global_models()
-        assert result == {'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'}
+        assert result == {'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'}
 
     def test_returns_provider_section(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
         models_path.write_text(
-            json.dumps({'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}),
+            json.dumps({'codex': {'reasoning': 'gpt-5.4', 'orchestration': 'gpt-5.4-mini'}}),
             encoding='utf-8',
         )
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
             result = load_global_models('codex')
-        assert result == {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}
+        assert result == {'reasoning': 'gpt-5.4', 'orchestration': 'gpt-5.4-mini'}
 
     def test_returns_empty_when_no_opencode_key(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
@@ -74,10 +76,12 @@ class TestSaveGlobalModels:
             patch('src.cli.config.global_config.GLOBAL_CONFIG_DIR', tmp_path),
             patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path),
         ):
-            save_global_models({'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'})
+            save_global_models(
+                {'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'}
+            )
         data = json.loads(models_path.read_text())
         assert data['opencode']['reasoning'] == 'opencode-go/kimi-k2.5'
-        assert data['opencode']['task'] == 'opencode-go/minimax-m2.7'
+        assert data['opencode']['orchestration'] == 'opencode-go/minimax-m2.7'
 
     def test_saves_provider_section(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
@@ -85,7 +89,7 @@ class TestSaveGlobalModels:
             patch('src.cli.config.global_config.GLOBAL_CONFIG_DIR', tmp_path),
             patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path),
         ):
-            save_global_models({'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}, provider='codex')
+            save_global_models({'reasoning': 'gpt-5.4', 'orchestration': 'gpt-5.4-mini'}, provider='codex')
         data = json.loads(models_path.read_text())
         assert data['codex']['reasoning'] == 'gpt-5.4'
-        assert data['codex']['task'] == 'gpt-5.4-mini'
+        assert data['codex']['orchestration'] == 'gpt-5.4-mini'

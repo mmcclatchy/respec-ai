@@ -13,6 +13,11 @@ from typing import Any, cast
 from rich.table import Table
 
 from src.cli.config.global_config import GLOBAL_MODELS_PATH, load_api_key, save_api_key, save_global_models
+from src.cli.config.project_models import (
+    load_project_config_if_exists,
+    save_project_config,
+    set_project_model_overrides,
+)
 from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
@@ -56,7 +61,6 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument('--reasoning-model', help='Set reasoning model directly')
     parser.add_argument('--orchestration-model', help='Set orchestration model directly')
-    parser.add_argument('--task-model', dest='orchestration_model', help='Alias for --orchestration-model')
     parser.add_argument('--coding-model', help='Set coding model directly')
     parser.add_argument('--review-model', help='Set review model directly')
     parser.add_argument(
@@ -64,11 +68,16 @@ def add_arguments(parser: ArgumentParser) -> None:
         action='store_true',
         help='Save global model mapping only (skip forced regenerate for current codex project)',
     )
+    parser.add_argument(
+        '--project',
+        action='store_true',
+        help='Save selected model mapping to current project config only',
+    )
 
 
 def run(args: Namespace) -> int:
     direct_reasoning = getattr(args, 'reasoning_model', None)
-    direct_orchestration = getattr(args, 'orchestration_model', None) or getattr(args, 'task_model', None)
+    direct_orchestration = getattr(args, 'orchestration_model', None)
     direct_coding = getattr(args, 'coding_model', None)
     direct_review = getattr(args, 'review_model', None)
     if direct_reasoning or direct_orchestration or direct_coding or direct_review:
@@ -76,7 +85,11 @@ def run(args: Namespace) -> int:
         if mapping is None:
             return 1
         _warn_if_unknown_mapping(mapping)
-        return _save_and_apply(mapping, no_apply=bool(getattr(args, 'no_apply', False)))
+        return _save_and_apply(
+            mapping,
+            no_apply=bool(getattr(args, 'no_apply', False)),
+            project_only=bool(getattr(args, 'project', False)),
+        )
 
     aa_key = (
         getattr(args, 'aa_key', None)
@@ -117,7 +130,11 @@ def run(args: Namespace) -> int:
         return 1
 
     _warn_if_unknown_mapping(mapping, known_models=set(models))
-    return _save_and_apply(mapping, no_apply=bool(getattr(args, 'no_apply', False)))
+    return _save_and_apply(
+        mapping,
+        no_apply=bool(getattr(args, 'no_apply', False)),
+        project_only=bool(getattr(args, 'project', False)),
+    )
 
 
 def _build_direct_mapping(
@@ -132,8 +149,8 @@ def _build_direct_mapping(
     review_value = str(review or '').strip()
     if not reasoning_value or not orchestration_value or not coding_value or not review_value:
         print_warning(
-            'Direct Codex model setup requires --reasoning-model, --orchestration-model '
-            '(or --task-model), --coding-model, and --review-model'
+            'Direct Codex model setup requires --reasoning-model, --orchestration-model, '
+            '--coding-model, and --review-model'
         )
         return None
     return {
@@ -144,9 +161,19 @@ def _build_direct_mapping(
     }
 
 
-def _save_and_apply(mapping: dict[str, str], *, no_apply: bool) -> int:
-    save_global_models(mapping, provider='codex')
-    console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
+def _save_and_apply(mapping: dict[str, str], *, no_apply: bool, project_only: bool) -> int:
+    if project_only:
+        config = load_project_config_if_exists(Path.cwd())
+        if config is None:
+            print_warning('Project config not found in current directory.')
+            print_info("Run 'respec-ai init --platform <linear|github|markdown>' first, then retry with --project.")
+            return 1
+        set_project_model_overrides(config, 'codex', mapping)
+        save_project_config(Path.cwd(), config)
+        console.print('\n[bold green]✓[/bold green] Saved to [cyan].respec-ai/config.json[/cyan]')
+    else:
+        save_global_models(mapping, provider='codex')
+        console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
     return _auto_apply_to_current_project(no_apply=no_apply)
 
 

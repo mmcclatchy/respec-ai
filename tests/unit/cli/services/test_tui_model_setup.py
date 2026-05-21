@@ -31,7 +31,20 @@ def test_codex_runs_model_setup_command(mocker: MockerFixture) -> None:
     assert passed.debug is False
     assert passed.no_cache is False
     assert passed.reasoning_model is None
-    assert passed.task_model is None
+    assert passed.orchestration_model is None
+    assert passed.no_apply is False
+
+
+def test_codex_disables_auto_apply_when_requested(mocker: MockerFixture) -> None:
+    mock_run = mocker.patch('src.cli.services.tui_model_setup.codex_model.run', return_value=0)
+    args = Namespace(aa_key='aa-key', yes=True)
+
+    result = run_tui_model_setup(TuiType.CODEX, args, auto_apply=False)
+
+    assert result == 0
+    mock_run.assert_called_once()
+    passed = mock_run.call_args.args[0]
+    assert passed.no_apply is True
 
 
 def test_opencode_runs_model_setup_command(mocker: MockerFixture) -> None:

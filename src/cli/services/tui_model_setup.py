@@ -5,8 +5,8 @@ from src.cli.ui.console import console
 from src.platform.tui_selector import TuiType
 
 
-def run_tui_model_setup(tui_type: TuiType, args: Namespace) -> int:
-    """Run TUI-specific model setup during init.
+def run_tui_model_setup(tui_type: TuiType, args: Namespace, *, auto_apply: bool = True) -> int:
+    """Run TUI-specific model setup during init/sync.
 
     This orchestration is CLI-owned by design: adapters should not import or
     execute CLI command modules.
@@ -17,8 +17,15 @@ def run_tui_model_setup(tui_type: TuiType, args: Namespace) -> int:
             yes=getattr(args, 'yes', False),
             debug=False,
             no_cache=False,
+            include_hidden=False,
+            update_codex=False,
+            no_update_codex=False,
             reasoning_model=None,
-            task_model=None,
+            orchestration_model=None,
+            coding_model=None,
+            review_model=None,
+            project=False,
+            no_apply=not auto_apply,
         )
         console.print('\n[bold cyan]Configuring Codex model tiers...[/bold cyan]\n')
         return codex_model.run(sync_args)
@@ -30,6 +37,11 @@ def run_tui_model_setup(tui_type: TuiType, args: Namespace) -> int:
             yes=getattr(args, 'yes', False),
             debug=False,
             no_cache=False,
+            reasoning_model=None,
+            orchestration_model=None,
+            coding_model=None,
+            review_model=None,
+            project=False,
         )
         console.print('\n[bold cyan]Configuring OpenCode model tiers...[/bold cyan]\n')
         return opencode_model.run(sync_args)

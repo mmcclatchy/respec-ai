@@ -111,8 +111,8 @@ class TestClaudeCodeAdapter:
     def test_reasoning_model(self) -> None:
         assert self.adapter.reasoning_model == 'opus'
 
-    def test_task_model(self) -> None:
-        assert self.adapter.task_model == 'sonnet'
+    def test_orchestration_model(self) -> None:
+        assert self.adapter.orchestration_model == 'sonnet'
 
     def test_selection_prompt_contract_uses_ask_user_question(self) -> None:
         assert self.adapter.selection_prompt_instruction == 'Use AskUserQuestion tool to present options:'
@@ -218,30 +218,34 @@ class TestOpenCodeAdapter:
     def test_reasoning_model_returns_configured_value(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
         models_path.write_text(
-            json.dumps({'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'}}),
+            json.dumps(
+                {'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'}}
+            ),
             encoding='utf-8',
         )
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
             assert self.adapter.reasoning_model == 'opencode-go/kimi-k2.5'
 
-    def test_task_model_returns_configured_value(self, tmp_path: Path) -> None:
+    def test_orchestration_model_returns_configured_value(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
         models_path.write_text(
-            json.dumps({'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'task': 'opencode-go/minimax-m2.7'}}),
+            json.dumps(
+                {'opencode': {'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'}}
+            ),
             encoding='utf-8',
         )
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
-            assert self.adapter.task_model == 'opencode-go/minimax-m2.7'
+            assert self.adapter.orchestration_model == 'opencode-go/minimax-m2.7'
 
     def test_reasoning_model_raises_when_not_configured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
             with pytest.raises(RuntimeError, match='models opencode'):
                 _ = self.adapter.reasoning_model
 
-    def test_task_model_raises_when_not_configured(self, tmp_path: Path) -> None:
+    def test_orchestration_model_raises_when_not_configured(self, tmp_path: Path) -> None:
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'missing.json'):
             with pytest.raises(RuntimeError, match='models opencode'):
-                _ = self.adapter.task_model
+                _ = self.adapter.orchestration_model
 
     def test_render_agent_returns_body(self, agent_spec: AgentSpec) -> None:
         result = self.adapter.render_agent(agent_spec)
@@ -610,15 +614,15 @@ class TestCodexAdapter:
             with pytest.raises(RuntimeError, match='models codex'):
                 _ = self.adapter.reasoning_model
 
-    def test_reasoning_and_task_model_use_global_mapping(self, tmp_path: Path) -> None:
+    def test_reasoning_and_orchestration_model_use_global_mapping(self, tmp_path: Path) -> None:
         models_path = tmp_path / 'models.json'
         models_path.write_text(
-            json.dumps({'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}),
+            json.dumps({'codex': {'reasoning': 'gpt-5.4', 'orchestration': 'gpt-5.4-mini'}}),
             encoding='utf-8',
         )
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path):
             assert self.adapter.reasoning_model == 'gpt-5.4'
-            assert self.adapter.task_model == 'gpt-5.4-mini'
+            assert self.adapter.orchestration_model == 'gpt-5.4-mini'
 
     def test_write_all_creates_skills_and_openai_manifests(
         self, project_path: Path, agent_spec: AgentSpec, command_spec: CommandSpec

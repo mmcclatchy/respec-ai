@@ -11,6 +11,23 @@ from src.platform.models import ProjectStack
 
 
 class TestInitCommand:
+    def test_fresh_init_without_platform_returns_error(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        args = Namespace(
+            platform=None,
+            project_name=None,
+            skip_mcp_registration=False,
+            yes=True,
+            force=False,
+            tui='claude-code',
+        )
+        result = init.run(args)
+        assert result == 1
+
     def test_successful_initialization(
         self,
         mocker: MockerFixture,
@@ -121,9 +138,8 @@ class TestInitCommand:
         assert 'version' in config
         assert 'created_at' in config
 
-    def test_legacy_config_without_config_dir_triggers_migration(
+    def test_existing_config_missing_config_dir_returns_error(
         self,
-        mocker: MockerFixture,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -133,24 +149,10 @@ class TestInitCommand:
         respec_ai_dir.mkdir()
         (respec_ai_dir / 'config.json').write_text('{}')
 
-        mock_adapter = mocker.MagicMock()
-        mock_adapter.register_mcp_server.return_value = True
-        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
-        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.DockerManager')
-        mock_detect = mocker.patch(
-            'src.cli.commands.init.detect_project_stack',
-            return_value=ProjectStack(language='python'),
-        )
-
         args = Namespace(platform='linear', project_name=None, skip_mcp_registration=False, yes=True, force=False)
         result = init.run(args)
 
-        assert result == 0
-        mock_detect.assert_called_once()
-        assert (respec_ai_dir / 'config.json').exists()
+        assert result == 1
 
     def test_skip_mcp_registration(
         self,
@@ -260,13 +262,7 @@ class TestInitCommand:
             'error_handling = ["Fail fast"]\ncode_structure = ["No globals"]\n'
         )
 
-        mock_adapter = mocker.MagicMock()
-        mock_adapter.register_mcp_server.return_value = True
-        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
-        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.DockerManager')
+        mock_sync_run = mocker.patch('src.cli.commands.sync.run', return_value=0)
 
         mock_detect = mocker.patch('src.cli.commands.init.detect_project_stack')
         mock_prompt = mocker.patch('src.cli.commands.init.prompt_stack_profile')
@@ -275,6 +271,7 @@ class TestInitCommand:
         result = init.run(args)
 
         assert result == 0
+        mock_sync_run.assert_called_once()
         mock_detect.assert_not_called()
         mock_prompt.assert_not_called()
 
@@ -319,13 +316,7 @@ class TestInitCommand:
             'error_handling = ["Fail fast"]\ncode_structure = ["No globals"]\n'
         )
 
-        mock_adapter = mocker.MagicMock()
-        mock_adapter.register_mcp_server.return_value = True
-        mocker.patch('src.cli.commands.init.get_tui_adapter', return_value=mock_adapter)
-        mocker.patch('src.cli.commands.init.PlatformOrchestrator')
-        mocker.patch('src.cli.commands.init.get_package_version', return_value='0.2.0')
-        mocker.patch('src.cli.commands.init.generate_templates', return_value=([Path('file1.md')], 5, 12))
-        mocker.patch('src.cli.commands.init.DockerManager')
+        mock_sync_run = mocker.patch('src.cli.commands.sync.run', return_value=0)
 
         mock_console = mocker.patch('src.cli.commands.init.console')
         mock_console.input.return_value = '1'
@@ -337,12 +328,42 @@ class TestInitCommand:
         result = init.run(args)
 
         assert result == 0
+        mock_sync_run.assert_called_once()
         mock_detect.assert_not_called()
         mock_prompt.assert_not_called()
         mock_console.input.assert_called_once()
 
         assert (config_dir / 'stack.toml').exists()
         assert (config_dir / 'standards' / 'python.toml').exists()
+
+    def test_existing_config_without_platform_delegates_to_sync(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        (respec_ai_dir / 'config.json').write_text(json.dumps({'project_name': 'test-project', 'platform': 'linear'}))
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        (config_dir / 'stack.toml').write_text('schema_version = 2\n')
+
+        mock_sync_run = mocker.patch('src.cli.commands.sync.run', return_value=0)
+
+        args = Namespace(
+            platform=None,
+            project_name=None,
+            skip_mcp_registration=False,
+            yes=True,
+            force=False,
+            tui='codex',
+        )
+        result = init.run(args)
+
+        assert result == 0
+        mock_sync_run.assert_called_once()
 
     def test_existing_config_without_yes_flag_prompts_user_option_2(
         self,
@@ -395,6 +416,39 @@ class TestInitCommand:
 
         config = json.loads((tmp_path / '.respec-ai' / 'config.json').read_text())
         assert 'stack' not in config
+
+    def test_reconfigure_choice_without_platform_does_not_delete_config_dir(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        respec_ai_dir = tmp_path / '.respec-ai'
+        respec_ai_dir.mkdir()
+        (respec_ai_dir / 'config.json').write_text(
+            json.dumps(
+                {
+                    'project_name': 'test-project',
+                    'platform': 'linear',
+                }
+            )
+        )
+        config_dir = respec_ai_dir / 'config'
+        config_dir.mkdir()
+        stack_path = config_dir / 'stack.toml'
+        stack_path.write_text('schema_version = 2\n')
+
+        mock_console = mocker.patch('src.cli.commands.init.console')
+        mock_console.input.return_value = '2'
+
+        args = Namespace(platform=None, project_name=None, skip_mcp_registration=False, yes=False, force=False)
+        result = init.run(args)
+
+        assert result == 1
+        assert config_dir.exists()
+        assert stack_path.exists()
 
     def test_existing_config_invalid_choice_returns_error(
         self,

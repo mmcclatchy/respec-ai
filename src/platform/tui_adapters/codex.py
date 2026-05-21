@@ -23,6 +23,9 @@ _INTERNAL_COMMAND_SKILLS = {'respec-plan-conversation'}
 
 
 class CodexAdapter(TuiAdapter):
+    def __init__(self, model_overrides: dict[str, str] | None = None) -> None:
+        self._model_overrides = model_overrides or {}
+
     _NO_FORK_GUARDRAIL = """## Codex Subagent Guardrail
 
 Use fresh isolated subagents only.
@@ -177,49 +180,48 @@ Use fresh isolated subagents only.
 
     @property
     def reasoning_model(self) -> str:
-        models = load_global_models('codex')
+        models = self._resolved_models()
         if 'reasoning' not in models:
             raise RuntimeError("Codex reasoning model not configured. Run 'respec-ai models codex' first.")
         return models['reasoning']
 
     @property
     def orchestration_model(self) -> str:
-        models = load_global_models('codex')
-        if 'orchestration' not in models and 'task' not in models:
+        models = self._resolved_models()
+        if 'orchestration' not in models:
             raise RuntimeError("Codex orchestration model not configured. Run 'respec-ai models codex' first.")
-        orchestration = models.get('orchestration')
-        if orchestration:
-            return orchestration
-        return models['task']
+        return models['orchestration']
 
     @property
     def coding_model(self) -> str:
-        models = load_global_models('codex')
-        if 'coding' not in models and 'task' not in models:
+        models = self._resolved_models()
+        if 'coding' not in models and 'orchestration' not in models:
             raise RuntimeError("Codex coding model not configured. Run 'respec-ai models codex' first.")
         coding = models.get('coding')
         if coding:
             return coding
-        orchestration = models.get('orchestration')
-        if orchestration:
-            return orchestration
-        return models['task']
+        return models['orchestration']
 
     @property
     def review_model(self) -> str:
-        models = load_global_models('codex')
-        if 'review' not in models and 'task' not in models:
+        models = self._resolved_models()
+        if 'review' not in models and 'orchestration' not in models:
             raise RuntimeError("Codex review model not configured. Run 'respec-ai models codex' first.")
         review = models.get('review')
         if review:
             return review
-        orchestration = models.get('orchestration')
-        if orchestration:
-            return orchestration
-        return models['task']
+        return models['orchestration']
 
     def register_mcp_server(self, project_path: Path) -> bool:
         return _register_mcp_server(force=True)
+
+    def _resolved_models(self) -> dict[str, str]:
+        base = load_global_models('codex')
+        if not self._model_overrides:
+            return base
+        merged = dict(base)
+        merged.update(self._model_overrides)
+        return merged
 
     def add_mcp_permissions(self, project_path: Path) -> bool:
         return True

@@ -101,7 +101,9 @@ class TestGenerateTemplates:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
         adapter = get_tui_adapter(TuiType.OPENCODE)
-        models_data = {'opencode': {'reasoning': 'provider/reasoning-model', 'task': 'provider/task-model'}}
+        models_data = {
+            'opencode': {'reasoning': 'provider/reasoning-model', 'orchestration': 'provider/task-model'}
+        }
 
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
             (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
@@ -115,7 +117,9 @@ class TestGenerateTemplates:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
         adapter = get_tui_adapter(TuiType.OPENCODE)
-        models_data = {'opencode': {'reasoning': 'provider/reasoning-model', 'task': 'provider/task-model'}}
+        models_data = {
+            'opencode': {'reasoning': 'provider/reasoning-model', 'orchestration': 'provider/task-model'}
+        }
 
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
             (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
@@ -175,7 +179,7 @@ class TestGenerateTemplates:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
         adapter = get_tui_adapter(TuiType.CODEX)
-        models_data = {'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}
+        models_data = {'codex': {'reasoning': 'gpt-5.4', 'orchestration': 'gpt-5.4-mini'}}
 
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
             (tmp_path / 'models.json').write_text(json.dumps(models_data), encoding='utf-8')
@@ -200,7 +204,7 @@ class TestGenerateTemplates:
     def test_generated_codex_patch_skill_uses_adapter_owned_direct_user_selection_prompt(self, tmp_path: Path) -> None:
         orchestrator = PlatformOrchestrator(config_dir=str(tmp_path / 'config'))
         adapter = get_tui_adapter(TuiType.CODEX)
-        models_data = {'codex': {'reasoning': 'gpt-5.4', 'task': 'gpt-5.4-mini'}}
+        models_data = {'codex': {'reasoning': 'gpt-5.4', 'orchestration': 'gpt-5.4-mini'}}
         project_path = tmp_path / 'project'
 
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):
@@ -215,7 +219,9 @@ class TestGenerateTemplates:
     def test_generated_opencode_patch_prompt_uses_question_tool_selection_prompt(self, tmp_path: Path) -> None:
         orchestrator = PlatformOrchestrator(config_dir=str(tmp_path / 'config'))
         adapter = get_tui_adapter(TuiType.OPENCODE)
-        models_data = {'opencode': {'reasoning': 'provider/reasoning-model', 'task': 'provider/task-model'}}
+        models_data = {
+            'opencode': {'reasoning': 'provider/reasoning-model', 'orchestration': 'provider/task-model'}
+        }
         project_path = tmp_path / 'project'
 
         with patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', tmp_path / 'models.json'):

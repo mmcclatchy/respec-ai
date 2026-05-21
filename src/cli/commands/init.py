@@ -33,7 +33,6 @@ def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         '-p',
         '--platform',
-        required=True,
         choices=['linear', 'github', 'markdown'],
         help='Platform type for workflow integration',
     )
@@ -62,8 +61,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         '--tui',
         choices=[t.value for t in TuiType],
-        default='claude-code',
-        help='Terminal UI to generate files for (default: claude-code)',
+        help='Terminal UI to generate files for (defaults to claude-code for fresh init)',
     )
     parser.add_argument(
         '--aa-key',
@@ -80,11 +78,10 @@ def run(args: Namespace) -> int:
         project_path = Path.cwd().resolve()
         platform = args.platform
         project_name = args.project_name or project_path.name
+        should_reconfigure_stack = False
 
         respec_ai_dir = project_path / '.respec-ai'
         config_path = respec_ai_dir / 'config.json'
-
-        existing_config_files = False
 
         if config_path.exists():
             if args.force:
@@ -94,9 +91,34 @@ def run(args: Namespace) -> int:
                 result = _handle_existing_config(args, project_path)
                 if result is None:
                     return 1
-                existing_config_files = result
+                if result:
+                    from src.cli.commands import sync as sync_command
 
-        tui = getattr(args, 'tui', 'claude-code')
+                    sync_args = Namespace(
+                        platform=args.platform,
+                        tui=getattr(args, 'tui', None),
+                        skip_mcp_registration=args.skip_mcp_registration,
+                        skip_best_practices_setup=False,
+                        pin_models=False,
+                        yes=args.yes,
+                        aa_key=getattr(args, 'aa_key', None),
+                        exa_key=getattr(args, 'exa_key', None),
+                    )
+                    return sync_command.run(sync_args)
+                should_reconfigure_stack = True
+
+        if not platform:
+            print_error('Platform is required for first-time initialization.')
+            print_warning('Run: respec-ai init --platform [linear|github|markdown]')
+            return 1
+
+        if should_reconfigure_stack:
+            config_dir = project_path / '.respec-ai' / 'config'
+            if config_dir.exists():
+                shutil.rmtree(config_dir)
+            print_info('Reconfiguring stack...')
+
+        tui = getattr(args, 'tui', None) or 'claude-code'
         platform_type = PlatformType(platform)
         tui_adapter = get_tui_adapter(TuiType(tui))
         orchestrator = PlatformOrchestrator.create_with_default_config()
@@ -109,34 +131,27 @@ def run(args: Namespace) -> int:
             task = progress.add_task('Creating directories...', total=None)
 
             respec_ai_dir.mkdir(parents=True, exist_ok=True)
+            progress.update(task, description='Detecting project tooling...')
+            tooling = detect_project_tooling(project_path)
 
-            if existing_config_files:
-                progress.update(task, description='Using existing stack configuration...')
-                stack = ProjectStack()
-                tooling: dict = {}
-            else:
-                progress.update(task, description='Detecting project tooling...')
-                tooling = detect_project_tooling(project_path)
+            progress.update(task, description='Detecting project stack...')
+            stack = detect_project_stack(project_path)
 
-                progress.update(task, description='Detecting project stack...')
-                stack = detect_project_stack(project_path)
+            progress.update(task, description='Detection complete!')
 
-                progress.update(task, description='Detection complete!')
-
-        if not existing_config_files and not args.yes:
+        if not args.yes:
             stack = prompt_stack_profile(stack)
 
-        if not existing_config_files:
-            tooling = apply_stack_to_tooling(tooling, stack)
-            _display_detected_config(platform, project_name, tooling, stack)
+        tooling = apply_stack_to_tooling(tooling, stack)
+        _display_detected_config(platform, project_name, tooling, stack)
 
-            if not args.yes:
-                response = console.input('\n[bold]Proceed with this configuration?[/bold] [Y/n] ')
-                if response.strip().lower() in ('n', 'no'):
-                    print_warning('Initialization cancelled')
-                    return 1
+        if not args.yes:
+            response = console.input('\n[bold]Proceed with this configuration?[/bold] [Y/n] ')
+            if response.strip().lower() in ('n', 'no'):
+                print_warning('Initialization cancelled')
+                return 1
 
-        result = run_tui_model_setup(TuiType(tui), args)
+        result = run_tui_model_setup(TuiType(tui), args, auto_apply=False)
         if result != 0:
             return result
 
@@ -225,8 +240,9 @@ def _handle_existing_config(args: Namespace, project_path: Path) -> bool | None:
     config_dir = project_path / '.respec-ai' / 'config'
 
     if not config_dir.exists():
-        print_info('Upgrading from previous config format — detecting stack...')
-        return False
+        print_error('Initialized project is missing required .respec-ai/config/ directory.')
+        print_warning('Run: respec-ai init --force --platform [linear|github|markdown]')
+        return None
 
     print_info('Stack configuration already exists')
 
@@ -236,7 +252,7 @@ def _handle_existing_config(args: Namespace, project_path: Path) -> bool | None:
 
     console.print()
     console.print('[bold cyan]Choose an option:[/bold cyan]')
-    console.print('  [bold]1)[/bold] Keep existing stack configuration (regenerate templates only)')
+    console.print('  [bold]1)[/bold] Keep existing stack configuration (sync templates/setup only)')
     console.print('  [bold]2)[/bold] Reconfigure stack (full setup)')
     console.print()
 
@@ -246,8 +262,6 @@ def _handle_existing_config(args: Namespace, project_path: Path) -> bool | None:
         print_info('Using existing stack configuration')
         return True
     if choice == '2':
-        shutil.rmtree(config_dir)
-        print_info('Reconfiguring stack...')
         return False
 
     print_error('Invalid choice. Exiting.')

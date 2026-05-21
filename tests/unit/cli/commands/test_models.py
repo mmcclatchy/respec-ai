@@ -35,11 +35,37 @@ class TestModelsArguments:
         assert args.models_command == 'codex'
         assert args.update_codex is True
 
+    def test_parses_codex_project_flag(self) -> None:
+        parser = ArgumentParser()
+        models.add_arguments(parser)
+        args = parser.parse_args(['codex', '--project'])
+        assert args.models_command == 'codex'
+        assert args.project is True
+
+    def test_parses_opencode_project_flag(self) -> None:
+        parser = ArgumentParser()
+        models.add_arguments(parser)
+        args = parser.parse_args(['opencode', '--project'])
+        assert args.models_command == 'opencode'
+        assert args.project is True
+
     def test_rejects_codex_yes_flag(self) -> None:
         parser = ArgumentParser()
         models.add_arguments(parser)
         with pytest.raises(SystemExit):
             parser.parse_args(['codex', '--yes'])
+
+    def test_rejects_codex_task_model_alias(self) -> None:
+        parser = ArgumentParser()
+        models.add_arguments(parser)
+        with pytest.raises(SystemExit):
+            parser.parse_args(['codex', '--task-model', 'gpt-5.5'])
+
+    def test_rejects_opencode_task_model_alias(self) -> None:
+        parser = ArgumentParser()
+        models.add_arguments(parser)
+        with pytest.raises(SystemExit):
+            parser.parse_args(['opencode', '--task-model', 'provider/model'])
 
 
 class TestModelsRun:

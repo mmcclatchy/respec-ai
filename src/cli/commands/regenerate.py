@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.cli.config.package_info import get_package_version
+from src.cli.config.project_models import get_project_model_overrides, provider_for_tui
 from src.cli.ui.console import console, print_error, print_info, print_success, print_warning
 from src.mcp.tools import register_all_tools
 from src.platform.platform_orchestrator import PlatformOrchestrator
@@ -37,6 +38,12 @@ def add_arguments(parser: ArgumentParser) -> None:
         action='store_true',
         help='Regenerate templates even if version is current',
     )
+    parser.add_argument(
+        '--tui',
+        choices=['auto', *(t.value for t in TuiType), 'all'],
+        default='auto',
+        help='TUI target (default: auto)',
+    )
 
 
 def _has_any_files(directory: Path) -> bool:
@@ -65,14 +72,17 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             return 1
 
         config_dir = project_path / '.respec-ai' / 'config'
-        if config_dir.exists():
-            standards_errors = validate_project_config(project_path)
-            if standards_errors:
-                print_error('Invalid standards config. Regeneration aborted.')
-                for err in standards_errors:
-                    print_error(f'- {err}')
-                print_warning('Fix standards config: respec-ai standards init|validate')
-                return 1
+        if not config_dir.exists():
+            print_error('Initialized project is missing required .respec-ai/config/ directory.')
+            print_warning('Run: respec-ai init --force --platform [linear|github|markdown]')
+            return 1
+        standards_errors = validate_project_config(project_path)
+        if standards_errors:
+            print_error('Invalid standards config. Regeneration aborted.')
+            for err in standards_errors:
+                print_error(f'- {err}')
+            print_warning('Fix standards config: respec-ai standards init|validate')
+            return 1
 
         config = json.loads(config_path.read_text(encoding='utf-8'))
         current_version = config.get('version', 'unknown')
@@ -90,10 +100,11 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             return 0
 
         platform_type = PlatformType(platform)
-        detected_tuis = _detect_tuis_with_artifacts(project_path)
+        target = getattr(args, 'tui', 'auto')
+        detected_tuis = _resolve_target_tuis(project_path, config, target)
         if not detected_tuis:
-            print_error('No TUI artifacts detected to regenerate in this project')
-            print_warning('Run: respec-ai init --platform [linear|github|markdown]')
+            print_error('No TUI target available for regeneration in this project')
+            print_warning('Run: respec-ai sync --tui [claude-code|opencode|codex]')
             return 1
 
         orchestrator = PlatformOrchestrator.create_with_default_config()
@@ -111,7 +122,9 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             register_all_tools(mcp)
 
             for tui_type in detected_tuis:
-                tui_adapter = get_tui_adapter(tui_type)
+                provider = provider_for_tui(tui_type)
+                model_overrides = get_project_model_overrides(config, provider) if provider else {}
+                tui_adapter = get_tui_adapter(tui_type, model_overrides=model_overrides)
                 progress.update(task, description=f'Regenerating {tui_adapter.display_name} templates...')
                 try:
                     _, commands_count, agents_count = generate_templates(
@@ -165,6 +178,27 @@ def run(args: Namespace, version_override: str | None = None) -> int:
     except Exception as e:
         print_error(f'Regenerate failed: {e}')
         return 1
+
+
+def _resolve_target_tuis(project_path: Path, config: dict, target: str) -> list[TuiType]:
+    if target == 'all':
+        return list(_DETECTION_ORDER)
+
+    if target != 'auto':
+        return [TuiType(target)]
+
+    detected = _detect_tuis_with_artifacts(project_path)
+    if detected:
+        return detected
+
+    configured_tui = config.get('tui')
+    if isinstance(configured_tui, str):
+        try:
+            return [TuiType(configured_tui)]
+        except ValueError:
+            return []
+
+    return []
 
 
 if __name__ == '__main__':

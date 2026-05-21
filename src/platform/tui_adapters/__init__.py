@@ -12,11 +12,14 @@ _ADAPTER_MAP: dict[TuiType, type[TuiAdapter]] = {
 }
 
 
-def get_tui_adapter(tui_type: TuiType) -> TuiAdapter:
-    adapter_cls = _ADAPTER_MAP.get(tui_type)
-    if adapter_cls is None:
-        raise ValueError(f'Unsupported TUI type: {tui_type}')
-    return adapter_cls()
+def get_tui_adapter(tui_type: TuiType, model_overrides: dict[str, str] | None = None) -> TuiAdapter:
+    if tui_type == TuiType.CLAUDE_CODE:
+        return ClaudeCodeAdapter()
+    if tui_type == TuiType.OPENCODE:
+        return OpenCodeAdapter(model_overrides=model_overrides)
+    if tui_type == TuiType.CODEX:
+        return CodexAdapter(model_overrides=model_overrides)
+    raise ValueError(f'Unsupported TUI type: {tui_type}')
 
 
 __all__ = [

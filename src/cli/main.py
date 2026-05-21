@@ -28,6 +28,7 @@ from src.cli.commands import (
     platform,
     regenerate,
     register_mcp,
+    sync,
     standards,
     status,
     unregister_mcp,
@@ -73,6 +74,13 @@ def main() -> int:
     )
 
     platform.add_arguments(platform_parser)
+
+    sync_parser = subparsers.add_parser(
+        'sync',
+        help='Sync templates and setup for an existing initialized project',
+    )
+
+    sync.add_arguments(sync_parser)
 
     status_parser = subparsers.add_parser(
         'status',
@@ -164,6 +172,8 @@ def main() -> int:
             return init.run(args)
         case 'platform':
             return platform.run(args)
+        case 'sync':
+            return sync.run(args)
         case 'status':
             return status.run(args)
         case 'validate':

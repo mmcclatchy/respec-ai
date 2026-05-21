@@ -8,6 +8,9 @@ from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
 class OpenCodeAdapter(TuiAdapter):
+    def __init__(self, model_overrides: dict[str, str] | None = None) -> None:
+        self._model_overrides = model_overrides or {}
+
     @property
     def display_name(self) -> str:
         return 'OpenCode'
@@ -100,46 +103,37 @@ class OpenCodeAdapter(TuiAdapter):
 
     @property
     def reasoning_model(self) -> str:
-        models = load_global_models('opencode')
+        models = self._resolved_models()
         if 'reasoning' not in models:
             raise RuntimeError("OpenCode reasoning model not configured. Run 'respec-ai models opencode' first.")
         return models['reasoning']
 
     @property
     def orchestration_model(self) -> str:
-        models = load_global_models('opencode')
-        if 'orchestration' not in models and 'task' not in models:
+        models = self._resolved_models()
+        if 'orchestration' not in models:
             raise RuntimeError("OpenCode orchestration model not configured. Run 'respec-ai models opencode' first.")
-        orchestration = models.get('orchestration')
-        if orchestration:
-            return orchestration
-        return models['task']
+        return models['orchestration']
 
     @property
     def coding_model(self) -> str:
-        models = load_global_models('opencode')
-        if 'coding' not in models and 'task' not in models:
+        models = self._resolved_models()
+        if 'coding' not in models and 'orchestration' not in models:
             raise RuntimeError("OpenCode coding model not configured. Run 'respec-ai models opencode' first.")
         coding = models.get('coding')
         if coding:
             return coding
-        orchestration = models.get('orchestration')
-        if orchestration:
-            return orchestration
-        return models['task']
+        return models['orchestration']
 
     @property
     def review_model(self) -> str:
-        models = load_global_models('opencode')
-        if 'review' not in models and 'task' not in models:
+        models = self._resolved_models()
+        if 'review' not in models and 'orchestration' not in models:
             raise RuntimeError("OpenCode review model not configured. Run 'respec-ai models opencode' first.")
         review = models.get('review')
         if review:
             return review
-        orchestration = models.get('orchestration')
-        if orchestration:
-            return orchestration
-        return models['task']
+        return models['orchestration']
 
     def register_mcp_server(self, project_path: Path) -> bool:
         opencode_json_path = project_path / 'opencode.json'
@@ -155,6 +149,14 @@ class OpenCodeAdapter(TuiAdapter):
         }
         opencode_json_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         return True
+
+    def _resolved_models(self) -> dict[str, str]:
+        base = load_global_models('opencode')
+        if not self._model_overrides:
+            return base
+        merged = dict(base)
+        merged.update(self._model_overrides)
+        return merged
 
     def add_mcp_permissions(self, project_path: Path) -> bool:
         return True

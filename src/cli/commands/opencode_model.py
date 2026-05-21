@@ -14,6 +14,11 @@ from exa_py import Exa
 from rich.table import Table
 
 from src.cli.config.global_config import GLOBAL_MODELS_PATH, load_api_key, save_api_key, save_global_models
+from src.cli.config.project_models import (
+    load_project_config_if_exists,
+    save_project_config,
+    set_project_model_overrides,
+)
 from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
@@ -84,22 +89,26 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument('--reasoning-model', help='Set reasoning model directly')
     parser.add_argument('--orchestration-model', help='Set orchestration model directly')
-    parser.add_argument('--task-model', dest='orchestration_model', help='Alias for --orchestration-model')
     parser.add_argument('--coding-model', help='Set coding model directly')
     parser.add_argument('--review-model', help='Set review model directly')
+    parser.add_argument(
+        '--project',
+        action='store_true',
+        help='Save selected model mapping to current project config only',
+    )
 
 
 def run(args: Namespace) -> int:
     direct_reasoning = getattr(args, 'reasoning_model', None)
-    direct_orchestration = getattr(args, 'orchestration_model', None) or getattr(args, 'task_model', None)
+    direct_orchestration = getattr(args, 'orchestration_model', None)
     direct_coding = getattr(args, 'coding_model', None)
     direct_review = getattr(args, 'review_model', None)
     if direct_reasoning or direct_orchestration or direct_coding or direct_review:
         mapping = _build_direct_mapping(direct_reasoning, direct_orchestration, direct_coding, direct_review)
         if mapping is None:
             return 1
-        save_global_models(mapping, provider='opencode')
-        console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
+        if not _save_mapping(mapping, project_only=bool(getattr(args, 'project', False))):
+            return 1
         print_info("Run 'respec-ai regenerate' to apply new models to your config")
         return 0
 
@@ -154,15 +163,27 @@ def run(args: Namespace) -> int:
             print_warning('Mapping not saved')
             return 1
 
-    if 'task' not in mapping:
-        fallback = mapping.get('orchestration') or mapping.get('reasoning')
-        if fallback:
-            mapping = {**mapping, 'task': fallback}
+    if not _save_mapping(mapping, project_only=bool(getattr(args, 'project', False))):
+        return 1
+    print_info("Run 'respec-ai regenerate' to apply new models to your config")
+    return 0
+
+
+def _save_mapping(mapping: dict[str, str], *, project_only: bool) -> bool:
+    if project_only:
+        config = load_project_config_if_exists(Path.cwd())
+        if config is None:
+            print_warning('Project config not found in current directory.')
+            print_info("Run 'respec-ai init --platform <linear|github|markdown>' first, then retry with --project.")
+            return False
+        set_project_model_overrides(config, 'opencode', mapping)
+        save_project_config(Path.cwd(), config)
+        console.print('\n[bold green]✓[/bold green] Saved to [cyan].respec-ai/config.json[/cyan]')
+        return True
 
     save_global_models(mapping, provider='opencode')
     console.print(f'\n[bold green]✓[/bold green] Saved to [cyan]{_config_path()}[/cyan]')
-    print_info("Run 'respec-ai regenerate' to apply new models to your config")
-    return 0
+    return True
 
 
 def _build_direct_mapping(
@@ -416,18 +437,6 @@ def _suggest_tiers(scored_by_tier: dict[str, list[tuple[str, float]]]) -> dict[s
     orchestration = scored_by_tier.get('orchestration', [])
     coding = scored_by_tier.get('coding', [])
     review = scored_by_tier.get('review', [])
-    if not orchestration and scored_by_tier.get('task'):
-        task = scored_by_tier.get('task', [])
-        if reasoning:
-            mapping['reasoning'] = reasoning[0][0]
-        has_throughput = any(score > 0 for _, score in task)
-        if has_throughput:
-            mapping['task'] = task[0][0]
-        elif len(reasoning) >= 2:
-            mapping['task'] = reasoning[1][0]
-        elif reasoning:
-            mapping['task'] = reasoning[0][0]
-        return mapping
     if reasoning:
         mapping['reasoning'] = reasoning[0][0]
     if orchestration:
@@ -675,34 +684,6 @@ def _interactive_override(
     scored_by_tier: dict[str, list[tuple[str, float]]],
 ) -> dict[str, str] | None:
     mapping: dict[str, str] = {}
-
-    if not scored_by_tier.get('orchestration') and scored_by_tier.get('task'):
-        for tier in ('reasoning', 'task'):
-            options = scored_by_tier.get(tier, [])
-            metrics_raw = scored_by_tier.get('metrics', {})
-            metrics = metrics_raw if isinstance(metrics_raw, dict) else {}
-
-            console.print(f'\n[bold]{tier.title()} model:[/bold]')
-            for i, (model_id, score) in enumerate(options, 1):
-                row = metrics.get(model_id, {})
-                has_aa = row.get('intelligence', 0.0) > 0 or row.get('coding', 0.0) > 0
-                score_text = f'({score:.1f})' if score else ''
-                source = 'AA' if has_aa else 'Inferred'
-                console.print(f'  [bold][{i}][/bold] {model_id}  {score_text} [{source}]')
-
-            while True:
-                raw = console.input(f'  Select [1-{len(options)}]: ').strip()
-                if raw.isdigit():
-                    index = int(raw)
-                    if 1 <= index <= len(options):
-                        mapping[tier] = options[index - 1][0]
-                        break
-                console.print(f'  [red]Enter a number 1-{len(options)}.[/red]')
-
-        response = console.input('\nAccept this mapping? [Y/n] ').strip().lower()
-        if response in ('n', 'no'):
-            return None
-        return mapping
 
     for tier in ('reasoning', 'orchestration', 'coding', 'review'):
         options = scored_by_tier.get(tier, [])

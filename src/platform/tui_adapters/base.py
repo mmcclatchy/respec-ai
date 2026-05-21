@@ -114,10 +114,6 @@ class TuiAdapter(ABC):
     @abstractmethod
     def review_model(self) -> str: ...
 
-    @property
-    def task_model(self) -> str:
-        return self.orchestration_model
-
     @abstractmethod
     def register_mcp_server(self, project_path: Path) -> bool: ...
 

@@ -38,10 +38,10 @@ def _args(**overrides: object) -> Namespace:
         'no_update_codex': True,
         'reasoning_model': None,
         'orchestration_model': None,
-        'task_model': None,
         'coding_model': None,
         'review_model': None,
         'no_apply': True,
+        'project': False,
     }
     values.update(overrides)
     return Namespace(**values)
@@ -327,6 +327,34 @@ class TestCodexModelRun:
                 )
             )
         assert result == 1
+
+    def test_project_flag_saves_mapping_to_project_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        config_dir = tmp_path / '.respec-ai'
+        config_dir.mkdir(parents=True)
+        (config_dir / 'config.json').write_text(json.dumps({'platform': 'markdown', 'tui': 'codex'}), encoding='utf-8')
+
+        with (
+            patch('src.cli.commands.codex_model._cached_discovered_model_ids', return_value=[]),
+            patch('src.cli.commands.codex_model.save_global_models') as mock_save_global,
+            patch('src.cli.commands.codex_model._run_forced_regenerate', return_value=0) as mock_regen,
+        ):
+            result = codex_model.run(
+                _args(
+                    reasoning_model='gpt-example-a',
+                    orchestration_model='gpt-example-b',
+                    coding_model='gpt-example-a',
+                    review_model='gpt-example-b',
+                    no_apply=False,
+                    project=True,
+                )
+            )
+
+        assert result == 0
+        mock_save_global.assert_not_called()
+        mock_regen.assert_called_once_with()
+        config = json.loads((config_dir / 'config.json').read_text(encoding='utf-8'))
+        assert config['models']['codex']['reasoning'] == 'gpt-example-a'
 
 
 class TestCodexModelDiscovery:

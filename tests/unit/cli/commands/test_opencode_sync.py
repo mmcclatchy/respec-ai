@@ -3,6 +3,7 @@ import subprocess
 import urllib.error
 from argparse import Namespace
 from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -154,32 +155,36 @@ class TestSuggestTiers:
     def test_picks_top_from_each_tier(self) -> None:
         scored = {
             'reasoning': [('opencode-go/glm-5', 95.0), ('opencode-go/minimax-m2.7', 80.0)],
-            'task': [('opencode-go/minimax-m2.7', 14000.0), ('opencode-go/glm-5', 1150.0)],
+            'orchestration': [('opencode-go/minimax-m2.7', 14000.0), ('opencode-go/glm-5', 1150.0)],
+            'coding': [('opencode-go/glm-5', 88.0), ('opencode-go/minimax-m2.7', 70.0)],
+            'review': [('opencode-go/glm-5', 90.0), ('opencode-go/minimax-m2.7', 78.0)],
         }
         result = _suggest_tiers(scored)
         assert result['reasoning'] == 'opencode-go/glm-5'
-        assert result['task'] == 'opencode-go/minimax-m2.7'
+        assert result['orchestration'] == 'opencode-go/minimax-m2.7'
+        assert result['coding'] == 'opencode-go/glm-5'
+        assert result['review'] == 'opencode-go/glm-5'
 
-    def test_falls_back_to_second_reasoning_when_no_throughput(self) -> None:
+    def test_returns_only_present_tiers(self) -> None:
         scored = {
             'reasoning': [('opencode-go/glm-5', 95.0), ('opencode-go/minimax-m2.7', 80.0)],
-            'task': [('opencode-go/glm-5', 0.0), ('opencode-go/minimax-m2.7', 0.0)],
         }
         result = _suggest_tiers(scored)
         assert result['reasoning'] == 'opencode-go/glm-5'
-        assert result['task'] == 'opencode-go/minimax-m2.7'
+        assert 'orchestration' not in result
 
-    def test_single_model_assigned_to_both(self) -> None:
+    def test_does_not_emit_task_alias(self) -> None:
         scored = {
             'reasoning': [('opencode-go/glm-5', 95.0)],
-            'task': [('opencode-go/glm-5', 0.0)],
+            'orchestration': [('opencode-go/glm-5', 1200.0)],
         }
         result = _suggest_tiers(scored)
         assert result['reasoning'] == 'opencode-go/glm-5'
-        assert result['task'] == 'opencode-go/glm-5'
+        assert result['orchestration'] == 'opencode-go/glm-5'
+        assert 'task' not in result
 
     def test_empty_scored_returns_empty(self) -> None:
-        assert _suggest_tiers({'reasoning': [], 'task': []}) == {}
+        assert _suggest_tiers({'reasoning': [], 'orchestration': []}) == {}
 
 
 class TestParseRateLimitsTable:
@@ -303,39 +308,51 @@ class TestInteractiveOverride:
     def _scored(self) -> dict[str, list[tuple[str, float]]]:
         return {
             'reasoning': [('opencode-go/glm-5', 90.0), ('opencode-go/minimax-m2.7', 80.0)],
-            'task': [('opencode-go/minimax-m2.7', 87.0), ('opencode-go/glm-5', 80.0)],
+            'orchestration': [('opencode-go/minimax-m2.7', 87.0), ('opencode-go/glm-5', 80.0)],
+            'coding': [('opencode-go/glm-5', 92.0), ('opencode-go/minimax-m2.7', 81.0)],
+            'review': [('opencode-go/minimax-m2.7', 89.0), ('opencode-go/glm-5', 88.0)],
         }
 
     def _suggestion(self) -> dict[str, str]:
-        return {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/minimax-m2.7'}
+        return {
+            'reasoning': 'opencode-go/glm-5',
+            'orchestration': 'opencode-go/minimax-m2.7',
+            'coding': 'opencode-go/glm-5',
+            'review': 'opencode-go/minimax-m2.7',
+        }
 
     def test_number_selects_model(self) -> None:
-        with patch.object(opencode_model.console, 'input', side_effect=['1', '2', 'y']):
+        with patch.object(opencode_model.console, 'input', side_effect=['1', '2', '1', '2', 'y']):
             with patch.object(opencode_model.console, 'print'):
                 result = opencode_model._interactive_override(self._suggestion(), self._scored())
-        assert result == {'reasoning': 'opencode-go/glm-5', 'task': 'opencode-go/glm-5'}
+        assert result == {
+            'reasoning': 'opencode-go/glm-5',
+            'orchestration': 'opencode-go/glm-5',
+            'coding': 'opencode-go/glm-5',
+            'review': 'opencode-go/glm-5',
+        }
 
     def test_invalid_number_reprompts(self) -> None:
-        with patch.object(opencode_model.console, 'input', side_effect=['99', '1', '1', 'y']):
+        with patch.object(opencode_model.console, 'input', side_effect=['99', '1', '1', '1', '1', 'y']):
             with patch.object(opencode_model.console, 'print'):
                 result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is not None
         assert result['reasoning'] == 'opencode-go/glm-5'
 
     def test_n_cancels_mapping(self) -> None:
-        with patch.object(opencode_model.console, 'input', side_effect=['1', '1', 'n']):
+        with patch.object(opencode_model.console, 'input', side_effect=['1', '1', '1', '1', 'n']):
             with patch.object(opencode_model.console, 'print'):
                 result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is None
 
     def test_empty_input_reprompts(self) -> None:
-        with patch.object(opencode_model.console, 'input', side_effect=['', '1', '1', 'y']):
+        with patch.object(opencode_model.console, 'input', side_effect=['', '1', '1', '1', '1', 'y']):
             with patch.object(opencode_model.console, 'print'):
                 result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is not None
 
     def test_non_digit_reprompts(self) -> None:
-        with patch.object(opencode_model.console, 'input', side_effect=['abc', '1', '1', 'y']):
+        with patch.object(opencode_model.console, 'input', side_effect=['abc', '1', '1', '1', '1', 'y']):
             with patch.object(opencode_model.console, 'print'):
                 result = opencode_model._interactive_override(self._suggestion(), self._scored())
         assert result is not None
@@ -359,7 +376,9 @@ class TestRunCommand:
         mock_save.assert_called_once()
         saved = mock_save.call_args[0][0]
         assert 'reasoning' in saved
-        assert 'task' in saved
+        assert 'orchestration' in saved
+        assert 'coding' in saved
+        assert 'review' in saved
         assert mock_save.call_args.kwargs.get('provider') == 'opencode'
 
     def test_uses_aa_key_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -412,3 +431,33 @@ class TestRunCommand:
             opencode_model.run(Namespace(yes=True, aa_key=None, exa_key='exa-test', debug=False, no_cache=True))
         mock_aa.assert_not_called()
         mock_rl.assert_called_once_with('exa-test', 'opencode-go', debug=False)
+
+    def test_project_flag_saves_to_project_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        config_dir = tmp_path / '.respec-ai'
+        config_dir.mkdir(parents=True)
+        (config_dir / 'config.json').write_text(json.dumps({'platform': 'markdown', 'tui': 'opencode'}), encoding='utf-8')
+
+        models = ['opencode-go/kimi-k2.5', 'opencode-go/minimax-m2.7']
+        with (
+            patch('src.cli.commands.opencode_model._discover_models', return_value=('opencode-go', models)),
+            patch('src.cli.commands.opencode_model._fetch_aa_data', return_value={}),
+            patch('src.cli.commands.opencode_model.save_global_models') as mock_save_global,
+        ):
+            result = opencode_model.run(
+                Namespace(
+                    yes=True,
+                    aa_key=None,
+                    exa_key=None,
+                    debug=False,
+                    no_cache=True,
+                    project=True,
+                )
+            )
+
+        assert result == 0
+        mock_save_global.assert_not_called()
+        config = json.loads((config_dir / 'config.json').read_text(encoding='utf-8'))
+        assert config['models']['opencode']['reasoning']
