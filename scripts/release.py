@@ -11,6 +11,8 @@ Usage:
     python scripts/release.py minor
     python scripts/release.py patch
     python scripts/release.py patch --yes
+    python scripts/release.py retag            # republish current version (failed build)
+    python scripts/release.py retag --version 0.15.19
 """
 
 import re
@@ -82,8 +84,12 @@ def main() -> int:
     parser = ArgumentParser(description='Create a new release with version bump')
     parser.add_argument(
         'bump_type',
-        choices=['major', 'minor', 'patch'],
-        help='Version bump type (major, minor, or patch)',
+        choices=['major', 'minor', 'patch', 'retag'],
+        help='Version bump type, or "retag" to republish the current version',
+    )
+    parser.add_argument(
+        '--version',
+        help='Explicit version to republish (retag only); defaults to current pyproject.toml version',
     )
     parser.add_argument(
         '--yes',
@@ -92,6 +98,10 @@ def main() -> int:
         help='Skip confirmation prompt',
     )
     args = parser.parse_args()
+
+    if args.version and args.bump_type != 'retag':
+        print('❌ --version is only valid with the retag command', file=sys.stderr)
+        return 1
 
     pyproject_path = Path.cwd() / 'pyproject.toml'
 
@@ -110,20 +120,29 @@ def main() -> int:
         print('❌ Could not find version in pyproject.toml', file=sys.stderr)
         return 1
 
-    new_version = calculate_new_version(current_version, args.bump_type)
+    is_retag = args.bump_type == 'retag'
 
     print(f'Current version: {current_version}')
-    print(f'New version: {new_version}')
+    if is_retag:
+        new_version = args.version or current_version
+        action = f'republish {new_version}'
+        print(f'Republishing version: {new_version}')
+        print(f'⚠️  Tag v{new_version} will be force-moved to the current commit')
+    else:
+        new_version = calculate_new_version(current_version, args.bump_type)
+        action = f'release {new_version}'
+        print(f'New version: {new_version}')
 
     if not args.yes:
-        response = input(f'\nProceed with release {new_version}? (y/N): ')
+        response = input(f'\nProceed with {action}? (y/N): ')
         if response.lower() not in ('y', 'yes'):
             print('⚠️  Release cancelled')
             return 0
 
     try:
-        update_version_in_file(pyproject_path, current_version, new_version)
-        print(f'✓ Updated pyproject.toml to version {new_version}')
+        if not is_retag:
+            update_version_in_file(pyproject_path, current_version, new_version)
+            print(f'✓ Updated pyproject.toml to version {new_version}')
 
         print('Cleaning old build artifacts...')
         dist_dir = Path.cwd() / 'dist'
@@ -135,23 +154,31 @@ def main() -> int:
         run_command(['uv', 'build'], 'Failed to build package')
         print('✓ Package built successfully')
 
-        run_command(['git', 'add', 'pyproject.toml'], 'Failed to stage pyproject.toml')
-
-        run_command(
-            ['git', 'commit', '-m', f'Bump version to {new_version}'],
-            'Failed to commit version bump',
-        )
-
-        run_command(['git', 'tag', f'v{new_version}'], f'Failed to create tag v{new_version}')
+        if is_retag:
+            run_command(['git', 'tag', '-f', f'v{new_version}'], f'Failed to move tag v{new_version}')
+        else:
+            run_command(['git', 'add', 'pyproject.toml'], 'Failed to stage pyproject.toml')
+            run_command(
+                ['git', 'commit', '-m', f'Bump version to {new_version}'],
+                'Failed to commit version bump',
+            )
+            run_command(['git', 'tag', f'v{new_version}'], f'Failed to create tag v{new_version}')
 
         print('Pushing to origin...')
         run_command(['git', 'push', 'origin', 'main'], 'Failed to push to origin main')
-        run_command(['git', 'push', 'origin', f'v{new_version}'], f'Failed to push tag v{new_version}')
+
+        push_tag = ['git', 'push', 'origin', f'v{new_version}']
+        if is_retag:
+            push_tag.append('--force')
+        run_command(push_tag, f'Failed to push tag v{new_version}')
 
         print(f'\n✓ Release {new_version} complete!')
         print('  - Built package')
-        print('  - Committed version bump')
-        print(f'  - Created tag v{new_version}')
+        if is_retag:
+            print(f'  - Force-moved tag v{new_version} to current commit')
+        else:
+            print('  - Committed version bump')
+            print(f'  - Created tag v{new_version}')
         print('  - Pushed to origin')
         print('\n✓ GitHub Actions will now:')
         print('  - Build and push Docker image')
