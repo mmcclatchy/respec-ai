@@ -39,7 +39,6 @@ dependencies = [
     "asyncpg>=0.29.0,<1.0.0",
     "fastmcp>=3.0.0,<4.0.0",
     "exa-py>=1.0.0",
-    "best-practices-rag @ git+https://github.com/mmcclatchy/best-practices-rag.git@v0.2.13",
 ]
 
 [project.urls]
@@ -70,9 +69,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [project.scripts]
 respec-ai = "src.cli.main:main"
