@@ -181,6 +181,10 @@ TASK_MATCHES = [issue.title for issue in TASK_LIST_RESULT.issues]"""
         return 'N/A - GitHub manages structure via platform'
 
     @property
+    def phase_location_setup(self) -> str:
+        return 'N/A - GitHub manages structure via platform'
+
+    @property
     def discovery_tool_invocation(self) -> str:
         return 'mcp__github__list_milestones(...)'
 

@@ -25,7 +25,7 @@ class TaskCommandTools(CommandToolsModel):
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
         (BuiltInToolCapability.GLOB, ''),
-        (BuiltInToolCapability.READ, '.respec-ai/plans/*/phases/*.md'),
+        (BuiltInToolCapability.READ, '.respec-ai/plans/*/phases/*/phase.md'),
         (BuiltInToolCapability.TASK, ''),
     ]
 

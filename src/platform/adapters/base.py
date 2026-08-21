@@ -129,6 +129,10 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
+    def phase_location_setup(self) -> str: ...
+
+    @property
+    @abstractmethod
     def discovery_tool_invocation(self) -> str: ...
 
     @property

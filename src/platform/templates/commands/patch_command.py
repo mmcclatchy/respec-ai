@@ -216,7 +216,7 @@ IF count(ALL_PHASES) == 0:
 ```text
 IF count(ALL_PHASES) == 1:
   PHASE_FILE_PATH = ALL_PHASES[0]
-  Display: "Single phase found, auto-selected: {{basename}}"
+  Display: "Single phase found, auto-selected: {{basename of the parent directory of PHASE_FILE_PATH}}"
   → Skip to Step 2.4
 ```
 
@@ -231,7 +231,7 @@ Rank phases by relevance to PATCH_REQUEST_BRIEF.
 
 IF clear best match (one phase strongly relevant, others weak):
   PHASE_FILE_PATH = best match
-  Display: "Auto-detected phase: {{name}}"
+  Display: "Auto-detected phase: {{basename of the parent directory of PHASE_FILE_PATH}}"
   Display: "Reason: [brief explanation of why this phase matches]"
   IF other phases have partial relevance:
     Display: "Note: This change also touches concerns from: [other phase names]"
@@ -253,7 +253,7 @@ ELSE:
 #### Step 2.4: Extract canonical name and sync to MCP
 
 ```text
-PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
+PHASE_NAME = [basename of the parent directory of PHASE_FILE_PATH]
 
 Display to user: "Located phase file: {{PHASE_NAME}}"
 

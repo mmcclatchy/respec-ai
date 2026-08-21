@@ -34,14 +34,14 @@ class TestMarkdownPlatformScoping:
 
         # Verify all expected scoped tools are present with placeholder syntax
         expected_tools = {
-            'create_phase_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
-            'retrieve_phase_tool': 'Read(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
-            'update_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
-            'comment_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)',
+            'create_phase_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/phase.md)',
+            'retrieve_phase_tool': 'Read(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/phase.md)',
+            'update_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/phase.md)',
+            'comment_phase_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/phase.md)',
             'create_plan_tool': 'Write(.respec-ai/plans/{PLAN_NAME}/plan.md)',
             'retrieve_plan_tool': 'Read(.respec-ai/plans/{PLAN_NAME}/plan.md)',
             'update_plan_tool': 'Edit(.respec-ai/plans/{PLAN_NAME}/plan.md)',
-            'list_phases_tool': 'Glob(.respec-ai/plans/{PLAN_NAME}/phases/*.md)',
+            'list_phases_tool': 'Glob(.respec-ai/plans/{PLAN_NAME}/phases/*/phase.md)',
         }
 
         for abstract_tool, expected_concrete in expected_tools.items():
@@ -95,7 +95,7 @@ class TestMarkdownPlatformScoping:
         # Verify we have the correct scoped tools available with placeholder syntax
         assert 'create_phase_tool' in tools
         assert 'create_plan_tool' in tools
-        assert tools['create_phase_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)'
+        assert tools['create_phase_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/phase.md)'
         assert tools['create_plan_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/plan.md)'
 
         # Test that the scoped path patterns are properly defined
@@ -174,7 +174,8 @@ class TestMarkdownPlatformScoping:
         assert len(info['platform_tools']) == 12
         assert 'create_phase_tool' in info['platform_tools']
         assert (
-            info['platform_tools']['create_phase_tool'] == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)'
+            info['platform_tools']['create_phase_tool']
+            == 'Write(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/phase.md)'
         )
         assert 'create_task_tool' in info['platform_tools']
         assert (

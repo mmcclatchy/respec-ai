@@ -157,7 +157,7 @@ ELSE:
 #### Step 1.4: Extract canonical name from file path
 
 ```text
-PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
+PHASE_NAME = [basename of the parent directory of PHASE_FILE_PATH]
 
 Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 ```

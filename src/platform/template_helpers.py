@@ -1429,7 +1429,7 @@ def create_patch_command_tools(
     _add_adapter_question_tool(builder, adapter)
     builder.add_builtin_tool(BuiltInToolCapability.BASH)
     builder.add_builtin_tool(BuiltInToolCapability.GLOB)
-    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/plans/*/phases/*.md')
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/plans/*/phases/*/phase.md')
     builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/tasks/*.md')
     builder.add_bash_script('scripts/detect-packages.sh:*')
 

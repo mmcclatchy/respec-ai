@@ -1,5 +1,7 @@
 """Tests for PathComponent StrEnum and helper methods."""
 
+from pathlib import Path
+
 from src.platform.path_constants import PathComponent
 
 
@@ -40,23 +42,47 @@ class TestBuildPlanPath:
 class TestBuildPhasePath:
     def test_build_phase_path_with_both_names(self) -> None:
         result = PathComponent.build_phase_path('my-project', 'phase-1')
-        assert result == '.respec-ai/plans/my-project/phases/phase-1.md'
+        assert result == '.respec-ai/plans/my-project/phases/phase-1/phase.md'
 
     def test_build_phase_path_with_project_only(self) -> None:
         result = PathComponent.build_phase_path('my-project')
-        assert result == '.respec-ai/plans/my-project/phases/*.md'
+        assert result == '.respec-ai/plans/my-project/phases/*/phase.md'
 
     def test_build_phase_path_with_no_names(self) -> None:
         result = PathComponent.build_phase_path()
-        assert result == '.respec-ai/plans/*/phases/*.md'
+        assert result == '.respec-ai/plans/*/phases/*/phase.md'
 
     def test_build_phase_path_with_none_project(self) -> None:
         result = PathComponent.build_phase_path(None, 'phase-1')
-        assert result == '.respec-ai/plans/*/phases/phase-1.md'
+        assert result == '.respec-ai/plans/*/phases/phase-1/phase.md'
 
     def test_build_phase_path_with_none_phase(self) -> None:
         result = PathComponent.build_phase_path('my-project', None)
-        assert result == '.respec-ai/plans/my-project/phases/*.md'
+        assert result == '.respec-ai/plans/my-project/phases/*/phase.md'
+
+    def test_build_phase_path_resolves_a_real_bundle_layout_directory(self, tmp_path: Path) -> None:
+        bundle = tmp_path / '.respec-ai' / 'plans' / 'my-project' / 'phases' / 'phase-1'
+        bundle.mkdir(parents=True)
+        (bundle / 'phase.md').write_text('content', encoding='utf-8')
+
+        relative = PathComponent.build_phase_path('my-project', 'phase-1')
+        matches = list(tmp_path.glob(relative))
+
+        assert matches == [bundle / 'phase.md']
+
+
+class TestBuildResearchPath:
+    def test_build_research_path_with_all_names(self) -> None:
+        result = PathComponent.build_research_path('my-project', 'phase-1', 'neo4j-survey')
+        assert result == '.respec-ai/plans/my-project/phases/phase-1/research/neo4j-survey.md'
+
+    def test_build_research_path_with_phase_only(self) -> None:
+        result = PathComponent.build_research_path('my-project', 'phase-1')
+        assert result == '.respec-ai/plans/my-project/phases/phase-1/research/*.md'
+
+    def test_build_research_path_with_no_names(self) -> None:
+        result = PathComponent.build_research_path()
+        assert result == '.respec-ai/plans/*/phases/*/research/*.md'
 
 
 class TestBuildCompletionPath:

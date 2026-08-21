@@ -78,6 +78,10 @@ class PhaseCommandTools(CommandToolsModel):
         return self._adapter.phase_sync_instructions
 
     @computed_field
+    def phase_location_setup(self) -> str:
+        return self._adapter.phase_location_setup
+
+    @computed_field
     def mcp_tools_reference(self) -> str:
         if not self._tool_extractor:
             return ''

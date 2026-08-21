@@ -225,7 +225,7 @@ ELSE:
 Extract: "{tools.phase_resource_example}" → "phase-2a-neo4j-integration"
 
 ```text
-PHASE_NAME = [basename of PHASE_FILE_PATH without .md extension]
+PHASE_NAME = [basename of the parent directory of PHASE_FILE_PATH]
 
 Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 ```
@@ -819,6 +819,9 @@ FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
 Store the phase using platform-specific tool:
 
 ```text
+Ensure directory exists:
+{tools.phase_location_setup}
+
 Use {tools.create_phase_tool_interpolated} to store the phase:
 
 Title: Phase: [Project Name]
@@ -1080,12 +1083,12 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Collapse multiple hyphens: `phase--1` → `phase-1`
 - Strip leading/trailing hyphens: `-phase-1-` → `phase-1`
 
-**Critical:** The H1 header in phase markdown MUST match the normalized file name:
-- File: `phase-2a-neo4j-schema-and-llama-index-integration.md`
+**Critical:** The H1 header in phase markdown MUST match the normalized bundle directory name:
+- Bundle directory: `phase-2a-neo4j-schema-and-llama-index-integration/phase.md`
 - H1 header: `# Phase: phase-2a-neo4j-schema-and-llama-index-integration`
 - Mismatch will cause storage/retrieval failures
 
-**Phase-architect agents:** Generate H1 headers in kebab-case to match file names.
+**Phase-architect agents:** Generate H1 headers in kebab-case to match the bundle directory name.
 
 ## Expected Output Structure
 

@@ -13,6 +13,7 @@ Provides commands for:
 - Cleanup (cleanup)
 - Docker container management (docker)
 - Model configuration (models)
+- Legacy phase layout migration (migrate)
 """
 
 import sys
@@ -24,6 +25,7 @@ from src.cli.commands import (
     docker,
     init,
     mcp_server,
+    migrate,
     models,
     platform,
     regenerate,
@@ -165,6 +167,13 @@ def main() -> int:
 
     standards.add_arguments(standards_parser)
 
+    migrate_parser = subparsers.add_parser(
+        'migrate',
+        help='Migrate legacy phase layout to phase bundle directories',
+    )
+
+    migrate.add_arguments(migrate_parser)
+
     args = parser.parse_args()
 
     match args.command:
@@ -198,6 +207,8 @@ def main() -> int:
             return db.run(args)
         case 'standards':
             return standards.run(args)
+        case 'migrate':
+            return migrate.run(args)
         case _:
             parser.print_help()
             return 1
