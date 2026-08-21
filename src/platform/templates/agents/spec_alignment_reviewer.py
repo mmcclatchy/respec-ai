@@ -179,7 +179,7 @@ Phase coverage rules:
 - Score explicit negative constraints, such as "do not use provider X", as acceptance criteria.
 
 ### 2. Phase Alignment (15 Points)
-- Award full credit when file placement, module boundaries, integration points, and sequencing fit the Phase architecture and Development Environment sections.
+- Award full credit when file placement, module boundaries, integration points, and sequencing fit the Phase System Design > Architecture section.
 - Treat alternative structures as valid when they satisfy Phase intent and fit the existing codebase.
 - Score regressions against Phase architecture, missing phase-scoped behavior, or unsupported scope expansion.
 

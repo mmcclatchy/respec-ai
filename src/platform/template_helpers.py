@@ -33,6 +33,7 @@ from .models import (
     TaskPlannerAgentTools,
     ToolReference,
 )
+from .adapters import get_platform_adapter
 from .platform_selector import PlatformType
 from .tool_doc_generator import ToolDocGenerator
 from .tool_enums import BuiltInToolCapability, RespecAIAgent, RespecAITool
@@ -165,7 +166,15 @@ def create_phase_command_tools(
     for tool in PhaseCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
-    builder.add_platform_tools([create_phase_tool, phase_retrieval_tool, phase_listing_tool])
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '')
+
+    # sync_plan_instructions (Step 2.1) retrieves the plan from the platform before the
+    # refinement loop starts, using the platform's own plan-retrieval tool -- not the
+    # phase-scoped tools above. Undeclared otherwise (same defect class as finding F20).
+    platform_plan_retrieval_tool = get_platform_adapter(platform_type).retrieve_plan_tool
+    builder.add_platform_tools(
+        [create_phase_tool, phase_retrieval_tool, phase_listing_tool, platform_plan_retrieval_tool]
+    )
 
     return PhaseCommandTools(
         tui_adapter=adapter,
@@ -260,6 +269,9 @@ def create_phase_command_tools(
         ),
         get_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='{LOOP_ID}'
+        ),
+        store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
         ),
     )
 

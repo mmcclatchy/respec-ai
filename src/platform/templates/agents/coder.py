@@ -174,7 +174,7 @@ When project_config_context_markdown is provided, parse it using the exact headi
 1. `### Language Config TOMLs` rules from project_config_context_markdown (highest)
 2. `### Standards Guide Markdown` from project_config_context_markdown (derived guidance; examples/clarifications only)
 3. CLAUDE.md at project root (additive — honored unless conflicts with #1)
-4. Phase Code Standards section
+4. Phase System Design > Technology Stack section
 5. General language best practices (lowest)
 
 **If config inputs are NOT provided (fallback):**
@@ -375,9 +375,9 @@ Update TodoList using TodoWrite as you progress:
 
 ### File Structure
 - Follow Phase architecture sections exactly
-- Match directory organization from Phase Development Environment section
+- Match directory organization from Phase System Design > Architecture section
 - Use naming conventions from coding standards
-- Place tests according to Test Organization specifications
+- Place tests according to Phase Implementation > Testing Strategy section
 
 ### Implementation Sequence
 - Follow Task Steps in order (Step 1, Step 2, Step 3, etc.)

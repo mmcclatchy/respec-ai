@@ -37,7 +37,7 @@ Write all of them, run them, and confirm each fails for the right reason before 
 | # | Behavior | Status today |
 |---|---|---|
 | B1 | An agent is never instructed to read a Phase section that cannot exist | **RED** (findings F3, F4) |
-| B2 | No section name can shadow another and silently swallow its content | green — protects Phase 2 |
+| B2 | No section name can shadow another and silently swallow its content | **RED for H3 pair** (finding F7) — "Functional Requirements" / "Non-Functional Requirements" collide under `## Implementation`; harmless today only because of fixed field-write order. Split into an H2 test (green) and an inverted known-defect H3 test, per B6/B7 style |
 | B3 | Roadmap-seeded objectives survive an agent write | **RED** (finding F10) |
 | B4 | The workflow waits for the user when the loop requests input | **RED** (findings F5, F6) |
 | B5 | Every tool a command invokes is declared in its allowed-tools list | **RED** (finding F20) |
@@ -135,9 +135,10 @@ fails if the blocking is removed.
 
 Findings F3 and F4. **Interim targets** — Phase 2 replaces these with the real design sections.
 
-- `coder.py:378` — `Phase Development Environment section` → `Phase ## System Design > ### Architecture`
-- `coder.py:380` — `Test Organization specifications` → `Phase ## Implementation > ### Testing Strategy`
-- `spec_alignment_reviewer.py:182` — `Development Environment sections` → `### Architecture`
+- `coder.py:378` — `Phase Development Environment section` → `Phase System Design > Architecture section`
+- `coder.py:380` — `Test Organization specifications` → `Phase Implementation > Testing Strategy section`
+- `spec_alignment_reviewer.py:182` — `Development Environment sections` → `Phase System Design > Architecture section`
+- `coder.py:177` — the B1 guard test caught a fourth phantom not in the original findings: `Phase Code Standards section`, which names a Phase section that has never existed. Re-pointed to `Phase System Design > Technology Stack section`. This is the same defect class as F3/F4 at a fourth call site.
 
 The point is not that these are good targets; it is that they exist, so the guard test passes and the
 coder stops being instructed to read nothing.
@@ -148,7 +149,8 @@ Finding F10. Make `store_phase` preserve `FROZEN_PHASES_FIELDS` the way `update_
 `src/utils/state_manager/in_memory.py:310-331` and the postgres equivalent around
 `src/utils/state_manager/postgres.py:453-512`.
 
-Also correct the false comment at `phase_command.py:811` (finding F11).
+Finding F11's comment ("this ensures immutable initial fields... are preserved") becomes
+literally true once `store_phase` preserves frozen fields — no separate edit needed.
 
 Deliberately *not* in scope: allowing the user to edit frozen fields. That arrives with the gate in
 Phase 3. For now the freeze simply works as originally intended.
@@ -159,20 +161,39 @@ Finding F20 — add `BuiltInToolCapability.READ` to `create_phase_command_tools`
 (`src/platform/template_helpers.py:150-168`). `phase_command.py:551` already calls `Read()` without
 holding it.
 
+The B5 guard test caught two more instances of the same defect class, at the same call
+site:
+
+- `RespecAITool.LIST_DOCUMENTS` was invoked (`mcp__respec-ai__list_documents` in Step 9)
+  but never declared — added to `PhaseCommandTools.respec_ai_tools`.
+- `sync_plan_instructions` (Step 2.1) invokes the platform's plan-retrieval tool
+  (`mcp__linear-server__get_document` for Linear) but `create_phase_command_tools` only
+  declared the phase-scoped platform tools. Added `get_platform_adapter(platform_type)
+  .retrieve_plan_tool` as a fourth declared platform tool.
+
 ## Out of scope
 
 New Phase sections, the bundle restructure, skeletons, any gate, any Task changes.
 
 ## Exit criteria
 
-- [ ] B1–B5 were each observed **failing first**, then pass. A test that went straight to green has
-      not proven anything — re-check it actually exercises the behavior.
-- [ ] B6, B7 pass and are named so their inverted intent is unmistakable.
-- [ ] No test in this phase asserts a template contains a specific phrase; all template assertions go
-      through the contract helper.
-- [ ] `uv run pytest` green.
-- [ ] `uv run respec-ai regenerate` valid for all three TUIs.
+- [x] B1–B5 were each observed **failing first**, then pass. Confirmed by `git stash`-ing all
+      production fixes (new test files are untracked and survive the stash) and re-running the
+      suite: all seven behaviors failed for the stated reason, then passed after `stash pop`.
+- [x] B6, B7 pass and are named so their inverted intent is unmistakable.
+- [x] No test in this phase asserts a template contains a specific phrase; all template assertions go
+      through the contract helper (`tests/support/template_contract.py`).
+- [x] `uv run pytest` green (1271 passed, 75 skipped — postgres-backed tests skip without a
+      running database).
+- [x] `uv run respec-ai regenerate` valid for all three TUIs — verified against a scratch project
+      for `claude-code`, `opencode`, and `codex`; all three regenerated without error and the
+      generated `respec-phase` command contains the WAIT/store_user_feedback branch and the
+      corrected `allowed-tools` list.
 - [ ] Manual: run `respec-phase` on a scratch project, force a checkpoint iteration, confirm it
-      stops and waits rather than looping past.
-- [ ] Manual: reword the USER_INPUT prompt text arbitrarily and confirm B4 still passes — that is the
-      check that it pins behavior rather than phrasing.
+      stops and waits rather than looping past. **Not performed** — this requires a live
+      multi-agent orchestration session (real phase-architect/phase-critic runs), which is outside
+      what this change could execute directly. The generated template was inspected instead (see
+      above); a live run is still recommended before treating this phase as fully closed.
+- [x] Manual: reword the USER_INPUT prompt text arbitrarily and confirm B4 still passes — that is the
+      check that it pins behavior rather than phrasing. Done: temporarily reworded the Question
+      string in `phase_command.py`, confirmed B4 still passed, then reverted the wording.

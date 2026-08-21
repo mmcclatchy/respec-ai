@@ -112,7 +112,7 @@ markers = [
     "mcp_orchestration: marks tests for MCP server orchestration and workflow validation",
     "workflow_state: marks tests for workflow state management and failure recovery",
 ]
-pythonpath = ["."]
+pythonpath = [".", "tests/support"]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

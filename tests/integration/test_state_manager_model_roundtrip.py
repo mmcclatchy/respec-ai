@@ -219,29 +219,30 @@ async def test_phase_store_retrieve_preserves_all_fields(
 
 
 @pytest.mark.asyncio
-async def test_phase_store_replaces_frozen_fields(
+async def test_store_phase_preserves_frozen_fields(
     state_manager: StateManager, plan_name: str, sample_phase: Phase
 ) -> None:
-    """Verify store_phase performs full replacement including frozen fields."""
-    # Store original phase
+    # Finding F10: store_phase is the terminal call of the store_document ->
+    # PhaseTools.store -> store_phase path the live phase workflow actually uses, so it
+    # must preserve frozen fields the same way update_phase already does. This test
+    # previously asserted the opposite (full replacement) -- that was the bug, not the
+    # spec; see docs/phase-refactor/findings.md F10.
     phase_name = await state_manager.store_phase(plan_name, sample_phase)
 
-    # Create updated phase with changes to frozen fields
     updated_phase = sample_phase.model_copy(
         update={
-            'objectives': 'UPDATED objectives - should persist',
-            'scope': 'UPDATED scope - should persist',
+            'objectives': 'UPDATED objectives - should NOT persist',
+            'scope': 'UPDATED scope - should NOT persist',
             'architecture': 'Updated architecture - should persist',
         }
     )
 
     await state_manager.store_phase(plan_name, updated_phase)
 
-    # Retrieve and verify ALL fields updated (full replacement)
     retrieved = await state_manager.get_phase(plan_name, phase_name)
 
-    assert retrieved.objectives == 'UPDATED objectives - should persist', 'store_phase should replace frozen fields'
-    assert retrieved.scope == 'UPDATED scope - should persist', 'store_phase should replace frozen fields'
+    assert retrieved.objectives == sample_phase.objectives, 'store_phase must preserve frozen objectives'
+    assert retrieved.scope == sample_phase.scope, 'store_phase must preserve frozen scope'
     assert retrieved.architecture == 'Updated architecture - should persist'
 
 

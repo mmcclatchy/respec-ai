@@ -20,6 +20,8 @@ class PhaseCommandTools(CommandToolsModel):
         RespecAITool.LINK_LOOP_TO_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.GET_DOCUMENT,
+        RespecAITool.LIST_DOCUMENTS,
+        RespecAITool.STORE_USER_FEEDBACK,
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -49,6 +51,7 @@ class PhaseCommandTools(CommandToolsModel):
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_document: str = Field(..., description='Get final phase document')
+    store_user_feedback: str = Field(..., description='Store user feedback')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

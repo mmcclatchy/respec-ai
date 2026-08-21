@@ -433,14 +433,28 @@ class PostgresStateManager(StateManager):
 
         async with db_pool.acquire() as conn:
             existing = await conn.fetchrow(
-                'SELECT iteration, version FROM phases WHERE plan_name = $1 AND phase_name = $2',
+                'SELECT iteration, version, objectives, scope, dependencies, deliverables '
+                'FROM phases WHERE plan_name = $1 AND phase_name = $2',
                 plan_name,
                 normalized_name,
             )
 
             if existing:
-                phase.iteration = existing['iteration'] + 1
-                phase.version = existing['version'] + 1
+                # Preserve frozen fields the same way in-memory's store_phase and both
+                # backends' update_phase do: only once a frozen field holds real content,
+                # so a still-placeholder field can still be populated (F10/F12).
+                frozen_fields = {
+                    field: existing[field]
+                    for field in FROZEN_PHASES_FIELDS
+                    if existing[field] != FROZEN_FIELD_DEFAULTS[field]
+                }
+                phase = phase.model_copy(
+                    update={
+                        **frozen_fields,
+                        'iteration': existing['iteration'] + 1,
+                        'version': existing['version'] + 1,
+                    }
+                )
 
             additional_sections_json = json.dumps(phase.additional_sections) if phase.additional_sections else None
 

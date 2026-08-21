@@ -453,7 +453,25 @@ ELIF LOOP_DECISION == "USER_INPUT":
     Display LATEST_FEEDBACK to user with:
     - Current score and iteration
     - Priority improvement areas
-    - Request for technical clarification
+
+    {selection_prompt_instructions}
+    Header: "Phase Guidance"
+    Question: "Phase quality is at {{LOOP_SCORE}}/100. How would you like to proceed?"
+    Options:
+      1. "Continue refining - address the listed issues"
+      2. "Provide specific technical guidance"
+      3. "Accept current quality and proceed"
+
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 7. Continue with feedback storage immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
+
+    IF option 1: USER_FEEDBACK_MARKDOWN = "User requested continued refinement"
+    IF option 2: Prompt for guidance; USER_FEEDBACK_MARKDOWN = "## User Guidance\n{{guidance}}"
+    IF option 3: USER_FEEDBACK_MARKDOWN = "User accepted current phase quality"
+
+    {tools.store_user_feedback}
 
     Return to Step 5 (phase-architect will incorporate user guidance)
 

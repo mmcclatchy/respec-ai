@@ -309,17 +309,25 @@ class InMemoryStateManager(StateManager):
         logger.debug(f'store_phase: Normalized "{phase.phase_name}" -> "{normalized_name}"')
 
         # Auto-increment iteration and version if phase already exists
-        # Does NOT preserve frozen fields - this is a full replacement
         is_update = normalized_name in self._phases[plan_name]
         if is_update:
             existing_phase = self._phases[plan_name][normalized_name]
             existing_data = existing_phase.model_dump()
             new_data = phase.model_dump()
 
-            # Only increment iteration and version, NO frozen field preservation
+            # Preserve frozen fields the same way update_phase does: a frozen field is
+            # preserved only once it holds real content, so a still-placeholder field
+            # can still be populated (finding F10/F12).
+            frozen_fields = {
+                field: existing_data[field]
+                for field in FROZEN_PHASES_FIELDS
+                if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
+            }
+
             phase = Phase(
                 **{
                     **new_data,
+                    **frozen_fields,
                     'iteration': existing_data['iteration'] + 1,
                     'version': existing_data['version'] + 1,
                 }
@@ -328,7 +336,7 @@ class InMemoryStateManager(StateManager):
                 f'store_phase: Updating existing phase - '
                 f'iteration: {existing_data["iteration"]} -> {phase.iteration}, '
                 f'version: {existing_data["version"]} -> {phase.version}, '
-                f'full replacement (no frozen field preservation)'
+                f'frozen fields preserved: {list(frozen_fields)}'
             )
 
         self._phases[plan_name][normalized_name] = phase

@@ -332,6 +332,36 @@ class TestDatabaseSpecOperations:
         assert result is False
 
 
+class TestDatabaseStorePhaseFrozenFields:
+    # The "drifted write doesn't overwrite frozen fields" scenario (finding F10) is
+    # covered, parametrized across both backends, by
+    # tests/integration/test_state_manager_model_roundtrip.py::test_store_phase_preserves_frozen_fields.
+    # Only the placeholder-population case is unique to this file.
+    @pytest.mark.asyncio
+    async def test_store_phase_allows_populating_placeholder_fields(
+        self, db_state_manager: PostgresStateManager
+    ) -> None:
+        plan_name = 'test-project'
+        placeholder_phase = Phase(phase_name='placeholder-phase', phase_status=PhaseStatus.DRAFT)
+        await db_state_manager.store_phase(plan_name, placeholder_phase)
+
+        populated = placeholder_phase.model_copy(
+            update={
+                'objectives': 'Real objectives from architect',
+                'scope': 'Real scope from architect',
+                'dependencies': 'Real dependencies from architect',
+                'deliverables': 'Real deliverables from architect',
+            }
+        )
+        await db_state_manager.store_phase(plan_name, populated)
+
+        retrieved = await db_state_manager.get_phase(plan_name, 'placeholder-phase')
+        assert retrieved.objectives == 'Real objectives from architect'
+        assert retrieved.scope == 'Real scope from architect'
+        assert retrieved.dependencies == 'Real dependencies from architect'
+        assert retrieved.deliverables == 'Real deliverables from architect'
+
+
 class TestDatabaseLoopOperations:
     @pytest.mark.asyncio
     async def test_add_loop_stores_loop_state(
