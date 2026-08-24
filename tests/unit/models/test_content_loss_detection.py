@@ -9,7 +9,59 @@ Behaviors pinned: B1 (any silently-discarded edit is reported), B2 (bare '---' i
 section, inverts Phase 0's B6), B3 (custom H3 under a mapped H2, inverts Phase 0's B7).
 """
 
+from typing import Callable
+
+import pytest
+
 from src.models.phase import Phase
+from src.models.plan import Plan
+from src.models.roadmap import Roadmap
+from src.models.task import Task
+from src.platform.templates.commands.phase_command import technical_phase_template
+
+
+@pytest.mark.parametrize('model_class', [Phase, Plan, Roadmap, Task])
+def test_a_document_this_system_generates_never_reports_content_loss(
+    model_class, markdown_builder: Callable
+) -> None:
+    seed_markdown = markdown_builder(model_class)
+    instance = model_class.parse_markdown(seed_markdown)
+
+    assert model_class.find_content_loss(instance.build_markdown()) == []
+
+
+def test_the_shipped_phase_template_never_reports_content_loss() -> None:
+    assert Phase.find_content_loss(technical_phase_template) == []
+
+
+def test_a_trailing_separator_before_a_concatenated_document_is_not_reported_as_loss() -> None:
+    # Real generated markdown legitimately uses a bare '---' to separate concatenated
+    # documents (e.g. RoadmapTools.store splits multi-document markdown on '# Phase:').
+    # See tests/unit/models/test_markdown_separator_handling.py - this is not the F8
+    # defect, it is intentional structure, and must not be reported.
+    markdown = """# Phase: sample-phase
+
+## Overview
+### Objectives
+Real objective content.
+### Scope
+Some scope.
+### Dependencies
+Some deps.
+### Deliverables
+Some deliverables.
+
+## Metadata
+
+### Status
+draft
+
+---
+
+# Phase: another-concatenated-phase
+"""
+
+    assert Phase.find_content_loss(markdown) == []
 
 
 def test_bare_hr_inside_a_section_is_reported() -> None:

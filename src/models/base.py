@@ -89,11 +89,34 @@ class MCPModel(BaseModel, ABC):
         return content if content else ''
 
     @classmethod
+    def _trim_at_legitimate_separator(cls, section_lines: list[str]) -> list[str]:
+        """Drop a bare '---' and everything after it, but only when that '---' is a
+        legitimate document boundary rather than the F8 truncation defect.
+
+        Generated markdown legitimately uses a bare '---' to mark the end of a document
+        before concatenated content that isn't part of it (e.g. RoadmapTools.store joins
+        a roadmap and its phases on '# Phase:', see test_markdown_separator_handling.py).
+        That is a boundary, not loss, when what follows the '---' is blank or is itself
+        another document's H1 title. Anything else after a bare '---' is genuinely
+        orphaned content the user wrote and the parser would silently drop (F8).
+        """
+        separator_idx = next((i for i, line in enumerate(section_lines) if line.strip() == '---'), None)
+        if separator_idx is None:
+            return section_lines
+
+        trailing = [line for line in section_lines[separator_idx + 1 :] if line.strip()]
+        if not trailing or trailing[0].startswith('# '):
+            return section_lines[:separator_idx]
+
+        return section_lines
+
+    @classmethod
     def _extract_raw_section_verbatim(cls, markdown: str, path: tuple[str, ...]) -> str:
         """Ground truth for what the user actually wrote under a heading path.
 
-        Unlike `_extract_content_from_raw_markdown`, this does not stop at a bare '---'
-        and matches heading text exactly rather than by substring. It exists so
+        Unlike `_extract_content_from_raw_markdown`, this matches heading text exactly
+        rather than by substring, and only drops a bare '---' when it is a legitimate
+        document boundary rather than the F8 truncation defect. It exists so
         `find_content_loss` can detect findings F7-F9 by comparing this against what
         the (unrepaired) parser actually captures.
         """
@@ -110,7 +133,8 @@ class MCPModel(BaseModel, ABC):
 
         if h3_header is None:
             end = next((i for i in range(h2_idx + 1, len(lines)) if lines[i].startswith('## ')), len(lines))
-            return '\n'.join(lines[h2_idx + 1 : end]).strip()
+            section_lines = cls._trim_at_legitimate_separator(lines[h2_idx + 1 : end])
+            return '\n'.join(section_lines).strip()
 
         h3_idx = None
         for i in range(h2_idx + 1, len(lines)):
@@ -131,15 +155,22 @@ class MCPModel(BaseModel, ABC):
             ),
             len(lines),
         )
-        return '\n'.join(lines[h3_idx + 1 : end]).strip()
+        section_lines = cls._trim_at_legitimate_separator(lines[h3_idx + 1 : end])
+        return '\n'.join(section_lines).strip()
 
     @classmethod
     def _find_orphan_h3_headings(cls, markdown: str) -> list[str]:
-        """H3 headings under a mapped H2 that have no landing spot in the mapping (F9)."""
+        """H3 headings under a mapped H2 that have no landing spot in the mapping (F9).
+
+        Metadata is excluded to match parse_markdown's own special-casing of it
+        (base.py additional_sections capture skips 'Metadata' outright) - it holds
+        model-managed state fields, not user-authored content.
+        """
         mapped_h3_by_h2: dict[str, set[str]] = {}
         for header_path in cls.HEADER_FIELD_MAPPING.values():
             if len(header_path) > 1:
                 mapped_h3_by_h2.setdefault(header_path[0], set()).add(header_path[1])
+        mapped_h3_by_h2.pop('Metadata', None)
 
         orphans: list[str] = []
         current_h2: str | None = None
