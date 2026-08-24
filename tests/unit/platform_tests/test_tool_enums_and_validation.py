@@ -128,6 +128,22 @@ class TestTemplateHelpers:
         assert 'post_synthesis' in tools.invoke_phase_critic_post_synthesis
         assert tools.platform == PlatformType.LINEAR
 
+    def test_create_phase_command_tools_grants_write_for_the_shape_act_edit_gate(self) -> None:
+        # Phase 3's Step 8/9 edit gate writes phase.md to disk for the user to hand-edit
+        # (docs/phase-refactor/phase-3-human-gate.md "Step 8/9 — the edit gate") and
+        # reads it back. Without a Write grant scoped to phase.md, that step's "Use Write
+        # tool" instruction has no corresponding tool declaration to act on.
+        tools = create_phase_command_tools(
+            'mcp__linear-server__create_issue',
+            'mcp__linear-server__get_issue',
+            'mcp__linear-server__list_issues',
+            PlatformType.LINEAR,
+            plans_dir='~/.claude/plans',
+            tui_adapter=ClaudeCodeAdapter(),
+        )
+
+        assert 'Write(.respec-ai/plans/*/phases/*/phase.md)' in tools.tools_yaml
+
     def test_create_plan_command_tools_includes_reference_write_without_ask_user(self) -> None:
         platform_tools = [
             'mcp__linear-server__create_project',

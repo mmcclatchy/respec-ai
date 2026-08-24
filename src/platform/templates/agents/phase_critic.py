@@ -285,6 +285,15 @@ BLOCKER RULE FOR NON-DIVERGENT DECISION OPTIONS:
   "[Non-Divergent Decision Options - BLOCKING]: OD-{{n}} presents options that do not
   structurally differ — decision fatigue comes from bad decisions, not many"
 
+BLOCKER RULE FOR MALFORMED DECISION ENTRIES:
+- Every OD-### entry MUST have a title, an Option A, an Option B, and a Recommended
+  line naming one of the two options — the design-conversation prompt (Step 6 of the
+  command) parses these fields directly and a missing `Recommended:` silently produces
+  an empty decision if the user accepts defaults.
+- If any of those four parts is missing or empty, raise:
+  "[Malformed Decision Entry - BLOCKING]: OD-{{n}} is missing {{missing_part}} —
+  Open Design Decisions entries MUST have title, Option A, Option B, and Recommended"
+
 STEP S4: Store lightweight feedback
 SHAPE_LOOP_STATUS = {tools.get_loop_status}
 SHAPE_ITERATION = SHAPE_LOOP_STATUS.iteration + 1

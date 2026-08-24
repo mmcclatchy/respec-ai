@@ -393,6 +393,14 @@ IF phase_mode == "shape":
   - `## Design Shape` — Module Layout, Skeleton Index, Collaboration And Wiring, Test
     List, Design Shape - Additional Sections. See OUTPUT DETAIL GUIDELINES below:
     concrete paths and signatures belong here and only here.
+    For each internal (module-private, not part of the public seam) class you judge
+    consequential enough to warrant its own skeleton file in Phase 4 — nontrivial state,
+    a real extension point, or logic worth pinning ahead of implementation — append
+    ", internal, consequential" to its `### Skeleton Index` entry. This is the only
+    signal Step 7's skeleton opt-in prompt has to offer the user a choice; a class with
+    no such marker never appears in that prompt and gets no skeleton file. Do not mark
+    trivial internals (simple data holders, one-line helpers) — over-marking defeats the
+    opt-in.
   - `## Design Decisions` — Open Design Decisions (ranked by blast radius if reversed —
     highest first, so the shape-act design conversation surfaces the most consequential
     choices first) and Settled Design Decisions (carried forward verbatim from prior

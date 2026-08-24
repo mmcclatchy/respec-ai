@@ -167,6 +167,7 @@ def create_phase_command_tools(
         builder.add_respec_ai_tool(tool)
 
     builder.add_builtin_tool(BuiltInToolCapability.READ, '')
+    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/phase.md')
 
     # sync_plan_instructions (Step 2.1) retrieves the plan from the platform before the
     # refinement loop starts, using the platform's own plan-retrieval tool -- not the

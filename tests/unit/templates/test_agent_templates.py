@@ -488,6 +488,16 @@ class TestPhaseArchitectShapeMode:
         assert 'shape-settled' in template
         assert 'VERBATIM' in template
 
+    def test_shape_mode_marks_consequential_internals_for_the_skeleton_opt_in_prompt(self) -> None:
+        # phase_command.py Step 7 parses Skeleton Index entries marked "internal,
+        # consequential" to build its multiSelect skeleton opt-in prompt. Without an
+        # instruction telling the architect to emit that marker, Step 7's source list is
+        # always empty and the prompt never fires.
+        tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(tools)
+
+        assert 'internal, consequential' in template
+
 
 class TestPhaseCriticTemplate:
     def test_template_treats_best_practices_paths_as_blocking_verification(self) -> None:
@@ -633,6 +643,16 @@ class TestPhaseCriticTemplate:
         template = generate_phase_critic_template(tools)
 
         assert 'skip this entire section — raise none of its blockers.' in template
+
+    def test_shape_mode_enforces_od_entry_format(self) -> None:
+        # Plan §3 (phase-3-human-gate.md): the OD-NNN | title | Option A | Option B |
+        # Recommended format is "enforced by the critic." A missing Recommended line
+        # would let Step 6's "accept recommended default" path silently record an empty
+        # decision, so this must be a blocker, not just the divergence check.
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
+        template = generate_phase_critic_template(tools)
+
+        assert 'Malformed Decision Entry - BLOCKING' in template
 
 
 class TestPlanCriticTemplate:
