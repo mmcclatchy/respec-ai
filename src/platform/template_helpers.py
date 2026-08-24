@@ -210,6 +210,18 @@ def create_phase_command_tools(
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
         ),
+        invoke_phase_architect_implementation_plan=adapter.render_agent_invocation(
+            'respec-phase-architect',
+            'design implementation plan: build order, execution intent, deferred risks',
+            [
+                ('loop_id', 'SHAPE_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('phase_mode', 'implementation-plan'),
+                ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+            ],
+        ),
         invoke_phase_critic=adapter.render_agent_invocation(
             'respec-phase-critic',
             'evaluate phase quality against FSDD framework',

@@ -37,6 +37,13 @@ class PhaseCommandTools(CommandToolsModel):
     invoke_phase_architect_shape: str = Field(
         ..., description='Invocation text for respec-phase-architect agent (shape act, phase_mode="shape")'
     )
+    invoke_phase_architect_implementation_plan: str = Field(
+        ...,
+        description=(
+            'Invocation text for respec-phase-architect agent '
+            '(implementation-plan act, phase_mode="implementation-plan")'
+        ),
+    )
     invoke_phase_critic: str = Field(
         ..., description='Invocation text for respec-phase-critic agent (detail act, phase_mode="detail")'
     )

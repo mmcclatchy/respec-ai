@@ -833,12 +833,15 @@ class TestTemplateConsistency:
         assert 'Citation-only preservation is insufficient' in template
         assert 'Implementation Plan Reference Not Applied - BLOCKING' in template
 
-    def test_phase_architect_template_propagates_delivery_intent_override_contract(self) -> None:
+    def test_phase_architect_template_no_longer_declares_a_phase_level_delivery_intent_override(self) -> None:
+        # Phase 5: implementation.md's Execution Intent Policy is now the single source
+        # of truth for delivery intent (docs/phase-refactor/phase-5-implementation-plan.md
+        # B2). PLAN_DELIVERY_INTENT_POLICY is still read (STEP 0.55) but is now consumed
+        # only by phase_mode == "implementation-plan", never written into Success Criteria.
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)
         assert 'PLAN_DELIVERY_INTENT_POLICY' in template
-        assert '#### Delivery Intent Override' in template
-        assert 'Mode: inherit-plan-default' in template
+        assert 'Delivery Intent Override' not in template
 
     def test_phase_architect_template_uses_invocation_contract_style(self) -> None:
         architect_tools = create_phase_architect_agent_tools(_adapter)

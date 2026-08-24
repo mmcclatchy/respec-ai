@@ -61,3 +61,6 @@ def test_shape_act_and_detail_act_use_separate_loops_and_declare_their_phase_mod
     assert 'SHAPE_LOOP_ID' in template
     assert template.count('phase_mode: shape') == 2  # architect (Step 5) + critic (Step 10)
     assert template.count('phase_mode: detail') == 2  # architect + critic, detail act
+    # implementation-plan act (Step 12.5): architect only, no critic pass -- lighter
+    # than the shape gate, see docs/phase-refactor/phase-5-implementation-plan.md.
+    assert template.count('phase_mode: implementation-plan') == 1

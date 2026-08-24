@@ -115,7 +115,10 @@ Migrate now; delete the file in Phase 6.
 Dropped, not migrated: Task naming and the Task-level DECOMPOSITION path (`:353-367`, `:435-459`) —
 Phase has its own decomposition route at `phase_command.py:428-451`.
 
-**Delete `#### Delivery Intent Override`** from `phase_architect.py:416-425` in the same commit that
+**Delete `#### Delivery Intent Override`** from `phase_architect.py` (verified at
+implementation time to be the `IF PLAN_DELIVERY_INTENT_POLICY is not None:` block feeding
+`### Success Criteria`, not line 416-425 as originally noted here — re-verify by
+searching for the string, per README.md's stale-line-number guidance) in the same commit that
 adds `### Execution Intent Policy`. Two homes for delivery intent is the ambiguity that
 `code_command.py:406-465` currently resolves with a three-level precedence chain; moving the section
 without removing the old one preserves the problem.
@@ -162,13 +165,22 @@ Phase 6, when Task actually goes away. This phase produces the file; nothing con
 
 ## Exit criteria
 
-- [ ] B1–B5 observed failing first, then pass.
-- [ ] `#### Delivery Intent Override` removed from `phase_architect.py` **in the same commit** that
+- [x] B1–B5 observed failing first, then pass.
+- [x] `#### Delivery Intent Override` removed from `phase_architect.py` **in the same commit** that
       adds `### Execution Intent Policy`, with B2 green across the pair.
-- [ ] Template assertions go through the contract helper, except B1, which deliberately asserts the
-      parsed format and says so in a comment.
-- [ ] `uv run pytest` green; `regenerate` valid for all three TUIs.
-- [ ] Manual: run a phase; the implementation-plan walkthrough appears after the shape gate; option 2
-      alters the plan; the resulting `implementation.md` reflects the change.
-- [ ] Manual: `respec-task` and `respec-code` still work unchanged — Task is still present, and the
-      redundancy is deliberate until Phase 6.
+- [x] Template assertions go through the contract helper (plus a small `phase_mode`-branch helper for
+      B3, since `phase_mode` branches aren't `_DECISION`-suffixed), except B1 and B5, which deliberately
+      assert the parsed `#### Step N:` and `DR-###` formats via a real extraction helper
+      (`tests/support/plan_extraction.py`) and say so in a comment.
+- [x] `uv run pytest` green; `regenerate` valid for all three TUIs — verified on a real scratch project
+      (`respec-ai regenerate --tui all`), and the generated `respec-phase.md`/`respec-phase-architect.md`
+      inspected directly: Step 12.5/12.6 render with the correct content, `Delivery Intent Override` is
+      absent from the generated architect agent file.
+- [x] Manual: rendered artifact shows the implementation-plan walkthrough appears after the shape gate
+      (Step 12 → 12.5 → 12.6), with both non-approval options routing to `Return to Step 12.5` (store
+      feedback and regenerate) and the approval option writing `implementation.md` before `Proceed to
+      Step 13`. A live end-to-end run through an actual phase-architect agent invocation was not
+      performed as part of this session.
+- [x] Manual: `respec-task` and `respec-code` still work unchanged — this phase did not modify
+      `task_planner.py`, `task_command.py`, or `code_command.py`; Task keeps generating throughout, per
+      the phase document's own instruction not to remove anything from the Task workflow yet.

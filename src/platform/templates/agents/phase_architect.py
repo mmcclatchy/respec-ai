@@ -71,6 +71,44 @@ technical_phase_template = Phase(
 ).build_markdown()
 
 
+# implementation.md is not a DocumentType (docs/phase-refactor/decisions.md), so there
+# is no Pydantic model to build this from — it is a plain string, kept concrete (not
+# bracket placeholders) so the format contract stays testable via
+# tests/support/plan_extraction.py against this exact constant.
+implementation_plan_example = """# Implementation Plan: phase-2-core-implementation
+
+## Build Order
+### Staging
+Query path lands before the cache that sits in front of it (per plan reference:
+docker-compose-best-practices.md § "Layering" (lines 10-14)).
+
+### Steps
+#### Step 1: Query Path
+**Objective**: Prove the query path end to end before anything caches it.
+**Actions**:
+- Implement the repository method
+- Wire it into the service layer
+
+#### Step 2: Cache Layer
+**Objective**: Add caching once the query path is proven correct.
+**Actions**:
+- Add a cache in front of the repository method
+
+## Policy
+### Execution Intent Policy
+- Mode: MVP
+- Source: plan-default
+- Tie-Break Policy: Prioritize core functional/spec delivery; defer non-P0 hardening gaps.
+
+### Deferred Risk Register
+- DR-001 | status=accepted | severity=P2 | scope=global | reason=Cache invalidation hardening deferred to post-MVP
+
+## Checklist
+- [ ] Implement repository method (Step 1) (verify: pytest tests/unit/test_repo.py)
+- [ ] Add cache layer (Step 2) (verify: pytest tests/unit/test_cache.py)
+"""
+
+
 def generate_phase_architect_template(tools: PhaseArchitectAgentTools) -> str:
     return f"""---
 name: respec-phase-architect
@@ -106,7 +144,11 @@ You are a technical architecture specialist focused on system design.
   Architecture, Technology Stack, Requirements, Development Plan, Testing Strategy,
   Research Requirements, and Design Shape/Design Decisions if not already settled.
   `"shape"` produces ONLY Overview, Design Shape, and Design Decisions — the public
-  seams and decisions to pin, not implementation detail. See STEP 3 below.
+  seams and decisions to pin, not implementation detail. `"implementation-plan"`
+  produces `implementation.md` content (build order, execution intent policy,
+  deferred risk register, checklist) from the settled Module Layout, Skeleton Index,
+  and Test List — returned directly to the orchestrator, not stored on the Phase. See
+  STEP 3 below.
 - optional_instructions: Additional user guidance for phase development (if provided)
 
 ### Grouped Markdown Inputs
@@ -138,6 +180,9 @@ phase_mode is set by the CALLING COMMAND, not agent decision.
            Requirements, Development Plan, Testing Strategy elaboration, Research
            Requirements, Success Criteria, Integration Context, or any domain-specific
            section — those belong to the detail act (phase_mode == "detail").
+"implementation-plan" → Execute ONLY the phase_mode == "implementation-plan" branch of
+           STEP 3. Produce implementation.md content only — do NOT write or modify any
+           other Phase section.
 
 Do NOT override or select an alternative mode.
 Do NOT produce full implementation detail when phase_mode == "shape".
@@ -425,6 +470,57 @@ IF phase_mode == "shape":
 
   Skip to STEP 4.
 
+ELIF phase_mode == "implementation-plan":
+  IF `### Shape Gate` is NOT `shape-settled` or `shape-amended`:
+    ERROR: "Cannot produce an implementation plan before the shape gate settles"
+    EXIT: Workflow terminated
+
+  Read from CURRENT_PHASE_MARKDOWN: Module Layout, Skeleton Index, Test List,
+  Settled Design Decisions, Deliverables, Scope. These are the only inputs — do NOT
+  read or reference Architecture, Technology Stack, or other detail-act sections even
+  if present from a prior detail-act pass.
+
+  ═══════════════════════════════════════════════
+  MANDATORY CONSTRAINT CARRY-FORWARD (implementation.md)
+  ═══════════════════════════════════════════════
+  For every IMPL_PLAN_CONSTRAINTS item (from STEP 1.5) relevant to this Phase, carry
+  the constraint into at least one concrete plan artifact:
+  - `### Staging`: sequencing rationale
+  - `### Steps`: a concrete `**Actions**` item
+  - `### Checklist`: a `- [ ]` work item
+
+  If a referenced constraint is read but not relevant, state the not-applicable
+  rationale inline in `### Staging` instead of silently dropping it.
+
+  VIOLATION: Reading an implementation plan reference but omitting its relevant
+             constraints from Staging, Steps, and Checklist.
+  ═══════════════════════════════════════════════
+
+  Build IMPLEMENTATION_PLAN_MARKDOWN following the EXACT structure shown in
+  "IMPLEMENTATION PLAN STRUCTURE (CONCRETE EXAMPLE)" below, replacing example values
+  with actual content:
+  - `## Build Order` → `### Staging` (sequencing rationale), `### Steps` (`#### Step N:`
+    with **Objective**/**Actions** — keep the exact `#### Step N:` format; code_command.py
+    and patch_command.py scan for it)
+  - `## Policy` → `### Execution Intent Policy` (Mode: PLAN_DELIVERY_INTENT_POLICY's mode
+    if present and valid (MVP|hardening), else `MVP`; Source: `plan-default` if
+    PLAN_DELIVERY_INTENT_POLICY supplied it, else `default-MVP`; Tie-Break Policy:
+    PLAN_DELIVERY_INTENT_POLICY's tie-break text if present, else "Prioritize core
+    functional/spec delivery; defer non-P0 hardening gaps.") and `### Deferred Risk
+    Register` (stable `DR-001`, `DR-002`, ... ids in the exact
+    `status=|severity=|scope=|reason=` format; `- None` if no deferred risks)
+  - `## Checklist` → `- [ ]` items, each with `(Step N)` and `(verify: command)`
+
+  This is the ONLY place delivery intent is declared for this Phase. Do NOT add any
+  other Phase-level delivery-intent override section anywhere else in this document.
+
+  Research Read Log carry-forward: for each `- Read:` entry in
+  `### Research Requirements` that this plan actually cites in a Step, append a nested
+  `- Applied: <where in this plan>` line under that entry (no new section — the parser
+  already tolerates indented metadata under existing bullets).
+
+  Skip to STEP 4.
+
 ELSE:  (phase_mode == "detail", the default)
   IF `### Shape Gate` is `shape-settled` or `shape-amended`:
     Preserve `## Design Shape` and `## Design Decisions` VERBATIM — the human already
@@ -464,7 +560,10 @@ PLAN_ARCHITECTURE → Architecture section refines and elaborates this baseline
 PLAN_TECHNOLOGY_DECISIONS → Align Technology Stack to this baseline by default
 PLAN_ANTI_REQUIREMENTS → Preserve these scope exclusions
 PLAN_QUALITY_BAR → Reference these targets in Testing Strategy and NFRs
-PLAN_DELIVERY_INTENT_POLICY → Declare a phase-level override or explicit inheritance in Success Criteria
+PLAN_DELIVERY_INTENT_POLICY → Consumed only by phase_mode == "implementation-plan"
+  (STEP 3) when building implementation.md's Execution Intent Policy — this Phase
+  document declares no delivery-intent section of its own; implementation.md is the
+  single source of truth for it now
 
 DEVIATION LOG PROTOCOL (MANDATORY WHEN DEVIATING):
 If you deviate from any plan/reference constraint, you MUST add an entry under:
@@ -515,39 +614,45 @@ IF PLAN_QUALITY_BAR is not None:
   → Reference in Testing Strategy section (test coverage minimum, performance targets)
   → Reference in Non-Functional Requirements (security, accessibility thresholds)
   → If deviating from targets, document via DEVIATION LOG PROTOCOL
-
-IF PLAN_DELIVERY_INTENT_POLICY is not None:
-  → In `### Success Criteria`, include:
-    `#### Delivery Intent Override`
-  → Set one of:
-    - `Mode: MVP|hardening` (explicit phase override), OR
-    - `Mode: inherit-plan-default`
-  → Include tie-break rule text for this phase
-  → If omitted, set explicit inheritance:
-    `Mode: inherit-plan-default`
-    `Tie-Break Policy: inherit-plan-policy`
 ```
+
+Delivery intent is never declared in `### Success Criteria` — PLAN_DELIVERY_INTENT_POLICY
+is consumed only when phase_mode == "implementation-plan" (see STEP 3), so it has
+exactly one home: `implementation.md`'s `### Execution Intent Policy`.
 
 → Integrate ARCHIVE_SCAN_RESULTS (from STEP 0.6) for research requirements
 → Follow OUTPUT FORMAT below
 
 STEP 4: Store Complete Phase
-CALL {tools.update_document}
-→ Verify: Phase stored successfully
-→ Expected error: Storage failure (retry once, then report to command)
+IF phase_mode == "implementation-plan":
+  IF any `- Applied:` line was added under `### Research Requirements`:
+    CALL {tools.update_document} with ONLY `research_requirements` changed —
+    Module Layout, Skeleton Index, Test List, and every other section unchanged.
+  ELSE:
+    Skip this call — nothing on the Phase document changed.
+ELSE:
+  CALL {tools.update_document}
+  → Verify: Phase stored successfully
+  → Expected error: Storage failure (retry once, then report to command)
 
 STEP 5: Return Status Summary
 
 ═══════════════════════════════════════════════
 MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
-Your ONLY output to the orchestrator is the status message below.
-Do NOT return the full Phase markdown.
-Do NOT add commentary about the Phase quality.
-The orchestrator will invoke phase-critic for quality assessment.
+IF phase_mode == "implementation-plan":
+  Your ONLY output to the orchestrator is IMPLEMENTATION_PLAN_MARKDOWN in full.
+  implementation.md is not a DocumentType and is never stored via MCP — the
+  orchestrator writes it to disk. This is the one explicit exception to the rule
+  below, stated as such per docs/phase-refactor/decisions.md.
+ELSE:
+  Your ONLY output to the orchestrator is the status message below.
+  Do NOT return the full Phase markdown.
+  Do NOT add commentary about the Phase quality.
+  The orchestrator will invoke phase-critic for quality assessment.
 
-VIOLATION: Returning full Phase markdown to the orchestrator
-           instead of the brief status message.
+  VIOLATION: Returning full Phase markdown to the orchestrator
+             instead of the brief status message.
 ═══════════════════════════════════════════════
 
 ```text
@@ -555,6 +660,15 @@ Phase updated successfully.
 - Iteration: [phase.iteration]
 - Version: [phase.version]
 - Sections: [count of major sections]
+```
+
+## IMPLEMENTATION PLAN STRUCTURE (CONCRETE EXAMPLE)
+
+Applies only when phase_mode == "implementation-plan" (STEP 3). Copy this structure
+exactly, replacing example values with actual content:
+
+```markdown
+{indent(implementation_plan_example, '  ')}
 ```
 
 ## PROJECT CONFIGURATION
@@ -946,7 +1060,7 @@ type Resource {{
 - [ ] If PLAN_TECHNOLOGY_REJECTIONS present: Rejected technologies are excluded unless deviation is documented
 - [ ] If PLAN_ANTI_REQUIREMENTS present: Phase Scope includes exclusions unless deviation is documented
 - [ ] If PLAN_QUALITY_BAR present: Testing Strategy and NFRs reference targets unless deviation is documented
-- [ ] Success Criteria includes `#### Delivery Intent Override` (explicit mode or inherit-plan-default)
+- [ ] Success Criteria does NOT include a delivery-intent override section — that lives solely in implementation.md
 - [ ] If any plan/reference deviation exists: `#### TUI Plan Deviation Log` is present with required fields
 
 **Optional Core Sections** (Include if relevant):

@@ -784,9 +784,82 @@ SHAPE_GATE = "shape-settled"
   content=UPDATED_SHAPE_PHASE_MARKDOWN  (with "### Shape Gate" set to "shape-settled")
 )
 
-Display to user: "✓ Phase shape settled — entering detail act"
+Display to user: "✓ Phase shape settled"
 
-Proceed to Step 13.
+Proceed to Step 12.5.
+```
+
+### Step 12.5: Launch Implementation Plan Development
+
+The build-strategy conversation runs on the shape act's loop (`SHAPE_LOOP_ID`) — the
+inputs (Module Layout, Skeleton Index, Test List) are shape-act artifacts, and this
+gate is lighter than the shape gate itself, so no dedicated critic pass or refinement
+loop is initialized for it. See docs/phase-refactor/decisions.md
+"`implementation.md` is a bundle sibling, not sections inside `phase.md`".
+
+Reusing `SHAPE_LOOP_ID` means Step 12.6's alter/regenerate path shares its feedback
+channel with the shape act: `store_shape_user_feedback` here writes to the same loop
+the shape architect reads at its own STEP 0 on a future re-shape. This is safe today —
+nothing reads `APPROVED_VERSION`/`CURRENT_VERSION` after Step 12, so the version bump
+from Step 12.6's `store_document` never trips Step 11's reapproval check — but if a
+later phase adds shape-loop feedback consumption that isn't scoped to shape-relevant
+content, re-audit this reuse.
+
+```text
+{tools.invoke_phase_architect_implementation_plan}
+
+IMPLEMENTATION_PLAN_MARKDOWN = [the agent's returned output — implementation.md
+  content in full, per the MANDATORY OUTPUT SCOPE exception for phase_mode ==
+  "implementation-plan"]
+
+Proceed to Step 12.6.
+```
+
+### Step 12.6: Implementation Plan Gate
+
+```text
+Present the implementation plan as a walkthrough:
+  build order and why, what lands first, what is deferred and why
+
+{selection_prompt_instructions}
+Header: "Implementation Plan"
+Question: "Here's the order I'd build this. Does it look right?"
+multiSelect: false
+Options: [
+  {{"label": "Looks right — proceed", "description": "Write implementation.md and continue"}},
+  {{"label": "Alter specific parts — let me say which", "description": "Return to the architect with the parts to change"}},
+  {{"label": "Provide direction and regenerate", "description": "Return to the architect with new direction"}}
+]
+
+WAIT for {selection_response_source}.
+DO NOT treat this as workflow completion, cancellation, or failure.
+After the user responds, resume at Step 12.6. Continue immediately.
+DO NOT explain that the workflow is stopping unless the user asks why.
+
+IF selection == "Looks right — proceed":
+  PHASE_DIR = dirname(PHASE_FILE_PATH)
+  IMPLEMENTATION_PLAN_PATH = f"{{PHASE_DIR}}/implementation.md"
+
+  Write IMPLEMENTATION_PLAN_MARKDOWN to IMPLEMENTATION_PLAN_PATH (Use Write tool).
+
+  Ensure "## Additional Details > ### Implementation Plan References" contains
+  "- Constraint: `{{IMPLEMENTATION_PLAN_PATH}}`" (auto-create the section if absent;
+  append the entry only when not already present).
+  {tools.store_document}
+    doc_type="phase",
+    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+    content=UPDATED_SHAPE_PHASE_MARKDOWN  (with the reference ensured)
+  )
+
+  Display to user: "✓ Implementation plan written to {{IMPLEMENTATION_PLAN_PATH}} — entering detail act"
+  Proceed to Step 13.
+
+ELSE:
+  USER_FEEDBACK_MARKDOWN = [selection == "Alter specific parts..." → prompt for which
+                             parts to change |
+                             selection == "Provide direction..." → prompt for direction]
+  {tools.store_shape_user_feedback}
+  Return to Step 12.5.
 ```
 
 ### Step 13: Initialize Refinement Loop
