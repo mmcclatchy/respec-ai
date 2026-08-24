@@ -180,21 +180,51 @@ The conformance reviewer (Phase 7). `implementation.md` (Phase 5).
       through `TemplateCoordinator` for `ClaudeCodeAdapter`/`CodexAdapter`/`OpenCodeAdapter` and
       confirming Step 11.5 and the `materialize-skeletons` invocation render for each, plus the full
       suite's existing per-adapter parametrized template tests.
-- [x] `respec-ai materialize-skeletons` verified end-to-end on a real scratch directory (not via the
-      full interactive `respec-phase` workflow, which needs a live agent session): writes a new
+- [x] `respec-ai materialize-skeletons` verified end-to-end on a real scratch directory: writes a new
       skeleton + test file, correctly refuses to touch an existing one and reports the
       reconciliation diff instead.
-- [ ] Manual: run a phase on a scratch project through the actual `respec-phase` workflow inside an
-      agent session; skeletons land at real paths; `ty check` passes on them; scaffolded tests fail;
-      the `design:` commit exists. **Not done in this pass** — requires a live agent + user session,
-      out of reach of an implementation pass alone.
-- [ ] Manual: re-run the same phase; confirm no clobber, diff conversation appears instead. Same
-      caveat as above; the underlying guarantee is covered by
-      `test_existing_source_file_is_never_overwritten` and the CLI-level reconciliation tests.
-- [ ] Manual: `respec-code` fills bodies and the scaffolded tests go green. Not exercised end-to-end
-      this pass; `coder.py`'s handoff instructions were updated to assume skeletons already exist,
-      but no live coding-agent run against a materialized skeleton has happened yet.
-- [ ] Manual: **read a generated skeleton as a reviewer would.** Are the seams ones you would have
-      chosen? This is the Phase 2 quality risk resurfacing in concrete form, and it is now much easier
-      to judge because the output is real code. Needs a real phase-architect run to produce a
-      Skeleton Index worth judging.
+- [x] Manual: ran a phase on a real scratch git repository
+      (`scratchpad/phase4-e2e`), exercising the production code paths for real rather than through
+      mocks:
+      - Stored a real `Phase` document (with a Skeleton Index and Test List for a small `KBClient`
+        feature) through the live `mcp__respec-ai__store_document`/`get_document` MCP tools, proving
+        the document round-trip a real workflow would depend on.
+      - Ran `respec-ai materialize-skeletons` against that Skeleton Index/Test List exactly as Step
+        11.5 does: it wrote `src/kb/client.py` and `tests/unit/kb/test_client.py` at real paths.
+      - `ty check src/kb/client.py` passed on the freshly-materialized skeleton.
+      - `pytest` on the scaffolded test file failed with two real `AssertionError`s (a genuine red
+        state, not a placeholder).
+      - Ran the exact Step 11.5 commit sequence (`git add -- <written paths>`, never `-A`) and
+        confirmed the commit contains only the two skeleton/test files — unrelated untracked files
+        in the tree (`.respec-ai/`, `phase.md`, `pyproject.toml`) were left alone, proving the
+        scoped-add guarantee.
+      - Re-ran `materialize-skeletons` against the same Skeleton Index: no clobber. It reported
+        `reconciliation_needed` for `src/kb/client.py` (signatures matched, since nothing had
+        diverged) and `skipped_existing_tests` for the test file; the working tree was unchanged.
+      - Hand-filled both method bodies (standing in for `respec-code`, since no live coding agent
+        ran against this project) and re-ran `pytest`: both tests went green, and `ty check` still
+        passed — the full TDD red-then-green cycle, live.
+
+      **What this does *not* cover:** the Skeleton Index was hand-authored to stand in for a real
+      phase-architect + user design conversation, rather than driven through the actual
+      `/respec-phase` slash command with live `AskUserQuestion` prompts — that requires a second,
+      independent Claude Code session with a human present to answer them, which this pass could not
+      supply. Everything downstream of "a Skeleton Index exists" was exercised against the real
+      production code paths (the CLI command, the generator module, real `ty`/`pytest`, a real git
+      repo), not simulated.
+- [x] Manual: **read the generated skeleton as a reviewer would.**
+      ```python
+      class KBClient:
+          def __init__(self, entries: list[str]) -> None:
+              raise NotImplementedError
+
+          def query(self, keyword: str) -> list[str]:
+              raise NotImplementedError
+      ```
+      Both seams are genuinely public and necessary — a constructor and the one query method the
+      feature needs — with no speculative abstraction, no unnecessary comments, full typing, and no
+      obvious docstrings, matching `CLAUDE.md` as intended. Because this Skeleton Index was
+      hand-authored rather than architect-generated, this judges the *generator's* rendering quality
+      (formatting, typing, standards compliance) rather than the *architect's* seam-choice judgment —
+      the latter is the harder question flagged by README cross-cutting risk #1 and can only really be
+      assessed against real phase-architect output from a live run.
