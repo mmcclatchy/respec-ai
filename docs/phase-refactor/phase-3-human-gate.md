@@ -8,20 +8,31 @@
 **Prerequisites:** Phase 2 complete. Verify: `grep -n "module_layout" src/models/phase.py` returns
 output.
 
-**Already done?** `grep -n "phase_mode" src/platform/templates/commands/phase_command.py` — output
-means complete. (`validate_document` alone is not a reliable signal: it landed first as its own
-piece, see Progress below, before the gate flow that consumes it.)
+**Already done?** `grep -n "^### Step 4:" src/platform/templates/commands/phase_command.py` — output
+means the shape act exists (there is currently no Step 4; Step 3 jumps straight to Step 13).
+`validate_document` and the Step 3/13-19 renumbering alone are not reliable signals: they landed
+first as their own pieces, see Progress below, before the shape act that needs them.
 
-**Progress as of 2026-08-24:** `validate_document` (`MCPModel.find_content_loss` +
-`DocumentToolsInterface.validate` + the MCP tool + `RespecAITool.VALIDATE_DOCUMENT`) is implemented
-and tested — this satisfies B1-B3. The `allow_frozen_field_edits` override on
-`store_phase`/`update_phase` (both backends) is implemented and tested at the state-manager layer —
-this satisfies B6 and half of B5 (the override works; the template-layer `source=user-edit` SD
-recording it's paired with in §4 does not exist yet). **Not started:** the two-act `phase_command.py`
-rewrite (§2-§5, B4, B7-B10), and `template_contract.py` extensions for B7-B10. Postgres parity for
-the frozen-field override was mirrored by hand but is untested — the postgres suite is skipped
-without a live DB in this environment; verify `tests/integration/test_state_manager_model_roundtrip.py`
-covers it (check whether its fixture accepts `allow_frozen_field_edits`) before relying on it.
+**Progress as of 2026-08-24:**
+- `validate_document` (`MCPModel.find_content_loss` + `DocumentToolsInterface.validate` + the MCP
+  tool + `RespecAITool.VALIDATE_DOCUMENT`) is implemented and tested — satisfies B1-B3.
+- `allow_frozen_field_edits` on `store_phase`/`update_phase` (both backends) is implemented and
+  tested at the state-manager layer — satisfies B6 and half of B5 (the override works; the
+  template-layer `source=user-edit` SD recording it's paired with in §4 does not exist yet). Postgres
+  parity was mirrored by hand but is untested — the postgres suite is skipped without a live DB in
+  this environment; verify `tests/integration/test_state_manager_model_roundtrip.py` covers it (check
+  whether its fixture accepts `allow_frozen_field_edits`) before relying on it.
+- `phase_command.py` has been renumbered: the old Step 4-10 flow (init loop, architect, critic
+  quality loop, research synthesis, storage, task generation, completion contract) now lives at Step
+  13-19, unchanged in content. A new Step 3 exists as an explicit `TODO(phase-3)` stub that always
+  proceeds to Step 13 — it reserves Steps 4-12 for the shape act without inventing behavior. This was
+  a pure renumbering commit verified against the full suite plus direct `TemplateCoordinator`
+  rendering for all three TUI adapters; it does not satisfy any behavior on its own.
+
+**Not started:** Steps 4-12 (the shape act itself: `SHAPE_LOOP_ID` init, architect `phase_mode="shape"`,
+the design conversation, skeleton opt-in, the edit gate, critic `phase_mode="shape"`, the joint gate),
+adding `phase_mode="detail"` to the now-renumbered Steps 14/15, and the `template_contract.py`
+extensions for B7-B10. This is B4, B7, B8, B9, B10, and the remaining half of B5.
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and **all of**
 `docs/phase-refactor/decisions.md` — this phase implements four decisions that were reversed during design
@@ -33,16 +44,23 @@ F15, F16, F18, F22 apply.
 tests. It is ordinary Python on strings, fully testable without prompt machinery, and every later
 step of this phase depends on it. Do not start the gate flow until the validator is green.
 
-**Next action:** the two-act `phase_command.py` rewrite (§2 below), as two separate commits:
-1. **Mechanical first** — insert the new Step 3 (read `### Shape Gate`, branch shape vs detail act)
-   and renumber the existing 10 steps into the §2 table below, re-pointing every internal
-   back-reference (`Return to Step N`, `resume at Step N`, the `refine` branch at what is currently
-   `phase_command.py:435-437`). No behavior change. Get the suite green before moving on — do not mix
-   this with the gate behavior below in the same diff, it makes a 1172-line template unreviewable.
-2. **Then** layer in the design conversation (§3), the edit gate (§4), and the joint gate (§5),
-   extending `tests/support/template_contract.py` as needed for B7-B10 (its current four methods —
-   `declared_tools`, `invoked_tools`, `decision_branch`, `blocker_conditions` — don't yet cover the
-   `APPROVED_VERSION` comparison the joint gate needs).
+**Next action:** replace Step 3's `TODO(phase-3)` stub with the real shape act (Steps 4-12) —
+`phase_command.py:278-296` is the current Step 3, followed immediately by Step 13 at `:297`. Build in
+this order:
+1. Step 4 — `SHAPE_LOOP_ID` init (`loop_type="phase"`, finding F15) + link to document, mirroring the
+   pattern already at Steps 13/13.2.
+2. Step 5 — architect invocation with the new `phase_mode="shape"` scalar (§2), mirroring Step 14 but
+   with the mode flag added there too on the detail side.
+3. Steps 6-9 — the design conversation (§3) and edit gate (§4). Build `validate_document`'s call site
+   into Step 9 exactly as designed: fix-and-retry (max 3) / drop-those-edits / abort.
+4. Step 10 — critic on the approved design, `phase_mode="shape"`.
+5. Steps 11-12 — the joint gate (§5) and the `shape-settled` transition into Step 13.
+6. Only then extend `tests/support/template_contract.py` for B7-B10 — its current four methods
+   (`declared_tools`, `invoked_tools`, `decision_branch`, `blocker_conditions`) don't yet cover the
+   `APPROVED_VERSION` comparison the joint gate needs.
+
+Write B4-B10 as failing tests before each corresponding step, per the *Behaviors to pin* table below —
+do not build the whole shape act and then backfill tests.
 
 **The single most important thing to get right** is that the critic runs *after* the user approves,
 not before. If you find yourself writing an architect↔critic loop that resolves to a quality
