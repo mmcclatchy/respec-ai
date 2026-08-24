@@ -58,9 +58,6 @@ def test_shape_act_and_detail_act_use_separate_loops_and_declare_their_phase_mod
     coordinator = TemplateCoordinator()
     template = coordinator.generate_command_template(RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter)
 
-    # Steps 6-12 (design conversation through the joint gate, including the shape-act
-    # critic invocation) land in a later commit -- see docs/phase-refactor/phase-3-human-gate.md.
-    # Until then the shape-act architect (Step 5) is the only shape_mode call site.
     assert 'SHAPE_LOOP_ID' in template
-    assert template.count('phase_mode: shape') == 1  # architect, shape act (Step 5)
+    assert template.count('phase_mode: shape') == 2  # architect (Step 5) + critic (Step 10)
     assert template.count('phase_mode: detail') == 2  # architect + critic, detail act

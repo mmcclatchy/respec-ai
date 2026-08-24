@@ -298,6 +298,9 @@ def create_phase_command_tools(
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{LOOP_ID}'
         ),
+        decide_shape_loop_action=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{SHAPE_LOOP_ID}'
+        ),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),

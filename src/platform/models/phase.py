@@ -60,6 +60,7 @@ class PhaseCommandTools(CommandToolsModel):
     link_loop: str = Field(..., description='Link loop to document (detail act)')
     get_loop_status: str = Field(..., description='Get loop status (detail act)')
     decide_loop_action: str = Field(..., description='Decide loop action (detail act)')
+    decide_shape_loop_action: str = Field(..., description='Decide loop action (shape act)')
     get_feedback: str = Field(..., description='Get latest feedback (detail act)')
     get_document: str = Field(..., description='Get final phase document')
     store_user_feedback: str = Field(..., description='Store user feedback (detail act)')

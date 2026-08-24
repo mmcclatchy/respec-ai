@@ -279,19 +279,12 @@ Load phase and plan from file system, store in MCP:
 
 ```text
 SHAPE_GATE = read "### Shape Gate" from the synced Phase document (Step 2)
-```
 
-TODO(phase-3): this always proceeds to Step 13 for now. The shape act (Steps 4-12:
-`SHAPE_LOOP_ID` init, architect `phase_mode="shape"`, design conversation, skeleton
-opt-in, edit gate, critic `phase_mode="shape"`, joint gate) is not built yet — see
-`docs/phase-refactor/phase-3-human-gate.md`. Until it lands, this step is a no-op and
-behavior is unchanged from before this renumbering: `SHAPE_GATE in {"unshaped",
-"shape-proposed"}` will route to the shape act once it exists; `SHAPE_GATE in
-{"shape-settled", "shape-amended"}`, or an explicit user instruction to re-shape, will
-route accordingly. For now:
+IF SHAPE_GATE in ["unshaped", "shape-proposed"] OR user explicitly instructed a re-shape:
+  Proceed to Step 4.
 
-```text
-Proceed to Step 13.
+ELSE:  (SHAPE_GATE in ["shape-settled", "shape-amended"])
+  Proceed to Step 13.
 ```
 
 ### Step 4: Initialize Shape Refinement Loop
@@ -602,6 +595,102 @@ APPROVED_VERSION = SHAPE_PHASE_RESPONSE.message's "### Version" (Phase.version, 
 Display to user: "✓ Design shape approved at version {{APPROVED_VERSION}}"
 
 Proceed to Step 10.
+```
+
+### Step 10: Critic Runs on the Approved Design
+
+The critic runs on the version the user just approved (Step 9's `APPROVED_VERSION`) — a
+safety net on the user's judgment, not a gatekeeper ahead of it. See
+docs/phase-refactor/decisions.md "The critic runs after user approval."
+
+```text
+{tools.invoke_phase_critic_shape}
+
+IF phase-critic reports failure:
+  ERROR: "Shape-act phase critic failed"
+  DIAGNOSTIC: [surface the exact critic error/output]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_action
+  - Do NOT continue to Step 11
+  EXIT: Workflow terminated
+
+Proceed to Step 11.
+```
+
+### Step 11: Joint Gate
+
+The act closes only when the user has approved AND the critic has passed on that exact
+version (`Phase.version`, finding F22). If the design changed after approval, re-approve
+rather than silently proceeding.
+
+```text
+SHAPE_CRITIC_RESULT = {tools.decide_shape_loop_action}
+
+SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
+CURRENT_VERSION = [Phase.version parsed from SHAPE_PHASE_RESPONSE.message's "### Version"]
+
+IF SHAPE_CRITIC_RESULT.status == "completed" AND CURRENT_VERSION == APPROVED_VERSION:
+  Display to user: "✓ Shape settled — critic passed on the version you approved"
+  Proceed to Step 12.
+
+ELIF SHAPE_CRITIC_RESULT.status == "completed" AND CURRENT_VERSION != APPROVED_VERSION:
+  Display to user: "⟳ Design changed after approval (version {{APPROVED_VERSION}} → {{CURRENT_VERSION}}) — re-approve before proceeding"
+  Return to Step 8.
+
+ELSE:
+  (SHAPE_CRITIC_RESULT.status is "refine" or "user_input" — display findings, blockers first)
+  Display SHAPE_CRITIC_RESULT feedback to user with blockers listed first.
+
+  {selection_prompt_instructions}
+  Header: "Critic Findings"
+  Question: "The critic flagged issues with the design you approved. How do you want to handle them?"
+  multiSelect: false
+  Options: [
+    {{"label": "Address all of them — refine the design", "description": "Return to the architect with the full critic report"}},
+    {{"label": "Address some — let me pick", "description": "Choose which findings to send back for refinement"}},
+    {{"label": "Override: these are acceptable, proceed anyway", "description": "Records your judgment as a Settled Decision; the critic cannot hold the design hostage over a call you've already made"}}
+  ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 11. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF selection == "Override: these are acceptable, proceed anyway":
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=user-override | decision=proceed despite critic findings | rationale=<user-provided> | binding=yes"
+    {tools.store_document}
+      doc_type="phase",
+      key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+      content=UPDATED_SHAPE_PHASE_MARKDOWN
+    )
+    Proceed to Step 12.
+
+  ELSE:
+    USER_FEEDBACK_MARKDOWN = [selection == "Address all..." → "Address all critic findings" |
+                               selection == "Address some..." → prompt for which findings, then record the selection]
+    {tools.store_shape_user_feedback}
+    Return to Step 5 (architect refines under USER direction, not autonomously — same
+    shape-act protocol exception stated at Step 8).
+```
+
+Option 3 matters: the critic must not be able to hold a design hostage over a judgment
+call the user has already made. It only has to be recorded.
+
+### Step 12: Shape Settled — Enter Detail Act
+
+```text
+SHAPE_GATE = "shape-settled"
+
+{tools.store_document}
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+  content=UPDATED_SHAPE_PHASE_MARKDOWN  (with "### Shape Gate" set to "shape-settled")
+)
+
+Display to user: "✓ Phase shape settled — entering detail act"
+
+Proceed to Step 13.
 ```
 
 ### Step 13: Initialize Refinement Loop
