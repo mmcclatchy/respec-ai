@@ -12,8 +12,8 @@
 **Already done?** `ls src/platform/templates/agents/design_conformance_reviewer.py` — file exists
 means complete.
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`, and the
-deviation-is-classified entry in `docs/v2/decisions.md` — that entry is the specification for this
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and the
+deviation-is-classified entry in `docs/phase-refactor/decisions.md` — that entry is the specification for this
 agent's judgment, and building a strict conformance checker instead is the obvious wrong turn.
 
 **Study the existing pattern before writing:** `src/platform/templates/agents/reviewer_contracts.py`

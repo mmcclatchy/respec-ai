@@ -10,8 +10,8 @@
 **Already done?** `grep -rn "Development Environment\|Test Organization" src/platform/templates/` —
 no output means this phase is complete.
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`. Findings F3, F4, F5, F6, F7,
-F10, F20 in `docs/v2/findings.md` are the evidence for everything below.
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`. Findings F3, F4, F5, F6, F7,
+F10, F20 in `docs/phase-refactor/findings.md` are the evidence for everything below.
 
 **First action:** write the seven tests in *Behaviors to pin*, run `uv run pytest`, and confirm B1,
 B3, B4, B5 fail. If any of them passes immediately, the test is not exercising the behavior — fix

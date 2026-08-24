@@ -11,7 +11,7 @@ returns output. Phase 4 is recommended but not strictly required.
 **Already done?** `ls src/platform/templates/commands/task_command.py` — "No such file" means
 complete.
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`. **Read the Traps section
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`. **Read the Traps section
 below before writing any code** — findings F13 and F14 describe failures that are silent or that
 brick the CLI, and both are easy to trigger accidentally here.
 

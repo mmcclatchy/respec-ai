@@ -46,7 +46,7 @@ The act exits only when the user approves **and** the critic passes on that vers
 `Phase.version` (finding F22).
 
 Two consequences: in the shape act, `refine` must route to the user rather than auto-refining, which
-is an explicit exception to the mandatory decision protocol at `phase_command.py:402-413` and must be
+is an explicit exception to the mandatory decision protocol at `phase_command.py:417-428` and must be
 stated as such. And an override option exists, so the critic cannot hold a design hostage over a
 judgment call the user has already made — it only has to be recorded.
 

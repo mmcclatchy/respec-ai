@@ -8,10 +8,23 @@
 **Prerequisites:** Phase 2 complete. Verify: `grep -n "module_layout" src/models/phase.py` returns
 output.
 
-**Already done?** `grep -rn "validate_document" src/mcp/tools/` — output means complete.
+**Already done?** `grep -n "phase_mode" src/platform/templates/commands/phase_command.py` — output
+means complete. (`validate_document` alone is not a reliable signal: it landed first as its own
+piece, see Progress below, before the gate flow that consumes it.)
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`, and **all of**
-`docs/v2/decisions.md` — this phase implements four decisions that were reversed during design
+**Progress as of 2026-08-24:** `validate_document` (`MCPModel.find_content_loss` +
+`DocumentToolsInterface.validate` + the MCP tool + `RespecAITool.VALIDATE_DOCUMENT`) is implemented
+and tested — this satisfies B1-B3. The `allow_frozen_field_edits` override on
+`store_phase`/`update_phase` (both backends) is implemented and tested at the state-manager layer —
+this satisfies B6 and half of B5 (the override works; the template-layer `source=user-edit` SD
+recording it's paired with in §4 does not exist yet). **Not started:** the two-act `phase_command.py`
+rewrite (§2-§5, B4, B7-B10), and `template_contract.py` extensions for B7-B10. Postgres parity for
+the frozen-field override was mirrored by hand but is untested — the postgres suite is skipped
+without a live DB in this environment; verify `tests/integration/test_state_manager_model_roundtrip.py`
+covers it (check whether its fixture accepts `allow_frozen_field_edits`) before relying on it.
+
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and **all of**
+`docs/phase-refactor/decisions.md` — this phase implements four decisions that were reversed during design
 (critic-after-approval, no decision cap, frozen-fields-repaired, reuse of the existing loop type).
 Implementing the pre-reversal version would look reasonable and be wrong. Findings F5, F7, F8, F9,
 F15, F16, F18, F22 apply.
@@ -115,7 +128,7 @@ Add `phase_mode` as a scalar input to both architect and critic, per the `phase2
 
 ### The protocol exception — state it explicitly
 
-`phase_command.py:402-413` declares that `refine` must never consult the user. **In the shape act
+`phase_command.py:417-428` declares that `refine` must never consult the user. **In the shape act
 only**, `refine` routes to the user instead of auto-refining. This must be written into the command
 as a named exception, not left implicit, or it reads as a violation of the mandatory decision
 protocol. The detail act keeps the current protocol verbatim.
@@ -178,7 +191,7 @@ reconciled markdown back to disk so MCP and disk agree byte-for-byte on exit.
 
 **Who wins:** disk wins at this gate and nowhere else; MCP is authoritative everywhere else.
 
-Amend the storage-restriction banner at `phase_command.py:772-786` to permit these gate writes.
+Amend the storage-restriction banner at `phase_command.py:805-819` to permit these gate writes.
 
 ## 5. Step 11 — the joint gate
 

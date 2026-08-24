@@ -10,8 +10,8 @@
 
 **Already done?** `grep -n "phase.md" src/platform/path_constants.py` — output means complete.
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`. Finding F19 in
-`docs/v2/findings.md` is the motivation.
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`. Finding F19 in
+`docs/phase-refactor/findings.md` is the motivation.
 
 **First action:** build the legacy-plan fixture described in B2 — a plan with *both*
 `phases/{name}.md` and a populated `phases/{name}/`. That is the data-loss case, and having it in

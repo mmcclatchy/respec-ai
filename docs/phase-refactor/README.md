@@ -11,12 +11,12 @@ If you have just picked this up with no prior context, this section is your entr
 
 **1. Read in this order.** All paths are relative to the repository root.
 
-1. `docs/v2/README.md` — this file. Problem, principles, phase index.
-2. `docs/v2/testing.md` — **required.** How to test in this codebase. Non-obvious, because
+1. `docs/phase-refactor/README.md` — this file. Problem, principles, phase index.
+2. `docs/phase-refactor/testing.md` — **required.** How to test in this codebase. Non-obvious, because
    respec-ai generates prompts and those resist ordinary behavioral testing.
-3. `docs/v2/findings.md` — skim now, return to it whenever a phase document asserts something
+3. `docs/phase-refactor/findings.md` — skim now, return to it whenever a phase document asserts something
    surprising about the codebase.
-4. `docs/v2/decisions.md` — read before questioning any design choice. Several were reversed during
+4. `docs/phase-refactor/decisions.md` — read before questioning any design choice. Several were reversed during
    design and the reasoning is recorded.
 5. The phase document you are implementing.
 

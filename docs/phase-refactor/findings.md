@@ -52,18 +52,18 @@ These matter because v2 has a human hand-editing `phase.md` at a gate. Silently 
 edits would be strictly worse than the opacity being fixed.
 
 **F7 — Headings are matched by substring, not equality.**
-`src/models/base.py:47` — `if line.startswith('## ') and h2_header in line:`
-`src/models/base.py:64` — `if lines[i].startswith('### ') and h3_header in lines[i]:`
+`src/models/base.py:51` — `if line.startswith('## ') and h2_header in line:`
+`src/models/base.py:74` — `if lines[i].startswith('### ') and h3_header in lines[i]:`
 Consequence: any section name that is a substring of another can be mismatched. All v2 section names
 must be audited for pairwise containment. Notably `Status` is a substring of `Shape Status`, which is
 why the metadata field is named `Shape Gate`.
 
 **F8 — A bare `---` line silently truncates a section.**
-`src/models/base.py:63` — the H2 scan terminates on `lines[i].strip() == '---'`. A user typing a
+`src/models/base.py:62` — the H2 scan terminates on `lines[i].strip() == '---'`. A user typing a
 horizontal rule mid-section loses everything after it, with no error.
 
 **F9 — Custom H3s under a mapped H2 are silently dropped.**
-`src/models/base.py:277-299` — only *unmapped H2* sections are captured into `additional_sections`.
+`src/models/base.py:279-299` — only *unmapped H2* sections are captured into `additional_sections`.
 An H3 the model does not know about, sitting under an H2 it does, vanishes on round trip.
 
 ## Frozen fields are already broken

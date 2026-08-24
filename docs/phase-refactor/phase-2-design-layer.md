@@ -10,7 +10,7 @@ returns output.
 
 **Already done?** `grep -n "module_layout" src/models/phase.py` — output means complete.
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`, and `docs/v2/decisions.md`
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and `docs/phase-refactor/decisions.md`
 (the seam-index and loop-type entries). Findings F1, F2, F7, F13 are the evidence.
 
 **First action:** write B3 — the field-by-field round-trip test — and run it against **postgres**,

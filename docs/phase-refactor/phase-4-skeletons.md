@@ -11,8 +11,8 @@ output.
 **Already done?** `grep -rn "skeleton" src/platform/templates/commands/phase_command.py` — output
 means complete.
 
-**Read first:** `docs/v2/README.md`, `docs/v2/testing.md`, `CLAUDE.md`, and the
-skeletons-in-the-codebase and create-only entries in `docs/v2/decisions.md`.
+**Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and the
+skeletons-in-the-codebase and create-only entries in `docs/phase-refactor/decisions.md`.
 
 **First action: write B1 — "an existing source file is never overwritten" — before any write path
 exists.** This is the most important test in the rework. A clobber destroys a user's working code and
@@ -130,7 +130,7 @@ Conventional-commit style per `CLAUDE.md`, no attribution lines.
 
 ### 4. Boundary amendment
 
-`phase_command.py:772-786` currently forbids the phase workflow from writing files mid-workflow.
+`phase_command.py:805-819` currently forbids the phase workflow from writing files mid-workflow.
 Amend to permit create-only skeleton writes at the gate, scoped to paths named in
 `### Skeleton Index` and `### Test List`.
 
