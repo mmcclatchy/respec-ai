@@ -435,7 +435,7 @@ class PostgresStateManager(StateManager):
         logger.info(f'mark_phases_inactive: Marked {count} phases as inactive for project {plan_name}')
         return count
 
-    async def store_phase(self, plan_name: str, phase: Phase) -> str:
+    async def store_phase(self, plan_name: str, phase: Phase, allow_frozen_field_edits: bool = False) -> str:
         normalized_name = normalize_phase_name(phase.phase_name)
 
         async with db_pool.acquire() as conn:
@@ -449,12 +449,18 @@ class PostgresStateManager(StateManager):
             if existing:
                 # Preserve frozen fields the same way in-memory's store_phase and both
                 # backends' update_phase do: only once a frozen field holds real content,
-                # so a still-placeholder field can still be populated (F10/F12).
-                frozen_fields = {
-                    field: existing[field]
-                    for field in FROZEN_PHASES_FIELDS
-                    if existing[field] != FROZEN_FIELD_DEFAULTS[field]
-                }
+                # so a still-placeholder field can still be populated (F10/F12). The
+                # Phase 3 human gate is the sanctioned exception - allow_frozen_field_edits
+                # lets a user edit through.
+                frozen_fields = (
+                    {}
+                    if allow_frozen_field_edits
+                    else {
+                        field: existing[field]
+                        for field in FROZEN_PHASES_FIELDS
+                        if existing[field] != FROZEN_FIELD_DEFAULTS[field]
+                    }
+                )
                 phase = phase.model_copy(
                     update={
                         **frozen_fields,
@@ -560,16 +566,22 @@ class PostgresStateManager(StateManager):
 
         return phase.phase_name
 
-    async def update_phase(self, plan_name: str, phase_name: str, updated_phase: Phase) -> str:
+    async def update_phase(
+        self, plan_name: str, phase_name: str, updated_phase: Phase, allow_frozen_field_edits: bool = False
+    ) -> str:
         existing_phase = await self.get_phase(plan_name, phase_name)
         existing_data = existing_phase.model_dump()
         new_data = updated_phase.model_dump()
 
-        frozen_fields = {
-            field: existing_data[field]
-            for field in FROZEN_PHASES_FIELDS
-            if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
-        }
+        frozen_fields = (
+            {}
+            if allow_frozen_field_edits
+            else {
+                field: existing_data[field]
+                for field in FROZEN_PHASES_FIELDS
+                if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
+            }
+        )
 
         final_phase = Phase(
             **{

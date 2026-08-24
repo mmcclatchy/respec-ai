@@ -10,7 +10,7 @@ from src.utils.loop_state import MCPResponse
 class RoadmapTools(DocumentToolsInterface):
     document_model = Roadmap
 
-    async def store(self, key: str, content: str) -> MCPResponse:
+    async def store(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')
 
@@ -59,7 +59,7 @@ class RoadmapTools(DocumentToolsInterface):
         except Exception as e:
             raise ToolError(f'Failed to list roadmaps: {str(e)}')
 
-    async def update(self, key: str, content: str) -> MCPResponse:
+    async def update(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         return await self.store(key, content)
 
     async def delete(self, key: str) -> MCPResponse:

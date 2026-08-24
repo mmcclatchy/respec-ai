@@ -493,6 +493,70 @@ class TestUpdatePhaseFrozenFields(TestInMemoryStateManager):
         assert retrieved.dependencies == 'Real dependencies from architect'
         assert retrieved.deliverables == 'Real deliverables from architect'
 
+
+class TestUpdatePhaseFrozenFieldGateOverride(TestInMemoryStateManager):
+    # Phase 3, decisions.md "Frozen fields are repaired, not deleted": the freeze binds
+    # *agents only*. The human gate is the sanctioned place to change objectives/scope/
+    # dependencies/deliverables, via an explicit allow_frozen_field_edits override - the
+    # same preserve-when-non-placeholder mechanism cannot otherwise tell an agent write
+    # from a user gate write apart. B5 and B6 are written as a pair against the same
+    # setup: only the override flag differs.
+    @pytest.mark.asyncio
+    async def test_user_edit_at_the_gate_overrides_frozen_fields(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
+    ) -> None:
+        plan_name = 'test-project'
+        await state_manager.store_phase(plan_name, sample_phase)
+
+        user_edited = sample_phase.model_copy(update={'objectives': 'User-edited objectives at the gate'})
+        await state_manager.update_phase(
+            plan_name, sample_phase.phase_name, user_edited, allow_frozen_field_edits=True
+        )
+
+        retrieved = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+        assert retrieved.objectives == 'User-edited objectives at the gate'
+
+    @pytest.mark.asyncio
+    async def test_agent_write_still_cannot_change_frozen_fields_even_when_gate_is_open_elsewhere(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
+    ) -> None:
+        plan_name = 'test-project'
+        await state_manager.store_phase(plan_name, sample_phase)
+
+        agent_drifted = sample_phase.model_copy(update={'objectives': 'Agent drifted objectives'})
+        await state_manager.update_phase(plan_name, sample_phase.phase_name, agent_drifted)
+
+        retrieved = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+        assert retrieved.objectives == 'Test objectives'
+
+    @pytest.mark.asyncio
+    async def test_store_phase_user_edit_at_the_gate_overrides_frozen_fields(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
+    ) -> None:
+        plan_name = 'test-project'
+        await state_manager.store_phase(plan_name, sample_phase)
+
+        user_edited = sample_phase.model_copy(update={'scope': 'User-edited scope at the gate'})
+        await state_manager.store_phase(plan_name, user_edited, allow_frozen_field_edits=True)
+
+        retrieved = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+        assert retrieved.scope == 'User-edited scope at the gate'
+
+    @pytest.mark.asyncio
+    async def test_store_phase_agent_write_still_cannot_change_frozen_fields(
+        self, state_manager: InMemoryStateManager, sample_phase: Phase
+    ) -> None:
+        plan_name = 'test-project'
+        await state_manager.store_phase(plan_name, sample_phase)
+
+        agent_drifted = sample_phase.model_copy(update={'scope': 'Agent drifted scope'})
+        await state_manager.store_phase(plan_name, agent_drifted)
+
+        retrieved = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+        assert retrieved.scope == 'Test scope'
+
+
+class TestUpdatePhaseFrozenFieldsContinued(TestInMemoryStateManager):
     @pytest.mark.asyncio
     async def test_update_phase_handles_mixed_placeholder_and_real_content(
         self, state_manager: InMemoryStateManager

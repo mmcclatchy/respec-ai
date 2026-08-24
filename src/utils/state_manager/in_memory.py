@@ -291,7 +291,7 @@ class InMemoryStateManager(StateManager):
         return count
 
     # Unified Phase Management (single source of truth)
-    async def store_phase(self, plan_name: str, phase: Phase) -> str:
+    async def store_phase(self, plan_name: str, phase: Phase, allow_frozen_field_edits: bool = False) -> str:
         self._log_state_snapshot('store_phase', 'ENTRY')
         logger.info(
             f'store_phase: plan_name={plan_name}, '
@@ -317,12 +317,17 @@ class InMemoryStateManager(StateManager):
 
             # Preserve frozen fields the same way update_phase does: a frozen field is
             # preserved only once it holds real content, so a still-placeholder field
-            # can still be populated (finding F10/F12).
-            frozen_fields = {
-                field: existing_data[field]
-                for field in FROZEN_PHASES_FIELDS
-                if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
-            }
+            # can still be populated (finding F10/F12). The Phase 3 human gate is the
+            # sanctioned exception - allow_frozen_field_edits lets a user edit through.
+            frozen_fields = (
+                {}
+                if allow_frozen_field_edits
+                else {
+                    field: existing_data[field]
+                    for field in FROZEN_PHASES_FIELDS
+                    if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
+                }
+            )
 
             phase = Phase(
                 **{
@@ -346,7 +351,9 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('store_phase', 'EXIT')
         return phase.phase_name
 
-    async def update_phase(self, plan_name: str, phase_name: str, updated_phase: Phase) -> str:
+    async def update_phase(
+        self, plan_name: str, phase_name: str, updated_phase: Phase, allow_frozen_field_edits: bool = False
+    ) -> str:
         self._log_state_snapshot('update_phase', 'ENTRY')
         logger.info(
             f'update_phase: plan_name={plan_name}, '
@@ -365,11 +372,15 @@ class InMemoryStateManager(StateManager):
         existing_data = existing_phase.model_dump()
         new_data = updated_phase.model_dump()
 
-        frozen_fields = {
-            field: existing_data[field]
-            for field in FROZEN_PHASES_FIELDS
-            if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
-        }
+        frozen_fields = (
+            {}
+            if allow_frozen_field_edits
+            else {
+                field: existing_data[field]
+                for field in FROZEN_PHASES_FIELDS
+                if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
+            }
+        )
 
         final_phase = Phase(
             **{

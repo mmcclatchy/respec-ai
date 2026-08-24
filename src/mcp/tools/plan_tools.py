@@ -11,7 +11,7 @@ from src.utils.loop_state import MCPResponse
 class PlanTools(DocumentToolsInterface):
     document_model = Plan
 
-    async def store(self, key: str, content: str) -> MCPResponse:
+    async def store(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')
 
@@ -69,7 +69,7 @@ class PlanTools(DocumentToolsInterface):
         except Exception as e:
             raise ToolError(f'Failed to list plans: {str(e)}')
 
-    async def update(self, key: str, content: str) -> MCPResponse:
+    async def update(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')
 

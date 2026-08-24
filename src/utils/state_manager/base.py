@@ -107,12 +107,16 @@ class StateManager(ABC):
 
     # Unified Phase Management (replaces InitialPhase + Phase separation)
     @abstractmethod
-    async def store_phase(self, plan_name: str, phase: Phase) -> str: ...
+    async def store_phase(self, plan_name: str, phase: Phase, allow_frozen_field_edits: bool = False) -> str: ...
 
     @abstractmethod
-    async def update_phase(self, plan_name: str, phase_name: str, updated_phase: Phase) -> str:
+    async def update_phase(
+        self, plan_name: str, phase_name: str, updated_phase: Phase, allow_frozen_field_edits: bool = False
+    ) -> str:
         """
-        MUST not mutate the following fields:
+        MUST not mutate the following fields unless allow_frozen_field_edits=True (the
+        Phase 3 human gate exception - decisions.md "Frozen fields are repaired, not
+        deleted"):
             - objectives
             - scope
             - dependencies

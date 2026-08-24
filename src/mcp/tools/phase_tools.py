@@ -125,14 +125,14 @@ class PhaseTools(DocumentToolsInterface):
             raise ToolError(f'Invalid phase key: {key} (expected: plan-name/phase-name)')
         return parts[0], parts[1]
 
-    async def store(self, key: str, content: str) -> MCPResponse:
+    async def store(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')
 
         try:
             plan_name, phase_name = self._parse_key(key)
             phase = Phase.parse_markdown(content)
-            await self.state.store_phase(plan_name, phase)
+            await self.state.store_phase(plan_name, phase, allow_frozen_field_edits=allow_frozen_field_edits)
 
             return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=phase_name)
         except ValidationError as e:
@@ -149,14 +149,16 @@ class PhaseTools(DocumentToolsInterface):
 
         return await self.list_phases(parent_key)
 
-    async def update(self, key: str, content: str) -> MCPResponse:
+    async def update(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')
 
         try:
             plan_name, phase_name = self._parse_key(key)
             phase = Phase.parse_markdown(content)
-            result = await self.state.update_phase(plan_name, phase_name, phase)
+            result = await self.state.update_phase(
+                plan_name, phase_name, phase, allow_frozen_field_edits=allow_frozen_field_edits
+            )
 
             return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=result)
         except ValidationError as e:

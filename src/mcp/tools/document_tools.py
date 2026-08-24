@@ -26,7 +26,9 @@ class DocumentTools:
             DocumentType.TASK: self.task_tools,
         }
 
-    async def store_document(self, doc_type: DocumentType, key: str, content: str) -> str:
+    async def store_document(
+        self, doc_type: DocumentType, key: str, content: str, allow_frozen_field_edits: bool = False
+    ) -> str:
         if not key or not content:
             raise ToolError('key and content cannot be empty')
 
@@ -34,7 +36,7 @@ class DocumentTools:
         if not tool:
             raise ToolError(f'Unknown document type: {doc_type}')
 
-        response = await tool.store(key, content)
+        response = await tool.store(key, content, allow_frozen_field_edits=allow_frozen_field_edits)
         return response.message
 
     async def validate_document(self, doc_type: DocumentType, content: str) -> MCPResponse:
@@ -66,7 +68,9 @@ class DocumentTools:
 
         return await tool.list(parent_key)
 
-    async def update_document(self, doc_type: DocumentType, key: str, content: str) -> str:
+    async def update_document(
+        self, doc_type: DocumentType, key: str, content: str, allow_frozen_field_edits: bool = False
+    ) -> str:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')
 
@@ -74,7 +78,7 @@ class DocumentTools:
         if not tool:
             raise ToolError(f'Unknown document type: {doc_type}')
 
-        response = await tool.update(key, content)
+        response = await tool.update(key, content, allow_frozen_field_edits=allow_frozen_field_edits)
         return response.message
 
     async def delete_document(self, doc_type: DocumentType, key: str) -> MCPResponse:
@@ -106,7 +110,9 @@ def register_document_tools(mcp: FastMCP) -> None:
         return _tools
 
     @mcp.tool()
-    async def store_document(doc_type: DocumentType, key: str, content: str, ctx: Context) -> str:
+    async def store_document(
+        doc_type: DocumentType, key: str, content: str, ctx: Context, allow_frozen_field_edits: bool = False
+    ) -> str:
         """Store document with hierarchical key.
 
         Generic document storage for Plan, Roadmap, Phase, and Task documents.
@@ -116,13 +122,18 @@ def register_document_tools(mcp: FastMCP) -> None:
         - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key (e.g., "plan-name/phase-name" or "plan-name/phase-name/task-name")
         - content: Complete document in markdown format
+        - allow_frozen_field_edits: Phase only. Set True only at the human design gate to
+          let a user edit override objectives/scope/dependencies/deliverables. An agent
+          write must never set this.
 
         Returns:
         - str: Confirmation message
         """
         await ctx.info(f'Storing {doc_type.value} document at {key}')
         try:
-            result = await _get_tools(ctx).store_document(doc_type, key, content)
+            result = await _get_tools(ctx).store_document(
+                doc_type, key, content, allow_frozen_field_edits=allow_frozen_field_edits
+            )
             await ctx.info(f'Stored {doc_type.value} document at {key}')
             return result
         except Exception as e:
@@ -207,7 +218,9 @@ def register_document_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def update_document(doc_type: DocumentType, key: str, content: str, ctx: Context) -> str:
+    async def update_document(
+        doc_type: DocumentType, key: str, content: str, ctx: Context, allow_frozen_field_edits: bool = False
+    ) -> str:
         """Update existing document with new content.
 
         Used during refinement loops when agents improve content.
@@ -216,13 +229,18 @@ def register_document_tools(mcp: FastMCP) -> None:
         - doc_type: Type of document ("plan", "phase", "task", "roadmap")
         - key: Hierarchical key to document
         - content: Updated markdown content
+        - allow_frozen_field_edits: Phase only. Set True only at the human design gate to
+          let a user edit override objectives/scope/dependencies/deliverables. An agent
+          write must never set this.
 
         Returns:
         - str: Confirmation message
         """
         await ctx.info(f'Updating {doc_type.value} document at {key}')
         try:
-            result = await _get_tools(ctx).update_document(doc_type, key, content)
+            result = await _get_tools(ctx).update_document(
+                doc_type, key, content, allow_frozen_field_edits=allow_frozen_field_edits
+            )
             await ctx.info(f'Updated {doc_type.value} document at {key}')
             return result
         except Exception as e:
