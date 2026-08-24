@@ -156,6 +156,10 @@ rolling back the destructive one does not take the design layer with it.
   reference when a phase document seems to assume something surprising.
 - **[decisions.md](decisions.md)** — the decision log with rejected alternatives and rationale,
   including four positions that changed during design. Read this before re-opening a settled question.
+- **[deferred-issues.md](deferred-issues.md)** — small, real issues found while implementing a phase
+  and deliberately left unfixed because they were out of that phase's scope. Check it when starting a
+  phase (something logged against an earlier phase might now be in scope) and add to it instead of
+  scope-creeping the phase you're on.
 
 ## How every phase is built
 

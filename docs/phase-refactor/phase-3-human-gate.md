@@ -54,12 +54,9 @@ below for what is verified and what is still only structural/template-contract-l
   and pinned by tests (`test_shape_mode_marks_consequential_internals_for_the_skeleton_opt_in_prompt`,
   `test_create_phase_command_tools_grants_write_for_the_shape_act_edit_gate`,
   `test_shape_mode_enforces_od_entry_format`).
-- **Pre-existing, out of Phase 3's scope, flagged for a separate cleanup:** `phase_architect.py`'s
-  constraint-reading logic (`SOURCE 2`/`SOURCE 3`, search `(legacy)` and `backward compatibility`)
-  carries fallback parsing for an older `"Claude Plan:"` marker and an ad-hoc directive format.
-  This predates Phase 3 and isn't part of this phase's diff, but this project has no users and no
-  backwards-compatibility requirement — it's a candidate for removal in its own commit, not folded
-  into Phase 3.
+- **Pre-existing, out of Phase 3's scope:** `phase_architect.py`'s legacy `"Claude Plan:"` /
+  ad-hoc-directive constraint-parsing fallback — logged in [deferred-issues.md](deferred-issues.md)
+  rather than fixed here, since it predates Phase 3 and isn't part of this phase's diff.
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and **all of**
 `docs/phase-refactor/decisions.md` — this phase implements four decisions that were reversed during design
