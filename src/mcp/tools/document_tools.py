@@ -37,6 +37,16 @@ class DocumentTools:
         response = await tool.store(key, content)
         return response.message
 
+    async def validate_document(self, doc_type: DocumentType, content: str) -> MCPResponse:
+        if not content:
+            raise ToolError('content cannot be empty')
+
+        tool = self._tool_map.get(doc_type)
+        if not tool:
+            raise ToolError(f'Unknown document type: {doc_type}')
+
+        return await tool.validate(content)
+
     async def get_document(
         self, doc_type: DocumentType, key: str | None = None, loop_id: str | None = None
     ) -> MCPResponse:
@@ -117,6 +127,32 @@ def register_document_tools(mcp: FastMCP) -> None:
             return result
         except Exception as e:
             await ctx.error(f'Failed to store document: {str(e)}')
+            raise
+
+    @mcp.tool()
+    async def validate_document(doc_type: DocumentType, content: str, ctx: Context) -> MCPResponse:
+        """Check whether storing this content would silently lose any of the user's edits.
+
+        Round-trips the markdown against the document's known headings and reports any
+        heading whose content would be truncated or dropped by the parser (e.g. a bare
+        `---` mid-section, or a custom `###` under a heading the model already maps).
+        Does not store anything.
+
+        Parameters:
+        - doc_type: Type of document ("plan", "phase", "task", "roadmap")
+        - content: Candidate markdown content to check before storing
+
+        Returns:
+        - MCPResponse: status COMPLETED with an empty report if nothing would be lost,
+          otherwise USER_INPUT with one line per affected heading in message
+        """
+        await ctx.info(f'Validating {doc_type.value} document')
+        try:
+            result = await _get_tools(ctx).validate_document(doc_type, content)
+            await ctx.info(f'Validated {doc_type.value} document')
+            return result
+        except Exception as e:
+            await ctx.error(f'Failed to validate document: {str(e)}')
             raise
 
     @mcp.tool()

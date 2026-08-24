@@ -1,20 +1,17 @@
-"""Known defects in Phase.parse_markdown, pinned so Phase 3's validate_document has a
-concrete test to flip once it repairs them.
+"""Known defects in Phase.parse_markdown, now reported rather than silently eaten.
 
-See docs/phase-refactor/findings.md F8, F9 and testing.md's guidance on inverted tests:
-these assert today's defective behavior on purpose, not the desired behavior, because a
-human will be hand-editing phase.md at the Phase 3 gate and silently losing content is
-strictly worse than the current opacity.
+See docs/phase-refactor/findings.md F8, F9. Phase 3's validate_document
+(Phase.find_content_loss, see test_content_loss_detection.py) does not repair
+parse_markdown - the Step 9 gate flow (fix-and-retry / drop-those-edits / abort) only
+makes sense if truncation still happens on the live parse path. Instead it reports the
+loss, so a human hand-editing phase.md at the gate is told rather than overwritten.
 """
 
 from src.models.phase import Phase
 
 
-def test_bare_hr_truncates_section_KNOWN_DEFECT_inverted_in_phase_3() -> None:
-    # Finding F8: base.py's H2/H3 content scan stops at a bare `---` line. Phase 3's
-    # validate_document is expected to repair this (e.g. by requiring `---` to only
-    # appear as YAML frontmatter delimiters, or by scanning structurally instead of by
-    # line). When it does, invert this assertion to check the lost content survives.
+def test_bare_hr_truncates_section_but_validate_document_reports_it() -> None:
+    # Finding F8: base.py's H2/H3 content scan stops at a bare `---` line.
     markdown = """# Phase: sample-phase
 
 ## Overview
@@ -27,17 +24,17 @@ Lost content that must never appear after the separator.
 """
 
     phase = Phase.parse_markdown(markdown)
+    issues = Phase.find_content_loss(markdown)
 
     assert phase.objectives == 'Real objective content.'
     assert 'Lost content' not in (phase.objectives or '')
+    assert any('Objectives' in issue for issue in issues)
 
 
-def test_custom_h3_under_a_mapped_h2_is_dropped_KNOWN_DEFECT_inverted_in_phase_3() -> None:
+def test_custom_h3_under_a_mapped_h2_is_dropped_but_validate_document_reports_it() -> None:
     # Finding F9: only *unmapped* H2 sections are captured into additional_sections.
     # A custom H3 nested under an H2 the model already knows (e.g. "## Implementation")
-    # has nowhere to land and vanishes on round trip. Phase 3's validate_document is
-    # expected to capture these; when it does, invert this assertion to check the
-    # custom H3 content is preserved somewhere.
+    # has nowhere to land and vanishes on round trip.
     markdown = """# Phase: sample-phase
 
 ## Overview
@@ -59,6 +56,7 @@ This custom H3 content is silently dropped.
 """
 
     phase = Phase.parse_markdown(markdown)
+    issues = Phase.find_content_loss(markdown)
 
     assert phase.testing_strategy == 'Strategy content.'
     assert 'This custom H3 content is silently dropped.' not in (phase.testing_strategy or '')
@@ -66,3 +64,4 @@ This custom H3 content is silently dropped.
     for value in phase.model_dump().values():
         if isinstance(value, str):
             assert 'This custom H3 content is silently dropped.' not in value
+    assert any('My Custom Notes' in issue for issue in issues)

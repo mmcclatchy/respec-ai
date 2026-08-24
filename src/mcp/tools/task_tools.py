@@ -9,6 +9,8 @@ from src.utils.loop_state import MCPResponse
 
 
 class TaskTools(DocumentToolsInterface):
+    document_model = Task
+
     def _parse_task_key(self, key: str) -> tuple[str, str]:
         parts = key.split('/')
         if len(parts) < 3:

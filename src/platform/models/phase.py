@@ -17,6 +17,7 @@ class PhaseCommandTools(CommandToolsModel):
         RespecAITool.DECIDE_LOOP_NEXT_ACTION,
         RespecAITool.GET_LOOP_STATUS,
         RespecAITool.STORE_DOCUMENT,
+        RespecAITool.VALIDATE_DOCUMENT,
         RespecAITool.LINK_LOOP_TO_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.GET_DOCUMENT,

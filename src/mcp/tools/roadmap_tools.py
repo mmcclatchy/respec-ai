@@ -8,6 +8,8 @@ from src.utils.loop_state import MCPResponse
 
 
 class RoadmapTools(DocumentToolsInterface):
+    document_model = Roadmap
+
     async def store(self, key: str, content: str) -> MCPResponse:
         if not key or not content:
             raise ToolError('Key and content cannot be empty')

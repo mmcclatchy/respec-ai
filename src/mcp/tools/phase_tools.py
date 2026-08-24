@@ -9,6 +9,8 @@ from src.utils.loop_state import MCPResponse
 
 
 class PhaseTools(DocumentToolsInterface):
+    document_model = Phase
+
     async def get_phase_by_path_or_loop(self, path: str | None = None, loop_id: str | None = None) -> MCPResponse:
         try:
             if loop_id:

@@ -108,6 +108,7 @@ class RespecAITool(StrEnum):
 
     # Document Management Tools (Generic)
     STORE_DOCUMENT = f'{_RESPEC_AI_PREFIX}store_document'
+    VALIDATE_DOCUMENT = f'{_RESPEC_AI_PREFIX}validate_document'
     GET_DOCUMENT = f'{_RESPEC_AI_PREFIX}get_document'
     LIST_DOCUMENTS = f'{_RESPEC_AI_PREFIX}list_documents'
     UPDATE_DOCUMENT = f'{_RESPEC_AI_PREFIX}update_document'

@@ -89,6 +89,93 @@ class MCPModel(BaseModel, ABC):
         return content if content else ''
 
     @classmethod
+    def _extract_raw_section_verbatim(cls, markdown: str, path: tuple[str, ...]) -> str:
+        """Ground truth for what the user actually wrote under a heading path.
+
+        Unlike `_extract_content_from_raw_markdown`, this does not stop at a bare '---'
+        and matches heading text exactly rather than by substring. It exists so
+        `find_content_loss` can detect findings F7-F9 by comparing this against what
+        the (unrepaired) parser actually captures.
+        """
+        h2_header = path[0]
+        h3_header = path[1] if len(path) > 1 else None
+
+        lines = markdown.split('\n')
+
+        h2_idx = next(
+            (i for i, line in enumerate(lines) if line.startswith('## ') and line[3:].strip() == h2_header), None
+        )
+        if h2_idx is None:
+            return ''
+
+        if h3_header is None:
+            end = next((i for i in range(h2_idx + 1, len(lines)) if lines[i].startswith('## ')), len(lines))
+            return '\n'.join(lines[h2_idx + 1 : end]).strip()
+
+        h3_idx = None
+        for i in range(h2_idx + 1, len(lines)):
+            if lines[i].startswith('## '):
+                break
+            if lines[i].startswith('### ') and lines[i][4:].strip() == h3_header:
+                h3_idx = i
+                break
+
+        if h3_idx is None:
+            return ''
+
+        end = next(
+            (
+                i
+                for i in range(h3_idx + 1, len(lines))
+                if lines[i].startswith('## ') or lines[i].startswith('### ')
+            ),
+            len(lines),
+        )
+        return '\n'.join(lines[h3_idx + 1 : end]).strip()
+
+    @classmethod
+    def _find_orphan_h3_headings(cls, markdown: str) -> list[str]:
+        """H3 headings under a mapped H2 that have no landing spot in the mapping (F9)."""
+        mapped_h3_by_h2: dict[str, set[str]] = {}
+        for header_path in cls.HEADER_FIELD_MAPPING.values():
+            if len(header_path) > 1:
+                mapped_h3_by_h2.setdefault(header_path[0], set()).add(header_path[1])
+
+        orphans: list[str] = []
+        current_h2: str | None = None
+        for line in markdown.split('\n'):
+            if line.startswith('## '):
+                current_h2 = line[3:].strip()
+            elif line.startswith('### ') and current_h2 in mapped_h3_by_h2:
+                h3_text = line[4:].strip()
+                if h3_text not in mapped_h3_by_h2[current_h2]:
+                    orphans.append(f'{current_h2} > {h3_text}')
+
+        return orphans
+
+    @classmethod
+    def find_content_loss(cls, markdown: str) -> list[str]:
+        """Report headings whose content the parser would silently drop or truncate.
+
+        Does not change parsing behavior - `parse_markdown` still truncates on a bare
+        '---' and still drops orphan H3s. This only tells the caller where it happened,
+        so a human hand-editing a document at a gate is told rather than overwritten.
+        """
+        issues: list[str] = []
+
+        for header_path in cls.HEADER_FIELD_MAPPING.values():
+            ground_truth = cls._extract_raw_section_verbatim(markdown, header_path)
+            captured = cls._extract_content_from_raw_markdown(markdown, header_path)
+            if ground_truth and ground_truth != captured:
+                heading = ' > '.join(header_path)
+                issues.append(f'{heading}: content present in the input is missing or truncated after parsing')
+
+        for orphan_heading in cls._find_orphan_h3_headings(markdown):
+            issues.append(f'{orphan_heading}: not a recognized field under this section and will be dropped')
+
+        return issues
+
+    @classmethod
     def _extract_content_by_header_path(cls, tree: SyntaxTreeNode, path: tuple[str, ...]) -> str:
         h2_header = path[0]
         h3_header = path[1] if len(path) > 1 else None
