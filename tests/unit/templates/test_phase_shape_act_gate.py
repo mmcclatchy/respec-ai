@@ -40,6 +40,12 @@ def test_shape_act_does_not_close_until_user_approves_and_critic_passes(adapter:
 
 @pytest.mark.parametrize('adapter', _ADAPTERS)
 def test_design_changed_after_approval_requires_reapproval(adapter: TuiAdapter) -> None:
+    # This pins that the guard text exists, not that the mechanism can currently fire:
+    # PhaseCriticAgentTools.respec_ai_tools grants STORE_CRITIC_FEEDBACK but not
+    # UPDATE_DOCUMENT, so nothing bumps Phase.version between Step 9's store and Step
+    # 11's check today. The design wants this as cheap insurance for if/when the critic
+    # gains write access - keep it, but don't read this test as proof the branch is
+    # reachable yet.
     contract = template_contract(_phase_template(adapter))
     body = contract.step_body('11')
 

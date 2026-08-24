@@ -8,31 +8,38 @@
 **Prerequisites:** Phase 2 complete. Verify: `grep -n "module_layout" src/models/phase.py` returns
 output.
 
-**Already done?** `grep -n "^### Step 4:" src/platform/templates/commands/phase_command.py` — output
-means the shape act exists (there is currently no Step 4; Step 3 jumps straight to Step 13).
-`validate_document` and the Step 3/13-19 renumbering alone are not reliable signals: they landed
-first as their own pieces, see Progress below, before the shape act that needs them.
+**Already done?** `grep -n "phase_mode" src/platform/templates/agents/phase_architect.py` — output
+means complete. Steps 4-12 (the shape act template itself) are fully built and tested but **dormant**:
+Step 3 is intentionally still a passthrough stub, because the agents it would invoke don't understand
+`phase_mode` yet. See Progress and the blocker below before treating this phase as anywhere near done.
 
-**Progress as of 2026-08-24:**
+**Progress as of 2026-08-24 — template layer complete, agent layer not started:**
 - `validate_document` (`MCPModel.find_content_loss` + `DocumentToolsInterface.validate` + the MCP
   tool + `RespecAITool.VALIDATE_DOCUMENT`) is implemented and tested — satisfies B1-B3.
 - `allow_frozen_field_edits` on `store_phase`/`update_phase` (both backends) is implemented and
-  tested at the state-manager layer — satisfies B6 and half of B5 (the override works; the
-  template-layer `source=user-edit` SD recording it's paired with in §4 does not exist yet). Postgres
-  parity was mirrored by hand but is untested — the postgres suite is skipped without a live DB in
-  this environment; verify `tests/integration/test_state_manager_model_roundtrip.py` covers it (check
-  whether its fixture accepts `allow_frozen_field_edits`) before relying on it.
-- `phase_command.py` has been renumbered: the old Step 4-10 flow (init loop, architect, critic
-  quality loop, research synthesis, storage, task generation, completion contract) now lives at Step
-  13-19, unchanged in content. A new Step 3 exists as an explicit `TODO(phase-3)` stub that always
-  proceeds to Step 13 — it reserves Steps 4-12 for the shape act without inventing behavior. This was
-  a pure renumbering commit verified against the full suite plus direct `TemplateCoordinator`
-  rendering for all three TUI adapters; it does not satisfy any behavior on its own.
+  tested at the state-manager layer, and Step 9 diffs frozen-field changes into `source=user-edit` SD
+  entries and stores through `allow_frozen_field_edits=true` — **B5 and B6 are both satisfied.**
+  Postgres parity for the state-manager layer was mirrored by hand but is untested — the postgres
+  suite is skipped without a live DB in this environment; verify
+  `tests/integration/test_state_manager_model_roundtrip.py` covers it before relying on it.
+- `phase_command.py` is fully renumbered and the entire shape act (Steps 4-12: `SHAPE_LOOP_ID` init,
+  architect/critic `phase_mode="shape"` invocations, the design conversation, skeleton opt-in, the
+  edit gate, the joint gate) is written and tested — B4, B7, B9, B10 pass against it (see
+  `tests/unit/templates/test_phase_shape_act_gate.py`; B8's guard exists but its trigger mechanism is
+  not currently reachable — see that test's comment). `tests/support/template_contract.py` gained
+  `step_body()` and `outcome_condition()` to make this possible without string-literal tests.
+- **Blocker, why Step 3 is still a stub:** `phase-architect` and `phase-critic`
+  (`src/platform/templates/agents/`) have zero `phase_mode` handling. An earlier pass in this session
+  briefly made Step 3's branch live before checking this, which would have sent real runs into the
+  shape act against agents that ignore the flag — reverted. Do not re-enable Step 3's branch until
+  `phase_mode` is wired into both agent templates.
 
-**Not started:** Steps 4-12 (the shape act itself: `SHAPE_LOOP_ID` init, architect `phase_mode="shape"`,
-the design conversation, skeleton opt-in, the edit gate, critic `phase_mode="shape"`, the joint gate),
-adding `phase_mode="detail"` to the now-renumbered Steps 14/15, and the `template_contract.py`
-extensions for B7-B10. This is B4, B7, B8, B9, B10, and the remaining half of B5.
+**Not started:** `phase_mode` in `phase_architect.py` (shape mode: produce Module Layout / Skeleton
+Index / Collaboration And Wiring / Test List / Open Design Decisions, not full implementation detail)
+and `phase_critic.py` (shape mode: judge the shape, not FSDD-complete detail), mirroring the
+`validation_mode` enforcement banner precedent at `phase_critic.py:257-276`. Once that lands, Step 3's
+stub becomes the real branch shown inline in its TODO comment
+(`phase_command.py`, search `TODO(phase-3)`).
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and **all of**
 `docs/phase-refactor/decisions.md` — this phase implements four decisions that were reversed during design
@@ -40,27 +47,19 @@ extensions for B7-B10. This is B4, B7, B8, B9, B10, and the remaining half of B5
 Implementing the pre-reversal version would look reasonable and be wrong. Findings F5, F7, F8, F9,
 F15, F16, F18, F22 apply.
 
-**First action (done — see Progress above):** build `validate_document` and invert Phase 0's B6/B7
-tests. It is ordinary Python on strings, fully testable without prompt machinery, and every later
-step of this phase depends on it. Do not start the gate flow until the validator is green.
+**Next action:** wire `phase_mode` into `phase_architect.py` and `phase_critic.py` as its own commit,
+separate from any further command-template changes — a mismatch between what the command passes and
+what the agent declares should show up as a one-file diff, not be tangled with template prose changes.
+Write a test first that `phase_architect.py`/`phase_critic.py` contains `phase_mode` handling (currently
+red — `grep -c phase_mode` on both returns 0). Only after that lands should Step 3's stub be replaced
+with its inline TODO branch, and B7's "does the act actually gate a real agent" claim be re-verified
+end to end.
 
-**Next action:** replace Step 3's `TODO(phase-3)` stub with the real shape act (Steps 4-12) —
-`phase_command.py:278-296` is the current Step 3, followed immediately by Step 13 at `:297`. Build in
-this order:
-1. Step 4 — `SHAPE_LOOP_ID` init (`loop_type="phase"`, finding F15) + link to document, mirroring the
-   pattern already at Steps 13/13.2.
-2. Step 5 — architect invocation with the new `phase_mode="shape"` scalar (§2), mirroring Step 14 but
-   with the mode flag added there too on the detail side.
-3. Steps 6-9 — the design conversation (§3) and edit gate (§4). Build `validate_document`'s call site
-   into Step 9 exactly as designed: fix-and-retry (max 3) / drop-those-edits / abort.
-4. Step 10 — critic on the approved design, `phase_mode="shape"`.
-5. Steps 11-12 — the joint gate (§5) and the `shape-settled` transition into Step 13.
-6. Only then extend `tests/support/template_contract.py` for B7-B10 — its current four methods
-   (`declared_tools`, `invoked_tools`, `decision_branch`, `blocker_conditions`) don't yet cover the
-   `APPROVED_VERSION` comparison the joint gate needs.
-
-Write B4-B10 as failing tests before each corresponding step, per the *Behaviors to pin* table below —
-do not build the whole shape act and then backfill tests.
+**Not yet run:** `uv run respec-ai regenerate` itself — CLI scaffolding (`respec-ai standards init`)
+blocked it in this environment on an unrelated config-validation issue. Substituted direct
+`TemplateCoordinator.generate_command_template()` rendering across all three TUI adapters and all
+`PlatformType`s instead, which is what the tests above actually exercise. Re-run the real CLI command
+before treating "regenerate is valid" as verified.
 
 **The single most important thing to get right** is that the critic runs *after* the user approves,
 not before. If you find yourself writing an architect↔critic loop that resolves to a quality
