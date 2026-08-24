@@ -34,8 +34,8 @@ grep -n "phase.md" src/platform/path_constants.py
 grep -n "module_layout" src/models/phase.py
 # Phase 3 done?  → output means done
 grep -rn "validate_document" src/mcp/tools/
-# Phase 4 done?  → output means done
-grep -rn "skeleton" src/platform/templates/commands/phase_command.py
+# Phase 4 done?  → file exists means done
+ls src/utils/skeleton_generator.py
 # Phase 5 done?  → output means done
 grep -rln "implementation.md" src/platform/templates/
 # Phase 6 done?  → "No such file" means done

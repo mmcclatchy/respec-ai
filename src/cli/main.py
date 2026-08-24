@@ -24,6 +24,7 @@ from src.cli.commands import (
     db,
     docker,
     init,
+    materialize_skeletons,
     mcp_server,
     migrate,
     models,
@@ -104,6 +105,13 @@ def main() -> int:
     )
 
     regenerate.add_arguments(regenerate_parser)
+
+    materialize_skeletons_parser = subparsers.add_parser(
+        'materialize-skeletons',
+        help='Write Phase Skeleton Index / Test List entries to real project paths (create-only)',
+    )
+
+    materialize_skeletons.add_arguments(materialize_skeletons_parser)
 
     update_parser = subparsers.add_parser(
         'update',
@@ -189,6 +197,8 @@ def main() -> int:
             return validate.run(args)
         case 'regenerate':
             return regenerate.run(args)
+        case 'materialize-skeletons':
+            return materialize_skeletons.run(args)
         case 'update':
             return update.run(args)
         case 'register-mcp':

@@ -132,7 +132,9 @@ class TestTemplateHelpers:
         # Phase 3's Step 8/9 edit gate writes phase.md to disk for the user to hand-edit
         # (docs/phase-refactor/phase-3-human-gate.md "Step 8/9 — the edit gate") and
         # reads it back. Without a Write grant scoped to phase.md, that step's "Use Write
-        # tool" instruction has no corresponding tool declaration to act on.
+        # tool" instruction has no corresponding tool declaration to act on. The same
+        # glob also covers Step 11.5's two named skeleton-materialization scratch files
+        # (docs/phase-refactor/phase-4-skeletons.md), never real source paths.
         tools = create_phase_command_tools(
             'mcp__linear-server__create_issue',
             'mcp__linear-server__get_issue',
@@ -142,7 +144,7 @@ class TestTemplateHelpers:
             tui_adapter=ClaudeCodeAdapter(),
         )
 
-        assert 'Write(.respec-ai/plans/*/phases/*/phase.md)' in tools.tools_yaml
+        assert 'Write(.respec-ai/plans/*/phases/*/*.md)' in tools.tools_yaml
 
     def test_create_plan_command_tools_includes_reference_write_without_ask_user(self) -> None:
         platform_tools = [

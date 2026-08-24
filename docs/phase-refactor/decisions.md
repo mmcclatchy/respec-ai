@@ -163,6 +163,25 @@ rolling back the destructive one does not take the design layer with it.
 
 ---
 
+## Skeleton writes go through a CLI subcommand, not the agent's Write tool or an MCP tool
+
+**Rejected:** an MCP tool (`mcp__respec-ai__materialize_skeletons`) that writes files server-side;
+also rejected: the agent's own `Write` tool writing every skeleton/test file directly.
+
+**Why:** the MCP server can run in Docker (`src/cli/docker.py`) without filesystem access to the
+target project, so an MCP tool cannot reliably write into the user's real source tree. The agent's
+own `Write` tool *can*, but B1-B6 (phase-4-skeletons.md) require the create-only guarantee and the
+`ty`/`ruff`/`pytest` subprocess checks to run against a pure, independently-testable function —
+prompt-driven `Write` calls can't be exercised that way (testing.md: templates resist behavioral
+testing). The resolution: `src/utils/skeleton_generator.py` is a plain Python module, unit-tested
+directly; `respec-ai materialize-skeletons` (`src/cli/commands/materialize_skeletons.py`) is a thin
+CLI wrapper around it, invoked via the `Bash` capability the phase command already holds — the same
+pattern `regenerate.py` uses (`Path.cwd()` as project root, no Docker boundary). This kept the
+`WRITE` capability grant to source paths unnecessary; only the existing `.respec-ai/plans/*/phases/*`
+glob was widened to cover two scratch files that hand section content to the CLI command.
+
+---
+
 ## Dropped tables are dropped, not orphaned
 
 **Rejected:** leaving `tasks` and `loop_to_task_mappings` in place, unused.

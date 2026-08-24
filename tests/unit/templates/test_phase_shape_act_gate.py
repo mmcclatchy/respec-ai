@@ -31,7 +31,7 @@ def test_shape_act_does_not_close_until_user_approves_and_critic_passes(adapter:
     contract = template_contract(_phase_template(adapter))
     body = contract.step_body('11')
 
-    condition = contract.outcome_condition(body, 'Proceed to Step 12')
+    condition = contract.outcome_condition(body, 'Proceed to Step 11.5')
 
     assert 'APPROVED_VERSION' in condition
     assert 'CURRENT_VERSION' in condition

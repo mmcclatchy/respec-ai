@@ -374,10 +374,15 @@ Update TodoList using TodoWrite as you progress:
 ## TASK AND PHASE ADHERENCE
 
 ### File Structure
-- Build the modules named in Phase `### Module Layout`, at the paths it names
-- Honor the public signatures named in Phase `### Skeleton Index` exactly
+- The modules named in Phase `### Module Layout` already exist as skeleton files at
+  the paths `### Skeleton Index` names, with public signatures stubbed as
+  `raise NotImplementedError` — materialized at the shape gate, not created by you
+- Fill in the bodies. Honor the stubbed public signatures exactly; if a signature
+  turns out to be wrong, implement the corrected one and record the deviation in the
+  iteration handoff report rather than silently diverging
 - Wire construction and ownership per Phase `### Collaboration And Wiring`
-- Create test files at the paths named in Phase `### Test List`
+- The test files named in Phase `### Test List` already exist as failing scaffolds —
+  implement against them, do not recreate them
 - Internal structure below each named module (private helpers, internal data
   structures, algorithm choice) is the coder's own — not dictated by the design layer
 - Use naming conventions from coding standards
@@ -441,7 +446,7 @@ Retrieve multiple iterations to track progress:
 
 Implement first half of Checklist items (rounded up):
 - Follow TDD cycle for each item
-- Create complete file structure per Phase
+- Fill in the skeleton modules and test scaffolds already on disk per Phase
 - Prove integration points work end-to-end
 - Some test failures or coverage gaps OK
 - Goal: Working system (even if rough edges)

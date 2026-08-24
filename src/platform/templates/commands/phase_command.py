@@ -631,7 +631,7 @@ CURRENT_VERSION = [Phase.version parsed from SHAPE_PHASE_RESPONSE.message's "###
 
 IF SHAPE_CRITIC_RESULT.status == "completed" AND CURRENT_VERSION == APPROVED_VERSION:
   Display to user: "✓ Shape settled — critic passed on the version you approved"
-  Proceed to Step 12.
+  Proceed to Step 11.5.
 
 ELIF SHAPE_CRITIC_RESULT.status == "completed" AND CURRENT_VERSION != APPROVED_VERSION:
   Display to user: "⟳ Design changed after approval (version {{APPROVED_VERSION}} → {{CURRENT_VERSION}}) — re-approve before proceeding"
@@ -664,7 +664,7 @@ ELSE:
       key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
       content=UPDATED_SHAPE_PHASE_MARKDOWN
     )
-    Proceed to Step 12.
+    Proceed to Step 11.5.
 
   ELSE:
     USER_FEEDBACK_MARKDOWN = [selection == "Address all..." → "Address all critic findings" |
@@ -676,6 +676,102 @@ ELSE:
 
 Option 3 matters: the critic must not be able to hold a design hostage over a judgment
 call the user has already made. It only has to be recorded.
+
+### Step 11.5: Materialize Skeletons
+
+Real files are written only from the version the user approved and the critic passed
+(Step 11) — never from an intermediate draft — and before the gate flips to
+`shape-settled`. See docs/phase-refactor/decisions.md "Skeletons are written into the
+real codebase" and "Skeleton writes are create-only."
+
+```text
+PHASE_DIR = dirname(PHASE_FILE_PATH)
+SKELETON_INDEX_SCRATCH = f"{{PHASE_DIR}}/.skeleton-index.md"
+TEST_LIST_SCRATCH = f"{{PHASE_DIR}}/.test-list.md"
+
+Write UPDATED_SHAPE_PHASE_MARKDOWN's "### Skeleton Index" section content to
+SKELETON_INDEX_SCRATCH (Use Write tool).
+Write UPDATED_SHAPE_PHASE_MARKDOWN's "### Test List" section content to
+TEST_LIST_SCRATCH (Use Write tool).
+
+RUN (Bash): respec-ai materialize-skeletons --skeleton-index-file {{SKELETON_INDEX_SCRATCH}} --test-list-file {{TEST_LIST_SCRATCH}}
+
+MATERIALIZE_RESULT = [parsed JSON from command stdout]
+
+IF command exit code != 0:
+  ERROR: "Skeleton materialization failed"
+  DIAGNOSTIC: [surface stderr]
+  FAIL-CLOSED:
+  - Do NOT proceed to Step 12
+  EXIT: Workflow terminated
+
+MERGE_PATHS = []
+
+FOR each CONFLICT in MATERIALIZE_RESULT.reconciliation_needed:
+  Display to user: "{{CONFLICT.path}} already exists.
+  Existing: {{CONFLICT.existing_signatures}}
+  Designed: {{CONFLICT.designed_signatures}}"
+
+  {selection_prompt_instructions}
+  Header: "Skeleton Conflict"
+  Question: "{{CONFLICT.path}} already exists. How do you want to reconcile it with the approved design?"
+  multiSelect: false
+  Options: [
+    {{"label": "Accept the design change", "description": "Record a Settled Decision; respec-code reconciles the file during implementation"}},
+    {{"label": "Keep the existing signature", "description": "Update Skeleton Index to match what's actually on disk"}},
+    {{"label": "Merge — add only the new members", "description": "Append genuinely new members to the existing file; existing members are left untouched"}}
+  ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume this FOR loop. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF selection == "Accept the design change":
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=user-menu | decision=accept design change at {{CONFLICT.path}} | rationale=existing file differs from Skeleton Index; respec-code reconciles during implementation | binding=yes"
+
+  ELIF selection == "Keep the existing signature":
+    Update the "### Skeleton Index" entries for {{CONFLICT.path}} in UPDATED_SHAPE_PHASE_MARKDOWN to match CONFLICT.existing_signatures
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=user-menu | decision=keep existing signature at {{CONFLICT.path}} | rationale=matches what's already implemented | binding=yes"
+
+  ELSE:
+    MERGE_PATHS.append(CONFLICT.path)
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=user-menu | decision=merge new members into {{CONFLICT.path}} | rationale=existing members kept, only genuinely new ones added | binding=yes"
+
+IF MERGE_PATHS is not empty:
+  RUN (Bash): respec-ai materialize-skeletons --skeleton-index-file {{SKELETON_INDEX_SCRATCH}} --test-list-file {{TEST_LIST_SCRATCH}} --merge-paths {{",".join(MERGE_PATHS)}}
+  MERGE_RESULT = [parsed JSON from command stdout]
+
+  IF MERGE_RESULT.unresolved_signature_conflicts is not empty:
+    Display to user: "⚠ These merge-selected members already exist with a different
+    signature than designed, so they were left untouched: {{MERGE_RESULT.unresolved_signature_conflicts}}"
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=user-menu | decision=unresolved signature conflict left untouched at merge time: {{MERGE_RESULT.unresolved_signature_conflicts}} | rationale=respec-code reconciles during implementation | binding=yes"
+
+{tools.store_document}
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+  content=UPDATED_SHAPE_PHASE_MARKDOWN  (with reconciliation Settled Decisions and any
+    Skeleton Index corrections from "Keep the existing signature" applied)
+)
+
+WRITTEN_PATHS = MATERIALIZE_RESULT.written_skeletons + MATERIALIZE_RESULT.written_tests + (MERGE_RESULT.merged_paths if MERGE_PATHS else [])
+
+IF WRITTEN_PATHS is not empty:
+  RUN (Bash): git add -- {{" ".join(WRITTEN_PATHS)}}
+  (Never `git add -A` here — the tree could hold unrelated uncommitted work.)
+  RUN (Bash): git commit --no-verify -F - <<'EOF'
+  design: materialize skeletons for {{PHASE_NAME}}
+  EOF
+  Display to user: "✓ {{len(WRITTEN_PATHS)}} skeleton/test file(s) written and committed"
+ELSE:
+  Display to user: "✓ No new skeleton/test files to write — all Skeleton Index paths were reconciled against existing files"
+
+Proceed to Step 12.
+```
 
 ### Step 12: Shape Settled — Enter Detail Act
 
@@ -1223,17 +1319,23 @@ Proceed to Step 17.
 ═══════════════════════════════════════════════
 MANDATORY PHASE FILE STORAGE RESTRICTION
 ═══════════════════════════════════════════════
-Phase storage uses ONLY these three mechanisms:
+Phase storage uses ONLY these four mechanisms:
 1. MCP storage (already completed during refinement loop)
 2. Platform storage (Step 17.2 below)
 3. The shape-act edit gate (Steps 8-9 ONLY) — writing PHASE_FILE_PATH for the user to
    hand-edit the design directly, then re-reading and reconciling it back into MCP. This
    is the sanctioned exception; decisions.md "Frozen fields are repaired, not deleted."
+4. Skeleton materialization (Step 11.5 ONLY) — writing SKELETON_INDEX_SCRATCH and
+   TEST_LIST_SCRATCH (the two named files under PHASE_DIR) for the `materialize-skeletons`
+   CLI command to read, and create-only writes to real source/test paths named in
+   `### Skeleton Index` / `### Test List`, performed by that command or by the merge path
+   — never phase.md itself. decisions.md "Skeletons are written into the real codebase."
 
 Do NOT:
-- Write phase.md or any .md file to disk directly, EXCEPT at Steps 8-9
+- Write phase.md or any .md file to disk directly, EXCEPT at Steps 8-9 and the two
+  named scratch files at Step 11.5
 - Create backup or checkpoint files
-- Store intermediate phases outside MCP/platform/the Step 8-9 gate
+- Store intermediate phases outside MCP/platform/the Step 8-9 gate/the Step 11.5 gate
 
 VIOLATION: Writing any phase file outside the designated
            MCP, platform, and Step 8-9 gate storage tools.

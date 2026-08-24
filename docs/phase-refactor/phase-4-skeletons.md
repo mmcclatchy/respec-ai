@@ -8,8 +8,9 @@
 **Prerequisites:** Phase 3 complete. Verify: `grep -rn "validate_document" src/mcp/tools/` returns
 output.
 
-**Already done?** `grep -rn "skeleton" src/platform/templates/commands/phase_command.py` — output
-means complete.
+**Already done?** `ls src/utils/skeleton_generator.py` — file exists means complete. (Note: grepping
+"skeleton" in `phase_command.py` gives a false positive — Phase 3 already added the `### Skeleton
+Index` field and Step 7's opt-in prompt, neither of which materializes real files.)
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and the
 skeletons-in-the-codebase and create-only entries in `docs/phase-refactor/decisions.md`.
@@ -77,8 +78,10 @@ def test_existing_source_file_is_never_overwritten(tmp_project):
     assert read_file(tmp_project / 'src/kb/client.py') == original
 ```
 
-**B3–B6 run real tools** — invoke `mypy`, `ruff`, and `pytest` as subprocesses against a temp project
-and assert on exit codes. That is the behavior the feature promises, stated exactly.
+**B3–B6 run real tools** — invoke `ty` (the project's actual type checker; `mypy` is not a project
+dependency — see `pyproject.toml`'s dev group, which ships `ty` instead), `ruff`, and `pytest` as
+subprocesses against a temp project and assert on exit codes. That is the behavior the feature
+promises, stated exactly.
 
 B5 and B6 together are the TDD promise of the feature made testable: red before, green after. Drive
 B6 by filling one seam with a trivial correct implementation inside the test.
@@ -130,15 +133,27 @@ Conventional-commit style per `CLAUDE.md`, no attribution lines.
 
 ### 4. Boundary amendment
 
-`phase_command.py:805-819` currently forbids the phase workflow from writing files mid-workflow.
-Amend to permit create-only skeleton writes at the gate, scoped to paths named in
-`### Skeleton Index` and `### Test List`.
+`phase_command.py`'s `MANDATORY PHASE FILE STORAGE RESTRICTION` banner (in Step 17) forbade writing
+any `.md` file mid-workflow outside the Step 8-9 edit gate. Amended to add a fourth sanctioned
+mechanism for Step 11.5 skeleton materialization.
 
 `coder.py:88`'s prohibition concerns *planning documents* and is unaffected.
 
-Add the needed capabilities to `create_phase_command_tools`
-(`src/platform/template_helpers.py:150-168`): `WRITE` scoped to source paths, and `BASH` for the
-commit (already present).
+**Implementation deviation from the write-path design below, recorded here per README.md §5:** real
+source/test files are **not** written by the agent's own `Write` tool. The MCP server that backs
+`{tools.*}` may run in a Docker container without filesystem access to the target project (see
+`src/cli/docker.py`), so file-writing logic instead lives in `src/utils/skeleton_generator.py` (pure,
+independently unit-tested per B1-B6) wrapped by a new CLI subcommand,
+`respec-ai materialize-skeletons` (`src/cli/commands/materialize_skeletons.py`), invoked via the
+`Bash` capability the phase command already has. This is the same pattern `regenerate.py` uses
+(`Path.cwd()` as project root). Consequently `create_phase_command_tools`
+(`src/platform/template_helpers.py`) needed no new source-path `WRITE` grant for the create-only
+path — only `BASH` (already present). `WRITE` *was* widened, but narrowly: the existing
+`.respec-ai/plans/*/phases/*/phase.md` glob became `.respec-ai/plans/*/phases/*/*.md`, so Step 11.5
+can write the two scratch files (`.skeleton-index.md`, `.test-list.md`) that hand the Skeleton
+Index / Test List content to the CLI command. The "merge — add only new members" reconciliation
+choice is likewise a CLI flag (`--merge-paths`) rather than an agent-side file edit, keeping that
+path testable and avoiding a broad write grant to arbitrary source paths.
 
 ### 5. Coder handoff
 
@@ -153,17 +168,33 @@ The conformance reviewer (Phase 7). `implementation.md` (Phase 5).
 
 ## Exit criteria
 
-- [ ] B1–B7 observed failing first, then pass.
-- [ ] **B1 was written before the write path existed.** If the write path came first, delete it,
+- [x] B1–B7 observed failing first, then pass.
+- [x] **B1 was written before the write path existed.** If the write path came first, delete it,
       re-run the test to confirm red, and restore — the ordering is the whole safeguard here.
-- [ ] B3–B6 invoke real `mypy` / `ruff` / `pytest` subprocesses rather than asserting on generated
+      (Verified live during implementation: the create-only guard was stubbed out, B1 went red on a
+      content mismatch — not an ImportError — then the guard was restored and B1 went green again.)
+- [x] B3–B6 invoke real `ty` / `ruff` / `pytest` subprocesses rather than asserting on generated
       strings.
-- [ ] `uv run pytest` green (respec-ai's own suite; scaffolded tests live in the temp project).
-- [ ] `regenerate` valid for all three TUIs.
-- [ ] Manual: run a phase on a scratch project; skeletons land at real paths; `mypy` passes on them;
-      scaffolded tests fail; the `design:` commit exists.
-- [ ] Manual: re-run the same phase; confirm no clobber, diff conversation appears instead.
-- [ ] Manual: `respec-code` fills bodies and the scaffolded tests go green.
+- [x] `uv run pytest` green (respec-ai's own suite; scaffolded tests live in the temp project).
+- [x] `regenerate` valid for all three TUIs — verified by rendering the phase command template
+      through `TemplateCoordinator` for `ClaudeCodeAdapter`/`CodexAdapter`/`OpenCodeAdapter` and
+      confirming Step 11.5 and the `materialize-skeletons` invocation render for each, plus the full
+      suite's existing per-adapter parametrized template tests.
+- [x] `respec-ai materialize-skeletons` verified end-to-end on a real scratch directory (not via the
+      full interactive `respec-phase` workflow, which needs a live agent session): writes a new
+      skeleton + test file, correctly refuses to touch an existing one and reports the
+      reconciliation diff instead.
+- [ ] Manual: run a phase on a scratch project through the actual `respec-phase` workflow inside an
+      agent session; skeletons land at real paths; `ty check` passes on them; scaffolded tests fail;
+      the `design:` commit exists. **Not done in this pass** — requires a live agent + user session,
+      out of reach of an implementation pass alone.
+- [ ] Manual: re-run the same phase; confirm no clobber, diff conversation appears instead. Same
+      caveat as above; the underlying guarantee is covered by
+      `test_existing_source_file_is_never_overwritten` and the CLI-level reconciliation tests.
+- [ ] Manual: `respec-code` fills bodies and the scaffolded tests go green. Not exercised end-to-end
+      this pass; `coder.py`'s handoff instructions were updated to assume skeletons already exist,
+      but no live coding-agent run against a materialized skeleton has happened yet.
 - [ ] Manual: **read a generated skeleton as a reviewer would.** Are the seams ones you would have
       chosen? This is the Phase 2 quality risk resurfacing in concrete form, and it is now much easier
-      to judge because the output is real code.
+      to judge because the output is real code. Needs a real phase-architect run to produce a
+      Skeleton Index worth judging.

@@ -167,7 +167,10 @@ def create_phase_command_tools(
         builder.add_respec_ai_tool(tool)
 
     builder.add_builtin_tool(BuiltInToolCapability.READ, '')
-    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/phase.md')
+    # Covers phase.md (Steps 8-9 edit gate) and the two named skeleton-materialization
+    # scratch files (Step 11.5: .skeleton-index.md, .test-list.md) -- never source paths;
+    # those are written create-only by the `materialize-skeletons` CLI command via Bash.
+    builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/*.md')
 
     # sync_plan_instructions (Step 2.1) retrieves the plan from the platform before the
     # refinement loop starts, using the platform's own plan-retrieval tool -- not the
