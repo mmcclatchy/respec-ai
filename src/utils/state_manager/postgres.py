@@ -3,7 +3,7 @@ from datetime import datetime
 
 from asyncpg import Record
 
-from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
+from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus, ShapeGate
 from src.models.feedback import CriticFeedback, ReviewFinding, ReviewerResult
 from src.models.phase import Phase
 from src.models.plan import Plan
@@ -67,14 +67,21 @@ class PostgresStateManager(StateManager):
             research_requirements=row['research_requirements'],
             success_criteria=row['success_criteria'],
             integration_context=row['integration_context'],
-            task_breakdown=row['task_breakdown'],
             additional_sections=additional_sections_data,
+            module_layout=row.get('module_layout'),
+            skeleton_index=row.get('skeleton_index'),
+            collaboration_and_wiring=row.get('collaboration_and_wiring'),
+            test_list=row.get('test_list'),
+            open_design_decisions=row.get('open_design_decisions'),
+            settled_design_decisions=row.get('settled_design_decisions'),
             system_design_additional=row.get('system_design_additional'),
+            design_shape_additional=row.get('design_shape_additional'),
             implementation_additional=row.get('implementation_additional'),
             additional_details_additional=row.get('additional_details_additional'),
             iteration=row['iteration'],
             version=row['version'],
             phase_status=PhaseStatus(row['phase_status']),
+            shape_gate=ShapeGate(row['shape_gate']),
         )
 
     def _row_to_task(self, row: Record) -> 'Task':
@@ -458,27 +465,46 @@ class PostgresStateManager(StateManager):
 
             additional_sections_json = json.dumps(phase.additional_sections) if phase.additional_sections else None
 
-            await conn.execute(
-                """
-                INSERT INTO phases (
-                    id, plan_name, phase_name, objectives, scope, dependencies, deliverables,
-                    architecture, technology_stack, functional_requirements, non_functional_requirements,
-                    development_plan, testing_strategy, implementation_plan_references, research_requirements,
-                    success_criteria, integration_context, task_breakdown, additional_sections,
-                    system_design_additional, implementation_additional, additional_details_additional,
-                    iteration, version, phase_status, active
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
-                ON CONFLICT (plan_name, phase_name) DO UPDATE SET
-                    id = $1, objectives = $4, scope = $5, dependencies = $6, deliverables = $7,
-                    architecture = $8, technology_stack = $9,
-                    functional_requirements = $10, non_functional_requirements = $11,
-                    development_plan = $12, testing_strategy = $13, implementation_plan_references = $14,
-                    research_requirements = $15, success_criteria = $16, integration_context = $17,
-                    task_breakdown = $18, additional_sections = $19,
-                    system_design_additional = $20, implementation_additional = $21, additional_details_additional = $22,
-                    iteration = $23, version = $24, phase_status = $25, active = $26,
-                    updated_at = CURRENT_TIMESTAMP
-                """,
+            # F13: this column list and its positional $N placeholders must be renumbered
+            # together in one pass. Never patch individual indices -- an off-by-one here
+            # is silent data corruption ("field A came back holding field B's value"),
+            # not a crash.
+            columns = [
+                'id',
+                'plan_name',
+                'phase_name',
+                'objectives',
+                'scope',
+                'dependencies',
+                'deliverables',
+                'architecture',
+                'technology_stack',
+                'functional_requirements',
+                'non_functional_requirements',
+                'development_plan',
+                'testing_strategy',
+                'implementation_plan_references',
+                'research_requirements',
+                'success_criteria',
+                'integration_context',
+                'additional_sections',
+                'module_layout',
+                'skeleton_index',
+                'collaboration_and_wiring',
+                'test_list',
+                'design_shape_additional',
+                'open_design_decisions',
+                'settled_design_decisions',
+                'system_design_additional',
+                'implementation_additional',
+                'additional_details_additional',
+                'iteration',
+                'version',
+                'phase_status',
+                'shape_gate',
+                'active',
+            ]
+            values = [
                 phase.id,
                 plan_name,
                 normalized_name,
@@ -496,15 +522,40 @@ class PostgresStateManager(StateManager):
                 phase.research_requirements,
                 phase.success_criteria,
                 phase.integration_context,
-                phase.task_breakdown,
                 additional_sections_json,
+                phase.module_layout,
+                phase.skeleton_index,
+                phase.collaboration_and_wiring,
+                phase.test_list,
+                phase.design_shape_additional,
+                phase.open_design_decisions,
+                phase.settled_design_decisions,
                 phase.system_design_additional,
                 phase.implementation_additional,
                 phase.additional_details_additional,
                 phase.iteration,
                 phase.version,
                 phase.phase_status.value,
+                phase.shape_gate.value,
                 True,  # Always store new phases as active
+            ]
+
+            placeholders = ', '.join(f'${i}' for i in range(1, len(columns) + 1))
+            update_assignments = ', '.join(
+                f'{column} = ${i}'
+                for i, column in enumerate(columns, start=1)
+                if column not in ('plan_name', 'phase_name')
+            )
+
+            await conn.execute(
+                f"""
+                INSERT INTO phases ({', '.join(columns)})
+                VALUES ({placeholders})
+                ON CONFLICT (plan_name, phase_name) DO UPDATE SET
+                    {update_assignments},
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                *values,
             )
 
         return phase.phase_name

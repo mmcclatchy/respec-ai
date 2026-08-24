@@ -467,7 +467,7 @@ class TestCreatePhaseTemplate:
 
 class TestPhaseCriticTemplate:
     def test_template_treats_best_practices_paths_as_blocking_verification(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
         template = generate_phase_critic_template(tools)
         assert 'best-practices-rag query-kb' not in template
         assert '--force-refresh' not in template
@@ -480,7 +480,7 @@ class TestPhaseCriticTemplate:
         assert 'Hard stale blocking' not in template
 
     def test_template_enforces_deterministic_api_detection_and_mode_aware_coverage(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
         template = generate_phase_critic_template(tools)
         assert 'API_DETECTION_TEXT = concatenate text from:' in template
         assert 'Normalize each candidate deterministically:' in template
@@ -533,14 +533,14 @@ class TestPhaseCriticTemplate:
         assert 'Set `overall_score` to `POST_SYNTHESIS_SCORE`, never `0`' in template
 
     def test_template_grants_bash_and_glob_tools(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
         assert 'Bash' in tools.tools_yaml
         assert 'Glob' in tools.tools_yaml
         assert 'Read' in tools.tools_yaml
         assert 'mcp__respec-ai__get_loop_status' in tools.tools_yaml
 
     def test_template_uses_invocation_contract_style(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
         template = generate_phase_critic_template(tools)
 
         assert '## Invocation Contract' in template
@@ -552,7 +552,7 @@ class TestPhaseCriticTemplate:
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
     def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
         template = generate_phase_critic_template(tools)
 
         assert '## Two-Lane Review Contract' in template
@@ -562,7 +562,7 @@ class TestPhaseCriticTemplate:
         assert 'do NOT change the content score' in template
 
     def test_template_requires_exact_storage_contract(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
         template = generate_phase_critic_template(tools)
 
         assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
@@ -600,7 +600,9 @@ class TestAgentImperativeLanguageAudit:
                     _adapter, ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit'], PlatformType.MARKDOWN
                 )
             ),
-            generate_phase_critic_template(create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)),
+            generate_phase_critic_template(
+                create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
+            ),
             generate_plan_critic_template(create_plan_critic_agent_tools(_adapter)),
             generate_plan_analyst_template(create_plan_analyst_agent_tools(_adapter)),
             generate_analyst_critic_template(create_analyst_critic_agent_tools(_adapter)),
@@ -743,7 +745,9 @@ class TestTemplateConsistency:
         assert 'not applicable' in template
 
     def test_phase_critic_template_blocks_unapplied_implementation_plan_references(self) -> None:
-        critic_tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000)
+        critic_tools = create_phase_critic_agent_tools(
+            _adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000
+        )
         template = generate_phase_critic_template(critic_tools)
 
         assert 'Verify Implementation Plan Reference Semantic Application' in template

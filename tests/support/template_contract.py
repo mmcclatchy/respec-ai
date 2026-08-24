@@ -22,6 +22,14 @@ _BRANCH_HEADER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Matches the critic's existing `[<Name> - BLOCKING]` convention (see phase_critic.py,
+# e.g. "[Research Path Invalid - BLOCKING]"), with or without surrounding `**`.
+_BLOCKER_CONDITION_PATTERN = re.compile(r'\[([^\[\]]+?)\s*-\s*BLOCKING\]', re.IGNORECASE)
+
+
+def _slugify(name: str) -> str:
+    return re.sub(r'[^a-z0-9]+', '-', name.strip().lower()).strip('-')
+
 
 @dataclass
 class DecisionBranch:
@@ -72,6 +80,9 @@ class TemplateContract:
             return DecisionBranch(value=value, body='\n'.join(body_lines))
 
         raise ValueError(f'No decision branch found for value {value!r}')
+
+    def blocker_conditions(self) -> set[str]:
+        return {_slugify(match.group(1)) for match in _BLOCKER_CONDITION_PATTERN.finditer(self._template)}
 
 
 def template_contract(template: str) -> TemplateContract:

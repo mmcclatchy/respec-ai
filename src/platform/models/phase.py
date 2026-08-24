@@ -202,6 +202,9 @@ class PhaseCriticAgentTools(AgentToolsModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
+    phase_shape_soft_cap: int = Field(
+        default=10000, description='Soft cap for combined Design Shape + Design Decisions length in characters'
+    )
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     get_feedback: str = Field(..., description='Retrieve prior critic feedback')

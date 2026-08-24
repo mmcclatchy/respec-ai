@@ -36,6 +36,13 @@ class PhaseStatus(str, Enum):
     COMPLETED = 'completed'
 
 
+class ShapeGate(str, Enum):
+    UNSHAPED = 'unshaped'
+    SHAPE_PROPOSED = 'shape-proposed'
+    SHAPE_SETTLED = 'shape-settled'
+    SHAPE_AMENDED = 'shape-amended'
+
+
 class BuildStatus(str, Enum):
     PLANNING = 'planning'
     IN_PROGRESS = 'in-progress'

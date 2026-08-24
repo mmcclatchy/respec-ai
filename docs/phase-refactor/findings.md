@@ -91,10 +91,14 @@ deleting it.
 ## Storage and configuration hazards
 
 **F13 — The postgres phases UPSERT is positional.**
-`src/utils/state_manager/postgres.py:453-485` uses `$1..$19` with `additional_sections = $19`.
-Adding or removing a column shifts every subsequent index. An off-by-one here is **silent data
-corruption**, not a crash. Rewrite the column list and renumber in a single pass; do not patch
-indices individually.
+`src/utils/state_manager/postgres.py:453-485` used `$1..$26` (verified at Phase 2 design time;
+the doc's original `$1..$19` was already stale by then). Adding or removing a column shifts every
+subsequent index. An off-by-one here is **silent data corruption**, not a crash.
+
+**Resolved in Phase 2** by generating the column list, placeholders, and `DO UPDATE SET`
+assignments from a single ordered Python list at call time in `store_phase`, so the column list
+and its positional indices can never drift apart by construction — there is no longer a manual
+`$N` list to renumber or to go stale.
 
 Note: `phases.task_breakdown` (the column) and `DocumentType.TASK_BREAKDOWN` (the enum) are unrelated
 things that share a name. Do not conflate them.

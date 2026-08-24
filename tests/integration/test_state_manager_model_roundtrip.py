@@ -15,7 +15,7 @@ from typing import Callable
 
 import pytest
 
-from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
+from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus, ShapeGate
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
@@ -101,6 +101,32 @@ def sample_phase(markdown_builder: Callable) -> Phase:
         version=1,
     )
     return Phase.parse_markdown(markdown)
+
+
+@pytest.fixture
+def sample_phase_with_design_shape() -> Phase:
+    # Constructed directly (not via markdown_builder) so every design-shape field gets
+    # a distinct, recognizable value -- this is the fixture B3 needs to catch a
+    # transposed positional parameter in the postgres UPSERT (finding F13): a swap
+    # surfaces as "field A came back holding field B's value," which only a
+    # field-by-field equality assertion with distinct values can catch.
+    return Phase(
+        phase_name='design-layer-phase',
+        objectives='Give the design layer a real owner (findings F1-F4)',
+        scope='Module Layout, Skeleton Index, Collaboration And Wiring, Test List, Design Decisions',
+        dependencies='Phase 1 bundle restructure',
+        deliverables='Architect names concrete modules and seams; coder consumes them',
+        module_layout='- src/auth/oauth_client.py — OAuth2 handshake and token exchange\n- src/auth/token_store.py — refresh token persistence',
+        skeleton_index='- src/auth/oauth_client.py :: OAuthClient.exchange_code(code: str) -> TokenPair',
+        collaboration_and_wiring='AuthService constructs OAuthClient and injects TokenStore at startup',
+        test_list='- test_refresh_token_rotates_on_use\n- test_expired_token_triggers_reauth',
+        open_design_decisions='OD-1: whether refresh tokens rotate on every use or only near expiry',
+        settled_design_decisions='SD-1: use JWT with RS256 (source=architect) — rationale: supports key rotation',
+        shape_gate=ShapeGate.SHAPE_PROPOSED,
+        phase_status=PhaseStatus.IMPLEMENTATION_READY,
+        iteration=2,
+        version=1,
+    )
 
 
 @pytest.fixture
@@ -271,6 +297,48 @@ async def test_phase_frozen_fields_preserved_on_update(
     assert retrieved.objectives == sample_phase.objectives, 'Frozen field "objectives" was modified'
     assert retrieved.scope == sample_phase.scope, 'Frozen field "scope" was modified'
     assert retrieved.architecture == 'Updated architecture - should persist'
+
+
+@pytest.mark.asyncio
+async def test_design_shape_fields_survive_store_and_retrieve(
+    state_manager: StateManager, plan_name: str, sample_phase_with_design_shape: Phase
+) -> None:
+    # B1/B3 (docs/phase-refactor/phase-2-design-layer.md): every Design Shape / Design
+    # Decisions field must round-trip intact on both backends. Field-by-field equality
+    # with distinct values per field is what catches a transposed positional parameter
+    # in the postgres UPSERT (finding F13) -- a swap surfaces as "field A came back
+    # holding field B's value."
+    phase_name = await state_manager.store_phase(plan_name, sample_phase_with_design_shape)
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    original_data = sample_phase_with_design_shape.model_dump(exclude={'id'})
+    retrieved_data = retrieved.model_dump(exclude={'id'})
+
+    assert original_data == retrieved_data, 'Design Shape fields did not survive store/retrieve intact'
+
+
+@pytest.mark.asyncio
+async def test_design_shape_fields_survive_alongside_frozen_field_preservation(
+    state_manager: StateManager, plan_name: str, sample_phase_with_design_shape: Phase
+) -> None:
+    # B4: adding the design-layer columns must not disturb frozen-field preservation
+    # (findings F10/F12) -- an agent write that touches design-shape fields should
+    # still leave roadmap-seeded objectives/scope/dependencies/deliverables untouched.
+    phase_name = await state_manager.store_phase(plan_name, sample_phase_with_design_shape)
+
+    agent_revision = sample_phase_with_design_shape.model_copy(
+        update={
+            'objectives': 'CHANGED by agent - should not persist',
+            'module_layout': '- src/auth/oauth_client.py — revised after critic feedback',
+        }
+    )
+    await state_manager.store_phase(plan_name, agent_revision)
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.objectives == sample_phase_with_design_shape.objectives
+    assert retrieved.module_layout == '- src/auth/oauth_client.py — revised after critic feedback'
 
 
 @pytest.mark.asyncio

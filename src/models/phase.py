@@ -4,7 +4,7 @@ from uuid import uuid4
 from pydantic import Field
 
 from .base import MCPModel
-from .enums import PhaseStatus
+from .enums import PhaseStatus, ShapeGate
 
 
 class Phase(MCPModel):
@@ -19,11 +19,17 @@ class Phase(MCPModel):
         'architecture': ('System Design', 'Architecture'),
         'technology_stack': ('System Design', 'Technology Stack'),
         'system_design_additional': ('System Design', 'System Design - Additional Sections'),
+        'module_layout': ('Design Shape', 'Module Layout'),
+        'skeleton_index': ('Design Shape', 'Skeleton Index'),
+        'collaboration_and_wiring': ('Design Shape', 'Collaboration And Wiring'),
+        'test_list': ('Design Shape', 'Test List'),
+        'design_shape_additional': ('Design Shape', 'Design Shape - Additional Sections'),
+        'open_design_decisions': ('Design Decisions', 'Open Design Decisions'),
+        'settled_design_decisions': ('Design Decisions', 'Settled Design Decisions'),
         'functional_requirements': ('Implementation', 'Functional Requirements'),
         'non_functional_requirements': ('Implementation', 'Non-Functional Requirements'),
         'development_plan': ('Implementation', 'Development Plan'),
         'testing_strategy': ('Implementation', 'Testing Strategy'),
-        'task_breakdown': ('Implementation', 'Task Breakdown'),
         'implementation_additional': ('Implementation', 'Implementation - Additional Sections'),
         'implementation_plan_references': ('Additional Details', 'Implementation Plan References'),
         'research_requirements': ('Additional Details', 'Research Requirements'),
@@ -33,6 +39,7 @@ class Phase(MCPModel):
         'iteration': ('Metadata', 'Iteration'),
         'version': ('Metadata', 'Version'),
         'phase_status': ('Metadata', 'Status'),
+        'shape_gate': ('Metadata', 'Shape Gate'),
     }
 
     # Model fields
@@ -52,13 +59,21 @@ class Phase(MCPModel):
     non_functional_requirements: str | None = None
     development_plan: str | None = None
     testing_strategy: str | None = None
-    task_breakdown: str | None = None
     implementation_plan_references: str | None = None
     research_requirements: str | None = None
     success_criteria: str | None = None
     integration_context: str | None = None
 
+    # Design layer (added by phase-architect; consumed by coder and spec-alignment-reviewer)
+    module_layout: str | None = None
+    skeleton_index: str | None = None
+    collaboration_and_wiring: str | None = None
+    test_list: str | None = None
+    open_design_decisions: str | None = None
+    settled_design_decisions: str | None = None
+
     system_design_additional: str | None = None
+    design_shape_additional: str | None = None
     implementation_additional: str | None = None
     additional_details_additional: str | None = None
 
@@ -70,6 +85,7 @@ class Phase(MCPModel):
     iteration: int = 0
     version: int = 1
     phase_status: PhaseStatus = PhaseStatus.DRAFT
+    shape_gate: ShapeGate = ShapeGate.UNSHAPED
 
     def build_markdown(self) -> str:
         sections = [f'{self.TITLE_PATTERN}: {self.phase_name}']
@@ -90,11 +106,36 @@ class Phase(MCPModel):
                 sections.append(f'\n### System Design - Additional Sections\n{self.system_design_additional}')
 
         if (
+            self.module_layout
+            or self.skeleton_index
+            or self.collaboration_and_wiring
+            or self.test_list
+            or self.design_shape_additional
+        ):
+            sections.append('\n## Design Shape')
+            if self.module_layout:
+                sections.append(f'\n### Module Layout\n{self.module_layout}')
+            if self.skeleton_index:
+                sections.append(f'\n### Skeleton Index\n{self.skeleton_index}')
+            if self.collaboration_and_wiring:
+                sections.append(f'\n### Collaboration And Wiring\n{self.collaboration_and_wiring}')
+            if self.test_list:
+                sections.append(f'\n### Test List\n{self.test_list}')
+            if self.design_shape_additional:
+                sections.append(f'\n### Design Shape - Additional Sections\n{self.design_shape_additional}')
+
+        if self.open_design_decisions or self.settled_design_decisions:
+            sections.append('\n## Design Decisions')
+            if self.open_design_decisions:
+                sections.append(f'\n### Open Design Decisions\n{self.open_design_decisions}')
+            if self.settled_design_decisions:
+                sections.append(f'\n### Settled Design Decisions\n{self.settled_design_decisions}')
+
+        if (
             self.functional_requirements
             or self.non_functional_requirements
             or self.development_plan
             or self.testing_strategy
-            or self.task_breakdown
             or self.implementation_additional
         ):
             sections.append('\n## Implementation')
@@ -106,8 +147,6 @@ class Phase(MCPModel):
                 sections.append(f'\n### Development Plan\n{self.development_plan}')
             if self.testing_strategy:
                 sections.append(f'\n### Testing Strategy\n{self.testing_strategy}')
-            if self.task_breakdown:
-                sections.append(f'\n### Task Breakdown\n{self.task_breakdown}')
             if self.implementation_additional:
                 sections.append(f'\n### Implementation - Additional Sections\n{self.implementation_additional}')
 
@@ -139,5 +178,6 @@ class Phase(MCPModel):
         sections.append(f'\n### Iteration\n{self.iteration}')
         sections.append(f'\n### Version\n{self.version}')
         sections.append(f'\n### Status\n{self.phase_status.value}')
+        sections.append(f'\n### Shape Gate\n{self.shape_gate.value}')
 
         return '\n'.join(sections) + '\n'

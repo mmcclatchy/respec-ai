@@ -236,20 +236,24 @@ The human gate, `validate_document`, skeleton files on disk, `implementation.md`
 
 ## Exit criteria
 
-- [ ] B1–B7 observed failing first, then pass.
-- [ ] B3 verified against **postgres specifically**, not just in-memory.
-- [ ] Phase 0's B1 (no phantom section references) still green against the new real targets.
-- [ ] Phase 0's B2 (no shadowing section names) still green with the new sections. **If it goes red,
-      the naming is wrong, not the test.**
-- [ ] `tests/unit/models/test_phase*.py` updated. Check each for implementation-detail drift while
-      you are in there — assertions about `HEADER_FIELD_MAPPING` contents should become assertions
-      about content surviving a round trip.
-- [ ] `uv run pytest` green; `regenerate` valid for all three TUIs.
-- [ ] Manual: run `respec-phase` on a scratch project and confirm the Phase contains a concrete
-      Module Layout, Skeleton Index, and behavioral Test List.
+- [x] B1–B7 observed failing first, then pass.
+- [x] B3 verified against **postgres specifically**, not just in-memory (live db via
+      `docker-compose.dev.yml`, `test_design_shape_fields_survive_store_and_retrieve[db_state_manager]`).
+- [x] Phase 0's B1 (no phantom section references) still green against the new real targets.
+- [x] Phase 0's B2 (no shadowing section names) still green with the new sections.
+- [x] `tests/unit/models/test_phase*.py` audited for implementation-detail drift — none found; no
+      changes needed.
+- [x] `uv run pytest` green (1374 passed); `regenerate` valid for all three TUIs (claude-code,
+      opencode, codex) on a scratch project.
+- [ ] **Manual: run `respec-phase` on a scratch project** and confirm the Phase contains a concrete
+      Module Layout, Skeleton Index, and behavioral Test List. **Not done in this session** — this
+      requires a live agent invocation of the phase-architect against a real feature, which the
+      implementing session could not perform. Templates were verified to *render* correctly
+      (see generated `.claude/agents/respec-phase-architect.md` / `respec-phase-critic.md`), but no
+      live architect output was produced or read.
 - [ ] **Manual quality review — the main risk in this phase.** Read the generated Skeleton Index
       critically. Is it real design or plausible ceremony? Are there interfaces with one
       implementation? Does every abstraction name what varies behind it? No test makes this judgment,
       and getting it wrong makes output *worse* than before the phase, because from Phase 3 onward the
       user approves it and the critics enforce it. Do this on at least two different features before
-      declaring the phase done.
+      declaring the phase done. **Not done — blocked on the same live-run gap above.**

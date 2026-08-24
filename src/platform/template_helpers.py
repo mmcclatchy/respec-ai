@@ -800,7 +800,9 @@ def create_phase_architect_agent_tools(
     )
 
 
-def create_phase_critic_agent_tools(tui_adapter: TuiAdapter, phase_length_soft_cap: int) -> PhaseCriticAgentTools:
+def create_phase_critic_agent_tools(
+    tui_adapter: TuiAdapter, phase_length_soft_cap: int, phase_shape_soft_cap: int
+) -> PhaseCriticAgentTools:
     builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PhaseCriticAgentTools.respec_ai_tools:
@@ -813,6 +815,7 @@ def create_phase_critic_agent_tools(tui_adapter: TuiAdapter, phase_length_soft_c
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         phase_length_soft_cap=phase_length_soft_cap,
+        phase_shape_soft_cap=phase_shape_soft_cap,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),

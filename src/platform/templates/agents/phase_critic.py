@@ -795,7 +795,9 @@ Phases vary by project type. Evaluate based on project context:
 - Required H3 headers per section:
   - Overview: Objectives, Scope, Dependencies, Deliverables
   - System Design: Architecture, Technology Stack, System Design - Additional Sections
-  - Implementation: Functional Requirements, Non-Functional Requirements, Development Plan, Testing Strategy, Task Breakdown, Implementation - Additional Sections
+  - Design Shape: Module Layout, Skeleton Index, Collaboration And Wiring, Test List, Design Shape - Additional Sections
+  - Design Decisions: Open Design Decisions, Settled Design Decisions
+  - Implementation: Functional Requirements, Non-Functional Requirements, Development Plan, Testing Strategy, Implementation - Additional Sections
   - Additional Details: Implementation Plan References, Research Requirements, Success Criteria, Integration Context, Additional Details - Additional Sections
 - Any H3 header under a mapped H2 that is NOT in the required set above will be silently dropped on storage
 - Flag each violation: "Custom H3 '### X' under ## Y will be lost — move content into '### Y - Additional Sections' using H4+ sub-headers"
@@ -976,6 +978,60 @@ Phases vary by project type. Evaluate based on project context:
 - System relationships mapped
 - Interface contracts defined
 - Integration testing approach specified
+
+### Design Shape Evaluation (Not Scored — BLOCKERS only)
+
+The design layer (`## Design Shape`, `## Design Decisions`) exists to give module
+boundaries, public seams, and behaviors an owner (findings F1-F4) before the human
+gate (Phase 3) and skeleton materialization (Phase 4) exist. It is a hypothesis, not
+a contract — evaluate whether it names real design, not whether it is exhaustive.
+
+SHAPE_SOFT_CAP = {tools.phase_shape_soft_cap} (combined `## Design Shape` + `## Design Decisions` character count — configurable via LOOP_PHASE_SHAPE_SOFT_CAP)
+If combined length exceeds SHAPE_SOFT_CAP: note in Key Issues that the shape is not
+staying deliberately thin (score lane, never a blocker — "deliberately thin" enforced
+by prose is not enforced).
+
+BINDING SCOPE
+Blocker lane, ONLY these:
+1. Module boundaries in `### Module Layout`
+2. Public seams in `### Skeleton Index`
+3. Ownership/construction in `### Collaboration And Wiring`
+4. Every SD-### in `### Settled Design Decisions`
+5. Test List → implementation-step coverage
+
+Score lane ONLY, NEVER a blocker:
+- Private helpers, internal data structures, algorithm choice
+- Intra-module file splits, step ordering
+- Error message text, naming of locals
+- Additions that do not contradict 1-5 (new private modules are ALLOWED)
+
+VIOLATION: emitting a blocker for an internal implementation detail turns this critic
+           into a conformance checker and defeats the purpose of keeping the shape thin.
+
+**BLOCKER RULE FOR UNJUSTIFIED SEAMS**:
+- For each abstraction (interface, base class, protocol) named in `### Skeleton Index`:
+  identify whether `### Settled Design Decisions` or `### Open Design Decisions` states
+  what varies behind it (multiple implementations, a swap point, an explicit extension
+  axis).
+- If an abstraction has exactly one implementation and no stated axis of variation:
+  raise a blocker. Every skeletoned abstraction must name what varies behind it. If
+  nothing varies yet, use a concrete class, not an interface.
+- List each violation in `### Blockers` using this exact marker:
+  [Unjustified Seam - BLOCKING]: `{{Interface}}` has one implementation and no stated axis of variation
+
+**BLOCKER RULE FOR EMPTY OR FILE-NAMED TEST LIST**:
+- If `### Test List` is empty or missing while `### Skeleton Index` names public
+  messages: raise a blocker — behaviors were never surfaced for the modules being built.
+  [Empty Test List - BLOCKING]: Skeleton Index names public messages with no corresponding Test List entries
+- If a `### Test List` entry names a file or function instead of an observable
+  behavior (e.g. `tests/test_client.py` with no `::test_...` behavior name): raise a
+  blocker.
+  [Test List Names File Not Behavior - BLOCKING]: `{{entry}}` names a file, not an observable behavior
+
+**BLOCKER RULE FOR SKELETON INDEX / MODULE LAYOUT MISMATCH**:
+- Every module path in `### Skeleton Index` MUST also appear in `### Module Layout`.
+- If a Skeleton Index entry names a module absent from Module Layout: raise a blocker.
+  [Skeleton Index Module Mismatch - BLOCKING]: `{{path}}` is in Skeleton Index but not in Module Layout
 
 ### Domain-Specific Section Evaluation (30% of total score)
 

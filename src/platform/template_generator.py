@@ -229,7 +229,9 @@ def _get_agent_specs(
     roadmap_critic_tools = create_roadmap_critic_agent_tools(tui_adapter)
     create_phase_tools = create_create_phase_agent_tools(tui_adapter, create_phase_platform_tools, platform_type)
     phase_architect_tools = create_phase_architect_agent_tools(tui_adapter, plans_dir=plans_dir)
-    phase_critic_tools = create_phase_critic_agent_tools(tui_adapter, loop_config.phase_length_soft_cap)
+    phase_critic_tools = create_phase_critic_agent_tools(
+        tui_adapter, loop_config.phase_length_soft_cap, loop_config.phase_shape_soft_cap
+    )
     task_planner_tools = create_task_planner_agent_tools(tui_adapter)
     task_plan_critic_tools = create_task_plan_critic_agent_tools(tui_adapter)
     patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)

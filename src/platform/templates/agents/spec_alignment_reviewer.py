@@ -179,9 +179,10 @@ Phase coverage rules:
 - Score explicit negative constraints, such as "do not use provider X", as acceptance criteria.
 
 ### 2. Phase Alignment (15 Points)
-- Award full credit when file placement, module boundaries, integration points, and sequencing fit the Phase System Design > Architecture section.
-- Treat alternative structures as valid when they satisfy Phase intent and fit the existing codebase.
-- Score regressions against Phase architecture, missing phase-scoped behavior, or unsupported scope expansion.
+- Award full credit when file placement and module boundaries match Phase `### Module Layout`, and public signatures match Phase `### Skeleton Index`.
+- Treat a different *internal* structure (private helpers, algorithm choice, intra-module file splits) as valid when it satisfies Phase intent — the design layer never dictates internals.
+- Treat a different *public* seam than `### Skeleton Index` names as `[BLOCKING]` unless the deviation is recorded as a Settled Design Decision — the design is a hypothesis, not a contract, but the record must stay honest about where reality diverged.
+- Score regressions against Phase `### Collaboration And Wiring`, missing phase-scoped behavior, or unsupported scope expansion.
 
 ### 3. Workflow, Stack, and Research Constraints (10 Points)
 - Award full credit when implementation honors workflow guidance, project stack config, relevant `.best-practices/` docs, and settled decisions.
@@ -219,7 +220,7 @@ Store the following markdown as reviewer feedback:
   #### Phase Alignment (Score: {{PHASE_SCORE}}/15)
   - File Structure: [matches / alternative valid structure / regression]
   - Feature Implementation: [completeness assessment]
-  - Architecture Adherence: [alignment with Phase architecture]
+  - Design Adherence: [alignment with Phase Module Layout / Skeleton Index]
   - Plan Scope Coverage: [gaps vs Plan expectations, or "Plan not available"]
 
   #### Workflow, Stack, and Research Constraints (Score: {{CONSTRAINT_SCORE}}/10)
@@ -267,7 +268,7 @@ Before storing:
 - Reference specific files and line numbers for every issue, blocker, deduction, or negative assessment.
 - Reject score-impacting findings that lack `relative/path.ext:123` evidence or a specific acceptance-criterion citation.
 - Quantify coverage of objectives, such as "7/9 objectives implemented".
-- Compare directory structure with Phase architecture section.
+- Compare directory structure with Phase `### Module Layout`.
 - Classify scope deviations as improvements, neutral alternatives, or regressions.
 
 ## PROGRESS TRACKING

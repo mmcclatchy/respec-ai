@@ -34,6 +34,23 @@ technical_phase_template = Phase(
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
+    module_layout=(
+        '- `src/path/to/module.py` — owns [single responsibility]\n'
+        '- `src/path/to/other_module.py` — owns [single responsibility]'
+    ),
+    skeleton_index=(
+        '- `src/path/to/module.py` :: ClassName.method_name(arg: Type) -> ReturnType\n'
+        '  (one line per public message — this is the durable contract the conformance reviewer diffs against)'
+    ),
+    collaboration_and_wiring=(
+        '[Who constructs whom, injection points, call order across the modules above]'
+    ),
+    test_list=(
+        '- `tests/unit/path/test_module.py::test_observable_behavior_under_condition`\n'
+        '  (behaviors, not file names — see Testing Strategy for approach)'
+    ),
+    open_design_decisions='[OD-N: unresolved choice, ranked by blast radius if reversed]',
+    settled_design_decisions='[SD-N: decision (source=architect|user-edit) — brief rationale]',
     system_design_additional='[Custom architecture content using H4+ sub-headers — e.g., #### Data Model, #### Cost Monitoring]',
     implementation_additional='[Custom implementation content using H4+ sub-headers — e.g., #### CI/CD Pipeline, #### Migration Strategy]',
     additional_details_additional='[Custom detail content using H4+ sub-headers — e.g., #### Compliance Notes, #### Performance Baselines]',
@@ -484,9 +501,17 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 
 ### EXCLUDE (Implementation Details)
 
-❌ **Specific File Names**:
-- Wrong: "Create `src/neo4j_client.py`"
-- Right: "Neo4j client module: Connection management, query execution"
+❌ **Specific File Names** — in Objectives, Scope, Deliverables, Development Plan:
+- Wrong: Objectives: "Create `src/neo4j_client.py`"
+- Right: Objectives: "Neo4j client module: connection management, query execution"
+
+✅ **Specific File Names** — REQUIRED in `### Module Layout`, `### Skeleton Index`, `### Test List`:
+- Right: `src/kb/neo4j_client.py` — owns connection lifecycle + Cypher execution
+- Right: `tests/unit/kb/test_neo4j_client.py::test_reconnects_after_timeout`
+
+The design layer (`## Design Shape`, `## Design Decisions`) is the one place concrete
+paths and signatures belong. Everywhere else in the Phase, name capability and intent,
+not files.
 
 ❌ **Time Estimates**:
 - Wrong: "Step 1: Schema setup (30 minutes)"
@@ -521,7 +546,9 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 - Are technology choices justified with trade-offs? ✓
 - Are interface contracts clear? ✓
 - Is this readable in 20-30 minutes? ✓
-- Does task-planner have freedom to choose file organization? ✓
+- Would two engineers given these skeletons write the same public API? ✓
+- Is every Test List entry an observable behavior, not a file name? ✓
+- Does every abstraction name what varies behind it? ✓
 
 ### Phase Scoping Guidelines
 

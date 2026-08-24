@@ -374,10 +374,13 @@ Update TodoList using TodoWrite as you progress:
 ## TASK AND PHASE ADHERENCE
 
 ### File Structure
-- Follow Phase architecture sections exactly
-- Match directory organization from Phase System Design > Architecture section
+- Build the modules named in Phase `### Module Layout`, at the paths it names
+- Honor the public signatures named in Phase `### Skeleton Index` exactly
+- Wire construction and ownership per Phase `### Collaboration And Wiring`
+- Create test files at the paths named in Phase `### Test List`
+- Internal structure below each named module (private helpers, internal data
+  structures, algorithm choice) is the coder's own — not dictated by the design layer
 - Use naming conventions from coding standards
-- Place tests according to Phase Implementation > Testing Strategy section
 
 ### Implementation Sequence
 - Follow Task Steps in order (Step 1, Step 2, Step 3, etc.)
