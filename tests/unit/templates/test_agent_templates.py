@@ -465,6 +465,30 @@ class TestCreatePhaseTemplate:
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
 
+class TestPhaseArchitectShapeMode:
+    def test_shape_mode_declared_and_scoped_to_design_shape_only(self) -> None:
+        # Phase 3, decisions.md "critic runs after user approval": the architect must not
+        # produce full implementation detail when phase_mode="shape" - that's exactly the
+        # unapproved-design problem the human gate exists to stop.
+        tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(tools)
+
+        assert '- phase_mode:' in template
+        assert 'phase_mode == "shape"' in template
+        assert 'Do NOT write Architecture prose beyond what justifies the seams' in template
+
+    def test_detail_mode_preserves_an_already_settled_shape_verbatim(self) -> None:
+        # Once a human has approved the design at the Phase 3 gate (Shape Gate ==
+        # shape-settled/shape-amended), the detail-act architect must not regenerate
+        # Design Shape/Design Decisions - that would silently overwrite what the user
+        # just approved.
+        tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(tools)
+
+        assert 'shape-settled' in template
+        assert 'VERBATIM' in template
+
+
 class TestPhaseCriticTemplate:
     def test_template_treats_best_practices_paths_as_blocking_verification(self) -> None:
         tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
@@ -574,6 +598,19 @@ class TestPhaseCriticTemplate:
         assert 'Do NOT call `store_reviewer_result`.' in template
         assert 'Do NOT retry with alternate storage' in template
         assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
+
+    def test_shape_mode_runs_only_design_shape_blockers_not_full_fsdd_scoring(self) -> None:
+        # Phase 3, decisions.md "The critic runs after user approval": phase_mode="shape"
+        # is a safety net on the design the user already approved, not a full FSDD
+        # readiness gate. It must declare phase_mode as an invocation input and must not
+        # be able to be confused with validation_mode (a different, detail-act-only axis).
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
+        template = generate_phase_critic_template(tools)
+
+        assert '- phase_mode:' in template
+        assert 'phase_mode == "shape"' in template
+        assert 'Under-Surfaced Decision - BLOCKING' in template
+        assert 'Non-Divergent Decision Options - BLOCKING' in template
 
 
 class TestPlanCriticTemplate:

@@ -279,28 +279,12 @@ Load phase and plan from file system, store in MCP:
 
 ```text
 SHAPE_GATE = read "### Shape Gate" from the synced Phase document (Step 2)
-```
 
-TODO(phase-3): this always proceeds to Step 13 for now. Steps 4-12 (the shape act) are
-fully built and tested, but `phase-architect`/`phase-critic` (`src/platform/templates/agents/`)
-have no `phase_mode` handling yet — invoking them with that scalar set to shape mode
-today would get ordinary full-detail output, not a shape. Wiring `phase_mode` into both agent
-templates (mirroring the `validation_mode` enforcement banner at `phase_critic.py:257-276`)
-is a deliberately separate commit — see `docs/phase-refactor/phase-3-human-gate.md`. Once
-that lands, replace this stub with:
-
-```text
 IF SHAPE_GATE in ["unshaped", "shape-proposed"] OR user explicitly instructed a re-shape:
   Proceed to Step 4.
 
 ELSE:  (SHAPE_GATE in ["shape-settled", "shape-amended"])
   Proceed to Step 13.
-```
-
-For now:
-
-```text
-Proceed to Step 13.
 ```
 
 ### Step 4: Initialize Shape Refinement Loop

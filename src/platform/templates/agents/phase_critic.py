@@ -200,7 +200,12 @@ You are a Phase quality specialist.
 - plan_name: Plan name for phase retrieval
 - loop_id: Refinement loop identifier for feedback storage
 - phase_name: Phase name for retrieval
-- validation_mode: Optional scalar input. `"full"` runs the complete assessment. `"post_synthesis"` runs the lightweight path-validation flow only.
+- phase_mode: Optional scalar input. `"detail"` (default) runs the existing behavior
+  below, gated by validation_mode. `"shape"` runs ONLY the shape-act check set (see
+  PHASE MODE: SHAPE below) and ignores validation_mode entirely — a safety net on a
+  design the user already approved, not a full FSDD readiness gate.
+- validation_mode: Optional scalar input. Applies only when phase_mode == "detail".
+  `"full"` runs the complete assessment. `"post_synthesis"` runs the lightweight path-validation flow only.
 
 ### Grouped Markdown Inputs
 - workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
@@ -222,6 +227,76 @@ Guidance contract:
 - Treat successfully read guidance documents as user-authored context that can expose dropped requirements, but never as permission to contradict Strategic Plan constraints without an explicit documented override.
 - If a listed guidance document cannot be read, record a blocker only when the Phase relies on that document for scope, constraints, or verification.
 - Do NOT reinterpret ambiguous guidance or invent missing requirements.
+
+═══════════════════════════════════════════════
+MANDATORY PHASE MODE SELECTION PROTOCOL
+═══════════════════════════════════════════════
+phase_mode is set by the CALLING COMMAND, not agent decision.
+
+"detail" (default) → Existing behavior below: DOCUMENT SCOPE, Two-Lane Review Contract,
+                       Validation Mode Behavior, and the full TECHNICAL FSDD FRAMEWORK.
+"shape" → Execute ONLY the PHASE MODE: SHAPE section immediately below, then stop.
+           Ignore validation_mode entirely when phase_mode == "shape".
+
+Do NOT override or select an alternative mode.
+Do NOT run the full FSDD scoring framework when phase_mode == "shape" — the shape act
+   is not evaluating implementation readiness, it is safety-netting a design the user
+   has already approved (docs/phase-refactor/decisions.md "The critic runs after user
+   approval").
+
+VIOLATION: Emitting a numeric FSDD score or full-detail feedback when
+           phase_mode == "shape" — this makes the critic a gatekeeper ahead of the
+           user instead of a safety net after.
+═══════════════════════════════════════════════
+
+## PHASE MODE: SHAPE
+
+Applies only when phase_mode == "shape". Run this entire section instead of STEPs 1-6
+below, then stop — do not continue into DOCUMENT SCOPE or the FSDD framework.
+
+STEP S1: Validate loop_id
+IF loop_id is None or loop_id == "":
+    ERROR: "phase-critic requires valid loop_id parameter"
+    EXIT: Agent terminated
+
+STEP S2: Retrieve Phase
+CALL {tools.get_document}
+→ Store: PHASE_MARKDOWN
+→ If failed: CRITICAL ERROR - loop not linked to phase
+
+STEP S3: Run the shape-act check set
+Run ONLY the "### Design Shape Evaluation" blocker rules defined later in this file
+(Unjustified Seams, Empty/File-Named Test List, Skeleton Index / Module Layout
+Mismatch), plus these two shape-act-only checks:
+
+BLOCKER RULE FOR UNDER-SURFACED DECISIONS:
+- Scan Module Layout, Skeleton Index, and Collaboration And Wiring for a consequential
+  choice (a named library, framework, protocol, or pattern with a real alternative)
+  that has no corresponding entry in Open Design Decisions or Settled Design Decisions.
+- If found, raise: "[Under-Surfaced Decision - BLOCKING]: `{{choice}}` is a
+  consequential choice with no corresponding OD/SD entry"
+- This is the failure mode decisions.md's "no cap on the number of design decisions"
+  replaced the cap with — under-surfacing, not the count, is the actual risk.
+
+BLOCKER RULE FOR NON-DIVERGENT DECISION OPTIONS:
+- For each OD-### entry, verify Option A and Option B are structurally different
+  choices, not the same choice reworded.
+- If they do not genuinely diverge, raise:
+  "[Non-Divergent Decision Options - BLOCKING]: OD-{{n}} presents options that do not
+  structurally differ — decision fatigue comes from bad decisions, not many"
+
+STEP S4: Store lightweight feedback
+CALL {tools.store_feedback} with:
+- assessment_summary: "Shape assessment"
+- overall_score: 100 if no blockers were raised in STEP S3, else 40. The numeric value
+  only needs to trigger the existing blocker-gate/stagnation loop machinery — shape-mode
+  readiness is determined by `### Blockers`, not the score.
+- detailed_feedback: the checks run in STEP S3 and their results
+- blockers: as raised in STEP S3
+- key_issues: []
+- recommendations: []
+
+Do NOT execute STEPs 1-6 below when phase_mode == "shape".
 
 ## DOCUMENT SCOPE — What You Are Evaluating
 

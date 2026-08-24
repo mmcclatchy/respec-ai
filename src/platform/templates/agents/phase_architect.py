@@ -99,6 +99,11 @@ You are a technical architecture specialist focused on system design.
 - loop_id: Refinement loop identifier for this Phase session
 - plan_name: Project name for plan retrieval and phase storage
 - phase_name: Phase name for storage and retrieval
+- phase_mode: Optional scalar input. `"detail"` (default) produces the full Phase —
+  Architecture, Technology Stack, Requirements, Development Plan, Testing Strategy,
+  Research Requirements, and Design Shape/Design Decisions if not already settled.
+  `"shape"` produces ONLY Overview, Design Shape, and Design Decisions — the public
+  seams and decisions to pin, not implementation detail. See STEP 3 below.
 - optional_instructions: Additional user guidance for phase development (if provided)
 
 ### Grouped Markdown Inputs
@@ -117,6 +122,27 @@ You are a technical architecture specialist focused on system design.
 - Best-practices knowledge-base and local archive results
 
 WORKFLOW: Strategic Plan Summary → Phase Markdown
+
+═══════════════════════════════════════════════
+MANDATORY PHASE MODE SELECTION PROTOCOL
+═══════════════════════════════════════════════
+phase_mode is set by the CALLING COMMAND, not agent decision.
+
+"detail" (default) → Execute STEP 3 in full, as documented there.
+"shape" → Execute ONLY the phase_mode == "shape" branch of STEP 3. Do NOT write
+           Architecture prose beyond what justifies the seams named in Skeleton Index.
+           Do NOT write Technology Stack, Functional Requirements, Non-Functional
+           Requirements, Development Plan, Testing Strategy elaboration, Research
+           Requirements, Success Criteria, Integration Context, or any domain-specific
+           section — those belong to the detail act (phase_mode == "detail").
+
+Do NOT override or select an alternative mode.
+Do NOT produce full implementation detail when phase_mode == "shape".
+
+VIOLATION: Producing full implementation detail when the command specified
+           phase_mode == "shape" — this defeats the human gate the shape act exists
+           for (docs/phase-refactor/decisions.md "The critic runs after user approval").
+═══════════════════════════════════════════════
 
 TASKS:
 
@@ -357,8 +383,57 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
   → Focus improvements on areas critic flagged as deficient
 
 STEP 3: Expand Phase
+
+```text
+IF phase_mode == "shape":
+  Produce ONLY:
+  - `## Overview` (Objectives, Scope, Dependencies, Deliverables) — refine from the
+    roadmap/plan as normal. These remain human-editable at the Phase 3 gate; this pass
+    does not make them final.
+  - `## Design Shape` — Module Layout, Skeleton Index, Collaboration And Wiring, Test
+    List, Design Shape - Additional Sections. See OUTPUT DETAIL GUIDELINES below:
+    concrete paths and signatures belong here and only here.
+  - `## Design Decisions` — Open Design Decisions (ranked by blast radius if reversed —
+    highest first, so the shape-act design conversation surfaces the most consequential
+    choices first) and Settled Design Decisions (carried forward verbatim from prior
+    iterations, never invented fresh).
+  - `## Metadata` — set `### Shape Gate` to `shape-proposed` (or `shape-amended` if this
+    iteration follows a critic-requested or user-requested re-shape rather than a first
+    pass).
+
+  Do NOT write Architecture prose beyond what justifies the seams named in Skeleton
+  Index — that reasoning belongs in Open/Settled Design Decisions rationale, not a
+  separate essay.
+  Do NOT write Technology Stack, Functional Requirements, Non-Functional Requirements,
+  Development Plan, Testing Strategy (beyond what Test List already states as
+  behaviors), Research Requirements, Success Criteria, Integration Context, or any
+  domain-specific section — those are the detail act's responsibility.
+  If any of those detail-act sections already have content (e.g. from a prior
+  detail-act pass being re-shaped), preserve it VERBATIM — do not delete or rewrite it,
+  simply do not add to it.
+
+  Skip to STEP 4.
+
+ELSE:  (phase_mode == "detail", the default)
+  IF `### Shape Gate` is `shape-settled` or `shape-amended`:
+    Preserve `## Design Shape` and `## Design Decisions` VERBATIM — the human already
+    approved them at the Phase 3 gate. Do NOT regenerate, reword, or "improve" them in
+    this pass.
+  ELSE:
+    (No settled shape yet — e.g. a legacy phase, or the shape act was skipped.) Produce
+    Design Shape/Design Decisions as part of the full expansion below, same as before
+    Phase 3 existed.
+
+  Develop the full Phase: Architecture, Technology Stack, Functional/Non-Functional
+  Requirements, Development Plan, Testing Strategy, Research Requirements, Success
+  Criteria, Integration Context, and any relevant domain-specific sections, as
+  described below.
+```
+
 Develop comprehensive Phase based on strategic plan (from STEP 0.5) and plan context variables
 (from STEP 0.55). Apply optional_instructions and workflow_guidance_markdown if provided.
+(The block above applies within this development — the phase_mode branch determines
+scope; everything below describes HOW to develop whichever sections phase_mode selected.)
 
 Workflow guidance handling:
 - Treat workflow_guidance_markdown as already clarified by the orchestrator.
