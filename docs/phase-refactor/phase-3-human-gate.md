@@ -8,12 +8,11 @@
 **Prerequisites:** Phase 2 complete. Verify: `grep -n "module_layout" src/models/phase.py` returns
 output.
 
-**Already done?** `grep -n "phase_mode" src/platform/templates/agents/phase_architect.py` — output
-means complete. Steps 4-12 (the shape act template itself) are fully built and tested but **dormant**:
-Step 3 is intentionally still a passthrough stub, because the agents it would invoke don't understand
-`phase_mode` yet. See Progress and the blocker below before treating this phase as anywhere near done.
+**Already done?** `grep -n "phase_mode" src/platform/templates/agents/phase_architect.py` and the same
+against `phase_critic.py` — both now return output. Step 3 is live (no longer a stub). See Progress
+below for what is verified and what is still only structural/template-contract-level.
 
-**Progress as of 2026-08-24 — template layer complete, agent layer not started:**
+**Progress as of 2026-08-24 — template and agent layers complete, live end-to-end run not yet done:**
 - `validate_document` (`MCPModel.find_content_loss` + `DocumentToolsInterface.validate` + the MCP
   tool + `RespecAITool.VALIDATE_DOCUMENT`) is implemented and tested — satisfies B1-B3.
 - `allow_frozen_field_edits` on `store_phase`/`update_phase` (both backends) is implemented and
@@ -28,18 +27,21 @@ Step 3 is intentionally still a passthrough stub, because the agents it would in
   `tests/unit/templates/test_phase_shape_act_gate.py`; B8's guard exists but its trigger mechanism is
   not currently reachable — see that test's comment). `tests/support/template_contract.py` gained
   `step_body()` and `outcome_condition()` to make this possible without string-literal tests.
-- **Blocker, why Step 3 is still a stub:** `phase-architect` and `phase-critic`
-  (`src/platform/templates/agents/`) have zero `phase_mode` handling. An earlier pass in this session
-  briefly made Step 3's branch live before checking this, which would have sent real runs into the
-  shape act against agents that ignore the flag — reverted. Do not re-enable Step 3's branch until
-  `phase_mode` is wired into both agent templates.
-
-**Not started:** `phase_mode` in `phase_architect.py` (shape mode: produce Module Layout / Skeleton
-Index / Collaboration And Wiring / Test List / Open Design Decisions, not full implementation detail)
-and `phase_critic.py` (shape mode: judge the shape, not FSDD-complete detail), mirroring the
-`validation_mode` enforcement banner precedent at `phase_critic.py:257-276`. Once that lands, Step 3's
-stub becomes the real branch shown inline in its TODO comment
-(`phase_command.py`, search `TODO(phase-3)`).
+- `phase_mode` is wired into both `phase_architect.py` and `phase_critic.py`, mirroring the
+  `validation_mode` enforcement banner precedent. Step 3 reads `### Shape Gate` and branches for real:
+  `unshaped`/`shape-proposed` → shape act (Step 4), `shape-settled`/`shape-amended` → detail act
+  (Step 13). `phase_architect.py` detail mode preserves an already-settled `## Design Shape` verbatim
+  instead of regenerating it. `phase_critic.py` detail mode skips its Design Shape Evaluation blocker
+  lane once Shape Gate is settled/amended — that lane already ran during the shape act's own critic
+  pass, and re-running it in detail mode would deadlock the loop (the detail architect can't touch
+  Design Shape to resolve a blocker raised against it). Shape-mode feedback storage computes a real
+  `iteration` via `get_loop_status` rather than defaulting to `0`. See
+  `TestPhaseArchitectShapeMode` and the shape-mode tests in `TestPhaseCriticTemplate`
+  (`tests/unit/templates/test_agent_templates.py`).
+- **What's still unverified:** everything above is pinned at the template-contract level only — no
+  live phase workflow run has exercised the shape act end to end, and `regenerate` itself has not
+  been re-run (see below). Treat the deadlock/iteration fixes as reasoned-through, not
+  empirically confirmed, until a real run happens.
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and **all of**
 `docs/phase-refactor/decisions.md` — this phase implements four decisions that were reversed during design
@@ -47,13 +49,12 @@ stub becomes the real branch shown inline in its TODO comment
 Implementing the pre-reversal version would look reasonable and be wrong. Findings F5, F7, F8, F9,
 F15, F16, F18, F22 apply.
 
-**Next action:** wire `phase_mode` into `phase_architect.py` and `phase_critic.py` as its own commit,
-separate from any further command-template changes — a mismatch between what the command passes and
-what the agent declares should show up as a one-file diff, not be tangled with template prose changes.
-Write a test first that `phase_architect.py`/`phase_critic.py` contains `phase_mode` handling (currently
-red — `grep -c phase_mode` on both returns 0). Only after that lands should Step 3's stub be replaced
-with its inline TODO branch, and B7's "does the act actually gate a real agent" claim be re-verified
-end to end.
+**Next action:** run the manual exit-criteria checks below end to end against a real phase on a
+scratch project — the code-level work is done, but nothing has confirmed it behaves correctly in a
+live run yet. Then re-run `uv run respec-ai regenerate` for real (see below) before treating Phase 3
+as done and moving to Phase 4. Separately, and out of scope for Phase 3: B8's guard exists but nothing
+currently bumps `Phase.version` between Step 9's store and Step 11's check, because
+`PhaseCriticAgentTools` doesn't grant `UPDATE_DOCUMENT` — decide whether/when to close that gap.
 
 **Not yet run:** `uv run respec-ai regenerate` itself — CLI scaffolding (`respec-ai standards init`)
 blocked it in this environment on an unrelated config-validation issue. Substituted direct
