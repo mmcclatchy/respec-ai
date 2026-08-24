@@ -371,6 +371,239 @@ IF agent returns error status:
 Display to user: "✓ Phase shape refined by phase-architect"
 ```
 
+### Step 6: Design Conversation
+
+Present the architect's Open Design Decisions to the user, highest blast-radius first
+(the architect's responsibility per Step 5), until every decision is settled or the user
+accepts the recommended defaults for what remains. See
+docs/phase-refactor/decisions.md "No cap on the number of design decisions."
+
+```text
+SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
+SHAPE_PHASE_MARKDOWN = SHAPE_PHASE_RESPONSE.message
+
+Parse "### Open Design Decisions" from SHAPE_PHASE_MARKDOWN into OPEN_DECISIONS, each:
+  OD-NNN | title | Option A: name — tradeoff | Option B: name — tradeoff | Recommended: X — why
+
+IF OPEN_DECISIONS is empty:
+  Display: "✓ No open design decisions to review"
+  Proceed to Step 7.
+
+SETTLED_THIS_PASS = []
+
+FOR each OD in OPEN_DECISIONS, in order:
+  {selection_prompt_instructions}
+  Header: "Design Decision"
+  Question: "OD-{{OD.number}}: {{OD.title}}"
+  multiSelect: false
+  Options: [
+    {{"label": "{{OD.option_a.name}}", "description": "{{OD.option_a.tradeoff}}"}},
+    {{"label": "{{OD.option_b.name}}", "description": "{{OD.option_b.tradeoff}}"}},
+    {{"label": "Accept the recommended default for all remaining decisions", "description": "Stops this conversation here; every remaining OD gets its Recommended option"}}
+  ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 6. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF selection == "Accept the recommended default for all remaining decisions":
+    FOR each remaining OD (including this one):
+      SETTLED_THIS_PASS.append(
+        f"- SD-{{OD.number}} | source=user-menu | supersedes=OD-{{OD.number}} | "
+        f"decision={{OD.recommended}} | rationale=accepted recommended default | binding=yes"
+      )
+    BREAK
+
+  ELSE:
+    SETTLED_THIS_PASS.append(
+      f"- SD-{{OD.number}} | source=user-menu | supersedes=OD-{{OD.number}} | "
+      f"decision={{selected_option}} | rationale={{selected_option.tradeoff}} | binding=yes"
+    )
+
+Append SETTLED_THIS_PASS to "### Settled Design Decisions" in SHAPE_PHASE_MARKDOWN.
+Remove the now-settled entries from "### Open Design Decisions" in SHAPE_PHASE_MARKDOWN.
+
+{tools.store_document}
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+  content=UPDATED_SHAPE_PHASE_MARKDOWN
+)
+
+Display to user: "✓ {{len(SETTLED_THIS_PASS)}} design decision(s) settled"
+
+Proceed to Step 7.
+```
+
+### Step 7: Skeleton Opt-In
+
+Offer the user a choice over which internal (module-private) classes the architect
+flagged as consequential enough to warrant a real skeleton file in Phase 4 — the public
+seams in Skeleton Index are always materialized regardless of this step.
+
+```text
+CONSEQUENTIAL_INTERNALS = parse architect-flagged internal classes from SHAPE_PHASE_MARKDOWN's
+  Skeleton Index / Collaboration And Wiring content (entries the architect marked
+  "internal, consequential")
+
+IF CONSEQUENTIAL_INTERNALS is empty:
+  Display: "✓ No internal classes flagged as consequential — only public seams will get skeletons"
+  Proceed to Step 8.
+
+{selection_prompt_instructions}
+Header: "Skeleton Opt-In"
+Question: "The architect flagged these internal classes as consequential. Which get a real skeleton file too?"
+multiSelect: true
+Options: [ one per CONSEQUENTIAL_INTERNALS entry ]
+
+WAIT for {selection_response_source}.
+DO NOT treat this as workflow completion, cancellation, or failure.
+After the user responds, resume at Step 7. Continue immediately.
+DO NOT explain that the workflow is stopping unless the user asks why.
+
+SELECTED_INTERNALS = [selections from {selection_response_source}]
+
+Mark SELECTED_INTERNALS as included in "### Skeleton Index" in SHAPE_PHASE_MARKDOWN
+(as "internal, user-selected"); leave unselected consequential internals out.
+
+{tools.store_document}
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+  content=UPDATED_SHAPE_PHASE_MARKDOWN
+)
+
+Proceed to Step 8.
+```
+
+### Step 8: Write Phase Shape to Disk, Block for Editing
+
+═══════════════════════════════════════════════
+MANDATORY EDIT-GATE STORAGE EXCEPTION
+═══════════════════════════════════════════════
+This step and Step 9 are the ONLY places before Step 17 that write phase.md to disk.
+See the amended MANDATORY PHASE FILE STORAGE RESTRICTION banner at Step 17.
+═══════════════════════════════════════════════
+
+```text
+SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
+SHAPE_PHASE_MARKDOWN = SHAPE_PHASE_RESPONSE.message
+
+Write SHAPE_PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+
+Display to user:
+"✓ Phase shape written to {{PHASE_FILE_PATH}} for review.
+
+Before you edit:
+- Do NOT rename, add, or delete any '##' or '###' heading — the parser matches by exact
+  heading text and a heading it doesn't recognize is silently dropped.
+- Do NOT add a bare '---' line inside a section — it truncates everything after it.
+
+Edit the file now if you want to change anything, then choose how to proceed."
+
+{selection_prompt_instructions}
+Header: "Design Review"
+Question: "How do you want to proceed with the phase shape?"
+multiSelect: false
+Options: [
+  {{"label": "Done editing — continue", "description": "Re-read the file and validate your edits"}},
+  {{"label": "No edits — continue", "description": "Proceed without re-reading the file"}},
+  {{"label": "Send back for another shape pass", "description": "Return to the architect with feedback before reviewing again"}}
+]
+
+WAIT for {selection_response_source}.
+DO NOT treat this as workflow completion, cancellation, or failure.
+After the user responds, resume at Step 8. Continue immediately.
+DO NOT explain that the workflow is stopping unless the user asks why.
+
+IF selection == "Send back for another shape pass":
+  USER_FEEDBACK_MARKDOWN = [prompt user for what to change]
+  {tools.store_shape_user_feedback}
+  Return to Step 5 (phase-architect refines under USER direction, not autonomously —
+  see the shape-act protocol exception below).
+
+ELSE:
+  (Both "Done editing" and "No edits" proceed to Step 9 — validation runs either way,
+  since the file might have been touched outside this menu.)
+  Proceed to Step 9.
+```
+
+**The protocol exception, stated explicitly:** the MANDATORY DECISION PROTOCOL banner in
+Step 16 declares `refine` must never consult the user. **In the shape act only**, a
+`refine`-equivalent outcome (the user sending the design back) routes to the user via
+this menu instead of auto-refining. The detail act keeps the existing protocol verbatim.
+
+### Step 9: Re-Read, Validate, Diff, Record
+
+```text
+RAW_EDITED_MARKDOWN = Read PHASE_FILE_PATH (Use Read tool)
+
+VALIDATION_ATTEMPTS = 0
+CONTENT_TO_VALIDATE = RAW_EDITED_MARKDOWN
+VALIDATION_RESULT = {tools.validate_document}
+
+WHILE VALIDATION_RESULT.status != "completed" AND VALIDATION_ATTEMPTS < 3:
+  Display to user: VALIDATION_RESULT.message
+
+  {selection_prompt_instructions}
+  Header: "Content Would Be Lost"
+  Question: "Some of your edits would be silently dropped. How do you want to proceed?"
+  multiSelect: false
+  Options: [
+    {{"label": "Let me fix it and try again", "description": f"Attempt {{VALIDATION_ATTEMPTS + 1}} of 3"}},
+    {{"label": "Drop those edits and continue", "description": "Proceed with the version the parser accepts; the flagged content is discarded"}},
+    {{"label": "Abort — send back to architect instead", "description": "Return to Step 5 without applying any disk edits"}}
+  ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 9. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF selection == "Let me fix it and try again":
+    VALIDATION_ATTEMPTS += 1
+    (User edits PHASE_FILE_PATH again outside this menu)
+    RAW_EDITED_MARKDOWN = Read PHASE_FILE_PATH (Use Read tool)
+    CONTENT_TO_VALIDATE = RAW_EDITED_MARKDOWN
+    VALIDATION_RESULT = {tools.validate_document}
+    CONTINUE loop
+
+  IF selection == "Drop those edits and continue":
+    BREAK  (proceed with RAW_EDITED_MARKDOWN as-is; flagged headings are known-lossy)
+
+  IF selection == "Abort — send back to architect instead":
+    USER_FEEDBACK_MARKDOWN = "User aborted the edit gate; validation report: " + VALIDATION_RESULT.message
+    {tools.store_shape_user_feedback}
+    Return to Step 5.
+
+IF VALIDATION_ATTEMPTS == 3 AND VALIDATION_RESULT.status != "completed":
+  ERROR: "validate_document still reports content loss after 3 attempts"
+  DIAGNOSTIC: Show VALIDATION_RESULT.message
+  EXIT: Workflow terminated
+
+Diff RAW_EDITED_MARKDOWN against SHAPE_PHASE_MARKDOWN (from Step 8) per (H2, H3) heading.
+FOR each heading with a changed value, append to "### Settled Design Decisions":
+  "- SD-### | source=user-edit | section=<H2 > H3> | decision=<one-line summary of the change> | binding=yes"
+
+RECONCILED_PHASE_MARKDOWN = RAW_EDITED_MARKDOWN with the appended SD entries
+
+**Frozen fields are editable here and only here.** If Objectives/Scope/Dependencies/
+Deliverables changed, this is the sanctioned human exception — Phase 0 made the freeze
+bind agents only (docs/phase-refactor/decisions.md "Frozen fields are repaired, not deleted").
+
+{tools.store_document_gate_edit}
+
+Write RECONCILED_PHASE_MARKDOWN back to PHASE_FILE_PATH (Use Write tool) so MCP and disk
+agree byte-for-byte on exit. Disk wins at this gate and nowhere else; MCP is
+authoritative everywhere else.
+
+SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
+APPROVED_VERSION = SHAPE_PHASE_RESPONSE.message's "### Version" (Phase.version, finding F22)
+
+Display to user: "✓ Design shape approved at version {{APPROVED_VERSION}}"
+
+Proceed to Step 10.
+```
+
 ### Step 13: Initialize Refinement Loop
 Initialize MCP refinement loop:
 
@@ -901,17 +1134,20 @@ Proceed to Step 17.
 ═══════════════════════════════════════════════
 MANDATORY PHASE FILE STORAGE RESTRICTION
 ═══════════════════════════════════════════════
-Phase storage uses ONLY these two mechanisms:
+Phase storage uses ONLY these three mechanisms:
 1. MCP storage (already completed during refinement loop)
 2. Platform storage (Step 17.2 below)
+3. The shape-act edit gate (Steps 8-9 ONLY) — writing PHASE_FILE_PATH for the user to
+   hand-edit the design directly, then re-reading and reconciling it back into MCP. This
+   is the sanctioned exception; decisions.md "Frozen fields are repaired, not deleted."
 
 Do NOT:
-- Write phase.md or any .md file to disk directly
+- Write phase.md or any .md file to disk directly, EXCEPT at Steps 8-9
 - Create backup or checkpoint files
-- Store intermediate phases outside MCP/platform
+- Store intermediate phases outside MCP/platform/the Step 8-9 gate
 
 VIOLATION: Writing any phase file outside the designated
-           MCP and platform storage tools.
+           MCP, platform, and Step 8-9 gate storage tools.
 ═══════════════════════════════════════════════
 
 #### Step 17.1: Retrieve Final Phase from MCP

@@ -63,10 +63,16 @@ class PhaseCommandTools(CommandToolsModel):
     get_feedback: str = Field(..., description='Get latest feedback (detail act)')
     get_document: str = Field(..., description='Get final phase document')
     store_user_feedback: str = Field(..., description='Store user feedback (detail act)')
+    validate_document: str = Field(..., description='Check candidate content for silent parser loss')
 
     # Shape act — mirrors the detail-act fields above but pinned to SHAPE_LOOP_ID
     link_shape_loop: str = Field(..., description='Link the shape-act loop to document')
     get_shape_loop_status: str = Field(..., description='Get shape-act loop status')
+    get_shape_document: str = Field(..., description='Get current phase document via the shape-act loop')
+    store_shape_user_feedback: str = Field(..., description='Store user feedback (shape act)')
+    store_document_gate_edit: str = Field(
+        ..., description='Store phase document with the frozen-field gate exception (Step 9 ONLY)'
+    )
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

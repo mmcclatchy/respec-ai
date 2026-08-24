@@ -304,8 +304,24 @@ def create_phase_command_tools(
         get_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='{LOOP_ID}'
         ),
+        get_shape_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='{SHAPE_LOOP_ID}'
+        ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
+        ),
+        store_shape_user_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{SHAPE_LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
+        ),
+        validate_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.VALIDATE_DOCUMENT, doc_type='"phase"', content='{CONTENT_TO_VALIDATE}'
+        ),
+        store_document_gate_edit=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_DOCUMENT,
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{RECONCILED_PHASE_MARKDOWN}',
+            allow_frozen_field_edits='true',
         ),
     )
 
