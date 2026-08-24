@@ -189,6 +189,19 @@ def create_phase_command_tools(
                 ('loop_id', 'LOOP_ID'),
                 ('plan_name', 'PLAN_NAME'),
                 ('phase_name', 'PHASE_NAME'),
+                ('phase_mode', 'detail'),
+                ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+            ],
+        ),
+        invoke_phase_architect_shape=adapter.render_agent_invocation(
+            'respec-phase-architect',
+            'design phase shape: public seams, skeleton index, open design decisions',
+            [
+                ('loop_id', 'SHAPE_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('phase_mode', 'shape'),
                 ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
@@ -200,6 +213,18 @@ def create_phase_command_tools(
                 ('plan_name', 'PLAN_NAME'),
                 ('loop_id', 'LOOP_ID'),
                 ('phase_name', 'PHASE_NAME'),
+                ('phase_mode', 'detail'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+            ],
+        ),
+        invoke_phase_critic_shape=adapter.render_agent_invocation(
+            'respec-phase-critic',
+            'evaluate approved phase shape as a safety net, not a gatekeeper',
+            [
+                ('plan_name', 'PLAN_NAME'),
+                ('loop_id', 'SHAPE_LOOP_ID'),
+                ('phase_name', 'PHASE_NAME'),
+                ('phase_mode', 'shape'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
             ],
         ),
@@ -260,7 +285,16 @@ def create_phase_command_tools(
             doc_type='"phase"',
             key='{PLAN_NAME}/{PHASE_NAME}',
         ),
+        link_shape_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LINK_LOOP_TO_DOCUMENT,
+            loop_id='{SHAPE_LOOP_ID}',
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
+        get_shape_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{SHAPE_LOOP_ID}'
+        ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{LOOP_ID}'
         ),

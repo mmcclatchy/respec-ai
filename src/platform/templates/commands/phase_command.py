@@ -294,6 +294,83 @@ route accordingly. For now:
 Proceed to Step 13.
 ```
 
+### Step 4: Initialize Shape Refinement Loop
+
+Initialize a dedicated MCP refinement loop for the shape act, decoupled from the detail
+act's loop (Step 13) so `Phase.version` tracking (finding F22) and the joint gate (Step
+11) never interact with detail-act state.
+
+```text
+(Initialize MCP refinement loop for the shape act)
+{tools.initialize_refinement_loop_inline_doc}
+{tools.initialize_loop}
+  plan_name=PLAN_NAME,
+  loop_type="phase"
+)
+```
+
+### Step 4.2: Link Shape Loop to Phase
+
+```text
+(Extract loop_id from initialize_refinement_loop result)
+SHAPE_LOOP_ID = [loop_id from Step 4 MCPResponse]
+
+(Validate loop_id was returned)
+IF SHAPE_LOOP_ID is None or SHAPE_LOOP_ID == "":
+    CRITICAL ERROR: "initialize_refinement_loop did not return valid loop_id for the shape act"
+    DIAGNOSTIC: Show full MCPResponse from Step 4
+    EXIT: Workflow terminated
+
+(Link loop to phase for agents to retrieve via loop_id only)
+{tools.link_loop_to_document_inline_doc}
+{tools.link_shape_loop}
+  loop_id=SHAPE_LOOP_ID,
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
+)
+
+(Verify the link was created)
+SHAPE_LOOP_STATUS = {tools.get_shape_loop_status}
+
+IF SHAPE_LOOP_STATUS does not show linked phase:
+    CRITICAL ERROR: "Shape loop linking failed - phase-architect and phase-critic will fail"
+    DIAGNOSTIC: Show SHAPE_LOOP_STATUS details
+    EXIT: Workflow terminated
+
+Display to user: "✓ Shape refinement loop {{SHAPE_LOOP_ID}} linked to {{PHASE_NAME}}"
+```
+
+**Important**:
+- `SHAPE_LOOP_ID` MUST be extracted and validated before proceeding, same as `LOOP_ID` at Step 13.2
+- `SHAPE_LOOP_ID` and `LOOP_ID` are never the same value and are never mixed across tool calls
+
+### Step 5: Launch Shape Architecture Development
+
+Begin the shape act's technical design conversation:
+
+```text
+{tools.invoke_phase_architect_shape}
+
+Agent will:
+1. Retrieve strategic plan from MCP using plan_name
+2. Execute archive scan to identify existing documentation
+3. Retrieve current phase from MCP using loop_id (SHAPE_LOOP_ID)
+4. Retrieve previous critic feedback from MCP (if iteration > 1)
+5. Propose or refine: Module Layout, Skeleton Index, Collaboration And Wiring, Test
+   List, Open Design Decisions — the public seams and behaviors to pin, not
+   implementation detail (see docs/phase-refactor/decisions.md)
+6. Store updated phase directly in MCP
+7. Return brief status message (no full markdown)
+
+Verify agent completed successfully:
+IF agent returns error status:
+  ERROR: "phase-architect failed to update Phase shape"
+  DIAGNOSTIC: Check agent logs for MCP tool call failures
+  EXIT: Workflow terminated
+
+Display to user: "✓ Phase shape refined by phase-architect"
+```
+
 ### Step 13: Initialize Refinement Loop
 Initialize MCP refinement loop:
 

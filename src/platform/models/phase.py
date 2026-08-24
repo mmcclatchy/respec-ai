@@ -31,8 +31,18 @@ class PhaseCommandTools(CommandToolsModel):
     plans_dir: str = Field(..., description='TUI-specific plans directory path')
 
     # Agent invocations
-    invoke_phase_architect: str = Field(..., description='Invocation text for respec-phase-architect agent')
-    invoke_phase_critic: str = Field(..., description='Invocation text for respec-phase-critic agent')
+    invoke_phase_architect: str = Field(
+        ..., description='Invocation text for respec-phase-architect agent (detail act, phase_mode="detail")'
+    )
+    invoke_phase_architect_shape: str = Field(
+        ..., description='Invocation text for respec-phase-architect agent (shape act, phase_mode="shape")'
+    )
+    invoke_phase_critic: str = Field(
+        ..., description='Invocation text for respec-phase-critic agent (detail act, phase_mode="detail")'
+    )
+    invoke_phase_critic_shape: str = Field(
+        ..., description='Invocation text for respec-phase-critic agent (shape act, phase_mode="shape")'
+    )
     invoke_phase_critic_post_synthesis: str = Field(
         ..., description='Invocation text for post-synthesis respec-phase-critic validation'
     )
@@ -47,12 +57,16 @@ class PhaseCommandTools(CommandToolsModel):
     store_document: str = Field(..., description='Store phase document')
     initialize_loop: str = Field(..., description='Initialize refinement loop')
     get_plan: str = Field(..., description='Retrieve strategic plan')
-    link_loop: str = Field(..., description='Link loop to document')
-    get_loop_status: str = Field(..., description='Get loop status')
-    decide_loop_action: str = Field(..., description='Decide loop action')
-    get_feedback: str = Field(..., description='Get latest feedback')
+    link_loop: str = Field(..., description='Link loop to document (detail act)')
+    get_loop_status: str = Field(..., description='Get loop status (detail act)')
+    decide_loop_action: str = Field(..., description='Decide loop action (detail act)')
+    get_feedback: str = Field(..., description='Get latest feedback (detail act)')
     get_document: str = Field(..., description='Get final phase document')
-    store_user_feedback: str = Field(..., description='Store user feedback')
+    store_user_feedback: str = Field(..., description='Store user feedback (detail act)')
+
+    # Shape act — mirrors the detail-act fields above but pinned to SHAPE_LOOP_ID
+    link_shape_loop: str = Field(..., description='Link the shape-act loop to document')
+    get_shape_loop_status: str = Field(..., description='Get shape-act loop status')
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()

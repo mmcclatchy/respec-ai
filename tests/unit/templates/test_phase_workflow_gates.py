@@ -46,3 +46,21 @@ def test_every_tool_the_phase_command_invokes_is_declared_in_its_allowed_tools(
     contract = template_contract(template)
 
     assert contract.invoked_tools() <= contract.declared_tools()
+
+
+@pytest.mark.parametrize('adapter', [ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter()])
+def test_shape_act_and_detail_act_use_separate_loops_and_declare_their_phase_mode(adapter: TuiAdapter) -> None:
+    # Phase 3, decisions.md: the shape act (Step 4-12) and detail act (Step 13-19) are
+    # two decoupled MCP refinement loops, never the same loop_id, so Phase.version
+    # tracking (finding F22) for the joint gate never sees detail-act writes. Each
+    # architect/critic invocation must declare which act it's running as, per the
+    # phase2_mode/validation_mode scalar-input precedent (AGENT_DEVELOPMENT_GUIDELINES.md).
+    coordinator = TemplateCoordinator()
+    template = coordinator.generate_command_template(RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter)
+
+    # Steps 6-12 (design conversation through the joint gate, including the shape-act
+    # critic invocation) land in a later commit -- see docs/phase-refactor/phase-3-human-gate.md.
+    # Until then the shape-act architect (Step 5) is the only shape_mode call site.
+    assert 'SHAPE_LOOP_ID' in template
+    assert template.count('phase_mode: shape') == 1  # architect, shape act (Step 5)
+    assert template.count('phase_mode: detail') == 2  # architect + critic, detail act
