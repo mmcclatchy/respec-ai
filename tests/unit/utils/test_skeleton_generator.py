@@ -136,6 +136,112 @@ def test_new_skeleton_file_is_written_at_the_named_path(tmp_path: Path) -> None:
     assert 'raise NotImplementedError' in target.read_text()
 
 
+class TestQualifiedTypeReferencesBecomeRealImports:
+    def test_a_dotted_return_type_produces_a_matching_import_line(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: Client.query(cypher: str) -> list[kb.models.BestPractice]\n'
+        )
+
+        result = generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'client.py').read_text()
+        assert 'from kb.models import BestPractice' in content
+        assert 'list[BestPractice]' in content
+        assert 'kb.models.BestPractice' not in content
+        assert result.written_paths
+
+    def test_a_dotted_param_type_also_produces_an_import(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: Client.store(entry: kb.models.BestPractice) -> None\n'
+        )
+
+        result = generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'client.py').read_text()
+        assert 'from kb.models import BestPractice' in content
+        assert 'entry: BestPractice' in content
+        assert result.written_paths
+
+    def test_multiple_members_referencing_the_same_type_produce_one_deduplicated_import(
+        self, tmp_path: Path
+    ) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: Client.query(cypher: str) -> list[kb.models.BestPractice]\n'
+            '- `src/kb/client.py` :: Client.store(entry: kb.models.BestPractice) -> None\n'
+        )
+
+        generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'client.py').read_text()
+        assert content.count('from kb.models import BestPractice') == 1
+
+    def test_builtin_generics_never_produce_a_spurious_import(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: Client.query(cypher: str) -> tuple[str, str]\n'
+        )
+
+        generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'client.py').read_text()
+        assert 'import' not in content
+
+    def test_the_plan_document_worked_example_type_checks(self, tmp_path: Path) -> None:
+        # docs/phase-refactor/phase-4-skeletons.md's own worked example: Neo4jClient with
+        # an async method returning a project-defined type. This is the exact case that
+        # previously failed `ty check` with an unresolved-reference error.
+        (tmp_path / 'pyproject.toml').write_text(
+            '[project]\nname = "scratch"\nversion = "0.0.0"\nrequires-python = ">=3.11"\n'
+        )
+        (tmp_path / 'kb').mkdir()
+        (tmp_path / 'kb' / '__init__.py').write_text('')
+        (tmp_path / 'kb' / 'models.py').write_text('class BestPractice:\n    pass\n')
+
+        entries = parse_skeleton_index(
+            '- `src/kb/neo4j_client.py` :: Neo4jClient.__init__(uri: str, auth: tuple[str, str]) -> None\n'
+            '- `src/kb/neo4j_client.py` :: Neo4jClient.query(cypher: str) -> list[kb.models.BestPractice], async\n'
+        )
+        generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'neo4j_client.py').read_text()
+        assert 'async def query' in content
+
+        ty_executable = str(Path(sys.executable).with_name('ty'))
+        result = subprocess.run(
+            [ty_executable, 'check', 'src/kb/neo4j_client.py'], cwd=tmp_path, capture_output=True, text=True
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+
+
+class TestAsyncTag:
+    def test_async_tagged_member_renders_as_async_def(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: Client.query(cypher: str) -> list[str], async\n'
+        )
+
+        generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'client.py').read_text()
+        assert 'async def query' in content
+
+    def test_untagged_member_renders_as_plain_def(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n')
+
+        generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'client.py').read_text()
+        assert 'def query' in content
+        assert 'async def query' not in content
+
+    def test_async_combines_with_other_tags_without_corrupting_the_return_type(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: _Cache.query(cypher: str) -> list[str], internal, consequential, async\n'
+        )
+
+        member = entries[0].members[0]
+        assert member.return_type == 'list[str]'
+        assert member.tags == frozenset({'internal', 'consequential', 'async'})
+
+
 def test_skeleton_reconciliation_reports_both_existing_and_designed_signatures(tmp_path: Path) -> None:
     target = tmp_path / 'src' / 'kb' / 'client.py'
     target.parent.mkdir(parents=True)

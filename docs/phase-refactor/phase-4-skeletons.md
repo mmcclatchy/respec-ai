@@ -42,13 +42,20 @@ cannot be type-checked against real imports, and cannot be imported by tests —
 describe a red state, never produce one.
 
 ```python
-# src/kb/neo4j_client.py — written at the shape gate
+# src/kb/neo4j_client.py — written at the shape gate, from
+# `### Skeleton Index` entries:
+#   - `src/kb/neo4j_client.py` :: Neo4jClient.__init__(uri: str, auth: tuple[str, str]) -> None
+#   - `src/kb/neo4j_client.py` :: Neo4jClient.query(cypher: str) -> list[kb.models.BestPractice], async
+# The dotted `kb.models.BestPractice` reference becomes a real import; `, async` becomes
+# `async def`. See "### Skeleton Index signature format" in phase_architect.py.
+from kb.models import BestPractice
+
+
 class Neo4jClient:
     def __init__(self, uri: str, auth: tuple[str, str]) -> None:
         raise NotImplementedError
 
     async def query(self, cypher: str) -> list[BestPractice]:
-        """Execute Cypher, return structured results."""
         raise NotImplementedError
 ```
 
@@ -83,6 +90,14 @@ dependency — see `pyproject.toml`'s dev group, which ships `ty` instead), `ruf
 subprocesses against a temp project and assert on exit codes. That is the behavior the feature
 promises, stated exactly.
 
+**B3 is only as strong as the test's own type diversity.** An early pass of B3 tested only builtin
+types (`str`, `list[str]`) and stayed green while the generator silently produced an unresolved
+reference for any Skeleton Index entry referencing a project-defined type — exactly this document's
+own worked example (`list[BestPractice]`). Caught by a plan-vs-implementation audit, not by the
+original B3 test. Fixed by the dotted-path import convention above; the regression test
+(`test_the_plan_document_worked_example_type_checks`) runs this document's literal example through
+`ty check`.
+
 B5 and B6 together are the TDD promise of the feature made testable: red before, green after. Drive
 B6 by filling one seam with a trivial correct implementation inside the test.
 
@@ -111,9 +126,20 @@ to `shape-settled`. Ordering matters: skeletons are written from the design the 
 the critic passed, never from an intermediate draft.
 
 For each entry in `### Skeleton Index`:
-- New path → write the skeleton: imports, class, public signatures with full type annotations,
-  docstrings where the "why" is not obvious, bodies `raise NotImplementedError`.
+- New path → write the skeleton: class, public signatures with full type annotations, bodies
+  `raise NotImplementedError`. Any type not built into Python must be written in the Skeleton Index
+  as a fully-qualified dotted path (`kb.models.BestPractice`, not bare `BestPractice`) — the
+  generator derives a real `from kb.models import BestPractice` from it and rewrites the annotation
+  to the bare name; a bare non-builtin name has no import and fails `ty check`. `, async` on a
+  signature becomes `async def`. **No docstrings are generated.** The Skeleton Index line format
+  (`path :: Class.method(args) -> ReturnType[, tags]`) carries no docstring text, so there is nothing
+  for a mechanical generator to emit — a docstring capturing non-obvious "why" is the coder's job
+  during implementation, same as any other business-logic comment.
 - Existing path → the diff conversation above.
+- An internal (module-private) class the architect flagged `internal, consequential` but the user did
+  not select at Step 7's opt-in prompt is never materialized, even if that prose step fails to strip
+  it from the Skeleton Index — a defensive backstop, since the alternative is silently giving the
+  user a file for a class they explicitly declined (README cross-cutting risk #1).
 
 For each entry in `### Test List`:
 - Write the test file with named test functions matching the behaviors, each failing (`assert False`
@@ -175,6 +201,12 @@ The conformance reviewer (Phase 7). `implementation.md` (Phase 5).
       content mismatch — not an ImportError — then the guard was restored and B1 went green again.)
 - [x] B3–B6 invoke real `ty` / `ruff` / `pytest` subprocesses rather than asserting on generated
       strings.
+- [x] **B3 holds for a signature referencing a project-defined type, not just builtins.** A
+      plan-vs-implementation audit found the generator emitted no import for cross-module types,
+      failing `ty check` on this document's own worked example. Fixed via the dotted-path convention
+      (`kb.models.BestPractice` → `from kb.models import BestPractice`); regression test
+      `test_the_plan_document_worked_example_type_checks` runs this exact document's example through
+      `ty check`.
 - [x] `uv run pytest` green (respec-ai's own suite; scaffolded tests live in the temp project).
 - [x] `regenerate` valid for all three TUIs — verified by rendering the phase command template
       through `TemplateCoordinator` for `ClaudeCodeAdapter`/`CodexAdapter`/`OpenCodeAdapter` and

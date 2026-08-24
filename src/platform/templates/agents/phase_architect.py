@@ -40,7 +40,10 @@ technical_phase_template = Phase(
     ),
     skeleton_index=(
         '- `src/path/to/module.py` :: ClassName.method_name(arg: Type) -> ReturnType\n'
-        '  (one line per public message — this is the durable contract the conformance reviewer diffs against)'
+        '  (one line per public message — this is the durable contract the conformance reviewer diffs against.'
+        ' Types not built into Python MUST be a fully-qualified dotted path, e.g.'
+        ' `list[kb.models.BestPractice]`, so Phase 4 materialization can emit a real import.'
+        ' Append `, async` for a coroutine method.)'
     ),
     collaboration_and_wiring=(
         '[Who constructs whom, injection points, call order across the modules above]'
@@ -595,6 +598,17 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 The design layer (`## Design Shape`, `## Design Decisions`) is the one place concrete
 paths and signatures belong. Everywhere else in the Phase, name capability and intent,
 not files.
+
+✅ **`### Skeleton Index` signature format** — Phase 4 materializes these into real,
+type-checked files, so:
+- A type not built into Python (not `str`/`int`/`float`/`bool`/`bytes`/`None`, and not a
+  builtin generic like `list[...]`/`dict[...]`/`tuple[...]`) MUST be written as a
+  fully-qualified dotted path: `list[kb.models.BestPractice]`, not `list[BestPractice]`.
+  Materialization derives the import from the dotted path and rewrites the annotation to
+  the bare name; a bare non-builtin name has no import and fails type-checking.
+- A coroutine method gets `, async` appended after the return type:
+  `ClassName.method_name(arg: Type) -> ReturnType, async`. Combine with other trailing
+  tags in any order, e.g. `..., internal, consequential, async`.
 
 ❌ **Time Estimates**:
 - Wrong: "Step 1: Schema setup (30 minutes)"

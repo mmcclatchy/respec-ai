@@ -4,11 +4,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 _BULLET_PATH = re.compile(r'^-\s*`(?P<inner>[^`]+)`(?P<rest>.*)$')
-_SIGNATURE_TAGS = ('internal', 'consequential', 'user-selected')
+_SIGNATURE_TAGS = ('internal', 'consequential', 'user-selected', 'async')
 _SIGNATURE = re.compile(
     r'^(?:(?P<class_name>[A-Za-z_]\w*)\.)?(?P<member_name>[A-Za-z_]\w*)'
     r'\((?P<params>.*)\)\s*->\s*(?P<return_type>.+)$'
 )
+# A fully-qualified dotted reference to a non-builtin type, e.g. `kb.models.BestPractice`
+# or `pathlib.Path` -- the Skeleton Index convention for any type that needs an import.
+# Builtin generics like `list[str]` or `tuple[str, str]` have no dot and never match.
+_QUALIFIED_TYPE_REF = re.compile(r'\b(?:[a-zA-Z_]\w*\.)+([A-Z]\w*)\b')
+
+
+def _extract_imports_and_bare_text(text: str) -> tuple[str, frozenset[tuple[str, str]]]:
+    imports: set[tuple[str, str]] = set()
+
+    def _replace(match: re.Match[str]) -> str:
+        class_name = match.group(1)
+        module_path = match.group(0)[: -(len(class_name) + 1)]
+        imports.add((module_path, class_name))
+        return class_name
+
+    bare_text = _QUALIFIED_TYPE_REF.sub(_replace, text)
+    return bare_text, frozenset(imports)
 
 
 @dataclass(frozen=True)
@@ -18,6 +35,7 @@ class SkeletonMember:
     params: str
     return_type: str
     tags: frozenset[str] = field(default_factory=frozenset)
+    required_imports: frozenset[tuple[str, str]] = field(default_factory=frozenset)
 
 
 @dataclass(frozen=True)
@@ -81,12 +99,17 @@ def _parse_member(signature: str) -> SkeletonMember:
     match = _SIGNATURE.match(remainder)
     if not match:
         raise ValueError(f'Unparseable Skeleton Index signature: {signature!r}')
+
+    bare_params, param_imports = _extract_imports_and_bare_text(match.group('params').strip())
+    bare_return_type, return_imports = _extract_imports_and_bare_text(match.group('return_type').strip())
+
     return SkeletonMember(
         class_name=match.group('class_name'),
         member_name=match.group('member_name'),
-        params=match.group('params').strip(),
-        return_type=match.group('return_type').strip(),
+        params=bare_params,
+        return_type=bare_return_type,
         tags=tags,
+        required_imports=param_imports | return_imports,
     )
 
 
@@ -132,9 +155,17 @@ def _render_member_body(member: SkeletonMember, is_method: bool) -> str:
     if is_method and not params.split(',')[0].strip().startswith('self'):
         params = f'self, {params}' if params else 'self'
     indent = '    ' if is_method else ''
-    lines = [f'{indent}def {member.member_name}({params}) -> {member.return_type}:']
+    keyword = 'async def' if 'async' in member.tags else 'def'
+    lines = [f'{indent}{keyword} {member.member_name}({params}) -> {member.return_type}:']
     lines.append(f'{indent}    raise NotImplementedError')
     return '\n'.join(lines)
+
+
+def _render_import_lines(entry: SkeletonIndexEntry) -> str:
+    imports: set[tuple[str, str]] = set()
+    for member in entry.members:
+        imports |= member.required_imports
+    return '\n'.join(f'from {module} import {name}' for module, name in sorted(imports))
 
 
 def render_skeleton_module(entry: SkeletonIndexEntry) -> str:
@@ -147,6 +178,9 @@ def render_skeleton_module(entry: SkeletonIndexEntry) -> str:
             functions.append(member)
 
     blocks: list[str] = []
+    import_lines = _render_import_lines(entry)
+    if import_lines:
+        blocks.append(import_lines)
     for class_name, members in classes.items():
         method_bodies = '\n\n'.join(_render_member_body(m, is_method=True) for m in members)
         blocks.append(f'class {class_name}:\n{method_bodies}')
