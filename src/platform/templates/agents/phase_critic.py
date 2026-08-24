@@ -286,15 +286,23 @@ BLOCKER RULE FOR NON-DIVERGENT DECISION OPTIONS:
   structurally differ — decision fatigue comes from bad decisions, not many"
 
 STEP S4: Store lightweight feedback
+SHAPE_LOOP_STATUS = {tools.get_loop_status}
+SHAPE_ITERATION = SHAPE_LOOP_STATUS.iteration + 1
 CALL {tools.store_feedback} with:
+- loop_id: {{loop_id}}
+- critic_agent: PHASE_CRITIC
+- iteration: SHAPE_ITERATION
 - assessment_summary: "Shape assessment"
 - overall_score: 100 if no blockers were raised in STEP S3, else 40. The numeric value
   only needs to trigger the existing blocker-gate/stagnation loop machinery — shape-mode
   readiness is determined by `### Blockers`, not the score.
-- detailed_feedback: the checks run in STEP S3 and their results
+- detailed_feedback: the checks run in STEP S3 and their results, formatted per OUTPUT
+  FORMAT below (the `### Blockers` / `### Detailed Feedback` markdown structure) —
+  OUTPUT FORMAT still applies to shape mode even though STEPs 1-6 are skipped
 - blockers: as raised in STEP S3
 - key_issues: []
 - recommendations: []
+MUST NOT store feedback with iteration=0.
 
 Do NOT execute STEPs 1-6 below when phase_mode == "shape".
 
@@ -1056,6 +1064,16 @@ Phases vary by project type. Evaluate based on project context:
 
 ### Design Shape Evaluation (Not Scored — BLOCKERS only)
 
+GATE CHECK: If `### Shape Gate` on the Phase is `shape-settled` or `shape-amended`, skip this entire section — raise none of its blockers.
+The phase_mode == "shape" critic pass already ran this exact blocker lane against this design before the user approved
+it at the Phase 3 gate, and Step 11's override lets the user carry forward a shape this
+lane would still flag. Re-running it here would let a blocker the user already accepted
+(or that shape mode already cleared) permanently deadlock the detail act — the detail
+architect is forbidden from modifying `## Design Shape` once the gate is settled, so a
+blocker raised from this section here could never be resolved.
+Run this section normally (as before) when `### Shape Gate` is `unshaped` or
+`shape-proposed` — those phases never went through the shape act's own check.
+
 The design layer (`## Design Shape`, `## Design Decisions`) exists to give module
 boundaries, public seams, and behaviors an owner (findings F1-F4) before the human
 gate (Phase 3) and skeleton materialization (Phase 4) exist. It is a hypothesis, not
@@ -1276,6 +1294,14 @@ The feedback markdown must include overall_score for MCP database auto-populatio
   - Set `overall_score` to `POST_SYNTHESIS_SCORE`, never `0`
   - Set `assessment_summary` exactly to `Post-synthesis path validation`
   - Store only after confirming `POST_SYNTHESIS_SCORE > 0`
+- In `phase_mode == "shape"` (see PHASE MODE: SHAPE above), override the template
+  defaults the same way, using this Feedback Structure to store STEP S4's output:
+  - Set `iteration` to `SHAPE_ITERATION`, never `0`
+  - Set `overall_score` per STEP S4 (100 or 40), never `0`
+  - Set `assessment_summary` exactly to `Shape assessment`
+  - Populate `### Blockers` and `### Detailed Feedback` from STEP S3 only — leave
+    Core/Optional/Domain-Specific section scoring and `key_issues`/`recommendations`
+    empty; those lanes never ran
 - **Core Sections**: Evaluate all 4 required sections (Objectives, Scope, Architecture, Testing)
 - **Optional Core Sections**: Only evaluate sections that are present in the phase (up to 5 sections max)
 - **Domain-Specific Sections**: Identify ALL sections beyond core sections, evaluate for presence and substance

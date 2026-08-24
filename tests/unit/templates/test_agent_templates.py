@@ -612,6 +612,28 @@ class TestPhaseCriticTemplate:
         assert 'Under-Surfaced Decision - BLOCKING' in template
         assert 'Non-Divergent Decision Options - BLOCKING' in template
 
+    def test_shape_mode_stores_nonzero_iteration(self) -> None:
+        # STEP S4 must compute a real iteration via get_loop_status, mirroring the
+        # post_synthesis path — CriticFeedback defaults iteration=0, and storing that
+        # would collide with the "MUST NOT store feedback with iteration=0" contract
+        # the rest of the loop machinery relies on.
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
+        template = generate_phase_critic_template(tools)
+
+        assert 'SHAPE_ITERATION = SHAPE_LOOP_STATUS.iteration + 1' in template
+        assert 'MUST NOT store feedback with iteration=0.' in template
+
+    def test_detail_mode_skips_design_shape_blockers_once_shape_gate_is_settled(self) -> None:
+        # decisions.md "the critic runs after user approval": once phase_mode="shape"
+        # already ran the Design Shape Evaluation blocker lane and the user approved at
+        # the Phase 3 gate, detail mode must not re-raise those same blockers — the
+        # detail architect is forbidden from touching Design Shape once the gate is
+        # settled, so a blocker raised here would permanently deadlock the loop.
+        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
+        template = generate_phase_critic_template(tools)
+
+        assert 'skip this entire section — raise none of its blockers.' in template
+
 
 class TestPlanCriticTemplate:
     def test_template_uses_invocation_contract_style(self) -> None:
