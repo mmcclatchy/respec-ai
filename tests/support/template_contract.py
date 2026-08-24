@@ -84,6 +84,44 @@ class TemplateContract:
     def blocker_conditions(self) -> set[str]:
         return {_slugify(match.group(1)) for match in _BLOCKER_CONDITION_PATTERN.finditer(self._template)}
 
+    def step_body(self, step_number: str) -> str:
+        """Text between a `### Step N:`/`#### Step N:` header and the next Step header.
+
+        Anchored on the step number, not the title, so it survives retitling. Legitimate
+        per testing.md: downstream code (code_command.py) actually scans `#### Step N:`,
+        so the number is part of the contract, not incidental prose.
+        """
+        header = re.search(rf'^#{{2,4}} Step {re.escape(step_number)}:.*$', self._template, re.MULTILINE)
+        if not header:
+            raise ValueError(f'No Step {step_number} header found')
+
+        start = header.end()
+        next_header = re.search(r'^#{2,4} Step \d', self._template[start:], re.MULTILINE)
+        end = start + next_header.start() if next_header else len(self._template)
+        return self._template[start:end]
+
+    def outcome_condition(self, body: str, outcome_marker: str) -> str:
+        """The nearest preceding IF/ELIF/ELSE line that guards a line containing marker.
+
+        Lets a test assert *what must be true* for an outcome (e.g. "Proceed to Step
+        12") without depending on exact prose elsewhere in the branch body.
+        """
+        lines = body.split('\n')
+        for i, line in enumerate(lines):
+            if outcome_marker in line:
+                for j in range(i, -1, -1):
+                    if re.match(r'^\s*(IF|ELIF|ELSE)\b', lines[j]):
+                        return lines[j].strip()
+                raise ValueError(f'Marker {outcome_marker!r} found but no guarding IF/ELIF/ELSE above it')
+
+        raise ValueError(f'No line containing {outcome_marker!r} found in body')
+
+    def wait_prompt_count(self, body: str) -> int:
+        return body.count('WAIT for')
+
+    def resume_marker_count(self, body: str) -> int:
+        return len(re.findall(r'resume at Step', body))
+
 
 def template_contract(template: str) -> TemplateContract:
     return TemplateContract(template)
