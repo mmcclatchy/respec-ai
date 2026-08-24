@@ -42,6 +42,24 @@ below for what is verified and what is still only structural/template-contract-l
   live phase workflow run has exercised the shape act end to end, and `regenerate` itself has not
   been re-run (see below). Treat the deadlock/iteration fixes as reasoned-through, not
   empirically confirmed, until a real run happens.
+- **Plan-vs-implementation audit (2026-08-24) found and fixed three gaps:** Step 7's skeleton
+  opt-in prompt parsed for Skeleton Index entries marked "internal, consequential", but
+  `phase_architect.py` never instructed the architect to emit that marker — the prompt's source
+  list was always empty and could never fire. `create_phase_command_tools()` never granted the
+  `Write` capability, so Steps 8/9's "Use Write tool" instruction had no tool declaration to act
+  on — the edit gate could not actually write `phase.md` to disk at runtime. And the plan's claim
+  that OD-### format is "enforced by the critic" (§3) only held for option divergence, not for
+  presence of title/Option A/Option B/Recommended — a missing `Recommended:` line would let Step
+  6's "accept recommended default" path silently record an empty decision. All three are fixed
+  and pinned by tests (`test_shape_mode_marks_consequential_internals_for_the_skeleton_opt_in_prompt`,
+  `test_create_phase_command_tools_grants_write_for_the_shape_act_edit_gate`,
+  `test_shape_mode_enforces_od_entry_format`).
+- **Pre-existing, out of Phase 3's scope, flagged for a separate cleanup:** `phase_architect.py`'s
+  constraint-reading logic (`SOURCE 2`/`SOURCE 3`, search `(legacy)` and `backward compatibility`)
+  carries fallback parsing for an older `"Claude Plan:"` marker and an ad-hoc directive format.
+  This predates Phase 3 and isn't part of this phase's diff, but this project has no users and no
+  backwards-compatibility requirement — it's a candidate for removal in its own commit, not folded
+  into Phase 3.
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`, and **all of**
 `docs/phase-refactor/decisions.md` — this phase implements four decisions that were reversed during design
