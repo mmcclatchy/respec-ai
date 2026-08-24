@@ -533,7 +533,7 @@ class TestCrossPlatformInvocationRendering:
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
         assert 'IF LOOP_DECISION == "completed":' in template
-        assert 'Proceed to Step 7.5.' in template
+        assert 'Proceed to Step 16.5.' in template
 
     def test_phase_template_uses_post_synthesis_critic_and_routes_research_blockers_to_loop(self) -> None:
         coordinator = TemplateCoordinator()
@@ -547,10 +547,10 @@ class TestCrossPlatformInvocationRendering:
         assert '[API Research Coverage Missing - BLOCKING]' in template
         assert 'Post-synthesis research coverage needs refinement' in template
         assert 'POST_SYNTHESIS_DECISION_RESPONSE = ' in template
-        assert 'Return to Step 5 (phase-architect will retrieve post-synthesis feedback from MCP itself)' in template
-        assert 'Proceed to Step 8.' in template
+        assert 'Return to Step 14 (phase-architect will retrieve post-synthesis feedback from MCP itself)' in template
+        assert 'Proceed to Step 17.' in template
         assert 'Invalid "Read:" paths found: 0' not in template
-        assert 'EXIT: Do NOT proceed to Step 8 with missing external API docs' not in template
+        assert 'EXIT: Do NOT proceed to Step 17 with missing external API docs' not in template
 
     def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
         coordinator = TemplateCoordinator()
@@ -561,11 +561,11 @@ class TestCrossPlatformInvocationRendering:
                 RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter
             )
             assert 'MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)' in template
-            assert 'Return "Phase complete" success without attempting Step 9' in template
+            assert 'Return "Phase complete" success without attempting Step 18' in template
             assert 'Attempt `respec-task` invocation via Bash/CLI' in template
             assert 'Command handoff path MUST use adapter-rendered orchestration invocation' in template
             assert 'Sanity check orchestration path:' in template
-            assert 'Fallback/manual mode does NOT waive Step 9 obligations.' in template
+            assert 'Fallback/manual mode does NOT waive Step 18 obligations.' in template
             assert 'IF TASK_INVOCATION_ATTEMPTED == false' in template
             assert 'IF TASK_INVOCATION_METHOD == "shell"' in template
 
@@ -632,14 +632,14 @@ class TestCrossPlatformInvocationRendering:
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
 
-        step_8_pos = template.find('### Step 8: Phase Storage')
-        step_9_pos = template.find('### Step 9: Automatic Task Generation')
-        step_10_pos = template.find('### Step 10: Completion Contract and Final Reporting')
+        step_17_pos = template.find('### Step 17: Phase Storage')
+        step_18_pos = template.find('### Step 18: Automatic Task Generation')
+        step_19_pos = template.find('### Step 19: Completion Contract and Final Reporting')
 
-        assert step_8_pos != -1
-        assert step_9_pos != -1
-        assert step_10_pos != -1
-        assert step_8_pos < step_9_pos < step_10_pos
+        assert step_17_pos != -1
+        assert step_18_pos != -1
+        assert step_19_pos != -1
+        assert step_17_pos < step_18_pos < step_19_pos
 
     def test_phase_template_requires_completion_contract_fields(self) -> None:
         coordinator = TemplateCoordinator()

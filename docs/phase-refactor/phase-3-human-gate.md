@@ -29,9 +29,20 @@ covers it (check whether its fixture accepts `allow_frozen_field_edits`) before 
 Implementing the pre-reversal version would look reasonable and be wrong. Findings F5, F7, F8, F9,
 F15, F16, F18, F22 apply.
 
-**First action:** build `validate_document` and invert Phase 0's B6/B7 tests. It is ordinary Python
-on strings, fully testable without prompt machinery, and every later step of this phase depends on
-it. Do not start the gate flow until the validator is green.
+**First action (done — see Progress above):** build `validate_document` and invert Phase 0's B6/B7
+tests. It is ordinary Python on strings, fully testable without prompt machinery, and every later
+step of this phase depends on it. Do not start the gate flow until the validator is green.
+
+**Next action:** the two-act `phase_command.py` rewrite (§2 below), as two separate commits:
+1. **Mechanical first** — insert the new Step 3 (read `### Shape Gate`, branch shape vs detail act)
+   and renumber the existing 10 steps into the §2 table below, re-pointing every internal
+   back-reference (`Return to Step N`, `resume at Step N`, the `refine` branch at what is currently
+   `phase_command.py:435-437`). No behavior change. Get the suite green before moving on — do not mix
+   this with the gate behavior below in the same diff, it makes a 1172-line template unreviewable.
+2. **Then** layer in the design conversation (§3), the edit gate (§4), and the joint gate (§5),
+   extending `tests/support/template_contract.py` as needed for B7-B10 (its current four methods —
+   `declared_tools`, `invoked_tools`, `decision_branch`, `blocker_conditions` — don't yet cover the
+   `APPROVED_VERSION` comparison the joint gate needs).
 
 **The single most important thing to get right** is that the critic runs *after* the user approves,
 not before. If you find yourself writing an architect↔critic loop that resolves to a quality

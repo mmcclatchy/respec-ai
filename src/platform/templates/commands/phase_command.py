@@ -275,7 +275,26 @@ Load phase and plan from file system, store in MCP:
 - PHASE_NAME is the canonical name extracted from file path
 - Both documents are now in MCP storage for refinement loop
 
-### Step 4: Initialize Refinement Loop
+### Step 3: Determine Workflow Act
+
+```text
+SHAPE_GATE = read "### Shape Gate" from the synced Phase document (Step 2)
+```
+
+TODO(phase-3): this always proceeds to Step 13 for now. The shape act (Steps 4-12:
+`SHAPE_LOOP_ID` init, architect `phase_mode="shape"`, design conversation, skeleton
+opt-in, edit gate, critic `phase_mode="shape"`, joint gate) is not built yet — see
+`docs/phase-refactor/phase-3-human-gate.md`. Until it lands, this step is a no-op and
+behavior is unchanged from before this renumbering: `SHAPE_GATE in {"unshaped",
+"shape-proposed"}` will route to the shape act once it exists; `SHAPE_GATE in
+{"shape-settled", "shape-amended"}`, or an explicit user instruction to re-shape, will
+route accordingly. For now:
+
+```text
+Proceed to Step 13.
+```
+
+### Step 13: Initialize Refinement Loop
 Initialize MCP refinement loop:
 
 ```text
@@ -287,18 +306,18 @@ Initialize MCP refinement loop:
 )
 ```
 
-### Step 4.2: Link Loop to Phase
+### Step 13.2: Link Loop to Phase
 
 After initializing loop, link it to Phase for idempotent retrieval:
 
 ```text
 (Extract loop_id from initialize_refinement_loop result)
-LOOP_ID = [loop_id from Step 4.1 MCPResponse]
+LOOP_ID = [loop_id from Step 13.1 MCPResponse]
 
 (Validate loop_id was returned)
 IF LOOP_ID is None or LOOP_ID == "":
     CRITICAL ERROR: "initialize_refinement_loop did not return valid loop_id"
-    DIAGNOSTIC: Show full MCPResponse from Step 4.1
+    DIAGNOSTIC: Show full MCPResponse from Step 13.1
     EXIT: Workflow terminated
 
 (Link loop to phase for agents to retrieve via loop_id only)
@@ -325,7 +344,7 @@ Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{PHASE_NAME}}"
 - Agents depend on this link - fail loudly if it's broken
 - Empty string "" is NOT valid - only non-empty string or None
 
-### Step 5: Launch Architecture Development
+### Step 14: Launch Architecture Development
 Begin technical design:
 
 ```text
@@ -354,9 +373,9 @@ IF agent returns error status:
 Display to user: "✓ Phase refined by phase-architect"
 ```
 
-### Step 6: Quality Assessment Loop
+### Step 15: Quality Assessment Loop
 
-#### Step 6.1: Invoke Phase-Critic Agent
+#### Step 15.1: Invoke Phase-Critic Agent
 
 ```text
 PRE_PHASE_LOOP_STATUS = {tools.get_loop_status}
@@ -370,7 +389,7 @@ IF phase-critic reports failure:
   DIAGNOSTIC: [surface the exact critic error/output]
   FAIL-CLOSED:
   - Do NOT call decide_loop_action
-  - Do NOT continue to Step 7
+  - Do NOT continue to Step 16
   EXIT: Workflow terminated
 
 POST_PHASE_LOOP_STATUS = {tools.get_loop_status}
@@ -381,7 +400,7 @@ IF PHASE_FEEDBACK is empty OR retrieval fails:
   DIAGNOSTIC: [surface the exact MCP/tool error]
   FAIL-CLOSED:
   - Do NOT call decide_loop_action
-  - Do NOT continue to Step 7
+  - Do NOT continue to Step 16
   EXIT: Workflow terminated
 
 IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.status == "initialized":
@@ -389,7 +408,7 @@ IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.stat
   DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
   FAIL-CLOSED:
   - Do NOT call decide_loop_action
-  - Do NOT continue to Step 7
+  - Do NOT continue to Step 16
   EXIT: Workflow terminated
 
 IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iteration <= PRE_PHASE_LOOP_STATUS.iteration:
@@ -397,11 +416,11 @@ IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iter
   DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
   FAIL-CLOSED:
   - Do NOT call decide_loop_action
-  - Do NOT continue to Step 7
+  - Do NOT continue to Step 16
   EXIT: Workflow terminated
 ```
 
-#### Step 6.2: Get Loop Decision
+#### Step 15.2: Get Loop Decision
 
 **MCP Server handles score extraction and loop decision internally.**
 
@@ -412,7 +431,7 @@ LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
 LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
 ```
 
-### Step 7: Handle Refinement Decisions
+### Step 16: Handle Refinement Decisions
 
 ═══════════════════════════════════════════════
 MANDATORY DECISION PROTOCOL
@@ -430,11 +449,11 @@ VIOLATION: Asking the user whether to continue refining when status is "refine"
 ```text
 IF LOOP_DECISION == "completed":
   Display to user: "✅ Score: {{LOOP_SCORE}}/100 — Phase meets quality standards"
-  Proceed to Step 7.5.
+  Proceed to Step 16.5.
 
 ELIF LOOP_DECISION == "REFINE":
   Display to user: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining Phase"
-  Return to Step 5 (phase-architect will retrieve feedback from MCP itself)
+  Return to Step 14 (phase-architect will retrieve feedback from MCP itself)
 
 ELIF LOOP_DECISION == "USER_INPUT":
   (Check for Decomposition Requirement)
@@ -479,7 +498,7 @@ ELIF LOOP_DECISION == "USER_INPUT":
 
     WAIT for {selection_response_source}.
     DO NOT treat this as workflow completion, cancellation, or failure.
-    After the user responds, resume at Step 7. Continue with feedback storage immediately.
+    After the user responds, resume at Step 16. Continue with feedback storage immediately.
     DO NOT explain that the workflow is stopping unless the user asks why.
 
     IF option 1: USER_FEEDBACK_MARKDOWN = "User requested continued refinement"
@@ -488,15 +507,15 @@ ELIF LOOP_DECISION == "USER_INPUT":
 
     {tools.store_user_feedback}
 
-    Return to Step 5 (phase-architect will incorporate user guidance)
+    Return to Step 14 (phase-architect will incorporate user guidance)
 
 ELIF LOOP_DECISION == "MAX_ITERATIONS":
   Display warning: "Maximum iterations reached. Review feedback and decide next steps."
   Display LATEST_FEEDBACK to user
-  Proceed to Step 7.5.
+  Proceed to Step 16.5.
 ```
 
-### Step 7.5: Synthesize Research Requirements
+### Step 16.5: Synthesize Research Requirements
 
 After quality loop completes, synthesize any "Synthesize:" research prompts using best-practices-rag:
 
@@ -616,7 +635,7 @@ SYNTHESIS_QUEUE = deduplicated list of normalized SYNTHESIZE_PROMPTS + AUTO_API_
 
 IF SYNTHESIS_QUEUE is empty:
   Display: "✓ No bp synthesis required (all detected APIs already covered by content-validated official .best-practices API docs)"
-  Proceed to Step 7.6.
+  Proceed to Step 16.6.
 
 ═══════════════════════════════════════════════
 MANDATORY COST-AWARE SYNTHESIS POLICY
@@ -713,10 +732,10 @@ SUB-STEP 7: Store updated Phase
 Display: "✓ Synthesized {{len(SYNTHESIZED_PATHS)}} research brief(s), {{len(COMPLETE_PATHS)}} total documents"
 Display: "Research synthesis summary: explicit_prompts={{len(SYNTHESIZE_PROMPTS)}}, auto_api_prompts={{len(AUTO_API_PROMPTS)}}, api_docs_covered_with_valid_bp={{len(APIS_WITH_VALID_BP_DOCS)}}, invoked_bp={{len(SYNTHESIS_QUEUE)}}, generated_docs={{len(SYNTHESIZED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
 
-Proceed to Step 7.6.
+Proceed to Step 16.6.
 ```
 
-### Step 7.6: Post-Synthesis Quality Validation
+### Step 16.6: Post-Synthesis Quality Validation
 
 After research synthesis completes, validate all research paths exist:
 
@@ -777,18 +796,18 @@ IF POST_SYNTHESIS_FEEDBACK contains "[Research Path Invalid - BLOCKING]" OR
 
     IF POST_SYNTHESIS_DECISION == "refine":
       Display: "⟳ Iteration {{POST_SYNTHESIS_ITERATION}} · Score: {{POST_SYNTHESIS_SCORE}}/100 — refining Phase from post-synthesis feedback"
-      Return to Step 5 (phase-architect will retrieve post-synthesis feedback from MCP itself)
+      Return to Step 14 (phase-architect will retrieve post-synthesis feedback from MCP itself)
 
     ELIF POST_SYNTHESIS_DECISION == "user_input":
       Display POST_SYNTHESIS_FEEDBACK to user with:
       - Current score and iteration
       - Research path, best-practices reference, and API documentation coverage blockers
       - Request for technical clarification only if needed by feedback
-      Return to Step 5 after user guidance is available
+      Return to Step 14 after user guidance is available
 
     ELIF POST_SYNTHESIS_DECISION == "completed":
       Display: "✓ Post-synthesis research coverage validated after loop decision"
-      Proceed to Step 8.
+      Proceed to Step 17.
 
     ELSE:
       ERROR: "Unexpected post-synthesis loop decision"
@@ -797,17 +816,17 @@ IF POST_SYNTHESIS_FEEDBACK contains "[Research Path Invalid - BLOCKING]" OR
 ELSE:
     Display: "✓ All research paths validated successfully"
 
-Proceed to Step 8.
+Proceed to Step 17.
 ```
 
-### Step 8: Phase Storage
+### Step 17: Phase Storage
 
 ═══════════════════════════════════════════════
 MANDATORY PHASE FILE STORAGE RESTRICTION
 ═══════════════════════════════════════════════
 Phase storage uses ONLY these two mechanisms:
 1. MCP storage (already completed during refinement loop)
-2. Platform storage (Step 8.2 below)
+2. Platform storage (Step 17.2 below)
 
 Do NOT:
 - Write phase.md or any .md file to disk directly
@@ -818,7 +837,7 @@ VIOLATION: Writing any phase file outside the designated
            MCP and platform storage tools.
 ═══════════════════════════════════════════════
 
-#### Step 8.1: Retrieve Final Phase from MCP
+#### Step 17.1: Retrieve Final Phase from MCP
 Retrieve the Phase from MCP storage:
 
 ```text
@@ -830,7 +849,7 @@ FINAL_PHASE_RESPONSE = {tools.get_document}
 FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
 ```
 
-#### Step 8.2: Save to External Platform
+#### Step 17.2: Save to External Platform
 Store the phase using platform-specific tool:
 
 ```text
@@ -846,7 +865,7 @@ Labels: phase, architecture, phase-2
 
 **Important**: Use FINAL_PHASE_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
 
-### Step 9: Automatic Task Generation
+### Step 18: Automatic Task Generation
 
 After Phase storage completes, automatically generate the Task document.
 
@@ -859,7 +878,7 @@ MUST:
 - Record task invocation outcome before any completion response
 
 MUST NOT:
-- Return "Phase complete" success without attempting Step 9
+- Return "Phase complete" success without attempting Step 18
 - Attempt `respec-task` invocation via Bash/CLI
 
 EXCEPTION:
@@ -867,7 +886,7 @@ EXCEPTION:
 
 IMPORTANT:
 - Fallback/manual mode changes implementation method only.
-- Fallback/manual mode does NOT waive Step 9 obligations.
+- Fallback/manual mode does NOT waive Step 18 obligations.
 - Command handoff path MUST use adapter-rendered orchestration invocation, not shell fallback.
 ═══════════════════════════════════════════════
 
@@ -888,7 +907,7 @@ IF TASK_ORCHESTRATION_INVOCATION is empty OR missing expected respec-task invoca
   ERROR_RESPONSE = {{
     "error_type": "task_handoff_unavailable",
     "error_message": "Task orchestration invocation path unavailable",
-    "recovery_action": "Stop before Step 9 execution and preserve phase output",
+    "recovery_action": "Stop before Step 18 execution and preserve phase output",
     "user_guidance": "Run template regeneration and retry Phase workflow. Do NOT use shell fallback for respec-task.",
     "partial_output": "Phase stored successfully; task handoff blocked by fail-closed policy."
   }}
@@ -932,16 +951,16 @@ ELSE:
       TASK_ERROR_SUMMARY = "Task workflow returned but task retrieval verification failed"
 ```
 
-### Step 10: Completion Contract and Final Reporting
+### Step 19: Completion Contract and Final Reporting
 
 ```text
 IF TASK_INVOCATION_ATTEMPTED == false AND user did not explicitly request to stop chaining:
-  ERROR: non-compliant run (Step 9 not attempted)
+  ERROR: non-compliant run (Step 18 not attempted)
   EXIT with structured error (do NOT report success)
 
 IF TASK_INVOCATION_METHOD == "shell":
-  ERROR: non-compliant run (shell invocation is invalid for Step 9)
-  RETRY REQUIRED: re-run Step 9 via orchestration invocation path before reporting success/failure
+  ERROR: non-compliant run (shell invocation is invalid for Step 18)
+  RETRY REQUIRED: re-run Step 18 via orchestration invocation path before reporting success/failure
   EXIT with structured error
 
 Completion contract (required in final response):
@@ -1049,10 +1068,10 @@ IF mcp__respec-ai tools unavailable:
     "error_type": "mcp_error",
     "error_message": "MCP loop state management unavailable",
     "recovery_action": "Falling back to direct agent coordination with single iteration",
-    "user_guidance": "Quality loop disabled - single-pass Phase generation. Step 9 task handoff still required.",
+    "user_guidance": "Quality loop disabled - single-pass Phase generation. Step 18 task handoff still required.",
     "partial_output": "Strategic plan processed"
   }}
-  → Continue with single phase-architect → phase-critic → storage workflow, then execute Step 9
+  → Continue with single phase-architect → phase-critic → storage workflow, then execute Step 18
 ```
 
 #### 4. Storage Platform Failure
