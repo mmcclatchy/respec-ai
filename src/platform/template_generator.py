@@ -8,7 +8,6 @@ from src.platform.models import (
     PhaseCommandTools,
     PlanCommandTools,
     PlanRoadmapCommandTools,
-    TaskCommandTools,
 )
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
@@ -31,8 +30,6 @@ from src.platform.template_helpers import (
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
-    create_task_plan_critic_agent_tools,
-    create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
@@ -53,8 +50,6 @@ from src.platform.templates.agents import (
     generate_roadmap_critic_template,
     generate_roadmap_template,
     generate_spec_alignment_reviewer_template,
-    generate_task_plan_critic_template,
-    generate_task_planner_template,
 )
 from src.platform.adapters import get_platform_adapter
 from src.platform.tui_adapters import AgentSpec, CommandSpec, get_tui_adapter
@@ -67,7 +62,6 @@ from src.utils.setting_configs import loop_config
 _COMMAND_TEMPLATES = [
     RespecAICommand.PLAN,
     RespecAICommand.PHASE,
-    RespecAICommand.TASK,
     RespecAICommand.CODE,
     RespecAICommand.PATCH,
     RespecAICommand.COMMIT,
@@ -80,7 +74,6 @@ _COMMAND_CATEGORY_BY_NAME: dict[RespecAICommand, str] = {
     RespecAICommand.PLAN: 'reasoning',
     RespecAICommand.PLAN_CONVERSATION: 'reasoning',
     RespecAICommand.PHASE: 'orchestration',
-    RespecAICommand.TASK: 'orchestration',
     RespecAICommand.CODE: 'orchestration',
     RespecAICommand.PATCH: 'orchestration',
     RespecAICommand.COMMIT: 'orchestration',
@@ -97,8 +90,6 @@ _AGENT_NAMES = [
     'respec-create-phase',
     'respec-phase-architect',
     'respec-phase-critic',
-    'respec-task-planner',
-    'respec-task-plan-critic',
     'respec-patch-planner',
     'respec-coder',
     'respec-automated-quality-checker',
@@ -125,7 +116,6 @@ def generate_templates(
     if mcp:
         PhaseCommandTools.initialize_tool_docs(mcp)
         PlanCommandTools.initialize_tool_docs(mcp)
-        TaskCommandTools.initialize_tool_docs(mcp)
         CodeCommandTools.initialize_tool_docs(mcp)
         PatchCommandTools.initialize_tool_docs(mcp)
         PlanRoadmapCommandTools.initialize_tool_docs(mcp)
@@ -218,10 +208,6 @@ def _get_agent_specs(
         platform_adapter.update_phase_tool,
     ]
 
-    coder_platform_tools = [
-        platform_adapter.update_task_tool,
-    ]
-
     plan_analyst_tools = create_plan_analyst_agent_tools(tui_adapter)
     plan_critic_tools = create_plan_critic_agent_tools(tui_adapter)
     analyst_critic_tools = create_analyst_critic_agent_tools(tui_adapter)
@@ -232,10 +218,8 @@ def _get_agent_specs(
     phase_critic_tools = create_phase_critic_agent_tools(
         tui_adapter, loop_config.phase_length_soft_cap, loop_config.phase_shape_soft_cap
     )
-    task_planner_tools = create_task_planner_agent_tools(tui_adapter)
-    task_plan_critic_tools = create_task_plan_critic_agent_tools(tui_adapter)
     patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)
-    coder_tools = create_coder_agent_tools(tui_adapter, coder_platform_tools)
+    coder_tools = create_coder_agent_tools(tui_adapter)
     automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tui_adapter)
     code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools(tui_adapter)
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools(tui_adapter)
@@ -254,8 +238,6 @@ def _get_agent_specs(
         _parse_agent_spec('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         _parse_agent_spec('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         _parse_agent_spec('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
-        _parse_agent_spec('respec-task-planner', generate_task_planner_template(task_planner_tools)),
-        _parse_agent_spec('respec-task-plan-critic', generate_task_plan_critic_template(task_plan_critic_tools)),
         _parse_agent_spec('respec-patch-planner', generate_patch_planner_template(patch_planner_tools)),
         _parse_agent_spec('respec-coder', generate_coder_template(coder_tools)),
         _parse_agent_spec(

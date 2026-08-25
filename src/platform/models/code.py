@@ -31,11 +31,10 @@ class CodeCommandTools(CommandToolsModel):
     platform: PlatformType = Field(..., description='Selected platform type')
 
     # Parameterized MCP tool invocations
-    store_document: str = Field(..., description='Store task build plan')
     store_phase_document: str = Field(..., description='Store phase specification in MCP')
     get_phase_document: str = Field(..., description='Get phase specification')
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
-    initialize_task_loop: str = Field(..., description='Initialize task retrieval loop for the selected task')
+    initialize_phase_loop: str = Field(..., description='Initialize phase-type loop for phase document linking')
     initialize_standards_loop: str = Field(..., description='Initialize Phase 2 standards loop')
     decide_coding_action: str = Field(..., description='Decide coding loop action')
     decide_standards_action: str = Field(..., description='Decide Phase 2 standards loop action')
@@ -44,10 +43,7 @@ class CodeCommandTools(CommandToolsModel):
     get_reviewer_feedback_context: str = Field(..., description='Get curated active-reviewer feedback context')
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
-    get_task_document: str = Field(..., description='Get task document through task-linked loop retrieval')
-    get_task_document_by_key: str = Field(..., description='Get task document by explicit task key')
-    list_task_documents: str = Field(..., description='List task documents under a phase')
-    link_task_loop: str = Field(..., description='Link task retrieval loop to selected task document')
+    link_phase_loop: str = Field(..., description='Link phase loop to phase document')
 
     # Agent invocations
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
@@ -65,7 +61,6 @@ class CodeCommandTools(CommandToolsModel):
     invoke_coding_standards_reviewer: str = Field(
         ..., description='Invocation text for respec-coding-standards-reviewer agent'
     )
-    task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
     phase_command_invocation: str = Field(..., description='Invocation text to hand off to respec-phase command')
     code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
 
@@ -86,6 +81,10 @@ class CodeCommandTools(CommandToolsModel):
     @computed_field
     def phase_glob_pattern(self) -> str:
         return self._adapter.phase_discovery_instructions
+
+    @computed_field
+    def phase_resource_pattern(self) -> str:
+        return self._adapter.phase_resource_pattern
 
     @computed_field
     def phase_discovery_instructions(self) -> str:
@@ -155,16 +154,9 @@ class CoderAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    update_task_status: str = Field(..., description='Platform-specific tool for updating task/issue status')
-    retrieve_task: str = Field(..., description='Retrieve build plan document')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build ordering')
     retrieve_phase: str = Field(..., description='Retrieve phase specification')
     retrieve_feedback: str = Field(..., description='Retrieve all feedback from coding loop')
-
-    @computed_field
-    def update_task_tool_interpolated(self) -> str:
-        if '*' not in self.update_task_status:
-            return self.update_task_status
-        return self.update_task_status.replace('*', '{plan_name}', 1)
 
     @computed_field
     def research_directory_pattern(self) -> str:
@@ -198,7 +190,7 @@ class AutomatedQualityCheckerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store quality check reviewer result')
@@ -217,7 +209,7 @@ class SpecAlignmentReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store spec alignment reviewer result')
@@ -238,7 +230,7 @@ class CodeQualityReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store code quality reviewer result')
@@ -262,7 +254,7 @@ class FrontendReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store frontend reviewer result')
@@ -281,7 +273,7 @@ class BackendApiReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store backend API reviewer result')
@@ -301,7 +293,7 @@ class DatabaseReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store database reviewer result')
@@ -321,7 +313,7 @@ class InfrastructureReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store infrastructure reviewer result')
@@ -341,7 +333,7 @@ class CodingStandardsReviewerAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    retrieve_task: str = Field(..., description='Retrieve Task document from planning loop')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build context')
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     store_reviewer_result: str = Field(..., description='Store coding standards reviewer result')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')

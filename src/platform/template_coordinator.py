@@ -10,7 +10,6 @@ from .command_strategies import (
     PlanConversationCommandStrategy,
     PlanRoadmapCommandStrategy,
     StandardsCommandStrategy,
-    TaskCommandStrategy,
 )
 from .platform_selector import PlatformSelector, PlatformType
 from .tool_enums import RespecAICommand
@@ -26,7 +25,6 @@ class TemplateCoordinator:
         self._strategies: dict[RespecAICommand, CommandStrategy[Any]] = {
             RespecAICommand.PLAN: PlanCommandStrategy(),
             RespecAICommand.PHASE: PhaseCommandStrategy(),
-            RespecAICommand.TASK: TaskCommandStrategy(),
             RespecAICommand.CODE: CodeCommandStrategy(),
             RespecAICommand.PATCH: PatchCommandStrategy(),
             RespecAICommand.COMMIT: CommitCommandStrategy(),

@@ -53,7 +53,6 @@ class PhaseCommandTools(CommandToolsModel):
     invoke_phase_critic_post_synthesis: str = Field(
         ..., description='Invocation text for post-synthesis respec-phase-critic validation'
     )
-    task_command_invocation: str = Field(..., description='Invocation text to hand off to respec-task command')
     phase_command_reference: str = Field(..., description='Adapter-rendered reference text for respec-phase command')
     roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')
     plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')

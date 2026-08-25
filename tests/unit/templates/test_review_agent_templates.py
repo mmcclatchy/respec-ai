@@ -31,7 +31,6 @@ from src.platform.templates.agents.reviewer_contracts import (
 
 
 _adapter = ClaudeCodeAdapter()
-_TASK_UPDATE_TOOL = 'Edit(.respec-ai/plans/*/phases/*/tasks/*.md)'
 
 _BANNED_ACTION_PATTERNS = (
     re.compile(r'\bshould\b', re.IGNORECASE),
@@ -118,9 +117,9 @@ This should stay ignored.
     assert 'This should stay ignored.' not in actionable
 
 
-def test_implementation_and_review_agents_retrieve_task_by_task_loop_id() -> None:
+def test_implementation_and_review_agents_read_implementation_plan_by_path() -> None:
     templates = [
-        generate_coder_template(create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])),
+        generate_coder_template(create_coder_agent_tools(_adapter)),
         generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
         generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
         generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
@@ -132,8 +131,8 @@ def test_implementation_and_review_agents_retrieve_task_by_task_loop_id() -> Non
     ]
 
     for template in templates:
-        assert 'mcp__respec-ai__get_document(doc_type="task", loop_id={TASK_LOOP_ID})' in template
-        assert 'mcp__respec-ai__get_document(doc_type="task", loop_id={PLANNING_LOOP_ID})' not in template
+        assert 'Read(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md)' in template
+        assert 'doc_type="task"' not in template
 
 
 def test_reviewer_output_contract_has_consistent_success_and_failure_format() -> None:
@@ -293,7 +292,7 @@ class TestSpecAlignmentReviewerTemplate:
 
         assert 'COMPLETION CERTIFICATION CONTRACT (MANDATORY)' in template
         assert 'Completion Certification Matrix' in template
-        assert 'Phase-To-Task Coverage' in template
+        assert 'Phase-To-Implementation Coverage' in template
         assert 'Unverifiable Requirements' in template
         assert '`complete`' in template
         assert '`partial`' in template
@@ -535,7 +534,7 @@ class TestReviewAgentConsistency:
             generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
             generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
             generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
-            generate_coder_template(create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])),
+            generate_coder_template(create_coder_agent_tools(_adapter)),
             generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
         ]
         for template in templates:
@@ -626,13 +625,13 @@ class TestReviewAgentConsistency:
             '`- Read: .best-practices/*.md`',
             '`Purpose:`',
             '`Application:`',
-            '`## Research`',
-            '`### Research Read Log`',
+            '`### Research Requirements`',
+            'nested `- Applied:` annotations',
             'Resolve stack evidence in this order: `project_config_context_markdown`, direct `.respec-ai/config/stack.toml`, Phase Technology Stack, implementation evidence only when explicit config is absent.',
             'prefer docs marked successfully read and applied',
             '`- Synthesize:` entries as non-readable prompts',
             'Do NOT run `bp`, browse, synthesize, or invent missing docs during review.',
-            'Read only docs relevant to reviewer domain, configured stack, changed files, task citations, or workflow guidance.',
+            'Read only docs relevant to reviewer domain, configured stack, changed files, implementation.md citations, or workflow guidance.',
             'Report missing or unreadable docs as skipped context',
         ]
 
@@ -679,10 +678,7 @@ class TestReviewAgentConsistency:
 
 class TestCoderTemplateConfig:
     def test_coder_template_has_project_configuration(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert 'PROJECT CONFIGURATION' in template
@@ -692,10 +688,7 @@ class TestCoderTemplateConfig:
         assert '.respec-ai/config/standards/guides/*.md' in template
 
     def test_coder_template_no_pseudocode_remains(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert 'TOOLS.test_runner' not in template
@@ -712,10 +705,7 @@ class TestCoderTemplateConfig:
         assert 'TOOLING[LANGUAGE]' not in template
 
     def test_coder_template_removes_agent_owned_commit_execution(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert 'git commit --no-verify -m' not in template
@@ -723,10 +713,7 @@ class TestCoderTemplateConfig:
         assert 'Do NOT run git commit commands.' in template
 
     def test_coder_template_requires_structured_iteration_handoff(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert '## ITERATION HANDOFF OUTPUT FORMAT' in template
@@ -734,20 +721,14 @@ class TestCoderTemplateConfig:
         assert 'Mode: [normal|standards-only]' in template
 
     def test_coder_template_removes_orchestration_aware_wording(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert 'Main command owns git commit execution' not in template
         assert 'Main Agent review' not in template
 
     def test_coder_template_ignores_reviewer_execution_report(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert 'Reviewer Execution Report (Non-Actionable)' in template
@@ -794,7 +775,7 @@ class TestCoderTemplateConfig:
             generate_infrastructure_reviewer_template(create_infrastructure_reviewer_agent_tools(_adapter)),
             generate_code_quality_reviewer_template(create_code_quality_reviewer_agent_tools(_adapter)),
             generate_coding_standards_reviewer_template(create_coding_standards_reviewer_agent_tools(_adapter)),
-            generate_coder_template(create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])),
+            generate_coder_template(create_coder_agent_tools(_adapter)),
         ]
 
         for template in templates:

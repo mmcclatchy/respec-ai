@@ -93,11 +93,7 @@ class PlatformOrchestrator:
             'retrieve_phase_tool': adapter.retrieve_phase_tool,
             'update_phase_tool': adapter.update_phase_tool,
             'comment_phase_tool': adapter.comment_phase_tool,
-            'create_task_tool': adapter.create_task_tool,
-            'retrieve_task_tool': adapter.retrieve_task_tool,
-            'update_task_tool': adapter.update_task_tool,
             'list_phases_tool': adapter.list_phases_tool,
-            'list_tasks_tool': adapter.list_tasks_tool,
         }
 
     def change_project_platform(self, request: PlanPlatformChangeRequest) -> None:

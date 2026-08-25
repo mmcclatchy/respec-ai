@@ -15,9 +15,7 @@ from .plan_critic import generate_plan_critic_template
 from .roadmap import generate_roadmap_template
 from .roadmap_critic import generate_roadmap_critic_template
 from .spec_alignment_reviewer import generate_spec_alignment_reviewer_template
-from .task_plan_critic import generate_task_plan_critic_template
 from .patch_planner import generate_patch_planner_template
-from .task_planner import generate_task_planner_template
 
 
 __all__ = [
@@ -28,8 +26,6 @@ __all__ = [
     'generate_plan_critic_template',
     'generate_phase_architect_template',
     'generate_phase_critic_template',
-    'generate_task_planner_template',
-    'generate_task_plan_critic_template',
     'generate_coder_template',
     'generate_analyst_critic_template',
     'generate_automated_quality_checker_template',

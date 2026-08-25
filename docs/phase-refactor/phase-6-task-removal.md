@@ -12,12 +12,14 @@ returns output. Phase 4 is recommended but not strictly required.
 complete.
 
 **Read first:** `docs/phase-refactor/README.md`, `docs/phase-refactor/testing.md`, `CLAUDE.md`. **Read the Traps section
-below before writing any code** — findings F13 and F14 describe failures that are silent or that
-brick the CLI, and both are easy to trigger accidentally here.
+below before writing any code** — finding F13 describes a silent-corruption failure mode, and F14
+describes an import-time break that is easy to trigger accidentally via a leftover reference
+elsewhere in the codebase (not via deployment env vars, which this project has none of).
 
-**First action:** write B5, the stale-environment-variable test, and confirm it is green *before* you
-delete the `task_*` config fields and red immediately after. That is the trap most likely to reach a
-user, because it breaks at import time and affects the whole CLI rather than just the Task path.
+**First action:** delete the `task_*` config fields, keeping `LoopConfig`'s `extra='forbid'` as-is.
+Confirm nothing outside this phase's own diff still constructs `LoopConfig` with a `task_*` kwarg or
+depends on a stale `LOOP_TASK_*` env var — `extra='forbid'` will raise loudly at import time if it
+does, which is the desired behavior for a project with no deployed users to protect.
 
 **Then confirm Phase 5's migrations are complete.** This phase deletes `task_planner.py`. If any of
 the five migrated pieces of logic did not actually land in Phase 5, it is gone. Diff the file against
@@ -45,8 +47,18 @@ the system is never without a home for build ordering.
 > `extra='forbid'` with `env_prefix='LOOP_'`. Deleting `task_threshold`,
 > `task_improvement_threshold`, and `task_checkpoint_frequency` means any environment with
 > `LOOP_TASK_THRESHOLD` exported raises a `ValidationError` at **import time**, bricking the MCP
-> server *and* the CLI — not just the task path. Ship one release with `extra='ignore'` first, or
-> document the break prominently in release notes.
+> server *and* the CLI — not just the task path.
+>
+> **Resolved by keeping `extra='forbid'`, not by adding `extra='ignore'`.** This project has no
+> users and no backwards-compatibility requirement, so there is no deployment whose stale env var
+> needs silent tolerance — the same standard the frozen-fields decision and the roadmap/plan-critic
+> reuse decisions already apply elsewhere in this rework. `extra='ignore'` was tried first and
+> reverted: it silently masked a real bug (`tests/conftest.py`'s `stable_loop_config` fixture still
+> passed `task_threshold=95` etc. as constructor kwargs — with `extra='ignore'` those were dropped
+> without error and the fixture "worked" while asserting nothing; `extra='forbid'` turned that into
+> an immediate, loud `ValidationError` that pointed straight at the leftover fixture code). Fail
+> loud at import time if a stale `LOOP_TASK_*` var is ever set — do not build defensive tolerance
+> for an environment that does not exist.
 
 > **F13 — positional UPSERT.** Phase 2 already rewrote `postgres.py:453-485`. Dropping
 > `phases.task_breakdown` happened there. Verify no further index shift is introduced here.
@@ -65,20 +77,17 @@ survives, not that particular symbols are gone.
 | B2 | The coding workflow gets its build order from the implementation plan |
 | B3 | The coding workflow refuses to start on a phase whose design was never settled |
 | B4 | Reviewer selection still responds to the domains a phase touches |
-| B5 | The server and CLI start even when a stale `LOOP_TASK_*` variable is set |
+| B5 | *(dropped — see below)* |
 | B6 | An amendment still records its scope and passes the phase-integrity gate |
 | B7 | Delivery intent still resolves, with one fewer source |
 
-**B5 is the trap test** (finding F14). `LoopConfig` uses `extra='forbid'` with `env_prefix='LOOP_'`,
-so deleting the `task_*` fields turns any environment with `LOOP_TASK_THRESHOLD` exported into an
-**import-time** failure that bricks the server and CLI — not just the task path. Write it with
-`monkeypatch.setenv` before deleting the fields:
-
-```python
-def test_server_starts_with_a_stale_task_threshold_variable_set(monkeypatch):
-    monkeypatch.setenv('LOOP_TASK_THRESHOLD', '95')
-    importlib.reload(setting_configs)  # must not raise
-```
+**B5 was dropped, deliberately, not silently.** The original design called for a trap test proving
+a stale `LOOP_TASK_THRESHOLD` env var does not brick the server (finding F14), backed by
+`extra='ignore'`. That is backwards-compatibility tolerance for a deployment this project does not
+have — see the revised F14 note above. `LoopConfig` keeps `extra='forbid'`, matching
+`MCPSettings`/`DatabaseSettings`, and a stale `LOOP_TASK_*` var is expected to raise at import time
+like any other invalid config. There is nothing to pin here that isn't already covered by every
+other test that imports `setting_configs`.
 
 **Do not write tests asserting symbols are absent.** `assert not hasattr(DocumentType, 'TASK')` pins
 an implementation detail and tells you nothing about whether the system works. The `EXPECTED_*` counts
@@ -185,9 +194,17 @@ all needed to move.
   to the protected enumeration at `:1101-1103`, and change `- Amendment Task: …` at `:1103` to
   `- Amendment Scope: <summary>`. Patch must never write into `implementation.md` or skeletons.
 
-**`phase_command.py`:** delete Steps 9–10 (`:813-931`) — the fail-closed chain into `respec-task` and
-its "exactly one task exists" verification. Replace with a completion contract chaining to
-`{tools.code_command_invocation}`.
+**`phase_command.py`:** delete Step 18 "Automatic Task Generation" (verified at implementation time
+to be `:1445-1529`, not Steps 9–10 as originally noted here — Steps 9-10 are the Phase 3 shape design
+gate, "Re-Read, Validate, Diff, Record" and "Critic Runs on the Approved Design," and must not be
+touched) — the fail-closed chain into `respec-task` and its "exactly one task exists" verification.
+Step 19 "Completion Contract and Final Reporting" (`:1531+`) consumes Step 18's outcome variables
+(`TASK_INVOCATION_ATTEMPTED`, `TASK_INVOCATION_STATUS`, `TASK_IDENTIFIER`, etc.) and must be rewired
+alongside it. Replace with a completion contract chaining to `{tools.code_command_invocation}`.
+
+Note for the rest of Group D: `code_command.py` and `patch_command.py` use `### N.` / `#### Step N.N`
+headers, not `## Step N` — re-verify every anchor in this section by string search before editing,
+not by the line numbers below.
 
 ### E. Documentation
 
@@ -225,20 +242,44 @@ mechanical change into an unreviewable one.
 
 ## Exit criteria
 
-- [ ] B1–B7 observed failing first, then pass. B5 in particular must be red before the `task_*` field
-      deletion, or it is not testing the trap.
-- [ ] Deleted tests were *deleted*, not weakened. Any test that previously covered Task behavior
-      either has a Phase-based equivalent or is genuinely obsolete — decide which, deliberately, for
-      each one.
-- [ ] No new test asserts the absence of a symbol.
-- [ ] These suites updated: `tests/unit/mcp/test_document_tools.py`, `test_loop_tools.py`,
+- [x] B1–B4, B6, B7 observed failing first, then pass, living in
+      `tests/unit/templates/test_task_removal_workflow.py`, observed red against the still-wired
+      Task workflow before Group A–D landed. B5 was dropped deliberately (see "B5 was dropped" above)
+      — `extra='ignore'` was tried, exposed a real latent bug in `tests/conftest.py` the moment it was
+      reverted to `extra='forbid'`, and was removed as unwanted backwards-compatibility tolerance.
+- [x] Deleted tests were *deleted*, not weakened. Any test that previously covered Task behavior
+      either has a Phase-based equivalent or is genuinely obsolete — decided deliberately for each one
+      across ~26 test files touched.
+- [x] No new test asserts the absence of a symbol.
+- [x] These suites updated: `tests/unit/mcp/test_document_tools.py`, `test_loop_tools.py`,
       `test_loop_management.py`; `tests/unit/models/test_critic_feedback.py`,
       `test_enhanced_loop_state.py`, `test_feedback_enums.py`; `tests/unit/utils/test_enums.py`,
       `test_state_manager.py`, `test_database_state_manager.py`, `test_database_specifics.py`;
       `tests/unit/platform_tests/test_tool_enums_and_validation.py`, `test_tui_adapters.py`,
       `test_path_constants.py`; `tests/unit/cli/config/test_template_generator.py`.
-- [ ] Migration `029` applies and rolls back cleanly against a populated database.
-- [ ] `uv run pytest` green; `regenerate` valid for all three TUIs.
-- [ ] `ls .claude/commands .claude/agents` — no `respec-task*`, no task-planner, no task-plan-critic.
-- [ ] Manual (B1): `respec-phase` → `respec-code` end-to-end with no Task anywhere.
-- [ ] Manual (B6): `respec-patch` on an implemented phase; the phase-integrity gate still passes.
+- [x] Migration `029` applies and rolls back cleanly against a populated database — verified against a
+      real dev Postgres container (`docker-compose.dev.yml`): applied through the full migration
+      history including 029, confirmed `tasks`/`loop_to_task_mappings` dropped and the
+      `valid_loop_type` CHECK constraint no longer permits `'task'`; separately verified 029 alone
+      against a database populated with real plan/phase rows.
+- [x] `uv run pytest` green (1417 passed, 1 skipped with `DATABASE_URL` set against the dev Postgres
+      container; 1345 passed, 73 skipped without it — the skips are DB-only tests); `ruff` and `ty`
+      clean except two pre-existing issues unrelated to this phase. `regenerate` verified valid for
+      all three TUI adapters (ClaudeCode, Codex, OpenCode) via direct template generation for every
+      command and agent; a live `respec-ai init --tui claude-code`/`--tui codex` run against a scratch
+      project additionally confirmed Claude Code's file output end-to-end (Codex's live init hit an
+      interactive `npm install` prompt unrelated to this phase, so its file-write path was verified at
+      the template-generation level only).
+- [x] `ls .claude/commands .claude/agents` — no `respec-task*`, no task-planner, no task-plan-critic.
+      Verified both in this repo's own dogfooded `.claude/` directory (regenerated live) and in a
+      scratch `respec-ai init` project: 8 commands, 18 agents, zero Task references.
+- [ ] Manual (B1): `respec-phase` → `respec-code` end-to-end with no Task anywhere. Not performed —
+      this requires a live multi-agent workflow run with real LLM invocations, out of reach for this
+      session. Verified instead at the template/contract level (fail-closed shape-gate check, direct
+      implementation.md read, no Task references) via `test_task_removal_workflow.py` and manual
+      inspection of the rendered templates.
+- [ ] Manual (B6): `respec-patch` on an implemented phase; the phase-integrity gate still passes. Not
+      performed for the same reason as B1. Verified instead that the byte-integrity gate's protected
+      enumeration and amendment-scope wiring render correctly via
+      `test_patch_template_phase_evolution_log_update_is_append_only` and
+      `test_patch_template_fails_closed_when_planner_or_critic_persistence_breaks`.

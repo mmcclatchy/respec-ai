@@ -72,7 +72,7 @@ def test_agents_never_reference_a_phase_section_that_cannot_exist() -> None:
     known_sections = _known_section_names()
 
     templates = {
-        'coder': generate_coder_template(create_coder_agent_tools(adapter, platform_tools=['update_task_status'])),
+        'coder': generate_coder_template(create_coder_agent_tools(adapter)),
         'spec-alignment-reviewer': generate_spec_alignment_reviewer_template(
             create_spec_alignment_reviewer_agent_tools(adapter)
         ),

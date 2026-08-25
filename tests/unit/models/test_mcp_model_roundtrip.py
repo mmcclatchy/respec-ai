@@ -18,7 +18,6 @@ from src.models.feature_requirements import FeatureRequirements
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 
 
 @pytest.fixture
@@ -89,25 +88,6 @@ def sample_plan_markdown(markdown_builder: Callable) -> str:
 
 
 @pytest.fixture
-def sample_task_markdown(markdown_builder: Callable) -> str:
-    return markdown_builder(
-        Task,
-        name='task-1-auth',
-        phase_path='test-platform/phase-1-foundation',
-        goal='Implement OAuth2 authentication with JWT tokens',
-        acceptance_criteria='Users can register, login, and access protected endpoints',
-        tech_stack_reference='FastAPI, Python 3.13+, JWT, OAuth2',
-        implementation_checklist='- [ ] Setup OAuth2\n- [ ] Create endpoints\n- [ ] Add tests',
-        implementation_steps='#### Step 1: Setup\nInstall packages and configure OAuth2',
-        testing_strategy='Unit tests for auth logic, integration tests for endpoints',
-        research='Documents successfully read:\n- `.best-practices/jwt-best-practices.md`',
-        status='pending',
-        active='true',
-        version='1.0',
-    )
-
-
-@pytest.fixture
 def sample_feature_requirements_markdown(markdown_builder: Callable) -> str:
     return markdown_builder(
         FeatureRequirements,
@@ -139,7 +119,6 @@ def sample_feature_requirements_markdown(markdown_builder: Callable) -> str:
         (Roadmap, 'sample_roadmap_markdown'),
         (Phase, 'sample_phase_markdown'),
         (Plan, 'sample_plan_markdown'),
-        (Task, 'sample_task_markdown'),
         (FeatureRequirements, 'sample_feature_requirements_markdown'),
     ],
 )

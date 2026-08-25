@@ -38,7 +38,7 @@ This command is an orchestrator, not an implementation agent.
 
 Allowed command responsibilities:
 - Parse and clarify user inputs
-- Resolve Phase, Task identity, execution mode, and active reviewers
+- Resolve Phase, implementation plan, execution mode, and active reviewers
 - CALL MCP tools
 - Invoke specialized agents
 - Consolidate review results
@@ -194,104 +194,74 @@ Coder agent will validate Phase exists when retrieving it:
 # This follows the token optimization pattern - agents retrieve their own data
 ```
 
-### 5. Resolve Concrete Task Identity and Link Task Retrieval Loop
+### 5. Resolve Phase and Read the Implementation Plan
 
-Resolve the exact Task document for this Phase before reading Task-derived policy or invoking coding agents:
+One Phase, no ambiguity — there is no Task selection menu. Link a phase-type loop to
+the Phase document, then read implementation.md by path.
 
 ```text
-TASK_DOCS = {tools.list_task_documents}
+PHASE_LOOP_ID = {tools.initialize_phase_loop}
+{tools.link_phase_loop}
+PHASE_MARKDOWN = {tools.get_phase_document}
 
-IF TASK_DOCS retrieval fails:
-  ERROR: "Task listing failed for phase {{PLAN_NAME}}/{{PHASE_NAME}}"
+IF PHASE_MARKDOWN retrieval fails:
+  ERROR: "Phase document could not be retrieved for {{PLAN_NAME}}/{{PHASE_NAME}}"
   DIAGNOSTIC: [surface the exact MCP/tool error]
   FAIL-CLOSED:
-  - Do NOT inspect Task markdown
   - Do NOT initialize coding loop
   - Do NOT invoke coder
   EXIT: Workflow terminated
 
-IF TASK_DOCS reports zero task documents:
-  ERROR: "No Task documents exist for phase {{PLAN_NAME}}/{{PHASE_NAME}}"
-  SUGGEST: "Run respec-task for this phase before coding"
-  {tools.task_command_invocation}
-  EXIT: Workflow terminated
+SHAPE_GATE = [extract "### Shape Gate" value from PHASE_MARKDOWN]
 
-IF TASK_DOCS reports exactly one task document:
-  TASK_DOC_KEY = [extract the single task key from TASK_DOCS]
-
-ELSE:
-  {selection_prompt_instructions}
-    Header: "Select Task"
-    Question: "Multiple Task documents exist for phase '{{PHASE_NAME}}'. Select the task for this coding loop."
-    multiSelect: false
-    Options: [task document keys returned in TASK_DOCS]
-
-  WAIT for {selection_response_source}.
-  DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 5. Set TASK_DOC_KEY. Continue to Task retrieval immediately.
-  DO NOT explain that the workflow is stopping unless the user asks why.
-
-  TASK_DOC_KEY = [selected task document key]
-
-TASK_MARKDOWN = {tools.get_task_document_by_key}
-
-IF TASK_MARKDOWN retrieval fails:
-  ERROR: "Selected Task document could not be retrieved"
-  DIAGNOSTIC: [surface the exact MCP/tool error]
+IF SHAPE_GATE not in ["shape-settled", "shape-amended"]:
+  ERROR: "Phase design was never settled by the human gate"
+  DIAGNOSTIC: "### Shape Gate is '{{SHAPE_GATE}}', not 'shape-settled' or 'shape-amended'"
+  SUGGEST: "Run the Phase workflow (respec-phase) to settle the design before coding"
   FAIL-CLOSED:
-  - Do NOT inspect Task markdown
   - Do NOT initialize coding loop
   - Do NOT invoke coder
   EXIT: Workflow terminated
 
-TASK_NAME = [extract the H1 title value after "# Task:" from TASK_MARKDOWN]
+PHASE_FILE_PATH = "{tools.phase_resource_pattern}"
+PHASE_DIR = dirname(PHASE_FILE_PATH)
+IMPLEMENTATION_PLAN_PATH = f"{{PHASE_DIR}}/implementation.md"
+IMPLEMENTATION_PLAN_MARKDOWN = Read(IMPLEMENTATION_PLAN_PATH)
 
-IF TASK_NAME is empty OR extraction fails:
-  ERROR: "Selected Task document is missing a usable task name"
-  DIAGNOSTIC: [surface the exact parse/extraction failure]
+IF Read fails:
+  ERROR: "implementation.md could not be read at {{IMPLEMENTATION_PLAN_PATH}}"
+  DIAGNOSTIC: [surface the exact filesystem error]
+  SUGGEST: "Run the Phase workflow (respec-phase) to produce implementation.md before coding"
   FAIL-CLOSED:
-  - Do NOT inspect Task markdown
   - Do NOT initialize coding loop
   - Do NOT invoke coder
   EXIT: Workflow terminated
 
-TASK_LOOP_ID = {tools.initialize_task_loop}
-{tools.link_task_loop}
-TASK_MARKDOWN = {tools.get_task_document}
-
-IF TASK_MARKDOWN retrieval fails after loop linking:
-  ERROR: "Task retrieval loop could not retrieve the selected Task document"
-  DIAGNOSTIC: [surface the exact MCP/tool error]
-  FAIL-CLOSED:
-  - Do NOT inspect Task markdown
-  - Do NOT initialize coding loop
-  - Do NOT invoke coder
-  EXIT: Workflow terminated
-
-Display: "✓ Task selected: {{TASK_NAME}}"
+Display: "✓ Phase and implementation plan resolved for {{PHASE_NAME}}"
 ```
 
-### 6. Check for Architectural Override Proposals
+### 6. Check for a Shape Amendment Request
 
-Use Task already retrieved in Step 5:
+Use Phase already retrieved in Step 5:
 
 ```text
-# REUSE TASK_MARKDOWN from Step 5 (do not re-retrieve)
+# REUSE PHASE_MARKDOWN from Step 5 (do not re-retrieve)
 
-IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
-  OVERRIDE_SECTION = [Extract section content]
+IF PHASE_MARKDOWN's "### Design Shape - Additional Sections" contains a
+"#### Shape Amendment Request" subsection:
+  AMENDMENT_SECTION = [Extract subsection content]
 
-  IF OVERRIDE_SECTION is not empty (has content beyond just header):
+  IF AMENDMENT_SECTION is not empty (has content beyond just header):
     Display to user:
-    "⚠️ Task-planner has identified potential architecture improvements.
+    "⚠️ A prior iteration flagged a potential design shape change.
 
-    Review override proposals in Task document.
+    Review the Shape Amendment Request in the Phase document.
 
     Choose action:
-    1. Approve proposal → Re-run phase workflow to update architecture
-    2. Reject proposal → Continue with current Phase as-is
+    1. Approve → Re-run phase workflow to update the design shape
+    2. Reject → Continue with current Phase as-is
 
-    Task workflow paused until Phase updated.
+    Coding workflow paused until Phase updated.
 
     To approve:
     {tools.phase_command_invocation}
@@ -303,16 +273,18 @@ IF TASK_MARKDOWN contains "## Architectural Override Proposals" section:
 IMMEDIATELY execute Step 6.5 (Mode Extraction) and Step 6.7 (Delivery Intent Resolution)
 ```
 
-### 6.5 Extract Step Modes from Task
+### 6.5 Extract Step Modes from the Implementation Plan
 
-Parse Task document to determine which specialist reviewers to activate:
+Parse implementation.md and the Phase's Skeleton Index to determine which specialist
+reviewers to activate. File paths are a stronger reviewer signal than prose keywords,
+so scan both:
 
 ```text
-# REUSE TASK_MARKDOWN from Step 5 (do not re-retrieve)
+# REUSE IMPLEMENTATION_PLAN_MARKDOWN and PHASE_MARKDOWN from Step 5 (do not re-retrieve)
 
 STEP_MODES = set()
 
-For each "#### Step N:" section in TASK_MARKDOWN:
+For each "#### Step N:" section in IMPLEMENTATION_PLAN_MARKDOWN's "## Build Order > ### Steps":
   Scan Step content for mode indicators:
   IF contains frontend keywords (UI, component, template, CSS, accessibility, HTMX, hx-, React, Vue, Svelte, Alpine.js, aria-, semantic HTML, form validation, responsive):
     STEP_MODES.add("frontend")
@@ -321,6 +293,17 @@ For each "#### Step N:" section in TASK_MARKDOWN:
   IF contains database keywords (schema, migration, model, query, index, SQL, ORM):
     STEP_MODES.add("database")
   IF contains infrastructure keywords (Docker, CI/CD, deployment, container, pipeline, environment):
+    STEP_MODES.add("infrastructure")
+
+For each `path :: signature` line in PHASE_MARKDOWN's "### Skeleton Index":
+  Scan the path for mode indicators:
+  IF path matches frontend locations (templates/, static/, components/, *.tsx, *.jsx, *.vue, *.svelte, *.css):
+    STEP_MODES.add("frontend")
+  IF path matches API locations (routes/, api/, endpoints/, controllers/):
+    STEP_MODES.add("api")
+  IF path matches database locations (migrations/, models/, schema/, *.sql):
+    STEP_MODES.add("database")
+  IF path matches infrastructure locations (Dockerfile, docker-compose*, .github/workflows/, deploy/):
     STEP_MODES.add("infrastructure")
 
 Display: "✓ Detected step modes: {{STEP_MODES}}"
@@ -390,7 +373,7 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   ```
 
 # Loop IDs in this command:
-#   TASK_LOOP_ID      — task retrieval loop linked to the selected Task document
+#   PHASE_LOOP_ID     — loop linked to the Phase document (Step 5)
 #   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
 #   STANDARDS_LOOP_ID — Phase 2 standards loop (coding-standards-reviewer only)
 # Coder receives the loop ID matching its current phase.
@@ -411,24 +394,22 @@ Resolve execution mode deterministically before coding/review:
 # Required documents for policy resolution
 PHASE_MARKDOWN = {tools.get_phase_document}
 PLAN_MARKDOWN = mcp__respec-ai__get_document(doc_type="plan", key=PLAN_NAME, loop_id=None)
+# REUSE IMPLEMENTATION_PLAN_MARKDOWN from Step 5 (do not re-retrieve)
 
 # Parse policy blocks (if present)
-TASK_POLICY = extract from TASK_MARKDOWN:
-  "### Acceptance Criteria > #### Execution Intent Policy"
-PHASE_OVERRIDE = extract from PHASE_MARKDOWN:
-  "### Success Criteria > #### Delivery Intent Override"
+PHASE_POLICY = extract from IMPLEMENTATION_PLAN_MARKDOWN:
+  "## Policy > ### Execution Intent Policy"
 PLAN_DEFAULT = extract from PLAN_MARKDOWN:
   "## Quality Assurance > ### Delivery Intent Policy > Default Mode"
 PLAN_TIE_BREAK = extract from PLAN_MARKDOWN:
   "## Quality Assurance > ### Delivery Intent Policy > Tie-Break Policy"
 
-# Deterministic precedence
-IF TASK_POLICY has valid Mode in {{MVP,hardening}}:
-  RESOLVED_MODE = TASK_POLICY.mode
-  RESOLVED_MODE_SOURCE = "task-policy"
-ELIF PHASE_OVERRIDE has valid Mode in {{MVP,hardening}}:
-  RESOLVED_MODE = PHASE_OVERRIDE.mode
-  RESOLVED_MODE_SOURCE = "phase-override"
+# Deterministic precedence (two levels — phase-policy vs plan-default; the old
+# per-phase delivery-intent override variable was removed when implementation.md's
+# Execution Intent Policy became the single home for this)
+IF PHASE_POLICY has valid Mode in {{MVP,hardening}}:
+  RESOLVED_MODE = PHASE_POLICY.mode
+  RESOLVED_MODE_SOURCE = "phase-policy"
 ELIF PLAN_DEFAULT has valid Mode in {{MVP,hardening}}:
   RESOLVED_MODE = PLAN_DEFAULT
   RESOLVED_MODE_SOURCE = "plan-default"
@@ -437,10 +418,10 @@ ELSE:
   RESOLVED_MODE_SOURCE = "default-MVP"
 
 RESOLVED_TIE_BREAK = first non-empty of:
-  TASK_POLICY.tie_break, PHASE_OVERRIDE.tie_break, PLAN_TIE_BREAK,
+  PHASE_POLICY.tie_break, PLAN_TIE_BREAK,
   "Prioritize core functional/spec delivery and defer non-P0 hardening risks."
 
-AMBIGUOUS_MODE = conflicting explicit values across task/phase/plan sources
+AMBIGUOUS_MODE = conflicting explicit values across phase/plan sources
 
 IF AMBIGUOUS_MODE:
   {selection_prompt_instructions}
@@ -476,10 +457,10 @@ CODING_LOOP_ID = {tools.initialize_coding_loop}
 
 You now have TWO active loop IDs - DO NOT confuse them:
 
-**task_loop_id = {{TASK_LOOP_ID}}**
-- Purpose: Retrieve the selected Task document for this coding run
-- Used by: coder (to get implementation plan), reviewers (to verify against Task/Phase)
-- Storage: Task document linked to this loop
+**phase_loop_id = {{PHASE_LOOP_ID}}**
+- Purpose: Identifies the loop linked to the Phase document (Step 5)
+- Used by: coder and reviewers, to verify against Phase and implementation.md
+- Storage: Phase document linked to this loop
 
 **coding_loop_id = {{CODING_LOOP_ID}}**
 - Purpose: Store/retrieve code feedback
@@ -495,7 +476,7 @@ MODE_SNAPSHOT_MARKDOWN = "## Execution Intent Snapshot\\n"
   + "- Mode: {{RESOLVED_MODE}}\\n"
   + "- Source: {{RESOLVED_MODE_SOURCE}}\\n"
   + "- Tie-Break Policy: {{RESOLVED_TIE_BREAK}}\\n"
-  + "- Deferred Risk Register Source: Task Acceptance Criteria"
+  + "- Deferred Risk Register Source: implementation.md Policy > Deferred Risk Register"
 
 LOOP_ID = CODING_LOOP_ID
 USER_FEEDBACK_MARKDOWN = MODE_SNAPSHOT_MARKDOWN
@@ -528,9 +509,9 @@ Loop:
   PHASE1_INVALIDATED_REVIEWERS = []
 
   Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS:
-  - Compare the coder run summary, changed files, task/phase context changes, and prior consolidated feedback.
+  - Compare the coder run summary, changed files, implementation-plan/phase context changes, and prior consolidated feedback.
   - Add a signed-off reviewer when new or changed work touches that reviewer's responsibility.
-  - Add all Phase 1 reviewers when the Task document, Phase document, execution mode, public behavior,
+  - Add all Phase 1 reviewers when implementation.md, the Phase document, execution mode, public behavior,
     API contracts, persistence behavior, integration boundaries, dependency wiring, migrations, build tooling,
     test harness, or security-sensitive behavior changed since that reviewer signed off.
   - Rerun on uncertainty by adding the uncertain reviewer.
@@ -1078,11 +1059,10 @@ Complete implementation workflow and update Phase:
 #### Generate Implementation Summary
 ```text
 Retrieve final state:
-- Phase: {tools.get_task_document})
-- Final Feedback: {tools.get_feedback})
+- Phase: {tools.get_phase_document}
+- Final Feedback: {tools.get_feedback}
 
 Generate IMPLEMENTATION_SUMMARY including:
-- Task Plan Quality Score: {{PLAN_QUALITY_SCORE}}%
 - Code Quality Score: {{CODE_QUALITY_SCORE}}%
 - Test Results: {{TEST_RESULTS from CriticFeedback}}
 - Coverage: {{COVERAGE_PERCENTAGE}}%
@@ -1096,7 +1076,6 @@ Update Phase status and implementation details using {tools.store_phase_document
 
 Status: "IMPLEMENTED"
 Implementation Summary: {{IMPLEMENTATION_SUMMARY}}
-Phase Quality: {{PLAN_QUALITY_SCORE}}%
 Code Quality: {{CODE_QUALITY_SCORE}}%
 Test Coverage: {{COVERAGE_PERCENTAGE}}%
 Implementation Date: {{CURRENT_DATE}}
@@ -1107,10 +1086,6 @@ Implementation Date: {{CURRENT_DATE}}
 Present final summary:
 "✓ Implementation complete for {{PHASE_NAME}}
 
-Task Planning:
-- Quality Score: {{PLAN_QUALITY_SCORE}}%
-- Iterations: {{TASK_ITERATION_COUNT}}
-
 Code Implementation:
 - Quality Score: {{CODE_QUALITY_SCORE}}%
 - Iterations: {{CODING_ITERATION_COUNT}}
@@ -1120,8 +1095,8 @@ Code Implementation:
 - Linter: {{LINTER_STATUS}}
 
 Implementation artifacts:
-- Task: {{TASK_DOC_KEY}}
-- Phase: Available via task_loop_id={{TASK_LOOP_ID}}
+- Implementation Plan: {{IMPLEMENTATION_PLAN_PATH}}
+- Phase: Available via phase_loop_id={{PHASE_LOOP_ID}}
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Commits: {{COMMIT_COUNT}} commits with test results
 - Completion Gate: {{COMPLETION_GATE_STATUS}} — {{COMPLETION_GATE_SUMMARY}}

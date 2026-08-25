@@ -77,7 +77,7 @@ def test_coder_builds_modules_at_paths_named_in_skeleton_index() -> None:
     # fallback (Architecture / Testing Strategy sections), which never held file
     # layout or interfaces (finding F2).
     template = generate_coder_template(
-        create_coder_agent_tools(ClaudeCodeAdapter(), platform_tools=['update_task_status'])
+        create_coder_agent_tools(ClaudeCodeAdapter())
     )
 
     assert 'Module Layout' in template

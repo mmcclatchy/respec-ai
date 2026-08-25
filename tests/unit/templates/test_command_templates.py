@@ -248,22 +248,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'subagent_type: "respec-roadmap"' in template
         assert 'Invoke: respec-roadmap' not in template
 
-    def test_claude_code_uses_invoke_syntax_for_task(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
-        )
-        assert 'Invoke: respec-task-planner' in template
-        assert 'Invoke: respec-task-plan-critic' in template
-
-    def test_opencode_uses_task_call_syntax_for_task(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
-        )
-        assert 'subagent_type: "respec-task-planner"' in template
-        assert 'subagent_type: "respec-task-plan-critic"' in template
-
     def test_codex_roadmap_includes_slot_aware_parallel_policy(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -351,30 +335,27 @@ class TestCrossPlatformInvocationRendering:
             assert 'PATH_REGEX = BP_PATH_REGEX' in template
             assert 'IF len(CANDIDATE_PATHS) != 1:' in template
 
-    def test_claude_code_patch_uses_explicit_task_loop_alias(self) -> None:
+    def test_claude_code_patch_uses_single_phase_loop_with_no_critic_step(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
         )
-        assert 'PLANNING_LOOP_ID' in template
-        assert 'TASK_LOOP_ID = PLANNING_LOOP_ID' in template
-        assert '- Alias: TASK_LOOP_ID = PLANNING_LOOP_ID for respec-patch amendment tasks' in template
+        assert 'PHASE_LOOP_ID' in template
+        assert 'PLANNING_LOOP_ID' not in template
         invoke_section = template[template.find('#### Step 3.3') :]
         assert 'Invoke: respec-patch-planner' in invoke_section
-        assert 'Invoke: respec-task-plan-critic' in invoke_section
-        assert 'Invoke: respec-coder' in invoke_section
-        assert 'task_loop_id: PLANNING_LOOP_ID' in invoke_section
-        assert 'task_loop_id: TASK_LOOP_ID' in invoke_section
-        assert 'TASK_MARKDOWN = mcp__respec-ai__get_document(doc_type="task", loop_id={TASK_LOOP_ID})' in template
+        assert 'Invoke: respec-task-plan-critic' not in invoke_section
+        assert 'phase_loop_id: PHASE_LOOP_ID' in invoke_section
+        assert 'doc_type="task"' not in template
 
-    def test_opencode_patch_embeds_planning_loop_id_in_prompt(self) -> None:
+    def test_opencode_patch_embeds_phase_loop_id_in_prompt(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
         )
         assert 'subagent_type: "respec-patch-planner"' in template
-        assert '- task_loop_id: PLANNING_LOOP_ID' in template
-        assert '- task_loop_id: TASK_LOOP_ID' in template
+        assert '- phase_loop_id: PHASE_LOOP_ID' in template
+        assert 'subagent_type: "respec-task-plan-critic"' not in template
 
     def test_claude_code_plan_conversation_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
@@ -443,7 +424,6 @@ class TestCrossPlatformInvocationRendering:
         coordinator = TemplateCoordinator()
         commands = (
             RespecAICommand.PHASE,
-            RespecAICommand.TASK,
             RespecAICommand.ROADMAP,
             RespecAICommand.CODE,
             RespecAICommand.PATCH,
@@ -459,19 +439,21 @@ class TestCrossPlatformInvocationRendering:
             assert '"completed"' in template, f'{command.value} should branch on completed'
             assert '"complete"' not in template, f'{command.value} should not branch on complete'
 
-    def test_claude_code_phase_to_task_uses_slash_syntax(self) -> None:
+    def test_claude_code_phase_to_code_uses_slash_syntax(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
         )
-        assert '/respec-task' in template
+        assert '/respec-code' in template
+        assert 'respec-task' not in template
 
-    def test_opencode_phase_to_task_uses_suggestion_text(self) -> None:
+    def test_opencode_phase_to_code_uses_suggestion_text(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
         )
-        assert 'respec-task' in template
+        assert 'respec-code' in template
+        assert 'respec-task' not in template
 
     def test_phase_template_includes_bp_tool_permission(self) -> None:
         coordinator = TemplateCoordinator()
@@ -552,23 +534,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'Invalid "Read:" paths found: 0' not in template
         assert 'EXIT: Do NOT proceed to Step 17 with missing external API docs' not in template
 
-    def test_phase_template_enforces_fail_closed_task_handoff(self) -> None:
-        coordinator = TemplateCoordinator()
-        adapters = (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter())
-
-        for adapter in adapters:
-            template = coordinator.generate_command_template(
-                RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter
-            )
-            assert 'MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)' in template
-            assert 'Return "Phase complete" success without attempting Step 18' in template
-            assert 'Attempt `respec-task` invocation via Bash/CLI' in template
-            assert 'Command handoff path MUST use adapter-rendered orchestration invocation' in template
-            assert 'Sanity check orchestration path:' in template
-            assert 'Fallback/manual mode does NOT waive Step 18 obligations.' in template
-            assert 'IF TASK_INVOCATION_ATTEMPTED == false' in template
-            assert 'IF TASK_INVOCATION_METHOD == "shell"' in template
-
     def test_plan_template_enforces_fail_closed_roadmap_handoff(self) -> None:
         coordinator = TemplateCoordinator()
         adapters = (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter())
@@ -626,20 +591,19 @@ class TestCrossPlatformInvocationRendering:
         assert invoke_critic_pos != -1
         assert pre_loop_status_pos < invoke_critic_pos
 
-    def test_phase_template_places_task_handoff_after_phase_storage(self) -> None:
+    def test_phase_template_places_completion_step_after_phase_storage(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
 
         step_17_pos = template.find('### Step 17: Phase Storage')
-        step_18_pos = template.find('### Step 18: Automatic Task Generation')
-        step_19_pos = template.find('### Step 19: Completion Contract and Final Reporting')
+        step_18_pos = template.find('### Step 18: Completion Contract and Final Reporting')
 
         assert step_17_pos != -1
         assert step_18_pos != -1
-        assert step_19_pos != -1
-        assert step_17_pos < step_18_pos < step_19_pos
+        assert step_17_pos < step_18_pos
+        assert 'Automatic Task Generation' not in template
 
     def test_phase_template_requires_completion_contract_fields(self) -> None:
         coordinator = TemplateCoordinator()
@@ -650,10 +614,8 @@ class TestCrossPlatformInvocationRendering:
         assert 'Completion contract (required in final response):' in template
         assert 'phase_file_path' in template
         assert 'phase_status' in template
-        assert 'task_invocation_status ("succeeded" | "failed")' in template
-        assert 'task_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)' in template
-        assert 'task_identifier (MCP key when available, else "unavailable")' in template
-        assert 'next_action (required when task_invocation_status == "failed")' in template
+        assert 'implementation_plan_path' in template
+        assert 'task_invocation_status' not in template
 
     def test_phase_template_uses_adapter_owned_phase_command_reference(self) -> None:
         coordinator = TemplateCoordinator()
@@ -662,24 +624,6 @@ class TestCrossPlatformInvocationRendering:
         )
         assert '- `/respec-phase` is the ONLY workflow that runs bp synthesis' not in template
         assert '- `respec-phase` skill is the ONLY workflow that runs bp synthesis' in template
-
-    def test_task_template_fail_fast_on_unresolved_synthesize_prompts(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert '#### Step 2.3: Fail Fast on Unresolved Synthesize Prompts' in template
-        assert 'Task planning is blocked until phase-owned synthesis is complete.' in template
-        assert 'Do NOT invoke task-planner' in template
-        assert 'Do NOT continue to Step 3' in template
-
-    def test_task_template_uses_adapter_owned_task_command_reference(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert '`/respec-task` consumes finalized research artifacts only.' not in template
-        assert '`respec-task` skill consumes finalized research artifacts only.' in template
 
     def test_code_template_override_prompt_has_no_trailing_quote(self) -> None:
         coordinator = TemplateCoordinator()
@@ -712,47 +656,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'STANDARDS_FEEDBACK = ' in template
         assert 'Phase 2 consolidated feedback missing' in template
         assert 'Do NOT invoke respec-commit' in template
-
-    def test_task_template_passes_structured_reference_metadata(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'IMPL_PLAN_REFERENCES = []' in template
-        assert 'Constraint Precedence Contract' in template
-        assert 'TUI Plan Deviation Log' in template
-
-    def test_task_template_fails_closed_when_task_or_feedback_is_missing(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'Task planner did not confirm current-pass Task storage' in template
-        assert 'TASK_MARKDOWN = ' in template
-        assert 'Task planner did not produce a retrievable Task document' in template
-        assert 'PRE_TASK_LOOP_STATUS = ' in template
-        assert 'POST_TASK_LOOP_STATUS = ' in template
-        assert 'TASK_FEEDBACK = ' in template
-        assert 'Task plan critic did not persist CriticFeedback' in template
-        assert 'Task plan critic did not advance loop state' in template
-        assert 'Task plan critic did not persist fresh loop feedback' in template
-        assert (
-            'Return to Step 4.1 (task-planner → Task retrieval verification → task-plan-critic → feedback verification → decision)'
-            in template
-        )
-
-    def test_task_template_places_pre_loop_status_before_task_plan_critic_invocation(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-
-        pre_loop_status_pos = template.find('PRE_TASK_LOOP_STATUS = ')
-        invoke_critic_pos = template.find('Invoke the task-plan-critic workflow:')
-
-        assert pre_loop_status_pos != -1
-        assert invoke_critic_pos != -1
-        assert pre_loop_status_pos < invoke_critic_pos
 
     def test_roadmap_template_fails_closed_when_roadmap_or_feedback_is_missing(self) -> None:
         coordinator = TemplateCoordinator()
@@ -867,10 +770,10 @@ class TestCrossPlatformInvocationRendering:
         )
         assert '### 6.7 Resolve Delivery Intent Policy' in template
         assert 'Deterministic precedence' in template
-        assert 'RESOLVED_MODE_SOURCE = "task-policy"' in template
-        assert 'RESOLVED_MODE_SOURCE = "phase-override"' in template
+        assert 'RESOLVED_MODE_SOURCE = "phase-policy"' in template
         assert 'RESOLVED_MODE_SOURCE = "plan-default"' in template
         assert 'RESOLVED_MODE_SOURCE = "default-MVP"' in template
+        assert 'RESOLVED_MODE_SOURCE = "phase-override"' not in template
 
     def test_code_template_includes_deterministic_user_input_mode_options(self) -> None:
         coordinator = TemplateCoordinator()
@@ -952,7 +855,7 @@ class TestCrossPlatformInvocationRendering:
         assert (
             'Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS'
         ) in template
-        assert 'Add all Phase 1 reviewers when the Task document, Phase document' in template
+        assert 'Add all Phase 1 reviewers when implementation.md, the Phase document' in template
         assert 'Rerun on uncertainty by adding the uncertain reviewer.' in template
         assert 'Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.' in template
         assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
@@ -1132,8 +1035,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'After the user responds, resume at Step 1.2. Set EXECUTION_MODE.' in template
         assert 'After the user responds, resume at Step 1.3. Clarify RAW_REQUEST.' in template
         assert 'After the user responds, resume at Step 2.3. Set PHASE_FILE_PATH.' in template
-        assert 'After the user responds, resume at Step 3.6. Store the guidance with' in template
-        assert 'After the user responds, resume at Step 4.1.1. Set EXECUTION_MODE.' in template
+        assert 'After the user responds, resume at Step 4.1. Set EXECUTION_MODE.' in template
         assert 'After the user responds, resume at Step 6. Store the guidance with' in template
         assert 'After the user responds, resume at Step 6.5.' in template
         assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
@@ -1157,36 +1059,6 @@ class TestCrossPlatformInvocationRendering:
             for command in RespecAICommand:
                 template = coordinator.generate_command_template(command, PlatformType.LINEAR, tui_adapter=adapter)
                 _assert_no_soft_action_language(template, _COMMAND_ACTION_SECTION_TOKENS)
-
-    def test_task_template_excludes_stale_create_task_target(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK,
-            PlatformType.LINEAR,
-            tui_adapter=ClaudeCodeAdapter(),
-        )
-        assert 'Task(respec-create-task)' not in template
-
-    def test_task_template_accepts_optional_context_and_forwards_it(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK,
-            PlatformType.LINEAR,
-            tui_adapter=ClaudeCodeAdapter(),
-        )
-        assert 'argument-hint: [plan-name] [phase request]' in template
-        assert 'RAW_PHASE_REQUEST = [all remaining input after PLAN_NAME]' in template
-        assert 'OPTIONAL_CONTEXT = [empty until RAW_PHASE_REQUEST is clarified]' in template
-        assert 'GUIDANCE_DOCUMENT_PATHS = []' in template
-        assert 'Do NOT use a guidance document path as PHASE_NAME_PARTIAL' in template
-        assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
-        assert 'After the user responds, resume at Step 0.1.3.' in template
-        assert 'After the user responds, resume at Step 5.' in template
-        assert 'REFERENCE_CONTEXT_MARKDOWN = compose markdown:' in template
-        assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
-        assert '### Guidance Document Paths' in template
-        assert 'reference_context_markdown: REFERENCE_CONTEXT_MARKDOWN' in template
-        assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
 
     def test_phase_template_uses_raw_phase_request_contract(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1239,7 +1111,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'After the user responds, resume at Step 1.2.' in template
         assert 'After the user responds, resume at Step 1.3.' in template
         assert 'After the user responds, resume at Step 2.3.' in template
-        assert 'After the user responds, resume at Step 4.1.1.' in template
+        assert 'After the user responds, resume at Step 4.1.' in template
         assert 'After the user responds, resume at Step 6.5.' in template
         assert 'DO NOT explain that the workflow is stopping unless the user asks why.' in template
         assert '- mixed: Balance feature completion and targeted hardening' not in template
@@ -1287,31 +1159,16 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=CodexAdapter(),
         )
 
-        assert '#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Task Storage' in template
+        assert '#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Scope Storage' in template
         assert 'PHASE_AMENDMENT_REQUIRED' in template
         assert 'Phase amendment required before patch coding' in template
-        assert 'Do NOT retrieve TASK_MARKDOWN' in template
+        assert 'Do NOT retrieve AMENDMENT_SCOPE_MARKDOWN' in template
         assert 'run the Phase refinement workflow (`respec-phase`) before resuming patch work' in template
-        assert 'TASK_MARKDOWN = ' in template
-        assert 'Patch planner did not produce a retrievable amendment task' in template
-        assert 'Do NOT invoke task-plan-critic' in template
-        assert '#### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence' in template
-        assert 'PRE_PLANNING_LOOP_STATUS = ' in template
-        assert 'POST_PLANNING_LOOP_STATUS = ' in template
-        assert 'PLANNING_FEEDBACK = ' in template
-        assert 'Task plan critic did not persist CriticFeedback' in template
-        assert 'Task plan critic did not advance loop state' in template
-        assert 'Task plan critic did not persist fresh loop feedback' in template
-        assert 'Do NOT call decide_planning_action' in template
-        assert 'Do NOT continue into code reconnaissance, implementation, or alternate storage paths' in template
-        assert (
-            'Do NOT use store_reviewer_result for task-plan-critic; it is a critic workflow and MUST persist via store_critic_feedback'
-            in template
-        )
-        assert (
-            'Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision).'
-            in template
-        )
+        assert 'AMENDMENT_SCOPE_MARKDOWN = ' in template
+        assert 'Patch planner did not produce a retrievable amendment scope' in template
+        assert 're-run respec-patch to retry scoping' in template
+        assert 'respec-task-plan-critic' not in template
+        assert 'Step 3.4' not in template
 
     def test_patch_template_phase_evolution_log_update_is_append_only(self) -> None:
         coordinator = TemplateCoordinator()
@@ -1325,7 +1182,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'This is an append-only trace update.' in template
         assert 'Strip only the `## Evolution Log` section from PHASE_MARKDOWN and UPDATED_PHASE_MARKDOWN.' in template
         assert 'The stripped documents MUST match exactly byte-for-byte.' in template
-        assert 'Research Requirements, Implementation Plan References, metadata, headings' in template
+        assert 'Research Requirements, Implementation Plan References, Design Shape, Design' in template
         assert 'Do NOT call update_phase_document' in template
         assert (
             'Direct user to run the Phase refinement workflow (`respec-phase`) for substantive Phase changes'
@@ -1371,11 +1228,11 @@ class TestCrossPlatformInvocationRendering:
 
         assert 'PHASE1_SIGNED_OFF_REVIEWERS = PHASE1_SIGNED_OFF_REVIEWERS if defined else []' in template
         assert 'PHASE1_REVIEWERS_TO_INVOKE = []' in template
-        assert 'amendment-task context changes, patch scope changes' in template
+        assert 'amendment-scope context changes, patch scope changes' in template
         assert (
             'Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS'
         ) in template
-        assert 'Add all Phase 1 reviewers when the Task document, Phase document' in template
+        assert 'Add all Phase 1 reviewers when the amendment scope, Phase document' in template
         assert 'Rerun on uncertainty by adding the uncertain reviewer.' in template
         assert 'Launch only PHASE1_REVIEWERS_TO_INVOKE in parallel.' in template
         assert 'ACTIVE_REVIEWERS = PHASE1_REVIEWERS' in template
@@ -1563,7 +1420,6 @@ class TestCrossPlatformInvocationRendering:
         for command in (
             RespecAICommand.PATCH,
             RespecAICommand.CODE,
-            RespecAICommand.TASK,
             RespecAICommand.ROADMAP,
             RespecAICommand.PHASE,
         ):
@@ -1661,31 +1517,7 @@ class TestCrossPlatformInvocationRendering:
         assert '- respec-standards <language>' in template
         assert '- respec-standards all' in template
 
-    def test_task_command_persists_actual_task_identity_from_final_task_document(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.TASK,
-            PlatformType.LINEAR,
-            tui_adapter=ClaudeCodeAdapter(),
-        )
-
-        assert 'Parse FINAL_TASK as Task markdown.' in template
-        assert 'TASK_NAME = [extract the H1 title value after "# Task:" from FINAL_TASK]' in template
-        assert 'PHASE_NAME.replace("phase-", "task-", 1)' not in template
-
-    def test_phase_command_verifies_actual_created_task_identity(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE,
-            PlatformType.LINEAR,
-            tui_adapter=ClaudeCodeAdapter(),
-        )
-
-        assert 'mcp__respec-ai__list_documents(' in template
-        assert 'TASK_DOC_KEY = [extract the single returned task document key from TASK_RESULT]' in template
-        assert 'TASK_NAME = PHASE_NAME.replace("phase-", "task-", 1)' not in template
-
-    def test_code_command_requires_explicit_task_selection_for_multi_task_phase(self) -> None:
+    def test_code_command_resolves_one_phase_with_no_selection_menu(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.CODE,
@@ -1693,24 +1525,21 @@ class TestCrossPlatformInvocationRendering:
             tui_adapter=ClaudeCodeAdapter(),
         )
 
-        assert template.count('Resolve Concrete Task Identity and Link Task Retrieval Loop') == 1
-        assert 'mcp__respec-ai__list_documents(doc_type="task", parent_key={PLAN_NAME}/{PHASE_NAME})' in template
+        assert template.count('Resolve Phase and Read the Implementation Plan') == 1
+        assert 'doc_type="task"' not in template
+        assert 'Select the task for this coding loop' not in template
         assert (
-            "Multiple Task documents exist for phase '{PHASE_NAME}'. Select the task for this coding loop." in template
-        )
-        assert (
-            'TASK_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(plan_name={PLAN_NAME}, loop_type="task")'
+            'PHASE_LOOP_ID = mcp__respec-ai__initialize_refinement_loop(plan_name={PLAN_NAME}, loop_type="phase")'
             in template
         )
         assert (
-            'mcp__respec-ai__link_loop_to_document(loop_id={TASK_LOOP_ID}, doc_type="task", key={TASK_DOC_KEY})'
+            'mcp__respec-ai__link_loop_to_document(loop_id={PHASE_LOOP_ID}, doc_type="phase", key={PLAN_NAME}/{PHASE_NAME})'
             in template
         )
-        assert 'use plan_name/phase_name to find active task loop' not in template
-        assert 'Retrieve Task from respec-task Command' not in template
+        assert 'shape-settled' in template
 
-        task_selection_index = template.index('### 5. Resolve Concrete Task Identity and Link Task Retrieval Loop')
-        override_index = template.index('### 6. Check for Architectural Override Proposals')
-        step_modes_index = template.index('### 6.5 Extract Step Modes from Task')
+        resolve_index = template.index('### 5. Resolve Phase and Read the Implementation Plan')
+        override_index = template.index('### 6. Check for a Shape Amendment Request')
+        step_modes_index = template.index('### 6.5 Extract Step Modes from the Implementation Plan')
         policy_index = template.index('### 6.7 Resolve Delivery Intent Policy')
-        assert task_selection_index < override_index < step_modes_index < policy_index
+        assert resolve_index < override_index < step_modes_index < policy_index

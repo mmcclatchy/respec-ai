@@ -20,7 +20,7 @@ class TestLoopToolsMCP:
         self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, plan_name: str
     ) -> None:
         # Initialize a build_code loop (threshold 95%)
-        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')
         loop_id = init_result.id
 
         # Add feedback with high score
@@ -164,7 +164,7 @@ class TestLoopToolsMCP:
 
     @pytest.mark.asyncio
     async def test_initialize_refinement_loop_integration(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
-        result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')
+        result = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')
 
         assert isinstance(result, MCPResponse)
         assert result.status == LoopStatus.INITIALIZED

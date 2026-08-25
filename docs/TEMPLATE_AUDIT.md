@@ -9,6 +9,10 @@ Historical findings below are preserved as-recorded. Current phase synthesis con
 - `respec-phase` invokes `bp` as the public entrypoint.
 - `bp` may delegate to `bp-pipeline` internally.
 
+## Contract Update Note (2026-08-24)
+
+Historical findings below are preserved as-recorded. Phase 6 removed the Task workflow entirely: `task_command.py`, `task_planner.py`, `task_plan_critic.py`, and `task_critic.py` (already orphaned per Batch 3 below) no longer exist. `respec-phase` now produces `implementation.md` directly (Steps 12.5/12.6), and `respec-code` reads it without an intermediate Task step. The "Batch 3: Task" findings below describe files that no longer exist in the codebase.
+
 ## The Problem
 
 Claude Code (Sonnet/Opus) follows these templates reasonably well even with soft language. Open-source models (Llama, Qwen, DeepSeek, Mistral) do not. They exploit every gap, interpret every "should" as optional, and default to their pretraining distribution when instructions are ambiguous.
@@ -201,7 +205,7 @@ Work through workflows one at a time. Each batch must re-audit with open-source 
 | ----- | -------- | ----- | ------ |
 | 1 | Plan + Roadmap | plan_command.py, plan_conversation_command.py, plan_critic.py, plan_analyst.py, analyst_critic.py, roadmap_command.py, roadmap.py, roadmap_critic.py, create_phase.py | Complete |
 | 2 | Phase | phase_command.py, phase_architect.py, phase_critic.py | Complete |
-| 3 | Task | task_command.py, task_planner.py, task_plan_critic.py (task_critic.py removed — orphaned) | Complete |
+| 3 | Task (REMOVED in Phase 6) | task_command.py, task_planner.py, task_plan_critic.py (task_critic.py removed — orphaned) | Complete |
 | 4 | Code | code_command.py, coder.py, review team agents (code_reviewer.py removed — orphaned) | Complete |
 | 5 | Patch | patch_command.py, patch_planner.py | Pending |
 | 6 | Cross-cutting patterns | TOOL INVOCATION sections, output scope restrictions, MCP tool naming | Pending |
@@ -483,7 +487,7 @@ This is intentional (plan quality loop is human-driven) but not documented clear
 | 136-138 | Weak validation gate — "report rather than saving" but no STOP/EXIT | HIGH | MANDATORY PHASE COMPLETENESS VALIDATION GATE |
 | 50-70 | Missing "DO NOT write files to disk" restriction | MEDIUM | MANDATORY PHASE EXTRACTION SCOPE RESTRICTION |
 
-## Task Workflow Findings (Batch 3: RESOLVED)
+## Task Workflow Findings (Batch 3: RESOLVED, REMOVED in Phase 6)
 
 20 findings across task_command.py, task_planner.py, task_plan_critic.py. task_critic.py removed (orphaned — never invoked). All items resolved.
 

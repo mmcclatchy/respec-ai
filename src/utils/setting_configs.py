@@ -15,19 +15,16 @@ class LoopConfig(BaseSettings):
     analyst_threshold: int = Field(default=90, ge=1, le=100)
     roadmap_threshold: int = Field(default=90, ge=1, le=100)
     phase_threshold: int = Field(default=90, ge=1, le=100)
-    task_threshold: int = Field(default=95, ge=1, le=100)
 
     plan_improvement_threshold: int = Field(default=5, ge=1, le=100)
     analyst_improvement_threshold: int = Field(default=10, ge=1, le=100)
     roadmap_improvement_threshold: int = Field(default=10, ge=1, le=100)
     phase_improvement_threshold: int = Field(default=5, ge=1, le=100)
-    task_improvement_threshold: int = Field(default=5, ge=1, le=100)
 
     plan_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
     analyst_checkpoint_frequency: int = Field(default=3, ge=1, le=20)
     roadmap_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
     phase_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
-    task_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
 
     phase_length_soft_cap: int = Field(
         default=40_000, ge=30_000, le=60_000, description='Soft cap for phase length in characters (~10k tokens)'

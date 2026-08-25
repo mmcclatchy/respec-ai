@@ -381,7 +381,6 @@ if uv run --project "$RESPEC_AI_PATH" respec-ai $CLI_COMMAND; then
         echo "     • /respec-plan - Create strategic plans"
         echo "     • /respec-roadmap - Create phased roadmaps"
         echo "     • /respec-phase - Generate technical specifications"
-        echo "     • /respec-task - Generate task breakdowns"
         echo "     • /respec-code - Execute implementation"
         echo ""
     else

@@ -41,15 +41,15 @@ class ToolDocGenerator:
             **kwargs: Parameter name-value pairs (values as strings)
 
         Returns:
-            Formatted tool call string like: mcp__respec-ai__get_document(doc_type="task", loop_id=planning_loop_id)
+            Formatted tool call string like: mcp__respec-ai__get_document(doc_type="phase", loop_id=phase_loop_id)
 
         Example:
             generate_tool_call_inline(
                 RespecAITool.GET_DOCUMENT,
-                doc_type='"task"',
-                loop_id='planning_loop_id'
+                doc_type='"phase"',
+                loop_id='phase_loop_id'
             )
-            # Returns: mcp__respec-ai__get_document(doc_type="task", loop_id=planning_loop_id)
+            # Returns: mcp__respec-ai__get_document(doc_type="phase", loop_id=phase_loop_id)
         """
         if not kwargs:
             return f'{tool}()'

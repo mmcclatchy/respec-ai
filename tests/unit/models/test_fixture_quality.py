@@ -14,7 +14,6 @@ from src.models.base import MCPModel
 from src.models.feature_requirements import FeatureRequirements
 from src.models.phase import Phase
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 
 
 @pytest.mark.parametrize(
@@ -23,7 +22,6 @@ from src.models.task import Task
         Roadmap,
         Phase,
         Plan,
-        Task,
         FeatureRequirements,
     ],
 )
@@ -48,7 +46,6 @@ def test_markdown_builder_creates_valid_markdown(markdown_builder: Callable, mod
         Roadmap,
         Phase,
         Plan,
-        Task,
         FeatureRequirements,
     ],
 )

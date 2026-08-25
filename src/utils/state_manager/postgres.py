@@ -8,7 +8,6 @@ from src.models.feedback import CriticFeedback, ReviewFinding, ReviewerResult
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.utils.database_pool import db_pool
 from src.utils.enums import LoopStatus, LoopType
 from src.utils.errors import (
@@ -82,32 +81,6 @@ class PostgresStateManager(StateManager):
             version=row['version'],
             phase_status=PhaseStatus(row['phase_status']),
             shape_gate=ShapeGate(row['shape_gate']),
-        )
-
-    def _row_to_task(self, row: Record) -> 'Task':
-        active_value = row['active'] if row['active'] is not None else True
-        additional_sections_data = None
-        if row.get('additional_sections'):
-            additional_sections_data = (
-                json.loads(row['additional_sections'])
-                if isinstance(row['additional_sections'], str)
-                else row['additional_sections']
-            )
-        return Task(
-            id=row['id'],
-            name=row['name'],
-            phase_path=row['phase_path'],
-            goal=row['goal'] or 'Goal not specified',
-            acceptance_criteria=row['acceptance_criteria'] or 'Acceptance criteria not specified',
-            tech_stack_reference=row['tech_stack_reference'] or 'Technology stack reference not specified',
-            implementation_checklist=row['implementation_checklist'] or 'Implementation checklist not specified',
-            implementation_steps=row['implementation_steps'] or 'Implementation steps not specified',
-            testing_strategy=row['testing_strategy'] or 'Testing strategy not specified',
-            research=row.get('research') or 'Research not specified',
-            additional_sections=additional_sections_data,
-            status=row['status'] or 'pending',
-            active=active_value,
-            version=row['version'] or '1.0',
         )
 
     async def add_loop(self, loop: LoopState, plan_name: str) -> None:
@@ -782,161 +755,12 @@ class PostgresStateManager(StateManager):
 
             async with conn.transaction():
                 await conn.execute('DELETE FROM loop_states WHERE plan_name = $1', plan_name)
-                await conn.execute("DELETE FROM tasks WHERE phase_path LIKE $1 || '/%'", plan_name)
                 await conn.execute("DELETE FROM review_sections WHERE key LIKE $1 || '/%'", plan_name)
                 await conn.execute('DELETE FROM phases WHERE plan_name = $1', plan_name)
                 await conn.execute('DELETE FROM roadmaps WHERE plan_name = $1', plan_name)
                 await conn.execute('DELETE FROM plans WHERE plan_name = $1', plan_name)
 
         return True
-
-    async def store_task(self, phase_path: str, task: 'Task') -> str:
-        async with db_pool.acquire() as conn:
-            existing = await conn.fetchrow(
-                'SELECT name FROM tasks WHERE phase_path = $1 AND LOWER(name) = LOWER($2)',
-                phase_path,
-                task.name,
-            )
-
-            additional_sections_json = json.dumps(task.additional_sections) if task.additional_sections else None
-
-            if existing:
-                await conn.execute(
-                    """
-                    UPDATE tasks SET
-                        id = $1, name = $2, goal = $3, acceptance_criteria = $4, tech_stack_reference = $5,
-                        implementation_checklist = $6, implementation_steps = $7, testing_strategy = $8,
-                        research = $9, additional_sections = $10,
-                        status = $11, active = $12, version = $13, updated_at = CURRENT_TIMESTAMP
-                    WHERE phase_path = $14 AND LOWER(name) = LOWER($2)
-                    """,
-                    task.id,
-                    task.name,
-                    task.goal,
-                    task.acceptance_criteria,
-                    task.tech_stack_reference,
-                    task.implementation_checklist,
-                    task.implementation_steps,
-                    task.testing_strategy,
-                    task.research,
-                    additional_sections_json,
-                    task.status,
-                    task.active,
-                    task.version,
-                    phase_path,
-                )
-            else:
-                await conn.execute(
-                    """
-                    INSERT INTO tasks (
-                        id, name, phase_path, goal, acceptance_criteria, tech_stack_reference,
-                        implementation_checklist, implementation_steps, testing_strategy,
-                        research, additional_sections, status, active, version
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-                    """,
-                    task.id,
-                    task.name,
-                    phase_path,
-                    task.goal,
-                    task.acceptance_criteria,
-                    task.tech_stack_reference,
-                    task.implementation_checklist,
-                    task.implementation_steps,
-                    task.testing_strategy,
-                    task.research,
-                    additional_sections_json,
-                    task.status,
-                    task.active,
-                    task.version,
-                )
-
-        return task.name
-
-    async def get_task(self, phase_path: str, task_name: str) -> 'Task':
-        async with db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                'SELECT * FROM tasks WHERE phase_path = $1 AND LOWER(name) = LOWER($2) AND active = TRUE',
-                phase_path,
-                task_name,
-            )
-
-            if not row:
-                raise ValueError(f'Task not found: {task_name} in phase {phase_path}')
-
-            return self._row_to_task(row)
-
-    async def get_task_by_loop(self, loop_id: str) -> 'Task':
-        async with db_pool.acquire() as conn:
-            mapping = await conn.fetchrow(
-                'SELECT phase_path, task_name FROM loop_to_task_mappings WHERE loop_id = $1',
-                loop_id,
-            )
-
-            if not mapping:
-                raise LoopNotFoundError(f'Loop not linked to any task: {loop_id}')
-
-            return await self.get_task(mapping['phase_path'], mapping['task_name'])
-
-    async def update_task_by_loop(self, loop_id: str, task: 'Task') -> None:
-        async with db_pool.acquire() as conn:
-            mapping = await conn.fetchrow(
-                'SELECT phase_path, task_name FROM loop_to_task_mappings WHERE loop_id = $1',
-                loop_id,
-            )
-
-            if not mapping:
-                raise LoopNotFoundError(f'Loop not linked to any task: {loop_id}')
-
-            await self.store_task(mapping['phase_path'], task)
-
-    async def list_tasks(self, phase_path: str) -> list[str]:
-        async with db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT name FROM tasks WHERE phase_path = $1 AND active = TRUE', phase_path)
-
-        return [row['name'] for row in rows]
-
-    async def delete_task(self, phase_path: str, task_name: str) -> bool:
-        async with db_pool.acquire() as conn:
-            result = await conn.execute(
-                'DELETE FROM tasks WHERE phase_path = $1 AND LOWER(name) = LOWER($2)',
-                phase_path,
-                task_name,
-            )
-
-        return result != 'DELETE 0'
-
-    async def mark_tasks_inactive(self, phase_path: str) -> int:
-        async with db_pool.acquire() as conn:
-            result = await conn.execute(
-                'UPDATE tasks SET active = FALSE WHERE phase_path = $1 AND active = TRUE', phase_path
-            )
-
-        count = int(result.split()[-1]) if result else 0
-        logger.info(f'mark_tasks_inactive: Marked {count} tasks as inactive for phase {phase_path}')
-        return count
-
-    async def get_tasks_for_phase(self, phase_path: str) -> list['Task']:
-        async with db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                'SELECT * FROM tasks WHERE phase_path = $1 AND active = TRUE ORDER BY name', phase_path
-            )
-
-        return [self._row_to_task(row) for row in rows]
-
-    async def link_loop_to_task(self, loop_id: str, phase_path: str, task_name: str) -> None:
-        normalized_name = normalize_phase_name(task_name)
-        async with db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO loop_to_task_mappings (loop_id, phase_path, task_name)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (loop_id) DO UPDATE SET
-                    phase_path = $2, task_name = $3
-                """,
-                loop_id,
-                phase_path,
-                normalized_name,
-            )
 
     async def store_review_section(self, key: str, content: str) -> str:
         async with db_pool.acquire() as conn:

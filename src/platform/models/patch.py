@@ -38,10 +38,9 @@ class PatchCommandTools(CommandToolsModel):
     get_phase_document: str = Field(..., description='Get phase specification')
     update_phase_document: str = Field(..., description='Update phase document')
 
-    # Planning loop
-    initialize_planning_loop: str = Field(..., description='Initialize planning loop')
-    link_planning_loop: str = Field(..., description='Link planning loop to phase document')
-    decide_planning_action: str = Field(..., description='Decide planning loop action')
+    # Planning (single-shot amendment scoping, no refinement loop or critic)
+    initialize_phase_loop: str = Field(..., description='Initialize phase-type loop for phase document linking')
+    link_phase_loop: str = Field(..., description='Link phase loop to phase document')
 
     # Coding loop (Phase 1)
     initialize_coding_loop: str = Field(..., description='Initialize coding loop')
@@ -59,13 +58,11 @@ class PatchCommandTools(CommandToolsModel):
     get_feedback: str = Field(..., description='Get latest feedback')
     get_loop_status: str = Field(..., description='Get loop status for iteration check')
 
-    # Task operations
-    get_task_document: str = Field(..., description='Get task document')
-    store_task_document: str = Field(..., description='Store amendment task document')
+    # Amendment scope operations
+    get_amendment_scope: str = Field(..., description='Get amendment scope via get_review_section')
 
     # Agent invocations
     invoke_patch_planner: str = Field(..., description='Invocation text for respec-patch-planner agent')
-    invoke_task_plan_critic: str = Field(..., description='Invocation text for respec-task-plan-critic agent')
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
     commit_command_invocation: str = Field(..., description='Invocation text for respec-commit command')
     invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
@@ -145,14 +142,6 @@ class PatchCommandTools(CommandToolsModel):
             return ''
 
     @computed_field
-    def task_resource_pattern(self) -> str:
-        return self._adapter.task_resource_pattern
-
-    @computed_field
-    def task_location_setup(self) -> str:
-        return self._adapter.task_location_setup
-
-    @computed_field
     def list_all_phases(self) -> str:
         return self._adapter.list_phases_tool
 
@@ -160,10 +149,8 @@ class PatchCommandTools(CommandToolsModel):
 class PatchPlannerAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
-        RespecAITool.STORE_DOCUMENT,
-        RespecAITool.LINK_LOOP_TO_DOCUMENT,
-        RespecAITool.GET_LOOP_STATUS,
-        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_REVIEW_SECTION,
+        RespecAITool.GET_REVIEW_SECTION,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
@@ -175,8 +162,5 @@ class PatchPlannerAgentTools(AgentToolsModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     retrieve_phase: str = Field(..., description='Retrieve Phase document via get_document')
-    retrieve_task: str = Field(..., description='Retrieve existing task document via get_document')
-    retrieve_feedback: str = Field(..., description='Retrieve previous feedback for refinement')
-    store_task: str = Field(..., description='Store amendment task via store_document')
-    link_loop: str = Field(..., description='Link loop to task document after storing')
-    get_loop_status: str = Field(..., description='Get loop status for iteration check')
+    retrieve_amendment_scope: str = Field(..., description='Retrieve existing amendment scope via get_review_section')
+    store_amendment_scope: str = Field(..., description='Store amendment scope via store_review_section')

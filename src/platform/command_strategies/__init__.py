@@ -7,7 +7,6 @@ from .plan_conversation_strategy import PlanConversationCommandStrategy
 from .plan_strategy import PlanCommandStrategy
 from .roadmap_strategy import PlanRoadmapCommandStrategy
 from .standards_strategy import StandardsCommandStrategy
-from .task_strategy import TaskCommandStrategy
 
 
 __all__ = [
@@ -15,7 +14,6 @@ __all__ = [
     'CommandStrategyProtocol',
     'PlanCommandStrategy',
     'PhaseCommandStrategy',
-    'TaskCommandStrategy',
     'CodeCommandStrategy',
     'CommitCommandStrategy',
     'PatchCommandStrategy',

@@ -17,7 +17,7 @@ class LoopTools:
             await self.state.add_loop(loop_state, plan_name)
             return loop_state.mcp_response
         except ValueError:
-            valid_types = {'plan', 'roadmap', 'phase', 'task', 'analyst'}
+            valid_types = {'plan', 'roadmap', 'phase', 'analyst'}
             raise LoopValidationError('loop_type', f'Must be one of {valid_types}')
         except LoopValidationError:
             raise
@@ -188,7 +188,7 @@ def register_loop_tools(mcp: FastMCP) -> None:
 
         Parameters:
         - plan_name: Name of the project (from .respec-ai/config.json)
-        - loop_type: One of 'plan', 'roadmap', 'phase', 'task', 'analyst'
+        - loop_type: One of 'plan', 'roadmap', 'phase', 'analyst'
 
         Returns:
         - MCPResponse: Contains loop_id and status ('initialized')

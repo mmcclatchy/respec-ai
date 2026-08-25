@@ -4,7 +4,6 @@ from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.utils.enums import LoopStatus, LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -563,10 +562,6 @@ class TestDatabaseDeletePlanCascade:
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-    @staticmethod
-    def _make_task(name: str, phase_path: str) -> Task:
-        return Task(name=name, phase_path=phase_path)
-
     @pytest.mark.asyncio
     async def test_delete_plan_removes_roadmap(self, db_state_manager: PostgresStateManager) -> None:
         await db_state_manager.store_plan('my-plan', self._make_plan())
@@ -586,29 +581,6 @@ class TestDatabaseDeletePlanCascade:
         await db_state_manager.delete_plan('my-plan')
 
         assert await db_state_manager.list_phases('my-plan') == []
-
-    @pytest.mark.asyncio
-    async def test_delete_plan_removes_tasks(self, db_state_manager: PostgresStateManager) -> None:
-        await db_state_manager.store_plan('my-plan', self._make_plan())
-        await db_state_manager.store_phase('my-plan', self._make_phase('phase-1'))
-        task = self._make_task('task-1', 'my-plan/phase-1')
-        await db_state_manager.store_task('my-plan/phase-1', task)
-
-        await db_state_manager.delete_plan('my-plan')
-
-        assert await db_state_manager.list_tasks('my-plan/phase-1') == []
-
-    @pytest.mark.asyncio
-    async def test_phase_can_store_multiple_distinct_tasks(self, db_state_manager: PostgresStateManager) -> None:
-        await db_state_manager.store_plan('my-plan', self._make_plan())
-        await db_state_manager.store_phase('my-plan', self._make_phase('phase-1'))
-        await db_state_manager.store_task('my-plan/phase-1', self._make_task('task-1', 'my-plan/phase-1'))
-        await db_state_manager.store_task(
-            'my-plan/phase-1',
-            self._make_task('task-1a-followup', 'my-plan/phase-1'),
-        )
-
-        assert await db_state_manager.list_tasks('my-plan/phase-1') == ['task-1', 'task-1a-followup']
 
     @pytest.mark.asyncio
     async def test_delete_plan_removes_loops(self, db_state_manager: PostgresStateManager) -> None:

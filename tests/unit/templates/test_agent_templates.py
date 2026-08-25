@@ -17,8 +17,6 @@ from src.platform.template_helpers import (
     create_phase_critic_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
-    create_task_plan_critic_agent_tools,
-    create_task_planner_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
@@ -31,13 +29,10 @@ from src.platform.templates.agents import (
     generate_phase_critic_template,
     generate_roadmap_critic_template,
     generate_roadmap_template,
-    generate_task_plan_critic_template,
-    generate_task_planner_template,
 )
 
 
 _adapter = ClaudeCodeAdapter()
-_TASK_UPDATE_TOOL = 'Edit(.respec-ai/plans/*/phases/*/tasks/*.md)'
 
 _BANNED_ACTION_PATTERNS = (
     re.compile(r'\bshould\b', re.IGNORECASE),
@@ -130,37 +125,11 @@ This should stay ignored.
     assert 'This should stay ignored.' not in actionable
 
 
-def test_task_planner_tools_use_full_task_document_keys() -> None:
-    tools = create_task_planner_agent_tools(_adapter)
-
-    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.store_task
-    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.link_loop
-    assert 'Read' in tools.tools_yaml
-
-
-def test_task_plan_critic_can_read_project_local_guidance_documents() -> None:
-    tools = create_task_plan_critic_agent_tools(_adapter)
-
-    assert 'Read' in tools.tools_yaml
-
-
-def test_patch_planner_tools_use_full_task_document_keys() -> None:
+def test_patch_planner_tools_use_full_amendment_scope_keys() -> None:
     tools = create_patch_planner_agent_tools(_adapter)
 
-    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.store_task
-    assert 'key={PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in tools.link_loop
-
-
-def test_task_planner_carries_tui_phase_constraints_into_task_artifacts() -> None:
-    tools = create_task_planner_agent_tools(_adapter)
-    template = generate_task_planner_template(tools)
-
-    assert 'MANDATORY CONSTRAINT CARRY-FORWARD' in template
-    assert 'For every IMPL_PLAN_CONSTRAINTS item relevant to this Task' in template
-    assert 'Acceptance Criteria: observable completion requirement' in template
-    assert 'Checklist: implementation work item' in template
-    assert 'Testing Strategy: verification method' in template
-    assert 'Do NOT silently drop relevant TUI/Phase constraints.' in template
+    assert 'key={AMENDMENT_SCOPE_KEY}' in tools.store_amendment_scope
+    assert 'key={AMENDMENT_SCOPE_KEY}' in tools.retrieve_amendment_scope
 
 
 class TestPlanRoadmapTemplate:
@@ -303,89 +272,9 @@ class TestRoadmapCriticTemplate:
         assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
 
 
-class TestTaskPlanCriticTemplate:
-    def test_template_enforces_tui_plan_reference_validation(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert 'MANDATORY TUI PLAN REFERENCE VALIDATION' in template
-        assert '.respec-ai/plans/{PLAN_NAME}/references/' in template
-        assert '(per plan reference: ...)' in template
-        assert 'TUI Plan Deviation Log' in template
-        assert 'Do NOT reduce the score or cap the score because of blockers' in template
-
-    def test_template_uses_single_workflow_guidance_contract(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert 'workflow_guidance_markdown:' in template
-        assert 'optional_context:' not in template
-        assert 'request_brief:' not in template
-        assert 'Workflow Guidance Alignment' in template
-        assert '## Invocation Contract' in template
-        assert '## Workflow Guidance' in template
-        assert '### Guidance Document Paths' in template
-        assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
-
-    def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert '## Two-Lane Review Contract' in template
-        assert 'Lane 1 — Content score (`overall_score`)' in template
-        assert 'Lane 2 — Structural/procedural blockers (`### Blockers`)' in template
-
-    def test_template_blocks_unverifiable_task_requirements(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert 'Implementation Verifiability Gate' in template
-        assert 'objective verification path' in template
-        assert 'Map each explicit Phase objective, scope item, and deliverable' in template
-        assert ('Task acceptance criteria, checklist items, implementation steps, and testing strategy') in template
-        assert 'Implementation Verifiability Failure - BLOCKING' in template
-        assert 'Phase Mapping Gap - BLOCKING' in template
-        assert ('vague verbs such as "support", "handle", "integrate", "improve", and "ensure"') in template
-
-    def test_template_blocks_dropped_tui_phase_constraints(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert 'Map each relevant implementation-plan reference or TUI-derived Phase constraint' in template
-        assert 'If a relevant TUI/Phase constraint is dropped or only cited without a concrete Task mapping' in template
-        assert 'add a blocker' in template
-
-    def test_template_requires_exact_critic_feedback_storage_contract(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
-        assert '# Critic Feedback: TASK-CRITIC' in template
-        assert '## Assessment Summary' in template
-        assert '## Analysis' in template
-        assert '## Issues and Recommendations' in template
-        assert '## Metadata' in template
-        assert 'Do NOT call `store_reviewer_result`.' in template
-        assert 'If storage fails: STOP and report the exact error. Do NOT call `store_reviewer_result`.' in template
-        assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
-
-    def test_template_validates_patch_codebase_evidence(self) -> None:
-        tools = create_task_plan_critic_agent_tools(_adapter)
-        template = generate_task_plan_critic_template(tools)
-
-        assert 'MANDATORY CODEBASE EVIDENCE VALIDATION' in template
-        assert '`#### Codebase Evidence`' in template
-        assert '`- path/to/file.ext:123 — observed fact`' in template
-        assert '**[Codebase Evidence Missing - BLOCKING]**' in template
-        assert '**[Codebase Evidence Unsupported - BLOCKING]**' in template
-
-
 class TestCoderGroundingTemplate:
     def test_coder_template_requires_no_edit_before_grounding(self) -> None:
-        tools = create_coder_agent_tools(
-            _adapter,
-            platform_tools=[_TASK_UPDATE_TOOL],
-        )
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
         assert 'Complete codebase grounding before edits' in template
@@ -393,21 +282,21 @@ class TestCoderGroundingTemplate:
         assert 'Do NOT write or edit files until source/test/config evidence has been read' in template
 
     def test_coder_template_forbids_phase_plan_roadmap_reference_doc_edits(self) -> None:
-        tools = create_coder_agent_tools(_adapter, platform_tools=[_TASK_UPDATE_TOOL])
+        tools = create_coder_agent_tools(_adapter)
         template = generate_coder_template(tools)
 
-        assert 'DO NOT write or edit `.respec-ai` Phase, roadmap, plan, or reference documents.' in template
-        assert 'The only `.respec-ai` document update allowed is the assigned Task status update' in template
+        assert 'DO NOT write or edit `.respec-ai` Phase, roadmap, plan, implementation.md, or' in template
+        assert 'Progress is reported only through the iteration handoff report.' in template
         assert 'DOCUMENT_AMENDMENT_REQUIRED' in template
-        assert 'Update task status only through the assigned Task tool' in template
 
-    def test_generated_markdown_coder_uses_task_update_tool_not_phase_update_tool(self) -> None:
+    def test_generated_markdown_coder_has_no_edit_access_to_planning_documents(self) -> None:
         coder_spec = next(
             spec for spec in _get_agent_specs(_adapter, PlatformType.MARKDOWN) if spec.name == 'respec-coder'
         )
 
-        assert 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/tasks/{TASK_NAME}.md)' in coder_spec.tools
         assert 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}.md)' not in coder_spec.tools
+        assert 'Edit(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md)' not in coder_spec.tools
+        assert 'Read(.respec-ai/plans/*/phases/*/implementation.md)' in coder_spec.tools
 
 
 class TestCreatePhaseTemplate:
@@ -686,8 +575,6 @@ class TestAgentImperativeLanguageAudit:
             generate_plan_analyst_template(create_plan_analyst_agent_tools(_adapter)),
             generate_analyst_critic_template(create_analyst_critic_agent_tools(_adapter)),
             generate_phase_architect_template(create_phase_architect_agent_tools(_adapter)),
-            generate_task_planner_template(create_task_planner_agent_tools(_adapter)),
-            generate_task_plan_critic_template(create_task_plan_critic_agent_tools(_adapter)),
             generate_patch_planner_template(create_patch_planner_agent_tools(_adapter)),
         ]
 
@@ -920,26 +807,6 @@ class TestTemplateConsistency:
         assert 'Official API integration docs for {provider_name} in {implementation_language_runtime}' in template
         assert 'include `apidocs` and `apiintegration` in `Topics:` as intent metadata only' in template
 
-    def test_task_planner_template_accepts_structured_reference_inputs(self) -> None:
-        task_planner_tools = create_task_planner_agent_tools(_adapter)
-        template = generate_task_planner_template(task_planner_tools)
-        assert 'reference_context_markdown' in template
-        assert 'workflow_guidance_markdown' in template
-        assert '## Reference Context' in template
-        assert '### Structured References' in template
-        assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
-        assert 'PHASE_DEVIATION_OVERRIDES' in template
-        assert 'Read(.respec-ai/plans/*/references/*.md)' in template
-        assert '## IMPLEMENTATION PLAN REFERENCE INTEGRATION' in template
-        assert '(per plan reference: filename.md § "Section Name" (lines X-Y))' in template
-        assert '### Technology Stack Reference' in template
-        assert '### Steps' in template
-        assert '#### Execution Intent Policy' in template
-        assert '#### Deferred Risk Register' in template
-        assert 'DR-001' in template
-        assert '{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in template
-        assert 'compute TASK_NAME explicitly' in template
-
     def test_patch_planner_template_requires_execution_intent_and_deferred_risks(self) -> None:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)
         template = generate_patch_planner_template(patch_planner_tools)
@@ -948,8 +815,8 @@ class TestTemplateConsistency:
         assert '#### Execution Intent Policy' in template
         assert '#### Deferred Risk Register' in template
         assert 'patch-mode-selection' in template
-        assert '{PLAN_NAME}/{PHASE_NAME}/{TASK_NAME}' in template
-        assert 'Derive `TASK_NAME` from the amendment task title before storage' in template
+        assert '{PLAN_NAME}/{PHASE_NAME}/amendment-scope/{AMENDMENT_NAME}' in template
+        assert 'Derive `AMENDMENT_NAME` from the amendment title before storage' in template
 
     def test_patch_planner_template_requires_codebase_evidence(self) -> None:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)
@@ -979,8 +846,8 @@ class TestTemplateConsistency:
 
         assert 'Phase Document Boundary Gate' in template
         assert 'PHASE_AMENDMENT_REQUIRED' in template
-        assert 'Do NOT generate an amendment Task' in template
-        assert 'Do NOT call ' in template and 'store_document' in template
+        assert 'Do NOT generate an amendment scope block' in template
+        assert 'Do NOT call ' in template and 'store_review_section' in template
         assert 'Run the Phase refinement workflow (`respec-phase`) before patch coding.' in template
 
     def test_plan_analyst_documents_only_loop_id_as_invocation_input(self) -> None:
@@ -998,9 +865,6 @@ class TestTemplateConsistency:
     def test_producer_templates_use_current_feedback_schema(self) -> None:
         roadmap_template = generate_roadmap_template(create_roadmap_agent_tools(_adapter))
         phase_template = generate_phase_architect_template(create_phase_architect_agent_tools(_adapter))
-        task_template = generate_task_planner_template(create_task_planner_agent_tools(_adapter))
 
         assert 'resolve EVERY active item in `### Blockers`' in roadmap_template
         assert '"Priority Improvements"' not in phase_template
-        assert 'Resolve ALL active items' in task_template
-        assert 'CriticFeedback `### Blockers`' in task_template

@@ -5,7 +5,6 @@ from src.models.feedback import ReviewFinding, ReviewerResult
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.utils.enums import LoopType
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -685,7 +684,7 @@ class TestLoopOperations(TestInMemoryStateManager):
         loops = [
             LoopState(loop_type=LoopType.PLAN),
             LoopState(loop_type=LoopType.PHASE),
-            LoopState(loop_type=LoopType.TASK),
+            LoopState(loop_type=LoopType.ROADMAP),
             LoopState(loop_type=LoopType.ANALYST),  # This should cause first to be dropped
         ]
 
@@ -708,18 +707,16 @@ class TestLoopOperations(TestInMemoryStateManager):
         initial_loop = LoopState(loop_type=LoopType.PHASE)
         await state_manager.add_loop(initial_loop, plan_name)
         await state_manager.link_loop_to_phase(initial_loop.id, plan_name, 'phase-1')
-        await state_manager.link_loop_to_task(initial_loop.id, f'{plan_name}/phase-1', 'task-1')
         await state_manager.store_objective_feedback(initial_loop.id, 'objective feedback')
 
         # Fill queue beyond max_history_size=3 so initial loop is evicted.
         await state_manager.add_loop(LoopState(loop_type=LoopType.PLAN), plan_name)
-        await state_manager.add_loop(LoopState(loop_type=LoopType.TASK), plan_name)
+        await state_manager.add_loop(LoopState(loop_type=LoopType.ROADMAP), plan_name)
         await state_manager.add_loop(LoopState(loop_type=LoopType.ANALYST), plan_name)
 
         assert initial_loop.id not in state_manager._active_loops
         assert initial_loop.id not in state_manager._loop_to_plan
         assert initial_loop.id not in state_manager._loop_to_phase
-        assert initial_loop.id not in state_manager._loop_to_task
         assert initial_loop.id not in state_manager._objective_feedback
 
     @pytest.mark.asyncio
@@ -1033,7 +1030,7 @@ class TestReviewerResultManagement(TestInMemoryStateManager):
     async def test_get_reviewer_result_returns_exact_stored_result(
         self, state_manager: InMemoryStateManager, plan_name: str
     ) -> None:
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state_manager.add_loop(loop, plan_name)
 
         await state_manager.upsert_reviewer_result(
@@ -1065,7 +1062,7 @@ class TestReviewerResultManagement(TestInMemoryStateManager):
     async def test_get_reviewer_result_raises_when_missing(
         self, state_manager: InMemoryStateManager, plan_name: str
     ) -> None:
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state_manager.add_loop(loop, plan_name)
 
         with pytest.raises(ValueError, match='Reviewer result not found'):
@@ -1127,10 +1124,6 @@ class TestInMemoryDeletePlanCascade:
             roadmap_status=RoadmapStatus.DRAFT,
         )
 
-    @staticmethod
-    def _make_task(name: str, phase_path: str) -> Task:
-        return Task(name=name, phase_path=phase_path)
-
     @pytest.mark.asyncio
     async def test_delete_plan_removes_roadmap(self, state_manager: InMemoryStateManager) -> None:
         await state_manager.store_plan('my-plan', self._make_plan())
@@ -1150,26 +1143,6 @@ class TestInMemoryDeletePlanCascade:
         await state_manager.delete_plan('my-plan')
 
         assert await state_manager.list_phases('my-plan') == []
-
-    @pytest.mark.asyncio
-    async def test_delete_plan_removes_tasks(self, state_manager: InMemoryStateManager) -> None:
-        await state_manager.store_plan('my-plan', self._make_plan())
-        await state_manager.store_phase('my-plan', self._make_phase('phase-1'))
-        task = self._make_task('task-1', 'my-plan/phase-1')
-        await state_manager.store_task('my-plan/phase-1', task)
-
-        await state_manager.delete_plan('my-plan')
-
-        assert await state_manager.list_tasks('my-plan/phase-1') == []
-
-    @pytest.mark.asyncio
-    async def test_phase_can_store_multiple_distinct_tasks(self, state_manager: InMemoryStateManager) -> None:
-        await state_manager.store_plan('my-plan', self._make_plan())
-        await state_manager.store_phase('my-plan', self._make_phase('phase-1'))
-        await state_manager.store_task('my-plan/phase-1', self._make_task('task-1', 'my-plan/phase-1'))
-        await state_manager.store_task('my-plan/phase-1', self._make_task('task-1a-followup', 'my-plan/phase-1'))
-
-        assert await state_manager.list_tasks('my-plan/phase-1') == ['task-1', 'task-1a-followup']
 
     @pytest.mark.asyncio
     async def test_delete_plan_removes_loops(self, state_manager: InMemoryStateManager) -> None:

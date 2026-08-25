@@ -16,11 +16,10 @@ import pytest
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.platform.templates.commands.phase_command import technical_phase_template
 
 
-@pytest.mark.parametrize('model_class', [Phase, Plan, Roadmap, Task])
+@pytest.mark.parametrize('model_class', [Phase, Plan, Roadmap])
 def test_a_document_this_system_generates_never_reports_content_loss(
     model_class, markdown_builder: Callable
 ) -> None:

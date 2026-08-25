@@ -163,7 +163,7 @@ class TestDatabaseJSONBSerialization:
         [
           {
             "loop_id": "badblk01",
-            "critic_agent": "task-critic",
+            "critic_agent": "phase-critic",
             "iteration": 1,
             "overall_score": 100,
             "assessment_summary": "Ready with no blockers.",
@@ -183,7 +183,7 @@ class TestDatabaseJSONBSerialization:
                     id, plan_name, loop_type, status, current_score,
                     score_history, iteration, created_at, updated_at, feedback_history
                 ) VALUES (
-                    $1, 'test-project', 'task', 'refine', 100,
+                    $1, 'test-project', 'phase', 'refine', 100,
                     ARRAY[100]::integer[], 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2::jsonb
                 )
                 """,
@@ -210,7 +210,7 @@ class TestDatabaseJSONBSerialization:
         [
           {
             "loop_id": "blankfb1",
-            "critic_agent": "task-critic",
+            "critic_agent": "phase-critic",
             "iteration": 1,
             "overall_score": 100,
             "assessment_summary": "Ready with a blank blocker row.",
@@ -230,7 +230,7 @@ class TestDatabaseJSONBSerialization:
                     id, plan_name, loop_type, status, current_score,
                     score_history, iteration, created_at, updated_at, feedback_history
                 ) VALUES (
-                    $1, 'test-project', 'task', 'refine', 100,
+                    $1, 'test-project', 'phase', 'refine', 100,
                     ARRAY[100]::integer[], 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2::jsonb
                 )
                 """,
@@ -257,7 +257,7 @@ class TestDatabaseJSONBSerialization:
         [
           {
             "loop_id": "mixedfb1",
-            "critic_agent": "task-critic",
+            "critic_agent": "phase-critic",
             "iteration": 1,
             "overall_score": 100,
             "assessment_summary": "Mixed blocker data.",
@@ -277,7 +277,7 @@ class TestDatabaseJSONBSerialization:
                     id, plan_name, loop_type, status, current_score,
                     score_history, iteration, created_at, updated_at, feedback_history
                 ) VALUES (
-                    $1, 'test-project', 'task', 'refine', 100,
+                    $1, 'test-project', 'phase', 'refine', 100,
                     ARRAY[100]::integer[], 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $2::jsonb
                 )
                 """,
@@ -303,7 +303,7 @@ class TestDatabaseJSONBSerialization:
                     id, plan_name, loop_type, status, current_score,
                     score_history, iteration, created_at, updated_at, feedback_history
                 ) VALUES (
-                    $1, 'test-project', 'task', 'refine', 100,
+                    $1, 'test-project', 'phase', 'refine', 100,
                     ARRAY[100]::integer[], 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '[]'::jsonb
                 )
                 """,
@@ -350,7 +350,7 @@ class TestDatabaseJSONBSerialization:
                     id, plan_name, loop_type, status, current_score,
                     score_history, iteration, created_at, updated_at, feedback_history
                 ) VALUES (
-                    $1, 'test-project', 'task', 'refine', 100,
+                    $1, 'test-project', 'phase', 'refine', 100,
                     ARRAY[100]::integer[], 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '[]'::jsonb
                 )
                 """,
@@ -437,7 +437,7 @@ class TestDatabaseJSONBSerialization:
                         id, plan_name, loop_type, status, current_score,
                         score_history, iteration, created_at, updated_at, feedback_history
                     ) VALUES (
-                        $1, 'test-project', 'task', 'refine', 90,
+                        $1, 'test-project', 'phase', 'refine', 90,
                         ARRAY[90]::integer[], 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '[]'::jsonb
                     )
                     """,
@@ -509,7 +509,7 @@ class TestReviewerResultStateManager:
     async def test_postgres_lists_latest_reviewer_results_at_or_before_iteration(
         self, db_state_manager: PostgresStateManager
     ) -> None:
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
         for iteration, score in [(1, 20), (2, 24), (4, 10)]:
@@ -547,7 +547,7 @@ class TestReviewerResultStateManager:
     async def test_postgres_get_reviewer_result_returns_exact_full_markdown(
         self, db_state_manager: PostgresStateManager
     ) -> None:
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await db_state_manager.add_loop(loop, 'test-project')
 
         await db_state_manager.upsert_reviewer_result(
@@ -593,7 +593,6 @@ class TestReviewLookupIndexes:
                 """,
                 [
                     'idx_reviewer_results_latest_by_reviewer',
-                    'idx_tasks_phase_lower_name_active',
                 ],
             )
 
@@ -601,10 +600,6 @@ class TestReviewLookupIndexes:
         assert 'idx_reviewer_results_latest_by_reviewer' in indexes
         assert 'reviewer_results' in indexes['idx_reviewer_results_latest_by_reviewer']
         assert 'review_iteration DESC' in indexes['idx_reviewer_results_latest_by_reviewer']
-        assert 'idx_tasks_phase_lower_name_active' in indexes
-        assert 'lower' in indexes['idx_tasks_phase_lower_name_active'].lower()
-        assert 'name' in indexes['idx_tasks_phase_lower_name_active'].lower()
-        assert 'WHERE (active = true)' in indexes['idx_tasks_phase_lower_name_active']
 
 
 class TestDatabaseConstraints:

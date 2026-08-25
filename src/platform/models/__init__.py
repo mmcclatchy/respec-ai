@@ -44,9 +44,6 @@ from .roadmap import (
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
 )
-from .task import TaskCommandTools, TaskPlanCriticAgentTools, TaskPlannerAgentTools
-
-
 __all__ = [
     'AgentToolsModel',
     'CommandToolsModel',
@@ -70,7 +67,6 @@ __all__ = [
     'CommitCommandTools',
     'PatchCommandTools',
     'PlanRoadmapCommandTools',
-    'TaskCommandTools',
     'PlanRoadmapAgentTools',
     'PhaseArchitectAgentTools',
     'PhaseCriticAgentTools',
@@ -89,8 +85,6 @@ __all__ = [
     'DatabaseReviewerAgentTools',
     'InfrastructureReviewerAgentTools',
     'CodingStandardsReviewerAgentTools',
-    'TaskPlannerAgentTools',
-    'TaskPlanCriticAgentTools',
     'PatchPlannerAgentTools',
     'PlatformType',
 ]

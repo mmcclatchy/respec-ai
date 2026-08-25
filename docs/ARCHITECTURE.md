@@ -155,7 +155,7 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 ### Command Templates (Orchestrators)
 
-**7 command templates** that orchestrate workflows using platform-specific tools:
+**6 command templates** that orchestrate workflows using platform-specific tools:
 
 1. **respec-plan** - Strategic planning orchestration
    - Coordinates plan-analyst and plan-critic agents
@@ -168,7 +168,8 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Manages phase refinement cycles
 
 3. **respec-code** - Implementation orchestration
-   - Coordinates task-planner, coder, review team
+   - Reads phase's `implementation.md` build plan
+   - Coordinates coder, review team
    - Executes implementation workflows
    - Validates code quality
 
@@ -182,25 +183,19 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Strategic input gathering
    - Context-aware dialogue
 
-6. **respec-task** - Task breakdown orchestration
-   - Transforms Phases into detailed task breakdowns
-   - Coordinates task-planner and task-plan-critic agents
-   - Manages task refinement loops
-
-7. **respec-patch** - Maintenance orchestration
+6. **respec-patch** - Maintenance orchestration
    - Bug fixes, feature extensions, and refactoring
    - Coordinates patch-planner and review team
    - Manages dual planning and coding loops
 
 ### Agent Templates (Specialists)
 
-**23 specialized agent templates** for focused workflow tasks:
+**20 specialized agent templates** for focused workflow tasks:
 
 **Generative Agents (Content Creation):**
 - **plan-analyst** - Business objectives analysis
 - **roadmap** - Implementation roadmap generation
-- **phase-architect** - Technical specification design
-- **task-planner** - Task breakdown from Phases
+- **phase-architect** - Technical specification design and `implementation.md` build plan generation
 - **patch-planner** - Amendment task creation from change descriptions
 - **coder** - Code implementation
 - **research-synthesis-orchestrator** - Research coordination
@@ -210,13 +205,11 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **analyst-critic** - Analysis quality assessment
 - **roadmap-critic** - Roadmap completeness validation
 - **phase-critic** - Technical specification review
-- **task-critic** - Implementation plan evaluation
-- **task-plan-critic** - Task breakdown quality assessment
 - **code-reviewer** - Code quality review
 
 **Review Team Agents:**
 - **automated-quality-checker** - Static analysis (tests, types, lint, coverage)
-- **spec-alignment-reviewer** - Task/Phase/Plan alignment verification
+- **spec-alignment-reviewer** - Implementation plan/Phase/Plan alignment verification
 - **frontend-reviewer** - Frontend domain review
 - **backend-api-reviewer** - API domain review
 - **database-reviewer** - Database domain review
@@ -233,9 +226,9 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 - **create-phase** - External platform phase creation
 
 **Guidance Document Path Handling**
-- Commands preserve user-provided project-local guidance document paths in grouped markdown payloads instead of treating them as source files to edit or as malformed phase/task selectors.
+- Commands preserve user-provided project-local guidance document paths in grouped markdown payloads instead of treating them as source files to edit or as malformed phase selectors.
 - `workflow_guidance_markdown` includes `### Guidance Document Paths`; relevant agents read those paths before planning, coding, or review work.
-- `respec-task` continues to use `reference_context_markdown` for Phase-derived research and implementation-plan references; user-supplied guidance paths remain in workflow guidance.
+- `respec-phase` continues to use `reference_context_markdown` for Phase-derived research and implementation-plan references; user-supplied guidance paths remain in workflow guidance.
 - Self-contained exceptions do not need guidance documents: commit metadata synthesis, deterministic review consolidation, platform-only create-phase handoff, and research synthesis workers operating from explicit synthesis prompts.
 - Boundary behavior remains fail-closed for missing/outside-project paths that affect scope; valid project-local guidance documents are read-only context and should not block the workflow.
 
@@ -298,11 +291,10 @@ class CommandStrategy[T](ABC):
     def get_template_func(self) -> Callable[[T], str]
     def generate_template(self, platform: PlatformType) -> str
 
-# 7 concrete strategies:
+# 6 concrete strategies:
 # - PlanCommandStrategy
 # - PhaseCommandStrategy
 # - CodeCommandStrategy
-# - TaskCommandStrategy
 # - PatchCommandStrategy
 # - PlanRoadmapCommandStrategy
 # - PlanConversationCommandStrategy
@@ -420,8 +412,7 @@ class MCPModel(BaseModel, ABC):
 2. **Phase** (23 fields) - Technical design, H3-level with per-H2 additional sections
 3. **FeatureRequirements** (20 fields) - Technical translation
 4. **Roadmap** (19 fields) - Phase management
-5. **Task** (13 fields) - Implementation planning
-6. **CriticFeedback** (10 fields) - Quality feedback with two-lane output (`overall_score` + `blockers`), custom parser
+5. **CriticFeedback** (10 fields) - Quality feedback with two-lane output (`overall_score` + `blockers`), custom parser
 
 ## Deployment System
 
@@ -470,7 +461,6 @@ project/
 │   │   ├── respec-plan.md              # Generated (platform-specific)
 │   │   ├── respec-phase.md             # Generated (platform-specific)
 │   │   ├── respec-code.md              # Generated (platform-specific)
-│   │   ├── respec-task.md              # Generated (platform-specific)
 │   │   ├── respec-patch.md             # Generated (platform-specific)
 │   │   ├── respec-roadmap.md           # Generated (static)
 │   │   └── respec-plan-conversation.md # Generated (static)
@@ -483,9 +473,6 @@ project/
 │       ├── respec-phase-architect.md           # Generated (static)
 │       ├── respec-phase-critic.md              # Generated (static)
 │       ├── respec-create-phase.md              # Generated (platform-specific)
-│       ├── respec-task-planner.md              # Generated (static)
-│       ├── respec-task-plan-critic.md          # Generated (static)
-│       ├── respec-task-critic.md               # Generated (static)
 │       ├── respec-patch-planner.md             # Generated (static)
 │       ├── respec-coder.md                     # Generated (static)
 │       ├── respec-code-reviewer.md             # Generated (static)

@@ -38,7 +38,7 @@ This command is an orchestrator, not an implementation agent.
 
 Allowed command responsibilities:
 - Parse and clarify user inputs
-- Resolve execution mode, Phase, Task identity, and active reviewers
+- Resolve execution mode, Phase, amendment scope, and active reviewers
 - CALL MCP tools
 - Invoke specialized agents
 - Consolidate review results
@@ -265,33 +265,36 @@ Display to user: "Located phase file: {{PHASE_NAME}}"
 - PHASE_NAME is the canonical name extracted from file path
 - All subsequent operations use PHASE_NAME (canonical)
 
-### 3. Planning Loop (Amendment Task Creation)
+### 3. Scope the Amendment
 
-Create a targeted amendment task through refinement:
+Single-shot amendment scoping — no refinement loop or critic. patch-planner
+explores the codebase once and produces an amendment scope block; there is
+nothing left to iterate against without a critic, so a failed or incomplete
+result fails closed and directs the user to re-run `respec-patch`.
 
-#### Step 3.1: Initialize Planning Loop
+#### Step 3.1: Initialize Phase Loop and Store Execution Intent Snapshot
 
 ```text
-PLANNING_LOOP_ID = {tools.initialize_planning_loop}
+PHASE_LOOP_ID = {tools.initialize_phase_loop}
 
-LOOP_ID = PLANNING_LOOP_ID
+LOOP_ID = PHASE_LOOP_ID
 USER_FEEDBACK_MARKDOWN = (
   "## Execution Intent Snapshot\\n"
   + "- Mode: {{EXECUTION_MODE}}\\n"
   + "- Source: patch-mode-selection\\n"
   + "- Tie-Break Policy: Prioritize core functional/spec delivery unless active P0 risks demand otherwise.\\n"
-  + "- Deferred Risk Register Source: Task Acceptance Criteria"
+  + "- Deferred Risk Register Source: Amendment Scope Acceptance Criteria"
 )
 {tools.store_user_feedback}
 ```
 
-#### Step 3.2: Link Planning Loop to Phase
+#### Step 3.2: Link Phase Loop to Phase
 
 ```text
-{tools.link_planning_loop}
+{tools.link_phase_loop}
 ```
 
-#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Task Storage
+#### Step 3.3: Invoke Patch Planner Agent and Verify Amendment Scope Storage
 
 {tools.invoke_patch_planner}
 
@@ -300,146 +303,54 @@ IF patch-planner reports failure:
   ERROR: "Patch planner failed"
   DIAGNOSTIC: [surface the exact planner error/output]
   FAIL-CLOSED:
-  - Do NOT invoke task-plan-critic
-  - Do NOT continue to Step 3.5
+  - Do NOT continue to Step 4
   EXIT: Workflow terminated
 
 IF patch-planner output contains exact marker `PHASE_AMENDMENT_REQUIRED`:
   STATUS: "Phase amendment required before patch coding"
   DIAGNOSTIC: [surface the planner Rationale, Evidence, and Next Step]
   FAIL-CLOSED:
-  - Do NOT retrieve TASK_MARKDOWN
-  - Do NOT invoke task-plan-critic
+  - Do NOT retrieve AMENDMENT_SCOPE_MARKDOWN
   - Do NOT continue into code reconnaissance, implementation, review, commit, or Phase Evolution Log update
   EXIT: Workflow paused; run the Phase refinement workflow (`respec-phase`) before resuming patch work
 
-TASK_MARKDOWN = {tools.get_task_document}
+AMENDMENT_SCOPE_MARKDOWN = {tools.get_amendment_scope}
 
-IF TASK_MARKDOWN not found or retrieval fails:
-  ERROR: "Patch planner did not produce a retrievable amendment task"
+IF AMENDMENT_SCOPE_MARKDOWN not found or retrieval fails:
+  ERROR: "Patch planner did not produce a retrievable amendment scope"
   DIAGNOSTIC: [surface the exact retrieval error/output]
   FAIL-CLOSED:
-  - Do NOT invoke task-plan-critic
-  - Do NOT continue to Step 3.5
-  EXIT: Workflow terminated
+  - Do NOT continue to Step 4
+  EXIT: Workflow terminated; re-run respec-patch to retry scoping
 
-TASK_LOOP_ID = PLANNING_LOOP_ID
-```
-
-#### Step 3.4: Invoke Task Plan Critic Agent and Verify Critic Persistence
-
-```text
-PRE_PLANNING_LOOP_STATUS = {tools.get_loop_status}
-```
-
-{tools.invoke_task_plan_critic}
-
-```text
-IF task-plan-critic reports failure:
-  ERROR: "Task plan critic failed"
-  DIAGNOSTIC: [surface the exact critic error/output]
-  FAIL-CLOSED:
-  - Do NOT call decide_planning_action
-  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
-  EXIT: Workflow terminated
-
-POST_PLANNING_LOOP_STATUS = {tools.get_loop_status}
-PLANNING_FEEDBACK = {tools.get_feedback}
-
-IF PLANNING_FEEDBACK is empty OR retrieval fails:
-  ERROR: "Task plan critic did not persist CriticFeedback"
-  DIAGNOSTIC: [surface the exact MCP/tool error]
-  FAIL-CLOSED:
-  - Do NOT call decide_planning_action
-  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
-  - Do NOT use store_reviewer_result for task-plan-critic; it is a critic workflow and MUST persist via store_critic_feedback
-  EXIT: Workflow terminated
-
-IF PRE_PLANNING_LOOP_STATUS.status == "initialized" AND POST_PLANNING_LOOP_STATUS.status == "initialized":
-  ERROR: "Task plan critic did not advance loop state"
-  DIAGNOSTIC: [surface PRE_PLANNING_LOOP_STATUS and POST_PLANNING_LOOP_STATUS]
-  FAIL-CLOSED:
-  - Do NOT call decide_planning_action
-  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
-  EXIT: Workflow terminated
-
-IF PRE_PLANNING_LOOP_STATUS.status != "initialized" AND POST_PLANNING_LOOP_STATUS.iteration <= PRE_PLANNING_LOOP_STATUS.iteration:
-  ERROR: "Task plan critic did not persist fresh loop feedback"
-  DIAGNOSTIC: [surface PRE_PLANNING_LOOP_STATUS and POST_PLANNING_LOOP_STATUS]
-  FAIL-CLOSED:
-  - Do NOT call decide_planning_action
-  - Do NOT continue into code reconnaissance, implementation, or alternate storage paths
-  EXIT: Workflow terminated
-```
-
-#### Step 3.5: MCP Planning Decision
-
-```text
-PLANNING_DECISION_RESPONSE = {tools.decide_planning_action}
-PLANNING_DECISION = PLANNING_DECISION_RESPONSE.status
-PLANNING_SCORE = PLANNING_DECISION_RESPONSE.current_score
-PLANNING_ITERATION = PLANNING_DECISION_RESPONSE.iteration
-
-Decision options: "completed", "refine", "user_input"
-```
-
-#### Step 3.6: Planning Decision Handling
-
-```text
-IF PLANNING_DECISION == "refine":
-  Display: "⟳ Iteration {{PLANNING_ITERATION}} · Score: {{PLANNING_SCORE}}/100 — refining amendment task"
-  Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision).
-
-ELIF PLANNING_DECISION == "completed":
-  Display: "✅ Score: {{PLANNING_SCORE}}/100 — amendment task approved"
-  Proceed to Step 4.
-
-ELIF PLANNING_DECISION == "user_input":
-  LATEST_FEEDBACK = {tools.get_feedback}
-
-  Display LATEST_FEEDBACK to user with:
-  - Current quality score and iteration
-  - Key issues requiring attention
-
-  Ask the user for specific amendment-task guidance.
-  WAIT for {selection_response_source}.
-  DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 3.6. Store the guidance with {tools.store_user_feedback}. Continue with replanning immediately.
-  DO NOT explain that the workflow is stopping unless the user asks why.
-
-  Store user feedback: {tools.store_user_feedback}
-  Return to Step 3.3 (planner → task retrieval verification → critic → critic persistence verification → decision)
+Display: "✅ Amendment scoped: {{AMENDMENT_NAME}}"
 ```
 
 ### 4. Mode Extraction + Reviewer Resolution
 
-Parse amendment task to determine which specialist reviewers to activate:
+Parse the amendment scope to determine which specialist reviewers to activate:
 
-#### Step 4.1: Retrieve Amendment Task
-
-```text
-TASK_MARKDOWN = mcp__respec-ai__get_document(doc_type="task", loop_id={{TASK_LOOP_ID}})
-```
-
-#### Step 4.1.1: Validate Resolved Mode Against Task Policy
+#### Step 4.1: Validate Resolved Mode Against Amendment Scope Policy
 
 ```text
-TASK_MODE = extract from:
+# REUSE AMENDMENT_SCOPE_MARKDOWN from Step 3.3 (do not re-retrieve)
+
+AMENDMENT_MODE = extract from AMENDMENT_SCOPE_MARKDOWN:
   "### Acceptance Criteria > #### Execution Intent Policy > Mode"
 
-IF TASK_MODE in {{MVP,hardening}} AND TASK_MODE != EXECUTION_MODE:
+IF AMENDMENT_MODE in {{MVP,hardening}} AND AMENDMENT_MODE != EXECUTION_MODE:
   {selection_prompt_instructions}
     Header: "Mode Mismatch"
-    Question: "Task policy mode differs from selected patch mode. Select the mode for this loop."
-    Options: selected patch mode, task policy mode
+    Question: "Amendment scope's policy mode differs from selected patch mode. Select the mode for this loop."
+    Options: selected patch mode, amendment scope policy mode
   WAIT for {selection_response_source}.
   DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 4.1.1. Set EXECUTION_MODE. Continue to the resolved-mode display immediately.
+  After the user responds, resume at Step 4.1. Set EXECUTION_MODE. Continue to the resolved-mode display immediately.
   DO NOT explain that the workflow is stopping unless the user asks why.
   EXECUTION_MODE = [user-selected mode]
-  EXECUTION_MODE_SOURCE = "task-policy-mismatch-resolution"
+  EXECUTION_MODE_SOURCE = "amendment-scope-policy-mismatch-resolution"
 
-IF TASK_MODE missing or unsupported:
+IF AMENDMENT_MODE missing or unsupported:
   # Keep user-selected mode as source of truth.
   EXECUTION_MODE = EXECUTION_MODE
 
@@ -451,7 +362,7 @@ Display: "Resolved execution mode: {{EXECUTION_MODE}} (source: {{EXECUTION_MODE_
 ```text
 STEP_MODES = set()
 
-For each "#### Step N:" section in TASK_MARKDOWN:
+For each "#### Step N:" section in AMENDMENT_SCOPE_MARKDOWN:
   Scan Step content for mode indicators:
   IF contains frontend keywords (UI, component, template, CSS, accessibility, HTMX, React, Vue):
     STEP_MODES.add("frontend")
@@ -527,8 +438,7 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   ```
 
 # Loop IDs in this command:
-#   PLANNING_LOOP_ID  — planning loop (amendment task creation)
-#   TASK_LOOP_ID      — selected amendment task retrieval loop (alias of PLANNING_LOOP_ID)
+#   PHASE_LOOP_ID     — loop linked to the Phase document (Step 3)
 #   CODING_LOOP_ID    — Phase 1 functional loop (AQC + spec-alignment + domains)
 #   STANDARDS_LOOP_ID — Phase 2 standards loop (coding-standards-reviewer only)
 
@@ -552,7 +462,7 @@ USER_FEEDBACK_MARKDOWN = (
   + "- Mode: {{EXECUTION_MODE}}\\n"
   + "- Source: patch-mode-selection\\n"
   + "- Tie-Break Policy: Prioritize core functional/spec delivery unless active P0 risks demand otherwise.\\n"
-  + "- Deferred Risk Register Source: Task Acceptance Criteria"
+  + "- Deferred Risk Register Source: Amendment Scope Acceptance Criteria"
 )
 {tools.store_user_feedback}
 ```
@@ -561,11 +471,10 @@ USER_FEEDBACK_MARKDOWN = (
 
 You now have TWO active loop IDs - DO NOT confuse them:
 
-**task_loop_id = {{TASK_LOOP_ID}}**
-- Purpose: Retrieve amendment task document (created during planning loop)
-- Used by: coder (to get implementation plan), reviewers (to verify against Task/Phase)
-- Storage: Task document linked to TASK_LOOP_ID
-- Alias: TASK_LOOP_ID = PLANNING_LOOP_ID for respec-patch amendment tasks
+**phase_loop_id = {{PHASE_LOOP_ID}}**
+- Purpose: Identifies the loop linked to the Phase document (Step 3)
+- Used by: coder and reviewers, to verify against Phase and the amendment scope
+- Storage: Phase document linked to this loop
 
 **coding_loop_id = {{CODING_LOOP_ID}}**
 - Purpose: Phase 1 functional feedback
@@ -604,10 +513,10 @@ Loop:
   PHASE1_INVALIDATED_REVIEWERS = []
 
   Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS:
-  - Compare the coder run summary, changed files, amendment-task context changes, patch scope changes,
+  - Compare the coder run summary, changed files, amendment-scope context changes, patch scope changes,
     and prior consolidated feedback.
   - Add a signed-off reviewer when new or changed work touches that reviewer's responsibility.
-  - Add all Phase 1 reviewers when the Task document, Phase document, execution mode, public behavior,
+  - Add all Phase 1 reviewers when the amendment scope, Phase document, execution mode, public behavior,
     API contracts, persistence behavior, integration boundaries, dependency wiring, migrations, build tooling,
     test harness, or security-sensitive behavior changed since that reviewer signed off.
   - Rerun on uncertainty by adding the uncertain reviewer.
@@ -1091,7 +1000,8 @@ any substantive Phase content:
 ```text
 PHASE_MARKDOWN = {tools.get_phase_document}
 
-TASK_NAME = [Extract task name from amendment task document]
+# REUSE AMENDMENT_SCOPE_MARKDOWN from Step 3.3 (do not re-retrieve)
+AMENDMENT_NAME = [Extract Identity > Name from AMENDMENT_SCOPE_MARKDOWN]
 
 Build UPDATED_PHASE_MARKDOWN by appending a new entry under existing
 `## Evolution Log`, or by appending a new `## Evolution Log` section at the end
@@ -1100,16 +1010,17 @@ of the document if none exists. This is an append-only trace update.
 ## Evolution Log
 
 ### {{CURRENT_DATE}}: {{REQUEST_SUMMARY}}
-- Amendment Task: {{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}
+- Amendment Scope: {{AMENDMENT_NAME}} ({{PLAN_NAME}}/{{PHASE_NAME}})
 - Code Quality Score: {{CODE_QUALITY_SCORE}}%
 - Files Changed: {{FILE_LIST}}
 
 Integrity gate before storing:
 - Strip only the `## Evolution Log` section from PHASE_MARKDOWN and UPDATED_PHASE_MARKDOWN.
 - The stripped documents MUST match exactly byte-for-byte.
-- Research Requirements, Implementation Plan References, metadata, headings,
-  objectives, scope, architecture, success criteria, deliverables, and every
-  other non-Evolution Log section MUST remain unchanged.
+- Research Requirements, Implementation Plan References, Design Shape, Design
+  Decisions, metadata, headings, objectives, scope, architecture, success
+  criteria, deliverables, and every other non-Evolution Log section MUST
+  remain unchanged.
 
 IF any non-Evolution Log content changed:
   ERROR: "Phase Evolution Log update attempted to modify substantive Phase content"
@@ -1124,26 +1035,15 @@ Store updated Phase only after integrity gate passes:
 {tools.update_phase_document}
 ```
 
-### 8. Store Amendment Task + Report
+### 8. Report Completion
 
-#### Store to Filesystem
-
-```text
-{tools.task_location_setup}
-
-TASK_FILE_PATH = {tools.task_resource_pattern}
-Write amendment task to: {{TASK_FILE_PATH}}
-```
-
-#### Report Completion
+Patch never writes into implementation.md or skeletons — the amendment scope
+lives only in MCP (Step 3), and the Phase Evolution Log entry above is the
+only durable record on disk.
 
 ```text
 Present final summary:
 "Implementation complete for amendment: {{REQUEST_SUMMARY}}
-
-Planning:
-- Quality Score: {{PLAN_QUALITY_SCORE}}%
-- Iterations: {{PLANNING_ITERATION_COUNT}}
 
 Code Implementation:
 - Quality Score: {{CODE_QUALITY_SCORE}}%
@@ -1151,7 +1051,7 @@ Code Implementation:
 - Tests Passing: {{TESTS_PASSING}}/{{TOTAL_TESTS}}
 
 Amendment artifacts:
-- Task: {{TASK_NAME}} stored under {{PHASE_NAME}}
+- Amendment Scope: {{AMENDMENT_NAME}} under {{PHASE_NAME}}
 - Phase Evolution Log: Updated
 - Code Review: Available via coding_loop_id={{CODING_LOOP_ID}}
 - Completion Gate: {{COMPLETION_GATE_STATUS}} — {{COMPLETION_GATE_SUMMARY}}

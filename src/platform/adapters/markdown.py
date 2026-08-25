@@ -25,20 +25,6 @@ EXCEPT:
 """
 
     @property
-    def task_sync_instructions(self) -> str:
-        return f"""TRY:
-  TASK_MARKDOWN = Read({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md)
-  mcp__respec-ai__store_document(
-    doc_type="task",
-    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}/{{TASK_NAME}}",
-    content=TASK_MARKDOWN
-  )
-  Display: "✓ Loaded task '{{TASK_NAME}}' from Markdown"
-EXCEPT:
-  Display: "No existing task file found"
-"""
-
-    @property
     def plan_sync_instructions(self) -> str:
         return f"""TRY:
   PLAN_MARKDOWN = Read({self.base_path}/plans/{{PLAN_NAME}}/plan.md)
@@ -66,17 +52,8 @@ EXCEPT:
 PLAN_MATCHES = Glob(pattern=PLAN_GLOB_PATTERN)"""
 
     @property
-    def task_discovery_instructions(self) -> str:
-        return f"""TASK_GLOB_PATTERN = "{self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME_PARTIAL}}*.md"
-TASK_MATCHES = Glob(pattern=TASK_GLOB_PATTERN)"""
-
-    @property
     def plan_location_hint(self) -> str:
         return f'{self.base_path}/plans/'
-
-    @property
-    def task_location_hint(self) -> str:
-        return f'{self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/'
 
     @property
     def create_plan_tool(self) -> str:
@@ -111,24 +88,8 @@ TASK_MATCHES = Glob(pattern=TASK_GLOB_PATTERN)"""
         return f'Bash: mkdir -p {self.base_path}/plans/{{{{PLAN_NAME}}}}/phases/{{{{PHASE_NAME}}}}/'
 
     @property
-    def create_task_tool(self) -> str:
-        return f'Write({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md)'
-
-    @property
-    def retrieve_task_tool(self) -> str:
-        return f'Read({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md)'
-
-    @property
-    def update_task_tool(self) -> str:
-        return f'Edit({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md)'
-
-    @property
     def list_phases_tool(self) -> str:
         return f'Glob({self.base_path}/plans/{{PLAN_NAME}}/phases/*/phase.md)'
-
-    @property
-    def list_tasks_tool(self) -> str:
-        return f'Glob({self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/*.md)'
 
     @property
     def config_location(self) -> str:
@@ -143,20 +104,12 @@ TASK_MATCHES = Glob(pattern=TASK_GLOB_PATTERN)"""
         return f'{self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/phase.md'
 
     @property
-    def task_resource_pattern(self) -> str:
-        return f'{self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/tasks/{{TASK_NAME}}.md'
-
-    @property
     def plan_resource_example(self) -> str:
         return f'{self.base_path}/plans/PLAN_NAME/plan.md'
 
     @property
     def phase_resource_example(self) -> str:
         return f'{self.base_path}/plans/X/phases/phase-2a-neo4j-integration/phase.md'
-
-    @property
-    def task_location_setup(self) -> str:
-        return f'Bash: mkdir -p {self.base_path}/plans/{{{{PLAN_NAME}}}}/phases/{{{{PHASE_NAME}}}}/tasks/'
 
     @property
     def discovery_tool_invocation(self) -> str:

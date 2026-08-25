@@ -190,3 +190,24 @@ glob was widened to cover two scratch files that hand section content to the CLI
 foreign keys on a major version are pure confusion. On-disk Task markdown files are derived artifacts
 that are fully regenerable by re-running the phase workflow, so no data migration is required for
 them — only the directory move handled by `respec-ai migrate`.
+
+---
+
+## `LoopConfig` keeps `extra='forbid'` — no backwards-compatibility tolerance for stale env vars
+
+**Rejected:** `extra='ignore'`, shipped initially per finding F14's suggestion, to keep the server
+and CLI from raising a `ValidationError` at import time if a stale `LOOP_TASK_THRESHOLD` (or similar)
+environment variable is set from a pre-v2 deployment.
+
+**Why:** this project has no users and no backwards-compatibility requirement — there is no deployed
+environment whose stale env var needs silent tolerance. Worse, `extra='ignore'` actively hid a real
+bug: `tests/conftest.py`'s `stable_loop_config` fixture still passed `task_threshold=95` and two
+sibling kwargs into `LoopConfig(...)` directly, left over from before Task removal. With
+`extra='ignore'` those extra kwargs were silently dropped and the fixture "worked" while testing
+nothing meaningful about those thresholds. Reverting to `extra='forbid'` (matching
+`MCPSettings`/`DatabaseSettings`) turned that into an immediate `ValidationError` pointing straight
+at the leftover fixture code, which was then fixed. Fail loud at import time, always — do not build
+defensive tolerance for an environment that does not exist.
+
+**Originally:** `extra='ignore'` with a comment citing finding F14, and a dedicated trap test (B5) in
+`tests/unit/utils/test_setting_configs.py` asserting a stale env var must not raise. Both removed.

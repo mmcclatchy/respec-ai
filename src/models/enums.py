@@ -72,7 +72,6 @@ class CriticAgent(str, Enum):
     ANALYST_CRITIC = 'analyst-critic'
     ROADMAP_CRITIC = 'roadmap-critic'
     PHASE_CRITIC = 'phase-critic'
-    TASK_CRITIC = 'task-critic'
     AUTOMATED_QUALITY_CHECKER = 'automated-quality-checker'
     SPEC_ALIGNMENT_REVIEWER = 'spec-alignment-reviewer'
     FRONTEND_REVIEWER = 'frontend-reviewer'
@@ -96,9 +95,6 @@ class CriticAgent(str, Enum):
             'PLAN': cls.PLAN_CRITIC,
             'ROADMAP': cls.ROADMAP_CRITIC,
             'PHASE': cls.PHASE_CRITIC,
-            'BUILD': cls.TASK_CRITIC,
-            'BUILD-CRITIC': cls.TASK_CRITIC,
-            'TASK': cls.TASK_CRITIC,
             'QUALITY-CHECKER': cls.AUTOMATED_QUALITY_CHECKER,
             'SPEC-ALIGNMENT': cls.SPEC_ALIGNMENT_REVIEWER,
             'FRONTEND': cls.FRONTEND_REVIEWER,
@@ -137,8 +133,6 @@ class DocumentType(str, Enum):
     PLAN = 'plan'
     ROADMAP = 'roadmap'
     PHASE = 'phase'
-    TASK = 'task'
-    TASK_BREAKDOWN = 'task_breakdown'  # Deprecated: use TASK (kept for backwards compat)
 
     @property
     def quoted(self) -> str:

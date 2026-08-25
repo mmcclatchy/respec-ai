@@ -35,7 +35,7 @@ class TestLoopManagement:
 
     @pytest.mark.asyncio
     async def test_get_loop_status_existing_loop(self, isolated_loop_tools: LoopTools, project_path: str) -> None:
-        init_result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'task')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'phase')
         loop_id = init_result.id
 
         status_result = await isolated_loop_tools.get_loop_status(loop_id)
@@ -84,7 +84,7 @@ class TestLoopManagement:
     async def test_decide_loop_next_action_functionality(
         self, isolated_loop_tools: LoopTools, isolated_state_manager: InMemoryStateManager, project_path: str
     ) -> None:
-        init_result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'task')
+        init_result = await isolated_loop_tools.initialize_refinement_loop(project_path, 'phase')
         loop_id = init_result.id
 
         # Add feedback with high score

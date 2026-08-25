@@ -133,10 +133,6 @@ class AbstractOperation(StrEnum):
     COMMENT_PHASE_TOOL = 'comment_phase_tool'
     LIST_PROJECT_PHASES_TOOL = 'list_project_phases_tool'
 
-    # Task Management Operations
-    CREATE_TASK_TOOL = 'create_task_tool'
-    LIST_PHASE_TASKS_TOOL = 'list_phase_tasks_tool'
-
     # Plan Management Operations
     CREATE_PROJECT_EXTERNAL = 'create_project_external'
 
@@ -156,14 +152,7 @@ class RespecAIAgent(StrEnum):
     PLAN_ANALYST = f'{_RESPEC_AGENT_PREFIX}plan-analyst'
     ANALYST_CRITIC = f'{_RESPEC_AGENT_PREFIX}analyst-critic'
 
-    # Task workflow agents
-    TASK_PLANNER = f'{_RESPEC_AGENT_PREFIX}task-planner'
-    TASK_PLAN_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-plan-critic'
-    CREATE_TASK = f'{_RESPEC_AGENT_PREFIX}create-task'
-
     # Code workflow agents
-    PHASE_PLANNER = f'{_RESPEC_AGENT_PREFIX}phase-planner'
-    TASK_CRITIC = f'{_RESPEC_AGENT_PREFIX}task-critic'
     CODER = f'{_RESPEC_AGENT_PREFIX}coder'
 
     # Review team agents
@@ -188,7 +177,6 @@ class RespecAIAgent(StrEnum):
 class RespecAICommand(StrEnum):
     PLAN = 'respec-plan'
     PHASE = 'respec-phase'
-    TASK = 'respec-task'
     CODE = 'respec-code'
     PATCH = 'respec-patch'
     COMMIT = 'respec-commit'

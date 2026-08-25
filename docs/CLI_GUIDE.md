@@ -1384,16 +1384,6 @@ The MCP permissions should be automatically set during `respec-ai init` or `resp
 - Skip phase validation before implementation
 - Ignore phase dependencies
 
-### Task Breakdown
-
-**Do:**
-- Use `/respec-task` directly for edge cases; it is typically orchestrated by `/respec-phase`
-- Ensure the target Phase document is current before running task breakdown
-
-**Don't:**
-- Run `/respec-task` without a valid plan/phase context
-- Treat task output as detached from phase constraints
-
 ### Phase Documents
 
 **Do:**

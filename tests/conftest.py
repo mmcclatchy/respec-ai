@@ -29,10 +29,8 @@ _TEST_TABLES = (
     'phases',
     'plans',
     'loop_to_phase_mappings',
-    'loop_to_task_mappings',
     'user_feedback_entries',
     'loop_analysis',
-    'tasks',
     'review_sections',
     'review_findings',
     'reviewer_results',
@@ -176,19 +174,16 @@ def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, Non
         analyst_threshold=90,
         roadmap_threshold=90,
         phase_threshold=90,
-        task_threshold=95,
         # Improvement thresholds for stagnation detection
         plan_improvement_threshold=5,
         analyst_improvement_threshold=10,
         roadmap_improvement_threshold=10,
         phase_improvement_threshold=5,
-        task_improvement_threshold=5,
         # Checkpoint frequencies for user input triggers
         plan_checkpoint_frequency=5,
         analyst_checkpoint_frequency=3,
         roadmap_checkpoint_frequency=5,
         phase_checkpoint_frequency=5,
-        task_checkpoint_frequency=5,
     )
 
     mocker.patch('src.utils.setting_configs.loop_config', test_config)

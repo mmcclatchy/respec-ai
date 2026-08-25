@@ -7,7 +7,7 @@ class PlatformAdapter(ABC):
     All methods return strings that get interpolated into command/agent templates.
     NO methods execute operations - they only generate instruction text.
 
-    Methods use domain terminology (plan/phase/task), NOT platform terms.
+    Methods use domain terminology (plan/phase), NOT platform terms.
     Concrete implementations map to platform-specific instruction patterns internally.
     """
 
@@ -21,10 +21,6 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
-    def task_sync_instructions(self) -> str: ...
-
-    @property
-    @abstractmethod
     def plan_discovery_instructions(self) -> str: ...
 
     @property
@@ -33,19 +29,11 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
-    def task_discovery_instructions(self) -> str: ...
-
-    @property
-    @abstractmethod
     def plan_location_hint(self) -> str: ...
 
     @property
     @abstractmethod
     def phase_location_hint(self) -> str: ...
-
-    @property
-    @abstractmethod
-    def task_location_hint(self) -> str: ...
 
     @property
     @abstractmethod
@@ -81,23 +69,7 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
-    def create_task_tool(self) -> str: ...
-
-    @property
-    @abstractmethod
-    def retrieve_task_tool(self) -> str: ...
-
-    @property
-    @abstractmethod
-    def update_task_tool(self) -> str: ...
-
-    @property
-    @abstractmethod
     def list_phases_tool(self) -> str: ...
-
-    @property
-    @abstractmethod
-    def list_tasks_tool(self) -> str: ...
 
     @property
     @abstractmethod
@@ -113,19 +85,11 @@ class PlatformAdapter(ABC):
 
     @property
     @abstractmethod
-    def task_resource_pattern(self) -> str: ...
-
-    @property
-    @abstractmethod
     def plan_resource_example(self) -> str: ...
 
     @property
     @abstractmethod
     def phase_resource_example(self) -> str: ...
-
-    @property
-    @abstractmethod
-    def task_location_setup(self) -> str: ...
 
     @property
     @abstractmethod

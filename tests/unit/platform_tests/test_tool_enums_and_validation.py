@@ -17,8 +17,6 @@ from src.platform.template_helpers import (
     create_roadmap_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
-    create_task_tools,
-    create_task_plan_critic_agent_tools,
 )
 from src.platform.tool_enums import (
     BuiltInToolCapability,
@@ -168,10 +166,6 @@ class TestTemplateHelpers:
         tools = create_roadmap_critic_agent_tools(ClaudeCodeAdapter())
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
-    def test_create_task_plan_critic_tools_include_reference_read_permission(self) -> None:
-        tools = create_task_plan_critic_agent_tools(ClaudeCodeAdapter())
-        assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
-
     def test_create_code_command_tools_include_unrestricted_bash(self) -> None:
         platform_tools = [
             'mcp__linear-server__get_issue',
@@ -224,28 +218,10 @@ class TestTemplateHelpers:
         assert 'AskUserQuestion' not in opencode_tools.tools_yaml
         assert 'question' in opencode_tools.tools_yaml
 
-    def test_create_task_and_roadmap_tools_include_ask_tool_only_when_adapter_supports_it(self) -> None:
+    def test_create_roadmap_tools_includes_ask_tool_only_when_adapter_supports_it(self) -> None:
         phase_retrieval_tool = 'mcp__linear-server__get_issue'
         phase_listing_tool = 'mcp__linear-server__list_issues'
         roadmap_platform_tools = [phase_retrieval_tool, phase_listing_tool]
-        claude_task_tools = create_task_tools(
-            phase_retrieval_tool,
-            phase_listing_tool,
-            PlatformType.LINEAR,
-            tui_adapter=ClaudeCodeAdapter(),
-        )
-        codex_task_tools = create_task_tools(
-            phase_retrieval_tool,
-            phase_listing_tool,
-            PlatformType.LINEAR,
-            tui_adapter=CodexAdapter(),
-        )
-        opencode_task_tools = create_task_tools(
-            phase_retrieval_tool,
-            phase_listing_tool,
-            PlatformType.LINEAR,
-            tui_adapter=OpenCodeAdapter(),
-        )
         claude_roadmap_tools = create_roadmap_tools(
             roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
         )
@@ -256,9 +232,6 @@ class TestTemplateHelpers:
             roadmap_platform_tools, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
         )
 
-        assert 'AskUserQuestion' in claude_task_tools.tools_yaml
-        assert 'AskUserQuestion' not in codex_task_tools.tools_yaml
-        assert 'question' in opencode_task_tools.tools_yaml
         assert 'AskUserQuestion' in claude_roadmap_tools.tools_yaml
         assert 'AskUserQuestion' not in codex_roadmap_tools.tools_yaml
         assert 'question' in opencode_roadmap_tools.tools_yaml
@@ -297,4 +270,4 @@ class TestStartupValidation:
         assert 'issues' in result
         assert result['adapters_count'] == 3
         assert 'adapters' in result
-        assert result['properties_per_adapter'] == 20
+        assert result['properties_per_adapter'] == 13

@@ -100,7 +100,7 @@ class TestEnhancedLoopState:
         assert response.id == loop_state.id
 
     def test_review_consolidator_blocker_prevents_completion(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         feedback = CriticFeedback(
             loop_id=loop_state.id,
             critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
@@ -117,7 +117,7 @@ class TestEnhancedLoopState:
         assert response.status == LoopStatus.REFINE
 
     def test_coding_standards_blocker_prevents_completion(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         feedback = CriticFeedback(
             loop_id=loop_state.id,
             critic_agent=CriticAgent.CODING_STANDARDS_REVIEWER,
@@ -134,7 +134,7 @@ class TestEnhancedLoopState:
         assert response.status == LoopStatus.REFINE
 
     def test_high_score_without_blockers_still_completes(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         feedback = CriticFeedback(
             loop_id=loop_state.id,
             critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
@@ -151,7 +151,7 @@ class TestEnhancedLoopState:
         assert response.status == LoopStatus.COMPLETED
 
     def test_review_consolidator_structured_blocker_prevents_completion_without_marker(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         feedback = CriticFeedback(
             loop_id=loop_state.id,
             critic_agent=CriticAgent.REVIEW_CONSOLIDATOR,
@@ -168,11 +168,11 @@ class TestEnhancedLoopState:
         response = loop_state.decide_next_loop_action()
         assert response.status == LoopStatus.REFINE
 
-    def test_task_critic_high_score_without_structured_blockers_completes(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+    def test_non_gated_critic_high_score_without_structured_blockers_completes(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         feedback = CriticFeedback(
             loop_id=loop_state.id,
-            critic_agent=CriticAgent.TASK_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=3,
             overall_score=100,
             assessment_summary='Task is implementation-ready with no structural blockers.',
@@ -187,7 +187,7 @@ class TestEnhancedLoopState:
         assert response.status == LoopStatus.COMPLETED
 
     def test_blocker_with_checkpoint_returns_user_input(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         for i in range(1, 6):
             feedback = CriticFeedback(
                 loop_id=loop_state.id,
@@ -205,7 +205,7 @@ class TestEnhancedLoopState:
         assert response.status == LoopStatus.USER_INPUT
 
     def test_non_review_critic_uses_existing_completion_behavior(self) -> None:
-        loop_state = LoopState(loop_type=LoopType.TASK)
+        loop_state = LoopState(loop_type=LoopType.PHASE)
         feedback = CriticFeedback(
             loop_id=loop_state.id,
             critic_agent=CriticAgent.PHASE_CRITIC,

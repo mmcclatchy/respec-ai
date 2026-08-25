@@ -84,9 +84,9 @@ respec-ai follows a standard enterprise workflow with automated quality gates at
    │
    ├─ Implementation planning
    ├─ TDD-driven code generation
-   └─ Code review with code-reviewer (validates against task breakdown)
+   └─ Code review with code-reviewer (validates against implementation.md)
 
-   ▼ Validates: Code aligns with task breakdown
+   ▼ Validates: Code aligns with implementation.md
 ```
 
 **Key Principle:** Each stage validates against its parent document target, creating a chain of alignment from business objectives through to production code.
@@ -276,12 +276,10 @@ Creating Linear issue...
 **What it will do:** Implement specifications with automated code generation
 
 **Planned workflow:**
-1. **Phase retrieval** - Retrieves technical specification
-2. **Build planning** - taskner creates implementation plan
-3. **Plan evaluation** - task-critic validates plan quality
-4. **Code generation** - coder generates code with TDD approach
-5. **Code review** - code-reviewer validates against phase
-6. **Refinement** - Quality loops until tests pass and code meets standards
+1. **Phase retrieval** - Retrieves technical specification and `implementation.md` build plan
+2. **Code generation** - coder generates code with TDD approach
+3. **Code review** - code-reviewer validates against phase
+4. **Refinement** - Quality loops until tests pass and code meets standards
 
 **When to use (future):**
 - After completing technical specifications
@@ -527,13 +525,6 @@ respec-ai uses two types of quality loops to ensure high-quality outputs:
 - Ensures phase aligns with roadmap phase or plan
 - Validates: Architecture, technology choices, security, implementation detail
 
-**task-critic:**
-- Evaluates build plans
-- Checks implementation steps
-- Validates technology choices
-- Ensures plan aligns with technical phase
-- Validates: Implementation approach, testing strategy, code structure
-
 **code-reviewer:**
 - Reviews generated code
 - Checks code quality and best practices
@@ -618,17 +609,15 @@ The respec-ai MCP server provides 38 tools across 7 modules that power the workf
 **Generative Agents:**
 - `plan-analyst` - Extracts business objectives from strategic plans
 - `roadmap` - Generates multi-phase roadmaps from plans
-- `phase-architect` - Creates technical specifications from plans/roadmaps
-- `taskner` - Creates implementation plans from phases
-- `coder` - Generates code from build plans
+- `phase-architect` - Creates technical specifications and `implementation.md` build plans from plans/roadmaps
+- `coder` - Generates code from `implementation.md` build plans
 
 **Critic Agents:**
 - `plan-critic` - Validates strategic plans
 - `analyst-critic` - Validates objective extraction
 - `roadmap-critic` - Validates roadmaps against plans
 - `phase-critic` - Validates phases against roadmaps/plans
-- `task-critic` - Validates build plans against phases
-- `code-reviewer` - Validates code against build plans/phases
+- `code-reviewer` - Validates code against `implementation.md` and phase
 
 **Command Templates:**
 Each `/respec-*` command is a template that orchestrates:

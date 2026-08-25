@@ -21,10 +21,6 @@ class TestPathComponentValues:
     def test_completion_file_value(self) -> None:
         assert PathComponent.COMPLETION_FILE == 'project_completion.md'
 
-    def test_tasks_dir_value(self) -> None:
-        assert PathComponent.TASKS_DIR == 'tasks'
-
-
 class TestBuildPlanPath:
     def test_build_plan_path_with_plan_name(self) -> None:
         result = PathComponent.build_plan_path('my-project')
@@ -97,20 +93,6 @@ class TestBuildCompletionPath:
     def test_build_completion_path_with_none(self) -> None:
         result = PathComponent.build_completion_path(None)
         assert result == '.respec-ai/plans/*/project_completion.md'
-
-
-class TestBuildTaskPath:
-    def test_build_task_path_with_all_names(self) -> None:
-        result = PathComponent.build_task_path('my-project', 'phase-1', 'task-1')
-        assert result == '.respec-ai/plans/my-project/phases/phase-1/tasks/task-1.md'
-
-    def test_build_task_path_with_phase_only(self) -> None:
-        result = PathComponent.build_task_path('my-project', 'phase-1')
-        assert result == '.respec-ai/plans/my-project/phases/phase-1/tasks/*.md'
-
-    def test_build_task_path_with_no_names(self) -> None:
-        result = PathComponent.build_task_path()
-        assert result == '.respec-ai/plans/*/phases/*/tasks/*.md'
 
 
 class TestPathComponentIsString:

@@ -7,7 +7,6 @@ class LoopType(Enum):
     PLAN = 'plan'
     ROADMAP = 'roadmap'
     PHASE = 'phase'
-    TASK = 'task'
     ANALYST = 'analyst'
 
     @property

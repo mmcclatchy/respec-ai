@@ -55,7 +55,6 @@ class LoopState(BaseModel):
         CriticAgent.ANALYST_CRITIC,
         CriticAgent.ROADMAP_CRITIC,
         CriticAgent.PHASE_CRITIC,
-        CriticAgent.TASK_CRITIC,
     }
 
     @property

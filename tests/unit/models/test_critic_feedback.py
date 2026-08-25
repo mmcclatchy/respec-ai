@@ -223,7 +223,7 @@ The roadmap provides a foundation but requires refinement in several critical ar
         assert '- Add comprehensive data validation' in markdown
 
     def test_empty_blockers_section_parses_to_empty_list(self) -> None:
-        markdown = """# Critic Feedback: TASK-CRITIC
+        markdown = """# Critic Feedback: PHASE-CRITIC
 
 ## Assessment Summary
 - **Loop ID**: task-loop-001
@@ -257,7 +257,7 @@ The task is complete and ready.
         with pytest.raises(ValueError, match='Blockers must be actionable non-empty strings'):
             CriticFeedback(
                 loop_id='test-loop',
-                critic_agent=CriticAgent.TASK_CRITIC,
+                critic_agent=CriticAgent.PHASE_CRITIC,
                 iteration=1,
                 overall_score=100,
                 assessment_summary='No blockers were found.',
@@ -271,7 +271,7 @@ The task is complete and ready.
         with pytest.raises(ValueError, match='Blockers must be actionable non-empty strings'):
             CriticFeedback(
                 loop_id='test-loop',
-                critic_agent=CriticAgent.TASK_CRITIC,
+                critic_agent=CriticAgent.PHASE_CRITIC,
                 iteration=1,
                 overall_score=100,
                 assessment_summary='No blockers were found.',
@@ -352,7 +352,7 @@ The task is complete and ready.
     def test_round_trip_parse_and_build_markdown(self) -> None:
         original_feedback = CriticFeedback(
             loop_id='round-trip-test',
-            critic_agent=CriticAgent.TASK_CRITIC,
+            critic_agent=CriticAgent.PHASE_CRITIC,
             iteration=3,
             overall_score=91,
             assessment_summary='Excellent build implementation',

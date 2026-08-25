@@ -128,7 +128,6 @@ class TestGenerateTemplates:
         config = json.loads((tmp_path / 'opencode.json').read_text())
         for name in (
             'respec-phase',
-            'respec-task',
             'respec-code',
             'respec-patch',
             'respec-roadmap',

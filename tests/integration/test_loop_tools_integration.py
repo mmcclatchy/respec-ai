@@ -79,14 +79,14 @@ class TestLoopToolsIntegration:
 
     @pytest.mark.asyncio
     async def test_stagnation_detection_in_full_context(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
-        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')).id
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
 
         # Create stagnation pattern
         stagnant_scores = [70, 71, 70, 71, 70]
         results = []
 
         for i, score in enumerate(stagnant_scores, start=1):
-            result = await add_feedback_and_decide(isolated_loop_tools, loop_id, score, i, CriticAgent.TASK_CRITIC)
+            result = await add_feedback_and_decide(isolated_loop_tools, loop_id, score, i, CriticAgent.PHASE_CRITIC)
             results.append(result)
 
         # Should detect stagnation and request user input
@@ -97,9 +97,9 @@ class TestLoopToolsIntegration:
         self, isolated_loop_tools: LoopTools, plan_name: str, stable_loop_config: LoopConfig
     ) -> None:
         # Test different loop types use correct thresholds
-        build_code_loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')
+        build_code_loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')
 
-        threshold = stable_loop_config.task_threshold
+        threshold = stable_loop_config.phase_threshold
         # Score just below build_code threshold should refine
         result = await add_feedback_and_decide(
             isolated_loop_tools, build_code_loop.id, threshold - 1, 1, CriticAgent.REVIEW_CONSOLIDATOR
@@ -136,7 +136,7 @@ class TestLoopToolsIntegration:
     @pytest.mark.asyncio
     async def test_concurrent_loop_management(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
         # Create multiple loops
-        loop_types = ['plan', 'phase', 'task']
+        loop_types = ['plan', 'phase', 'analyst']
         agents = [
             CriticAgent.PLAN_CRITIC,
             CriticAgent.PHASE_CRITIC,

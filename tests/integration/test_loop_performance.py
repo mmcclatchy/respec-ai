@@ -66,7 +66,7 @@ class TestLoopPerformance:
         # Create multiple loops to test configuration access
         loops = []
         for _ in range(20):
-            for loop_type in ['plan', 'phase', 'task']:
+            for loop_type in ['plan', 'phase', 'analyst']:
                 loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, loop_type)
                 loops.append(loop)
 
@@ -129,7 +129,7 @@ class TestLoopPerformance:
 
     @pytest.mark.asyncio
     async def test_stagnation_detection_performance(self, isolated_loop_tools: LoopTools, plan_name: str) -> None:
-        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'task')).id
+        loop_id = (await isolated_loop_tools.initialize_refinement_loop(plan_name, 'phase')).id
 
         start_time = time.perf_counter()
 
@@ -139,7 +139,7 @@ class TestLoopPerformance:
         for _ in range(10):
             for score in stagnation_scores:
                 result = await add_feedback_and_decide(
-                    isolated_loop_tools, loop_id, score, iteration, CriticAgent.TASK_CRITIC
+                    isolated_loop_tools, loop_id, score, iteration, CriticAgent.PHASE_CRITIC
                 )
                 iteration += 1
                 if result.status == LoopStatus.USER_INPUT:
@@ -180,7 +180,7 @@ class TestLoopPerformance:
         # Create many loops
         created_loops = []
         for i in range(50):
-            loop_type = ['plan', 'phase', 'task'][i % 3]
+            loop_type = ['plan', 'phase', 'analyst'][i % 3]
             loop = await isolated_loop_tools.initialize_refinement_loop(plan_name, loop_type)
             created_loops.append(loop)
 

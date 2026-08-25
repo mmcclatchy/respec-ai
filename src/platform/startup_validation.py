@@ -97,12 +97,9 @@ def validate_platform_adapters() -> dict[str, Any]:
     required_properties = [
         'plan_sync_instructions',
         'phase_sync_instructions',
-        'task_sync_instructions',
         'phase_discovery_instructions',
-        'task_discovery_instructions',
         'config_directory',
         'phase_location_hint',
-        'task_location_hint',
         'create_plan_tool',
         'retrieve_plan_tool',
         'update_plan_tool',
@@ -110,11 +107,7 @@ def validate_platform_adapters() -> dict[str, Any]:
         'retrieve_phase_tool',
         'update_phase_tool',
         'comment_phase_tool',
-        'create_task_tool',
-        'retrieve_task_tool',
-        'update_task_tool',
         'list_phases_tool',
-        'list_tasks_tool',
     ]
 
     adapters = {

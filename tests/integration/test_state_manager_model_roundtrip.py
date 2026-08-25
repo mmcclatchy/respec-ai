@@ -19,7 +19,6 @@ from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus, ShapeGate
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.utils.enums import LoopType
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, StateManager
@@ -147,31 +146,6 @@ def sample_plan(markdown_builder: Callable) -> Plan:
         plan_status=PlanStatus.ACTIVE,
     )
     return Plan.parse_markdown(markdown)
-
-
-@pytest.fixture
-def sample_task(markdown_builder: Callable) -> Task:
-    markdown = markdown_builder(
-        Task,
-        name='Implement User Authentication',
-        phase_path='microservices-platform/phase-1-foundation',
-        goal='Implement OAuth2 authentication with JWT tokens',
-        acceptance_criteria='Users can register, login, and access protected endpoints',
-        tech_stack_reference='FastAPI, Python 3.13+, JWT, OAuth2',
-        implementation_steps="""#### Step 1: Setup OAuth2 Dependencies
-Install required packages and configure OAuth2PasswordBearer.
-
-#### Step 2: Implement JWT Token Handler
-Create JWT token generation and validation logic.
-
-#### Step 3: Create Auth Endpoints
-Implement login and token refresh endpoints.""",
-        testing_strategy='Unit tests for auth logic, integration tests for endpoints',
-        status='in_progress',
-        active='true',
-        version='1.0',
-    )
-    return Task.parse_markdown(markdown)
 
 
 # ============================================================================
@@ -402,27 +376,6 @@ async def test_plan_update_overwrites_completely(state_manager: StateManager, sa
     assert retrieved.plan_status == PlanStatus.COMPLETED
     assert '$3M' in retrieved.executive_summary
     assert '3 PMs, 12 Engineers' in retrieved.resource_requirements
-
-
-# ============================================================================
-# Task Round-Trip Tests
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_task_store_retrieve_preserves_all_fields(state_manager: StateManager, sample_task: Task) -> None:
-    # Store task using phase_path
-    phase_path = sample_task.phase_path
-    await state_manager.store_task(phase_path, sample_task)
-
-    # Retrieve task
-    retrieved = await state_manager.get_task(phase_path, sample_task.name)
-
-    # Compare all fields
-    original_data = sample_task.model_dump()
-    retrieved_data = retrieved.model_dump()
-
-    assert original_data == retrieved_data, 'Task round-trip changed field values'
 
 
 # ============================================================================

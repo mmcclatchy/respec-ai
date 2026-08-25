@@ -7,7 +7,6 @@ class PathComponent(StrEnum):
     RESPEC_AI_DIR = '.respec-ai'
     PLANS_DIR = 'plans'
     PHASES_DIR = 'phases'
-    TASKS_DIR = 'tasks'
     RESEARCH_DIR = 'research'
     PROJECT_PLAN_FILE = 'plan.md'
     PHASE_FILE = 'phase.md'
@@ -36,22 +35,6 @@ class PathComponent(StrEnum):
         phase = phase_name or '*'
         research = f'{research_name}.md' if research_name else '*.md'
         return f'{cls.RESPEC_AI_DIR}/{cls.PLANS_DIR}/{plan}/{cls.PHASES_DIR}/{phase}/{cls.RESEARCH_DIR}/{research}'
-
-    @classmethod
-    def build_task_path(
-        cls,
-        plan_name: str | None = None,
-        phase_name: str | None = None,
-        task_name: str | None = None,
-    ) -> str:
-        """Build path to task file.
-
-        Tasks are stored under their parent phase directory.
-        """
-        plan = plan_name or '*'
-        phase = phase_name or '*'
-        task = f'{task_name}.md' if task_name else '*.md'
-        return f'{cls.RESPEC_AI_DIR}/{cls.PLANS_DIR}/{plan}/{cls.PHASES_DIR}/{phase}/{cls.TASKS_DIR}/{task}'
 
     @classmethod
     def build_completion_path(cls, plan_name: str | None = None) -> str:

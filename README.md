@@ -5,9 +5,8 @@ AI-assisted delivery often breaks down when vague requirements move to code befo
 `respec-ai` applies spec-driven development with MCP-orchestrated agentic reflection loops:
 - `/respec-plan` turns ambiguity into a measurable plan
 - `/respec-roadmap` decomposes that plan into phases
-- `/respec-phase` defines system design and synthesizes best-practice research via `best-practices-rag`
-- `/respec-task` generates implementation-grade task specs
-- `/respec-code` plus `/respec-patch` run TDD-first implementation and review against those specs and project standards set by the user
+- `/respec-phase` defines system design, synthesizes best-practice research via `best-practices-rag`, and produces an `implementation.md` build plan
+- `/respec-code` plus `/respec-patch` run TDD-first implementation and review against that plan and project standards set by the user
 
 `best-practices-rag` addresses a common LLM quality problem: code that works but is outdated, non-idiomatic, or inconsistently applied for a given stack. It queries a curated Neo4j knowledge graph first to reinforce proven patterns (including ones already in model training), performs external gap-fill research only when coverage is missing or stale, stores synthesized results back to the graph, and reuses them in future runs.
 
@@ -87,8 +86,7 @@ Optional `standards/guides/*.md` files are derived guidance artifacts and non-ca
 
 - `respec-plan`: strategic plan generation and refinement
 - `respec-roadmap`: phase roadmap generation
-- `respec-phase`: technical phase specification
-- `respec-task`: implementation task breakdown
+- `respec-phase`: technical phase specification and implementation planning
 - `respec-code`: implementation + review loops
 - `respec-patch`: amendment workflow for existing phases
 - `respec-standards`: render derived standards guides from canonical TOML templates
@@ -101,7 +99,6 @@ Optional `standards/guides/*.md` files are derived guidance artifacts and non-ca
   - `respec-plan`, `respec-phase`, `respec-code`, `respec-patch`
 - Secondary:
   - `respec-roadmap` (typically invoked by `respec-plan`)
-  - `respec-task` (typically invoked by `respec-phase`)
 - Internal:
   - `respec-plan-conversation` (used by `respec-plan`, not a direct entry point)
 

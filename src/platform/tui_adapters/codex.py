@@ -17,7 +17,6 @@ _PRIMARY_COMMAND_SKILLS = {'respec-plan', 'respec-phase', 'respec-code', 'respec
 _PREFLIGHT_COMMAND_SKILLS = {'respec-standards'}
 _SECONDARY_COMMAND_PARENTS = {
     'respec-roadmap': 'respec-plan',
-    'respec-task': 'respec-phase',
 }
 _INTERNAL_COMMAND_SKILLS = {'respec-plan-conversation'}
 

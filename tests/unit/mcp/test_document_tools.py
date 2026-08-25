@@ -42,57 +42,6 @@ None
 - Test deliverable 1
 - Test deliverable 2
 """,
-        DocumentType.TASK: """# Task: test-task
-
-## Identity
-
-### Phase Path
-test-plan/test-phase
-
-## Overview
-
-### Goal
-Test task goal
-
-### Acceptance Criteria
-- Criterion 1
-- Criterion 2
-
-### Technology Stack Reference
-Python 3.13+, FastAPI
-
-## Implementation
-
-### Checklist
-- [ ] Setup project structure (verify: ls -la)
-- [ ] Implement core logic (verify: pytest)
-
-### Steps
-
-#### Step 1: Setup
-Initial setup steps
-
-#### Step 2: Implementation
-Main implementation steps
-
-## Quality
-
-### Testing Strategy
-Test strategy description
-
-## Status
-
-### Current Status
-pending
-
-## Metadata
-
-### Active
-true
-
-### Version
-1.0
-""",
     }
 
 
@@ -100,7 +49,6 @@ true
     'doc_type',
     [
         DocumentType.PHASE,
-        DocumentType.TASK,
     ],
 )
 class TestDocumentToolsCRUD:
@@ -109,30 +57,21 @@ class TestDocumentToolsCRUD:
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test storing document works for all types"""
-        if doc_type == DocumentType.PHASE:
-            key = 'test-plan/test-phase'
-        else:  # TASK - requires 3 segments
-            key = 'test-plan/test-phase/test-task'
+        key = 'test-plan/test-phase'
 
         content = sample_documents[doc_type]
 
         result = await document_tools.store_document(doc_type, key, content)
 
         assert isinstance(result, str)
-        if doc_type == DocumentType.PHASE:
-            assert result == 'test-phase'
-        elif doc_type == DocumentType.TASK:
-            assert result == 'test-task'
+        assert result == 'test-phase'
 
     @pytest.mark.asyncio
     async def test_get_document_by_key_success(
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test retrieving document by key works for all types"""
-        if doc_type == DocumentType.PHASE:
-            key = 'test-plan/test-phase'
-        else:  # TASK
-            key = 'test-plan/test-phase/test-task'
+        key = 'test-plan/test-phase'
 
         content = sample_documents[doc_type]
 
@@ -142,7 +81,7 @@ class TestDocumentToolsCRUD:
         assert isinstance(response, MCPResponse)
         assert response.id == key
         assert response.status == LoopStatus.COMPLETED
-        assert 'test-phase' in response.message or 'test-task' in response.message
+        assert 'test-phase' in response.message
         assert response.char_length is not None and response.char_length > 0
 
     @pytest.mark.asyncio
@@ -154,10 +93,7 @@ class TestDocumentToolsCRUD:
         state_manager: InMemoryStateManager,
     ) -> None:
         """Test retrieving document by loop_id works for all types"""
-        if doc_type == DocumentType.PHASE:
-            key = 'test-plan/test-phase'
-        else:  # TASK
-            key = 'test-plan/test-phase/test-task'
+        key = 'test-plan/test-phase'
 
         content = sample_documents[doc_type]
         loop_id = 'a1b2c3d4'  # UUID first section format
@@ -172,12 +108,12 @@ class TestDocumentToolsCRUD:
 
         assert isinstance(response, MCPResponse)
         assert response.id == loop_id
-        assert 'test-phase' in response.message or 'test-task' in response.message
+        assert 'test-phase' in response.message
         assert response.char_length is not None and response.char_length > 0
 
     @pytest.mark.asyncio
     async def test_list_documents_empty(self, document_tools: DocumentTools, doc_type: DocumentType) -> None:
-        parent_key = 'test-plan' if doc_type == DocumentType.PHASE else 'test-plan/test-phase'
+        parent_key = 'test-plan'
         response = await document_tools.list_documents(doc_type, parent_key=parent_key)
 
         assert isinstance(response, MCPResponse)
@@ -190,12 +126,11 @@ class TestDocumentToolsCRUD:
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test list_documents returns multiple items correctly"""
-        if doc_type == DocumentType.PHASE:
-            parent_key = 'test-plan'
-            items = []
-            for i in range(1, 4):
-                phase_name = f'test-phase-{i}'
-                content = f"""# Phase: {phase_name}
+        parent_key = 'test-plan'
+        items = []
+        for i in range(1, 4):
+            phase_name = f'test-phase-{i}'
+            content = f"""# Phase: {phase_name}
 
 ## Overview
 
@@ -211,59 +146,7 @@ None
 ### Deliverables
 - Test deliverable {i}
 """
-                items.append((f'test-plan/{phase_name}', content, phase_name))
-        else:  # TASK
-            parent_key = 'test-plan/test-phase'
-            items = []
-            for i in range(1, 4):
-                task_name = f'test-task-{i}'
-                content = f"""# Task: {task_name}
-
-## Identity
-
-### Phase Path
-test-plan/test-phase
-
-## Overview
-
-### Goal
-Test task {i} goal
-
-### Acceptance Criteria
-- Criterion {i}
-
-### Technology Stack Reference
-Python 3.13+
-
-## Implementation
-
-### Checklist
-- [ ] Task {i} setup (verify: test command)
-
-### Steps
-
-#### Step 1: Setup
-Test notes {i}
-
-## Quality
-
-### Testing Strategy
-Test strategy {i}
-
-## Status
-
-### Current Status
-pending
-
-## Metadata
-
-### Active
-true
-
-### Version
-1.0
-"""
-                items.append((f'test-plan/test-phase/{task_name}', content, task_name))
+            items.append((f'test-plan/{phase_name}', content, phase_name))
 
         for key, content, name in items:
             await document_tools.store_document(doc_type, key, content)
@@ -282,52 +165,37 @@ true
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test updating document works for all types"""
-        if doc_type == DocumentType.PHASE:
-            key = 'test-plan/test-phase'
-        else:  # TASK
-            key = 'test-plan/test-phase/test-task'
+        key = 'test-plan/test-phase'
 
         original_content = sample_documents[doc_type]
 
         await document_tools.store_document(doc_type, key, original_content)
 
-        if doc_type == DocumentType.PHASE:
-            updated_content = (
-                original_content
-                + """
+        updated_content = (
+            original_content
+            + """
 ## System Design
 
 ### Architecture
 Updated architecture description
 """
-            )
-        else:  # TASK
-            updated_content = original_content.replace('Initial setup steps', 'Updated setup steps with more details')
+        )
 
         result = await document_tools.update_document(doc_type, key, updated_content)
 
         assert isinstance(result, str)
-        if doc_type == DocumentType.PHASE:
-            assert 'test-phase' in result
-            assert 'Updated phase' in result
-        elif doc_type == DocumentType.TASK:
-            assert result == 'test-task'
+        assert 'test-phase' in result
+        assert 'Updated phase' in result
 
         response = await document_tools.get_document(doc_type, key=key)
-        if doc_type == DocumentType.PHASE:
-            assert 'Updated architecture' in response.message
-        else:
-            assert 'Updated setup steps' in response.message
+        assert 'Updated architecture' in response.message
 
     @pytest.mark.asyncio
     async def test_delete_document_success(
         self, document_tools: DocumentTools, doc_type: DocumentType, sample_documents: dict[DocumentType, str]
     ) -> None:
         """Test deleting document works for all types"""
-        if doc_type == DocumentType.PHASE:
-            key = 'test-plan/test-phase'
-        else:  # TASK
-            key = 'test-plan/test-phase/test-task'
+        key = 'test-plan/test-phase'
 
         content = sample_documents[doc_type]
 
@@ -348,10 +216,7 @@ Updated architecture description
         state_manager: InMemoryStateManager,
     ) -> None:
         """Test linking loop to document works for all types"""
-        if doc_type == DocumentType.PHASE:
-            key = 'test-plan/test-phase'
-        else:  # TASK
-            key = 'test-plan/test-phase/test-task'
+        key = 'test-plan/test-phase'
 
         content = sample_documents[doc_type]
         loop_id = 'b2c3d4e5'  # UUID first section format
@@ -413,7 +278,6 @@ async def test_validation_errors(document_tools: DocumentTools, method: str, kwa
     'doc_type',
     [
         DocumentType.PHASE,
-        DocumentType.TASK,
     ],
 )
 class TestDocumentToolsErrorHandling:
@@ -422,10 +286,7 @@ class TestDocumentToolsErrorHandling:
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
         """ResourceError raised when document doesn't exist"""
-        if doc_type == DocumentType.PHASE:
-            key = 'nonexistent/phase'
-        else:  # TASK
-            key = 'nonexistent/phase/task'
+        key = 'nonexistent/phase'
 
         with pytest.raises(ResourceError):
             await document_tools.get_document(doc_type, key=key)
@@ -435,10 +296,7 @@ class TestDocumentToolsErrorHandling:
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
         """delete_document returns 'not found' message when document doesn't exist"""
-        if doc_type == DocumentType.PHASE:
-            key = 'nonexistent/phase'
-        else:  # TASK
-            key = 'nonexistent/phase/task'
+        key = 'nonexistent/phase'
 
         response = await document_tools.delete_document(doc_type, key)
 
@@ -452,10 +310,7 @@ class TestDocumentToolsErrorHandling:
         self, document_tools: DocumentTools, doc_type: DocumentType
     ) -> None:
         """ResourceError raised when updating non-existent document"""
-        if doc_type == DocumentType.PHASE:
-            key = 'nonexistent/phase'
-        else:  # TASK
-            key = 'nonexistent/phase/task'
+        key = 'nonexistent/phase'
 
         with pytest.raises((ResourceError, ToolError)):
             await document_tools.update_document(doc_type, key, 'new content')
@@ -476,7 +331,6 @@ class TestDocumentToolsErrorHandling:
     [
         (DocumentType.PHASE, 'test-plan', 0, 0),
         (DocumentType.PHASE, 'test-plan', 5, 5),
-        (DocumentType.TASK, 'plan-a/phase-a', 3, 3),
     ],
 )
 @pytest.mark.asyncio
@@ -490,9 +344,8 @@ async def test_list_documents_count_filtering(
     """Test list_documents count works for all document types"""
 
     for i in range(1, store_count + 1):
-        if doc_type == DocumentType.PHASE:
-            phase_name = f'test-phase-{i}'
-            content = f"""# Phase: {phase_name}
+        phase_name = f'test-phase-{i}'
+        content = f"""# Phase: {phase_name}
 
 ## Overview
 
@@ -508,56 +361,7 @@ None
 ### Deliverables
 - Test deliverable {i}
 """
-            key = f'{parent_key}/{phase_name}'
-        else:  # TASK
-            task_name = f'test-task-{i}'
-            content = f"""# Task: {task_name}
-
-## Identity
-
-### Phase Path
-{parent_key}
-
-## Overview
-
-### Goal
-Test task goal {i}
-
-### Acceptance Criteria
-- Criterion {i}
-
-### Technology Stack Reference
-Python 3.13+
-
-## Implementation
-
-### Checklist
-- [ ] Task {i} setup (verify: test command)
-
-### Steps
-
-#### Step 1: Setup
-Test implementation notes {i}
-
-## Quality
-
-### Testing Strategy
-Test strategy description {i}
-
-## Status
-
-### Current Status
-pending
-
-## Metadata
-
-### Active
-true
-
-### Version
-1.0
-"""
-            key = f'{parent_key}/{task_name}'
+        key = f'{parent_key}/{phase_name}'
 
         await document_tools.store_document(doc_type, key, content)
 
@@ -575,8 +379,6 @@ true
     [
         (DocumentType.PHASE, 'key'),
         (DocumentType.PHASE, 'loop_id'),
-        (DocumentType.TASK, 'key'),
-        (DocumentType.TASK, 'loop_id'),
     ],
 )
 @pytest.mark.asyncio
@@ -589,10 +391,7 @@ async def test_get_document_retrieval_modes(
 ) -> None:
     """Test both key-based and loop_id-based retrieval"""
 
-    if doc_type == DocumentType.PHASE:
-        key = 'test-plan/test-phase'
-    else:  # TASK
-        key = 'test-plan/test-phase/test-task'
+    key = 'test-plan/test-phase'
 
     content = sample_documents[doc_type]
     loop_id = 'c3d4e5f6'  # UUID first section format
@@ -611,12 +410,8 @@ async def test_get_document_retrieval_modes(
         response = await document_tools.get_document(doc_type, loop_id=loop_id)
         assert response.id == loop_id
 
-    if doc_type == DocumentType.PHASE:
-        assert 'test-phase' in response.message
-        assert 'Objectives' in response.message
-    else:  # TASK
-        assert 'test-task' in response.message
-        assert 'Goal' in response.message
+    assert 'test-phase' in response.message
+    assert 'Objectives' in response.message
     assert response.char_length is not None and response.char_length > 0
 
 

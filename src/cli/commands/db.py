@@ -35,7 +35,7 @@ def _run_delete_plan(args: Namespace) -> int:
     if not args.force:
         print_info(
             f'This will permanently delete plan [bold]{plan_name}[/bold] '
-            f'and all related data (roadmap, phases, tasks, loops, review sections).'
+            f'and all related data (roadmap, phases, loops, review sections).'
         )
         response = input('Are you sure? (y/N): ').strip().lower()
         if response not in ('y', 'yes'):

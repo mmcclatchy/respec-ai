@@ -253,11 +253,11 @@ Detailed feedback present.
     @pytest.mark.asyncio
     async def test_store_critic_feedback_rejects_placeholder_blockers_without_persisting(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
-        invalid_feedback_markdown = """# Critic Feedback: TASK-CRITIC
+        invalid_feedback_markdown = """# Critic Feedback: PHASE-CRITIC
 
 ## Assessment Summary
 - **Loop ID**: task-loop
@@ -296,7 +296,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_store_reviewer_result_and_consolidate_phase1(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -382,7 +382,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_get_reviewer_feedback_context_returns_active_curated_latest_results(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -476,7 +476,7 @@ class TestDeterministicReviewConsolidation:
         self, plan_name: str
     ) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -517,7 +517,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_get_reviewer_feedback_context_requires_all_active_reviewer_results(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -545,7 +545,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_consolidate_reuses_latest_prior_reviewer_result(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -604,7 +604,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_consolidate_uses_newest_prior_reviewer_result_and_ignores_future(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -633,7 +633,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_consolidate_fails_when_only_future_reviewer_result_exists(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -658,7 +658,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_reviewer_local_max_score_normalizes_to_composite_percentage(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -690,7 +690,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_all_active_phase1_reviewers_perfect_returns_composite_100(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
         reviewers = [
@@ -729,7 +729,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_non_perfect_phase1_reviewers_cannot_round_up_to_composite_100(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
         reviewers = [
@@ -769,7 +769,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_store_reviewer_result_rejects_placeholder_blockers_without_persisting(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -791,7 +791,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_store_reviewer_result_rejects_blank_blockers_without_persisting(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -813,7 +813,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_store_reviewer_result_rejects_execution_report_in_structured_fields(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -852,7 +852,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_consolidate_persists_reviewer_blockers_structurally(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -884,7 +884,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_store_reviewer_result_rejects_wrong_max_score(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 
@@ -903,7 +903,7 @@ class TestDeterministicReviewConsolidation:
     @pytest.mark.asyncio
     async def test_consolidate_requires_all_active_reviewers(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
-        loop = LoopState(loop_type=LoopType.TASK)
+        loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
         tools = UnifiedFeedbackTools(state)
 

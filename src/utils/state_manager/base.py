@@ -6,7 +6,6 @@ from typing import TypeVar
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.models.feedback import ReviewerResult
 from src.utils.loop_state import LoopState, MCPResponse
 
@@ -154,39 +153,6 @@ class StateManager(ABC):
         Returns True if phase was found and marked inactive, False otherwise.
         """
         ...
-
-    # Task Management
-    @abstractmethod
-    async def store_task(self, phase_path: str, task: Task) -> str: ...
-
-    @abstractmethod
-    async def get_task(self, phase_path: str, task_name: str) -> Task: ...
-
-    @abstractmethod
-    async def list_tasks(self, phase_path: str) -> list[str]: ...
-
-    @abstractmethod
-    async def delete_task(self, phase_path: str, task_name: str) -> bool: ...
-
-    @abstractmethod
-    async def mark_tasks_inactive(self, phase_path: str) -> int:
-        """Mark all current active tasks for a phase as inactive.
-
-        Returns the number of tasks marked inactive.
-        """
-        ...
-
-    @abstractmethod
-    async def get_tasks_for_phase(self, phase_path: str) -> list[Task]: ...
-
-    @abstractmethod
-    async def link_loop_to_task(self, loop_id: str, phase_path: str, task_name: str) -> None: ...
-
-    @abstractmethod
-    async def get_task_by_loop(self, loop_id: str) -> Task: ...
-
-    @abstractmethod
-    async def update_task_by_loop(self, loop_id: str, task: Task) -> None: ...
 
     # Review Section Management (raw markdown key-value storage for code review workflow)
     @abstractmethod

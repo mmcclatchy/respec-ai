@@ -714,14 +714,6 @@ class TestCodexAdapter:
                 delegated_agents=[],
             ),
             CommandSpec(
-                name='respec-task',
-                description='Task workflow',
-                argument_hint='[plan-name] [phase-name]',
-                tools=['Read'],
-                body='body',
-                delegated_agents=[],
-            ),
-            CommandSpec(
                 name='respec-plan-conversation',
                 description='Conversation workflow',
                 argument_hint='[optional-context]',
@@ -739,7 +731,6 @@ class TestCodexAdapter:
             'respec-code',
             'respec-patch',
             'respec-roadmap',
-            'respec-task',
         ):
             policy = (project_path / '.codex' / 'skills' / command_name / 'agents' / 'openai.yaml').read_text(
                 encoding='utf-8'
@@ -755,22 +746,15 @@ class TestCodexAdapter:
         roadmap_policy = (project_path / '.codex' / 'skills' / 'respec-roadmap' / 'agents' / 'openai.yaml').read_text(
             encoding='utf-8'
         )
-        task_policy = (project_path / '.codex' / 'skills' / 'respec-task' / 'agents' / 'openai.yaml').read_text(
-            encoding='utf-8'
-        )
         roadmap_skill = (project_path / '.codex' / 'skills' / 'respec-roadmap' / 'SKILL.md').read_text(encoding='utf-8')
-        task_skill = (project_path / '.codex' / 'skills' / 'respec-task' / 'SKILL.md').read_text(encoding='utf-8')
         conversation_skill = (project_path / '.codex' / 'skills' / 'respec-plan-conversation' / 'SKILL.md').read_text(
             encoding='utf-8'
         )
 
         assert 'Typically orchestrated by `respec-plan`; direct use is for edge cases.' in roadmap_policy
-        assert 'Typically orchestrated by `respec-phase`; direct use is for edge cases.' in task_policy
         assert 'Typically orchestrated by `respec-plan`; direct use is for edge cases.' in roadmap_skill
-        assert 'Typically orchestrated by `respec-phase`; direct use is for edge cases.' in task_skill
         assert 'Internal workflow used by `respec-plan`; do not invoke directly.' in conversation_skill
         assert 'Usage: $respec-roadmap [plan-name]' in roadmap_skill
-        assert 'Usage: $respec-task [plan-name] [phase-name]' in task_skill
         assert 'Usage:' not in conversation_skill
 
     def test_register_unregister_mcp_server(self, tmp_path: Path, project_path: Path) -> None:
@@ -908,27 +892,21 @@ class TestCodexAdapterInvocationRendering:
     def test_render_command_reference(self) -> None:
         assert self.adapter.render_command_reference('respec-task') == '`respec-task` skill'
 
-    def test_phase_template_step_9_codex_invocation_avoids_nested_backticks(self) -> None:
+    def test_phase_template_completion_codex_invocation_avoids_nested_backticks(self) -> None:
         template = TemplateCoordinator().generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=self.adapter
         )
-        assert 'via `Invoke the `respec-task` skill with:' not in template
-        assert 'Attempt task generation in the SAME run via:' in template
+        assert 'via `Invoke the `respec-code` skill with:' not in template
         assert (
-            'Invoke the `respec-task` skill with: `{PLAN_NAME} {PHASE_NAME} [optional: additional-context]`.'
+            'Invoke the `respec-code` skill with: `{PLAN_NAME} {PHASE_NAME} [optional: additional-context]`.'
         ) in template
 
     def test_codex_generated_templates_do_not_leak_hardcoded_slash_references(self) -> None:
         phase_template = TemplateCoordinator().generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=self.adapter
         )
-        task_template = TemplateCoordinator().generate_command_template(
-            RespecAICommand.TASK, PlatformType.LINEAR, tui_adapter=self.adapter
-        )
         assert '/respec-phase` is the ONLY workflow that runs bp synthesis' not in phase_template
         assert '`respec-phase` skill is the ONLY workflow that runs bp synthesis' in phase_template
-        assert '`/respec-task` consumes finalized research artifacts only.' not in task_template
-        assert '`respec-task` skill consumes finalized research artifacts only.' in task_template
 
     def test_codex_code_template_excludes_unused_planning_loop_tools(self) -> None:
         code_template = TemplateCoordinator().generate_command_template(

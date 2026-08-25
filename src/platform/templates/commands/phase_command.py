@@ -1442,124 +1442,24 @@ Labels: phase, architecture, phase-2
 
 **Important**: Use FINAL_PHASE_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
 
-### Step 18: Automatic Task Generation
+### Step 18: Completion Contract and Final Reporting
 
-After Phase storage completes, automatically generate the Task document.
-
-═══════════════════════════════════════════════
-MANDATORY TASK HANDOFF PROTOCOL (FAIL-CLOSED)
-═══════════════════════════════════════════════
-MUST:
-- Attempt task generation in the SAME run via:
-  {tools.task_command_invocation}
-- Record task invocation outcome before any completion response
-
-MUST NOT:
-- Return "Phase complete" success without attempting Step 18
-- Attempt `respec-task` invocation via Bash/CLI
-
-EXCEPTION:
-- Only skip automatic chaining if user explicitly instructed to stop chaining
-
-IMPORTANT:
-- Fallback/manual mode changes implementation method only.
-- Fallback/manual mode does NOT waive Step 18 obligations.
-- Command handoff path MUST use adapter-rendered orchestration invocation, not shell fallback.
-═══════════════════════════════════════════════
+Phase storage and implementation.md (Step 12.5/12.6) are already complete by this
+point — there is no Task to generate. Chain directly into the coding workflow.
 
 ```text
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Display: "✅  PHASE COMPLETE — generating Task document"
+Display: "✅  PHASE COMPLETE"
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-TASK_INVOCATION_ATTEMPTED = false
-TASK_INVOCATION_STATUS = "failed"
-TASK_INVOCATION_METHOD = "orchestration"
-TASK_IDENTIFIER = "unavailable"
-TASK_ERROR_SUMMARY = ""
-
-Sanity check orchestration path:
-TASK_ORCHESTRATION_INVOCATION = "{tools.task_command_invocation}"
-IF TASK_ORCHESTRATION_INVOCATION is empty OR missing expected respec-task invocation text:
-  ERROR_RESPONSE = {{
-    "error_type": "task_handoff_unavailable",
-    "error_message": "Task orchestration invocation path unavailable",
-    "recovery_action": "Stop before Step 18 execution and preserve phase output",
-    "user_guidance": "Run template regeneration and retry Phase workflow. Do NOT use shell fallback for respec-task.",
-    "partial_output": "Phase stored successfully; task handoff blocked by fail-closed policy."
-  }}
-  EXIT: Workflow terminated
-
-Attempt task workflow via orchestration path:
-{tools.task_command_invocation}
-TASK_INVOCATION_ATTEMPTED = true
-TASK_INVOCATION_METHOD = "orchestration"
-
-IF task workflow invocation returns error:
-  TASK_INVOCATION_STATUS = "failed"
-  TASK_ERROR_SUMMARY = [captured error summary]
-
-ELSE:
-  TASK_RESULT = mcp__respec-ai__list_documents(
-    doc_type="task",
-    parent_key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
-  )
-
-  IF TASK_RESULT reports zero task documents:
-    TASK_INVOCATION_STATUS = "failed"
-    TASK_ERROR_SUMMARY = "Task workflow returned but no task document exists under the phase"
-  ELIF TASK_RESULT reports more than one task document:
-    TASK_INVOCATION_STATUS = "failed"
-    TASK_ERROR_SUMMARY = "Task workflow returned but produced multiple task documents; chained verification is ambiguous"
-  ELSE:
-    TASK_DOC_KEY = [extract the single returned task document key from TASK_RESULT]
-
-    Verify task exists in MCP:
-    mcp__respec-ai__get_document(
-      doc_type="task",
-      key=TASK_DOC_KEY
-    )
-
-    IF verification succeeds:
-      TASK_INVOCATION_STATUS = "succeeded"
-      TASK_IDENTIFIER = TASK_DOC_KEY
-    ELSE:
-      TASK_INVOCATION_STATUS = "failed"
-      TASK_ERROR_SUMMARY = "Task workflow returned but task retrieval verification failed"
-```
-
-### Step 19: Completion Contract and Final Reporting
-
-```text
-IF TASK_INVOCATION_ATTEMPTED == false AND user did not explicitly request to stop chaining:
-  ERROR: non-compliant run (Step 18 not attempted)
-  EXIT with structured error (do NOT report success)
-
-IF TASK_INVOCATION_METHOD == "shell":
-  ERROR: non-compliant run (shell invocation is invalid for Step 18)
-  RETRY REQUIRED: re-run Step 18 via orchestration invocation path before reporting success/failure
-  EXIT with structured error
 
 Completion contract (required in final response):
 1. phase_file_path
 2. phase_status
-3. task_invocation_status ("succeeded" | "failed")
-4. task_invocation_method ("orchestration" | "shell"; shell is invalid/non-compliant)
-5. task_identifier (MCP key when available, else "unavailable")
-6. next_action (required when task_invocation_status == "failed")
-```
+3. implementation_plan_path
 
-```text
-IF TASK_INVOCATION_STATUS == "succeeded":
-  Display:
-  "✅ Phase and Task complete. Next: run implementation workflow"
-  {tools.code_command_invocation}
-
-ELSE:
-  Display:
-  "⚠ Task generation failed. Phase is saved. Retry the task workflow manually:"
-  {tools.task_command_invocation}
-  Include error output summary and retry guidance in next_action.
+Display:
+"✅ Phase complete. Next: run implementation workflow"
+{tools.code_command_invocation}
 ```
 
 ## Quality Assessment

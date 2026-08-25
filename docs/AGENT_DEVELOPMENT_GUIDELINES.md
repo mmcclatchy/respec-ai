@@ -409,7 +409,7 @@ OUTPUTS: Technical specification in structured format
 ```markdown
 # ❌ WRONG: References external workflow knowledge
 "After the plan-critic validates the plan quality..."
-"This specification will be used by the taskner agent..."  
+"This specification will be used by the coder agent..."  
 "Ensure compatibility with the Linear platform storage..."
 "Consider the 85% quality threshold for progression..."
 ```
@@ -426,7 +426,7 @@ OUTPUTS: Technical specification in structured format
 
 **Key Principle**: Commands orchestrate control flow, not data flow. Data flows directly between MCP Server and specialized agents.
 
-**Scope**: This pattern applies to MCP-driven refinement loops (phase, task workflows). Main Agent driven workflows (plan workflow) manage user interaction differently and do not use this pattern.
+**Scope**: This pattern applies to MCP-driven refinement loops (phase, code workflows). Main Agent driven workflows (plan workflow) manage user interaction differently and do not use this pattern.
 
 ### Traditional vs Optimized Architecture
 
@@ -604,7 +604,7 @@ WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:
 CALL respec-coder
 Input:
   - coding_loop_id: CODING_LOOP_ID
-  - task_loop_id: TASK_LOOP_ID
+  - phase_loop_id: PHASE_LOOP_ID
   - plan_name: PLAN_NAME
   - phase_name: PHASE_NAME
   - mode: None
@@ -805,7 +805,7 @@ IF PREVIOUS_FEEDBACK exists (from STEP 0):
 #### Scalability Benefits
 
 **Pattern Extensibility:**
-- Applies to all MCP-driven refinement workflows (phase, task)
+- Applies to all MCP-driven refinement workflows (phase, code)
 - Can add new agents without changing command patterns
 - MCP Server handles complexity of state management
 - Clear pattern for future agent development
@@ -822,10 +822,10 @@ This optimization pattern applies to **MCP-driven refinement loop workflows** on
 - Pattern: Architect retrieves feedback from MCP using loop_id
 - Loop Driver: MCP Server (decide_loop_next_action)
 
-**build Workflow:** ✅ Should use this pattern
-- Command: `build_command.py`
-- Agents: `taskner` ↔ `task-critic` (planned)
-- Pattern: Planner retrieves feedback from MCP using loop_id
+**code Workflow:** ✅ Uses this pattern
+- Command: `code_command.py`
+- Agents: `coder` ↔ `code-reviewer`
+- Pattern: Coder retrieves feedback from MCP using loop_id
 - Loop Driver: MCP Server (decide_loop_next_action)
 
 **plan Workflow:** ❌ Exception - does NOT use this pattern
@@ -889,7 +889,7 @@ When implementing agents using this pattern:
 
 **Core Principle**: In MCP-driven refinement loops, commands orchestrate control flow, not data flow. Specialized agents retrieve their own data directly from MCP Server using `loop_id`.
 
-**Context Optimization**: This pattern reduces command agent context by 99% and total system context by 63% in MCP-driven refinement workflows (phase, task).
+**Context Optimization**: This pattern reduces command agent context by 99% and total system context by 63% in MCP-driven refinement workflows (phase, code).
 
 **Agent Self-Sufficiency**: Agents using this pattern are independent, self-sufficient processors that retrieve exactly what they need when they need it.
 
@@ -1384,7 +1384,7 @@ You are a software implementation specialist focused on code development.
 
 ### Scalar Inputs
 - coding_loop_id: Feedback loop identifier
-- task_loop_id: Task retrieval loop identifier
+- phase_loop_id: Loop identifier for the loop linked to the Phase document
 - plan_name: Project name
 - phase_name: Phase name
 - mode: Optional scalar mode flag
@@ -1394,12 +1394,12 @@ You are a software implementation specialist focused on code development.
 - project_config_context_markdown
 
 ### Retrieved Context (Not Invocation Inputs)
-- Task document
+- implementation.md build plan
 - Phase document
 - Current codebase context
 
 TASKS:
-1. Read implementation plan and current codebase thoroughly
+1. Read implementation.md and current codebase thoroughly
 2. Implement each step following Test-Driven Development approach
 3. Run tests after each significant implementation step
 4. Document implementation decisions and any plan deviations
@@ -1513,7 +1513,7 @@ Test Case: Edge Case Handling
 # ❌ WRONG: References other agents
 "After the phase-critic validates the specification quality..."
 "Coordinate with plan-generator for requirements clarity..."
-"This output will be used by taskner agent..."
+"This output will be used by coder agent..."
 
 # ❌ WRONG: References workflow orchestration  
 "As part of the refinement loop process..."
@@ -1660,7 +1660,7 @@ This pattern differs from standalone agent workflows in several ways:
 
 ### Storage: Review Sections vs CriticFeedback
 
-**Standalone agents** (phase-architect, task-planner, plan-analyst) store complete documents or
+**Standalone agents** (phase-architect, plan-analyst) store complete documents or
 CriticFeedback directly via `store_critic_feedback` or `store_document`.
 
 **Review-team agents** store partial **review sections** via `store_review_section`. Each section
@@ -1741,7 +1741,7 @@ You are a {specialty} specialist focused on {evaluation area}.
 
 ### Scalar Inputs
 - coding_loop_id: Loop identifier for feedback retrieval and review section storage
-- task_loop_id: Loop identifier for Task retrieval (different from coding_loop_id)
+- phase_loop_id: Loop identifier for the loop linked to the Phase document (different from coding_loop_id)
 - plan_name: Project name
 - phase_name: Phase name for context
 
@@ -1749,13 +1749,13 @@ You are a {specialty} specialist focused on {evaluation area}.
 - workflow_guidance_markdown
 
 ### Retrieved Context (Not Invocation Inputs)
-- Task document
 - Phase document
+- implementation.md build plan
 - Previous feedback
 
 TASKS:
-1. Retrieve Task (via task_loop_id)
-2. Retrieve Phase (via plan_name/phase_name)
+1. Retrieve Phase (via phase_loop_id)
+2. Retrieve implementation.md (via plan_name/phase_name)
 3. Retrieve previous feedback (via coding_loop_id) — progress tracking
 4. Inspect codebase (Read/Glob/Grep)
 5. Assess against criteria

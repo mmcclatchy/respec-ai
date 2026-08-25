@@ -5,7 +5,6 @@ from typing import Generic, TypeVar
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.models.task import Task
 from src.models.feedback import ReviewerResult
 from src.utils.errors import (
     LoopAlreadyExistsError,
@@ -55,13 +54,6 @@ class InMemoryStateManager(StateManager):
         # Temporary loop-to-phase mapping (for active refinement sessions)
         self._loop_to_phase: dict[str, tuple[str, str]] = {}  # loop_id -> (plan_name, phase_name)
 
-        # Task storage (phase_path -> {task_name -> Task})
-        self._tasks: dict[str, dict[str, Task]] = {}
-        self._inactive_tasks: dict[str, dict[str, Task]] = {}  # phase_path -> {task_name -> Task}
-
-        # Temporary loop-to-task mapping (for task refinement sessions)
-        self._loop_to_task: dict[str, tuple[str, str]] = {}  # loop_id -> (phase_path, task_name)
-
         # Loop-to-plan mapping (for cascading delete)
         self._loop_to_plan: dict[str, str] = {}  # loop_id -> plan_name
 
@@ -76,7 +68,6 @@ class InMemoryStateManager(StateManager):
         self._active_loops.pop(loop_id, None)
         self._loop_to_plan.pop(loop_id, None)
         self._loop_to_phase.pop(loop_id, None)
-        self._loop_to_task.pop(loop_id, None)
         self._objective_feedback.pop(loop_id, None)
         self._user_feedback_entries.pop(loop_id, None)
         self._loop_analysis.pop(loop_id, None)
@@ -91,7 +82,6 @@ class InMemoryStateManager(StateManager):
             f'  roadmaps={len(self._roadmaps)}\n'
             f'  plans={len(self._plans)}\n'
             f'  projects_with_phases={len(self._phases)}\n'
-            f'  tasks={len(self._tasks)}\n'
             f'  review_sections={len(self._review_sections)}\n'
             f'  reviewer_results={len(self._reviewer_results)}\n'
             f'  loop_to_phase_mappings={len(self._loop_to_phase)}\n'
@@ -105,8 +95,6 @@ class InMemoryStateManager(StateManager):
 
         phases_dict = {proj: list(phases.keys()) for proj, phases in self._phases.items()}
         inactive_phases_dict = {proj: list(phases.keys()) for proj, phases in self._inactive_phases.items()}
-        tasks_dict = {phase_path: list(tasks.keys()) for phase_path, tasks in self._tasks.items()}
-        inactive_tasks_dict = {phase_path: list(tasks.keys()) for phase_path, tasks in self._inactive_tasks.items()}
         logger.debug(
             f'{method_name} [{stage}] - State snapshot:\n'
             f'  active_loops={list(self._active_loops.keys())}\n'
@@ -114,12 +102,9 @@ class InMemoryStateManager(StateManager):
             f'  plans={list(self._plans.keys())}\n'
             f'  phases_by_project={phases_dict}\n'
             f'  inactive_phases_by_project={inactive_phases_dict}\n'
-            f'  tasks_by_phase={tasks_dict}\n'
-            f'  inactive_tasks_by_phase={inactive_tasks_dict}\n'
             f'  review_sections={list(self._review_sections.keys())}\n'
             f'  reviewer_results={list(self._reviewer_results.keys())}\n'
             f'  loop_to_phase={dict(self._loop_to_phase)}\n'
-            f'  loop_to_task={dict(self._loop_to_task)}\n'
             f'  loop_to_plan={dict(self._loop_to_plan)}\n'
             f'  objective_feedback_loops={list(self._objective_feedback.keys())}'
         )
@@ -577,13 +562,6 @@ class InMemoryStateManager(StateManager):
         for lid in loop_ids_to_remove:
             self._cleanup_loop_references(lid)
 
-        task_paths = [p for p in self._tasks if p.startswith(f'{plan_name}/')]
-        for path in task_paths:
-            del self._tasks[path]
-        inactive_task_paths = [p for p in self._inactive_tasks if p.startswith(f'{plan_name}/')]
-        for path in inactive_task_paths:
-            del self._inactive_tasks[path]
-
         review_keys = [k for k in self._review_sections if k.startswith(f'{plan_name}/')]
         for k in review_keys:
             del self._review_sections[k]
@@ -597,156 +575,6 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('delete_plan', 'EXIT')
         return True
-
-    async def store_task(self, phase_path: str, task: Task) -> str:
-        self._log_state_snapshot('store_task', 'ENTRY')
-        logger.info(f'store_task: phase_path={phase_path}, task_name={task.name}, version={task.version}')
-
-        if phase_path not in self._tasks:
-            self._tasks[phase_path] = {}
-
-        normalized_name = normalize_phase_name(task.name)
-        logger.debug(f'store_task: Normalized "{task.name}" -> "{normalized_name}"')
-
-        self._tasks[phase_path][normalized_name] = task
-
-        logger.info(f'store_task: Successfully stored task {task.name} for phase {phase_path}')
-        self._log_state()
-        self._log_state_snapshot('store_task', 'EXIT')
-        return task.name
-
-    async def get_task(self, phase_path: str, task_name: str) -> Task:
-        self._log_state_snapshot('get_task', 'ENTRY')
-        logger.debug(f'get_task: phase_path={phase_path}, task_name={task_name}')
-
-        normalized_name = normalize_phase_name(task_name)
-        logger.debug(f'get_task: Normalized "{task_name}" -> "{normalized_name}"')
-
-        if phase_path not in self._tasks or normalized_name not in self._tasks[phase_path]:
-            logger.error(
-                f'get_task failed: Task not found: {task_name} (normalized: {normalized_name}) in phase {phase_path}'
-            )
-            raise ValueError(f'Task not found: {task_name} in phase {phase_path}')
-
-        task = self._tasks[phase_path][normalized_name]
-        logger.debug(f'get_task: Retrieved task {normalized_name} (version={task.version})')
-        self._log_state_snapshot('get_task', 'EXIT')
-        return task
-
-    async def list_tasks(self, phase_path: str) -> list[str]:
-        self._log_state_snapshot('list_tasks', 'ENTRY')
-        logger.debug(f'list_tasks: phase_path={phase_path}')
-
-        if phase_path not in self._tasks:
-            logger.debug(f'list_tasks: No tasks found for phase: {phase_path}')
-            self._log_state_snapshot('list_tasks', 'EXIT')
-            return []
-
-        task_names = list(self._tasks[phase_path].keys())
-        logger.debug(f'list_tasks: Found {len(task_names)} tasks: {task_names}')
-        self._log_state_snapshot('list_tasks', 'EXIT')
-        return task_names
-
-    async def delete_task(self, phase_path: str, task_name: str) -> bool:
-        self._log_state_snapshot('delete_task', 'ENTRY')
-        logger.info(f'delete_task: phase_path={phase_path}, task_name={task_name}')
-
-        normalized_name = normalize_phase_name(task_name)
-        logger.debug(f'delete_task: Normalized "{task_name}" -> "{normalized_name}"')
-
-        if phase_path not in self._tasks or normalized_name not in self._tasks[phase_path]:
-            logger.warning(
-                f'delete_task: Task not found: {task_name} (normalized: {normalized_name}) in phase {phase_path}'
-            )
-            self._log_state_snapshot('delete_task', 'EXIT')
-            return False
-
-        del self._tasks[phase_path][normalized_name]
-        logger.info(f'delete_task: Removed {task_name} using normalized name "{normalized_name}" from task storage')
-
-        self._log_state()
-        self._log_state_snapshot('delete_task', 'EXIT')
-        return True
-
-    async def mark_tasks_inactive(self, phase_path: str) -> int:
-        self._log_state_snapshot('mark_tasks_inactive', 'ENTRY')
-        logger.info(f'mark_tasks_inactive: phase_path={phase_path}')
-
-        if phase_path not in self._tasks:
-            logger.debug(f'mark_tasks_inactive: No active tasks found for phase {phase_path}')
-            self._log_state_snapshot('mark_tasks_inactive', 'EXIT')
-            return 0
-
-        if phase_path not in self._inactive_tasks:
-            self._inactive_tasks[phase_path] = {}
-
-        active_tasks = self._tasks[phase_path]
-        count = len(active_tasks)
-
-        for task_name, task in active_tasks.items():
-            self._inactive_tasks[phase_path][task_name] = task
-            logger.debug(f'mark_tasks_inactive: Moved task "{task_name}" to inactive')
-
-        self._tasks[phase_path] = {}
-
-        logger.info(f'mark_tasks_inactive: Marked {count} tasks as inactive for phase {phase_path}')
-        self._log_state()
-        self._log_state_snapshot('mark_tasks_inactive', 'EXIT')
-        return count
-
-    async def get_tasks_for_phase(self, phase_path: str) -> list[Task]:
-        self._log_state_snapshot('get_tasks_for_phase', 'ENTRY')
-        logger.debug(f'get_tasks_for_phase: phase_path={phase_path}')
-
-        if phase_path not in self._tasks:
-            logger.debug(f'get_tasks_for_phase: No tasks found for phase: {phase_path}')
-            self._log_state_snapshot('get_tasks_for_phase', 'EXIT')
-            return []
-
-        tasks = list(self._tasks[phase_path].values())
-        # Sort alphabetically by name (e.g., task-1, task-1a, task-1b, task-2)
-        sorted_tasks = sorted(tasks, key=lambda t: t.name)
-        logger.debug(f'get_tasks_for_phase: Found {len(tasks)} tasks')
-        self._log_state_snapshot('get_tasks_for_phase', 'EXIT')
-        return sorted_tasks
-
-    async def link_loop_to_task(self, loop_id: str, phase_path: str, task_name: str) -> None:
-        self._log_state_snapshot('link_loop_to_task', 'ENTRY')
-        logger.info(f'link_loop_to_task: loop_id={loop_id}, phase_path={phase_path}, task_name={task_name}')
-
-        normalized_name = normalize_phase_name(task_name)
-        logger.debug(f'link_loop_to_task: Normalized "{task_name}" -> "{normalized_name}"')
-
-        self._loop_to_task[loop_id] = (phase_path, normalized_name)
-        logger.info(f'Linked loop {loop_id} to task {normalized_name} in phase {phase_path}')
-        self._log_state()
-        self._log_state_snapshot('link_loop_to_task', 'EXIT')
-
-    async def get_task_by_loop(self, loop_id: str) -> Task:
-        self._log_state_snapshot('get_task_by_loop', 'ENTRY')
-        logger.debug(f'get_task_by_loop: loop_id={loop_id}')
-
-        if loop_id not in self._loop_to_task:
-            logger.info(f'get_task_by_loop: Loop not linked to any task: {loop_id}')
-            raise LoopNotFoundError(f'Loop not linked to any task: {loop_id}')
-
-        phase_path, task_name = self._loop_to_task[loop_id]
-        logger.debug(f'get_task_by_loop: Loop {loop_id} linked to task {task_name} in phase {phase_path}')
-        self._log_state_snapshot('get_task_by_loop', 'EXIT')
-        return await self.get_task(phase_path, task_name)
-
-    async def update_task_by_loop(self, loop_id: str, task: Task) -> None:
-        self._log_state_snapshot('update_task_by_loop', 'ENTRY')
-        logger.info(f'update_task_by_loop: loop_id={loop_id}, task_name={task.name}')
-
-        if loop_id not in self._loop_to_task:
-            logger.info(f'update_task_by_loop: Loop not linked to any task: {loop_id}')
-            raise LoopNotFoundError(f'Loop not linked to any task: {loop_id}')
-
-        phase_path, task_name = self._loop_to_task[loop_id]
-        logger.debug(f'update_task_by_loop: Updating task {task_name} in phase {phase_path}')
-        await self.store_task(phase_path, task)
-        self._log_state_snapshot('update_task_by_loop', 'EXIT')
 
     async def store_review_section(self, key: str, content: str) -> str:
         self._review_sections[key] = content
