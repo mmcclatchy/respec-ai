@@ -8,6 +8,7 @@ from src.platform.template_helpers import (
     create_coding_standards_reviewer_agent_tools,
     create_coder_agent_tools,
     create_database_reviewer_agent_tools,
+    create_design_conformance_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
@@ -19,6 +20,7 @@ from src.platform.templates.agents import (
     generate_coding_standards_reviewer_template,
     generate_coder_template,
     generate_database_reviewer_template,
+    generate_design_conformance_reviewer_template,
     generate_frontend_reviewer_template,
     generate_infrastructure_reviewer_template,
     generate_spec_alignment_reviewer_template,
@@ -307,6 +309,51 @@ class TestSpecAlignmentReviewerTemplate:
         assert 'mark `[Severity:P0]` and add a blocker' in template
 
 
+class TestDesignConformanceReviewerTemplate:
+    def test_template_structure(self) -> None:
+        tools = create_design_conformance_reviewer_agent_tools(_adapter)
+        template = generate_design_conformance_reviewer_template(tools)
+
+        assert '---' in template
+        assert 'name: respec-design-conformance-reviewer' in template
+        assert 'model: sonnet' in template
+        assert '## Invocation Contract' in template
+        assert 'TASKS:' in template
+
+    def test_template_is_inactive_when_skeleton_index_is_empty(self) -> None:
+        tools = create_design_conformance_reviewer_agent_tools(_adapter)
+        template = generate_design_conformance_reviewer_template(tools)
+
+        assert 'is empty or absent' in template
+        assert 'reviewer inactive' in template
+        assert 'Do NOT run the classifier' in template
+
+    def test_template_includes_the_classification_table(self) -> None:
+        tools = create_design_conformance_reviewer_agent_tools(_adapter)
+        template = generate_design_conformance_reviewer_template(tools)
+
+        assert 'CLASSIFICATION TABLE' in template
+        assert 'added_cross_module' in template
+        assert 'added_internal' in template
+        assert 'protocol_changed_unrecorded' in template
+        assert 'protocol_changed_recorded' in template
+        assert 'cosmetic_changed' in template
+
+    def test_template_never_writes_to_disk_and_never_calls_store_phase_document(self) -> None:
+        tools = create_design_conformance_reviewer_agent_tools(_adapter)
+        template = generate_design_conformance_reviewer_template(tools)
+
+        assert 'You MUST NOT write files to disk' in template
+        assert 'You do NOT call `store_phase_document` yourself' in template
+
+    def test_template_invokes_check_conformance_via_stdin_not_a_written_file(self) -> None:
+        tools = create_design_conformance_reviewer_agent_tools(_adapter)
+        template = generate_design_conformance_reviewer_template(tools)
+
+        assert 'respec-ai check-conformance' in template
+        assert 'Do NOT write the payload to a file first' in template
+
+
 class TestFrontendReviewerTemplate:
     def test_template_structure(self) -> None:
         tools = create_frontend_reviewer_agent_tools(_adapter)
@@ -408,6 +455,7 @@ class TestReviewAgentConsistency:
         templates = [
             generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
             generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_design_conformance_reviewer_template(create_design_conformance_reviewer_agent_tools(_adapter)),
             generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
             generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
             generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),
@@ -421,6 +469,7 @@ class TestReviewAgentConsistency:
         templates = [
             generate_automated_quality_checker_template(create_automated_quality_checker_agent_tools(_adapter)),
             generate_spec_alignment_reviewer_template(create_spec_alignment_reviewer_agent_tools(_adapter)),
+            generate_design_conformance_reviewer_template(create_design_conformance_reviewer_agent_tools(_adapter)),
             generate_frontend_reviewer_template(create_frontend_reviewer_agent_tools(_adapter)),
             generate_backend_api_reviewer_template(create_backend_api_reviewer_agent_tools(_adapter)),
             generate_database_reviewer_template(create_database_reviewer_agent_tools(_adapter)),

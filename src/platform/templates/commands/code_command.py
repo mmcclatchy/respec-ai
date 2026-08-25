@@ -325,6 +325,9 @@ IF "database" in STEP_MODES:
 IF "infrastructure" in STEP_MODES:
   ACTIVE_REVIEWERS.append("infrastructure-reviewer")
 
+IF PHASE_MARKDOWN's "### Skeleton Index" is non-empty:
+  ACTIVE_REVIEWERS.append("design-conformance-reviewer")
+
 Check for canonical coding standards config files:
 STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
 LANGUAGE_TOML_FILES = STANDARDS_TOML_FILES excluding universal.toml
@@ -1068,6 +1071,27 @@ Generate IMPLEMENTATION_SUMMARY including:
 - Coverage: {{COVERAGE_PERCENTAGE}}%
 - Files Modified: {{FILE_COUNT}}
 - Commit Summary: {{GIT_LOG_SUMMARY}}
+```
+
+#### Apply Design Conformance Write-Back
+
+Applies only when "design-conformance-reviewer" ran this Phase (see Step 6.6). Without this step the
+`### Skeleton Index` silently becomes a lie the moment a confirmed-legitimate deviation is implemented —
+see docs/phase-refactor/decisions.md "Deviation is classified and written back, not enforced".
+
+```text
+IF "design-conformance-reviewer" in ACTIVE_REVIEWERS:
+  WRITE_BACK_MARKDOWN = {tools.get_design_conformance_write_back}
+  IF WRITE_BACK_MARKDOWN is present:
+    UPDATED_SKELETON_INDEX = [extract "### Updated Skeleton Index" content from WRITE_BACK_MARKDOWN]
+    NEW_SETTLED_DECISIONS = [extract "### New Settled Decisions" content from WRITE_BACK_MARKDOWN]
+    IF UPDATED_SKELETON_INDEX is non-empty:
+      PHASE_MARKDOWN's "### Skeleton Index" = UPDATED_SKELETON_INDEX
+    IF NEW_SETTLED_DECISIONS is non-empty:
+      Append NEW_SETTLED_DECISIONS to PHASE_MARKDOWN's "### Settled Design Decisions"
+    # Only these two sections are touched. "### Module Layout" and "### Collaboration And Wiring"
+    # are never rewritten here -- a divergence large enough to invalidate them is a Shape Amendment
+    # Request routed back to respec-phase, per docs/phase-refactor/phase-7-conformance.md.
 ```
 
 #### Update Phase

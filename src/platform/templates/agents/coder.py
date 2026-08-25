@@ -375,7 +375,7 @@ Update TodoList using TodoWrite as you progress:
   `raise NotImplementedError` — materialized at the shape gate, not created by you
 - Fill in the bodies. Honor the stubbed public signatures exactly; if a signature
   turns out to be wrong, implement the corrected one and record the deviation in the
-  iteration handoff report rather than silently diverging
+  `Deviations:` field of the iteration handoff report rather than silently diverging
 - Wire construction and ownership per Phase `### Collaboration And Wiring`
 - The test files named in Phase `### Test List` already exist as failing scaffolds —
   implement against them, do not recreate them
@@ -565,6 +565,7 @@ Return exactly one markdown block with the following structure:
     - Result: [pass|fail|not-run]
     - Issues: [count]
   - Blocking issues remaining: [none or concise list]
+  - Deviations: [none, or one line per deviation from a designed Skeleton Index signature: <ClassOrFunction.member> | <reason>]
   - Notes for commit context: [1-3 concise bullets]
   ```
 

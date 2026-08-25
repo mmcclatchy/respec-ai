@@ -19,6 +19,7 @@ from src.platform.template_helpers import (
     create_coding_standards_reviewer_agent_tools,
     create_create_phase_agent_tools,
     create_database_reviewer_agent_tools,
+    create_design_conformance_reviewer_agent_tools,
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
     create_patch_planner_agent_tools,
@@ -40,6 +41,7 @@ from src.platform.templates.agents import (
     generate_coding_standards_reviewer_template,
     generate_create_phase_template,
     generate_database_reviewer_template,
+    generate_design_conformance_reviewer_template,
     generate_frontend_reviewer_template,
     generate_infrastructure_reviewer_template,
     generate_patch_planner_template,
@@ -95,6 +97,7 @@ _AGENT_NAMES = [
     'respec-automated-quality-checker',
     'respec-code-quality-reviewer',
     'respec-spec-alignment-reviewer',
+    'respec-design-conformance-reviewer',
     'respec-frontend-reviewer',
     'respec-backend-api-reviewer',
     'respec-database-reviewer',
@@ -223,6 +226,7 @@ def _get_agent_specs(
     automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tui_adapter)
     code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools(tui_adapter)
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools(tui_adapter)
+    design_conformance_reviewer_tools = create_design_conformance_reviewer_agent_tools(tui_adapter)
     frontend_reviewer_tools = create_frontend_reviewer_agent_tools(tui_adapter)
     backend_api_reviewer_tools = create_backend_api_reviewer_agent_tools(tui_adapter)
     database_reviewer_tools = create_database_reviewer_agent_tools(tui_adapter)
@@ -249,6 +253,10 @@ def _get_agent_specs(
         ),
         _parse_agent_spec(
             'respec-spec-alignment-reviewer', generate_spec_alignment_reviewer_template(spec_alignment_reviewer_tools)
+        ),
+        _parse_agent_spec(
+            'respec-design-conformance-reviewer',
+            generate_design_conformance_reviewer_template(design_conformance_reviewer_tools),
         ),
         _parse_agent_spec('respec-frontend-reviewer', generate_frontend_reviewer_template(frontend_reviewer_tools)),
         _parse_agent_spec(

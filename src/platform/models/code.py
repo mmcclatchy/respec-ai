@@ -25,6 +25,7 @@ class CodeCommandTools(CommandToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.GET_REVIEWER_FEEDBACK_CONTEXT,
+        RespecAITool.GET_REVIEW_SECTION,
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -44,6 +45,9 @@ class CodeCommandTools(CommandToolsModel):
     store_user_feedback: str = Field(..., description='Store user feedback')
     get_feedback: str = Field(..., description='Get latest feedback')
     link_phase_loop: str = Field(..., description='Link phase loop to phase document')
+    get_design_conformance_write_back: str = Field(
+        ..., description='Retrieve the design-conformance-reviewer write-back section via get_review_section'
+    )
 
     # Agent invocations
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
@@ -194,6 +198,29 @@ class AutomatedQualityCheckerAgentTools(AgentToolsModel):
     retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
     retrieve_feedback: str = Field(..., description='Retrieve previous feedback for progress tracking')
     store_reviewer_result: str = Field(..., description='Store quality check reviewer result')
+
+
+class DesignConformanceReviewerAgentTools(AgentToolsModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_REVIEWER_RESULT,
+        RespecAITool.STORE_REVIEW_SECTION,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_phase: str = Field(..., description='Retrieve Phase document by project and phase name')
+    retrieve_feedback: str = Field(..., description='Retrieve previous feedback (coder handoff Deviations) for context')
+    store_reviewer_result: str = Field(..., description='Store design-conformance reviewer result')
+    store_write_back: str = Field(
+        ..., description='Store the confirmed-legitimate write-back payload via store_review_section'
+    )
 
 
 class SpecAlignmentReviewerAgentTools(AgentToolsModel):

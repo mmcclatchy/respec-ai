@@ -22,12 +22,15 @@ def has_coding_standards_file() -> bool:
         return False
 
 
-def resolve_active_reviewers(step_modes: set[StepMode]) -> list[str]:
+def resolve_active_reviewers(step_modes: set[StepMode], has_skeleton_index: bool = False) -> list[str]:
     reviewers = ['automated-quality-checker', 'spec-alignment-reviewer', 'code-quality-reviewer']
 
     for mode, reviewer in MODE_TO_REVIEWER.items():
         if mode in step_modes:
             reviewers.append(reviewer)
+
+    if has_skeleton_index:
+        reviewers.append('design-conformance-reviewer')
 
     if has_coding_standards_file():
         reviewers.append('coding-standards-reviewer')

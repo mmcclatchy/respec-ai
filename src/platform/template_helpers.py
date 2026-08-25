@@ -10,6 +10,7 @@ from .models import (
     CodingStandardsReviewerAgentTools,
     CreatePhaseAgentTools,
     DatabaseReviewerAgentTools,
+    DesignConformanceReviewerAgentTools,
     FrontendReviewerAgentTools,
     InfrastructureReviewerAgentTools,
     PatchCommandTools,
@@ -443,6 +444,7 @@ def create_code_command_tools(
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.DESIGN_CONFORMANCE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODE_QUALITY_REVIEWER)
     builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
     builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
@@ -604,6 +606,9 @@ def create_code_command_tools(
             loop_id='{PHASE_LOOP_ID}',
             doc_type='"phase"',
             key='{PLAN_NAME}/{PHASE_NAME}',
+        ),
+        get_design_conformance_write_back=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_REVIEW_SECTION, key='"{PLAN_NAME}/{PHASE_NAME}/design-conformance-write-back"'
         ),
     )
 
@@ -1001,6 +1006,43 @@ def create_automated_quality_checker_agent_tools(tui_adapter: TuiAdapter) -> Aut
     )
 
 
+def create_design_conformance_reviewer_agent_tools(tui_adapter: TuiAdapter) -> DesignConformanceReviewerAgentTools:
+    builder = TemplateToolBuilder(tui_adapter)
+
+    for tool in DesignConformanceReviewerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in DesignConformanceReviewerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return DesignConformanceReviewerAgentTools(
+        tui_adapter=tui_adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
+        store_reviewer_result=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEWER_RESULT,
+            loop_id='{CODING_LOOP_ID}',
+            review_iteration='{REVIEW_ITERATION}',
+            reviewer_name='"design-conformance-reviewer"',
+            feedback_markdown='{REVIEW_SECTION_MARKDOWN}',
+            score='{REVIEW_SCORE}',
+            max_score='50',
+            blockers='{BLOCKERS}',
+            findings='{FINDINGS}',
+        ),
+        store_write_back=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_REVIEW_SECTION,
+            key='"{PLAN_NAME}/{PHASE_NAME}/design-conformance-write-back"',
+            content='{WRITE_BACK_MARKDOWN}',
+        ),
+    )
+
+
 def create_spec_alignment_reviewer_agent_tools(tui_adapter: TuiAdapter) -> SpecAlignmentReviewerAgentTools:
     builder = TemplateToolBuilder(tui_adapter)
 
@@ -1270,6 +1312,7 @@ def create_patch_command_tools(
     builder.add_task_agent(RespecAIAgent.CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
+    builder.add_task_agent(RespecAIAgent.DESIGN_CONFORMANCE_REVIEWER)
     builder.add_task_agent(RespecAIAgent.CODE_QUALITY_REVIEWER)
     builder.add_task_agent(RespecAIAgent.FRONTEND_REVIEWER)
     builder.add_task_agent(RespecAIAgent.BACKEND_API_REVIEWER)
@@ -1454,5 +1497,8 @@ def create_patch_command_tools(
         ),
         get_amendment_scope=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_REVIEW_SECTION, key='{AMENDMENT_SCOPE_KEY}'
+        ),
+        get_design_conformance_write_back=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_REVIEW_SECTION, key='"{PLAN_NAME}/{PHASE_NAME}/design-conformance-write-back"'
         ),
     )

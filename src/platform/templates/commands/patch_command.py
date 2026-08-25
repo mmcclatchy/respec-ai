@@ -390,6 +390,12 @@ IF "database" in STEP_MODES:
 IF "infrastructure" in STEP_MODES:
   ACTIVE_REVIEWERS.append("infrastructure-reviewer")
 
+# Amendments diverge from a Phase's design record at least as often as initial
+# implementations, so the same conformance check applies here.
+PHASE_MARKDOWN = {tools.get_phase_document}
+IF PHASE_MARKDOWN's "### Skeleton Index" is non-empty:
+  ACTIVE_REVIEWERS.append("design-conformance-reviewer")
+
 Check for canonical coding standards config files:
 STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
 LANGUAGE_TOML_FILES = STANDARDS_TOML_FILES excluding universal.toml
@@ -988,6 +994,33 @@ COMMIT_KIND = "final"
 COMMIT_WORKFLOW_KIND = "patch"
 ALLOW_EMPTY = true
 {tools.commit_command_invocation}
+
+Proceed to Step 6.5 (Apply Design Conformance Write-Back)
+```
+
+### 6.5 Apply Design Conformance Write-Back
+
+Applies only when "design-conformance-reviewer" ran this amendment (see Step 4.3). Without this step
+the `### Skeleton Index` silently becomes a lie the moment a confirmed-legitimate deviation is
+implemented — see docs/phase-refactor/decisions.md "Deviation is classified and written back, not
+enforced". Runs before Step 7 so the Evolution Log's byte-integrity comparison is taken against the
+already-updated document, not a stale one.
+
+```text
+IF "design-conformance-reviewer" in ACTIVE_REVIEWERS:
+  WRITE_BACK_MARKDOWN = {tools.get_design_conformance_write_back}
+  IF WRITE_BACK_MARKDOWN is present:
+    CURRENT_PHASE_MARKDOWN = {tools.get_phase_document}
+    UPDATED_SKELETON_INDEX = [extract "### Updated Skeleton Index" content from WRITE_BACK_MARKDOWN]
+    NEW_SETTLED_DECISIONS = [extract "### New Settled Decisions" content from WRITE_BACK_MARKDOWN]
+    IF UPDATED_SKELETON_INDEX is non-empty:
+      CURRENT_PHASE_MARKDOWN's "### Skeleton Index" = UPDATED_SKELETON_INDEX
+    IF NEW_SETTLED_DECISIONS is non-empty:
+      Append NEW_SETTLED_DECISIONS to CURRENT_PHASE_MARKDOWN's "### Settled Design Decisions"
+    # Only these two sections are touched. "### Module Layout" and "### Collaboration And Wiring"
+    # are never rewritten here -- a divergence large enough to invalidate them is a Shape Amendment
+    # Request routed back to respec-phase, per docs/phase-refactor/phase-7-conformance.md.
+    Store via {tools.store_phase_document} using CURRENT_PHASE_MARKDOWN as content.
 
 Proceed to Step 7 (Update Phase Evolution Log)
 ```

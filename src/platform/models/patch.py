@@ -27,6 +27,7 @@ class PatchCommandTools(CommandToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.GET_REVIEWER_FEEDBACK_CONTEXT,
+        RespecAITool.GET_REVIEW_SECTION,
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
@@ -60,6 +61,9 @@ class PatchCommandTools(CommandToolsModel):
 
     # Amendment scope operations
     get_amendment_scope: str = Field(..., description='Get amendment scope via get_review_section')
+    get_design_conformance_write_back: str = Field(
+        ..., description='Retrieve the design-conformance-reviewer write-back section via get_review_section'
+    )
 
     # Agent invocations
     invoke_patch_planner: str = Field(..., description='Invocation text for respec-patch-planner agent')

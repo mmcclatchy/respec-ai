@@ -89,6 +89,16 @@ class TestResolveActiveReviewers:
         result = resolve_active_reviewers(set())
         assert 'coding-standards-reviewer' not in result
 
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_design_conformance_reviewer_inactive_when_phase_has_no_skeleton_index(self, _mock: object) -> None:
+        result = resolve_active_reviewers(set(), has_skeleton_index=False)
+        assert 'design-conformance-reviewer' not in result
+
+    @patch(CODING_STANDARDS_PATCH, return_value=False)
+    def test_design_conformance_reviewer_active_when_phase_has_a_skeleton_index(self, _mock: object) -> None:
+        result = resolve_active_reviewers(set(), has_skeleton_index=True)
+        assert 'design-conformance-reviewer' in result
+
 
 class TestModeToReviewerMapping:
     def test_mapping_covers_all_specialist_modes(self) -> None:

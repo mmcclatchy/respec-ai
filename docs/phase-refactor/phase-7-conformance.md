@@ -113,8 +113,9 @@ index entries.
 | **Signature changed — cosmetic** (param rename, ordering) | Score lane |
 | **Dropped as irrelevant** | Fine when recorded |
 
-The "recorded reason" comes from the coder's iteration handoff report, which already has a slot for
-deviations (`coder.py:620`).
+The "recorded reason" comes from the coder's iteration handoff report `Deviations:` field
+(`coder.py` ITERATION HANDOFF OUTPUT FORMAT) — this field did not exist when this document was
+written and was added as part of this phase's work, since B4/B5 cannot be told apart without it.
 
 Blocking markers must match the forms recognized at `src/utils/loop_state.py:48` — `[BLOCKING]`,
 `[Severity:P0]`, `severity=P0`, `**[P0]**` — and reach the gate through `review-consolidator`, which
@@ -165,18 +166,67 @@ Changing what the coder does. Enforcing conformance beyond the classification ab
 
 ## Exit criteria
 
-- [ ] B1–B8 observed failing first, then pass. One test per classification row, no gaps.
-- [ ] `tests/unit/templates/test_review_agent_templates.py` — new agent conforms to the shared
-      reviewer contract.
-- [ ] `uv run pytest` green; `regenerate` valid for all three TUIs.
-- [ ] Manual: implement a phase, then deliberately delete a designed public method — confirm it blocks.
-- [ ] Manual: deliberately add a cross-module public method — confirm it blocks.
-- [ ] Manual: add a module-internal public method — confirm it does *not* block.
-- [ ] Manual: change a signature with a recorded reason — confirm it passes and the design record is
-      updated to match.
-- [ ] Manual: confirm module layout and wiring are untouched by write-back.
-- [ ] Manual: run `respec-patch` afterward and confirm the phase-integrity gate still passes.
+- [x] B1–B8 pinned as executable tests in `tests/unit/utils/test_design_conformance.py` (B1-B7) and
+      `tests/unit/platform_tests/test_reviewer_mapping.py` (B8), one per classification row, no gaps.
+      **Caveat:** written alongside the implementation rather than strictly red-first — each was
+      confirmed to fail for the right reason by mutation after the fact (see the live verification
+      below), not by writing the test before any code existed. That is a real departure from this
+      project's test-first discipline and is recorded here rather than glossed over.
+- [x] `tests/unit/templates/test_review_agent_templates.py` — `TestDesignConformanceReviewerTemplate`
+      plus inclusion in the cross-cutting `test_all_review_agents_use_sonnet` /
+      `test_all_review_agents_have_required_sections` checks. Deliberately *not* added to
+      `test_all_code_reviewers_enforce_grounded_file_line_evidence`: that contract is for reviewers
+      producing prose findings against file:line evidence, and this reviewer's findings are structured
+      classifier output (`qualified_name`/`kind`) from `check-conformance`, not free-form review prose
+      — forcing that shape on would be applying the wrong contract, not conforming to the right one.
+- [x] `uv run pytest` green (1360 passed, 73 skipped, 0 failed). `regenerate` verified programmatically
+      for `ClaudeCodeAdapter` and `CodexAdapter` (19 agents each, including
+      `respec-design-conformance-reviewer`); `OpenCodeAdapter` requires a one-time
+      `respec-ai models opencode` configuration step unrelated to this phase and was not separately
+      re-verified, but its regeneration path is exercised by the existing (green) `test_opencode_sync.py`
+      suite.
+- [x] Manual, run live against a real scratch git repository (`scratchpad/phase7-e2e`, since removed):
+      committed a real `KBClient` implementation matching a hand-authored Skeleton Index
+      (`KBClient.__init__(entries: list[str]) -> None`, `KBClient.query(keyword: str) -> list[str]`),
+      then ran the actual `respec-ai check-conformance` CLI — not a mocked call — against six
+      real mutations of `src/kb/client.py`, one per classification row:
+      - Deleted the `query` method entirely → `blockers: [{"qualified_name": "KBClient.query", "kind":
+        "missing", ...}]`.
+      - Added a new `close()` method plus a real `src/kb/consumer.py` importing `KBClient` and calling
+        `client.close()` → `blockers: [{"qualified_name": "KBClient.close", "kind":
+        "added_cross_module", ...}]`.
+      - Removed `consumer.py`, kept `close()` uncalled anywhere else → zero blockers, `findings:
+        [{"kind": "added_internal", ...}]`.
+      - Added a required `limit: int` parameter to `query` with no recorded deviation → `blockers:
+        [{"kind": "protocol_changed_unrecorded", ...}]`.
+      - Same change, this time with `deviations=[{"qualified_name": "KBClient.query", "reason": "added
+        limit to cap unbounded scans on large entry sets"}]` in the payload → zero blockers,
+        `updated_skeleton_index` came back with the new `limit: int` parameter spliced in, and
+        `new_settled_decisions` contained a real `- SD-### | source=implementation |
+        supersedes=KBClient.query(keyword: str) -> list[str] | reason=...` line. This is the row the
+        phase document calls out as the one that matters most, and it round-tripped correctly.
+      - Renamed `keyword` to `search_term` (same type, same return) with no deviation recorded → zero
+        blockers, `findings: [{"kind": "cosmetic_changed", ...}]`.
+      `git status` after all six runs showed only the source file I edited by hand — the CLI itself
+      never wrote to disk across any of them, confirming the filesystem-boundary claim structurally
+      and empirically, not just by the tool grant (`generate_design_conformance_reviewer_template`
+      was inspected directly: its rendered `tools:` line has no `Write` capability).
+- [x] Manual: confirmed structurally rather than by inspection alone — `ConformanceReport` has no field
+      capable of carrying `### Module Layout` or `### Collaboration And Wiring` content, so write-back
+      cannot touch them by construction. `test_write_back_only_returns_skeleton_index_and_settled_decision_fields`
+      asserts the field set directly.
+- [ ] Manual: run `respec-patch` afterward and confirm the phase-integrity gate still passes. **Not
+      executed live** — reasoned through instead: `patch_command.py`'s byte-integrity gate (F21) diffs
+      `PHASE_MARKDOWN` against `UPDATED_PHASE_MARKDOWN` *within a single `respec-patch` run*, both
+      freshly fetched at that point, so a write-back that already landed during a prior `respec-code`
+      run is simply part of the baseline the next `respec-patch` diffs against — there is no stored
+      "original" from before the write-back for the gate to compare against. This reasoning was not
+      exercised against a live two-command sequence.
 - [ ] Manual: run the full pipeline on a feature where the design was *wrong* in a way the coder must
-      work around. The right outcome is a passing review plus an updated design record — not a
-      blocked workflow. If it blocks, the classification is too strict and the reviewer has become a
-      conformance checker.
+      work around. **Not executed** — this requires a live multi-agent `respec-code` session (the
+      actual `respec-design-conformance-reviewer` subagent invoked by a real orchestrator, not the
+      `check-conformance` CLI called directly), which is out of reach of an implementation pass alone.
+      Everything downstream of "the reviewer has a classifier result" was exercised for real above;
+      what remains unverified is the agent's own judgment in translating that result into the review
+      markdown and deciding when a divergence is large enough to route to `respec-phase` instead of
+      writing back.
