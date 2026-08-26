@@ -74,6 +74,7 @@ class CriticAgent(str, Enum):
     PHASE_CRITIC = 'phase-critic'
     AUTOMATED_QUALITY_CHECKER = 'automated-quality-checker'
     SPEC_ALIGNMENT_REVIEWER = 'spec-alignment-reviewer'
+    DESIGN_CONFORMANCE_REVIEWER = 'design-conformance-reviewer'
     FRONTEND_REVIEWER = 'frontend-reviewer'
     BACKEND_API_REVIEWER = 'backend-api-reviewer'
     DATABASE_REVIEWER = 'database-reviewer'
@@ -97,6 +98,7 @@ class CriticAgent(str, Enum):
             'PHASE': cls.PHASE_CRITIC,
             'QUALITY-CHECKER': cls.AUTOMATED_QUALITY_CHECKER,
             'SPEC-ALIGNMENT': cls.SPEC_ALIGNMENT_REVIEWER,
+            'DESIGN-CONFORMANCE': cls.DESIGN_CONFORMANCE_REVIEWER,
             'FRONTEND': cls.FRONTEND_REVIEWER,
             'API-REVIEWER': cls.BACKEND_API_REVIEWER,
             'DATABASE': cls.DATABASE_REVIEWER,

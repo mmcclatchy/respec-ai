@@ -29,6 +29,7 @@ class UnifiedFeedbackTools:
         self._reviewer_max_scores: dict[CriticAgent, int] = {
             CriticAgent.AUTOMATED_QUALITY_CHECKER: 50,
             CriticAgent.SPEC_ALIGNMENT_REVIEWER: 50,
+            CriticAgent.DESIGN_CONFORMANCE_REVIEWER: 50,
             CriticAgent.CODE_QUALITY_REVIEWER: 25,
             CriticAgent.FRONTEND_REVIEWER: 25,
             CriticAgent.BACKEND_API_REVIEWER: 25,
@@ -38,8 +39,9 @@ class UnifiedFeedbackTools:
         }
         self._phase1_core_weights: dict[CriticAgent, float] = {
             CriticAgent.AUTOMATED_QUALITY_CHECKER: 25.0,
-            CriticAgent.SPEC_ALIGNMENT_REVIEWER: 35.0,
-            CriticAgent.CODE_QUALITY_REVIEWER: 25.0,
+            CriticAgent.SPEC_ALIGNMENT_REVIEWER: 30.0,
+            CriticAgent.CODE_QUALITY_REVIEWER: 20.0,
+            CriticAgent.DESIGN_CONFORMANCE_REVIEWER: 20.0,
         }
         self._phase1_domain_weight_pool = 15.0
         self._phase1_specialists: set[CriticAgent] = {
@@ -52,6 +54,7 @@ class UnifiedFeedbackTools:
             CriticAgent.AUTOMATED_QUALITY_CHECKER,
             CriticAgent.SPEC_ALIGNMENT_REVIEWER,
             CriticAgent.CODE_QUALITY_REVIEWER,
+            CriticAgent.DESIGN_CONFORMANCE_REVIEWER,
             CriticAgent.FRONTEND_REVIEWER,
             CriticAgent.BACKEND_API_REVIEWER,
             CriticAgent.DATABASE_REVIEWER,

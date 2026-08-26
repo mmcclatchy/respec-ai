@@ -41,6 +41,7 @@ class TestCriticAgent:
             'phase-critic',
             'automated-quality-checker',
             'spec-alignment-reviewer',
+            'design-conformance-reviewer',
             'frontend-reviewer',
             'backend-api-reviewer',
             'database-reviewer',
@@ -53,7 +54,7 @@ class TestCriticAgent:
         actual_agents = {agent.value for agent in CriticAgent}
 
         assert actual_agents == expected_agents
-        assert len(CriticAgent) == 13
+        assert len(CriticAgent) == 14
 
     def test_critic_agent_enum_values_use_kebab_case(self) -> None:
         for agent in CriticAgent:
@@ -80,6 +81,7 @@ class TestCriticAgent:
         assert CriticAgent.from_header('PHASE') == CriticAgent.PHASE_CRITIC
         assert CriticAgent.from_header('FRONTEND') == CriticAgent.FRONTEND_REVIEWER
         assert CriticAgent.from_header('CONSOLIDATOR') == CriticAgent.REVIEW_CONSOLIDATOR
+        assert CriticAgent.from_header('DESIGN-CONFORMANCE') == CriticAgent.DESIGN_CONFORMANCE_REVIEWER
 
     def test_from_header_raises_for_unknown_values(self) -> None:
         with pytest.raises(ValueError, match='Unknown critic agent header'):

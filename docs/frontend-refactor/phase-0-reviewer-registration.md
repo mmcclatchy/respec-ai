@@ -105,8 +105,11 @@ frontend presence. When a phase has no Skeleton Index it is simply not rostered 
 renormalizes away (**F11**). Its 20 points participate in phase 6's rebalancing like any other core
 weight.
 
-**`src/platform/templates/agents/review_consolidator*`**
-- Add the reviewer's section to the merge format, alongside the other reviewers.
+**`src/mcp/tools/feedback_tools_unified.py` — `_phase1_review_universe`**
+- Add the reviewer here too. The consolidated detail table (`consolidate_review_cycle`) is generated
+  in Python from this list, not from a separate `review_consolidator` agent template — no such file
+  exists. (The original scope line named `src/platform/templates/agents/review_consolidator*`; that
+  was wrong and is corrected here per the working agreement.)
 
 **`tests/unit/platform_tests/test_reviewer_mapping.py`**
 - Add B1–B3 as the cross-check sweep. The existing assertions at `:95-100` check only string presence;
@@ -136,3 +139,16 @@ weight.
 - Composite scores for a backend phase are stable and explainable. If they moved, you can say by how
   much and why.
 - `uv run pytest` clean.
+
+**Verification status at implementation time (accepted, not fully literal):**
+- `regenerate` verified clean for Claude Code and Codex. OpenCode's `regenerate` refused with
+  *"OpenCode reasoning model not configured"* — a pre-existing config gate unrelated to this fix.
+  Substituted: `create_design_conformance_reviewer_agent_tools(OpenCodeAdapter())` called directly and
+  confirmed it does not hit the `None`-builtin-tool crash (F17/F32). Not a completed `regenerate` run
+  for that TUI.
+- The end-to-end seam was exercised via a direct Python call sequence
+  (`store_reviewer_result` × 4 → `consolidate_review_cycle`) through `UnifiedFeedbackTools`, using the
+  exact `reviewer_name` string the generated agent template emits — stronger than a unit test, but not
+  a live `/respec-code` run through Claude Code. Accepted as sufficient evidence for this fix; the real
+  end-to-end run will happen naturally on the next actual `/respec-code` invocation against a phase
+  with a Skeleton Index.

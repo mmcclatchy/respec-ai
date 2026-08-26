@@ -764,7 +764,7 @@ class TestDeterministicReviewConsolidation:
         stored_loop = await state.get_loop(loop.id)
         detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
         assert '- Score: 24/25' in detailed_feedback
-        assert '- Weighted Contribution: 3.60/100' in detailed_feedback
+        assert '- Weighted Contribution: 4.00/100' in detailed_feedback
 
     @pytest.mark.asyncio
     async def test_store_reviewer_result_rejects_placeholder_blockers_without_persisting(self, plan_name: str) -> None:
@@ -924,3 +924,131 @@ class TestDeterministicReviewConsolidation:
                 review_iteration=1,
                 active_reviewers=['coding-standards-reviewer', 'code-quality-reviewer'],
             )
+
+
+class TestDesignConformanceReviewerRegistration:
+    @pytest.mark.asyncio
+    async def test_design_conformance_reviewer_appears_in_consolidated_detail_table(self, plan_name: str) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        for reviewer_name, score, max_score in (
+            ('automated-quality-checker', 45, 50),
+            ('spec-alignment-reviewer', 47, 50),
+            ('code-quality-reviewer', 22, 25),
+            ('design-conformance-reviewer', 48, 50),
+        ):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                score=score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[
+                'automated-quality-checker',
+                'spec-alignment-reviewer',
+                'code-quality-reviewer',
+                'design-conformance-reviewer',
+            ],
+        )
+
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '#### design-conformance-reviewer' in detailed_feedback
+        assert '- Score: 48/50' in detailed_feedback
+
+    @pytest.mark.asyncio
+    async def test_backend_phase_weights_renormalize_to_100_without_design_conformance(
+        self, plan_name: str
+    ) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        for reviewer_name, score, max_score in (
+            ('automated-quality-checker', 45, 50),
+            ('spec-alignment-reviewer', 40, 50),
+            ('code-quality-reviewer', 20, 25),
+        ):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                score=score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[
+                'automated-quality-checker',
+                'spec-alignment-reviewer',
+                'code-quality-reviewer',
+            ],
+        )
+
+        # Not all-perfect, so this pins the actual renormalized weighted average (not the
+        # all-perfect=100 short-circuit): active weight total is 25+30+20=75 with
+        # design-conformance unrostered, giving 30.0 + 32.0 + 21.33 = 83.33 -> 83.
+        assert consolidate_response.current_score == 83
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '- Weighted Contribution: 30.00/100' in detailed_feedback
+        assert '#### design-conformance-reviewer' in detailed_feedback
+        assert '- Not invoked for this work.' in detailed_feedback
+
+    @pytest.mark.asyncio
+    async def test_backend_phase_with_skeleton_index_consolidates_without_unknown_reviewer_error(
+        self, plan_name: str
+    ) -> None:
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        for reviewer_name, score, max_score in (
+            ('automated-quality-checker', 45, 50),
+            ('spec-alignment-reviewer', 47, 50),
+            ('code-quality-reviewer', 22, 25),
+            ('backend-api-reviewer', 24, 25),
+            ('design-conformance-reviewer', 46, 50),
+        ):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                score=score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[
+                'automated-quality-checker',
+                'spec-alignment-reviewer',
+                'code-quality-reviewer',
+                'backend-api-reviewer',
+                'design-conformance-reviewer',
+            ],
+        )
+
+        assert 0 <= consolidate_response.current_score <= 100
