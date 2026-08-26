@@ -337,6 +337,31 @@ Display to user: "✓ Shape refinement loop {{SHAPE_LOOP_ID}} linked to {{PHASE_
 - `SHAPE_LOOP_ID` MUST be extracted and validated before proceeding, same as `LOOP_ID` at Step 13.2
 - `SHAPE_LOOP_ID` and `LOOP_ID` are never the same value and are never mixed across tool calls
 
+### Step 4.5: Load Project Config Context
+
+Gives the architect the same language/stack evidence the coder and reviewers already
+receive (F8) -- without it, a polyglot project's Skeleton Index entries have no way to
+be told apart by language.
+
+```text
+STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
+LANGUAGE_TOML_FILES = STANDARDS_TOML_FILES excluding universal.toml
+STACK_CONFIG = Read(.respec-ai/config/stack.toml) if file exists, else ""
+LANGUAGE_CONFIGS = For each file in LANGUAGE_TOML_FILES:
+  Read(file) — concatenated content
+
+PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
+  ## Project Config Context
+  ### Stack Config TOML
+  ```toml
+  [STACK_CONFIG if present, otherwise "None"]
+  ```
+  ### Language Config TOMLs
+  ```toml
+  [LANGUAGE_CONFIGS if present, otherwise "None"]
+  ```
+```
+
 ### Step 5: Launch Shape Architecture Development
 
 Begin the shape act's technical design conversation:
@@ -741,6 +766,21 @@ FOR each CONFLICT in MATERIALIZE_RESULT.reconciliation_needed:
     Append to "### Settled Design Decisions":
       "- SD-### | source=user-menu | decision=merge new members into {{CONFLICT.path}} | rationale=existing members kept, only genuinely new ones added | binding=yes"
 
+IF MATERIALIZE_RESULT.unmaterialized_paths is not empty:
+  Display to user: "⚠ These Skeleton Index / Test List paths could not be materialized
+  and were NOT written: {{MATERIALIZE_RESULT.unmaterialized_paths}}"
+  FOR each UNMATERIALIZED in MATERIALIZE_RESULT.unmaterialized_paths:
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=materializer | decision=unmaterialized at {{UNMATERIALIZED.path}} | rationale={{UNMATERIALIZED.reason}} | binding=yes"
+
+IF MATERIALIZE_RESULT.unintrospectable_paths is not empty:
+  Display to user: "⚠ These paths already exist and the language has no
+  introspection capability yet, so they were left untouched (create-only degrade,
+  never overwritten, never merged automatically): {{MATERIALIZE_RESULT.unintrospectable_paths}}"
+  FOR each PATH in MATERIALIZE_RESULT.unintrospectable_paths:
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=materializer | decision=unintrospectable at {{PATH}} | rationale=pre-existing file, language has no signature-introspection capability yet; reconcile manually or via respec-code | binding=yes"
+
 IF MERGE_PATHS is not empty:
   RUN (Bash): respec-ai materialize-skeletons --skeleton-index-file {{SKELETON_INDEX_SCRATCH}} --test-list-file {{TEST_LIST_SCRATCH}} --merge-paths {{",".join(MERGE_PATHS)}}
   MERGE_RESULT = [parsed JSON from command stdout]
@@ -750,6 +790,12 @@ IF MERGE_PATHS is not empty:
     signature than designed, so they were left untouched: {{MERGE_RESULT.unresolved_signature_conflicts}}"
     Append to "### Settled Design Decisions":
       "- SD-### | source=user-menu | decision=unresolved signature conflict left untouched at merge time: {{MERGE_RESULT.unresolved_signature_conflicts}} | rationale=respec-code reconciles during implementation | binding=yes"
+
+  IF MERGE_RESULT.unintrospectable_paths is not empty:
+    Display to user: "⚠ These merge-selected paths have no introspection capability
+    for their language, so no merge was attempted: {{MERGE_RESULT.unintrospectable_paths}}"
+    Append to "### Settled Design Decisions":
+      "- SD-### | source=materializer | decision=merge skipped, unintrospectable: {{MERGE_RESULT.unintrospectable_paths}} | rationale=language has no signature-introspection capability yet | binding=yes"
 
 {tools.store_document}
   doc_type="phase",

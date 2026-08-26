@@ -3,7 +3,9 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from src.utils.design_conformance import RecordedDeviation, classify_conformance
+from src.cli.ui.console import print_error
+from src.utils.design_conformance import ConformanceParseError, RecordedDeviation, classify_conformance
+from src.utils.skeleton_generator import SkeletonPathEscapesProjectError
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -24,7 +26,11 @@ def run(args: Namespace) -> int:
         for d in payload.get('deviations', [])
     )
 
-    report = classify_conformance(project_root, skeleton_index_text, deviations)
+    try:
+        report = classify_conformance(project_root, skeleton_index_text, deviations)
+    except (ConformanceParseError, SkeletonPathEscapesProjectError) as e:
+        print_error(str(e))
+        return 1
 
     output = {
         'blockers': [

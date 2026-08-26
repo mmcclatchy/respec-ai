@@ -1,7 +1,14 @@
 from src.platform.models import CoderAgentTools
+from src.utils.materializers import sentinel_table
 
 
 def generate_coder_template(tools: CoderAgentTools) -> str:
+    # Data-driven from the materializer registry (F9) -- adding a language's
+    # materializer is enough for its sentinel to show up here; nothing to edit in
+    # this file.
+    sentinel_examples = ', '.join(
+        f'`{sentinel}` for {language}' for language, sentinel in sorted(sentinel_table().items())
+    )
     return f"""---
 name: respec-coder
 description: Implement code using strict TDD methodology with test-first discipline
@@ -371,8 +378,9 @@ Update TodoList using TodoWrite as you progress:
 
 ### File Structure
 - The modules named in Phase `### Module Layout` already exist as skeleton files at
-  the paths `### Skeleton Index` names, with public signatures stubbed as
-  `raise NotImplementedError` — materialized at the shape gate, not created by you
+  the paths `### Skeleton Index` names, with public signatures stubbed as the target
+  language's not-implemented sentinel ({sentinel_examples}) — materialized at the
+  shape gate, not created by you
 - Fill in the bodies. Honor the stubbed public signatures exactly; if a signature
   turns out to be wrong, implement the corrected one and record the deviation in the
   `Deviations:` field of the iteration handoff report rather than silently diverging

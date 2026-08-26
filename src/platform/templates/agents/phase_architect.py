@@ -159,6 +159,12 @@ You are a technical architecture specialist focused on system design.
   - `### Constraints`
   - `### Resume Context`
   - `### Settled Decisions`
+- project_config_context_markdown: Optional orchestrator-provided markdown containing
+  `.respec-ai/config/stack.toml` and relevant `.respec-ai/config/standards/*.toml`
+  excerpts. Consult it before naming a Skeleton Index or Test List path's language --
+  a Python+React project has both `[language.python]` and `[language.typescript]`
+  sections, and each Skeleton Index entry belongs to whichever language actually owns
+  that file.
 
 ### Retrieved Context (Not Invocation Inputs)
 - Strategic plan markdown from MCP

@@ -167,6 +167,9 @@ def create_phase_command_tools(
     # scratch files (Step 11.5: .skeleton-index.md, .test-list.md) -- never source paths;
     # those are written create-only by the `materialize-skeletons` CLI command via Bash.
     builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/*.md')
+    # Step 4.5 discovers .respec-ai/config/standards/*.toml to assemble
+    # PROJECT_CONFIG_CONTEXT_MARKDOWN for the architect (F8).
+    builder.add_builtin_tool(BuiltInToolCapability.GLOB, '.respec-ai/config/standards/*.toml')
 
     # sync_plan_instructions (Step 2.1) retrieves the plan from the platform before the
     # refinement loop starts, using the platform's own plan-retrieval tool -- not the
@@ -192,6 +195,7 @@ def create_phase_command_tools(
                 ('phase_mode', 'detail'),
                 ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
         ),
         invoke_phase_architect_shape=adapter.render_agent_invocation(
@@ -204,6 +208,7 @@ def create_phase_command_tools(
                 ('phase_mode', 'shape'),
                 ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
         ),
         invoke_phase_architect_implementation_plan=adapter.render_agent_invocation(
@@ -216,6 +221,7 @@ def create_phase_command_tools(
                 ('phase_mode', 'implementation-plan'),
                 ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
                 ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
         ),
         invoke_phase_critic=adapter.render_agent_invocation(

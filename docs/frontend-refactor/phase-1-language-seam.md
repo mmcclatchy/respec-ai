@@ -201,6 +201,30 @@ pattern at `:745-760`.
 - **`no_preference` validation and the six unconfigured languages** (**F24**, **F26**). Real bugs,
   orthogonal to materialization. See [deferred-issues.md](deferred-issues.md).
 
+## Implementation notes (recorded during the build)
+
+- **`_SIGNATURE` stayed a shared neutral parser rather than moving into the Python materializer
+  verbatim as originally written above.** Because "Changing what the architect emits" is out of
+  scope, the on-disk Skeleton Index text is the *same* `name(params) -> Return` grammar for every
+  language in phase 1 — a TypeScript entry is textually indistinguishable from a Python one until
+  phase 2 teaches the architect otherwise. `parse_bare_signature` (structural: class/member name,
+  bare params/return text) lives in `skeleton_generator.py` as the shared starting point both
+  `PythonMaterializer.parse_signature` and `TypeScriptMaterializer.parse_signature` call — Python
+  adds its dotted-import extraction on top, TypeScript does not. This also preserves the existing
+  `parse_skeleton_index`/`SkeletonMember` public shape byte-for-byte, which the pre-existing test
+  suite (and B4) depends on. Each language still owns its own `parse_signature` function, so the
+  boundary test still holds; only the low-level regex is shared, not the per-language behavior.
+- **B8 (cross-module export detection) is scoped to top-level exports, not class-method additions.**
+  `find_exported_names` enumerates `export function`/`export class` declarations via regex — cheap,
+  same cost tier as the import scan, not the deferred TypeScript parser. It deliberately excludes
+  `export const`: the Skeleton Index grammar has no way to *declare* a constant, so flagging one as
+  an undesigned addition would produce a blocker the user has no way to resolve by editing the
+  design (README cross-cutting risk #3). A method added inside an already-designed class is
+  invisible to this check for the same reason full introspection is deferred — detecting it needs
+  real body-level parsing, not name enumeration. Both are the same shape as Python's own blind spot
+  (`_extract_implemented_members` only walks `FunctionDef`/`AsyncFunctionDef`/`ClassDef`), so the
+  two languages stay symmetric rather than TypeScript being either stricter or laxer than Python.
+
 ## Exit criteria
 
 - B1–B11 green.

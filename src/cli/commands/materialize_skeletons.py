@@ -55,6 +55,8 @@ def run(args: Namespace) -> int:
                 'merged_paths': [str(p.relative_to(project_path)) for p in merge_result.merged_paths],
                 'unresolved_signature_conflicts': list(merge_result.unresolved_signature_conflicts),
                 'reconciliation_needed': [],
+                'unmaterialized_paths': [],
+                'unintrospectable_paths': list(merge_result.unintrospectable_paths),
             }
         else:
             test_text = Path(args.test_list_file).read_text(encoding='utf-8')
@@ -76,6 +78,11 @@ def run(args: Namespace) -> int:
                     }
                     for choice in skeleton_result.reconciliation_needed
                 ],
+                'unmaterialized_paths': [
+                    {'path': u.path, 'reason': u.reason}
+                    for u in (*skeleton_result.unmaterialized_paths, *test_result.unmaterialized_paths)
+                ],
+                'unintrospectable_paths': list(skeleton_result.unintrospectable_paths),
             }
     except SkeletonPathEscapesProjectError as e:
         print_error(str(e))

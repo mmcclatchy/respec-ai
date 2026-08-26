@@ -2,9 +2,17 @@ import ast
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.utils.language_extensions import language_for_path
+from src.utils.materializers import LanguageMaterializer, UnsupportedLanguageError, get_materializer
 from src.utils.skeleton_generator import SkeletonIndexEntry, SkeletonMember, parse_skeleton_index
 
 _TEST_PATH_MARKERS = ('test_', '/tests/', '\\tests\\')
+
+
+class ConformanceParseError(ValueError):
+    def __init__(self, path: Path, detail: str) -> None:
+        self.path = path
+        super().__init__(f'Could not parse {path}: {detail}')
 
 
 @dataclass(frozen=True)
@@ -58,7 +66,10 @@ def _render_param(arg: ast.arg) -> str:
 
 
 def _extract_implemented_members(path: Path) -> dict[str, _ImplementedMember]:
-    tree = ast.parse(path.read_text(encoding='utf-8'))
+    try:
+        tree = ast.parse(path.read_text(encoding='utf-8'))
+    except SyntaxError as e:
+        raise ConformanceParseError(path, str(e)) from e
     members: dict[str, _ImplementedMember] = {}
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -82,10 +93,20 @@ def _module_dotted_path(project_root: Path, relative_path: str) -> str:
 
 def _is_test_file(path: Path) -> bool:
     parts = path.parts
-    return any(marker.strip('/\\') in parts or path.name.startswith('test_') for marker in _TEST_PATH_MARKERS)
+    if any(marker.strip('/\\') in parts or path.name.startswith('test_') for marker in _TEST_PATH_MARKERS):
+        return True
+    language = language_for_path(str(path))
+    if language is None:
+        return False
+    try:
+        materializer = get_materializer(language, str(path))
+    except UnsupportedLanguageError:
+        return False
+    suffixes = getattr(materializer, 'test_file_suffixes', ())
+    return any(path.name.endswith(suffix) for suffix in suffixes)
 
 
-def _is_referenced_from_another_module(
+def _is_referenced_from_another_python_module(
     project_root: Path, owning_module_dotted: str, owning_path: Path, member: SkeletonMember
 ) -> bool:
     target_name = member.class_name or member.member_name
@@ -114,6 +135,45 @@ def _is_referenced_from_another_module(
     return False
 
 
+def _is_referenced_from_another_module_generic(
+    project_root: Path, language: str, owning_path: Path, materializer: LanguageMaterializer, member: SkeletonMember
+) -> bool:
+    """Cheap, per-materializer reference scan (README.md "the expensive capability is
+    the optional one") -- every language gets this via its own module's
+    `references_name`, never a hardcoded per-language branch here (the boundary test)."""
+    references_name = getattr(materializer, 'references_name', None)
+    if references_name is None:
+        return False
+    target_name = member.class_name or member.member_name
+    for candidate in project_root.rglob('*'):
+        if language_for_path(str(candidate)) != language:
+            continue
+        if candidate.resolve() == owning_path.resolve() or _is_test_file(candidate):
+            continue
+        try:
+            source = candidate.read_text(encoding='utf-8')
+        except (UnicodeDecodeError, OSError):
+            continue
+        if references_name(source, target_name, member.member_name, member.class_name is not None):
+            return True
+    return False
+
+
+def _is_referenced_from_another_module(
+    project_root: Path, owning_module_dotted: str, owning_path: Path, member: SkeletonMember
+) -> bool:
+    language = language_for_path(str(owning_path))
+    if language == 'python':
+        return _is_referenced_from_another_python_module(project_root, owning_module_dotted, owning_path, member)
+    if language is None:
+        return False
+    try:
+        materializer = get_materializer(language, str(owning_path))
+    except UnsupportedLanguageError:
+        return False
+    return _is_referenced_from_another_module_generic(project_root, language, owning_path, materializer, member)
+
+
 def _classify_signature_change(
     designed_params: str, designed_return: str, implemented_params: str, implemented_return: str
 ) -> str:
@@ -128,6 +188,51 @@ def _classify_signature_change(
     ):
         return 'cosmetic'
     return 'protocol'
+
+
+def _classify_new_exports(
+    project_root: Path,
+    owning_path: Path,
+    entry: SkeletonIndexEntry,
+    blockers: list[ConformanceFinding],
+    findings: list[ConformanceFinding],
+) -> None:
+    """B8: a newly-exported top-level name not in the design record is classified
+    added_cross_module (blocker) or added_internal (finding) -- the same distinction
+    classify_conformance's Python path makes for implemented-but-undesigned members,
+    scoped here to what a cheap name scan can see (top-level exports, not class-method
+    additions inside an already-designed class, which needs the deferred parser)."""
+    if not owning_path.exists():
+        return
+    language = language_for_path(str(owning_path))
+    if language is None:
+        return
+    try:
+        materializer = get_materializer(language, str(owning_path))
+    except UnsupportedLanguageError:
+        return
+    find_exported_names = getattr(materializer, 'find_exported_names', None)
+    if find_exported_names is None:
+        return
+
+    try:
+        source = owning_path.read_text(encoding='utf-8')
+    except (UnicodeDecodeError, OSError) as e:
+        raise ConformanceParseError(owning_path, str(e)) from e
+    exported_names = find_exported_names(source)
+    designed_top_level = {m.class_name or m.member_name for m in entry.members}
+
+    for name in sorted(exported_names):
+        if name in designed_top_level or name.startswith('_'):
+            continue
+        synthetic_member = SkeletonMember(class_name=None, member_name=name, params='', return_type='')
+        cross_module = _is_referenced_from_another_module_generic(
+            project_root, language, owning_path, materializer, synthetic_member
+        )
+        if cross_module:
+            blockers.append(ConformanceFinding(name, 'added_cross_module', 'new public seam not in the design record'))
+        else:
+            findings.append(ConformanceFinding(name, 'added_internal', 'module-internal addition'))
 
 
 def classify_conformance(
@@ -146,7 +251,25 @@ def classify_conformance(
     for entry in designed_entries:
         owning_path = project_root / entry.path
         owning_module_dotted = _module_dotted_path(project_root, entry.path)
-        implemented_members = _extract_implemented_members(owning_path) if owning_path.exists() else {}
+        # Full signature introspection is an optional per-language capability
+        # (decisions.md "Introspection is an optional capability") -- only Python has
+        # it today, so a non-Python entry's designed members are passed through
+        # unclassified (missing/protocol-changed detection needs param/return types,
+        # which is exactly the deferred capability) rather than guessed at or crashed
+        # on (F6, F7). It is not a silent skip: unmaterializable/unintrospectable paths
+        # are already surfaced upstream by generate_skeletons (B7).
+        introspectable = language_for_path(str(owning_path)) == 'python'
+        implemented_members = (
+            _extract_implemented_members(owning_path) if introspectable and owning_path.exists() else {}
+        )
+
+        if not introspectable:
+            # Cross-module blocking for a *new* export doesn't need full signature
+            # introspection -- only "is this name exported" (cheap, B8) -- so it still
+            # runs here even though missing/protocol-change detection above does not.
+            _classify_new_exports(project_root, owning_path, entry, blockers, findings)
+            updated_entries.append(entry)
+            continue
 
         kept_members: list[SkeletonMember] = []
 

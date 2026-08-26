@@ -3,6 +3,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from src.utils.language_extensions import language_for_path
+
 _BULLET_PATH = re.compile(r'^-\s*`(?P<inner>[^`]+)`(?P<rest>.*)$')
 _SIGNATURE_TAGS = ('internal', 'consequential', 'user-selected', 'async')
 _SIGNATURE = re.compile(
@@ -58,21 +60,31 @@ class ReconciliationChoice:
 
 
 @dataclass(frozen=True)
+class UnmaterializedPath:
+    path: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class SkeletonGenerationResult:
     written_paths: tuple[Path, ...]
     reconciliation_needed: tuple[ReconciliationChoice, ...]
+    unmaterialized_paths: tuple[UnmaterializedPath, ...] = ()
+    unintrospectable_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class TestGenerationResult:
     written_paths: tuple[Path, ...]
     skipped_existing: tuple[Path, ...]
+    unmaterialized_paths: tuple[UnmaterializedPath, ...] = ()
 
 
 @dataclass(frozen=True)
 class MergeResult:
     merged_paths: tuple[Path, ...]
     unresolved_signature_conflicts: tuple[str, ...]
+    unintrospectable_paths: tuple[str, ...] = ()
 
 
 class SkeletonPathEscapesProjectError(ValueError):
@@ -94,22 +106,45 @@ def _strip_tags(signature: str) -> tuple[str, frozenset[str]]:
     return remainder, frozenset(tags)
 
 
-def _parse_member(signature: str) -> SkeletonMember:
-    remainder, tags = _strip_tags(signature)
+def parse_bare_signature(remainder: str) -> SkeletonMember:
+    """Language-neutral structural parse of a tag-stripped signature: class/member
+    name, and bare (un-import-extracted) params/return text. Phase 1's on-disk
+    Skeleton Index grammar is uniform across languages -- phase 2 makes it
+    language-aware -- so every LanguageMaterializer.parse_signature can start here."""
     match = _SIGNATURE.match(remainder)
     if not match:
-        raise ValueError(f'Unparseable Skeleton Index signature: {signature!r}')
-
-    bare_params, param_imports = _extract_imports_and_bare_text(match.group('params').strip())
-    bare_return_type, return_imports = _extract_imports_and_bare_text(match.group('return_type').strip())
-
+        raise ValueError(f'Unparseable Skeleton Index signature: {remainder!r}')
     return SkeletonMember(
         class_name=match.group('class_name'),
         member_name=match.group('member_name'),
+        params=match.group('params').strip(),
+        return_type=match.group('return_type').strip(),
+    )
+
+
+def parse_python_signature(remainder: str) -> SkeletonMember:
+    bare = parse_bare_signature(remainder)
+    bare_params, param_imports = _extract_imports_and_bare_text(bare.params)
+    bare_return_type, return_imports = _extract_imports_and_bare_text(bare.return_type)
+    return SkeletonMember(
+        class_name=bare.class_name,
+        member_name=bare.member_name,
         params=bare_params,
         return_type=bare_return_type,
-        tags=tags,
         required_imports=param_imports | return_imports,
+    )
+
+
+def _parse_member(signature: str) -> SkeletonMember:
+    remainder, tags = _strip_tags(signature)
+    member = parse_python_signature(remainder)
+    return SkeletonMember(
+        class_name=member.class_name,
+        member_name=member.member_name,
+        params=member.params,
+        return_type=member.return_type,
+        tags=tags,
+        required_imports=member.required_imports,
     )
 
 
@@ -256,24 +291,52 @@ def _filter_declined_internals(entries: tuple[SkeletonIndexEntry, ...]) -> tuple
 
 
 def generate_skeletons(project_root: Path, entries: tuple[SkeletonIndexEntry, ...]) -> SkeletonGenerationResult:
+    # Deferred import: src.utils.materializers depends on this module for the shared
+    # dataclasses and neutral parsing helpers (CLAUDE.md's inline-import exception).
+    from src.utils.materializers import UnsupportedLanguageError, get_materializer
+
     entries = _filter_declined_internals(entries)
     written: list[Path] = []
     reconciliation: list[ReconciliationChoice] = []
+    unmaterialized: list[UnmaterializedPath] = []
+    unintrospectable: list[str] = []
     for entry in entries:
+        try:
+            materializer = get_materializer(language_for_path(entry.path), entry.path)
+        except UnsupportedLanguageError as e:
+            unmaterialized.append(UnmaterializedPath(path=entry.path, reason=str(e)))
+            continue
+
         target = _resolve_within_project(project_root, entry.path)
         if target.exists():
+            extract = getattr(materializer, 'extract_existing_signatures', None)
+            if extract is None:
+                unintrospectable.append(entry.path)
+                continue
+            try:
+                existing_signatures = extract(target)
+            except SyntaxError as e:
+                unmaterialized.append(
+                    UnmaterializedPath(path=entry.path, reason=f'existing file could not be parsed: {e}')
+                )
+                continue
             reconciliation.append(
                 ReconciliationChoice(
                     path=entry.path,
-                    existing_signatures=extract_existing_signatures(target),
+                    existing_signatures=existing_signatures,
                     designed_signatures=_designed_signatures(entry),
                 )
             )
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(render_skeleton_module(entry))
+        target.write_text(materializer.render_skeleton_module(entry))
         written.append(target)
-    return SkeletonGenerationResult(written_paths=tuple(written), reconciliation_needed=tuple(reconciliation))
+    return SkeletonGenerationResult(
+        written_paths=tuple(written),
+        reconciliation_needed=tuple(reconciliation),
+        unmaterialized_paths=tuple(unmaterialized),
+        unintrospectable_paths=tuple(unintrospectable),
+    )
 
 
 def _class_insertion_point(lines: list[str], class_name: str) -> int | None:
@@ -304,11 +367,19 @@ def merge_new_members(
     """
     merged: list[Path] = []
     unresolved: list[str] = []
+    unintrospectable: list[str] = []
     for entry in entries:
         if entry.path not in merge_paths:
             continue
         target = _resolve_within_project(project_root, entry.path)
         if not target.exists():
+            continue
+        # Merge (append into an existing file) requires the introspection capability
+        # (decisions.md "Introspection is an optional capability") -- Python has it,
+        # other languages degrade to create-only rather than risking an unguarded
+        # ast.parse SyntaxError on foreign source (F6).
+        if language_for_path(entry.path) != 'python':
+            unintrospectable.append(entry.path)
             continue
         existing_signatures = set(extract_existing_signatures(target))
         existing_names = {sig.split('(', 1)[0] for sig in existing_signatures}
@@ -336,18 +407,33 @@ def merge_new_members(
             lines[insert_at:insert_at] = ['', *_render_member_body(member, is_method=True).splitlines()]
         target.write_text('\n'.join(lines) + '\n')
         merged.append(target)
-    return MergeResult(merged_paths=tuple(merged), unresolved_signature_conflicts=tuple(unresolved))
+    return MergeResult(
+        merged_paths=tuple(merged),
+        unresolved_signature_conflicts=tuple(unresolved),
+        unintrospectable_paths=tuple(unintrospectable),
+    )
 
 
 def generate_tests(project_root: Path, entries: tuple[TestListEntry, ...]) -> TestGenerationResult:
+    from src.utils.materializers import UnsupportedLanguageError, get_materializer
+
     written: list[Path] = []
     skipped: list[Path] = []
+    unmaterialized: list[UnmaterializedPath] = []
     for entry in entries:
+        try:
+            materializer = get_materializer(language_for_path(entry.path), entry.path)
+        except UnsupportedLanguageError as e:
+            unmaterialized.append(UnmaterializedPath(path=entry.path, reason=str(e)))
+            continue
+
         target = _resolve_within_project(project_root, entry.path)
         if target.exists():
             skipped.append(target)
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(render_test_module(entry))
+        target.write_text(materializer.render_test_module(entry))
         written.append(target)
-    return TestGenerationResult(written_paths=tuple(written), skipped_existing=tuple(skipped))
+    return TestGenerationResult(
+        written_paths=tuple(written), skipped_existing=tuple(skipped), unmaterialized_paths=tuple(unmaterialized)
+    )

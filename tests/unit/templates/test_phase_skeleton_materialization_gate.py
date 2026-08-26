@@ -74,3 +74,15 @@ def test_skeleton_conflicts_block_for_a_user_reconciliation_choice(adapter: TuiA
     assert 'Merge' in body
     assert 'Keep the existing signature' in body
     assert 'Accept the design change' in body
+
+
+@pytest.mark.parametrize('adapter', _ADAPTERS)
+def test_unmaterialized_and_unintrospectable_paths_are_displayed_and_recorded(adapter: TuiAdapter) -> None:
+    # B7: silent skip is its own bug (README.md) -- a path the materializer could not
+    # write, or could not safely reconcile, must reach the user and the design record,
+    # not just the CLI JSON.
+    body = template_contract(_phase_template(adapter)).step_body('11.5')
+
+    assert 'unmaterialized_paths' in body
+    assert 'unintrospectable_paths' in body
+    assert 'source=materializer' in body

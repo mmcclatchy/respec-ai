@@ -1,9 +1,13 @@
 from src.platform.models import CodeCommandTools
+from src.utils.language_extensions import FRONTEND_EXTENSIONS
 
 
 def generate_code_command_template(tools: CodeCommandTools) -> str:
     selection_prompt_instructions = tools.tui_adapter.selection_prompt_instruction
     selection_response_source = tools.tui_adapter.selection_response_source
+    # Data-driven from the extension map (F14) rather than a second hardcoded list that
+    # drifts from it -- an .astro or .mdx project now activates frontend mode too.
+    frontend_extensions_glob = ', '.join(f'*{ext}' for ext in sorted(FRONTEND_EXTENSIONS))
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [phase request]
@@ -297,7 +301,7 @@ For each "#### Step N:" section in IMPLEMENTATION_PLAN_MARKDOWN's "## Build Orde
 
 For each `path :: signature` line in PHASE_MARKDOWN's "### Skeleton Index":
   Scan the path for mode indicators:
-  IF path matches frontend locations (templates/, static/, components/, *.tsx, *.jsx, *.vue, *.svelte, *.css):
+  IF path matches frontend locations (templates/, static/, components/, {frontend_extensions_glob}):
     STEP_MODES.add("frontend")
   IF path matches API locations (routes/, api/, endpoints/, controllers/):
     STEP_MODES.add("api")

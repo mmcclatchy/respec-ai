@@ -287,6 +287,16 @@ class TestCoderGroundingTemplate:
 
         assert 'DO NOT write or edit `.respec-ai` Phase, roadmap, plan, implementation.md, or' in template
         assert 'Progress is reported only through the iteration handoff report.' in template
+
+    def test_coder_template_names_the_sentinel_per_language_not_python_only(self) -> None:
+        # B10 / F9: a TypeScript skeleton stubs with its own sentinel, not Python's --
+        # the coder must be told to recognize the language's own marker, not hunt for
+        # `raise NotImplementedError` in a `.tsx` file.
+        tools = create_coder_agent_tools(_adapter)
+        template = generate_coder_template(tools)
+
+        assert "throw new Error('Not implemented')" in template
+        assert 'not-implemented sentinel' in template
         assert 'DOCUMENT_AMENDMENT_REQUIRED' in template
 
     def test_generated_markdown_coder_has_no_edit_access_to_planning_documents(self) -> None:
