@@ -224,6 +224,27 @@ pattern at `:745-760`.
   real body-level parsing, not name enumeration. Both are the same shape as Python's own blind spot
   (`_extract_implemented_members` only walks `FunctionDef`/`AsyncFunctionDef`/`ClassDef`), so the
   two languages stay symmetric rather than TypeScript being either stricter or laxer than Python.
+- **The Python rendering functions (`_render_member_body`, `_render_import_lines`,
+  `render_skeleton_module`, `render_test_module`, `_render_signature`,
+  `extract_existing_signatures`, `_class_insertion_point`, `_QUALIFIED_TYPE_REF`,
+  `_extract_imports_and_bare_text`) were not physically relocated into
+  `python_materializer.py`** the way this section's file manifest describes.
+  `PythonMaterializer`'s methods are thin wrappers delegating to these functions, which
+  still live in `skeleton_generator.py`. Two reasons: `merge_new_members` — itself
+  explicitly Python-only per this section ("`_class_insertion_point` (indent-based, so
+  Python-only)") — calls `_render_member_body`/`_class_insertion_point` directly, and
+  moving them out would need either a deferred re-import back into
+  `skeleton_generator.py` (the same circular-dependency shape the deferred imports in
+  `generate_skeletons`/`generate_tests` already exist to avoid) or promoting granular
+  per-member rendering onto the `LanguageMaterializer` protocol before any second
+  language needs it. And `extract_existing_signatures` is imported directly by the
+  pre-existing test suite (B4's regression guard), so relocating it means updating that
+  import as a real edit, not a compatibility shim — deferred here as lower-value than
+  the behavioral work. Net effect: `python_materializer.py` is not yet a fully
+  self-contained module the way `typescript_materializer.py` is. This does not weaken
+  the boundary test itself (adding Go still touches only a new module and one registry
+  line), but a future phase that touches merge/reconciliation for a second
+  introspecting language should finish this move rather than deepen the wrapper.
 
 ## Exit criteria
 

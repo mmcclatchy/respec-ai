@@ -69,22 +69,22 @@ class UnmaterializedPath:
 class SkeletonGenerationResult:
     written_paths: tuple[Path, ...]
     reconciliation_needed: tuple[ReconciliationChoice, ...]
-    unmaterialized_paths: tuple[UnmaterializedPath, ...] = ()
-    unintrospectable_paths: tuple[str, ...] = ()
+    unmaterialized_paths: tuple[UnmaterializedPath, ...]
+    unintrospectable_paths: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class TestGenerationResult:
     written_paths: tuple[Path, ...]
     skipped_existing: tuple[Path, ...]
-    unmaterialized_paths: tuple[UnmaterializedPath, ...] = ()
+    unmaterialized_paths: tuple[UnmaterializedPath, ...]
 
 
 @dataclass(frozen=True)
 class MergeResult:
     merged_paths: tuple[Path, ...]
     unresolved_signature_conflicts: tuple[str, ...]
-    unintrospectable_paths: tuple[str, ...] = ()
+    unintrospectable_paths: tuple[str, ...]
 
 
 class SkeletonPathEscapesProjectError(ValueError):
@@ -381,7 +381,13 @@ def merge_new_members(
         if language_for_path(entry.path) != 'python':
             unintrospectable.append(entry.path)
             continue
-        existing_signatures = set(extract_existing_signatures(target))
+        try:
+            existing_signatures = set(extract_existing_signatures(target))
+        except SyntaxError:
+            # A Python traceback as a phase-failure diagnostic is a Python-invisibility
+            # violation (F6), not just a robustness bug -- surface the path instead.
+            unintrospectable.append(entry.path)
+            continue
         existing_names = {sig.split('(', 1)[0] for sig in existing_signatures}
 
         new_members: list[SkeletonMember] = []

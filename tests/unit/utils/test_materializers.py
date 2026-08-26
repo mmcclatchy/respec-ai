@@ -159,6 +159,21 @@ class TestMergeNeverAttemptsToIntrospectAForeignLanguage:
         assert result.unintrospectable_paths == ('src/kb/client.ts',)
         assert target.read_text() == 'export class Client {}\n'
 
+    def test_merge_on_a_syntactically_broken_python_file_never_raises_a_traceback(self, tmp_path: Path) -> None:
+        # F6: a Python traceback as a phase-failure diagnostic is a Python-invisibility
+        # violation, not just a robustness bug -- the file exists, is on the Python
+        # extension, but ast.parse cannot read it.
+        target = tmp_path / 'src' / 'kb' / 'client.py'
+        target.parent.mkdir(parents=True)
+        target.write_text('class Client(:\n    def broken(\n')
+
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n')
+        result = merge_new_members(tmp_path, entries, frozenset({'src/kb/client.py'}))
+
+        assert result.merged_paths == ()
+        assert result.unintrospectable_paths == ('src/kb/client.py',)
+        assert target.read_text() == 'class Client(:\n    def broken(\n'
+
 
 class TestMixedLanguageSingleRun:
     def test_a_python_and_a_typescript_entry_in_one_run_each_materialize_correctly(self, tmp_path: Path) -> None:

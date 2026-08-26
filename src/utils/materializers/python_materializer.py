@@ -6,6 +6,10 @@ from src.utils.skeleton_generator import SkeletonIndexEntry, SkeletonMember, Tes
 
 class PythonMaterializer:
     not_implemented_sentinel = 'raise NotImplementedError'
+    # Python's test-file convention (test_ prefix, tests/ directory) is already covered
+    # by design_conformance.py's language-neutral _TEST_PATH_MARKERS -- no suffix-based
+    # convention to add here.
+    test_file_suffixes: tuple[str, ...] = ()
 
     def parse_signature(self, remainder: str) -> SkeletonMember:
         return skeleton_generator.parse_python_signature(remainder)

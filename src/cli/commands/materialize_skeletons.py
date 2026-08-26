@@ -84,7 +84,9 @@ def run(args: Namespace) -> int:
                 ],
                 'unintrospectable_paths': list(skeleton_result.unintrospectable_paths),
             }
-    except SkeletonPathEscapesProjectError as e:
+    except (SkeletonPathEscapesProjectError, SyntaxError) as e:
+        # SyntaxError as a Python traceback is itself a Python-invisibility violation
+        # (F6) -- this is a backstop; known call sites already guard it internally.
         print_error(str(e))
         return 1
 
