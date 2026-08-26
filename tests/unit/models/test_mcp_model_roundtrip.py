@@ -8,7 +8,9 @@ Uses dynamic fixture generation (markdown_builder from conftest.py) to minimize
 maintenance burden. When model structure changes, fixtures auto-adapt.
 """
 
-from typing import Callable, Type
+import typing
+from enum import Enum
+from typing import Any, Callable, ClassVar, Type
 
 import pytest
 
@@ -144,6 +146,7 @@ def test_mcp_model_round_trip_idempotency(
 
 
 _ROUND_TRIP_SENTINEL = '- round-trip sentinel content'
+_INT_SENTINEL = 7
 
 _TITLE_VALUES: dict[str, str] = {
     'phase_name': 'round-trip-probe',
@@ -151,22 +154,29 @@ _TITLE_VALUES: dict[str, str] = {
 }
 
 
-def _text_mapped_fields(model_class: Type[MCPModel]) -> list[str]:
-    text_fields = []
-    for field_name in model_class.HEADER_FIELD_MAPPING:
-        if field_name == model_class.TITLE_FIELD:
-            continue
-        field_info = model_class.model_fields.get(field_name)
-        if field_info is None:
-            continue
-        if 'str' in str(field_info.annotation):
-            text_fields.append(field_name)
-    return text_fields
+def _unwrap_optional(annotation: Any) -> Any:
+    non_none = [arg for arg in typing.get_args(annotation) if arg is not type(None)]
+    return non_none[0] if non_none else annotation
+
+
+def _probe_value(model_class: Type[MCPModel], field_name: str) -> Any:
+    """A value distinguishable from the field's default, or None if the type can't carry one."""
+    field_info = model_class.model_fields[field_name]
+    base_type = _unwrap_optional(field_info.annotation)
+
+    if base_type is str:
+        return _ROUND_TRIP_SENTINEL
+    if base_type is int:
+        return _INT_SENTINEL
+    if isinstance(base_type, type) and issubclass(base_type, Enum):
+        # A member differing from the default, so a dropped field cannot pass by coincidence
+        return next((member for member in base_type if member != field_info.default), None)
+    return None
 
 
 @pytest.mark.parametrize('model_class', [Roadmap, Phase, Plan, FeatureRequirements])
-def test_every_mapped_text_field_survives_build_then_parse(model_class: Type[MCPModel]) -> None:
-    """Every mapped text field must survive build_markdown() -> parse_markdown().
+def test_every_mapped_field_survives_build_then_parse(model_class: Type[MCPModel]) -> None:
+    """Every mapped field must survive build_markdown() -> parse_markdown().
 
     Distinct from the idempotency test above, which starts from markdown: a field that
     parse_markdown never populates is already None on the first parse, so parse -> build ->
@@ -177,16 +187,67 @@ def test_every_mapped_text_field_survives_build_then_parse(model_class: Type[MCP
     title_value = _TITLE_VALUES.get(title_field, 'round-trip-probe')
 
     lost_fields = []
-    for field_name in _text_mapped_fields(model_class):
-        instance = model_class(**{title_field: title_value, field_name: _ROUND_TRIP_SENTINEL})
+    exercised = 0
+    for field_name in model_class.HEADER_FIELD_MAPPING:
+        if field_name == title_field or field_name not in model_class.model_fields:
+            continue
+        probe = _probe_value(model_class, field_name)
+        if probe is None:
+            continue
+        exercised += 1
+        instance = model_class(**{title_field: title_value, field_name: probe})
         reparsed = model_class.parse_markdown(instance.build_markdown())
-        if getattr(reparsed, field_name, None) != _ROUND_TRIP_SENTINEL:
+        if getattr(reparsed, field_name, None) != probe:
             lost_fields.append(field_name)
 
     assert not lost_fields, (
         f'{model_class.__name__} lost these mapped fields on build -> parse: {lost_fields}. '
         'The extracted value is likely being stored under a name that is not a model field.'
     )
+    assert exercised, f'{model_class.__name__} exercised no mapped fields; the probe builder is broken'
+
+
+class _ListFieldProbeModel(MCPModel):
+    """Exercises the list-extraction branch, which no shipped model currently reaches.
+
+    Every mapped field on Phase/Plan/Roadmap/FeatureRequirements is scalar, so without this
+    the list branch of parse_markdown would be unreachable and therefore untested.
+    """
+
+    TITLE_PATTERN: ClassVar[str] = '# Probe:'
+    TITLE_FIELD: ClassVar[str] = 'probe_name'
+    HEADER_FIELD_MAPPING: ClassVar[dict[str, tuple[str, ...]]] = {
+        'probe_items': ('Probe Section', 'Probe Items'),
+    }
+
+    probe_name: str = ''
+    probe_items: list[str] | None = None
+
+    def build_markdown(self) -> str:
+        items = '\n'.join(f'- {item}' for item in self.probe_items or [])
+        return f'# Probe: {self.probe_name}\n\n## Probe Section\n\n### Probe Items\n\n{items}\n'
+
+
+def test_list_typed_mapped_field_round_trips_as_a_list() -> None:
+    original = _ListFieldProbeModel(probe_name='probe', probe_items=['first item', 'second item'])
+
+    reparsed = _ListFieldProbeModel.parse_markdown(original.build_markdown())
+
+    assert reparsed.probe_items == ['first item', 'second item']
+
+
+def test_scalar_field_named_like_a_list_is_not_routed_to_the_list_extractor() -> None:
+    """Routing keys on the declared type, never on the field name.
+
+    `Phase.test_list` is a str field whose name ends in `_list`; a name-based rule extracted
+    it as a list and stored it under `test`, which is not a model field, so Pydantic dropped
+    it and the section was silently lost on every store.
+    """
+    original = Phase(phase_name='probe', test_list='- `tests/unit/test_a.py::test_behavior`')
+
+    reparsed = Phase.parse_markdown(original.build_markdown())
+
+    assert reparsed.test_list == '- `tests/unit/test_a.py::test_behavior`'
 
 
 def test_markdown_stabilization_after_first_round_trip(sample_roadmap_markdown: str) -> None:
