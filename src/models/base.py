@@ -1,10 +1,28 @@
 import re
+import typing
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Self
 
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
 from pydantic import BaseModel
+
+
+def _is_list_annotation(annotation: Any) -> bool:
+    """Whether a field holds a list, including inside `list[str] | None` unions.
+
+    Field routing in `parse_markdown` keys on this rather than on a field-name suffix:
+    a name-based rule silently mis-routes any field whose name merely resembles the
+    convention, and the extracted value then lands under a key that is not a model field.
+    """
+    if annotation is None:
+        return False
+    origin = typing.get_origin(annotation)
+    if origin is list:
+        return True
+    if origin is not None:
+        return any(_is_list_annotation(arg) for arg in typing.get_args(annotation))
+    return False
 
 
 class MCPModel(BaseModel, ABC):
@@ -379,17 +397,15 @@ class MCPModel(BaseModel, ABC):
 
         # Extract fields using header path mapping
         for field_name, header_path in cls.HEADER_FIELD_MAPPING.items():
-            if field_name.endswith('_list'):
-                # Handle list fields - extract as list and store under base field name
-                base_field = field_name.replace('_list', '')
+            field_info = cls.model_fields.get(field_name)
+            if field_info is not None and _is_list_annotation(field_info.annotation):
                 extracted_list = cls._extract_list_items_by_header_path(tree, header_path)
-                if extracted_list:  # Only set if we found actual content
-                    # Store the list under the base field name
-                    fields[base_field] = extracted_list
+                if extracted_list:
+                    fields[field_name] = extracted_list
             else:
-                # Handle content fields - extract raw markdown preserving all formatting
+                # Raw extraction preserves formatting the tree walker would flatten
                 extracted_content = cls._extract_content_from_raw_markdown(markdown, header_path)
-                if extracted_content:  # Only set if we found actual content
+                if extracted_content:
                     fields[field_name] = extracted_content
 
         # Capture unmapped H2 sections in additional_sections (for models that support it)

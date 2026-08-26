@@ -143,6 +143,52 @@ def test_mcp_model_round_trip_idempotency(
     assert original_data == reparsed_data, f'{model_class.__name__} round-trip changed field values'
 
 
+_ROUND_TRIP_SENTINEL = '- round-trip sentinel content'
+
+_TITLE_VALUES: dict[str, str] = {
+    'phase_name': 'round-trip-probe',
+    'plan_name': 'Round Trip Probe',
+}
+
+
+def _text_mapped_fields(model_class: Type[MCPModel]) -> list[str]:
+    text_fields = []
+    for field_name in model_class.HEADER_FIELD_MAPPING:
+        if field_name == model_class.TITLE_FIELD:
+            continue
+        field_info = model_class.model_fields.get(field_name)
+        if field_info is None:
+            continue
+        if 'str' in str(field_info.annotation):
+            text_fields.append(field_name)
+    return text_fields
+
+
+@pytest.mark.parametrize('model_class', [Roadmap, Phase, Plan, FeatureRequirements])
+def test_every_mapped_text_field_survives_build_then_parse(model_class: Type[MCPModel]) -> None:
+    """Every mapped text field must survive build_markdown() -> parse_markdown().
+
+    Distinct from the idempotency test above, which starts from markdown: a field that
+    parse_markdown never populates is already None on the first parse, so parse -> build ->
+    parse compares None to None and passes. Starting from a populated model is what catches
+    a field whose extracted value is routed to a name that is not a model field.
+    """
+    title_field = model_class.TITLE_FIELD
+    title_value = _TITLE_VALUES.get(title_field, 'round-trip-probe')
+
+    lost_fields = []
+    for field_name in _text_mapped_fields(model_class):
+        instance = model_class(**{title_field: title_value, field_name: _ROUND_TRIP_SENTINEL})
+        reparsed = model_class.parse_markdown(instance.build_markdown())
+        if getattr(reparsed, field_name, None) != _ROUND_TRIP_SENTINEL:
+            lost_fields.append(field_name)
+
+    assert not lost_fields, (
+        f'{model_class.__name__} lost these mapped fields on build -> parse: {lost_fields}. '
+        'The extracted value is likely being stored under a name that is not a model field.'
+    )
+
+
 def test_markdown_stabilization_after_first_round_trip(sample_roadmap_markdown: str) -> None:
     """Verify markdown output stabilizes after first round-trip.
 
