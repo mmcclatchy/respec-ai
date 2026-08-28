@@ -267,6 +267,25 @@ Creating Linear issue...
 - Quality scores >90 indicate well-defined phases
 - Phases created in your platform (Linear/GitHub/Markdown) serve as single source of truth
 
+**UX Contract and the Claude Design workflow:**
+
+Phases with a user-facing UI carry a `#### UX Contract` (Route Index, Required States,
+Interaction Flows, Accessibility Requirements, Breakpoints, Design Source) authored in
+shape mode and approved at the same Phase 3 gate as the rest of the design. The
+recommended workflow for the visual design that feeds `##### Design Source`:
+
+1. Design in Claude Design — the visual step for layout, color, and hierarchy.
+2. Export the handoff bundle and unpack it into the repo.
+3. Name the path under `##### Design Source` in the phase file at the gate.
+4. `phase-architect` reads the bundle's README when writing the contract; the frontend
+   reviewer uses it as visual reference.
+5. On Claude Code, `/respec-design-sync` can optionally push the built component
+   library back up so future designs start from real components.
+
+This works identically whether the design source is a Claude Design export, a Figma
+export, or a hand-written design tokens file — everything downstream reads a path, not
+a specific tool.
+
 ---
 
 #### `/respec-code` [NOT YET FUNCTIONAL]

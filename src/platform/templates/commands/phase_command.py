@@ -514,6 +514,13 @@ Before you edit:
 
 Edit the file now if you want to change anything, then choose how to proceed."
 
+IF SHAPE_PHASE_MARKDOWN contains "#### UX Contract":
+  Display to user:
+  "→ This phase shape includes a UX Contract under Design Shape - Additional Sections.
+  Review its Route Index, Required States, Interaction Flows (each needs an explicit,
+  mechanically checkable pass condition), Accessibility Requirements, Breakpoints, and
+  Design Source before continuing."
+
 {selection_prompt_instructions}
 Header: "Design Review"
 Question: "How do you want to proceed with the phase shape?"

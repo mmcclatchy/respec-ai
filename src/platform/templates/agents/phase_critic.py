@@ -1100,6 +1100,8 @@ Blocker lane, ONLY these:
 3. Ownership/construction in `### Collaboration And Wiring`
 4. Every SD-### in `### Settled Design Decisions`
 5. Test List → implementation-step coverage
+6. `#### UX Contract` in `### Design Shape - Additional Sections`, when present —
+   Interaction Flow pass conditions and Route Index auth entries only (below)
 
 Score lane ONLY, NEVER a blocker:
 - Private helpers, internal data structures, algorithm choice
@@ -1134,6 +1136,24 @@ VIOLATION: emitting a blocker for an internal implementation detail turns this c
 - Every module path in `### Skeleton Index` MUST also appear in `### Module Layout`.
 - If a Skeleton Index entry names a module absent from Module Layout: raise a blocker.
   [Skeleton Index Module Mismatch - BLOCKING]: `{{path}}` is in Skeleton Index but not in Module Layout
+
+**BLOCKER RULE FOR UX CONTRACT FLOWS WITH NO OBSERVABLE PASS CONDITION**:
+- If `### Design Shape - Additional Sections` contains a `#### UX Contract` with a
+  `##### Interaction Flows` subsection: every `FLOW-N:` entry MUST state an explicit,
+  mechanically checkable pass condition. Prose that requires human interpretation —
+  "the page looks right," "works correctly," "is user friendly," or any equivalent
+  restatement — is not observable.
+- If any `FLOW-N` lacks one: raise a blocker.
+  [UX Contract Flow Missing Pass Condition - BLOCKING]: `FLOW-{{N}}` has no observable pass condition
+- This rule does NOT apply when no `#### UX Contract` is present — a backend-only phase
+  raises nothing here.
+
+**BLOCKER RULE FOR UX CONTRACT ROUTE INDEX MISSING AUTH**:
+- If a `#### UX Contract` is present and its `##### Route Index` lists any routes: every
+  entry MUST state an `auth=` value (`none`, `session`, or `role:<name>`).
+- If any Route Index entry has no auth value: raise a blocker. The auth column is what
+  tells a runtime reviewer which routes are reachable without a session.
+  [UX Contract Route Missing Auth - BLOCKING]: `{{path}}` has no auth requirement in Route Index
 
 ### Domain-Specific Section Evaluation (30% of total score)
 

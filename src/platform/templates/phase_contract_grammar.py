@@ -32,3 +32,28 @@ TEST_LIST_PLACEHOLDER = (
     " the way its own language's tests read: pytest node-id style for Python, a plain"
     ' English behavior description for TypeScript describe/it-style tests.)'
 )
+
+UX_CONTRACT_PLACEHOLDER = (
+    '#### UX Contract\n\n'
+    '##### Route Index\n'
+    '- `/path` :: [purpose] :: auth=none|session|role:<name>\n\n'
+    '##### Required States\n'
+    '- `/path` — loading: [observable assertion]; empty: [observable assertion]; error:'
+    ' [observable assertion]; success: [observable assertion]; validation: [observable'
+    ' assertion]\n\n'
+    '##### Interaction Flows\n'
+    '- FLOW-1: [step] → [step] → [step] — **Pass:** [mechanically checkable condition —'
+    ' never "the page looks right" or "works correctly"; e.g. "submitting an invalid'
+    ' email shows an inline error and the form is not cleared"]\n\n'
+    '##### Accessibility Requirements\n'
+    '- Conformance target: [e.g. WCAG 2.1 AA]\n'
+    '- Keyboard paths: [which flows must complete without a mouse]\n'
+    '- Focus order: [expected tab order for the interactive elements above]\n'
+    '- Landmark and heading structure: [expected regions and heading levels]\n'
+    '- Contrast: [minimum ratio, or "inherits from Design Source"]\n\n'
+    '##### Breakpoints\n'
+    '- `<name>` (`<width>px`): [what changes at this width]\n\n'
+    '##### Design Source\n'
+    '- [Claude Design handoff bundle path, design tokens file, or existing components'
+    ' to match — read-only reference, never authored here]'
+)

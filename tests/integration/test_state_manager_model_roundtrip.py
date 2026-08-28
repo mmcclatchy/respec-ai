@@ -121,6 +121,13 @@ def sample_phase_with_design_shape() -> Phase:
         test_list='- test_refresh_token_rotates_on_use\n- test_expired_token_triggers_reauth',
         open_design_decisions='OD-1: whether refresh tokens rotate on every use or only near expiry',
         settled_design_decisions='SD-1: use JWT with RS256 (source=architect) — rationale: supports key rotation',
+        design_shape_additional=(
+            '#### UX Contract\n\n'
+            '##### Route Index\n'
+            '- `/login` :: sign-in form :: auth=none\n\n'
+            '##### Interaction Flows\n'
+            '- FLOW-1: submit invalid email — **Pass:** inline error shown, form not cleared'
+        ),
         shape_gate=ShapeGate.SHAPE_PROPOSED,
         phase_status=PhaseStatus.IMPLEMENTATION_READY,
         iteration=2,
