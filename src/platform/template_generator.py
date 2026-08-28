@@ -88,7 +88,7 @@ _COMMAND_CATEGORY_BY_NAME: dict[RespecAICommand, str] = {
 # A command in this map is generated only for adapters that declare the paired capability
 # (tiered extensions, F29/F32) -- everything else in _COMMAND_TEMPLATES is portable and
 # generated unconditionally.
-_COMMAND_CAPABILITY_REQUIREMENTS: dict[RespecAICommand, BuiltInToolCapability] = {
+COMMAND_CAPABILITY_REQUIREMENTS: dict[RespecAICommand, BuiltInToolCapability] = {
     RespecAICommand.DESIGN_SYNC: BuiltInToolCapability.DESIGN_SYNC,
 }
 
@@ -97,9 +97,10 @@ def _commands_for_adapter(tui_adapter: TuiAdapter) -> list[RespecAICommand]:
     return [
         cmd
         for cmd in _COMMAND_TEMPLATES
-        if _COMMAND_CAPABILITY_REQUIREMENTS.get(cmd) is None
-        or tui_adapter.render_builtin_tool_name(_COMMAND_CAPABILITY_REQUIREMENTS[cmd]) is not None
+        if COMMAND_CAPABILITY_REQUIREMENTS.get(cmd) is None
+        or tui_adapter.render_builtin_tool_name(COMMAND_CAPABILITY_REQUIREMENTS[cmd]) is not None
     ]
+
 
 _AGENT_NAMES = [
     'respec-plan-analyst',
@@ -122,6 +123,7 @@ _AGENT_NAMES = [
     'respec-infrastructure-reviewer',
     'respec-coding-standards-reviewer',
 ]
+
 
 def expected_commands_count(tui_adapter: TuiAdapter) -> int:
     return len(_commands_for_adapter(tui_adapter))
