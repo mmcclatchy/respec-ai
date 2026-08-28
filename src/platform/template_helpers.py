@@ -11,6 +11,7 @@ from .models import (
     CreatePhaseAgentTools,
     DatabaseReviewerAgentTools,
     DesignConformanceReviewerAgentTools,
+    DesignSyncCommandTools,
     FrontendReviewerAgentTools,
     InfrastructureReviewerAgentTools,
     PatchCommandTools,
@@ -61,6 +62,16 @@ class TemplateToolBuilder:
     def add_builtin_tool(self, tool: BuiltInToolCapability, parameters: str = '') -> 'TemplateToolBuilder':
         self.tools.append(ToolReference(tool=tool, parameters=parameters))
         return self
+
+    def add_optional_builtin_tool(self, tool: BuiltInToolCapability, parameters: str = '') -> 'TemplateToolBuilder':
+        """Grant a built-in capability only where the adapter supports it, skipping it elsewhere.
+
+        Unlike `add_builtin_tool`, an adapter mapping the capability to `None` is not an
+        error here -- it is how a tiered capability (F32) degrades per-TUI without raising.
+        """
+        if self.tui_adapter.render_builtin_tool_name(tool) is None:
+            return self
+        return self.add_builtin_tool(tool, parameters)
 
     def add_platform_tools(self, platform_tools: list[str]) -> 'TemplateToolBuilder':
         for tool_string in platform_tools:
@@ -727,6 +738,18 @@ def create_standards_command_tools(
     )
 
 
+def create_design_sync_command_tools(
+    tui_adapter: 'TuiAdapter | None' = None,
+) -> 'DesignSyncCommandTools':
+    adapter = _resolve_tui_adapter(tui_adapter)
+    builder = TemplateToolBuilder(adapter)
+    builder.add_builtin_tool(BuiltInToolCapability.DESIGN_SYNC)
+    return DesignSyncCommandTools(
+        tui_adapter=adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+    )
+
+
 def create_phase_architect_agent_tools(
     tui_adapter: TuiAdapter, plans_dir: str = '~/.claude/plans'
 ) -> PhaseArchitectAgentTools:
@@ -737,6 +760,10 @@ def create_phase_architect_agent_tools(
 
     for builtin_tool, params in PhaseArchitectAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
+
+    # Optional (F32): grants DesignSync where the adapter supports it (Claude Code) and
+    # silently skips it elsewhere (OpenCode, Codex) rather than raising (F17).
+    builder.add_optional_builtin_tool(BuiltInToolCapability.DESIGN_SYNC)
 
     return PhaseArchitectAgentTools(
         tui_adapter=tui_adapter,

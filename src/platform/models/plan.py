@@ -199,6 +199,14 @@ class StandardsCommandTools(CommandToolsModel):
             )
 
 
+class DesignSyncCommandTools(CommandToolsModel):
+    tools_yaml: str = Field(..., description='Rendered YAML for allowed-tools section')
+    design_sync_command_name: str = Field(default='', description='Name of the design-sync workflow command')
+
+    def model_post_init(self, __context: Any) -> None:
+        self.design_sync_command_name = RespecAICommand.DESIGN_SYNC.value
+
+
 class AnalystCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,

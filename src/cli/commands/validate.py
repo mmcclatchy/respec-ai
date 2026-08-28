@@ -5,7 +5,7 @@ from pathlib import Path
 
 from src.cli.config.package_info import get_package_version
 from src.cli.ui.formatters import print_validation_report
-from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
+from src.platform.template_generator import expected_agents_count, expected_commands_count
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
 
@@ -67,16 +67,18 @@ def run(args: Namespace) -> int:
     tui_adapter = get_tui_adapter(TuiType(tui))
 
     commands_count = tui_adapter.count_generated_commands(project_path)
-    if commands_count == EXPECTED_COMMANDS_COUNT:
+    expected_commands = expected_commands_count(tui_adapter)
+    if commands_count == expected_commands:
         checks['Commands Directory'] = (True, f'{commands_count} commands found')
     else:
-        checks['Commands Directory'] = (False, f'{commands_count} commands (expected {EXPECTED_COMMANDS_COUNT})')
+        checks['Commands Directory'] = (False, f'{commands_count} commands (expected {expected_commands})')
 
     agents_count = tui_adapter.count_generated_agents(project_path)
-    if agents_count == EXPECTED_AGENTS_COUNT:
+    expected_agents = expected_agents_count(tui_adapter)
+    if agents_count == expected_agents:
         checks['Agents Directory'] = (True, f'{agents_count} agents found')
     else:
-        checks['Agents Directory'] = (False, f'{agents_count} agents (expected {EXPECTED_AGENTS_COUNT})')
+        checks['Agents Directory'] = (False, f'{agents_count} agents (expected {expected_agents})')
 
     mcp_registered = tui_adapter.is_mcp_registered(project_path)
     if mcp_registered:

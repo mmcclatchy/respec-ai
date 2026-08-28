@@ -280,11 +280,22 @@ recommended workflow for the visual design that feeds `##### Design Source`:
 4. `phase-architect` reads the bundle's README when writing the contract; the frontend
    reviewer uses it as visual reference.
 5. On Claude Code, `/respec-design-sync` can optionally push the built component
-   library back up so future designs start from real components.
+   library back up so future designs start from real components. It walks
+   list projects → confirm the target is a design system → diff structurally against
+   local components → confirm the plan with you → finalize the plan → write files,
+   incrementally, one component (or the set you name) at a time rather than a wholesale
+   replace. Run it yourself when you want to sync — it never runs as part of a
+   refinement loop.
+6. `##### Design Source` can then optionally name that live project instead of a local
+   path; `respec-phase-architect` reads it via Claude Code's DesignSync tool when
+   authoring future UX Contracts, falling back to the local bundle on any other TUI or
+   when DesignSync is unavailable (no login, headless run).
 
 This works identically whether the design source is a Claude Design export, a Figma
 export, or a hand-written design tokens file — everything downstream reads a path, not
-a specific tool.
+a specific tool. OpenCode and Codex projects get exactly the same contract quality from
+the local-bundle path; the live-project path is a Claude Code convenience, not a
+requirement.
 
 ---
 

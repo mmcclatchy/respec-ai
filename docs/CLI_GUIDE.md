@@ -157,6 +157,25 @@ The `playwright_mcp_registered` field in its JSON output reflects whether the re
 browser evidence available. An unregistered server is not an error — the reviewer falls back to
 source-only review and reports runtime evidence as skipped context.
 
+### Claude Design Integration (Claude Code)
+
+On Claude Code, `respec-ai regenerate` also produces `/respec-design-sync` — a command that pushes
+the project's local component library up to a Claude Design project, so future visual design starts
+from real components:
+
+```text
+/respec-design-sync [component-path...]
+```
+
+Run it yourself, interactively, whenever you want to sync; it never runs as part of a refinement
+loop. It requires you to be signed in to claude.ai. Once a design system project exists, name it
+under `##### Design Source` in a Phase's UX Contract and `respec-phase-architect` will read it via
+Claude Code's DesignSync tool when authoring future contracts.
+
+OpenCode and Codex do not generate this command — they have no equivalent capability yet — but the
+portable `##### Design Source` path (a local handoff bundle, tokens file, or existing components) is
+fully supported on every TUI and produces the same contract quality.
+
 ---
 
 ## Project Initialization

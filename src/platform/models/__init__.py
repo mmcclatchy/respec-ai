@@ -20,6 +20,7 @@ from .phase import PhaseArchitectAgentTools, PhaseCommandTools, PhaseCriticAgent
 from ..platform_selector import PlatformType
 from .plan import (
     AnalystCriticAgentTools,
+    DesignSyncCommandTools,
     PlanAnalystAgentTools,
     PlanCommandTools,
     PlanConversationCommandTools,
@@ -66,6 +67,7 @@ __all__ = [
     'PlanCommandTools',
     'PlanConversationCommandTools',
     'StandardsCommandTools',
+    'DesignSyncCommandTools',
     'CodeCommandTools',
     'CommitCommandTools',
     'PatchCommandTools',

@@ -7,7 +7,12 @@ import pytest
 from pytest_mock import MockerFixture
 
 from src.cli.commands import validate
-from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT
+from src.platform.template_generator import expected_agents_count, expected_commands_count
+from src.platform.tui_adapters import ClaudeCodeAdapter
+
+
+EXPECTED_COMMANDS_COUNT = expected_commands_count(ClaudeCodeAdapter())
+EXPECTED_AGENTS_COUNT = expected_agents_count(ClaudeCodeAdapter())
 
 
 def _mock_adapter(

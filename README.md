@@ -74,6 +74,12 @@ Optional `standards/guides/*.md` files are derived guidance artifacts and non-ca
 | OpenCode | `--tui opencode` | `opencode.json`, `.opencode/prompts/commands/*.md`, `.opencode/prompts/agents/*.md` |
 | Codex | `--tui codex` | `.codex/skills/*/SKILL.md`, `.codex/agents/*-agent.toml` |
 
+**Claude Code** additionally supports Claude Design integration (`/respec-design-sync`), letting you
+design visually and hand off to the build workflow. OpenCode and Codex use the portable design-source
+path — a handoff bundle, tokens file, or existing components named in the phase's UX Contract. The
+capability is declared per TUI and open to extension as other TUIs add equivalents; the portable path
+produces the same contract quality on every TUI regardless.
+
 ## Platform Support
 
 | Platform | Integration |

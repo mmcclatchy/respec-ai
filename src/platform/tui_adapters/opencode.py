@@ -41,6 +41,7 @@ class OpenCodeAdapter(TuiAdapter):
             BuiltInToolCapability.EXIT_PLAN_MODE: None,
             BuiltInToolCapability.SLASH_COMMAND: None,
             BuiltInToolCapability.ASK_USER_QUESTION: 'question',
+            BuiltInToolCapability.DESIGN_SYNC: None,
         }
 
     @property
@@ -179,6 +180,18 @@ class OpenCodeAdapter(TuiAdapter):
         del mcp['respec-ai']
         opencode_json_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
         return True
+
+    def count_generated_commands(self, project_path: Path) -> int:
+        commands_dir = self.prompts_dir(project_path) / 'commands'
+        if not commands_dir.exists():
+            return 0
+        return len(list(commands_dir.glob('*.md')))
+
+    def count_generated_agents(self, project_path: Path) -> int:
+        agents_dir = self.prompts_dir(project_path) / 'agents'
+        if not agents_dir.exists():
+            return 0
+        return len(list(agents_dir.glob('*.md')))
 
     def config_dir_name(self) -> str:
         return '.opencode'

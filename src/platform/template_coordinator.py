@@ -4,6 +4,7 @@ from .command_strategies import (
     CodeCommandStrategy,
     CommandStrategy,
     CommitCommandStrategy,
+    DesignSyncCommandStrategy,
     PatchCommandStrategy,
     PhaseCommandStrategy,
     PlanCommandStrategy,
@@ -31,6 +32,7 @@ class TemplateCoordinator:
             RespecAICommand.ROADMAP: PlanRoadmapCommandStrategy(),
             RespecAICommand.PLAN_CONVERSATION: PlanConversationCommandStrategy(),
             RespecAICommand.STANDARDS: StandardsCommandStrategy(),
+            RespecAICommand.DESIGN_SYNC: DesignSyncCommandStrategy(),
         }
 
     def generate_command_template(

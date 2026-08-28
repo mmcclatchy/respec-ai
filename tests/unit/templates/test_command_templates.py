@@ -5,9 +5,16 @@ from pathlib import Path
 
 from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
-from src.platform.tool_enums import RespecAICommand
+from src.platform.tool_enums import BuiltInToolCapability, RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
+
+
+# Commands generated only for adapters declaring the paired capability (tiered extensions,
+# see template_generator._COMMAND_CAPABILITY_REQUIREMENTS).
+_COMMAND_CAPABILITY_REQUIREMENTS = {
+    RespecAICommand.DESIGN_SYNC: BuiltInToolCapability.DESIGN_SYNC,
+}
 
 
 _BANNED_ACTION_PATTERNS = (
@@ -1057,6 +1064,9 @@ class TestCrossPlatformInvocationRendering:
 
         for adapter in adapters:
             for command in RespecAICommand:
+                required_capability = _COMMAND_CAPABILITY_REQUIREMENTS.get(command)
+                if required_capability and adapter.render_builtin_tool_name(required_capability) is None:
+                    continue
                 template = coordinator.generate_command_template(command, PlatformType.LINEAR, tui_adapter=adapter)
                 _assert_no_soft_action_language(template, _COMMAND_ACTION_SECTION_TOKENS)
 

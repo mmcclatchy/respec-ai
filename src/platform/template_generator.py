@@ -57,7 +57,7 @@ from src.platform.adapters import get_platform_adapter
 from src.platform.tui_adapters import AgentSpec, CommandSpec, get_tui_adapter
 from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_selector import TuiType
-from src.platform.tool_enums import RespecAICommand
+from src.platform.tool_enums import BuiltInToolCapability, RespecAICommand
 from src.utils.setting_configs import loop_config
 
 
@@ -70,6 +70,7 @@ _COMMAND_TEMPLATES = [
     RespecAICommand.ROADMAP,
     RespecAICommand.PLAN_CONVERSATION,
     RespecAICommand.STANDARDS,
+    RespecAICommand.DESIGN_SYNC,
 ]
 
 _COMMAND_CATEGORY_BY_NAME: dict[RespecAICommand, str] = {
@@ -81,7 +82,24 @@ _COMMAND_CATEGORY_BY_NAME: dict[RespecAICommand, str] = {
     RespecAICommand.COMMIT: 'orchestration',
     RespecAICommand.ROADMAP: 'orchestration',
     RespecAICommand.STANDARDS: 'orchestration',
+    RespecAICommand.DESIGN_SYNC: 'orchestration',
 }
+
+# A command in this map is generated only for adapters that declare the paired capability
+# (tiered extensions, F29/F32) -- everything else in _COMMAND_TEMPLATES is portable and
+# generated unconditionally.
+_COMMAND_CAPABILITY_REQUIREMENTS: dict[RespecAICommand, BuiltInToolCapability] = {
+    RespecAICommand.DESIGN_SYNC: BuiltInToolCapability.DESIGN_SYNC,
+}
+
+
+def _commands_for_adapter(tui_adapter: TuiAdapter) -> list[RespecAICommand]:
+    return [
+        cmd
+        for cmd in _COMMAND_TEMPLATES
+        if _COMMAND_CAPABILITY_REQUIREMENTS.get(cmd) is None
+        or tui_adapter.render_builtin_tool_name(_COMMAND_CAPABILITY_REQUIREMENTS[cmd]) is not None
+    ]
 
 _AGENT_NAMES = [
     'respec-plan-analyst',
@@ -105,8 +123,12 @@ _AGENT_NAMES = [
     'respec-coding-standards-reviewer',
 ]
 
-EXPECTED_COMMANDS_COUNT = len(_COMMAND_TEMPLATES)
-EXPECTED_AGENTS_COUNT = len(_AGENT_NAMES)
+def expected_commands_count(tui_adapter: TuiAdapter) -> int:
+    return len(_commands_for_adapter(tui_adapter))
+
+
+def expected_agents_count(tui_adapter: TuiAdapter) -> int:
+    return len(_AGENT_NAMES)
 
 
 def generate_templates(
@@ -134,7 +156,7 @@ def generate_templates(
             ),
             model=_resolve_model_for_category(adapter, _COMMAND_CATEGORY_BY_NAME[cmd]),
         )
-        for cmd in _COMMAND_TEMPLATES
+        for cmd in _commands_for_adapter(adapter)
     ]
 
     agents: list[AgentSpec] = _get_agent_specs(adapter, platform_type, plans_dir=plans_dir)

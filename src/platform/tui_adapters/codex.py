@@ -70,6 +70,7 @@ Use fresh isolated subagents only.
             BuiltInToolCapability.EXIT_PLAN_MODE: 'ExitPlanMode',
             BuiltInToolCapability.SLASH_COMMAND: 'SlashCommand',
             BuiltInToolCapability.ASK_USER_QUESTION: None,
+            BuiltInToolCapability.DESIGN_SYNC: None,
         }
 
     @property

@@ -85,6 +85,9 @@ class BuiltInToolCapability(StrEnum):
     # User Interaction
     ASK_USER_QUESTION = 'ask_user_question'
 
+    # Design Integration
+    DESIGN_SYNC = 'design_sync'
+
 
 class RespecAITool(StrEnum):
     # Loop Management Tools
@@ -184,6 +187,7 @@ class RespecAICommand(StrEnum):
     ROADMAP = 'respec-roadmap'
     PLAN_CONVERSATION = 'respec-plan-conversation'
     STANDARDS = 'respec-standards'
+    DESIGN_SYNC = 'respec-design-sync'
 
 
 ToolEnums = ExternalPlatformTool | BuiltInToolCapability | RespecAITool

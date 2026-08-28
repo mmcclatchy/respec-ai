@@ -6,12 +6,15 @@ from pytest_mock import MockerFixture
 
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
-from src.platform.template_generator import EXPECTED_AGENTS_COUNT, EXPECTED_COMMANDS_COUNT, generate_templates
-from src.platform.tui_adapters import get_tui_adapter
+from src.platform.template_generator import expected_agents_count, expected_commands_count, generate_templates
+from src.platform.tui_adapters import ClaudeCodeAdapter, get_tui_adapter
 from src.platform.tui_selector import TuiType
 
 
 _MOCK_COMMAND_CONTENT = '---\nallowed-tools: Read\nargument-hint: [plan-name]\ndescription: A command\n---\n\n# Command'
+
+EXPECTED_COMMANDS_COUNT = expected_commands_count(ClaudeCodeAdapter())
+EXPECTED_AGENTS_COUNT = expected_agents_count(ClaudeCodeAdapter())
 
 
 class TestGenerateTemplates:
@@ -159,8 +162,8 @@ class TestGenerateTemplates:
             mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter
         )
 
-        assert commands_count == EXPECTED_COMMANDS_COUNT
-        assert agents_count == EXPECTED_AGENTS_COUNT
+        assert commands_count == expected_commands_count(adapter)
+        assert agents_count == expected_agents_count(adapter)
         assert (tmp_path / '.codex' / 'skills' / 'respec-standards' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'SKILL.md').exists()
         assert (tmp_path / '.codex' / 'skills' / 'respec-plan' / 'agents' / 'openai.yaml').exists()

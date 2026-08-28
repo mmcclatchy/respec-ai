@@ -46,6 +46,7 @@ class ClaudeCodeAdapter(TuiAdapter):
             BuiltInToolCapability.EXIT_PLAN_MODE: 'ExitPlanMode',
             BuiltInToolCapability.SLASH_COMMAND: 'SlashCommand',
             BuiltInToolCapability.ASK_USER_QUESTION: 'AskUserQuestion',
+            BuiltInToolCapability.DESIGN_SYNC: 'DesignSync',
         }
 
     @property
