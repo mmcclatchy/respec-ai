@@ -83,8 +83,9 @@ Emitted only when the phase has a user-facing UI.
   components to match.
 
 **`##### Interaction Flows` is the single most important element in this refactor.** It is what phase 7
-turns into `browser_verify_*` calls, and it is what makes runtime review deterministic rather than
-aesthetic. Everything else in the contract supports it.
+turns into verified `browser_snapshot`/`browser_find` evidence per step (the real Playwright MCP server
+has no dedicated `browser_verify_*` tool family — see phase 7's Scope correction), and it is what makes
+runtime review deterministic rather than aesthetic. Everything else in the contract supports it.
 
 Note the contract is framework- and language-agnostic by construction: routes, states, flows,
 accessibility, and breakpoints describe observable behavior, not implementation. A React app, an HTMX

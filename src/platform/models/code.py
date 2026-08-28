@@ -274,10 +274,52 @@ class FrontendReviewerAgentTools(AgentToolsModel):
         RespecAITool.STORE_REVIEWER_RESULT,
     ]
 
+    # No WRITE (F19 -- the MCP server writes screenshots/traces, the agent never does) and no
+    # BASH_OUTPUT (F17 -- opencode.py maps it to None and TemplateToolBuilder.build() raises on
+    # that, which would break `respec-ai regenerate` for OpenCode outright). BASH is for
+    # `respec-ai frontend-preflight` only, never for starting servers or running builds directly.
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
         (BuiltInToolCapability.READ, ''),
         (BuiltInToolCapability.GLOB, ''),
         (BuiltInToolCapability.BASH, ''),
+    ]
+
+    # Playwright MCP tool grants, passed through TemplateToolBuilder.add_platform_tools as
+    # verbatim strings (F20) -- the same escape hatch already used for Linear/GitHub tools,
+    # bypassing the RespecAITool enum deliberately scoped to respec-ai's own server. Optional at
+    # runtime: when the server isn't registered the reviewer degrades to source-only evidence
+    # (F10) rather than failing on an unresolvable tool.
+    #
+    # Verified against the real, currently-published @playwright/mcp server (queried its live
+    # `tools/list` response directly -- see phase-7 doc's "Contract wording" note) rather than
+    # trusting the design-time tool names: there is no `browser_verify_*` tool family and no
+    # `browser_set_storage_state` tool in the published server. Storage state is a server
+    # *startup* flag (`--storage-state <path>`), applied at Playwright MCP registration time
+    # (docs/CLI_GUIDE.md), not a per-call tool grant -- so it is correctly absent here.
+    # `browser_run_code_unsafe` is excluded deliberately (decisions.md, phase-7 scope);
+    # `browser_network_request` (singular) is included alongside the plural list tool because
+    # seam review needs a single request's full body/headers, which the plural tool does not
+    # return.
+    browser_tools: ClassVar[list[str]] = [
+        f'mcp__playwright__{tool}'
+        for tool in (
+            'browser_navigate',
+            'browser_snapshot',
+            'browser_click',
+            'browser_hover',
+            'browser_type',
+            'browser_fill_form',
+            'browser_select_option',
+            'browser_press_key',
+            'browser_wait_for',
+            'browser_resize',
+            'browser_evaluate',
+            'browser_console_messages',
+            'browser_network_requests',
+            'browser_network_request',
+            'browser_take_screenshot',
+            'browser_close',
+        )
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')

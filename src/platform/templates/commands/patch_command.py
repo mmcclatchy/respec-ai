@@ -550,6 +550,12 @@ Loop:
   For each REVIEWER in PHASE1_REVIEWERS_TO_INVOKE where REVIEWER is not core:
     {tools.invoke_dynamic_reviewer_pattern}
 
+  IF "frontend-reviewer" in PHASE1_REVIEWERS_TO_INVOKE:
+    # Belt-and-braces (B9): the reviewer's own contract already tears down via
+    # `frontend-preflight --stop` before it stores its result, but a crashed or restarted
+    # reviewer must not leak a dev server. Safe to call even when nothing is running.
+    RUN (Bash): respec-ai frontend-preflight --stop
+
   REVIEW_FAILURE_REPORTS = collect invoked reviewers that report failure, return no run summary,
   report run_status=incomplete, fail to confirm stored_result=yes, or fail to confirm stored reviewer result.
 
@@ -626,6 +632,10 @@ Loop:
   - Add a reviewer when its latest result has full score, no blockers, and no P0/P1 findings.
   - Remove a reviewer when its latest result has any blocker, any P0/P1 finding, or less than full score.
   - Keep a reused reviewer signed off only when it was not invalidated this iteration.
+  - NEVER add "frontend-reviewer" to PHASE1_SIGNED_OFF_REVIEWERS regardless of score or blockers.
+    Its input is the rendered application: a transitive change elsewhere (a shared token, a
+    component, an API response shape) can break the UI without touching a frontend file, and a
+    stale sign-off would reuse a pass verdict that no longer holds. It re-runs every iteration.
 
   # C) MCP coding decision
   CODING_DECISION_RESPONSE = {tools.decide_coding_action}

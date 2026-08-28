@@ -126,6 +126,39 @@ Available MCP Servers:
 
 ---
 
+### Playwright MCP Server (Frontend Review)
+
+Frontend review evidence (accessibility snapshots, console messages, network requests) comes from the
+Playwright MCP server. It is optional — a project with no frontend gets full review without it — and is
+registered separately from the respec-ai MCP server above.
+
+**Claude Code:**
+```bash
+claude mcp add playwright npx '@playwright/mcp@latest'
+```
+
+**OpenCode / Codex:** consult each tool's own MCP server configuration for the equivalent one-line
+install; the server itself (`npx @playwright/mcp@latest`) is the same regardless of TUI.
+
+**Authenticated routes:** the reviewer has no tool to set browser storage state itself. If a
+project's `stack.toml` configures `storage_state_path` (see `respec-ai frontend-preflight` in
+Utility Commands below), point the server at it with `--storage-state` at registration time:
+```bash
+claude mcp add playwright npx '@playwright/mcp@latest' -- --storage-state /path/to/storage-state.json
+```
+Without it, the reviewer scores public routes and reports authenticated routes as skipped context.
+
+Check registration status at any time with:
+```bash
+respec-ai frontend-preflight --status
+```
+
+The `playwright_mcp_registered` field in its JSON output reflects whether the reviewer will have
+browser evidence available. An unregistered server is not an error — the reviewer falls back to
+source-only review and reports runtime evidence as skipped context.
+
+---
+
 ## Project Initialization
 
 Initialize respec-ai in any project directory.
@@ -721,6 +754,50 @@ Continue? [y/N]: y
 ---
 
 ### Utility Commands
+
+#### `respec-ai frontend-preflight`
+
+Bring the reviewed frontend application to a known, reproducible state: start its dev server, check
+whether it is running and reachable, stop it and its whole process group, or run an optional seed
+command. JSON on stdout, always exit 0 — "no dev server configured" is a normal outcome, not an error.
+
+**Usage:**
+```bash
+# Start the dev server configured for the project (from stack.toml) and wait until it is reachable
+respec-ai frontend-preflight --start [--timeout SECONDS] [--coding-loop-id ID] [--review-iteration N]
+
+# Check whether it is running and reachable (safe to call repeatedly; never starts a second server)
+respec-ai frontend-preflight --status
+
+# Stop it and every process in its process group (safe to call when nothing is running)
+respec-ai frontend-preflight --stop
+
+# Run the optional seed_command configured for the project
+respec-ai frontend-preflight --seed
+```
+
+**Example output (`--start`):**
+```json
+{"ready": true, "base_url": "http://localhost:5173/", "pid": 12345, "log_path": ".respec-ai/run/dev-server.log", "scratch_dir": ".respec-ai/run/review/<loop-id>/<iteration>", "playwright_mcp_registered": true}
+```
+
+**When `dev_command` / `base_url` are not configured for any language**, or the server never becomes
+reachable, `--start` returns `{"ready": false, "reason": "..."}` (plus `log_tail` when a process ran)
+and exits 0 rather than failing — configure `dev_command` and `base_url` under the appropriate
+`[language.<lang>]` table in `.respec-ai/config/stack.toml` to enable it.
+
+**`base_url` must match the address the dev server actually binds to, not just the port.** Several
+frameworks (Vite among them) bind their default `localhost` alias to the IPv6 loopback (`::1`) only,
+not `127.0.0.1` — so a `base_url` of `http://127.0.0.1:PORT/` never becomes reachable even though the
+server is running and `http://localhost:PORT/` works fine. Prefer `localhost` in `base_url` unless the
+`dev_command` passes an explicit `--host 127.0.0.1` (or equivalent) that binds IPv4 directly.
+
+**When to use:**
+- Before frontend review, to give the reviewer a deterministic application state
+- By hand, to verify a project's dev server configuration before phase 7-style review exists
+- To check whether the Playwright MCP server is registered (`playwright_mcp_registered`)
+
+---
 
 #### `respec-ai mcp-server`
 

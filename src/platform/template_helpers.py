@@ -1124,6 +1124,8 @@ def create_frontend_reviewer_agent_tools(tui_adapter: TuiAdapter) -> FrontendRev
     for builtin_tool, params in FrontendReviewerAgentTools.builtin_tools:
         builder.add_builtin_tool(builtin_tool, params)
 
+    builder.add_platform_tools(FrontendReviewerAgentTools.browser_tools)
+
     return FrontendReviewerAgentTools(
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),

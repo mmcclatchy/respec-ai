@@ -201,4 +201,5 @@ class TestEveryRosterableReviewerIsRegistered:
                 )
                 for name in phase1_roster
             ]
-            tools._phase1_weights_for_results(active_results)
+            for frontend_ratio in (0.0, 0.5, 1.0):
+                tools._phase1_weights_for_results(active_results, frontend_ratio=frontend_ratio)

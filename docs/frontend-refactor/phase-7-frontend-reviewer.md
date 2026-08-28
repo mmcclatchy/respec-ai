@@ -10,7 +10,7 @@ success depends on the quality of an artifact produced elsewhere.
 **Prerequisites:** Phase 4 complete (`grep -n "UX Contract" src/platform/templates/agents/phase_architect.py`)
 and Phase 5 complete (`ls src/cli/commands/frontend_preflight.py`). Phase 6 strongly recommended first.
 
-**Already done?** `grep -n "browser_snapshot" src/platform/template_helpers.py` — output means complete.
+**Already done?** `grep -n "browser_tools" src/platform/models/code.py` — output means complete.
 
 **Read first:** [README.md](README.md), `docs/phase-refactor/testing.md`, `CLAUDE.md`,
 `docs/AGENT_DEVELOPMENT_GUIDELINES.md` (the whole thing — this phase adds an agent), and
@@ -105,7 +105,7 @@ phase; blockers remain the hard gate either way (**F12**).
 
 | Signal | Pts | How it is checked | Blocker condition |
 |---|---|---|---|
-| Interaction flows | 7 | `browser_verify_*` against each step's stated pass condition | any flow fails → **blocker** |
+| Interaction flows | 7 | read `browser_snapshot`/`browser_find` for each step's stated pass condition (no dedicated verify tool exists — see Scope's correction note) | any flow fails → **blocker** |
 | **Seam integration** | **5** | declared contract vs `browser_network_requests` evidence | shape/status mismatch, or an undeclared seam → **blocker** |
 | Required states | 4 | snapshot per state, compared to the contract | missing error or loading state on a contract route → **blocker** |
 | Accessibility | 5 | axe-core via `browser_evaluate`, counted by impact | any `critical` / `serious` → **blocker** |
@@ -222,6 +222,18 @@ Reject only unambiguous structural errors:
 | Marker string appears only as its own H4 heading | The substring footgun |
 | Required H4s present: execution report, `Key Issues`, `Recommendations` | Already mandated by the shared contract |
 
+**Correction: implemented as four checks at the Pydantic level, not five.** B17 (the pinned
+behavior) only names three of the five checks above — the H1/H2, second-`###`, and
+`#####`-after-report rules — and is the narrower, authoritative statement of what the model layer
+must enforce. Required-H4 presence is enforced instead at the template layer (B18: every real
+reviewer template's example markdown is asserted to contain the boilerplate), because dozens of
+pre-existing `ReviewerResult` test fixtures across the suite construct minimal markdown like
+`'### X (Score: 50/50)'` for unrelated purposes (scoring math, blocker validation) and are not
+reviewers — coupling presence-of-boilerplate to every `ReviewerResult` in existence would force
+rewriting all of them for no correctness gain outside phase 7's actual scope. The marker-placement
+check is written as "wherever the marker appears, it must be a proper heading," which is vacuously
+true when the marker is absent — so it does not smuggle a presence requirement back in.
+
 **Do not validate H4 names against the allowlist.** Rubric-category H4s legitimately are not in it —
 they are scoring detail and correctly audit-only. A validator cannot infer intent, and rejecting them
 would break all nine reviewers.
@@ -301,13 +313,25 @@ Following `docs/AGENT_DEVELOPMENT_GUIDELINES.md:1767-1778`:
    (**F17**).
 3. **`src/platform/template_helpers.py`** — factory, modeled on `:1112-1140`. Browser tools go through
    `add_platform_tools` (`:65-72`) as verbatim strings, the same mechanism already used for Linear and
-   GitHub (**F20**). Grant only what is needed and **exclude `browser_run_code_unsafe`**:
+   GitHub (**F20**). Grant only what is needed and **exclude `browser_run_code_unsafe`**.
+
+   **Correction, verified at implementation time against the real, currently-published
+   `@playwright/mcp` server (queried its live `tools/list` response over stdio, not just its
+   `--help` text):** the tool list and the `testing`/`storage` caps claim above do not match
+   reality. There is no `browser_verify_*` tool family and no `browser_set_storage_state` tool at
+   all — `--caps` only ever adds `vision`, `pdf`, `devtools`, and neither `testing` nor `storage`
+   exists as a capability. Storage state is a server **startup** flag (`--storage-state <path>`),
+   set once at Playwright MCP registration, not a per-call tool the reviewer can invoke — see the
+   corrected install line in `docs/CLI_GUIDE.md`. The actual grant is:
    `browser_navigate`, `_snapshot`, `_click`, `_hover`, `_type`, `_fill_form`, `_select_option`,
    `_press_key`, `_wait_for`, `_resize`, `_evaluate`, `_console_messages`, `_network_requests`,
-   `_take_screenshot`, `_verify_element_visible`, `_verify_text_visible`, `_verify_value`,
-   `_set_storage_state`, `_close`.
-   (`browser_verify_*` and `_set_storage_state` require Playwright MCP's `testing` and `storage` caps —
-   note this in the install line phase 5 documents.)
+   `_network_request` (singular — added; not in the original list above, needed for seam review's
+   full request/response body since `_network_requests` only returns a numbered summary),
+   `_take_screenshot`, `_close`. Interaction Flow and Required States pass conditions are verified
+   by reading `browser_snapshot`/`browser_find` output for the expected element/text/value, not by
+   a dedicated verify call. Re-verify this list before relying on it again — Playwright MCP is
+   evolving quickly (the server queried here reported version `1.63.0-alpha-2026-08-05`) and a
+   `browser_verify_*` family has been discussed for it, so it may exist by the time this is read.
 4. **`src/platform/templates/agents/__init__.py`** and **`src/platform/template_generator.py`**.
 5. **`src/models/enums.py`** — reuse `FRONTEND_REVIEWER`; the agent is replaced, not renamed.
 6. **`src/mcp/tools/feedback_tools_unified.py`** — confirm `max_score` stays 25 and the frontend domain
@@ -335,7 +359,7 @@ Clauses this reviewer needs:
 - All findings go exclusively through `store_reviewer_result`.
 - **Evidence citation**, matching the existing GROUNDED REVIEW EVIDENCE CONTRACT style: every negative
   finding cites either `relative/path.ext:123` in project source, **or** a UX Contract flow ID
-  (`FLOW-3 step 2`) plus the exact `browser_verify_*` or axe rule that failed. Never "the button looks
+  (`FLOW-3 step 2`) plus the exact `browser_snapshot`/`browser_find` evidence or axe rule that failed. Never "the button looks
   wrong." **Seam findings cite both sides** — the frontend and backend `file:line` — plus the observed
   request/response.
 - **Routing target on every seam finding**: exactly one of `[Target:frontend]`, `[Target:backend]`,

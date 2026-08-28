@@ -56,6 +56,17 @@ VIOLATION: Reporting "Reviewer result stored" with `stored_result=no`.
 ═══════════════════════════════════════════════"""
 
 
+def render_reviewer_scratch_evidence_contract() -> str:
+    # Sibling to render_reviewer_output_contract rather than a parameter on it (decisions.md,
+    # "The reviewer gets no write grant") -- that renderer is shared by every reviewer, and
+    # parameterizing it would change the generated text of all nine and break their tests for
+    # one reviewer's need. Screenshots and traces are written by the MCP server into its own
+    # `--output-dir`, not by the agent (F19), so this is a narrow read-only carve-out, not a
+    # general write grant.
+    return """Artifacts the MCP server wrote into the run scratch directory (screenshots, traces) are
+citable evidence. You did not author them and must not write into that directory yourself."""
+
+
 def render_reviewer_execution_report_contract() -> str:
     return """## REVIEWER EXECUTION REPORT CONTRACT (NON-ACTIONABLE)
 

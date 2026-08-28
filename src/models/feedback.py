@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from typing import ClassVar, Self
 
@@ -7,6 +8,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .base import MCPModel
 from .enums import CriticAgent, Priority
+
+REVIEWER_EXECUTION_REPORT_MARKER = 'Reviewer Execution Report (Non-Actionable)'
+_REVIEWER_EXECUTION_REPORT_HEADING = f'#### {REVIEWER_EXECUTION_REPORT_MARKER}'
+_HEADING_PATTERN = re.compile(r'^(#{1,6})\s+(.+?)\s*$')
 
 
 class CriticFeedback(MCPModel):
@@ -231,6 +236,64 @@ class ReviewerResult(BaseModel):
                 f'Remove invalid blocker entries: {invalid_values}'
             )
         return blockers
+
+    @field_validator('feedback_markdown')
+    @classmethod
+    def validate_feedback_markdown_structure(cls, markdown: str) -> str:
+        """Reject only the structural mistakes that make a section silently invisible
+        downstream (F37/F38): an H1/H2 (breaks nesting under the container this markdown is
+        embedded in), a second H3 (the scored title must be unambiguous), the execution-report
+        marker text appearing anywhere but its own H4 heading (it is matched as a substring on
+        every line elsewhere and a stray match silently deletes content), and a heading of
+        level 5+ placed after that H4 (silently dropped by the same extractor). Deliberately
+        does not require the execution report, Key Issues, or Recommendations headings to be
+        present -- that is a real reviewer's obligation (see reviewer_contracts.py and B18's
+        template-level check), not something every ReviewerResult in existence must satisfy.
+        """
+        lines = markdown.splitlines()
+        headings = [
+            (index, len(match.group(1)), match.group(2).strip())
+            for index, line in enumerate(lines)
+            if (match := _HEADING_PATTERN.match(line))
+        ]
+
+        for _, level, text in headings:
+            if level in (1, 2):
+                raise ValueError(
+                    f'feedback_markdown must not contain an H{level} heading ("{text}") -- it is '
+                    'embedded under a container H1/H2 and an H1/H2 inside would break nesting'
+                )
+
+        h3_count = sum(1 for _, level, _ in headings if level == 3)
+        if h3_count > 1:
+            raise ValueError(f'feedback_markdown must contain at most one H3 heading; found {h3_count}')
+
+        misplaced_marker_lines = [
+            line
+            for line in lines
+            if REVIEWER_EXECUTION_REPORT_MARKER in line and line.strip() != _REVIEWER_EXECUTION_REPORT_HEADING
+        ]
+        if misplaced_marker_lines:
+            raise ValueError(
+                f'"{REVIEWER_EXECUTION_REPORT_MARKER}" must appear only as its own H4 heading '
+                f'("{_REVIEWER_EXECUTION_REPORT_HEADING}"), never in prose or at another heading '
+                'level -- it is matched as a substring on every line downstream and a stray match '
+                'silently deletes everything up to the next heading'
+            )
+
+        report_indices = [
+            index for index, level, text in headings if level == 4 and text == REVIEWER_EXECUTION_REPORT_MARKER
+        ]
+        if report_indices:
+            report_index = report_indices[0]
+            if any(index > report_index and level >= 5 for index, level, _ in headings):
+                raise ValueError(
+                    f'feedback_markdown must not contain a heading of level 5 or deeper after '
+                    f'"{_REVIEWER_EXECUTION_REPORT_HEADING}" -- it is silently deleted by the '
+                    'coder-context extractor'
+                )
+
+        return markdown
 
     @model_validator(mode='after')
     def validate_score_within_max(self) -> Self:

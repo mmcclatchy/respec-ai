@@ -5,15 +5,15 @@ from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
 from src.models.enums import CriticAgent, Priority
-from src.models.feedback import CriticFeedback, ReviewFinding, ReviewerResult
-from src.utils.errors import LoopNotFoundError
+from src.models.feedback import REVIEWER_EXECUTION_REPORT_MARKER, CriticFeedback, ReviewFinding, ReviewerResult
+from src.models.phase import Phase
+from src.utils.errors import LoopNotFoundError, PhaseNotFoundError
 from src.utils.loop_state import MCPResponse
+from src.utils.review_weighting import compute_frontend_ratio, compute_phase1_weights
 from src.utils.state_manager import StateManager
 
 
 logger = logging.getLogger(__name__)
-
-_REVIEWER_EXECUTION_REPORT_MARKER = 'Reviewer Execution Report (Non-Actionable)'
 
 
 class UnifiedFeedbackTools:
@@ -42,13 +42,6 @@ class UnifiedFeedbackTools:
             CriticAgent.SPEC_ALIGNMENT_REVIEWER: 30.0,
             CriticAgent.CODE_QUALITY_REVIEWER: 20.0,
             CriticAgent.DESIGN_CONFORMANCE_REVIEWER: 20.0,
-        }
-        self._phase1_domain_weight_pool = 15.0
-        self._phase1_specialists: set[CriticAgent] = {
-            CriticAgent.FRONTEND_REVIEWER,
-            CriticAgent.BACKEND_API_REVIEWER,
-            CriticAgent.DATABASE_REVIEWER,
-            CriticAgent.INFRASTRUCTURE_REVIEWER,
         }
         self._phase1_review_universe: list[CriticAgent] = [
             CriticAgent.AUTOMATED_QUALITY_CHECKER,
@@ -348,7 +341,8 @@ class UnifiedFeedbackTools:
         if is_phase2:
             weights_by_reviewer = self._phase2_weights_for_results(active_results)
         else:
-            weights_by_reviewer = self._phase1_weights_for_results(active_results)
+            frontend_ratio = compute_frontend_ratio(await self._get_phase_for_loop(loop_id))
+            weights_by_reviewer = self._phase1_weights_for_results(active_results, frontend_ratio)
         overall_score, weighted_contributions = self._compute_weighted_score(active_results, weights_by_reviewer)
 
         all_blockers = [
@@ -585,6 +579,7 @@ class UnifiedFeedbackTools:
             'recommendations',
             'findings',
             'required corrections',
+            'seam review',
         }
         sections: list[str] = []
         lines = sanitized.splitlines()
@@ -619,7 +614,7 @@ class UnifiedFeedbackTools:
         index = 0
         while index < len(lines):
             line = lines[index]
-            if _REVIEWER_EXECUTION_REPORT_MARKER not in line:
+            if REVIEWER_EXECUTION_REPORT_MARKER not in line:
                 kept_lines.append(line)
                 index += 1
                 continue
@@ -649,18 +644,22 @@ class UnifiedFeedbackTools:
 
         return feedback
 
-    def _phase1_weights_for_results(self, active_results: list[ReviewerResult]) -> dict[CriticAgent, float]:
+    async def _get_phase_for_loop(self, loop_id: str) -> Phase | None:
+        # Design-derived, not iteration-derived (README cross-cutting risk #2, B4): the Phase
+        # document only changes via an explicit amendment, never via which files a given
+        # iteration happened to touch, so weights computed from it stay stable for the whole
+        # loop. A loop with no linked Phase (e.g. a phase-2/patch loop, or a test that never
+        # links one) degrades to frontend_ratio=0.0 -- the pre-phase-6 fixed weights.
+        try:
+            return await self.state.get_phase_by_loop(loop_id)
+        except (LoopNotFoundError, PhaseNotFoundError):
+            return None
+
+    def _phase1_weights_for_results(
+        self, active_results: list[ReviewerResult], frontend_ratio: float
+    ) -> dict[CriticAgent, float]:
         active_reviewers = {result.reviewer_name for result in active_results}
-        weights = {
-            reviewer: weight for reviewer, weight in self._phase1_core_weights.items() if reviewer in active_reviewers
-        }
-        active_specialists = sorted(
-            [reviewer for reviewer in self._phase1_specialists if reviewer in active_reviewers],
-            key=lambda reviewer: reviewer.value,
-        )
-        if active_specialists:
-            per_specialist_weight = self._phase1_domain_weight_pool / len(active_specialists)
-            weights.update({reviewer: per_specialist_weight for reviewer in active_specialists})
+        weights = compute_phase1_weights(self._phase1_core_weights, active_reviewers, frontend_ratio)
 
         unweighted_reviewers = active_reviewers - set(weights)
         if unweighted_reviewers:
@@ -713,7 +712,7 @@ class UnifiedFeedbackTools:
                 'Reviewer blockers must be actionable non-empty strings; use [] when no blockers exist. '
                 f'Remove invalid blocker entries: {invalid_values}'
             )
-        contaminated_blockers = [blocker for blocker in blockers if _REVIEWER_EXECUTION_REPORT_MARKER in blocker]
+        contaminated_blockers = [blocker for blocker in blockers if REVIEWER_EXECUTION_REPORT_MARKER in blocker]
         if contaminated_blockers:
             invalid_values = ', '.join(repr(blocker) for blocker in contaminated_blockers)
             raise ToolError(
@@ -723,7 +722,7 @@ class UnifiedFeedbackTools:
         return blockers
 
     def _validate_reviewer_finding_feedback(self, feedback: str) -> str:
-        if _REVIEWER_EXECUTION_REPORT_MARKER in feedback:
+        if REVIEWER_EXECUTION_REPORT_MARKER in feedback:
             raise ToolError(
                 'Reviewer findings must contain actionable implementation issues only. '
                 'Remove non-actionable execution-report content from findings.'

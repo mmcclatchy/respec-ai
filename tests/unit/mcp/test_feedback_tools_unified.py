@@ -4,6 +4,7 @@ from fastmcp.exceptions import ResourceError, ToolError
 from src.mcp.tools.feedback_tools_unified import UnifiedFeedbackTools
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
+from src.models.phase import Phase
 from src.utils.enums import LoopType
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager
@@ -1052,3 +1053,241 @@ class TestDesignConformanceReviewerRegistration:
         )
 
         assert 0 <= consolidate_response.current_score <= 100
+
+
+class TestShapeAwareReviewWeighting:
+    @staticmethod
+    async def _link_phase(
+        state: InMemoryStateManager,
+        plan_name: str,
+        loop: LoopState,
+        *,
+        skeleton_index: str | None = None,
+        design_shape_additional: str | None = None,
+    ) -> None:
+        phase = Phase(
+            phase_name='phase-1',
+            skeleton_index=skeleton_index,
+            design_shape_additional=design_shape_additional,
+        )
+        await state.store_phase(plan_name, phase)
+        await state.link_loop_to_phase(loop.id, plan_name, 'phase-1')
+
+    @pytest.mark.asyncio
+    async def test_weights_stay_identical_across_iterations_of_the_same_loop(self, plan_name: str) -> None:
+        # B4: the load-bearing property for stagnation detection. Same Phase design, two
+        # iterations with entirely different scores -- the *configured weight* for a given
+        # reviewer must be byte-identical both times, since it is derived from the Phase, not
+        # from anything about the iteration itself.
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        await self._link_phase(
+            state,
+            plan_name,
+            loop,
+            skeleton_index='- `src/components/Form.tsx` :: Form() -> JSX.Element\n',
+        )
+        tools = UnifiedFeedbackTools(state)
+
+        async def _consolidate(iteration: int, frontend_score: int) -> str:
+            for reviewer_name, score, max_score in (
+                ('automated-quality-checker', 45, 50),
+                ('spec-alignment-reviewer', 47, 50),
+                ('code-quality-reviewer', 22, 25),
+                ('frontend-reviewer', frontend_score, 25),
+            ):
+                await tools.store_reviewer_result(
+                    loop_id=loop.id,
+                    review_iteration=iteration,
+                    reviewer_name=reviewer_name,
+                    feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                    score=score,
+                    max_score=max_score,
+                    blockers=[],
+                    findings=[],
+                )
+            await tools.consolidate_review_cycle(
+                loop_id=loop.id,
+                review_iteration=iteration,
+                active_reviewers=[
+                    'automated-quality-checker',
+                    'spec-alignment-reviewer',
+                    'code-quality-reviewer',
+                    'frontend-reviewer',
+                ],
+            )
+            stored_loop = await state.get_loop(loop.id)
+            detailed = stored_loop.feedback_history[-1].detailed_feedback
+            start = detailed.index('#### frontend-reviewer')
+            end = detailed.index('- Weighted Contribution', start)
+            return detailed[start:end]
+
+        iteration_one = await _consolidate(1, frontend_score=10)
+        iteration_two = await _consolidate(2, frontend_score=24)
+
+        def _configured_weight(excerpt: str) -> str:
+            line = next(line for line in excerpt.splitlines() if line.startswith('- Configured Weight:'))
+            return line
+
+        assert _configured_weight(iteration_one) == _configured_weight(iteration_two)
+
+    @pytest.mark.asyncio
+    async def test_frontend_dominant_phase_weights_frontend_reviewer_well_above_the_old_fixed_share(
+        self, plan_name: str
+    ) -> None:
+        # F11's regression guard: a phase whose entire Skeleton Index is frontend must not
+        # leave the frontend reviewer at the old fixed ~7.5/100 relative weight.
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        await self._link_phase(
+            state,
+            plan_name,
+            loop,
+            skeleton_index=(
+                '- `src/components/Form.tsx` :: Form() -> JSX.Element\n'
+                '- `src/components/Nav.tsx` :: Nav() -> JSX.Element\n'
+            ),
+            design_shape_additional='#### UX Contract\n##### Route Index\n- `/` — public\n',
+        )
+        tools = UnifiedFeedbackTools(state)
+
+        for reviewer_name, score, max_score in (
+            ('automated-quality-checker', 50, 50),
+            ('spec-alignment-reviewer', 50, 50),
+            ('code-quality-reviewer', 25, 25),
+            ('design-conformance-reviewer', 50, 50),
+            ('frontend-reviewer', 25, 25),
+        ):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                score=score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=[
+                'automated-quality-checker',
+                'spec-alignment-reviewer',
+                'code-quality-reviewer',
+                'design-conformance-reviewer',
+                'frontend-reviewer',
+            ],
+        )
+
+        stored_loop = await state.get_loop(loop.id)
+        detailed = stored_loop.feedback_history[-1].detailed_feedback
+        start = detailed.index('#### frontend-reviewer')
+        weight_line = next(
+            line for line in detailed[start:].splitlines() if line.startswith('- Configured Weight:')
+        )
+        configured_weight = float(weight_line.split(':')[1].strip())
+        assert configured_weight > 25.0  # well above today's fixed 15.0 (let alone a 4-way-split 3.75)
+
+    @pytest.mark.asyncio
+    async def test_empty_skeleton_index_phase_still_renormalizes_without_design_conformance(
+        self, plan_name: str
+    ) -> None:
+        # B5, with a real linked Phase this time (rather than no phase at all): an
+        # empty-design phase behaves identically to no phase.
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        await self._link_phase(state, plan_name, loop, skeleton_index=None)
+        tools = UnifiedFeedbackTools(state)
+
+        for reviewer_name, score, max_score in (
+            ('automated-quality-checker', 45, 50),
+            ('spec-alignment-reviewer', 40, 50),
+            ('code-quality-reviewer', 20, 25),
+        ):
+            await tools.store_reviewer_result(
+                loop_id=loop.id,
+                review_iteration=1,
+                reviewer_name=reviewer_name,
+                feedback_markdown=f'### {reviewer_name} (Score: {score}/{max_score})',
+                score=score,
+                max_score=max_score,
+                blockers=[],
+                findings=[],
+            )
+
+        consolidate_response = await tools.consolidate_review_cycle(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=['automated-quality-checker', 'spec-alignment-reviewer', 'code-quality-reviewer'],
+        )
+
+        assert consolidate_response.current_score == 83
+        stored_loop = await state.get_loop(loop.id)
+        detailed_feedback = stored_loop.feedback_history[-1].detailed_feedback
+        assert '#### design-conformance-reviewer' in detailed_feedback
+        assert '- Not invoked for this work.' in detailed_feedback
+
+
+class TestFrontendReviewerSeamReviewSurfacesToTheCoder:
+    @pytest.mark.asyncio
+    async def test_seam_review_section_appears_in_actionable_review_excerpts(self, plan_name: str) -> None:
+        # B16: proves the 'seam review' allowlist entry actually works end to end through
+        # get_reviewer_feedback_context, not just that the string was added to a set.
+        state = InMemoryStateManager(max_history_size=10)
+        loop = LoopState(loop_type=LoopType.PHASE)
+        await state.add_loop(loop, plan_name)
+        tools = UnifiedFeedbackTools(state)
+
+        await tools.store_reviewer_result(
+            loop_id=loop.id,
+            review_iteration=1,
+            reviewer_name='frontend-reviewer',
+            feedback_markdown="""### Frontend Review (Score: 18/25)
+
+#### Seam Review
+
+##### SEAM-1: LoginForm -> POST /api/session
+- Declared: `create_session(email: str, password: str) -> api.models.Session`
+- Frontend side: src/components/LoginForm.tsx:34
+- Backend side: src/api/session.py:71
+- Observed: POST /api/session -> 200, body `{user: {display_name, id}, token}`
+- Verdict: mismatch -- response field `display_name` vs destructured `displayName`
+- Finding: [Severity:P0] [Scope:acceptance-gap] [Target:backend] SEAM-1 mismatch (also stored in findings)
+
+#### Reviewer Execution Report (Non-Actionable)
+- Run Status: clean
+- Stored Result: yes
+
+#### Key Issues
+- [Severity:P0] [Scope:acceptance-gap] [Target:backend] SEAM-1 -- response field mismatch
+
+#### Recommendations
+- [Severity:P0] [Scope:acceptance-gap] [Target:backend] Rename the response field to displayName.
+""",
+            score=18,
+            max_score=25,
+            blockers=['[Severity:P0] [Target:backend] SEAM-1 -- response field mismatch'],
+            findings=[
+                {
+                    'priority': 'P0',
+                    'feedback': '[Target:backend] SEAM-1 -- LoginForm destructures displayName but the API returns display_name',
+                }
+            ],
+        )
+
+        response = await tools.get_reviewer_feedback_context(
+            loop_id=loop.id,
+            review_iteration=1,
+            active_reviewers=['frontend-reviewer'],
+        )
+
+        assert '### Actionable Review Excerpts' in response.message
+        assert '#### Seam Review' in response.message
+        assert 'SEAM-1' in response.message
+        assert '[Target:backend]' in response.message
+        assert 'Reviewer Execution Report (Non-Actionable)' not in response.message

@@ -48,9 +48,9 @@ grep -n "UX Contract" src/platform/templates/agents/phase_architect.py
 # Phase 5 done?  → file exists means done
 ls src/cli/commands/frontend_preflight.py
 # Phase 6 done?  → output means done
-grep -n "specialist_groups\|domain_share" src/mcp/tools/feedback_tools_unified.py
+grep -n "SPECIALIST_DOMAIN_GROUPS" src/utils/review_weighting.py
 # Phase 7 done?  → output means done
-grep -n "browser_snapshot" src/platform/template_helpers.py
+grep -n "browser_tools" src/platform/models/code.py
 # Phase 8 done?  → output means done
 grep -rn "DesignSync" src/platform/
 # Phase 9 done?  → file exists means done
