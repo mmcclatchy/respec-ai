@@ -7,7 +7,7 @@ from src.utils.design_conformance import (
     _is_test_file,
     classify_conformance,
 )
-from src.utils.skeleton_generator import SkeletonMember
+from src.utils.skeleton_generator import SkeletonMember, parse_skeleton_index
 
 
 def _write(path: Path, content: str) -> None:
@@ -196,6 +196,23 @@ class TestNonPythonEntriesArePassedThroughUnclassified:
         assert report.blockers == ()
         assert report.findings == ()
         assert 'src/kb/client.ts' in report.updated_skeleton_index
+
+
+class TestTypeScriptEntryRoundTripsThroughWriteBack:
+    """B1: parse_signature -> render -> re-parse yields the same structure. A
+    TypeScript entry's dotted-looking type must survive the write-back path
+    unchanged -- if the first parse were to run it through Python's dotted-import
+    extraction, the re-rendered index would silently lose the qualifier."""
+
+    def test_a_dotted_looking_typescript_return_type_survives_write_back_unchanged(self, tmp_path: Path) -> None:
+        _write(tmp_path / 'src/kb/client.ts', "export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n")
+        index_text = '- `src/kb/client.ts` :: Client.query(cypher: string) -> kb.Result'
+
+        report = classify_conformance(tmp_path, index_text)
+        reparsed = parse_skeleton_index(report.updated_skeleton_index)
+
+        assert reparsed[0].members[0].return_type == 'kb.Result'
+        assert reparsed[0].members[0].required_imports == frozenset()
 
 
 class TestMalformedPythonFileFailsCleanlyNotWithATraceback:

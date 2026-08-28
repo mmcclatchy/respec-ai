@@ -63,7 +63,7 @@ def test_generated_plan_steps_are_readable_by_the_coding_workflow_scanner() -> N
     # against phase_architect.py's own `implementation_plan_example` constant -- the
     # actual text the agent is shown -- not a copy hand-maintained in this test, so a
     # rewording of the real example that broke the format would fail here.
-    assert extract_steps(implementation_plan_example) == ['1', '2']
+    assert extract_steps(implementation_plan_example) == ['1', '2', '3']
 
 
 def test_deferred_risks_are_recorded_in_the_stable_dr_id_format() -> None:

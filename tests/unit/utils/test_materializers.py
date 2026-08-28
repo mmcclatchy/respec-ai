@@ -205,3 +205,124 @@ class TestPreExistingPythonFileStillReconciles:
         assert result.unintrospectable_paths == ()
         assert len(result.reconciliation_needed) == 1
         assert result.reconciliation_needed[0].existing_signatures == ('Client.query() -> list[str]',)
+
+
+class TestPythonOnlyPhaseIsUnaffectedByLanguageDispatch:
+    """B6, the regression guard, pinned by name: a phase with no TypeScript files must
+    materialize identically before and after wiring signature-parse dispatch through
+    the language seam -- the dispatch change must be invisible to an all-Python phase."""
+
+    def test_a_python_only_index_with_a_dotted_import_materializes_exactly_as_before(
+        self, tmp_path: Path
+    ) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/neo4j_client.py` :: Neo4jClient.__init__(uri: str, auth: tuple[str, str]) -> None\n'
+            '- `src/kb/neo4j_client.py` :: Neo4jClient.query(cypher: str) -> list[kb.models.BestPractice]\n'
+        )
+
+        result = generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'kb' / 'neo4j_client.py').read_text()
+        assert content == (
+            'from kb.models import BestPractice\n\n\n'
+            'class Neo4jClient:\n'
+            '    def __init__(self, uri: str, auth: tuple[str, str]) -> None:\n'
+            '        raise NotImplementedError\n\n'
+            '    def query(self, cypher: str) -> list[BestPractice]:\n'
+            '        raise NotImplementedError\n'
+        )
+        assert result.written_paths
+
+
+class TestSignatureParsingDispatchesByLanguage:
+    """B2: parse_skeleton_index must route each entry through its own language's
+    parse_signature, not always through Python's -- a polyglot phase is the real case
+    the seam exists for."""
+
+    def test_a_typescript_entrys_dotted_looking_type_is_not_treated_as_a_python_import(self) -> None:
+        entries = parse_skeleton_index('- `src/kb/Client.ts` :: Client.query(cypher: string) -> kb.Result\n')
+
+        member = entries[0].members[0]
+
+        assert member.return_type == 'kb.Result'
+        assert member.required_imports == frozenset()
+
+    def test_a_python_entrys_dotted_type_still_extracts_a_real_import(self) -> None:
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> kb.models.Result\n')
+
+        member = entries[0].members[0]
+
+        assert member.return_type == 'Result'
+        assert member.required_imports == frozenset({('kb.models', 'Result')})
+
+    def test_a_python_and_a_typescript_entry_parse_correctly_in_the_same_call(self) -> None:
+        entries = parse_skeleton_index(
+            '- `src/kb/client.py` :: Client.query(cypher: str) -> kb.models.Result\n'
+            '- `src/kb/Client.ts` :: Client.query(cypher: string) -> kb.Result\n'
+        )
+        by_path = {e.path: e.members[0] for e in entries}
+
+        assert by_path['src/kb/client.py'].return_type == 'Result'
+        assert by_path['src/kb/client.py'].required_imports == frozenset({('kb.models', 'Result')})
+        assert by_path['src/kb/Client.ts'].return_type == 'kb.Result'
+        assert by_path['src/kb/Client.ts'].required_imports == frozenset()
+
+    def test_an_unsupported_language_path_still_parses_structurally_without_raising(self) -> None:
+        entries = parse_skeleton_index('- `src/main.go` :: Repo.Get(id: string) -> User\n')
+
+        member = entries[0].members[0]
+
+        assert member.member_name == 'Get'
+        assert member.class_name == 'Repo'
+        assert member.return_type == 'User'
+
+
+class TestComponentContractCarriesTypedProps:
+    """B4: a component entry carries prop names and types, not just a component name --
+    expressed inside the existing name(params) -> Return grammar (decisions.md: no new
+    syntax for Vue/Svelte-incompatible component forms)."""
+
+    def test_a_react_component_entry_preserves_its_inline_props_type_verbatim(self) -> None:
+        entries = parse_skeleton_index(
+            '- `src/components/LoginForm.tsx` :: LoginForm(props: '
+            '{ email: string; password: string; onSubmit: (data: LoginData) => void }) '
+            '-> JSX.Element\n'
+        )
+
+        member = entries[0].members[0]
+
+        assert member.member_name == 'LoginForm'
+        assert member.class_name is None
+        assert member.params == (
+            'props: { email: string; password: string; onSubmit: (data: LoginData) => void }'
+        )
+        assert member.return_type == 'JSX.Element'
+
+    def test_a_rendered_component_skeleton_is_a_real_exported_function(self, tmp_path: Path) -> None:
+        entries = parse_skeleton_index(
+            '- `src/components/LoginForm.tsx` :: LoginForm(props: LoginFormProps) -> JSX.Element\n'
+        )
+
+        generate_skeletons(tmp_path, entries)
+
+        content = (tmp_path / 'src' / 'components' / 'LoginForm.tsx').read_text()
+        assert 'export function LoginForm(props: LoginFormProps): JSX.Element' in content
+        materializer = get_materializer('typescript', 'src/components/LoginForm.tsx')
+        assert materializer.find_exported_names(content) == frozenset({'LoginForm'})
+
+
+class TestTestListNamingFollowsTheLanguagesOwnConvention:
+    """B3: TypeScript test entries are not pytest node IDs wearing a .spec.ts
+    extension -- the free-text description form language_standards.json describes
+    for TypeScript ("describe/it blocks with clear descriptions") must survive
+    parse -> render unmangled."""
+
+    def test_a_typescript_test_entry_with_a_prose_description_renders_idiomatically(self, tmp_path: Path) -> None:
+        entries = parse_test_list('- `tests/Client.spec.ts::renders the error state when submit fails`\n')
+
+        result = generate_tests(tmp_path, entries)
+
+        content = (tmp_path / 'tests' / 'Client.spec.ts').read_text()
+        assert "test('renders the error state when submit fails'" in content
+        assert 'test_' not in content
+        assert result.written_paths

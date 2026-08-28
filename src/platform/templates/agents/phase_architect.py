@@ -3,6 +3,12 @@ from textwrap import indent
 from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import PhaseArchitectAgentTools
+from src.platform.standards_config import language_testing_convention
+from src.platform.templates.phase_contract_grammar import (
+    MODULE_LAYOUT_PLACEHOLDER,
+    SKELETON_INDEX_PLACEHOLDER,
+    TEST_LIST_PLACEHOLDER,
+)
 
 
 # Generate template instance from model
@@ -34,24 +40,12 @@ technical_phase_template = Phase(
     ),
     success_criteria='[Measurable outcomes and verification methods]',
     integration_context='[System relationships and interface contracts]',
-    module_layout=(
-        '- `src/path/to/module.py` — owns [single responsibility]\n'
-        '- `src/path/to/other_module.py` — owns [single responsibility]'
-    ),
-    skeleton_index=(
-        '- `src/path/to/module.py` :: ClassName.method_name(arg: Type) -> ReturnType\n'
-        '  (one line per public message — this is the durable contract the conformance reviewer diffs against.'
-        ' Types not built into Python MUST be a fully-qualified dotted path, e.g.'
-        ' `list[kb.models.BestPractice]`, so Phase 4 materialization can emit a real import.'
-        ' Append `, async` for a coroutine method.)'
-    ),
+    module_layout=MODULE_LAYOUT_PLACEHOLDER,
+    skeleton_index=SKELETON_INDEX_PLACEHOLDER,
     collaboration_and_wiring=(
         '[Who constructs whom, injection points, call order across the modules above]'
     ),
-    test_list=(
-        '- `tests/unit/path/test_module.py::test_observable_behavior_under_condition`\n'
-        '  (behaviors, not file names — see Testing Strategy for approach)'
-    ),
+    test_list=TEST_LIST_PLACEHOLDER,
     open_design_decisions='[OD-N: unresolved choice, ranked by blast radius if reversed]',
     settled_design_decisions='[SD-N: decision (source=architect|user-edit) — brief rationale]',
     system_design_additional='[Custom architecture content using H4+ sub-headers — e.g., #### Data Model, #### Cost Monitoring]',
@@ -94,6 +88,11 @@ docker-compose-best-practices.md § "Layering" (lines 10-14)).
 **Actions**:
 - Add a cache in front of the repository method
 
+#### Step 3: Result List Component
+**Objective**: Render query results once the cached query path is proven correct.
+**Actions**:
+- Implement the result list component
+
 ## Policy
 ### Execution Intent Policy
 - Mode: MVP
@@ -106,7 +105,19 @@ docker-compose-best-practices.md § "Layering" (lines 10-14)).
 ## Checklist
 - [ ] Implement repository method (Step 1) (verify: pytest tests/unit/test_repo.py)
 - [ ] Add cache layer (Step 2) (verify: pytest tests/unit/test_cache.py)
+- [ ] Implement result list component (Step 3) (verify: npm test)
 """
+
+
+def _test_list_naming_convention_block() -> str:
+    # B3/B5: rendered from language_standards.json (F21) at generation time, not
+    # hardcoded prose -- if a language's convention changes, this block changes with
+    # it instead of drifting out of sync (the same drift class as F1/F14).
+    lines = ['### Test List naming convention, by language']
+    for language in ('python', 'typescript'):
+        convention = language_testing_convention(language)
+        lines.append(f"- **{language}**: `{convention['naming']}` ({convention['location']})")
+    return '\n'.join(lines)
 
 
 def generate_phase_architect_template(tools: PhaseArchitectAgentTools) -> str:
@@ -515,7 +526,13 @@ ELIF phase_mode == "implementation-plan":
     functional/spec delivery; defer non-P0 hardening gaps.") and `### Deferred Risk
     Register` (stable `DR-001`, `DR-002`, ... ids in the exact
     `status=|severity=|scope=|reason=` format; `- None` if no deferred risks)
-  - `## Checklist` → `- [ ]` items, each with `(Step N)` and `(verify: command)`
+  - `## Checklist` → `- [ ]` items, each with `(Step N)` and `(verify: command)`.
+    `command` MUST be that Step's `[commands].test` entry from
+    `project_config_context_markdown`'s `.respec-ai/config/standards/<language>.toml`,
+    for the language of the files that Step touches — never a hardcoded
+    `pytest ...` invocation copied from an example. A Step touching only TypeScript
+    files gets that language's own test command (e.g. `npm test`); a Step spanning
+    both languages lists one `(verify: command)` per language.
 
   This is the ONLY place delivery intent is declared for this Phase. Do NOT add any
   other Phase-level delivery-intent override section anywhere else in this document.
@@ -695,10 +712,14 @@ Read .respec-ai/config/stack.toml for project execution stack context.
 - Interactions: "Client receives NL query → LlamaIndex translates → Neo4j executes"
 - Data Flow: "Neo4j records → Result parser → Pydantic BestPractice models"
 
-✅ **Interface Signatures** (not implementations):
+✅ **Interface Signatures** (not implementations) — one worked example per language
+present in the project (check `project_config_context_markdown`):
 ```python
 def query_knowledge_base(query: str) -> List[BestPractice]:
     '''Translate NL query to Cypher, return structured results.'''
+```
+```typescript
+function queryKnowledgeBase(query: string): Promise<BestPractice[]>
 ```
 
 ✅ **Non-Functional Requirements**:
@@ -714,21 +735,49 @@ def query_knowledge_base(query: str) -> List[BestPractice]:
 ✅ **Specific File Names** — REQUIRED in `### Module Layout`, `### Skeleton Index`, `### Test List`:
 - Right: `src/kb/neo4j_client.py` — owns connection lifecycle + Cypher execution
 - Right: `tests/unit/kb/test_neo4j_client.py::test_reconnects_after_timeout`
+- Right (TypeScript): `src/components/LoginForm.tsx` — owns the login form's rendering and submit flow
+- Right (TypeScript): `tests/components/LoginForm.spec.ts::renders the error state when submit fails`
 
 The design layer (`## Design Shape`, `## Design Decisions`) is the one place concrete
 paths and signatures belong. Everywhere else in the Phase, name capability and intent,
 not files.
 
-✅ **`### Skeleton Index` signature format** — Phase 4 materializes these into real,
-type-checked files, so:
-- A type not built into Python (not `str`/`int`/`float`/`bool`/`bytes`/`None`, and not a
-  builtin generic like `list[...]`/`dict[...]`/`tuple[...]`) MUST be written as a
-  fully-qualified dotted path: `list[kb.models.BestPractice]`, not `list[BestPractice]`.
-  Materialization derives the import from the dotted path and rewrites the annotation to
-  the bare name; a bare non-builtin name has no import and fails type-checking.
-- A coroutine method gets `, async` appended after the return type:
-  `ClassName.method_name(arg: Type) -> ReturnType, async`. Combine with other trailing
-  tags in any order, e.g. `..., internal, consequential, async`.
+✅ **`### Skeleton Index` signature format** — materialization turns these into real,
+type-checked files, so every entry follows the grammar of the language that owns its
+path (`project_config_context_markdown` names the language for each path; a
+Python+React phase has both):
+
+- **Python**: a type not built into Python (not `str`/`int`/`float`/`bool`/`bytes`/
+  `None`, and not a builtin generic like `list[...]`/`dict[...]`/`tuple[...]`) MUST be
+  written as a fully-qualified dotted path: `list[kb.models.BestPractice]`, not
+  `list[BestPractice]`. Materialization derives the import from the dotted path and
+  rewrites the annotation to the bare name; a bare non-builtin name has no import and
+  fails type-checking.
+- **TypeScript**: write the type exactly as it is declared or imported in the file
+  being described — `LoginFormProps`, `Promise<User>`, `JSX.Element`. Do NOT invent a
+  dotted qualifier for it. TypeScript import specifiers are relative paths, not dotted
+  module names, so materialization does not infer an import from the type text — a
+  dotted-looking TypeScript type (e.g. `kb.Result`) is written into the file verbatim,
+  and wiring the real `import` is the coder's job, per `### Collaboration And Wiring`.
+- **Component entries** (React or similar): express the component as a function whose
+  one parameter is its props, typed inline or by a named Props type —
+  `LoginForm(props: {{ email: string; onSubmit: (data: LoginData) => void }}) ->
+  JSX.Element` or `LoginForm(props: LoginFormProps) -> JSX.Element`. Carry only: the
+  props (real names and types, not just the component name), what the module exports,
+  and any state or effect that is part of the contract (e.g. "owns fetch-and-cache for
+  the result list"). Do NOT carry JSX structure, styling, internal helpers, or hook
+  implementation details — those are the coder's, per "design the messages, not the
+  internals."
+- **Every language**: a coroutine method or async function gets `, async` appended
+  after the return type: `ClassName.method_name(arg: Type) -> ReturnType, async`.
+  Combine with other trailing tags in any order, e.g.
+  `..., internal, consequential, async`.
+
+{_test_list_naming_convention_block()}
+
+Name each `### Test List` entry the way that language's own tests read: Python's
+`test_{{function}}_{{scenario}}` node-id form, TypeScript's plain-English behavior
+description. Do not force a Python-shaped test name onto a TypeScript path.
 
 ❌ **Time Estimates**:
 - Wrong: "Step 1: Schema setup (30 minutes)"

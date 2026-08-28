@@ -3,6 +3,11 @@ from textwrap import indent
 from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import PhaseCommandTools
+from src.platform.templates.phase_contract_grammar import (
+    MODULE_LAYOUT_PLACEHOLDER,
+    SKELETON_INDEX_PLACEHOLDER,
+    TEST_LIST_PLACEHOLDER,
+)
 
 
 # Create template instance with instructional placeholders
@@ -18,19 +23,10 @@ technical_phase_template = Phase(
     non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
     development_plan='[Implementation phases - no time estimates, no file names]',
     testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
-    module_layout=(
-        '- `src/path/to/module.py` — owns [single responsibility]\n'
-        '- `src/path/to/other_module.py` — owns [single responsibility]'
-    ),
-    skeleton_index=(
-        '- `src/path/to/module.py` :: ClassName.method_name(arg: Type) -> ReturnType\n'
-        '  (one line per public message — the durable contract the conformance reviewer diffs against)'
-    ),
+    module_layout=MODULE_LAYOUT_PLACEHOLDER,
+    skeleton_index=SKELETON_INDEX_PLACEHOLDER,
     collaboration_and_wiring='[Who constructs whom, injection points, call order across the modules above]',
-    test_list=(
-        '- `tests/unit/path/test_module.py::test_observable_behavior_under_condition`\n'
-        '  (behaviors, not file names — see Testing Strategy for approach)'
-    ),
+    test_list=TEST_LIST_PLACEHOLDER,
     open_design_decisions='[OD-N: unresolved choice, ranked by blast radius if reversed]',
     settled_design_decisions='[SD-N: decision (source=architect|user-edit) — brief rationale]',
     implementation_plan_references=(

@@ -71,24 +71,50 @@ a per-language grammar that only works when the whole phase is one language has 
 
 **`src/platform/templates/agents/phase_architect.py`** — the entry-format spec, selected by language:
 
-- `:36-54` — the Skeleton Index / Module Layout / Test List entry formats.
-- `:42-45` — currently requires *"a fully-qualified dotted path"* for non-builtin types and names
-  Python explicitly. Becomes per-language: dotted paths for Python, import specifiers for TypeScript.
-- `:45` — the `, async` tag is a Python coroutine concept. TypeScript has `async` too, but Go and Rust
-  express it differently; keep the tag list per-language rather than universal.
-- `:52` — pytest node-id syntax and `test_` prefixes. Drive from
-  `language_standards.json[lang]['testing']` (**F21**) rather than hardcoding.
-- `:107-108` — Checklist verify commands hardcoded to `pytest tests/unit/test_repo.py`. Take from the
-  language's configured `[commands]`.
-- `:693-696` — the one worked "Interface Signatures" example is a ` ```python ` fenced block. Needs a
-  TypeScript counterpart, not a replacement.
-- `:709-710`, `:717-728` — Python builtin-type rules and `.py`-only right/wrong examples.
+**Done.** These items now live at (line numbers post-implementation; re-verify before further edits):
 
-Duplicated in `src/platform/templates/commands/phase_command.py:22-31` — update both, and check
-whether the duplication can be collapsed while you are there.
+- The Skeleton Index / Module Layout / Test List placeholder entry formats moved to a shared constant
+  module, `src/platform/templates/phase_contract_grammar.py`, imported by both `phase_architect.py` and
+  `phase_command.py` (see the duplication-collapse note below) — no longer duplicated inline.
+- `phase_architect.py:745-770` — the dotted-path rule now branches per language: fully-qualified dotted
+  path for Python, verbatim-as-declared for TypeScript (import specifiers deferred to the coder, since
+  TypeScript specifiers are relative paths, not dotted module names).
+- The `, async` tag stayed universal rather than per-language (`phase_architect.py:766-769`) — Python and
+  TypeScript both use `async` identically, and Go/Rust are out of scope for this phase, so there was no
+  live case requiring per-language tag lists yet. Revisit when a language needing a different async
+  convention is added.
+- `phase_architect.py:113-121` (`_test_list_naming_convention_block`) — test naming is rendered from
+  `language_standards.json[lang]['testing']` (**F21**) via a new `language_testing_convention()` accessor
+  in `standards_config.py`, at template-generation time, for python and typescript only.
+- `phase_architect.py:529-535` — Checklist verify-command prose now instructs deriving `(verify: command)`
+  from the Step's language `[commands].test` entry in the *project's own*
+  `.respec-ai/config/standards/<language>.toml` (read via `project_config_context_markdown` at
+  `/respec-phase` runtime) rather than hardcoding `pytest`. This is necessarily prose, not a
+  generation-time render like the test-naming block above — the project's configured command doesn't
+  exist yet when `respec-ai regenerate` builds the static template, only when `/respec-phase` later runs
+  against a real project.
+- `phase_architect.py:715-722` — the "Interface Signatures" example now shows both a Python and a
+  TypeScript worked example, not a replacement.
+- `phase_architect.py:745-775` — Python builtin-type rules are now scoped under a `**Python**:` heading
+  alongside a `**TypeScript**:` heading and a `**Component entries**:` heading (props with real names and
+  types, exports, contract-relevant state only — no JSX/styling/hooks).
 
-**Per-materializer `parse_signature`** replaces the single `_SIGNATURE` regex, wired in phase 1. This
-phase supplies the TypeScript grammar it parses.
+`src/platform/templates/commands/phase_command.py`'s duplicate copy was collapsed into the same shared
+`phase_contract_grammar.py` constants rather than merely kept in sync by hand.
+
+**Per-materializer `parse_signature`** replaces the single `_SIGNATURE` regex. Phase 1 defined
+`LanguageMaterializer.parse_signature` and `TypeScriptMaterializer.parse_signature`, but **did not wire
+them in** — `skeleton_generator.parse_skeleton_index`/`_parse_member` called `parse_python_signature`
+unconditionally for every entry regardless of the owning path's language, so a TypeScript entry's
+dotted-looking type (e.g. `kb.Result`) was silently run through Python's dotted-import extraction and
+corrupted before it ever reached `TypeScriptMaterializer`. This was found, not assumed, while
+implementing this phase: B2 cannot be satisfied without it, since no prompt change fixes a parser that
+ignores the language of the path it's parsing. The fix was made here — `parse_skeleton_index` now
+resolves each path's materializer once and dispatches `parse_signature` through it, falling back to the
+language-neutral `parse_bare_signature` for unsupported languages so nothing raises. This phase supplies
+the TypeScript grammar *and* completes the dispatch wiring phase 1 left unfinished; render/extract
+dispatch (`generate_skeletons`, `generate_tests`, `merge_new_members`) was already correctly wired by
+phase 1 and was not touched.
 
 ### What a component contract should carry
 
@@ -113,7 +139,11 @@ format you choose could not accommodate them without restructuring, choose diffe
 
 ## Out of scope
 
-- **Materializer machinery.** Phase 1. If you need to change how dispatch works, something is wrong.
+- **Render/extract materializer machinery** (`generate_skeletons`, `generate_tests`,
+  `merge_new_members`, the `_MATERIALIZER_MAP` registry). Phase 1, already correctly wired — do not
+  touch. The one exception, made in this phase and explained above under "Per-materializer
+  `parse_signature`", was completing phase 1's unfinished *signature-parse* dispatch, which is a
+  precondition for B2 rather than a redesign of dispatch itself.
 - **`stack.toml` reading.** Phase 3.
 - **Vue, Svelte, Go, or Rust grammars.** TypeScript and Python only. See
   [deferred-issues.md](deferred-issues.md).

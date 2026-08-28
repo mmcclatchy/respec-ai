@@ -730,6 +730,38 @@ class TestTemplateConsistency:
         assert 'Citation-only preservation is insufficient' in template
         assert 'Implementation Plan Reference Not Applied - BLOCKING' in template
 
+    def test_phase_architect_template_emits_a_typescript_signature_grammar_alongside_python(self) -> None:
+        # Phase 2 (B2/B4): the entry-format spec must branch per language, not describe
+        # Python only -- a Python+React phase needs both grammars in the same prompt.
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert '```typescript' in template
+        assert 'TypeScript import specifiers are relative paths' in template
+        assert 'Component entries' in template
+        assert 'Do NOT carry JSX structure, styling, internal helpers' in template
+
+    def test_phase_architect_template_derives_test_naming_from_language_standards_json(self) -> None:
+        # B3: TypeScript test naming ("describe/it blocks with clear descriptions")
+        # must reach the prompt, and it must be rendered from language_standards.json
+        # (F21) rather than a second hand-maintained copy.
+        from src.platform.standards_config import language_testing_convention
+
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert language_testing_convention('typescript')['naming'] in template
+        assert language_testing_convention('python')['naming'] in template
+
+    def test_phase_architect_template_requires_config_derived_verify_commands(self) -> None:
+        # B5: Checklist verify commands must come from the Step's language config, not
+        # a hardcoded pytest invocation copied from the one worked example.
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert 'never a hardcoded' in template
+        assert '[commands].test' in template
+
     def test_phase_architect_template_no_longer_declares_a_phase_level_delivery_intent_override(self) -> None:
         # Phase 5: implementation.md's Execution Intent Policy is now the single source
         # of truth for delivery intent (docs/phase-refactor/phase-5-implementation-plan.md

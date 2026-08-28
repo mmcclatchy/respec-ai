@@ -2,8 +2,12 @@ import ast
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from src.utils.language_extensions import language_for_path
+
+if TYPE_CHECKING:
+    from src.utils.materializers import LanguageMaterializer
 
 _BULLET_PATH = re.compile(r'^-\s*`(?P<inner>[^`]+)`(?P<rest>.*)$')
 _SIGNATURE_TAGS = ('internal', 'consequential', 'user-selected', 'async')
@@ -135,9 +139,15 @@ def parse_python_signature(remainder: str) -> SkeletonMember:
     )
 
 
-def _parse_member(signature: str) -> SkeletonMember:
+def _parse_member(materializer: 'LanguageMaterializer | None', signature: str) -> SkeletonMember:
     remainder, tags = _strip_tags(signature)
-    member = parse_python_signature(remainder)
+    if materializer is None:
+        # Not yet known whether this path will materialize (generate_skeletons decides
+        # that later) -- structural parse must still succeed so an unsupported-language
+        # entry is reported as unmaterialized downstream, never a crash here (F6).
+        member = parse_bare_signature(remainder)
+    else:
+        member = materializer.parse_signature(remainder)
     return SkeletonMember(
         class_name=member.class_name,
         member_name=member.member_name,
@@ -149,7 +159,13 @@ def _parse_member(signature: str) -> SkeletonMember:
 
 
 def parse_skeleton_index(text: str) -> tuple[SkeletonIndexEntry, ...]:
+    # Deferred import: src.utils.materializers depends on this module for the shared
+    # dataclasses and neutral parsing helpers (CLAUDE.md's inline-import exception),
+    # matching the pattern already used by generate_skeletons/generate_tests below.
+    from src.utils.materializers import UnsupportedLanguageError, get_materializer
+
     members_by_path: dict[str, list[SkeletonMember]] = {}
+    materializer_by_path: dict[str, LanguageMaterializer | None] = {}
     for line in text.splitlines():
         bullet = _BULLET_PATH.match(line.strip())
         if not bullet:
@@ -160,7 +176,12 @@ def parse_skeleton_index(text: str) -> tuple[SkeletonIndexEntry, ...]:
             continue
         path = bullet.group('inner')
         signature = rest.split(separator, 1)[1].strip()
-        members_by_path.setdefault(path, []).append(_parse_member(signature))
+        if path not in materializer_by_path:
+            try:
+                materializer_by_path[path] = get_materializer(language_for_path(path), path)
+            except UnsupportedLanguageError:
+                materializer_by_path[path] = None
+        members_by_path.setdefault(path, []).append(_parse_member(materializer_by_path[path], signature))
     return tuple(SkeletonIndexEntry(path=path, members=tuple(members)) for path, members in members_by_path.items())
 
 
