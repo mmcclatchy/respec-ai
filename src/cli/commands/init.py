@@ -11,6 +11,7 @@ from rich.table import Table
 
 from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.codex_config import CodexConfigError
+from src.cli.config.gitignore import ensure_gitignore_entries
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.services.tui_model_setup import run_tui_model_setup
@@ -190,6 +191,7 @@ def run(args: Namespace) -> int:
                 'version': get_package_version(),
             }
             config_path.write_text(json.dumps(config, indent=2), encoding='utf-8')
+            ensure_gitignore_entries(project_path)
 
             mcp_registered = _setup_mcp_server(args, progress, task, tui_adapter, project_path)
 

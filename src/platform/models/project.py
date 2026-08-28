@@ -27,6 +27,9 @@ class LanguageStackProfile(PlatformModel):
     )
     dev_command: str | None = Field(default=None, description="Command to start this language's dev server")
     base_url: str | None = Field(default=None, description='Base URL the dev server serves once started')
+    seed_command: str | None = Field(
+        default=None, description='Optional command to seed application state before a preflight review'
+    )
     storage_state_path: str | None = Field(
         default=None,
         description='Path to a saved browser storage-state file for authenticated preflight checks',

@@ -7,6 +7,7 @@ from pytest_mock import MockerFixture
 
 from src.cli.commands import init
 from src.cli.config.claude_config import ClaudeConfigError
+from src.cli.config.gitignore import ensure_gitignore_entries
 from src.platform.models import ProjectStack
 
 
@@ -54,6 +55,21 @@ class TestInitCommand:
         assert config['platform'] == 'linear'
         assert config['version'] == '0.2.0'
         assert config['project_name'] == tmp_path.name
+
+        assert '.respec-ai/run/' in (tmp_path / '.gitignore').read_text(encoding='utf-8').splitlines()
+
+    def test_gitignore_generation_preserves_existing_content_and_is_idempotent(
+        self, tmp_path: Path
+    ) -> None:
+        gitignore_path = tmp_path / '.gitignore'
+        gitignore_path.write_text('node_modules/\n', encoding='utf-8')
+
+        ensure_gitignore_entries(tmp_path)
+        ensure_gitignore_entries(tmp_path)
+
+        lines = gitignore_path.read_text(encoding='utf-8').splitlines()
+        assert lines.count('.respec-ai/run/') == 1
+        assert 'node_modules/' in lines
 
     def test_stack_prompts_called_when_yes_false(
         self,

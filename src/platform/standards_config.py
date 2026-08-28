@@ -509,6 +509,7 @@ def render_stack_toml(stack: ProjectStack, tooling: dict[str, LanguageTooling]) 
                 f'lint_command = {_toml_quote(language_tooling.lint_command if language_tooling else "")}',
                 f'dev_command = {_toml_quote(language_profile.dev_command if language_profile and language_profile.dev_command else "")}',
                 f'base_url = {_toml_quote(language_profile.base_url if language_profile and language_profile.base_url else "")}',
+                f'seed_command = {_toml_quote(language_profile.seed_command if language_profile and language_profile.seed_command else "")}',
                 f'storage_state_path = {_toml_quote(language_profile.storage_state_path if language_profile and language_profile.storage_state_path else "")}',
                 '',
             ]

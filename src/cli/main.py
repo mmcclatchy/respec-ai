@@ -24,6 +24,7 @@ from src.cli.commands import (
     cleanup,
     db,
     docker,
+    frontend_preflight,
     init,
     materialize_skeletons,
     mcp_server,
@@ -121,6 +122,13 @@ def main() -> int:
 
     check_conformance.add_arguments(check_conformance_parser)
 
+    frontend_preflight_parser = subparsers.add_parser(
+        'frontend-preflight',
+        help='Bring the reviewed frontend application to a known, reproducible state',
+    )
+
+    frontend_preflight.add_arguments(frontend_preflight_parser)
+
     update_parser = subparsers.add_parser(
         'update',
         help='Update respec-ai CLI and Docker image to latest version',
@@ -209,6 +217,8 @@ def main() -> int:
             return materialize_skeletons.run(args)
         case 'check-conformance':
             return check_conformance.run(args)
+        case 'frontend-preflight':
+            return frontend_preflight.run(args)
         case 'update':
             return update.run(args)
         case 'register-mcp':

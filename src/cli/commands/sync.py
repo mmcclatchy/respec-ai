@@ -9,6 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 
 from src.cli.config.claude_config import ClaudeConfigError
 from src.cli.config.codex_config import CodexConfigError
+from src.cli.config.gitignore import ensure_gitignore_entries
 from src.cli.config.global_config import load_global_models
 from src.cli.config.package_info import PackageInfoError, get_package_version
 from src.cli.config.project_models import (
@@ -143,6 +144,7 @@ def run(args: Namespace) -> int:
             if 'created_at' not in config:
                 config['created_at'] = datetime.now().isoformat()
             save_project_config(project_path, config)
+            ensure_gitignore_entries(project_path)
 
             mcp_registered = _setup_mcp_server(args, progress, task, tui_adapter, project_path)
             progress.update(task, description='Complete!', completed=True)

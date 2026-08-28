@@ -97,6 +97,10 @@ class TestSyncCommand:
         assert config['version'] == '0.2.0'
         assert config['x'] == 'keep'
 
+        # B4: an already-initialized project reaches gitignore generation through sync, not
+        # only through fresh init -- this is the path init.py delegates to for "keep existing".
+        assert '.respec-ai/run/' in (tmp_path / '.gitignore').read_text(encoding='utf-8').splitlines()
+
     def test_pin_models_writes_project_override(
         self,
         mocker: MockerFixture,

@@ -88,7 +88,10 @@ the existing `src/cli/commands/cleanup.py`.
 ## Authentication
 
 Deliberately minimal. One optional `storage_state_path` in `stack.toml` pointing at a Playwright
-`storageState` JSON the user generates once by hand. Phase 7 passes it via `browser_set_storage_state`.
+`storageState` JSON the user generates once by hand. **Correction from phase 7:** the real
+Playwright MCP server has no `browser_set_storage_state` tool — storage state is a server
+*startup* flag (`--storage-state <path>`), applied once at Playwright MCP registration
+(`docs/CLI_GUIDE.md`), not passed per-call by the reviewer.
 
 When absent, the UX Contract's `##### Route Index` auth column tells the reviewer which routes are
 public; the rest are reported as skipped context using the existing pattern from
@@ -137,7 +140,19 @@ kills the parent but not the Vite child, is the kind of bug users notice and can
 **`src/cli/main.py`** — register the subcommand (parser and dispatch; see how `materialize-skeletons` is
 wired at `:112`).
 
-**`src/cli/commands/init.py`** — add the scratch path to `.gitignore` generation.
+**`src/cli/config/gitignore.py`** (new), **`src/cli/commands/init.py`**, **`src/cli/commands/sync.py`** —
+`.gitignore` generation did not exist before this phase (verified: no call site referenced `.gitignore`
+anywhere in `src/`), so this phase adds it as `ensure_gitignore_entries`, appending `.respec-ai/run/`
+idempotently, rather than extending an existing generator as originally worded above. It has to be
+called from both `init.py`'s fresh-init path and `sync.py` (which is also what `init.py` delegates to
+for an already-initialized project) — an existing project only ever reaches `sync.py`, never the
+fresh-init branch.
+
+**`src/platform/models/project.py`, `src/platform/standards_config.py`** — not in the original scope list;
+added because `--seed` needs a `seed_command` source and none existed anywhere in the codebase (verified
+by repo-wide grep). Added as a fourth per-language optional key alongside `dev_command`/`base_url`/
+`storage_state_path`, following the same pattern phase 3 established — optional, never validated as
+required, additive to `render_stack_toml`.
 
 **`docs/CLI_GUIDE.md`** — the per-TUI Playwright MCP install line, and the preflight command reference.
 
