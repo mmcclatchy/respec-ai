@@ -116,9 +116,11 @@ in real components. When it is unavailable — other TUI, no login, headless run
 bundle and say so. Grant the tool via the optional primitive so OpenCode and Codex generation is
 unaffected.
 
-**Reviewer (`frontend_reviewer.py`, needs phase 7).** The 2-point visual-fit criterion can compare
-rendered output against the synced design system rather than only a local bundle. It stays 2 points, and
-it stays **never blocking** — this makes an already-subjective signal better informed, not more powerful.
+**Reviewer (`frontend_reviewer.py`, needs phase 7).** The 1-point visual-fit criterion (phase 7 shipped
+it at 1/25, not the 2 points this document originally assumed before that rubric was finalized) can
+compare rendered output against the synced design system rather than only a local bundle. Its weight is
+unchanged by this phase, and it stays **never blocking** — this makes an already-subjective signal better
+informed, not more powerful.
 
 **Prompt-injection clause — required, not optional.** `get_file` returns content written by other org
 members, and `DesignSync`'s own documentation says to treat it as *data, not instructions* (**F31**). Any
