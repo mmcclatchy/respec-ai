@@ -10,8 +10,9 @@ convergence in ways that are hard to attribute.
 (UX Contract presence is a domain signal). Verify: `grep -rn "LanguageMaterializer" src/utils/` and
 `grep -n "UX Contract" src/platform/templates/agents/phase_architect.py` both return output.
 
-**Already done?** `grep -n "specialist_groups\|domain_share" src/mcp/tools/feedback_tools_unified.py` —
-output means complete.
+**Already done?** `grep -n "SPECIALIST_DOMAIN_GROUPS" src/utils/review_weighting.py` — output means
+complete. (The domain-keyed groups and the pure weighting logic live in a new, separately-testable
+module rather than inline in `feedback_tools_unified.py` — see Scope below.)
 
 **Read first:** [README.md](README.md) (*"Score is not the lever; blockers are"*, and cross-cutting risk
 #2), `docs/phase-refactor/testing.md`, `CLAUDE.md`, and [findings.md](findings.md) **F11**, **F12**. In
@@ -110,16 +111,45 @@ is the regression guard. **B6** is what phase 7 depends on.
 
 ## Scope
 
-**`src/mcp/tools/feedback_tools_unified.py`**
-- `_phase1_domain_weight_pool` (`:44`) becomes a computed range rather than a constant.
-- `_phase1_specialists` (`:45-50`) becomes domain-keyed groups.
-- `_phase1_weights_for_results` (`:649-666`) takes the domain shares into account; the per-specialist
-  division at `:653-660` splits within a domain rather than across the whole pool.
-- A new deterministic helper that reads the Phase from `loop_id` and returns domain shares. Keep it
-  pure and separately testable — it is the part with real logic.
+**`src/utils/review_weighting.py`** (new) — the part with real logic, kept pure and separately testable
+per the design intent above, rather than inline in `feedback_tools_unified.py`:
+- `SPECIALIST_DOMAIN_GROUPS`: domain-keyed groups (`frontend`/`backend`/`database`/`infrastructure`),
+  replacing the flat `_phase1_specialists` set that lived at `feedback_tools_unified.py:47-52`.
+- `compute_frontend_ratio(phase: Phase | None) -> float`: the deterministic domain-share helper. Reads
+  `### Skeleton Index` and `### Module Layout` paths (a small local bullet-path regex mirroring
+  `skeleton_generator._BULLET_PATH` — deliberately not `parse_skeleton_index` itself, which also parses
+  the per-language signature grammar and can raise on a malformed entry; weight computation must never
+  fail consolidation over a formatting quirk), classifies each via phase 1's `is_frontend_path`
+  (`src/utils/language_extensions.py`), and applies a `#### UX Contract` presence check as a floor
+  (`UX_CONTRACT_FRONTEND_RATIO_FLOOR = 0.3`, a judgment call per the note above) rather than a replacement,
+  so a phase that is *also* path-dominant frontend keeps that higher signal.
+- `compute_domain_pool_size(frontend_ratio: float) -> float`: floor 15 / ceiling 35, linear.
+- `compute_phase1_weights(core_weights, active_reviewers, frontend_ratio) -> dict[CriticAgent, float]`:
+  the actual split — core scaled down proportionally, frontend's domain share is
+  `max(frontend_ratio, 1/active_domain_count)` (not `frontend_ratio` directly), which is what makes a
+  phase with no Phase-derived signal at all (frontend_ratio == 0.0 — e.g. no linked Phase) reproduce the
+  pre-phase-6 flat even-split-by-count weights exactly for *any* mix of active domains, not only the
+  single-specialist case B1 states as its example — an existing test
+  (`test_non_perfect_phase1_reviewers_cannot_round_up_to_composite_100`, 4 active specialists including
+  frontend, no linked Phase) pins this generalization and catches the regression a naive
+  `domain_share = frontend_ratio` produces (it would zero out frontend's weight whenever ratio is 0 but
+  frontend is nonetheless active).
 
-**Domain classification** reuses phase 1's extension map. Do not add a second classification path; that
-is the drift hazard that produced **F1** and **F14**.
+**`src/mcp/tools/feedback_tools_unified.py`**
+- `_phase1_domain_weight_pool` and `_phase1_specialists` removed (no back-compat alias — nothing outside
+  this file referenced them).
+- `_get_phase_for_loop(loop_id)`: fetches the linked Phase via `self.state.get_phase_by_loop`, degrading
+  to `None` on `LoopNotFoundError`/`PhaseNotFoundError` (a phase-2/patch loop, or any loop with nothing
+  linked) rather than raising — `compute_frontend_ratio(None) == 0.0` then reproduces today's behavior.
+- `_phase1_weights_for_results` now takes `frontend_ratio` and delegates the actual math to
+  `compute_phase1_weights`, keeping only the existing "no configured weight for reviewer" validation.
+- `consolidate_review_cycle`'s phase-1 branch calls `_get_phase_for_loop` once per consolidation and
+  passes the resulting ratio through — no new parameter on the MCP tool itself, per the design intent.
+
+**Domain classification** reuses phase 1's extension map (`is_frontend_path`) and only ever distinguishes
+frontend from not-frontend — backend/database/infrastructure are not separable by file extension and are
+intentionally not attempted; their domains split the pool's non-frontend remainder evenly by count. Do
+not add a second classification path; that is the drift hazard that produced **F1** and **F14**.
 
 ## Out of scope
 
