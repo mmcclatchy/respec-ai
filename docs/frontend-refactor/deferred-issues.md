@@ -74,6 +74,58 @@ not thread through.
 
 ---
 
+## Detected language name can disagree with source file extensions
+
+**What:** `detect_project_stack` names the JS/TS half of a project from `tsconfig.json` presence (a
+build-file check), not by scanning source files. A project that already has `.tsx` files but has not
+added `tsconfig.json` yet detects and renders as `[language.javascript]`, while the extension map
+(phase 1, used by materialization) resolves those same files to `typescript`. Pinned by
+`test_detected_language_name_can_disagree_with_source_extensions_without_tsconfig` in
+`tests/unit/platform_tests/test_standards_config.py` so the gap stays visible rather than silently
+reintroduced or silently fixed by accident.
+
+**Why deferred:** fixing it means detection scanning the source tree for `.tsx`/`.jsx` file
+presence, which is a materially larger change (walking the project, applying the same extension map
+detection uses, reconciling with the build-file-based heuristic) than phase 3's scope of "attach
+attributes to the right table." `BUILD_FILE_TO_LANGUAGE`-based detection is also the existing
+pattern for every other language; special-casing JS/TS to scan source now would be inconsistent with
+the rest of `tooling_defaults.py` without also fixing the equivalent gap for e.g. Go/Rust.
+
+**Cost of the gap:** the affected table is keyed `javascript` instead of `typescript` until
+`tsconfig.json` is added (a one-time, easily-noticed transition most React/Vue-with-TypeScript setups
+hit within their first day, since `create-vite`/`create-next-app` templates ship `tsconfig.json` from
+the start). Phase 5's preflight, which reads `dev_command` from `[language.<lang>]`, must resolve the
+language the same way `detect_project_stack` did — i.e., from `stack.toml`'s own `[project]` table,
+not by re-deriving it from source extensions — to avoid looking in the wrong table.
+
+**Revisit when:** phase 5 or later needs to resolve "the frontend language" from source files
+directly rather than from `stack.toml`, or a user reports the mismatch as confusing in practice.
+
+---
+
+## Existing projects have no upgrade path to the new optional stack.toml keys
+
+**What:** `write_project_config_files` only writes `stack.toml` when it does not already exist (an
+idempotency guard that predates phase 3). A project initialized before phase 3 keeps a `stack.toml`
+with no `css_framework`/`ui_components`/`dev_command`/`base_url`/`storage_state_path` keys at all, and
+nothing offers to add them short of `respec-ai init --force` (which discards the rest of the existing
+configuration too).
+
+**Why deferred:** an incremental-merge writer for `stack.toml` — one that adds newly-introduced keys
+to an existing file without touching what the user already configured — is a distinct, general
+capability (config migration) that phase 3's scope of "make a polyglot project configure correctly"
+does not require: a freshly-initialized project already gets everything phase 3 adds.
+
+**Cost of the gap:** an existing project cannot get `dev_command`/`base_url`/`storage_state_path`
+without hand-editing `stack.toml` or a full `--force` reinit. Phase 5's preflight depends on these
+keys, so this becomes a real onboarding step for any project that adopted respec-ai before phase 3.
+
+**Revisit when:** phase 5 ships and existing-project adoption friction is reported, or before phase 5
+if it wants to hand users a clean upgrade path from day one. The likely fix is a targeted "add missing
+keys" merge step, not a general config migration framework.
+
+---
+
 ## Agent Teams as a coordination substrate
 
 **What:** Claude Code shipped Agent Teams in v2.1.178+ — teammates in independent context windows,

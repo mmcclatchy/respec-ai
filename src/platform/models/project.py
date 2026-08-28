@@ -8,6 +8,31 @@ from ..tool_enums import RespecAICommand
 from .core import PlatformModel
 
 
+class LanguageStackProfile(PlatformModel):
+    frontend_framework: str | None = Field(
+        default=None, description='Frontend framework for this language (e.g., react, next, vue, svelte)'
+    )
+    css_framework: str | None = Field(
+        default=None, description='CSS framework for this language (e.g., tailwindcss, bootstrap)'
+    )
+    ui_components: str | None = Field(
+        default=None, description='UI component library for this language (e.g., daisyui, shadcn)'
+    )
+    package_manager: str | None = Field(
+        default=None, description='Package manager for this language (e.g., uv, pip, npm, yarn)'
+    )
+    runtime_version: str | None = Field(default=None, description='Language runtime version (e.g., 3.13, 22)')
+    type_checker: str | None = Field(
+        default=None, description='Type checker for this language (e.g., ty, mypy, pyright, tsc)'
+    )
+    dev_command: str | None = Field(default=None, description="Command to start this language's dev server")
+    base_url: str | None = Field(default=None, description='Base URL the dev server serves once started')
+    storage_state_path: str | None = Field(
+        default=None,
+        description='Path to a saved browser storage-state file for authenticated preflight checks',
+    )
+
+
 class ProjectStack(PlatformModel):
     language: str | None = Field(default=None, description='Primary language (e.g., python, javascript, go, rust)')
     languages: list[str] | None = Field(
@@ -17,18 +42,15 @@ class ProjectStack(PlatformModel):
     backend_framework: str | None = Field(
         default=None, description='Backend framework (e.g., fastapi, fastmcp, flask, django, express)'
     )
-    frontend_framework: str | None = Field(
-        default=None, description='Frontend framework (e.g., react, next, vue, svelte)'
-    )
-    package_manager: str | None = Field(default=None, description='Package manager (e.g., uv, pip, npm, yarn)')
-    runtime_version: str | None = Field(default=None, description='Language runtime version (e.g., 3.13, 22)')
     database: str | None = Field(default=None, description='Database (e.g., postgresql, sqlite, mongodb, neo4j)')
     api_style: str | None = Field(default=None, description='API style (e.g., rest, graphql, grpc, mcp)')
     async_runtime: bool | None = Field(default=None, description='Async runtime (True for async/await patterns)')
-    type_checker: str | None = Field(default=None, description='Type checker (e.g., ty, mypy, pyright for Python)')
-    css_framework: str | None = Field(default=None, description='CSS framework (e.g., tailwindcss, bootstrap)')
-    ui_components: str | None = Field(default=None, description='UI component library (e.g., daisyui, shadcn)')
     architecture: str | None = Field(default=None, description='Architecture pattern (e.g., monolith, microservices)')
+    language_stack: dict[str, LanguageStackProfile] = Field(
+        default_factory=dict,
+        description='Per-language stack attributes (frontend framework, styling, package manager, '
+        'runtime, type checker, dev server) keyed by language name',
+    )
 
 
 class LanguageTooling(PlatformModel):

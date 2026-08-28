@@ -1,8 +1,9 @@
 import json
 import tomllib
 from pathlib import Path
+from typing import Any
 
-from src.platform.models import LanguageTooling, ProjectStack
+from src.platform.models import LanguageStackProfile, LanguageTooling, ProjectStack
 
 
 TOOLING_DEFAULTS: dict[str, LanguageTooling] = {
@@ -66,41 +67,47 @@ def detect_project_tooling(project_path: Path) -> dict[str, LanguageTooling]:
     return detected
 
 
-def _primary_language(stack: ProjectStack) -> str | None:
-    if stack.languages:
-        return stack.languages[0]
-    return stack.language
+# Per-language type-checker override options (F25). Keying by language, rather than a single
+# Python-only table, is what lets a TypeScript project's configured type_checker survive instead
+# of being silently dropped (B5).
+TYPE_CHECKER_COMMANDS: dict[str, dict[str, str]] = {
+    'python': {
+        'ty': 'ty check',
+        'mypy': 'mypy src/ --exclude tests/',
+        'pyright': 'pyright',
+        'pytype': 'pytype src/',
+    },
+    'typescript': {
+        'tsc': 'npx tsc --noEmit',
+    },
+    'javascript': {
+        'tsc': 'npx tsc --noEmit',
+    },
+}
 
 
 def apply_stack_to_tooling(tooling: dict[str, LanguageTooling], stack: ProjectStack) -> dict[str, LanguageTooling]:
-    primary_language = _primary_language(stack)
-    if not stack.type_checker or not primary_language or primary_language not in tooling:
-        return tooling
-
     updated_tooling = dict(tooling)
-    language = primary_language
 
-    if language == 'python' and language in updated_tooling:
+    for language, profile in stack.language_stack.items():
+        if not profile.type_checker or language not in updated_tooling:
+            continue
+
+        check_commands = TYPE_CHECKER_COMMANDS.get(language, {})
+        type_checker = profile.type_checker
+        if type_checker not in check_commands:
+            continue
+
         current = updated_tooling[language]
-        type_checker = stack.type_checker
-
-        check_commands = {
-            'ty': 'ty check',
-            'mypy': 'mypy src/ --exclude tests/',
-            'pyright': 'pyright',
-            'pytype': 'pytype src/',
-        }
-
-        if type_checker in check_commands:
-            updated_tooling[language] = LanguageTooling(
-                test_runner=current.test_runner,
-                test_command=current.test_command,
-                coverage_command=current.coverage_command,
-                checker=type_checker,
-                check_command=check_commands[type_checker],
-                linter=current.linter,
-                lint_command=current.lint_command,
-            )
+        updated_tooling[language] = LanguageTooling(
+            test_runner=current.test_runner,
+            test_command=current.test_command,
+            coverage_command=current.coverage_command,
+            checker=type_checker,
+            check_command=check_commands[type_checker],
+            linter=current.linter,
+            lint_command=current.lint_command,
+        )
 
     return updated_tooling
 
@@ -159,11 +166,11 @@ ASYNC_FRAMEWORKS: set[str] = {
 }
 
 
-def _detect_from_pyproject(pyproject_path: Path) -> ProjectStack:
+def _detect_from_pyproject(pyproject_path: Path) -> tuple[dict[str, Any], LanguageStackProfile]:
     try:
         data = tomllib.loads(pyproject_path.read_text(encoding='utf-8'))
     except Exception:
-        return ProjectStack(language='python')
+        return {}, LanguageStackProfile()
 
     package_manager = 'pip'
     if 'tool' in data and 'uv' in data['tool']:
@@ -204,22 +211,26 @@ def _detect_from_pyproject(pyproject_path: Path) -> ProjectStack:
         elif 'pyright' in data['tool']:
             type_checker = 'pyright'
 
-    return ProjectStack(
-        language='python',
-        backend_framework=backend_framework,
+    flat_updates: dict[str, Any] = {
+        'backend_framework': backend_framework,
+        'api_style': api_style,
+        'async_runtime': async_runtime,
+    }
+    profile = LanguageStackProfile(
         package_manager=package_manager,
         runtime_version=runtime_version,
-        api_style=api_style,
-        async_runtime=async_runtime,
         type_checker=type_checker,
     )
+    return flat_updates, profile
 
 
-def _detect_from_package_json(package_json_path: Path, project_path: Path) -> ProjectStack:
+def _detect_from_package_json(
+    package_json_path: Path, project_path: Path
+) -> tuple[str, dict[str, Any], LanguageStackProfile]:
     try:
         data = json.loads(package_json_path.read_text(encoding='utf-8'))
     except Exception:
-        return ProjectStack(language='javascript')
+        return 'javascript', {}, LanguageStackProfile()
 
     language = 'javascript'
     if (project_path / 'tsconfig.json').exists():
@@ -258,15 +269,17 @@ def _detect_from_package_json(package_json_path: Path, project_path: Path) -> Pr
     if backend_framework:
         async_runtime = backend_framework in ASYNC_FRAMEWORKS
 
-    return ProjectStack(
-        language=language,
-        backend_framework=backend_framework,
+    flat_updates: dict[str, Any] = {
+        'backend_framework': backend_framework,
+        'api_style': api_style,
+        'async_runtime': async_runtime,
+    }
+    profile = LanguageStackProfile(
         frontend_framework=frontend_framework,
         package_manager=package_manager,
         runtime_version=runtime_version,
-        api_style=api_style,
-        async_runtime=async_runtime,
     )
+    return language, flat_updates, profile
 
 
 def detect_project_stack(project_path: Path) -> ProjectStack:
@@ -280,16 +293,36 @@ def detect_project_stack(project_path: Path) -> ProjectStack:
     go_mod = project_path / 'go.mod'
     cargo_toml = project_path / 'Cargo.toml'
 
+    flat_updates: dict[str, Any] = {}
+    language_stack: dict[str, LanguageStackProfile] = {}
+
+    # Every matching detector runs -- a repo with both pyproject.toml and package.json gets
+    # both halves (B2). The elif chain this replaced silently dropped the frontend half of
+    # every polyglot project (F2).
     if pyproject.exists():
-        base_stack = _detect_from_pyproject(pyproject)
-    elif package_json.exists():
-        base_stack = _detect_from_package_json(package_json, project_path)
-    elif go_mod.exists():
-        base_stack = ProjectStack(language='go', package_manager='go modules')
-    elif cargo_toml.exists():
-        base_stack = ProjectStack(language='rust', package_manager='cargo')
-    else:
-        base_stack = ProjectStack()
+        py_flat, py_profile = _detect_from_pyproject(pyproject)
+        for key, value in py_flat.items():
+            if value is not None:
+                flat_updates.setdefault(key, value)
+        language_stack['python'] = py_profile
+
+    if package_json.exists():
+        js_language, js_flat, js_profile = _detect_from_package_json(package_json, project_path)
+        for key, value in js_flat.items():
+            if value is not None:
+                flat_updates.setdefault(key, value)
+        language_stack[js_language] = js_profile
+
+    if go_mod.exists() and 'go' not in language_stack:
+        language_stack['go'] = LanguageStackProfile(package_manager='go modules')
+
+    if cargo_toml.exists() and 'rust' not in language_stack:
+        language_stack['rust'] = LanguageStackProfile(package_manager='cargo')
 
     primary_language = detected_languages[0]
-    return base_stack.model_copy(update={'language': primary_language, 'languages': detected_languages})
+    return ProjectStack(
+        language=primary_language,
+        languages=detected_languages,
+        language_stack=language_stack,
+        **flat_updates,
+    )

@@ -27,6 +27,7 @@ from .plan import (
     StandardsCommandTools,
 )
 from .project import (
+    LanguageStackProfile,
     LanguageTooling,
     PlanPlatformChangeRequest,
     PlanSetupRequest,
@@ -50,6 +51,7 @@ __all__ = [
     'CommandToolsModel',
     'PlatformModel',
     'ProjectStack',
+    'LanguageStackProfile',
     'LanguageTooling',
     'ProjectToolingConfig',
     'PlatformRequest',

@@ -1,7 +1,8 @@
 from typing import Any
 
 from src.cli.ui.console import console
-from src.platform.models import ProjectStack
+from src.platform.models import LanguageStackProfile, ProjectStack
+from src.platform.tooling_defaults import TYPE_CHECKER_COMMANDS
 
 
 STACK_FIELD_OPTIONS: dict[str, list[str]] = {
@@ -12,33 +13,41 @@ STACK_FIELD_OPTIONS: dict[str, list[str]] = {
     'runtime_version': [],
     'database': ['postgresql', 'sqlite', 'mongodb', 'mysql', 'redis', 'neo4j'],
     'api_style': ['rest', 'graphql', 'grpc', 'mcp'],
-    'type_checker': ['ty', 'mypy', 'pyright', 'pytype'],
     'css_framework': ['tailwindcss', 'bootstrap', 'bulma'],
     'ui_components': ['daisyui', 'shadcn', 'radix', 'headless-ui'],
     'architecture': ['monolith', 'microservices', 'serverless', 'modular-monolith'],
 }
 
+# Project-level fields, prompted once regardless of how many languages the project has.
 STACK_FIELD_ORDER: list[str] = [
     'language',
     'backend_framework',
-    'frontend_framework',
-    'package_manager',
-    'runtime_version',
     'database',
     'api_style',
     'async_runtime',
-    'type_checker',
-    'css_framework',
-    'ui_components',
     'architecture',
 ]
 
 STACK_FIELD_SECTIONS: list[tuple[str, list[str]]] = [
-    ('Project Languages', ['language', 'package_manager', 'runtime_version']),
-    ('Application Frameworks', ['backend_framework', 'frontend_framework', 'api_style', 'async_runtime']),
+    ('Project Languages', ['language']),
+    ('Application Frameworks', ['backend_framework', 'api_style', 'async_runtime']),
     ('Data and Architecture', ['database', 'architecture']),
-    ('Code Quality Preferences', ['type_checker', 'css_framework', 'ui_components']),
 ]
+
+# Fields that genuinely vary by language (F2): prompted once per selected language rather than
+# once for the whole project, and stored on ProjectStack.language_stack rather than flat.
+PER_LANGUAGE_FIELD_ORDER: list[str] = [
+    'package_manager',
+    'runtime_version',
+    'type_checker',
+    'frontend_framework',
+    'css_framework',
+    'ui_components',
+]
+
+# Only asked for a language once its frontend_framework is set -- these are what phase 5's
+# preflight needs to start a dev server, and asking unconditionally would pester every backend.
+FRONTEND_FOLLOWUP_FIELDS: list[str] = ['dev_command', 'base_url', 'storage_state_path']
 
 STACK_MULTI_SELECT_FIELDS: set[str] = {
     'language',
@@ -70,10 +79,12 @@ def _parse_multi_selection(raw: str, options: list[str], detected_values: list[s
 
 
 def _prompt_stack_field(
-    field_name: str, detected_value: str | list[str] | bool | None
+    field_name: str,
+    detected_value: str | list[str] | bool | None,
+    options_override: list[str] | None = None,
 ) -> str | list[str] | bool | None:
     label = field_name.replace('_', ' ').title()
-    options = list(STACK_FIELD_OPTIONS.get(field_name, []))
+    options = list(options_override) if options_override is not None else list(STACK_FIELD_OPTIONS.get(field_name, []))
     multi = field_name in STACK_MULTI_SELECT_FIELDS
 
     console.print(f'\n  [bold]{label}:[/bold]')
@@ -159,6 +170,39 @@ def _prompt_stack_field(
         return raw
 
 
+# javascript/typescript name the same detected package.json half of a project (F2's promotion at
+# detection time). If the user renames the language at the prompt (e.g. detection said javascript,
+# they pick typescript because tsconfig.json is on the way), the detected profile must follow --
+# otherwise every detected value for that half silently vanishes.
+_LANGUAGE_PROFILE_ALIASES: dict[str, str] = {'javascript': 'typescript', 'typescript': 'javascript'}
+
+
+def _detected_profile_for_language(detected: ProjectStack, language: str) -> LanguageStackProfile:
+    if language in detected.language_stack:
+        return detected.language_stack[language]
+    alias = _LANGUAGE_PROFILE_ALIASES.get(language)
+    if alias and alias in detected.language_stack:
+        return detected.language_stack[alias]
+    return LanguageStackProfile()
+
+
+def _prompt_language_stack(language: str, detected_profile: LanguageStackProfile) -> LanguageStackProfile:
+    console.print(f'\n  [bold]{language}[/bold]')
+
+    values: dict[str, Any] = {}
+    for field_name in PER_LANGUAGE_FIELD_ORDER:
+        options_override = list(TYPE_CHECKER_COMMANDS.get(language, {}).keys()) if field_name == 'type_checker' else None
+        detected_value = getattr(detected_profile, field_name)
+        values[field_name] = _prompt_stack_field(field_name, detected_value, options_override=options_override)
+
+    if values.get('frontend_framework'):
+        for field_name in FRONTEND_FOLLOWUP_FIELDS:
+            detected_value = getattr(detected_profile, field_name)
+            values[field_name] = _prompt_stack_field(field_name, detected_value)
+
+    return LanguageStackProfile(**values)
+
+
 def prompt_stack_profile(detected: ProjectStack) -> ProjectStack:
     console.print('\n  [bold cyan]Stack Configuration[/bold cyan]')
     console.print('  Provide values to tune project execution defaults. Press Enter to keep detected values.\n')
@@ -188,12 +232,26 @@ def prompt_stack_profile(detected: ProjectStack) -> ProjectStack:
 
     selected_language = values.get('language')
     if isinstance(selected_language, list):
-        values['languages'] = selected_language
-        values['language'] = selected_language[0] if selected_language else None
+        languages = selected_language
     elif isinstance(selected_language, str) and selected_language.strip():
-        values['languages'] = [selected_language.strip()]
-        values['language'] = selected_language.strip()
+        languages = [selected_language.strip()]
     else:
-        values['languages'] = None
+        languages = []
 
-    return ProjectStack(**values)
+    language_stack: dict[str, LanguageStackProfile] = {}
+    if languages:
+        console.print('\n  [bold]Per-Language Configuration[/bold]')
+        for language in languages:
+            detected_profile = _detected_profile_for_language(detected, language)
+            language_stack[language] = _prompt_language_stack(language, detected_profile)
+
+    return ProjectStack(
+        language=languages[0] if languages else None,
+        languages=languages or None,
+        backend_framework=values.get('backend_framework'),
+        database=values.get('database'),
+        api_style=values.get('api_style'),
+        async_runtime=values.get('async_runtime'),
+        architecture=values.get('architecture'),
+        language_stack=language_stack,
+    )

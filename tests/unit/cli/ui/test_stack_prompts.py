@@ -1,13 +1,15 @@
 from pytest_mock import MockerFixture
 
 from src.cli.ui.stack_prompts import (
+    FRONTEND_FOLLOWUP_FIELDS,
+    PER_LANGUAGE_FIELD_ORDER,
     STACK_FIELD_OPTIONS,
     STACK_FIELD_ORDER,
     STACK_MULTI_SELECT_FIELDS,
     _prompt_stack_field,
     prompt_stack_profile,
 )
-from src.platform.models import ProjectStack
+from src.platform.models import LanguageStackProfile, ProjectStack
 
 
 class TestPromptStackField:
@@ -228,31 +230,75 @@ class TestPromptStackProfile:
 
     def test_overrides_detected_values(self, mocker: MockerFixture) -> None:
         mock_console = mocker.patch('src.cli.ui.stack_prompts.console')
-        responses = {
+        project_responses = {
             'language': '',
             'backend_framework': 'flask',
-            'frontend_framework': 'react',
-            'package_manager': '',
-            'runtime_version': '',
             'database': 'postgresql',
             'api_style': '',
             'async_runtime': 'no',
-            'type_checker': '',
-            'css_framework': '',
-            'ui_components': '',
             'architecture': '',
         }
-        mock_console.input.side_effect = [responses[f] for f in STACK_FIELD_ORDER]
+        per_language_responses = {
+            'package_manager': '',
+            'runtime_version': '',
+            'type_checker': '',
+            'frontend_framework': 'react',
+            'css_framework': '',
+            'ui_components': '',
+        }
+        frontend_followup_responses = {'dev_command': '', 'base_url': '', 'storage_state_path': ''}
+        mock_console.input.side_effect = (
+            [project_responses[f] for f in STACK_FIELD_ORDER]
+            + [per_language_responses[f] for f in PER_LANGUAGE_FIELD_ORDER]
+            + [frontend_followup_responses[f] for f in FRONTEND_FOLLOWUP_FIELDS]
+        )
 
         detected = ProjectStack(
-            language='python', backend_framework='fastapi', package_manager='uv', async_runtime=True
+            language='python',
+            backend_framework='fastapi',
+            async_runtime=True,
+            language_stack={'python': LanguageStackProfile(package_manager='uv')},
         )
         result = prompt_stack_profile(detected)
 
         assert result.language == 'python'
         assert result.languages == ['python']
         assert result.backend_framework == 'flask'
-        assert result.frontend_framework == 'react'
-        assert result.package_manager == 'uv'
         assert result.database == 'postgresql'
         assert result.async_runtime is False
+        assert result.language_stack['python'].frontend_framework == 'react'
+        assert result.language_stack['python'].package_manager == 'uv'
+
+    def test_renaming_detected_javascript_to_typescript_keeps_detected_values(
+        self, mocker: MockerFixture
+    ) -> None:
+        """detect_project_stack names the JS/TS half 'javascript' until tsconfig.json promotes it.
+        If the user picks 'typescript' at the language prompt instead, the detected package_manager
+        and frontend_framework for that half must not silently vanish."""
+        mock_console = mocker.patch('src.cli.ui.stack_prompts.console')
+        project_responses = ['typescript', '', '', '', '', '']
+        per_language_responses = ['', '', '', '', '', '']
+        frontend_followup_responses = ['', '', '']
+        mock_console.input.side_effect = project_responses + per_language_responses + frontend_followup_responses
+
+        detected = ProjectStack(
+            languages=['javascript'],
+            language_stack={
+                'javascript': LanguageStackProfile(package_manager='npm', frontend_framework='react')
+            },
+        )
+        result = prompt_stack_profile(detected)
+
+        assert result.languages == ['typescript']
+        assert result.language_stack['typescript'].package_manager == 'npm'
+        assert result.language_stack['typescript'].frontend_framework == 'react'
+
+    def test_type_checker_options_are_language_specific(self, mocker: MockerFixture) -> None:
+        """F25: stack_prompts previously offered only Python type checkers regardless of
+        language. A TypeScript language prompt must offer TypeScript's own options."""
+        mock_console = mocker.patch('src.cli.ui.stack_prompts.console')
+        mock_console.input.return_value = '1'
+
+        result = _prompt_stack_field('type_checker', None, options_override=['tsc'])
+
+        assert result == 'tsc'

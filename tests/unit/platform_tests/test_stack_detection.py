@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from src.platform.models import ProjectStack
-from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, TOOLING_DEFAULTS
+from src.platform.models import LanguageStackProfile, ProjectStack
+from src.platform.tooling_defaults import TOOLING_DEFAULTS, apply_stack_to_tooling, detect_project_stack
 
 
 class TestDetectProjectStackPython:
@@ -13,7 +13,7 @@ class TestDetectProjectStackPython:
         assert result is not None
         assert result.language == 'python'
         assert result.languages == ['python']
-        assert result.package_manager == 'uv'
+        assert result.language_stack['python'].package_manager == 'uv'
 
     def test_detects_python_with_pip(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
@@ -21,7 +21,7 @@ class TestDetectProjectStackPython:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'python'
-        assert result.package_manager == 'pip'
+        assert result.language_stack['python'].package_manager == 'pip'
 
     def test_detects_backend_framework_fastapi(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
@@ -54,28 +54,28 @@ class TestDetectProjectStackPython:
         pyproject.write_text('[project]\nrequires-python = ">=3.13"\ndependencies = []\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.runtime_version == '3.13'
+        assert result.language_stack['python'].runtime_version == '3.13'
 
     def test_detects_type_checker_ty(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
         pyproject.write_text('[project]\ndependencies = []\n\n[tool.ty]\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.type_checker == 'ty'
+        assert result.language_stack['python'].type_checker == 'ty'
 
     def test_detects_type_checker_mypy(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
         pyproject.write_text('[project]\ndependencies = []\n\n[tool.mypy]\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.type_checker == 'mypy'
+        assert result.language_stack['python'].type_checker == 'mypy'
 
     def test_detects_type_checker_pyright(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
         pyproject.write_text('[project]\ndependencies = []\n\n[tool.pyright]\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.type_checker == 'pyright'
+        assert result.language_stack['python'].type_checker == 'pyright'
 
     def test_handles_malformed_pyproject(self, tmp_path: Path) -> None:
         pyproject = tmp_path / 'pyproject.toml'
@@ -93,7 +93,7 @@ class TestDetectProjectStackJavaScript:
         assert result is not None
         assert result.language == 'javascript'
         assert result.languages == ['javascript']
-        assert result.package_manager == 'npm'
+        assert result.language_stack['javascript'].package_manager == 'npm'
 
     def test_detects_typescript(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
@@ -110,7 +110,7 @@ class TestDetectProjectStackJavaScript:
         (tmp_path / 'yarn.lock').write_text('')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.package_manager == 'yarn'
+        assert result.language_stack['javascript'].package_manager == 'yarn'
 
     def test_detects_pnpm(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
@@ -118,14 +118,14 @@ class TestDetectProjectStackJavaScript:
         (tmp_path / 'pnpm-lock.yaml').write_text('')
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.package_manager == 'pnpm'
+        assert result.language_stack['javascript'].package_manager == 'pnpm'
 
     def test_detects_frontend_framework_react(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
         package_json.write_text(json.dumps({'name': 'test', 'dependencies': {'react': '^18.0'}}))
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.frontend_framework == 'react'
+        assert result.language_stack['javascript'].frontend_framework == 'react'
         assert result.backend_framework is None
 
     def test_detects_backend_framework_express(self, tmp_path: Path) -> None:
@@ -143,7 +143,7 @@ class TestDetectProjectStackJavaScript:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.backend_framework == 'express'
-        assert result.frontend_framework == 'react'
+        assert result.language_stack['javascript'].frontend_framework == 'react'
         assert result.async_runtime is True
 
     def test_detects_node_runtime_version(self, tmp_path: Path) -> None:
@@ -151,7 +151,7 @@ class TestDetectProjectStackJavaScript:
         package_json.write_text(json.dumps({'name': 'test', 'engines': {'node': '>=22'}}))
         result = detect_project_stack(tmp_path)
         assert result is not None
-        assert result.runtime_version == '22'
+        assert result.language_stack['javascript'].runtime_version == '22'
 
     def test_handles_malformed_package_json(self, tmp_path: Path) -> None:
         package_json = tmp_path / 'package.json'
@@ -167,21 +167,21 @@ class TestDetectProjectStackOther:
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'go'
-        assert result.package_manager == 'go modules'
+        assert result.language_stack['go'].package_manager == 'go modules'
 
     def test_detects_rust(self, tmp_path: Path) -> None:
         (tmp_path / 'Cargo.toml').write_text('[package]\nname = "test"\n')
         result = detect_project_stack(tmp_path)
         assert result is not None
         assert result.language == 'rust'
-        assert result.package_manager == 'cargo'
+        assert result.language_stack['rust'].package_manager == 'cargo'
 
     def test_returns_empty_stack_no_build_files(self, tmp_path: Path) -> None:
         result = detect_project_stack(tmp_path)
         assert result.language is None
         assert result.backend_framework is None
-        assert result.frontend_framework is None
-        assert result.model_dump(exclude_none=True) == {}
+        assert result.language_stack == {}
+        assert result.model_dump(exclude_none=True) == {'language_stack': {}}
 
     def test_python_takes_precedence_over_js(self, tmp_path: Path) -> None:
         (tmp_path / 'pyproject.toml').write_text('[project]\ndependencies = []\n')
@@ -191,6 +191,8 @@ class TestDetectProjectStackOther:
         assert result.language == 'python'
         assert result.languages == ['python', 'javascript']
 
+
+class TestDetectProjectStackPolyglot:
     def test_detects_multilanguage_project_stack(self, tmp_path: Path) -> None:
         (tmp_path / 'pyproject.toml').write_text('[project]\ndependencies = []\n')
         (tmp_path / 'go.mod').write_text('module example.com/test\ngo 1.22\n')
@@ -199,39 +201,59 @@ class TestDetectProjectStackOther:
         assert result.language == 'python'
         assert result.languages == ['python', 'go']
 
+    def test_python_backend_and_react_frontend_are_both_detected(self, tmp_path: Path) -> None:
+        """B1/B2: neither detector short-circuits the other, and frontend_framework lands under
+        the frontend language rather than being dropped or attached to python (F2)."""
+        (tmp_path / 'pyproject.toml').write_text('[project]\ndependencies = ["fastapi>=0.100"]\n\n[tool.uv]\n')
+        (tmp_path / 'package.json').write_text(json.dumps({'name': 'web', 'dependencies': {'react': '^18.0'}}))
+
+        result = detect_project_stack(tmp_path)
+
+        assert result.languages == ['python', 'javascript']
+        assert result.backend_framework == 'fastapi'
+        assert 'python' in result.language_stack
+        assert 'javascript' in result.language_stack
+        assert result.language_stack['python'].package_manager == 'uv'
+        assert result.language_stack['python'].frontend_framework is None
+        assert result.language_stack['javascript'].frontend_framework == 'react'
+
 
 class TestApplyStackToTooling:
     def test_updates_checker_to_ty(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(language='python', type_checker='ty')
+        stack = ProjectStack(language='python', language_stack={'python': LanguageStackProfile(type_checker='ty')})
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].checker == 'ty'
         assert result['python'].check_command == 'ty check'
 
     def test_updates_checker_to_mypy(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(language='python', type_checker='mypy')
+        stack = ProjectStack(language='python', language_stack={'python': LanguageStackProfile(type_checker='mypy')})
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].checker == 'mypy'
         assert result['python'].check_command == 'mypy src/ --exclude tests/'
 
     def test_updates_checker_to_pyright(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(language='python', type_checker='pyright')
+        stack = ProjectStack(
+            language='python', language_stack={'python': LanguageStackProfile(type_checker='pyright')}
+        )
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].checker == 'pyright'
         assert result['python'].check_command == 'pyright'
 
     def test_updates_checker_to_pytype(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(language='python', type_checker='pytype')
+        stack = ProjectStack(
+            language='python', language_stack={'python': LanguageStackProfile(type_checker='pytype')}
+        )
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].checker == 'pytype'
         assert result['python'].check_command == 'pytype src/'
 
     def test_preserves_other_tooling_fields(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(language='python', type_checker='ty')
+        stack = ProjectStack(language='python', language_stack={'python': LanguageStackProfile(type_checker='ty')})
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].test_runner == 'pytest'
         assert result['python'].linter == 'ruff'
@@ -244,6 +266,25 @@ class TestApplyStackToTooling:
 
     def test_no_change_when_language_not_in_tooling(self) -> None:
         tooling = {'javascript': TOOLING_DEFAULTS['javascript']}
-        stack = ProjectStack(language='python', type_checker='ty')
+        stack = ProjectStack(language='python', language_stack={'python': LanguageStackProfile(type_checker='ty')})
         result = apply_stack_to_tooling(tooling, stack)
         assert result == tooling
+
+    def test_typescript_type_checker_is_honored_not_dropped(self) -> None:
+        """B5/F25: previously gated to `language == 'python'`, so a TypeScript project's
+        configured type_checker was silently ignored."""
+        tooling = {'typescript': TOOLING_DEFAULTS['javascript']}
+        stack = ProjectStack(
+            language='typescript', language_stack={'typescript': LanguageStackProfile(type_checker='tsc')}
+        )
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['typescript'].checker == 'tsc'
+        assert result['typescript'].check_command == 'npx tsc --noEmit'
+
+    def test_unrecognized_type_checker_for_language_is_ignored(self) -> None:
+        tooling = {'typescript': TOOLING_DEFAULTS['javascript']}
+        stack = ProjectStack(
+            language='typescript', language_stack={'typescript': LanguageStackProfile(type_checker='mypy')}
+        )
+        result = apply_stack_to_tooling(tooling, stack)
+        assert result['typescript'].checker == tooling['typescript'].checker

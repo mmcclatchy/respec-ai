@@ -343,10 +343,17 @@ def _display_detected_config(
     else:
         table.add_row('Tooling', '[dim]none detected[/dim]')
 
-    for field_name, value in stack.model_dump().items():
+    for field_name, value in stack.model_dump(exclude={'language_stack'}).items():
         label = field_name.replace('_', ' ').title()
         display_value = str(value) if value is not None else '[dim]\u2014[/dim]'
         table.add_row(f'Stack: {label}', display_value)
+
+    for language, profile in stack.language_stack.items():
+        for field_name, value in profile.model_dump().items():
+            if value is None:
+                continue
+            label = field_name.replace('_', ' ').title()
+            table.add_row(f'{language}: {label}', str(value))
 
     console.print()
     console.print(table)

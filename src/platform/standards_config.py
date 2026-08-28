@@ -1,8 +1,10 @@
 import json
 import tomllib
 from pathlib import Path
+from typing import Iterable
 
 from src.platform.models import LanguageTooling, ProjectStack
+from src.utils.language_extensions import language_for_path
 
 
 DATA_DIR = Path(__file__).parent / 'data'
@@ -52,6 +54,13 @@ def available_languages() -> list[str]:
     if 'universal' not in languages:
         languages.insert(0, 'universal')
     return languages
+
+
+def language_testing_convention(language: str) -> dict[str, object]:
+    """The `testing` block (framework/location/naming/extras) for one language, so
+    prompt text can name a language's test-naming convention from the same source
+    `respec-ai standards` renders, instead of a second hardcoded copy (F21)."""
+    return dict(_load_language_standards_defaults()[language]['testing'])
 
 
 def _rules_from_defaults(lang_data: dict) -> dict[str, list[str]]:
@@ -474,28 +483,45 @@ def render_stack_toml(stack: ProjectStack, tooling: dict[str, LanguageTooling]) 
 
     for language in languages:
         language_tooling = tooling.get(language)
+        language_profile = stack.language_stack.get(language)
+        is_primary = language == primary_language
+        type_checker = (language_profile.type_checker if language_profile else None) or (
+            language_tooling.checker if language_tooling else None
+        )
         lines.extend(
             [
                 f'[language.{language}]',
-                f'runtime_version = {_toml_quote(stack.runtime_version if language == primary_language and stack.runtime_version else "")}',
-                f'package_manager = {_toml_quote(stack.package_manager if language == primary_language and stack.package_manager else "")}',
-                f'backend_framework = {_toml_quote(stack.backend_framework if language == primary_language and stack.backend_framework else "")}',
-                f'frontend_framework = {_toml_quote(stack.frontend_framework if language == primary_language and stack.frontend_framework else "")}',
-                f'database = {_toml_quote(stack.database if language == primary_language and stack.database else "")}',
-                f'api_style = {_toml_quote(stack.api_style if language == primary_language and stack.api_style else "")}',
-                f'architecture = {_toml_quote(stack.architecture if language == primary_language and stack.architecture else "")}',
-                f'async_runtime = {str(bool(stack.async_runtime) if language == primary_language and stack.async_runtime is not None else False).lower()}',
-                f'type_checker = {_toml_quote(language_tooling.checker if language_tooling and language_tooling.checker else "")}',
+                f'runtime_version = {_toml_quote(language_profile.runtime_version if language_profile and language_profile.runtime_version else "")}',
+                f'package_manager = {_toml_quote(language_profile.package_manager if language_profile and language_profile.package_manager else "")}',
+                f'backend_framework = {_toml_quote(stack.backend_framework if is_primary and stack.backend_framework else "")}',
+                f'frontend_framework = {_toml_quote(language_profile.frontend_framework if language_profile and language_profile.frontend_framework else "")}',
+                f'database = {_toml_quote(stack.database if is_primary and stack.database else "")}',
+                f'api_style = {_toml_quote(stack.api_style if is_primary and stack.api_style else "")}',
+                f'architecture = {_toml_quote(stack.architecture if is_primary and stack.architecture else "")}',
+                f'async_runtime = {str(bool(stack.async_runtime) if is_primary and stack.async_runtime is not None else False).lower()}',
+                f'css_framework = {_toml_quote(language_profile.css_framework if language_profile and language_profile.css_framework else "")}',
+                f'ui_components = {_toml_quote(language_profile.ui_components if language_profile and language_profile.ui_components else "")}',
+                f'type_checker = {_toml_quote(type_checker or "")}',
                 f'test_runner = {_toml_quote(language_tooling.test_runner if language_tooling else "")}',
                 f'test_command = {_toml_quote(language_tooling.test_command if language_tooling else "")}',
                 f'coverage_command = {_toml_quote(language_tooling.coverage_command if language_tooling else "")}',
                 f'type_check_command = {_toml_quote(language_tooling.check_command if language_tooling else "")}',
                 f'lint_command = {_toml_quote(language_tooling.lint_command if language_tooling else "")}',
+                f'dev_command = {_toml_quote(language_profile.dev_command if language_profile and language_profile.dev_command else "")}',
+                f'base_url = {_toml_quote(language_profile.base_url if language_profile and language_profile.base_url else "")}',
+                f'storage_state_path = {_toml_quote(language_profile.storage_state_path if language_profile and language_profile.storage_state_path else "")}',
                 '',
             ]
         )
 
     return '\n'.join(lines)
+
+
+def resolve_languages_for_paths(paths: Iterable[str]) -> set[str]:
+    """The extension-map side of the phase-1/phase-3 cross-check (B7): the set of languages a
+    collection of file paths resolves to, using the same per-file extension map materialization
+    uses -- never `stack.toml`, which resolves per project rather than per file."""
+    return {language for language in (language_for_path(path) for path in paths) if language is not None}
 
 
 def write_project_config_files(

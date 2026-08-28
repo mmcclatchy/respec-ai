@@ -73,8 +73,16 @@ B6 is the regression guard. B7 is the phase-1 reconciliation — see below.
 
 `ProjectStack` (`models/project.py:11-31`) becomes language-keyed for the attributes that genuinely
 vary by language: `frontend_framework`, `css_framework`, `ui_components`, `package_manager`,
-`runtime_version`, `type_checker`, `test_runner`. Project-level attributes — `architecture`,
-`api_style`, `database` — stay flat; they describe the project, not a language.
+`runtime_version`, `type_checker`. (`test_runner` was already correctly per-language via the
+`tooling: dict[str, LanguageTooling]` parameter `render_stack_toml` already took — no change needed
+there; verified during implementation.) Project-level attributes — `architecture`, `api_style`,
+`database`, `backend_framework` — stay flat; they describe the project, not a language, and a
+project is assumed to have one backend.
+
+Implemented as a new `LanguageStackProfile` model (mirroring the existing `LanguageTooling` /
+`ProjectToolingConfig` shape) and a `ProjectStack.language_stack: dict[str, LanguageStackProfile]`
+field, replacing the old flat `frontend_framework`/`css_framework`/`ui_components`/
+`package_manager`/`runtime_version`/`type_checker` fields (breaking change, per README).
 
 `render_stack_toml:475-497` distributes accordingly instead of attaching everything to
 `primary_language`.
@@ -151,6 +159,9 @@ signal worth surfacing, not a reason to prefer one silently.
 - A real Python+React scratch project: `respec-ai init` detects both languages, `stack.toml` puts each
   attribute under the right table, `respec-ai validate` is clean, and deleting `dev_command` keeps it
   clean.
-- An existing single-language project regenerates a byte-identical `stack.toml`.
+- An existing single-language project regenerates a `stack.toml` with identical values for every
+  field that existed before this phase; `css_framework`, `ui_components`, `dev_command`, `base_url`,
+  and `storage_state_path` are additive new optional fields, not byte-identical to pre-phase-3 output
+  (they didn't exist to be identical to — see B3/B4).
 - The `frontend_reviewer.py:134` source-of-truth claim is now true.
 - `uv run pytest` clean; `respec-ai validate` clean on a polyglot fixture.
