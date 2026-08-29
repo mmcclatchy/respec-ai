@@ -51,6 +51,7 @@ class CodeCommandTools(CommandToolsModel):
 
     # Agent invocations
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
+    invoke_frontend_coder: str = Field(..., description='Invocation text for respec-frontend-coder agent (Phase 1)')
     commit_command_invocation: str = Field(..., description='Invocation text for respec-commit command')
     invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
@@ -61,6 +62,9 @@ class CodeCommandTools(CommandToolsModel):
     )
     invoke_coder_standards: str = Field(
         ..., description='Invocation text for respec-coder agent (Phase 2 standards-only)'
+    )
+    invoke_frontend_coder_standards: str = Field(
+        ..., description='Invocation text for respec-frontend-coder agent (Phase 2 standards-only)'
     )
     invoke_coding_standards_reviewer: str = Field(
         ..., description='Invocation text for respec-coding-standards-reviewer agent'
@@ -142,6 +146,36 @@ class CodeCommandTools(CommandToolsModel):
 
 
 class CoderAgentTools(AgentToolsModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.GET_REVIEWER_RESULT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.WRITE, ''),
+        (BuiltInToolCapability.EDIT, ''),
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.BASH, ''),
+        (BuiltInToolCapability.TODO_WRITE, ''),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    retrieve_implementation_plan: str = Field(..., description='Read implementation.md for build ordering')
+    retrieve_phase: str = Field(..., description='Retrieve phase specification')
+    retrieve_feedback: str = Field(..., description='Retrieve all feedback from coding loop')
+
+    @computed_field
+    def research_directory_pattern(self) -> str:
+        return '.best-practices/*.md'
+
+    @computed_field
+    def research_example_path(self) -> str:
+        return '.best-practices/htmx-patterns-codegen.md'
+
+
+class FrontendCoderAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,

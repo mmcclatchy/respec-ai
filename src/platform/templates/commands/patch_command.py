@@ -361,6 +361,7 @@ Display: "Resolved execution mode: {{EXECUTION_MODE}} (source: {{EXECUTION_MODE_
 
 ```text
 STEP_MODES = set()
+STEP_DOMAINS = {{}}  # Step number -> "frontend" | "backend", for coder dispatch (does not affect STEP_MODES / reviewer rostering below)
 
 For each "#### Step N:" section in AMENDMENT_SCOPE_MARKDOWN:
   Scan Step content for mode indicators:
@@ -373,7 +374,19 @@ For each "#### Step N:" section in AMENDMENT_SCOPE_MARKDOWN:
   IF contains infrastructure keywords (Docker, CI/CD, deployment, container, pipeline, environment):
     STEP_MODES.add("infrastructure")
 
+  # Classify this Step for coder dispatch: file paths named in the Step are a stronger
+  # signal than prose keywords, so prefer them; fall back to the same keyword scan.
+  IF the Step names file paths matching frontend locations (templates/, static/, components/, frontend-flavored extensions):
+    STEP_DOMAINS[N] = "frontend"
+  ELSE IF the Step names file paths matching non-frontend (backend) locations:
+    STEP_DOMAINS[N] = "backend"
+  ELSE IF Step content matched frontend keywords above:
+    STEP_DOMAINS[N] = "frontend"
+  ELSE:
+    STEP_DOMAINS[N] = "backend"
+
 Display: "Detected step modes: {{STEP_MODES}}"
+Display: "Detected coder dispatch per Step: {{STEP_DOMAINS}}"
 ```
 
 #### Step 4.3: Resolve Active Reviewers
@@ -502,24 +515,50 @@ PHASE1_SIGNED_OFF_REVIEWERS = PHASE1_SIGNED_OFF_REVIEWERS if defined else []
 Loop:
   REVIEW_ITERATION = REVIEW_ITERATION if defined else 1
 
-  # A) Coder pass
-  {tools.invoke_coder}
-  IF coder reports failure:
-    ERROR: "Coder failed"
-    DIAGNOSTIC: [surface the exact coder error/output]
-    FAIL-CLOSED:
-    - Do NOT invoke reviewers
-    - Do NOT call consolidate_review_cycle
-    - Do NOT call decide_coding_action
-    - Do NOT invoke respec-commit
-    EXIT: Workflow terminated
+  # A) Coder pass -- dispatch per Step domain (STEP_DOMAINS from Step 4.2), sequentially.
+  # Both coders may run in one iteration; they are not invoked in parallel because they
+  # may touch a shared file (a types module, a route table) and the fan-out policies are
+  # built for independent workers collecting into a parent, which coders are not.
+  ACTIVE_CODER_DOMAINS = set(STEP_DOMAINS.values()) if STEP_DOMAINS else {{"backend"}}
+  CODER_REPORTS = []
+
+  IF "backend" in ACTIVE_CODER_DOMAINS:
+    {tools.invoke_coder}
+    IF coder reports failure:
+      ERROR: "Coder failed"
+      DIAGNOSTIC: [surface the exact coder error/output]
+      FAIL-CLOSED:
+      - Do NOT invoke reviewers
+      - Do NOT call consolidate_review_cycle
+      - Do NOT call decide_coding_action
+      - Do NOT invoke respec-commit
+      EXIT: Workflow terminated
+    CODER_REPORTS.append(the backend coder's Iteration Handoff report)
+
+  IF "frontend" in ACTIVE_CODER_DOMAINS:
+    {tools.invoke_frontend_coder}
+    IF coder reports failure:
+      ERROR: "Frontend coder failed"
+      DIAGNOSTIC: [surface the exact coder error/output]
+      FAIL-CLOSED:
+      - Do NOT invoke reviewers
+      - Do NOT call consolidate_review_cycle
+      - Do NOT call decide_coding_action
+      - Do NOT invoke respec-commit
+      EXIT: Workflow terminated
+    CODER_REPORTS.append(the frontend coder's Iteration Handoff report)
+
+  # Merge CODER_REPORTS into one report for commit orchestration and reviewer context; see
+  # respec-code's Step 7.4 merge rule (concatenate list fields, worst-case status fields,
+  # sum numeric fields). A single report passes through unchanged.
+  MERGED_CODER_REPORT = merge(CODER_REPORTS) per the rule above
 
   # B) Phase 1 review team orchestration
   PHASE1_REVIEWERS_TO_INVOKE = []
   PHASE1_INVALIDATED_REVIEWERS = []
 
   Set PHASE1_INVALIDATED_REVIEWERS by applying these rules to each reviewer in PHASE1_SIGNED_OFF_REVIEWERS:
-  - Compare the coder run summary, changed files, amendment-scope context changes, patch scope changes,
+  - Compare MERGED_CODER_REPORT, changed files, amendment-scope context changes, patch scope changes,
     and prior consolidated feedback.
   - Add a signed-off reviewer when new or changed work touches that reviewer's responsibility.
   - Add all Phase 1 reviewers when the amendment scope, Phase document, execution mode, public behavior,
@@ -862,15 +901,26 @@ Loop:
       - Do NOT invoke respec-commit
       EXIT: Workflow terminated
     Treat REVIEWER_FEEDBACK_CONTEXT_MARKDOWN as the primary standards action list.
-    Instruct the coder to retrieve full reviewer markdown from reviewer_results only when a point needs original rationale/citations.
+    Instruct each dispatched coder to retrieve full reviewer markdown from reviewer_results only when a point needs original rationale/citations.
 
-    {tools.invoke_coder_standards}
-    IF coder reports failure:
-      ERROR: "Standards coder failed"
-      DIAGNOSTIC: [surface the exact coder error/output]
-      FAIL-CLOSED:
-      - Do NOT invoke respec-commit
-      EXIT: Workflow terminated
+    # Dispatch by file domain (coding-standards-reviewer findings are untagged; see
+    # STANDARDS-ONLY MODE in each coder's contract). Reuses ACTIVE_CODER_DOMAINS from Step 5.3.
+    IF "backend" in ACTIVE_CODER_DOMAINS:
+      {tools.invoke_coder_standards}
+      IF coder reports failure:
+        ERROR: "Standards coder failed"
+        DIAGNOSTIC: [surface the exact coder error/output]
+        FAIL-CLOSED:
+        - Do NOT invoke respec-commit
+        EXIT: Workflow terminated
+    IF "frontend" in ACTIVE_CODER_DOMAINS:
+      {tools.invoke_frontend_coder_standards}
+      IF coder reports failure:
+        ERROR: "Standards frontend coder failed"
+        DIAGNOSTIC: [surface the exact coder error/output]
+        FAIL-CLOSED:
+        - Do NOT invoke respec-commit
+        EXIT: Workflow terminated
 
     # Loop commits are progress checkpoints only.
     # Completion commit is owned by Step 6.7 finalization gate.
@@ -906,14 +956,23 @@ Loop:
                   - Do NOT invoke respec-commit
                   EXIT: Workflow terminated
                 Treat REVIEWER_FEEDBACK_CONTEXT_MARKDOWN as the primary standards action list.
-                Instruct the coder to retrieve full reviewer markdown from reviewer_results only when a point needs original rationale/citations.
-                {tools.invoke_coder_standards}
-                IF coder reports failure:
-                  ERROR: "Standards coder failed"
-                  DIAGNOSTIC: [surface the exact coder error/output]
-                  FAIL-CLOSED:
-                  - Do NOT invoke respec-commit
-                  EXIT: Workflow terminated
+                Instruct each dispatched coder to retrieve full reviewer markdown from reviewer_results only when a point needs original rationale/citations.
+                IF "backend" in ACTIVE_CODER_DOMAINS:
+                  {tools.invoke_coder_standards}
+                  IF coder reports failure:
+                    ERROR: "Standards coder failed"
+                    DIAGNOSTIC: [surface the exact coder error/output]
+                    FAIL-CLOSED:
+                    - Do NOT invoke respec-commit
+                    EXIT: Workflow terminated
+                IF "frontend" in ACTIVE_CODER_DOMAINS:
+                  {tools.invoke_frontend_coder_standards}
+                  IF coder reports failure:
+                    ERROR: "Standards frontend coder failed"
+                    DIAGNOSTIC: [surface the exact coder error/output]
+                    FAIL-CLOSED:
+                    - Do NOT invoke respec-commit
+                    EXIT: Workflow terminated
                 COMMIT_KIND = "phase2-checkpoint"
                 COMMIT_WORKFLOW_KIND = "patch"
                 ALLOW_EMPTY = true

@@ -7,6 +7,7 @@ from .coding_standards_reviewer import generate_coding_standards_reviewer_templa
 from .create_phase import generate_create_phase_template
 from .database_reviewer import generate_database_reviewer_template
 from .design_conformance_reviewer import generate_design_conformance_reviewer_template
+from .frontend_coder import generate_frontend_coder_template
 from .frontend_reviewer import generate_frontend_reviewer_template
 from .infrastructure_reviewer import generate_infrastructure_reviewer_template
 from .phase_architect import generate_phase_architect_template
@@ -28,6 +29,7 @@ __all__ = [
     'generate_phase_architect_template',
     'generate_phase_critic_template',
     'generate_coder_template',
+    'generate_frontend_coder_template',
     'generate_analyst_critic_template',
     'generate_automated_quality_checker_template',
     'generate_code_quality_reviewer_template',

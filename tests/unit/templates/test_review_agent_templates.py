@@ -782,7 +782,10 @@ class TestCoderTemplateConfig:
 
         assert 'Reviewer Execution Report (Non-Actionable)' in template
         assert 'Do NOT use reviewer execution reports as implementation guidance.' in template
-        assert 'Use only user feedback, blockers, critical findings, key issues, and recommendations' in template
+        assert (
+            'Use only user feedback, and blockers, critical findings, key issues, and recommendations'
+            in template
+        )
         assert 'reviewer_feedback_context_markdown' in template
         assert 'Read reviewer_feedback_context_markdown completely before editing files.' in template
         assert 'return a structured failure that says curated standards reviewer context is missing.' in template

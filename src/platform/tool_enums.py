@@ -157,6 +157,7 @@ class RespecAIAgent(StrEnum):
 
     # Code workflow agents
     CODER = f'{_RESPEC_AGENT_PREFIX}coder'
+    FRONTEND_CODER = f'{_RESPEC_AGENT_PREFIX}frontend-coder'
 
     # Review team agents
     AUTOMATED_QUALITY_CHECKER = f'{_RESPEC_AGENT_PREFIX}automated-quality-checker'

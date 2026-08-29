@@ -503,6 +503,17 @@ one iteration.
 no comment, no "noted for later." `both` means fix *your side* to match the declared contract. An
 untagged finding is not yours by default; report it as unroutable rather than adopting it silently.
 
+**Exception found during implementation: `coding-standards-reviewer` findings are untagged by
+design, not by omission.** Only review-cycle reviewers (frontend-reviewer's seam findings, per phase 7)
+carry `[Target:...]`. `coding-standards-reviewer` runs once over the whole codebase and never tags —
+applying the "untagged is unroutable" rule to it would make every standards-only-mode finding
+unroutable, and the Phase 2 standards loop would silently do nothing on every iteration. Standards-only
+mode therefore routes by **file domain** (the same language extension map used for Step dispatch), not
+by tag: each coder fixes standards findings whose file is in its domain. This is the one place the
+ownership rule is file-based rather than tag-based, and both `coder_contracts.py`'s
+`render_coder_standards_only_mode_contract` and the orchestrator's Phase 2 dispatch (`code_command.py`,
+`patch_command.py`) must agree on it.
+
 **Enforcement is prose, not code.** Consumption is prompt-level — an LLM reading markdown, not a parser
 (**F39**) — so this lives in `coder_contracts.py` in the register of the existing
 `MANDATORY FILESYSTEM BOUNDARY RESTRICTION` (`coder.py:79-101`), with an explicit `VIOLATION:` clause,
@@ -511,6 +522,30 @@ and is pinned by generated-template tests.
 **Escalation, not unilateral repair:** if honoring a finding would require changing a seam declared in
 `### Collaboration And Wiring`, that is a design change the human owns — `DOCUMENT_AMENDMENT_REQUIRED`
 via the existing mechanism at `coder.py:90-96`.
+
+---
+
+## Coder dispatch gets its own per-Step map (`STEP_DOMAINS`), separate from `STEP_MODES`
+
+**Rejected:** literally reuse `STEP_MODES` (`code_command.py:289-313`) to decide which coder runs.
+
+**Why not:** `STEP_MODES` is a `set()` — a union across the *whole* phase, with no per-Step record and
+four possible values (`frontend`/`api`/`database`/`infrastructure`) rather than the two coder domains.
+It also drives reviewer rostering (`### 6.6 Resolve Active Reviewers`) directly. Repurposing it, or
+computing coder dispatch from it, risks a change to reviewer-activation semantics as a side effect of a
+coder-dispatch change — exactly the kind of side effect phase 0's regression-safety property (composite
+score must be numerically identical for phases this phase doesn't touch) warns against.
+
+**What was built instead:** a second per-Step map, `STEP_DOMAINS: dict[int, "frontend" | "backend"]`,
+computed in the same scan (same loop, same file-path-over-keyword preference) but written to its own
+variable and never read by reviewer rostering. `STEP_MODES` and section 6.6 are byte-for-byte unchanged.
+This is "the same mechanism [classification by file path / keyword] applied to different inputs
+[Step-to-coder vs. Step-to-reviewer]" per the phase doc, not the same variable serving both purposes.
+
+**Default when no Steps classify:** `ACTIVE_CODER_DOMAINS = set(STEP_DOMAINS.values()) if STEP_DOMAINS
+else {"backend"}` — an empty `STEP_DOMAINS` (no Steps found, or a plan format the scan can't parse)
+falls back to backend-only, preserving B1 (a backend-only phase behaves identically to before the
+split) as the default rather than as a special case.
 
 ---
 

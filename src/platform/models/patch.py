@@ -68,6 +68,7 @@ class PatchCommandTools(CommandToolsModel):
     # Agent invocations
     invoke_patch_planner: str = Field(..., description='Invocation text for respec-patch-planner agent')
     invoke_coder: str = Field(..., description='Invocation text for respec-coder agent (Phase 1)')
+    invoke_frontend_coder: str = Field(..., description='Invocation text for respec-frontend-coder agent (Phase 1)')
     commit_command_invocation: str = Field(..., description='Invocation text for respec-commit command')
     invoke_quality_checker: str = Field(..., description='Invocation text for respec-automated-quality-checker agent')
     invoke_spec_alignment: str = Field(..., description='Invocation text for respec-spec-alignment-reviewer agent')
@@ -78,6 +79,9 @@ class PatchCommandTools(CommandToolsModel):
     )
     invoke_coder_standards: str = Field(
         ..., description='Invocation text for respec-coder agent (Phase 2 standards-only)'
+    )
+    invoke_frontend_coder_standards: str = Field(
+        ..., description='Invocation text for respec-frontend-coder agent (Phase 2 standards-only)'
     )
     invoke_coding_standards_reviewer: str = Field(
         ..., description='Invocation text for respec-coding-standards-reviewer agent'

@@ -20,6 +20,7 @@ from src.platform.template_helpers import (
     create_create_phase_agent_tools,
     create_database_reviewer_agent_tools,
     create_design_conformance_reviewer_agent_tools,
+    create_frontend_coder_agent_tools,
     create_frontend_reviewer_agent_tools,
     create_infrastructure_reviewer_agent_tools,
     create_patch_planner_agent_tools,
@@ -42,6 +43,7 @@ from src.platform.templates.agents import (
     generate_create_phase_template,
     generate_database_reviewer_template,
     generate_design_conformance_reviewer_template,
+    generate_frontend_coder_template,
     generate_frontend_reviewer_template,
     generate_infrastructure_reviewer_template,
     generate_patch_planner_template,
@@ -113,6 +115,7 @@ _AGENT_NAMES = [
     'respec-phase-critic',
     'respec-patch-planner',
     'respec-coder',
+    'respec-frontend-coder',
     'respec-automated-quality-checker',
     'respec-code-quality-reviewer',
     'respec-spec-alignment-reviewer',
@@ -247,6 +250,7 @@ def _get_agent_specs(
     )
     patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)
     coder_tools = create_coder_agent_tools(tui_adapter)
+    frontend_coder_tools = create_frontend_coder_agent_tools(tui_adapter)
     automated_quality_checker_tools = create_automated_quality_checker_agent_tools(tui_adapter)
     code_quality_reviewer_tools = create_code_quality_reviewer_agent_tools(tui_adapter)
     spec_alignment_reviewer_tools = create_spec_alignment_reviewer_agent_tools(tui_adapter)
@@ -268,6 +272,7 @@ def _get_agent_specs(
         _parse_agent_spec('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
         _parse_agent_spec('respec-patch-planner', generate_patch_planner_template(patch_planner_tools)),
         _parse_agent_spec('respec-coder', generate_coder_template(coder_tools)),
+        _parse_agent_spec('respec-frontend-coder', generate_frontend_coder_template(frontend_coder_tools)),
         _parse_agent_spec(
             'respec-automated-quality-checker',
             generate_automated_quality_checker_template(automated_quality_checker_tools),

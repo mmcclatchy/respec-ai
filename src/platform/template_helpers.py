@@ -12,6 +12,7 @@ from .models import (
     DatabaseReviewerAgentTools,
     DesignConformanceReviewerAgentTools,
     DesignSyncCommandTools,
+    FrontendCoderAgentTools,
     FrontendReviewerAgentTools,
     InfrastructureReviewerAgentTools,
     PatchCommandTools,
@@ -459,6 +460,7 @@ def create_code_command_tools(
     adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.CODER)
+    builder.add_task_agent(RespecAIAgent.FRONTEND_CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
     builder.add_task_agent(RespecAIAgent.DESIGN_CONFORMANCE_REVIEWER)
@@ -504,6 +506,19 @@ def create_code_command_tools(
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
         ),
+        invoke_frontend_coder=adapter.render_agent_invocation(
+            'respec-frontend-coder',
+            'implement frontend code following TDD methodology',
+            [
+                ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('phase_loop_id', 'PHASE_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('mode', 'None'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+            ],
+        ),
         commit_command_invocation=adapter.render_command_invocation(
             'respec-commit',
             '{COMMIT_KIND}',
@@ -535,6 +550,20 @@ def create_code_command_tools(
         ),
         invoke_coder_standards=adapter.render_agent_invocation(
             'respec-coder',
+            'apply coding standards fixes',
+            [
+                ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('phase_loop_id', 'PHASE_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('mode', '"standards-only"'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+                ('reviewer_feedback_context_markdown', 'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN'),
+            ],
+        ),
+        invoke_frontend_coder_standards=adapter.render_agent_invocation(
+            'respec-frontend-coder',
             'apply coding standards fixes',
             [
                 ('coding_loop_id', 'STANDARDS_LOOP_ID'),
@@ -966,6 +995,32 @@ def create_coder_agent_tools(
     )
 
 
+def create_frontend_coder_agent_tools(
+    tui_adapter: TuiAdapter,
+) -> FrontendCoderAgentTools:
+    builder = TemplateToolBuilder(tui_adapter)
+
+    for tool in FrontendCoderAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in FrontendCoderAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    builder.add_builtin_tool(BuiltInToolCapability.READ, '.respec-ai/plans/*/phases/*/implementation.md')
+
+    return FrontendCoderAgentTools(
+        tui_adapter=tui_adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+        retrieve_implementation_plan='Read(.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md)',
+        retrieve_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
+        retrieve_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{CODING_LOOP_ID}'
+        ),
+    )
+
+
 def create_create_phase_agent_tools(
     tui_adapter: TuiAdapter, platform_tools: list[str], platform: PlatformType
 ) -> CreatePhaseAgentTools:
@@ -1345,6 +1400,7 @@ def create_patch_command_tools(
     builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.PATCH_PLANNER)
     builder.add_task_agent(RespecAIAgent.CODER)
+    builder.add_task_agent(RespecAIAgent.FRONTEND_CODER)
     builder.add_task_agent(RespecAIAgent.AUTOMATED_QUALITY_CHECKER)
     builder.add_task_agent(RespecAIAgent.SPEC_ALIGNMENT_REVIEWER)
     builder.add_task_agent(RespecAIAgent.DESIGN_CONFORMANCE_REVIEWER)
@@ -1403,6 +1459,19 @@ def create_patch_command_tools(
                 ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
             ],
         ),
+        invoke_frontend_coder=adapter.render_agent_invocation(
+            'respec-frontend-coder',
+            'implement frontend code changes following TDD methodology',
+            [
+                ('coding_loop_id', 'CODING_LOOP_ID'),
+                ('phase_loop_id', 'PHASE_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('mode', 'None'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+            ],
+        ),
         commit_command_invocation=adapter.render_command_invocation(
             'respec-commit',
             '{COMMIT_KIND}',
@@ -1434,6 +1503,20 @@ def create_patch_command_tools(
         ),
         invoke_coder_standards=adapter.render_agent_invocation(
             'respec-coder',
+            'apply coding standards fixes',
+            [
+                ('coding_loop_id', 'STANDARDS_LOOP_ID'),
+                ('phase_loop_id', 'PHASE_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('mode', '"standards-only"'),
+                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
+                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
+                ('reviewer_feedback_context_markdown', 'REVIEWER_FEEDBACK_CONTEXT_MARKDOWN'),
+            ],
+        ),
+        invoke_frontend_coder_standards=adapter.render_agent_invocation(
+            'respec-frontend-coder',
             'apply coding standards fixes',
             [
                 ('coding_loop_id', 'STANDARDS_LOOP_ID'),

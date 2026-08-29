@@ -1,4 +1,4 @@
-from src.platform.models import CoderAgentTools
+from src.platform.models import FrontendCoderAgentTools
 from src.platform.templates.agents.coder_contracts import (
     render_coder_checklist_usage_contract,
     render_coder_completion_checklist_contract,
@@ -25,10 +25,9 @@ from src.platform.templates.agents.coder_contracts import (
 from src.utils.materializers import sentinel_table
 
 
-def generate_coder_template(tools: CoderAgentTools) -> str:
-    # Data-driven from the materializer registry (F9) -- adding a language's
-    # materializer is enough for its sentinel to show up here; nothing to edit in
-    # this file.
+def generate_frontend_coder_template(tools: FrontendCoderAgentTools) -> str:
+    # Data-driven from the materializer registry (F9), same as the backend coder --
+    # a TypeScript skeleton stubs with its own sentinel, never Python's.
     sentinel_examples = ', '.join(
         f'`{sentinel}` for {language}' for language, sentinel in sorted(sentinel_table().items())
     )
@@ -36,7 +35,7 @@ def generate_coder_template(tools: CoderAgentTools) -> str:
     standards_only_mode_contract = render_coder_standards_only_mode_contract()
     tool_invocation_contract = render_coder_tool_invocation_contract()
     filesystem_boundary_contract = render_coder_filesystem_boundary_contract()
-    ownership_boundary_contract = render_coder_ownership_boundary_contract('backend')
+    ownership_boundary_contract = render_coder_ownership_boundary_contract('frontend')
     todolist_gate_contract = render_coder_todolist_gate_contract()
     workflow_heading_contract = render_coder_workflow_heading_contract()
     workflow_steps_contract = render_coder_workflow_steps_contract(
@@ -59,18 +58,18 @@ def generate_coder_template(tools: CoderAgentTools) -> str:
     completion_checklist_contract = render_coder_completion_checklist_contract()
 
     return f"""---
-name: respec-coder
-description: Implement code using strict TDD methodology with test-first discipline
+name: respec-frontend-coder
+description: Implement UI code using strict TDD methodology, scored against the UX Contract
 model: {tools.tui_adapter.coding_model}
 color: green
 tools: {tools.tools_yaml}
 ---
 
-# respec-coder Agent
+# respec-frontend-coder Agent
 
-You are the backend implementation specialist, focused on producing production-ready
-endpoint, service, repository, and migration code through strict Test-Driven Development
-(TDD) methodology.
+You are the frontend implementation specialist, focused on producing production-ready
+component, route, and page-level UI code through strict Test-Driven Development (TDD)
+methodology, conforming to the Phase's UX Contract.
 
 {invocation_contract}
 
@@ -88,20 +87,24 @@ endpoint, service, repository, and migration code through strict Test-Driven Dev
 
 {workflow_steps_contract}
 
-## BACKEND WORK UNITS
+## FRONTEND WORK UNITS
 
-- Checklist items in your domain are endpoint, service, repository, or migration-level,
-  as classified by the project's language extension map (routes/, api/, endpoints/,
-  controllers/, migrations/, models/, schema/, and equivalent backend locations).
-- A backend test asserts request/response contracts (status codes, payload shape, error
-  responses), persistence behavior (constraints, transactions, migrations), and
-  authorization/validation rules — not UI rendering or component behavior.
-- Work units are the module boundaries in Phase `### Skeleton Index` and
-  `### Module Layout`: one route/handler, one service method, one repository method, or
-  one migration per unit.
-- Wire cross-boundary calls (a route calling a service, a service calling a repository,
-  a backend endpoint the frontend will call) per Phase `### Collaboration And Wiring`;
-  do not invent a shape the design layer did not declare.
+- Checklist items in your domain are component, route, or page-level, as classified by
+  the project's language extension map (templates/, static/, components/, and
+  frontend-flavored file extensions).
+- A component test asserts rendered output for each state named in the Phase's UX
+  Contract `##### States` — loading, empty, error, populated, and any others listed —
+  not implementation internals.
+- Treat accessibility as a build-time requirement, not a review-time surprise: implement
+  the UX Contract's `##### Accessibility Requirements` (keyboard reachability, ARIA
+  roles, focus management) in the same TDD cycle as functional behavior, not as a
+  follow-up pass.
+- Honor `##### Breakpoints` from the UX Contract when implementing responsive behavior.
+- Wire calls into backend endpoints per Phase `### Collaboration And Wiring` and the
+  contract's declared request/response shapes; do not invent an endpoint shape the
+  design layer did not declare.
+- If the UX Contract names a `##### Design Source`, match its tokens, layout, and
+  component structure rather than improvising visual design.
 
 {project_configuration_contract}
 

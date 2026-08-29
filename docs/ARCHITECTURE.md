@@ -190,14 +190,15 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 ### Agent Templates (Specialists)
 
-**20 specialized agent templates** for focused workflow tasks:
+**21 specialized agent templates** for focused workflow tasks:
 
 **Generative Agents (Content Creation):**
 - **plan-analyst** - Business objectives analysis
 - **roadmap** - Implementation roadmap generation
 - **phase-architect** - Technical specification design and `implementation.md` build plan generation
 - **patch-planner** - Amendment task creation from change descriptions
-- **coder** - Code implementation
+- **coder** - Backend code implementation (endpoint/service/repository/migration-level)
+- **frontend-coder** - Frontend code implementation (component/route/page-level, scored against the UX Contract), dispatched per implementation.md Step alongside `coder`
 - **research-synthesis-orchestrator** - Research coordination
 
 **Critic Agents (Quality Assessment):**
@@ -475,6 +476,7 @@ project/
 │       ├── respec-create-phase.md              # Generated (platform-specific)
 │       ├── respec-patch-planner.md             # Generated (static)
 │       ├── respec-coder.md                     # Generated (static)
+│       ├── respec-frontend-coder.md            # Generated (static)
 │       ├── respec-code-reviewer.md             # Generated (static)
 │       ├── respec-automated-quality-checker.md # Generated (static)
 │       ├── respec-spec-alignment-reviewer.md   # Generated (static)
