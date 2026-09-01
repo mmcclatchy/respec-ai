@@ -55,6 +55,8 @@ grep -n "browser_tools" src/platform/models/code.py
 grep -rn "DesignSync" src/platform/
 # Phase 9 done?  → file exists means done
 ls src/platform/templates/agents/coder_contracts.py
+# Phase 10 done? → output means done
+grep -n "Design Research" src/platform/templates/agents/phase_architect.py
 ```
 
 Work the lowest-numbered incomplete phase, respecting the dependencies in the phase table below.
@@ -177,8 +179,9 @@ step would add a stop without adding a decision.
 
 ## Phases
 
-Eight phases. Phase 0 is a repair that unblocks verification for everything else; phases 1–3 make the
-spine language-agnostic; phases 4–7 build the frontend design and review loops.
+Eleven phases. Phase 0 is a repair that unblocks verification for everything else; phases 1–3 make
+the spine language-agnostic; phases 4–7 build the frontend design and review loops; phases 8–10
+layer on the design round-trip, the coder split, and frontend design elicitation.
 
 | # | Phase | Delivers | Depends on |
 |---|---|---|---|
@@ -192,6 +195,7 @@ spine language-agnostic; phases 4–7 build the frontend design and review loops
 | [7](phase-7-frontend-reviewer.md) | The frontend reviewer | Source + rendered-page evidence scored against the UX Contract | 4, 5 |
 | [8](phase-8-claude-design.md) | Claude Design integration | Per-TUI capability tiering; `/respec-design-sync` for Claude Code | 4 |
 | [9](phase-9-coder-split.md) | Split the coder | `coder_contracts.py` + frontend/backend coders, dispatched per Step | 1, 4 |
+| [10](phase-10-frontend-elicitation.md) | Frontend elicitation + shape-act research | Frontend design decisions surfaced at the gate; user-elected `bp` research before deciding | 4 |
 
 **Why this order.** Phase 0 is a live-bug repair measured in hours, and nothing downstream is
 verifiable end-to-end until it lands. Phase 1 is the largest and highest-value piece — it is what makes
@@ -203,7 +207,10 @@ they are worth little without the contract from phase 4 to score against. Phase 
 4 and can be taken whenever a Claude Code user wants the round-trip; its reviewer half wants phase 7
 first. Phase 9 splits the coder — worth doing on its own merits, since it shrinks a 648-line template
 that already carries two modes, but sequenced late because phase 7's seam review is what verifies two
-independent coders actually met in the middle.
+independent coders actually met in the middle. Phase 10 comes last because it is the one phase that
+is a hypothesis about the others: it changes what the shape act *asks*, and what to ask is best judged
+after phase 4's contracts and phase 7's reviewer have run on something real. Its own first step is a
+live run, not a code change.
 
 **One structural note that spans phases 7 and 9.** The frontend and backend coders never communicate.
 Their coordination is the *design contract* — `### Skeleton Index` and `### Collaboration And Wiring`,

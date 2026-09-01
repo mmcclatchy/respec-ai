@@ -274,3 +274,36 @@ complete; it does not make the primary-language heuristic smart.
 
 **Revisit when:** a user reports the wrong primary language on a genuinely polyglot repo. The right
 fix is probably to ask during `init` rather than to guess better.
+
+---
+
+## Knowledge-base grounding for the roadmap and plan workflows
+
+**What:** `best-practices-rag` is wired into exactly one agent — `phase_architect.py`, whose Step
+0.6 runs `query-kb` and whose unresolved gaps become `Synthesize:` prompts executed at
+`phase_command.py` Step 16.5. Phase 10 extends that to the shape act. Neither `roadmap.py` nor
+`plan_analyst.py` / the plan workflow queries the KB at all; `roadmap.py`'s single
+`best-practices` reference is an example string in a heading format.
+
+**Why deferred:** roadmap decomposition is plausibly where ecosystem convention matters *most* —
+how a plan splits into phases follows framework structure closely, and a Next.js app conventionally
+decomposes into routes, layouts, and server components in ways a model may or may not reproduce. But
+the roadmap workflow has its own refinement loop with its own critic, and adding a research step
+there means re-deciding the same cost questions phase 10 just answered for the shape act, in a
+workflow whose iteration profile has not been examined. Folding it into phase 10 would double that
+phase's surface and its risk.
+
+**The constraint any future version inherits:** `phase_command.py:1257-1265` states that the phase
+command is the **only** workflow that runs `bp` synthesis. Grounding the roadmap in the KB via
+`query-kb` alone (the free half) does not violate it; adding synthesis there does, and would need
+that policy amended deliberately rather than by implication.
+
+**Cost of the gap:** roadmap phase boundaries are drawn from the model's priors rather than from
+stored convention. Downstream this is partly recoverable — the shape act can still restructure
+within a phase — but a badly-drawn phase boundary is not something the shape act can fix, since it
+operates inside one phase.
+
+**Revisit when:** phase 10 has run on real projects and the Step 5.5 election data shows what users
+actually want researched. If the gaps they elect are consistently structural ("how does this
+framework organize a feature") rather than local ("how does this hook work"), that is evidence the
+need is upstream of the phase, in the roadmap. Measure before building.

@@ -567,3 +567,117 @@ offered to any language (F25).
 
 Every failure introduced by this refactor must produce a clean CLI message naming the file and the
 reason. Internal exception types stay internal.
+
+---
+
+## Frontend granularity is a setting on existing dials, not a new mode
+
+**Rejected:** a component-at-a-time design mode, where the shape act walks one component at a time
+rather than proposing a phase-wide shape.
+
+**Why:** it fights the grain of the workflow. Phases are scoped to "one sprint's worth of work"
+(`phase_architect.py:885-896`), and the shape act's whole point is that the user sees the *set* of
+public seams at once and can judge how they fit together. Walking components serially would show
+each decision without the context that makes it judgeable.
+
+The granularity dials the question is really asking for already exist, and all three are already
+implemented:
+
+- **Largest-to-smallest ordering** — `### Open Design Decisions` are ranked by blast radius if
+  reversed, highest first (`phase_architect.py:501-504`), and Step 6 walks them in that order with
+  an explicit "accept the recommended default for all remaining" exit (`phase_command.py:408-430`).
+- **Per-unit depth** — the Step 7 skeleton opt-in (`phase_command.py:452-490`) is a `multiSelect`
+  over internals the architect marked `internal, consequential`. Component granularity is a setting
+  on that dial.
+- **What a component's contract is** — Skeleton Index component entries already carry props as the
+  public seam and explicitly exclude JSX structure, styling, internal helpers, and hook
+  implementation (`phase_architect.py:794-802`). That is "design the messages, not the internals"
+  applied to frontend, already written.
+
+**Also rejected: a wireframe step or a visual-design gate.** The UX Contract *is* the wireframe in
+text — routes, required states, interaction flows with observable pass conditions. What a visual
+wireframe adds beyond it is spatial hierarchy, density, and above-the-fold, which is exactly what
+`##### Design Source` names. Adding a gate would restate *"No new human gate for the UX Contract"*
+as a question already answered.
+
+**What was actually missing** was none of these: it was that the architect's quality checks are
+OOP-shaped (`:876-883`) and never elicit the frontend decisions with the largest blast radius —
+state ownership, screen decomposition, component provenance. That is a prompt change in phase 4's
+register, not a workflow mode. See [phase-10-frontend-elicitation.md](phase-10-frontend-elicitation.md).
+
+---
+
+## Design Source is a decision, not a field
+
+**Rejected:** leaving `##### Design Source` as a slot the architect fills in when writing the UX
+Contract.
+
+**Why:** with no design available, the architect either invents the visual decisions or leaves the
+field empty, and the user discovers the gap only after the contract has been written around it. The
+`docs/WORKFLOWS.md` Claude Design flow already documents designing *first* as the recommended
+practice — but documenting a sequence and hoping is not the same as asking for it at the moment it
+is actionable.
+
+**Instead:** emit it as the first `OD-###` on a UI phase, upstream of state ownership, decomposition,
+and provenance, because it constrains all three. Choosing "design first" suspends the shape act; the
+user designs and re-runs, resuming at Step 5 through the existing `shape-proposed` branch at Step 3.
+No new resume machinery.
+
+**The invariant this does not touch:** "match existing components at `<path>`" must remain a fully
+sufficient answer. Phase 8's B7 — an identical UX Contract from a local bundle on all three TUIs —
+is the assertion that it is, and it stays green. Making the design source a decision must not make
+having a Claude Design project the expected answer.
+
+---
+
+## Shape-act research is user-elected, never automatic
+
+**Rejected (three variants):**
+
+1. Run `bp` synthesis automatically between Step 5 and Step 6, on gaps the architect flagged.
+2. Run it automatically, but only on the first shape pass.
+3. Have the architect mark gaps `[blocks-design]` and synthesize those.
+
+**Why (1) is wrong:** the shape act is a **loop** — Step 11's refine path returns to Step 5
+(`phase_command.py:701-702`). Anything between Steps 5 and 6 runs on every shape iteration, so this
+puts N subagent runs inside an iterating loop. It violates all four bullets of the
+`MANDATORY COST-AWARE SYNTHESIS POLICY` (`phase_command.py:1257-1265`), whose structural expression
+is precisely that Step 16.5 runs *once*, after the quality loop, outside every iteration.
+
+**Why (2) is wrong, and this is the non-obvious one:** the first architect pass knows *least* about
+the design and therefore issues the least targeted query. `bp` writes its synthesis into Neo4j, so a
+mediocre gap-fill is not a one-time cost — it is served to every future query on that topic, for
+every project on the machine. That cost is not recoverable, which makes "bounded but automatic"
+worse than it looks.
+
+**Why (3) is wrong:** the policy asks for *high-value* gaps. A model self-assessing which of its own
+knowledge gaps are consequential is a weak signal, and it errs expensive.
+
+**Chosen:** one `multiSelect` at Step 5.5, immediately before the design conversation, defaulting to
+"None". A human saying *"I want to know this before I decide"* is the strongest available high-value
+signal — and it tracks the real asymmetry, where a user fluent in their backend declines and the
+same user on unfamiliar frontend ground accepts.
+
+**The distinction that makes this work:** `query-kb` and `bp` synthesis are not two halves of one
+thing and must not be treated as such. `query-kb` is a local Neo4j read — free, no network, already
+running at architect Step 0.6 on every invocation in both modes. Synthesis is a full `bp-pipeline`
+subagent: Exa searches, context7 fetches, a graph write. So the free half (`#### Design Research`
+recording cache hits) is unconditional, and only the expensive half is elected.
+
+**Why one gate rather than a research option on each decision:** per-decision research would stall
+the conversation N times — decide, wait for a subagent, decide, wait again. One batched gate before
+the walk means one stall and an uninterrupted conversation.
+
+**Two consequences that must be implemented, not assumed:**
+
+- **Idempotence is by state, not position.** Because Step 5.5 re-runs on every shape iteration, a
+  researched gap must become a `Read:` entry and a declined one must carry `[declined]`, so neither
+  is re-offered. Without this the gate nags on every refine.
+- **The critic may never block or deduct on `#### Design Research`.** Declining is a legitimate
+  choice; a critic that penalizes it converts the opt-in into a mandate and undoes the entire cost
+  design. This is the quietest way the design could fail, so it is pinned by test.
+
+**Failure posture differs from Step 16.5 deliberately.** Step 16.5 hard-exits when `bp` is
+unavailable, correctly — the detail act promised those documents. Step 5.5 displays a notice and
+proceeds, because the user asked for optional enrichment, not a dependency. When extracting the
+shared synthesis renderer, that difference is a parameter, never an accident of copying.
