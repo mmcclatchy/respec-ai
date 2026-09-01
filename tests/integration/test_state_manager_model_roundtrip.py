@@ -126,7 +126,10 @@ def sample_phase_with_design_shape() -> Phase:
             '##### Route Index\n'
             '- `/login` :: sign-in form :: auth=none\n\n'
             '##### Interaction Flows\n'
-            '- FLOW-1: submit invalid email — **Pass:** inline error shown, form not cleared'
+            '- FLOW-1: submit invalid email — **Pass:** inline error shown, form not cleared\n\n'
+            '#### Design Research\n'
+            '- Read: `.best-practices/oauth-pkce-flow.md` — applied to: OD-2 (refresh token rotation)\n'
+            '- Gap: React Query / cache invalidation — bears on OD-3 (state ownership)'
         ),
         shape_gate=ShapeGate.SHAPE_PROPOSED,
         phase_status=PhaseStatus.IMPLEMENTATION_READY,

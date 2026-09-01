@@ -57,3 +57,9 @@ UX_CONTRACT_PLACEHOLDER = (
     '- [Claude Design handoff bundle path, design tokens file, or existing components'
     ' to match — read-only reference, never authored here]'
 )
+
+DESIGN_RESEARCH_PLACEHOLDER = (
+    '#### Design Research\n'
+    '- Read: `.best-practices/<path>.md` — applied to: OD-002 (state ownership)\n'
+    '- Gap: <technologies> / <topics> — bears on OD-003 (screen decomposition)'
+)

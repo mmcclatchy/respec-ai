@@ -267,7 +267,9 @@ CALL {tools.get_document}
 STEP S3: Run the shape-act check set
 Run ONLY the "### Design Shape Evaluation" blocker rules defined later in this file
 (Unjustified Seams, Empty/File-Named Test List, Skeleton Index / Module Layout
-Mismatch), plus these two shape-act-only checks:
+Mismatch, UX Contract Flow/Route rules when a `#### UX Contract` is present, and the
+three frontend decision classes plus Design Source when a `#### UX Contract` is
+present), plus these two shape-act-only checks:
 
 BLOCKER RULE FOR UNDER-SURFACED DECISIONS:
 - Scan Module Layout, Skeleton Index, and Collaboration And Wiring for a consequential
@@ -1102,6 +1104,9 @@ Blocker lane, ONLY these:
 5. Test List → implementation-step coverage
 6. `#### UX Contract` in `### Design Shape - Additional Sections`, when present —
    Interaction Flow pass conditions and Route Index auth entries only (below)
+7. When `#### UX Contract` is present: **presence** of an OD-### or SD-### entry for
+   state ownership, screen decomposition (per flow), component provenance, and the
+   visual design source — never the *content* of those decisions (below)
 
 Score lane ONLY, NEVER a blocker:
 - Private helpers, internal data structures, algorithm choice
@@ -1154,6 +1159,43 @@ VIOLATION: emitting a blocker for an internal implementation detail turns this c
 - If any Route Index entry has no auth value: raise a blocker. The auth column is what
   tells a runtime reviewer which routes are reachable without a session.
   [UX Contract Route Missing Auth - BLOCKING]: `{{path}}` has no auth requirement in Route Index
+
+**BLOCKER RULES FOR THE THREE FRONTEND DECISION CLASSES (presence only, never content)**:
+- Apply ONLY when a `#### UX Contract` is present — a backend-only phase raises none
+  of these.
+- Search `### Open Design Decisions` AND `### Settled Design Decisions` together (an
+  OD not yet settled still counts as surfaced).
+- Whether server state belongs in a query cache, which route decomposes to a modal,
+  or which component library is chosen is the user's call — evaluate only whether an
+  entry exists that addresses each class, never whether the answer given is correct.
+  Blocking on content turns this critic into the conformance checker the BINDING
+  SCOPE guard above exists to prevent.
+- If no entry addresses state ownership and the data boundary (server state vs.
+  local component state vs. URL state; the fetch boundary; caching/invalidation):
+  [Missing State Ownership Decision - BLOCKING]: No OD/SD entry addresses state ownership and the data boundary
+- If any `FLOW-N:` in the UX Contract's `##### Interaction Flows` has no
+  corresponding OD/SD entry deciding its screen decomposition (route vs. modal vs.
+  nested layout vs. in-place panel) — either a flow-specific entry or a general
+  decomposition entry that explicitly states it covers that flow:
+  [Undecided Screen Decomposition - BLOCKING]: `FLOW-{{N}}` has no decided screen decomposition
+- If no entry addresses component provenance (consume an existing library/design
+  system, or author components in this phase):
+  [Missing Component Provenance Decision - BLOCKING]: No OD/SD entry addresses component provenance
+
+**BLOCKER RULE FOR MISSING DESIGN SOURCE DECISION**:
+- If no OD/SD entry addresses the visual design source for this phase (Claude
+  Design first vs. matching existing components), raise a blocker — a UX Contract
+  whose `##### Design Source` was silently invented or left blank is exactly the
+  failure this decision class exists to prevent (docs/frontend-refactor/decisions.md
+  "Design Source is a decision, not a field").
+  [Missing Design Source Decision - BLOCKING]: No OD/SD entry decided the visual design source for this phase
+
+**`#### Design Research` is never evaluated here, in any lane.** Declining research
+at Step 5.5 is a legitimate choice. No blocker and no score deduction ever
+references `#### Design Research`, its `Read:`/`Gap:` entries, or whether the user
+elected research — a critic that penalizes declining converts the opt-in into a
+mandate and defeats the entire cost design (docs/frontend-refactor/decisions.md "Shape-act
+research is user-elected, never automatic").
 
 ### Domain-Specific Section Evaluation (30% of total score)
 

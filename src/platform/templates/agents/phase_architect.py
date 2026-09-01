@@ -6,6 +6,7 @@ from src.platform.models import PhaseArchitectAgentTools
 from src.platform.standards_config import language_testing_convention
 from src.platform.tool_enums import BuiltInToolCapability
 from src.platform.templates.phase_contract_grammar import (
+    DESIGN_RESEARCH_PLACEHOLDER,
     MODULE_LAYOUT_PLACEHOLDER,
     SKELETON_INDEX_PLACEHOLDER,
     TEST_LIST_PLACEHOLDER,
@@ -497,11 +498,64 @@ IF phase_mode == "shape":
     names a frontend framework for paths this phase's Module Layout touches — also emit
     a `#### UX Contract` block under `### Design Shape - Additional Sections`, with the
     H5 subsections and format defined in UX CONTRACT FORMAT below. A backend-only phase
-    emits no `#### UX Contract` at all; do not write an empty or placeholder one.
+    emits no `#### UX Contract` at all; do not write an empty or placeholder one, and
+    gets none of this phase's new decision classes, Design Research section, or Step
+    5.5 research prompt below — it inherits nothing from this IF branch.
+
+    IF this phase delivers a user-facing UI (same condition as above):
+    `### Collaboration And Wiring` MUST also carry the **state-ownership map** —
+    which module owns which slice of state and how it reaches a component. This is
+    what the frontend and backend coders coordinate through
+    (docs/frontend-refactor/decisions.md, "Coordination is design-time, not
+    runtime"), so it must be explicit there rather than implied by the Skeleton
+    Index.
+
+    Also emit, under `### Design Shape - Additional Sections` (H4 nesting, same
+    placement as `#### UX Contract`):
+    ```
+    {DESIGN_RESEARCH_PLACEHOLDER}
+    ```
+    `Read:` entries come from STEP 0.6's already-running, free `query-kb`/Glob cache
+    hits (KB_RESULTS, LOCAL_DOCS) — tie each to the OD-### it bears on. `Gap:`
+    entries state what the knowledge base did not answer. A `Gap:` is a statement, not a request — nothing synthesizes because a gap exists; that is Step 5.5's
+    job, elected by the user, not this agent's.
   - `## Design Decisions` — Open Design Decisions (ranked by blast radius if reversed —
     highest first, so the shape-act design conversation surfaces the most consequential
     choices first) and Settled Design Decisions (carried forward verbatim from prior
     iterations, never invented fresh).
+
+    IF this phase delivers a user-facing UI (same condition as above): Open Design
+    Decisions MUST include an `OD-###` for each of the following, unless
+    `### Settled Design Decisions` already answers it. List them in this order —
+    Design Source is upstream of the other three and must rank first regardless of
+    where blast-radius ranking would otherwise place it:
+
+    1. **Visual design source for this phase** — emit as the first `OD-###` (e.g.
+       `OD-001`):
+       ```
+       - OD-001 | title: Visual design source for this phase
+         - Option A: Design in Claude Design first, export the handoff bundle, name its path
+         - Option B: Match existing components at <path> — no new visual design needed
+         - Recommended: <A|B> — <why>
+       ```
+       Choosing A suspends the shape act at Step 6 — the user designs, then re-runs
+       the command, which resumes at Step 5 through the existing `shape-proposed`
+       branch at Step 3. Option B must remain fully sufficient on its own.
+    2. **State ownership and the data boundary** — server state vs. local component
+       state vs. URL state; where the fetch boundary sits; what is cached and who
+       invalidates it. The frontend analog of "what varies behind this
+       abstraction," and the decision whose reversal rewrites the most files.
+    3. **Screen decomposition** — route vs. modal vs. nested layout vs. in-place
+       panel, decided per UX Contract flow, not once for the whole phase.
+    4. **Component provenance** — consume an existing library or design system, or
+       author components in this phase. Upstream of the other two.
+
+    These use the existing `OD-###` format (title, Option A, Option B,
+    Recommended) — no new machinery, no new parsing.
+
+    Do NOT add a component-inventory section — the Skeleton Index already carries
+    components correctly (props as the public seam, JSX/styling/hooks explicitly
+    excluded); a second list would duplicate it and drift.
   - `## Metadata` — set `### Shape Gate` to `shape-proposed` (or `shape-amended` if this
     iteration follows a critic-requested or user-requested re-shape rather than a first
     pass).
@@ -881,6 +935,9 @@ components, hooks, or framework internals inside it; those belong in Skeleton In
 - Would two engineers given these skeletons write the same public API? ✓
 - Is every Test List entry an observable behavior, not a file name? ✓
 - Does every abstraction name what varies behind it? ✓
+- Would two engineers given this shape put the same state in the same place? ✓
+- Does every screen in the Route Index have a decided decomposition, not a default? ✓
+- Does every component entry carry real props, or just a name? ✓
 
 ### Phase Scoping Guidelines
 

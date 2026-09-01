@@ -56,6 +56,72 @@ technical_phase_template = Phase(
 ).build_markdown()
 
 
+def _bp_synthesis_orchestration_block(*, on_bp_unavailable: str) -> str:
+    """SUB-STEPs 3-5 shared by Step 16.5 (detail act) and Step 5.5 (shape act).
+
+    Bounded workers, `BP_PATH_REGEX` output validation, and the non-existent-path
+    guard are identical in both callers. Only what happens when `bp` itself is
+    unavailable differs -- Step 16.5 hard-exits because the detail act promised those
+    documents; Step 5.5 must degrade, never terminate, because the user asked for
+    optional enrichment, not a dependency (docs/frontend-refactor/decisions.md
+    "Failure posture differs from Step 16.5 deliberately"). `on_bp_unavailable` is
+    that one difference, passed in as text rather than accidentally copied.
+    """
+    return f"""Initialize synthesis orchestration state:
+MAX_ACTIVE_BP_WORKERS = 3
+PATH_REGEX = BP_PATH_REGEX
+PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)
+SUCCEEDED_SYNTHESIS = []
+FAILED_SYNTHESIS = []
+
+Preflight bp tool availability:
+IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:
+{on_bp_unavailable}
+
+Launch bp Tasks IN PARALLEL:
+Execute PENDING_PROMPTS with bounded concurrency:
+- ACTIVE_WORKERS max size: MAX_ACTIVE_BP_WORKERS (3)
+- PENDING_PROMPTS: prompts not started yet
+- SUCCEEDED_SYNTHESIS / FAILED_SYNTHESIS trackers
+
+While PENDING_PROMPTS not empty OR ACTIVE_WORKERS not empty:
+  - Launch new bp task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
+  - Wait for one task completion
+	  - Record completion result and free slot
+
+	  Task(bp):
+	  <queue item prompt_text>
+
+═══════════════════════════════════════════════
+MANDATORY BP OUTPUT VALIDATION GATE
+═══════════════════════════════════════════════
+For EACH completed bp task result:
+  CANDIDATE_PATHS = regex matches from task output using PATH_REGEX
+
+  IF len(CANDIDATE_PATHS) != 1:
+    ERROR: "bp output path parsing failed — expected exactly one .best-practices path"
+    DIAGNOSTIC: Show prompt, candidate path count, and task output excerpt
+    EXIT: Do NOT proceed with partial research updates
+
+	  RESOLVED_PATH = CANDIDATE_PATHS[0]
+	  IF file at RESOLVED_PATH does NOT exist:
+	    ERROR: "bp returned non-existent output path"
+	    DIAGNOSTIC: Show prompt and RESOLVED_PATH
+	    EXIT: Do NOT proceed with partial research updates
+
+	  Record in SUCCEEDED_SYNTHESIS:
+	  - path: RESOLVED_PATH
+	  - prompt_text: queue item prompt_text
+	  - technologies: queue item technologies
+	  - topics: queue item topics
+	  - query: queue item query
+	  - covers_api: queue item covers_api
+
+VIOLATION: Displaying bp synthesis errors but continuing to update
+           the phase with incomplete research paths.
+═══════════════════════════════════════════════"""
+
+
 def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     selection_prompt_instructions = tools.tui_adapter.selection_prompt_instruction
     selection_response_source = tools.tui_adapter.selection_response_source
@@ -383,6 +449,84 @@ IF agent returns error status:
   EXIT: Workflow terminated
 
 Display to user: "✓ Phase shape refined by phase-architect"
+```
+
+### Step 5.5: Research Gate
+
+Let the user elect, once per shape pass, to have a flagged knowledge gap researched
+before walking the design decisions — never automatically (three automatic variants
+were considered and rejected; see docs/frontend-refactor/decisions.md "Shape-act
+research is user-elected, never automatic"). Skips silently when the architect
+flagged nothing offerable — no prompt, no output line, no new human gate.
+
+**Cost invariant, absolute:** a user who declines here pays exactly what they pay
+today — zero additional `bp` invocations, on every shape iteration.
+
+**Loop-safety, absolute:** Step 11's refine path returns to Step 5, so this step
+re-runs on every shape iteration. Idempotence comes from state, not position — a
+researched gap becomes a `Read:` entry and is no longer offerable; a declined gap is
+marked `[declined]` and filtered out. Only a genuinely new gap from a re-shaped
+design reappears.
+
+```text
+SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
+SHAPE_PHASE_MARKDOWN = SHAPE_PHASE_RESPONSE.message
+
+Parse "#### Design Research" from SHAPE_PHASE_MARKDOWN under "### Design Shape -
+Additional Sections". OFFERABLE_GAPS = "- Gap:" entries NOT marked [declined].
+
+IF OFFERABLE_GAPS is empty:
+  Proceed to Step 6.
+
+{selection_prompt_instructions}
+Header: "Design Research"
+Question: "The architect flagged these knowledge gaps. Research any before we walk the design decisions?"
+multiSelect: true
+Options: [ one per OFFERABLE_GAPS entry, plus {{"label": "None — proceed to the design decisions", "description": "Default. Costs nothing — no bp invocation."}} ]
+
+WAIT for {selection_response_source}.
+DO NOT treat this as workflow completion, cancellation, or failure.
+After the user responds, resume at Step 5.5. Continue immediately.
+DO NOT explain that the workflow is stopping unless the user asks why.
+
+SELECTED_GAPS = [selections from {selection_response_source}] excluding "None — proceed to the design decisions"
+
+IF selection is "None" or SELECTED_GAPS is empty:
+  Mark every OFFERABLE_GAPS entry "[declined]" in SHAPE_PHASE_MARKDOWN.
+  {tools.store_document}
+    doc_type="phase",
+    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+    content=UPDATED_SHAPE_PHASE_MARKDOWN
+  )
+  Proceed to Step 6.
+
+Normalize SELECTED_GAPS into SYNTHESIS_QUEUE items (Technologies:/Topics: parsed from
+the Gap: entry text; query = the Gap: entry text verbatim).
+
+{_bp_synthesis_orchestration_block(
+    on_bp_unavailable=(
+        '  Display a notice: "bp unavailable — proceeding without research; the flagged'
+        ' gaps remain as Gap: entries for a later pass."\n'
+        '  Proceed to Step 6.'
+    )
+)}
+
+For each item in SUCCEEDED_SYNTHESIS:
+  Rewrite the corresponding "- Gap:" entry in SHAPE_PHASE_MARKDOWN as:
+  "- Read: `{{item.path}}` — Source: shape-act"
+
+Mark every OFFERABLE_GAPS entry NOT in SELECTED_GAPS as "[declined]" in
+SHAPE_PHASE_MARKDOWN.
+
+{tools.store_document}
+  doc_type="phase",
+  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
+  content=UPDATED_SHAPE_PHASE_MARKDOWN
+)
+
+Display to user: "✓ Researched {{len(SUCCEEDED_SYNTHESIS)}} gap(s)"
+
+Proceed to Step 6.
 ```
 
 ### Step 6: Design Conversation
@@ -1162,6 +1306,13 @@ Synthesize prompt parsing:
 - Extract `Technologies:`, `Topics:`, and `Query:` fields when present
 - Preserve original prompt text for Task(bp)
 
+Also extract "#### Design Research" from `### Design Shape - Additional Sections` (`##
+Design Shape` is preserved verbatim once the shape gate settles, so this content
+survived from the shape act unchanged):
+- "- Read:" entries → append their paths to EXISTING_READ_PATHS (this doubles as the
+  dedupe: nothing the shape act already fetched is synthesized a second time here)
+- Track each as DESIGN_RESEARCH_READ_PATHS for SUB-STEP 6
+
 SUB-STEP 2.1: Detect external APIs/services from phase content
 API_DETECTION_TEXT = concatenate text from:
 - "### Integration Context"
@@ -1264,61 +1415,14 @@ MANDATORY COST-AWARE SYNTHESIS POLICY
 - Unresolved synthesis queue items (explicit + API-derived) use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
 ═══════════════════════════════════════════════
 
-SUB-STEP 3: Initialize synthesis orchestration state
-MAX_ACTIVE_BP_WORKERS = 3
-PATH_REGEX = BP_PATH_REGEX
-PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)
-SUCCEEDED_SYNTHESIS = []
-FAILED_SYNTHESIS = []
-
-SUB-STEP 4: Preflight bp tool availability
-IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:
-  ERROR: "bp skill unavailable — cannot synthesize research requirements"
-  DIAGNOSTIC: "Expected Task(bp) permission and runtime bp skill registration"
-  EXIT: Do NOT proceed to synthesis with fallback behavior
-
-SUB-STEP 5: Launch bp Tasks IN PARALLEL
-Execute PENDING_PROMPTS with bounded concurrency:
-- ACTIVE_WORKERS max size: MAX_ACTIVE_BP_WORKERS (3)
-- PENDING_PROMPTS: prompts not started yet
-- SUCCEEDED_SYNTHESIS / FAILED_SYNTHESIS trackers
-
-While PENDING_PROMPTS not empty OR ACTIVE_WORKERS not empty:
-  - Launch new bp task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
-  - Wait for one task completion
-	  - Record completion result and free slot
-
-	  Task(bp):
-	  <queue item prompt_text>
-
-═══════════════════════════════════════════════
-MANDATORY BP OUTPUT VALIDATION GATE
-═══════════════════════════════════════════════
-For EACH completed bp task result:
-  CANDIDATE_PATHS = regex matches from task output using PATH_REGEX
-
-  IF len(CANDIDATE_PATHS) != 1:
-    ERROR: "bp output path parsing failed — expected exactly one .best-practices path"
-    DIAGNOSTIC: Show prompt, candidate path count, and task output excerpt
-    EXIT: Do NOT proceed with partial research updates
-
-	  RESOLVED_PATH = CANDIDATE_PATHS[0]
-	  IF file at RESOLVED_PATH does NOT exist:
-	    ERROR: "bp returned non-existent output path"
-	    DIAGNOSTIC: Show prompt and RESOLVED_PATH
-	    EXIT: Do NOT proceed with partial research updates
-
-	  Record in SUCCEEDED_SYNTHESIS:
-	  - path: RESOLVED_PATH
-	  - prompt_text: queue item prompt_text
-	  - technologies: queue item technologies
-	  - topics: queue item topics
-	  - query: queue item query
-	  - covers_api: queue item covers_api
-
-VIOLATION: Displaying bp synthesis errors but continuing to update
-           the phase with incomplete research paths.
-═══════════════════════════════════════════════
+SUB-STEP 3-5: Synthesis orchestration
+{_bp_synthesis_orchestration_block(
+    on_bp_unavailable=(
+        '  ERROR: "bp skill unavailable — cannot synthesize research requirements"\n'
+        '  DIAGNOSTIC: "Expected Task(bp) permission and runtime bp skill registration"\n'
+        '  EXIT: Do NOT proceed to synthesis with fallback behavior'
+    )
+)}
 
 SUB-STEP 6: Update Phase with synthesized paths
 SYNTHESIZED_READ_BLOCKS = []
@@ -1331,7 +1435,15 @@ For each item in SUCCEEDED_SYNTHESIS:
   - "  - Query: {{item.query}}" when non-empty
   - "  - Covers API: {{item.covers_api}}" when non-empty
 
-COMPLETE_READ_BLOCKS = EXISTING_READ_BLOCKS + SYNTHESIZED_READ_BLOCKS
+DESIGN_RESEARCH_READ_BLOCKS = []
+For each path in DESIGN_RESEARCH_READ_PATHS (from SUB-STEP 2):
+  IF path already present in EXISTING_READ_BLOCKS (by path): SKIP (already carried
+    forward as-is; do not duplicate)
+  Add block:
+  - "- Read: `{{path}}`"
+  - "  - Source: shape-act"
+
+COMPLETE_READ_BLOCKS = EXISTING_READ_BLOCKS + DESIGN_RESEARCH_READ_BLOCKS + SYNTHESIZED_READ_BLOCKS
 
 Reconstruct Research Requirements section with ONLY `Read:` blocks:
 For each BLOCK in COMPLETE_READ_BLOCKS:

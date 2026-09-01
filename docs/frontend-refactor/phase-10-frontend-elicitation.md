@@ -326,23 +326,29 @@ entire cost design — which is the quietest way this phase could fail.
 
 ## Exit criteria
 
-- [ ] B1-B11 observed failing first, then passing. B5 verified against **postgres** specifically.
-- [ ] `uv run pytest` green; `uv run respec-ai regenerate` valid for claude-code, opencode, codex.
-- [ ] **Cost check, measured not assumed.** Run a UI phase declining all research; confirm from the
-      Step 16.5 summary line (`phase_command.py:1350`) that `invoked_bp` is unchanged from a
-      pre-change run of the same phase. Then run it electing one gap: exactly one additional
-      invocation, and Step 16.5 must **not** double-count it.
-- [ ] **Loop check.** Force a Step 11 refine and confirm Step 5.5 does not re-prompt.
-- [ ] **Backend regression.** A backend-only phase's shape act is byte-identical to before.
-- [ ] **Manual quality review — the criterion that matters.** Run `/respec-phase` on a real UI
-      objective and read the generated decisions yourself:
-      - Are the three OD entries ones you would genuinely have wanted to decide, or ceremony you
-        would click through? The second is the failure mode, and it makes output *worse* than before
-        this phase, because from here the critic enforces them.
-      - Does `### Collaboration And Wiring` now say something concrete about state ownership, or
-        restate the module list?
-      - When you elected research, did the synthesized document actually change how you answered
-        the decision it was attached to? If not, the gap the architect flagged was not the gap that
-        mattered.
-- [ ] Portability: `regenerate` for opencode and codex, then the same UI objective with a local
-      bundle. The contract must be as good as Claude Code's (phase 8's B7 restated).
+**Status (implementation session):** Step 0's live `/respec-phase` run was not performed by the
+implementing agent — it requires a scratch project's plan/roadmap and several interactive human
+gates, which the user elected to run themselves in a separate session rather than delegate. Everything
+below was implemented as a hypothesis per that plan, test-first, and mechanically verified; the
+criteria that require a live run and human judgment (marked below) are explicitly open until that
+session happens.
+
+- [x] B1-B11 observed failing first, then passing (`tests/unit/templates/test_frontend_elicitation_phase10.py`).
+      B5 verified against **postgres** specifically (`tests/integration/test_state_manager_model_roundtrip.py`,
+      `db_state_manager` parametrization, run against `docker-compose.dev.yml`'s db service).
+- [x] `uv run pytest` green (1647 passed). `uv run respec-ai regenerate` valid for claude-code and
+      codex, confirmed against a scratch project. OpenCode's CLI regenerate needs a one-time
+      `respec-ai models opencode` run unrelated to this phase; portability itself is covered by the
+      adapter-parametrized unit tests (B7 across ClaudeCodeAdapter/CodexAdapter/OpenCodeAdapter).
+- [ ] **Cost check, measured not assumed.** Not run live — needs the user's real `/respec-phase`
+      session. B6 pins the static claim (the "None" branch never reaches `Task(bp)`); this criterion
+      additionally wants a measured `invoked_bp` count from a real run.
+- [ ] **Loop check.** Not run live. B11 pins the static claim (idempotence by state, not position).
+- [x] **Backend regression.** B2 passing, plus the full existing suite (including phase 0-9 tests)
+      green with no changes required to any of them.
+- [ ] **Manual quality review — the criterion that matters.** Open until the user's live
+      `/respec-phase` session on a real UI objective. This is the one criterion no test substitutes
+      for — see the phase document's own "judgment call" note above.
+- [ ] Portability with a local design bundle on a real UI objective: open until the live session.
+      The static invariant (Option B stays fully sufficient; phase 8's B7 untouched) holds by
+      construction — no phase 8 code was touched.
