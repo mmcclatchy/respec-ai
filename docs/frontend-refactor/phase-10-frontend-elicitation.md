@@ -59,7 +59,7 @@ than before.
 ## The problem
 
 **The architect never asks the frontend questions with the largest blast radius.** Its quality
-checks (`phase_architect.py:876-883`) are *"would two engineers write the same public API"* and
+checks (`phase_architect.py:930-937`) are *"would two engineers write the same public API"* and
 *"does every abstraction name what varies behind it"* — the right questions for a service layer. On
 a UI phase the expensive-to-reverse decisions are different, and nothing elicits them. The result is
 a UX Contract that correctly describes observable behavior, sitting on a component tree nobody made
@@ -67,7 +67,7 @@ a decision about.
 
 **The shape act has knowledge-base access it cannot record.** The architect's Step 0.6 runs
 `best-practices-rag query-kb` on every invocation, in both modes. But shape mode is forbidden from
-writing `### Research Requirements` (`phase_architect.py:512-515`), so the results have no
+writing `### Research Requirements` (`phase_architect.py:566-568`), so the results have no
 destination, and unresolved gaps cannot become `Synthesize:` prompts until the detail act. The
 synthesis that closes that loop runs at Step 16.5 — *after* the shape gate at Step 11. The human
 approves the design in the one place ecosystem convention matters most, with the research machinery
@@ -76,7 +76,7 @@ idle.
 ## What this phase does not change, and why
 
 **Granularity stays phase-scoped.** Component-at-a-time design was considered and rejected: the
-workflow is sized to "one sprint's worth of work" (`phase_architect.py:885-896`), and the per-unit
+workflow is sized to "one sprint's worth of work" (`phase_architect.py:944-955`), and the per-unit
 dial already exists as the Step 7 skeleton opt-in. See [decisions.md](decisions.md).
 
 **No wireframe step and no new human gate.** The UX Contract is the wireframe in text; what a visual
@@ -162,7 +162,7 @@ not introduce a second, separately-drifting predicate. Require an `OD-###` for e
 3. **Component provenance** — consume an existing library or design system, or author components in
    this phase. Upstream of the other two.
 
-These use the existing `OD-###` format parsed at `phase_command.py:399-400`, so they inherit
+These use the existing `OD-###` format parsed at `phase_command.py:544`, so they inherit
 blast-radius ranking, the Step 6 walk, the "accept recommended defaults for all remaining" exit, and
 `SD-###` recording. **No new machinery, and no new parsing.**
 
@@ -257,7 +257,7 @@ Four properties, each of which is a test:
   entry and no longer offerable; a declined gap carries `[declined]` and is filtered out. Only a
   genuinely new gap from a re-shaped design reappears.
 - **Portable (B7).** `multiSelect: true` with `{selection_prompt_instructions}` /
-  `{selection_response_source}` is exactly Step 7's skeleton opt-in (`phase_command.py:467-478`), so
+  `{selection_response_source}` is exactly Step 7's skeleton opt-in (`phase_command.py:611-622`), so
   it renders on Codex, where `ask_user_question_tool_name` is `None` (**F18**, **F29**).
   **`Task(bp)` is already granted at command level** (`template_helpers.py:171`) — no tool-grant
   change is needed. Verify it anyway before assuming: phase 3 shipped exactly this defect class with
@@ -342,10 +342,15 @@ session happens.
       adapter-parametrized unit tests (B7 across ClaudeCodeAdapter/CodexAdapter/OpenCodeAdapter).
 - [ ] **Cost check, measured not assumed.** Not run live — needs the user's real `/respec-phase`
       session. B6 pins the static claim (the "None" branch never reaches `Task(bp)`); this criterion
-      additionally wants a measured `invoked_bp` count from a real run.
+      additionally wants a measured `invoked_bp` count from a real run (Step 16.5 summary line —
+      now `phase_command.py:1462` after this phase's edits, verify before relying on it).
 - [ ] **Loop check.** Not run live. B11 pins the static claim (idempotence by state, not position).
-- [x] **Backend regression.** B2 passing, plus the full existing suite (including phase 0-9 tests)
-      green with no changes required to any of them.
+- [ ] **Backend regression.** Not run live — "byte-identical" is a claim about what the architect
+      *produces* for a real backend phase, which only a live before/after diff can prove. B2 pins the
+      static claim instead (the new instructions live entirely inside the same `user-facing UI`
+      conditional the UX Contract already used, and the full existing suite — including phases 0-9 —
+      is green with no changes required to any of them), which is evidence but not the proof this
+      criterion asks for.
 - [ ] **Manual quality review — the criterion that matters.** Open until the user's live
       `/respec-phase` session on a real UI objective. This is the one criterion no test substitutes
       for — see the phase document's own "judgment call" note above.

@@ -61,5 +61,6 @@ UX_CONTRACT_PLACEHOLDER = (
 DESIGN_RESEARCH_PLACEHOLDER = (
     '#### Design Research\n'
     '- Read: `.best-practices/<path>.md` — applied to: OD-002 (state ownership)\n'
-    '- Gap: <technologies> / <topics> — bears on OD-003 (screen decomposition)'
+    '- Gap: Technologies: <comma-separated technology names>; Topics: <comma-separated'
+    ' topic keywords> — bears on OD-003 (screen decomposition)'
 )
