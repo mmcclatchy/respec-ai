@@ -6,25 +6,27 @@ Production-ready architectural overview of the respec-ai Workflow MCP Server sys
 
 respec-ai is a **meta MCP server** that generates platform-specific workflow tools for AI-driven development. It provides a sophisticated platform abstraction layer that enables Claude Code to work seamlessly with Linear, GitHub, or local Markdown files through dynamically generated commands and agents.
 
+Materialization dispatches by language behind a `LanguageMaterializer` protocol (Python and TypeScript ship today), so frontend and backend code share the same design → skeleton → TDD spine. Phases with a UI carry a **UX Contract** — routes, states, interaction flows, accessibility, and a design source — authored in shape mode, approved at the human gate, and scored by a dedicated frontend reviewer against both source and a rendered page (`respec-ai frontend-preflight` brings the app to a reproducible state for that review).
+
 ## System Architecture
 
 ### Core Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Target Plan                               │
+│                    Target Plan                                  │
 │                 (receives generated tools)                      │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │  .claude/commands/     │  .claude/agents/               │   │
 │   │  • respec-plan.md      │  • plan-analyst.md             │   │
-│   │  • respec-phase.md      │  • phase-architect.md           │   │
-│   │  • respec-code.md     │  • coder.md            │   │
-│   │  • respec-roadmap.md   │  • coder.md              │   │
+│   │  • respec-phase.md     │  • phase-architect.md          │   │
+│   │  • respec-code.md      │  • coder.md                    │   │
+│   │  • respec-roadmap.md   │  • coder.md                    │   │
 │   └─────────────────────────────────────────────────────────┘   │
 └─────────────────────┬───────────────────────────────────────────┘
                       ▲ Template Deployment
 ┌─────────────────────┴───────────────────────────────────────────┐
-│              respec-ai MCP Server (This Plan)                │
+│              respec-ai MCP Server (This Plan)                   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │          Platform Orchestrator (11 files)                │   │
 │  │  • Platform Selection (Linear/GitHub/Markdown)           │   │
@@ -35,8 +37,8 @@ respec-ai is a **meta MCP server** that generates platform-specific workflow too
 │  └──────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                Template Engine                           │   │
-│  │  • 7 Command Templates (orchestration patterns)          │   │
-│  │  • 23 Agent Templates (specialized workflows)            │   │
+│  │  • 9 Command Templates (orchestration patterns)          │   │
+│  │  • 20 Agent Templates (specialized workflows)            │   │
 │  │  • Pydantic Tool Models (type-safe parameter passing)    │   │
 │  │  • Strategy Pattern (clean command generation)           │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -155,7 +157,10 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 ### Command Templates (Orchestrators)
 
-**6 command templates** that orchestrate workflows using platform-specific tools:
+**9 command templates**: 6 primary workflow orchestrators using platform-specific tools, plus 3
+utility commands.
+
+**Workflow orchestrators:**
 
 1. **respec-plan** - Strategic planning orchestration
    - Coordinates plan-analyst and plan-critic agents
@@ -169,7 +174,8 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 
 3. **respec-code** - Implementation orchestration
    - Reads phase's `implementation.md` build plan
-   - Coordinates coder, review team
+   - Coordinates coder, review team (frontend-coder dispatched alongside coder per Step,
+     domain-classified)
    - Executes implementation workflows
    - Validates code quality
 
@@ -188,9 +194,20 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
    - Coordinates patch-planner and review team
    - Manages dual planning and coding loops
 
+**Utility commands:**
+
+7. **respec-commit** - Builds and executes standardized respec workflow commits
+8. **respec-standards** - Renders derived standards guides from canonical TOML templates
+9. **respec-design-sync** (Claude Code only) - Pushes the project's component library to a Claude
+   Design project so visual design starts from real components; the UX Contract's `Design Source`
+   works portably on every TUI without it
+
 ### Agent Templates (Specialists)
 
-**21 specialized agent templates** for focused workflow tasks:
+**20 template-generated agent specialists** for focused workflow tasks. Three names below
+(`research-synthesis-orchestrator`, `code-reviewer`, `review-consolidator`) are referenced in
+workflow prose but have no dedicated `.py` template file of their own — pre-existing drift, tracked
+in `docs/phase-refactor/deferred-issues.md`, not introduced by the frontend work.
 
 **Generative Agents (Content Creation):**
 - **plan-analyst** - Business objectives analysis
@@ -211,7 +228,9 @@ The Platform Orchestrator is an **11-file production-ready system** that provide
 **Review Team Agents:**
 - **automated-quality-checker** - Static analysis (tests, types, lint, coverage)
 - **spec-alignment-reviewer** - Implementation plan/Phase/Plan alignment verification
-- **frontend-reviewer** - Frontend domain review
+- **code-quality-reviewer** - Code structural quality, correctness patterns, maintainability
+- **design-conformance-reviewer** - Classifies divergence between implemented code and the Phase design record
+- **frontend-reviewer** - Frontend domain review (source + rendered-page evidence against the UX Contract)
 - **backend-api-reviewer** - API domain review
 - **database-reviewer** - Database domain review
 - **infrastructure-reviewer** - Infrastructure domain review
@@ -502,7 +521,8 @@ project/
 
 **Production-ready test suite:**
 
-- **712+ total tests passing**
+- **1,648+ total tests passing** (per-category breakdown below predates the frontend work and is not
+  separately re-verified here)
 - **37 platform tests** - Platform orchestrator functionality
 - **10 unit tests** - Template generation tools
 - **9 integration tests** - End-to-end deployment workflows
@@ -599,12 +619,13 @@ project/
 
 ### Test Coverage Summary
 
-**712+ total tests passing:**
+**1,648+ total tests passing** (`uv run pytest -q`). The category breakdown below predates the
+frontend work and is not separately re-verified here:
 - 37 platform tests (Platform orchestrator functionality)
 - 10 unit tests (Template generation tools)
 - 9 integration tests (End-to-end deployment workflows)
 - 25 template tests (Command/agent template validation)
-- 646 other tests (MCP tools, models, state management)
+- 646+ other tests (MCP tools, models, state management, plus all frontend-refactor and Phase 10 additions)
 
 ### Documentation vs Reality
 
