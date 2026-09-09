@@ -170,6 +170,35 @@ draft
 """
 
 
+class TestRoadmapStoreIsAllOrNothing:
+    @pytest.mark.asyncio
+    async def test_malformed_later_phase_leaves_existing_phases_intact(
+        self,
+        roadmap_tools: RoadmapTools,
+        state_manager: InMemoryStateManager,
+        plan_name: str,
+        sample_roadmap_markdown_with_phases: str,
+    ) -> None:
+        # F1c: mark_phases_inactive used to run before the parse loop, so a phase block
+        # that failed to parse left every phase deactivated with only the successfully
+        # parsed prefix restored - a failed create_roadmap could shrink the project.
+        await roadmap_tools.store(plan_name, sample_roadmap_markdown_with_phases)
+
+        good_prefix, _, _ = sample_roadmap_markdown_with_phases.partition('# Phase: phase-3-query-system')
+        malformed = f'{good_prefix}# Phase:\n\n## Overview\n'
+
+        with pytest.raises(Exception):
+            await roadmap_tools.store(plan_name, malformed)
+
+        surviving = await state_manager.get_roadmap_phases(plan_name)
+
+        assert {phase.phase_name for phase in surviving} == {
+            'phase-1-neo4j-setup',
+            'phase-2-embedding-pipeline',
+            'phase-3-query-system',
+        }
+
+
 class TestRoadmapStorageIntegration:
     @pytest.mark.asyncio
     async def test_store_and_retrieve_roadmap_with_phases(

@@ -246,6 +246,27 @@ class InMemoryStateManager(StateManager):
         self._log_state_snapshot('get_roadmap_phases', 'EXIT')
         return phases
 
+    async def list_roadmaps(self) -> list[str]:
+        return list(self._roadmaps.keys())
+
+    async def delete_roadmap(self, plan_name: str) -> bool:
+        self._log_state_snapshot('delete_roadmap', 'ENTRY')
+        logger.info(f'delete_roadmap: plan_name={plan_name}')
+
+        if plan_name not in self._roadmaps:
+            logger.warning(f'delete_roadmap: Roadmap not found for project {plan_name}')
+            self._log_state_snapshot('delete_roadmap', 'EXIT')
+            raise RoadmapNotFoundError(f'Roadmap not found for project: {plan_name}')
+
+        self._phases.pop(plan_name, None)
+        self._inactive_phases.pop(plan_name, None)
+        del self._roadmaps[plan_name]
+
+        self._log_state()
+        logger.info(f'delete_roadmap: Deleted roadmap and phases for project {plan_name}')
+        self._log_state_snapshot('delete_roadmap', 'EXIT')
+        return True
+
     async def mark_phases_inactive(self, plan_name: str) -> int:
         """Mark all current active phases for a project as inactive.
 
@@ -293,25 +314,30 @@ class InMemoryStateManager(StateManager):
         normalized_name = normalize_phase_name(phase.phase_name)
         logger.debug(f'store_phase: Normalized "{phase.phase_name}" -> "{normalized_name}"')
 
-        # Auto-increment iteration and version if phase already exists
-        is_update = normalized_name in self._phases[plan_name]
-        if is_update:
-            existing_phase = self._phases[plan_name][normalized_name]
+        # Stamps climb from any prior phase, live or soft-deleted, so version history
+        # survives a delete and recreate. Frozen fields are only preserved from a LIVE
+        # phase - a soft-deleted one must not re-impose its Overview on the next write
+        # (F1). This mirrors the postgres backend, which reads both from one row.
+        live_phase = self._phases[plan_name].get(normalized_name)
+        existing_phase = live_phase or self._inactive_phases.get(plan_name, {}).get(normalized_name)
+
+        if existing_phase:
             existing_data = existing_phase.model_dump()
             new_data = phase.model_dump()
 
-            # Preserve frozen fields the same way update_phase does: a frozen field is
-            # preserved only once it holds real content, so a still-placeholder field
-            # can still be populated (finding F10/F12). The Phase 3 human gate is the
-            # sanctioned exception - allow_frozen_field_edits lets a user edit through.
+            # A frozen field is preserved only once it holds real content, so a
+            # still-placeholder field can still be populated (finding F10/F12). The Phase 3
+            # human gate is the sanctioned exception - allow_frozen_field_edits lets a user
+            # edit through.
+            preserve_frozen = live_phase is not None and not allow_frozen_field_edits
             frozen_fields = (
-                {}
-                if allow_frozen_field_edits
-                else {
+                {
                     field: existing_data[field]
                     for field in FROZEN_PHASES_FIELDS
                     if existing_data[field] != FROZEN_FIELD_DEFAULTS[field]
                 }
+                if preserve_frozen
+                else {}
             )
 
             phase = Phase(
@@ -329,6 +355,9 @@ class InMemoryStateManager(StateManager):
                 f'frozen fields preserved: {list(frozen_fields)}'
             )
 
+        # Postgres holds one row per phase and flips active back to TRUE on re-store;
+        # dropping the inactive copy keeps this backend to the same single-record shape.
+        self._inactive_phases.get(plan_name, {}).pop(normalized_name, None)
         self._phases[plan_name][normalized_name] = phase
 
         self._log_state()

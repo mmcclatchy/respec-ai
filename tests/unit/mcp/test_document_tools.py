@@ -474,3 +474,60 @@ Updated architecture description
         raise ValueError(f'Unknown operation: {operation}')
 
     assert status_check(result)
+
+
+class TestFrozenFieldDiscardWarning:
+    @pytest.mark.asyncio
+    async def test_store_document_warns_when_frozen_fields_are_discarded(
+        self, document_tools: DocumentTools, sample_documents: dict[DocumentType, str]
+    ) -> None:
+        # F1b: the storage layer preserves frozen Overview fields and still reports
+        # success, so a refinement pass could not tell a stored edit from a discarded
+        # one. store_document returns only response.message, so the warning must ride
+        # in that string - a field on MCPResponse would never reach the caller.
+        key = 'test-plan/test-phase'
+        original = sample_documents[DocumentType.PHASE]
+        await document_tools.store_document(DocumentType.PHASE, key, original)
+
+        edited = original.replace('Test scope description', 'Refined scope the critic asked for')
+        result = await document_tools.store_document(DocumentType.PHASE, key, edited)
+
+        assert 'WARNING: frozen Overview fields not written' in result
+        assert 'scope' in result
+
+    @pytest.mark.asyncio
+    async def test_store_document_is_silent_when_nothing_is_discarded(
+        self, document_tools: DocumentTools, sample_documents: dict[DocumentType, str]
+    ) -> None:
+        key = 'test-plan/test-phase'
+        content = sample_documents[DocumentType.PHASE]
+        await document_tools.store_document(DocumentType.PHASE, key, content)
+
+        result = await document_tools.store_document(DocumentType.PHASE, key, content)
+
+        assert 'WARNING' not in result
+
+    @pytest.mark.asyncio
+    async def test_first_write_of_a_phase_does_not_warn(
+        self, document_tools: DocumentTools, sample_documents: dict[DocumentType, str]
+    ) -> None:
+        result = await document_tools.store_document(
+            DocumentType.PHASE, 'test-plan/test-phase', sample_documents[DocumentType.PHASE]
+        )
+
+        assert 'WARNING' not in result
+
+    @pytest.mark.asyncio
+    async def test_gate_override_does_not_warn(
+        self, document_tools: DocumentTools, sample_documents: dict[DocumentType, str]
+    ) -> None:
+        key = 'test-plan/test-phase'
+        original = sample_documents[DocumentType.PHASE]
+        await document_tools.store_document(DocumentType.PHASE, key, original)
+
+        edited = original.replace('Test scope description', 'User edit at the design gate')
+        result = await document_tools.store_document(
+            DocumentType.PHASE, key, edited, allow_frozen_field_edits=True
+        )
+
+        assert 'WARNING' not in result

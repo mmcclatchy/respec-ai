@@ -104,6 +104,19 @@ class StateManager(ABC):
     @abstractmethod
     async def mark_phases_inactive(self, plan_name: str) -> int: ...
 
+    @abstractmethod
+    async def list_roadmaps(self) -> list[str]: ...
+
+    @abstractmethod
+    async def delete_roadmap(self, plan_name: str) -> bool:
+        """Delete a roadmap and the phases belonging to it.
+
+        Unlike delete_phase this is a hard delete: get_roadmap_phases requires the
+        roadmap, so phases left behind would be unreachable. Raises RoadmapNotFoundError
+        when the roadmap does not exist, so a caller can tell a deletion from a no-op.
+        """
+        ...
+
     # Unified Phase Management (replaces InitialPhase + Phase separation)
     @abstractmethod
     async def store_phase(self, plan_name: str, phase: Phase, allow_frozen_field_edits: bool = False) -> str: ...

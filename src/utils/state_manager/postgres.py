@@ -408,31 +408,57 @@ class PostgresStateManager(StateManager):
         logger.info(f'mark_phases_inactive: Marked {count} phases as inactive for project {plan_name}')
         return count
 
+    async def list_roadmaps(self) -> list[str]:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT plan_name FROM roadmaps')
+
+        return [row['plan_name'] for row in rows]
+
+    async def delete_roadmap(self, plan_name: str) -> bool:
+        async with db_pool.acquire() as conn:
+            exists = await conn.fetchval('SELECT 1 FROM roadmaps WHERE plan_name = $1', plan_name)
+            if not exists:
+                raise RoadmapNotFoundError(f'Roadmap not found for project: {plan_name}')
+
+            # Phases have no FK to roadmaps, so they must be removed explicitly - the same
+            # hand-rolled cascade delete_plan performs.
+            async with conn.transaction():
+                await conn.execute('DELETE FROM phases WHERE plan_name = $1', plan_name)
+                await conn.execute('DELETE FROM roadmaps WHERE plan_name = $1', plan_name)
+
+        logger.info(f'delete_roadmap: Deleted roadmap and phases for project {plan_name}')
+        return True
+
     async def store_phase(self, plan_name: str, phase: Phase, allow_frozen_field_edits: bool = False) -> str:
         normalized_name = normalize_phase_name(phase.phase_name)
 
         async with db_pool.acquire() as conn:
             existing = await conn.fetchrow(
-                'SELECT iteration, version, objectives, scope, dependencies, deliverables '
+                'SELECT iteration, version, active, objectives, scope, dependencies, deliverables '
                 'FROM phases WHERE plan_name = $1 AND phase_name = $2',
                 plan_name,
                 normalized_name,
             )
 
             if existing:
-                # Preserve frozen fields the same way in-memory's store_phase and both
-                # backends' update_phase do: only once a frozen field holds real content,
-                # so a still-placeholder field can still be populated (F10/F12). The
-                # Phase 3 human gate is the sanctioned exception - allow_frozen_field_edits
-                # lets a user edit through.
+                # Stamps climb from any prior row so version history survives a delete and
+                # recreate, but frozen fields are only preserved from a LIVE row. Both
+                # delete_phase and mark_phases_inactive are soft (active = FALSE) and the
+                # phases UNIQUE constraint ignores active, so without this guard a deleted
+                # phase re-imposes its old Overview on the next write - silently, because
+                # the write still reports success (F1). A frozen field is preserved only
+                # once it holds real content, so a still-placeholder field can still be
+                # populated (F10/F12). The Phase 3 human gate is the sanctioned exception -
+                # allow_frozen_field_edits lets a user edit through.
+                preserve_frozen = existing['active'] and not allow_frozen_field_edits
                 frozen_fields = (
-                    {}
-                    if allow_frozen_field_edits
-                    else {
+                    {
                         field: existing[field]
                         for field in FROZEN_PHASES_FIELDS
                         if existing[field] != FROZEN_FIELD_DEFAULTS[field]
                     }
+                    if preserve_frozen
+                    else {}
                 )
                 phase = phase.model_copy(
                     update={
@@ -565,7 +591,9 @@ class PostgresStateManager(StateManager):
             }
         )
 
-        await self.store_phase(plan_name, final_phase)
+        # Forward the gate flag: store_phase re-reads the row and would otherwise restore
+        # the frozen values this method just let the user override (F1a).
+        await self.store_phase(plan_name, final_phase, allow_frozen_field_edits=allow_frozen_field_edits)
 
         return f'Updated phase "{phase_name}" to iteration {final_phase.iteration}, version {final_phase.version}'
 

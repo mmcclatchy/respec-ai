@@ -20,6 +20,7 @@ from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.utils.enums import LoopType
+from src.utils.errors import RoadmapNotFoundError
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, StateManager
 from src.utils.state_manager.postgres import PostgresStateManager
@@ -254,6 +255,147 @@ async def test_store_phase_preserves_frozen_fields(
     assert retrieved.objectives == sample_phase.objectives, 'store_phase must preserve frozen objectives'
     assert retrieved.scope == sample_phase.scope, 'store_phase must preserve frozen scope'
     assert retrieved.architecture == 'Updated architecture - should persist'
+
+
+@pytest.mark.asyncio
+async def test_delete_roadmap_removes_the_roadmap_and_its_phases(
+    state_manager: StateManager, plan_name: str, sample_roadmap: Roadmap, sample_phase: Phase
+) -> None:
+    # F2: delete_document(doc_type="roadmap") used to return status COMPLETED with
+    # "not yet implemented", so a caller branching on status saw success while nothing
+    # was deleted. Phases have no FK to roadmaps, so they must go too - get_roadmap_phases
+    # requires the roadmap, which would leave them unreachable.
+    await state_manager.store_roadmap(plan_name, sample_roadmap)
+    await state_manager.store_phase(plan_name, sample_phase)
+
+    assert await state_manager.delete_roadmap(plan_name) is True
+
+    with pytest.raises(RoadmapNotFoundError):
+        await state_manager.get_roadmap(plan_name)
+    assert await state_manager.list_phases(plan_name) == []
+
+
+@pytest.mark.asyncio
+async def test_delete_roadmap_raises_when_the_roadmap_does_not_exist(
+    state_manager: StateManager, plan_name: str
+) -> None:
+    with pytest.raises(RoadmapNotFoundError):
+        await state_manager.delete_roadmap(plan_name)
+
+
+@pytest.mark.asyncio
+async def test_list_roadmaps_returns_stored_plan_names(
+    state_manager: StateManager, plan_name: str, sample_roadmap: Roadmap
+) -> None:
+    # The roadmaps PK is plan_name, but Roadmap.plan_name holds the TITLE (get_roadmap
+    # maps it from roadmap_title), so listing must return the key callers address by.
+    assert await state_manager.list_roadmaps() == []
+
+    await state_manager.store_roadmap(plan_name, sample_roadmap)
+
+    assert await state_manager.list_roadmaps() == [plan_name]
+
+
+@pytest.mark.asyncio
+async def test_store_phase_after_delete_phase_does_not_restore_frozen_fields(
+    state_manager: StateManager, plan_name: str, sample_phase: Phase
+) -> None:
+    # F1: delete_phase is a soft delete (active = FALSE) and the phases UNIQUE constraint
+    # ignores active, so postgres store_phase used to find the dead row and re-impose its
+    # frozen Overview on the next write -- silently, because the write still reported
+    # success. Deleting a phase must actually let the next write define it.
+    phase_name = await state_manager.store_phase(plan_name, sample_phase)
+    await state_manager.delete_phase(plan_name, phase_name)
+
+    recreated = sample_phase.model_copy(
+        update={
+            'objectives': 'Recreated objectives - must persist',
+            'scope': 'Recreated scope - must persist',
+            'dependencies': 'Recreated dependencies - must persist',
+            'deliverables': 'Recreated deliverables - must persist',
+        }
+    )
+    await state_manager.store_phase(plan_name, recreated)
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.objectives == 'Recreated objectives - must persist'
+    assert retrieved.scope == 'Recreated scope - must persist'
+    assert retrieved.dependencies == 'Recreated dependencies - must persist'
+    assert retrieved.deliverables == 'Recreated deliverables - must persist'
+
+
+@pytest.mark.asyncio
+async def test_store_phase_after_mark_phases_inactive_does_not_restore_frozen_fields(
+    state_manager: StateManager, plan_name: str, sample_phase: Phase
+) -> None:
+    # F1, via the path create_roadmap actually uses: RoadmapTools.store calls
+    # mark_phases_inactive and then re-stores every phase, which is what makes the
+    # incoming roadmap authoritative. Without this the roadmap refinement loop cannot
+    # persist any critic finding that lands in a phase Overview.
+    phase_name = await state_manager.store_phase(plan_name, sample_phase)
+    await state_manager.mark_phases_inactive(plan_name)
+
+    refined = sample_phase.model_copy(update={'scope': 'Refined scope from roadmap-critic feedback'})
+    await state_manager.store_phase(plan_name, refined)
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.scope == 'Refined scope from roadmap-critic feedback'
+
+
+@pytest.mark.asyncio
+async def test_store_phase_stamps_climb_across_a_soft_delete(
+    state_manager: StateManager, plan_name: str, sample_phase: Phase
+) -> None:
+    # The freeze is scoped to live rows, but iteration/version must still climb from any
+    # prior row so version history survives a delete/recreate. Resetting them to the
+    # incoming markdown's values (roadmap phases ship iteration=0, version=1) would erase
+    # the only signal that distinguishes a first write from a refinement.
+    phase_name = await state_manager.store_phase(plan_name, sample_phase)
+    before = await state_manager.get_phase(plan_name, phase_name)
+
+    await state_manager.delete_phase(plan_name, phase_name)
+    await state_manager.store_phase(plan_name, sample_phase.model_copy(update={'iteration': 0, 'version': 1}))
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.iteration == before.iteration + 1
+    assert retrieved.version == before.version + 1
+
+
+@pytest.mark.asyncio
+async def test_update_phase_user_edit_at_the_gate_overrides_frozen_fields(
+    state_manager: StateManager, plan_name: str, sample_phase: Phase
+) -> None:
+    # F1a: postgres update_phase honoured allow_frozen_field_edits when building the
+    # merged phase but then persisted through store_phase without forwarding the flag,
+    # so store_phase re-read the row and restored the old values. The Phase 3 human
+    # design gate was inoperative on the backend production actually runs.
+    phase_name = await state_manager.store_phase(plan_name, sample_phase)
+
+    user_edited = sample_phase.model_copy(update={'objectives': 'User-edited objectives at the gate'})
+    await state_manager.update_phase(plan_name, phase_name, user_edited, allow_frozen_field_edits=True)
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.objectives == 'User-edited objectives at the gate'
+
+
+@pytest.mark.asyncio
+async def test_update_phase_agent_write_still_cannot_change_frozen_fields(
+    state_manager: StateManager, plan_name: str, sample_phase: Phase
+) -> None:
+    # The other half of F1a: forwarding the flag must not weaken the default. An agent
+    # write leaves it False and must still be refused.
+    phase_name = await state_manager.store_phase(plan_name, sample_phase)
+
+    agent_write = sample_phase.model_copy(update={'objectives': 'Agent-drifted objectives'})
+    await state_manager.update_phase(plan_name, phase_name, agent_write)
+
+    retrieved = await state_manager.get_phase(plan_name, phase_name)
+
+    assert retrieved.objectives == sample_phase.objectives
 
 
 @pytest.mark.asyncio

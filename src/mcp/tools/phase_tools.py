@@ -1,7 +1,7 @@
 from fastmcp.exceptions import ResourceError, ToolError
 from pydantic import ValidationError
 
-from src.mcp.tools.base import DocumentToolsInterface
+from src.mcp.tools.base import DocumentToolsInterface, with_discard_warning
 from src.models.phase import Phase
 from src.utils.enums import LoopStatus
 from src.utils.errors import LoopNotFoundError, PhaseNotFoundError
@@ -132,9 +132,12 @@ class PhaseTools(DocumentToolsInterface):
         try:
             plan_name, phase_name = self._parse_key(key)
             phase = Phase.parse_markdown(content)
+            discarded = await self.discarded_frozen_fields(plan_name, phase, allow_frozen_field_edits)
             await self.state.store_phase(plan_name, phase, allow_frozen_field_edits=allow_frozen_field_edits)
 
-            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=phase_name)
+            return MCPResponse(
+                id=key, status=LoopStatus.COMPLETED, message=with_discard_warning(phase_name, discarded)
+            )
         except ValidationError as e:
             raise ToolError(f'Invalid phase markdown: {str(e)}')
         except Exception as e:
@@ -158,11 +161,12 @@ class PhaseTools(DocumentToolsInterface):
         try:
             plan_name, phase_name = self._parse_key(key)
             phase = Phase.parse_markdown(content)
+            discarded = await self.discarded_frozen_fields(plan_name, phase, allow_frozen_field_edits)
             result = await self.state.update_phase(
                 plan_name, phase_name, phase, allow_frozen_field_edits=allow_frozen_field_edits
             )
 
-            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=result)
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=with_discard_warning(result, discarded))
         except ValidationError as e:
             raise ToolError(f'Invalid phase markdown: {str(e)}')
         except Exception as e:

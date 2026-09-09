@@ -305,12 +305,21 @@ class TestRoadmapToolsGet:
 
 class TestRoadmapToolsList:
     @pytest.mark.asyncio
-    async def test_list_returns_not_implemented(self, roadmap_tools: RoadmapTools) -> None:
+    async def test_list_reports_no_roadmaps_when_none_are_stored(self, roadmap_tools: RoadmapTools) -> None:
         response = await roadmap_tools.list()
 
         assert isinstance(response, MCPResponse)
         assert response.status == LoopStatus.COMPLETED
-        assert 'not yet implemented' in response.message.lower()
+        assert response.message == 'No roadmaps found'
+
+    @pytest.mark.asyncio
+    async def test_list_returns_stored_roadmap_keys(self, roadmap_tools: RoadmapTools) -> None:
+        await roadmap_tools.store('test-project', create_test_roadmap_markdown('Test Roadmap'))
+
+        response = await roadmap_tools.list()
+
+        assert response.status == LoopStatus.COMPLETED
+        assert 'test-project' in response.message
 
 
 class TestRoadmapToolsUpdate:
@@ -334,12 +343,26 @@ class TestRoadmapToolsUpdate:
 
 class TestRoadmapToolsDelete:
     @pytest.mark.asyncio
-    async def test_delete_returns_not_implemented(self, roadmap_tools: RoadmapTools) -> None:
-        response = await roadmap_tools.delete('test-project')
+    async def test_delete_removes_the_roadmap(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
+    ) -> None:
+        key = 'test-project'
+        await roadmap_tools.store(key, create_test_roadmap_markdown('Test Roadmap'))
+
+        response = await roadmap_tools.delete(key)
 
         assert isinstance(response, MCPResponse)
         assert response.status == LoopStatus.COMPLETED
-        assert 'not yet implemented' in response.message.lower()
+        assert key not in state_manager._roadmaps
+
+    @pytest.mark.asyncio
+    async def test_delete_missing_roadmap_raises_instead_of_reporting_completed(
+        self, roadmap_tools: RoadmapTools
+    ) -> None:
+        # F2: the old stub returned status COMPLETED for a deletion that never happened,
+        # so a programmatic caller could not distinguish success from a silent no-op.
+        with pytest.raises(ResourceError, match='Roadmap not found'):
+            await roadmap_tools.delete('test-project')
 
 
 class TestRoadmapToolsLinkLoop:
