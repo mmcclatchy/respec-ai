@@ -140,7 +140,9 @@ class PhaseTools(DocumentToolsInterface):
         except Exception as e:
             raise ToolError(f'Failed to store phase: {str(e)}')
 
-    async def get(self, key: str | None = None, loop_id: str | None = None) -> MCPResponse:
+    async def get(
+        self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True
+    ) -> MCPResponse:
         return await self.get_phase_by_path_or_loop(path=key, loop_id=loop_id)
 
     async def list(self, parent_key: str | None = None) -> MCPResponse:

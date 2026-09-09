@@ -1037,8 +1037,8 @@ def create_create_phase_agent_tools(
         create_phase_tool=platform_tools[0],
         get_phase_tool=platform_tools[1],
         update_phase_tool=platform_tools[2],
-        get_roadmap=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}'
+        get_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,

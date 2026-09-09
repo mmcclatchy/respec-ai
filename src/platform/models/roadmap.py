@@ -124,7 +124,13 @@ class CreatePhaseAgentTools(AgentToolsModel):
     create_phase_tool: str = Field(..., description='Platform-specific tool for creating external phases')
     get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
     update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
-    get_roadmap: str = Field(..., description='Retrieve complete roadmap from MCP')
+    get_phase: str = Field(
+        ...,
+        description=(
+            'Retrieve the single sparse phase already stored by respec-roadmap during roadmap '
+            'creation, without pulling the full roadmap markdown for every other phase'
+        ),
+    )
     store_document: str = Field(..., description='Store phase in MCP storage')
     platform: PlatformType = Field(..., description='Selected platform type')
 

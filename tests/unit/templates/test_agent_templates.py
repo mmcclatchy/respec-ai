@@ -327,10 +327,11 @@ class TestCreatePhaseTemplate:
         tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
         template = generate_create_phase_template(tools)
 
-        # Should include MCP tools
-        mcp_tools = ['get_roadmap', 'add_phase', 'store_phase']
+        # Should include MCP tools for single-phase retrieval/storage (not full-roadmap retrieval)
+        mcp_tools = ['get_document', 'store_document']
         has_mcp_tool = any(tool in template for tool in mcp_tools)
-        assert has_mcp_tool, 'Template should include MCP tools for roadmap operations'
+        assert has_mcp_tool, 'Template should include MCP tools for phase operations'
+        assert 'doc_type="phase"' in template, 'create-phase must retrieve the single phase, not the full roadmap'
 
     def test_template_supports_parallel_execution(self) -> None:
         platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
@@ -357,8 +358,8 @@ class TestCreatePhaseTemplate:
 
         assert '## Invocation Contract' in template
         assert '### Scalar Inputs' in template
-        assert '- plan_name: Plan name for roadmap retrieval' in template
-        assert '- phase_name: Phase name from roadmap to extract' in template
+        assert '- plan_name: Plan name for phase retrieval' in template
+        assert '- phase_name: Phase name to retrieve' in template
         assert '### Grouped Markdown Inputs' in template
         assert '- None' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template

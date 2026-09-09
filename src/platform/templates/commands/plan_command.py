@@ -818,11 +818,12 @@ IF roadmap workflow invocation returns error:
   ROADMAP_ERROR_SUMMARY = [captured error summary]
 ELSE:
   ROADMAP_IDENTIFIER = PLAN_NAME
-  Verify roadmap exists in MCP:
+  Verify roadmap exists in MCP (metadata only — do NOT load every phase for an existence check):
   mcp__respec-ai__get_document(
     doc_type="roadmap",
     key=PLAN_NAME,
-    loop_id=None
+    loop_id=None,
+    include_phases=false
   )
 
   IF verification succeeds:

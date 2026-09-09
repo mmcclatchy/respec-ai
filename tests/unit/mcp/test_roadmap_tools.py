@@ -263,6 +263,32 @@ class TestRoadmapToolsGet:
             await roadmap_tools.get(key=key, loop_id='a1b2c3d4')
 
     @pytest.mark.asyncio
+    async def test_get_with_include_phases_false_omits_phase_markdown(
+        self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
+    ) -> None:
+        key = 'test-project'
+        roadmap_markdown = create_test_roadmap_markdown('Test Roadmap')
+        await roadmap_tools.store(key, roadmap_markdown)
+
+        phases = [
+            Phase(
+                phase_name='phase1',
+                objectives='Test objectives 1',
+                scope='Test scope 1',
+                dependencies='Test deps 1',
+                deliverables='Test deliverables 1',
+            ),
+        ]
+        for phase in phases:
+            await state_manager.store_phase(key, phase)
+
+        response = await roadmap_tools.get(key=key, include_phases=False)
+
+        assert response.status == LoopStatus.COMPLETED
+        assert 'Test Roadmap' in response.message
+        assert '# Phase: phase1' not in response.message
+
+    @pytest.mark.asyncio
     async def test_get_handles_empty_phases(
         self, roadmap_tools: RoadmapTools, state_manager: InMemoryStateManager
     ) -> None:

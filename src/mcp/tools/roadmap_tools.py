@@ -36,7 +36,9 @@ class RoadmapTools(DocumentToolsInterface):
         except Exception as e:
             raise ToolError(f'Failed to store roadmap: {str(e)}')
 
-    async def get(self, key: str | None = None, loop_id: str | None = None) -> MCPResponse:
+    async def get(
+        self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True
+    ) -> MCPResponse:
         if not key:
             raise ToolError('Key is required for roadmaps')
 
@@ -45,7 +47,7 @@ class RoadmapTools(DocumentToolsInterface):
 
         try:
             roadmap = await self.state.get_roadmap(key)
-            phases = await self.state.get_roadmap_phases(key)
+            phases = await self.state.get_roadmap_phases(key) if include_phases else None
             markdown = roadmap.build_markdown(phases)
             return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=markdown, char_length=len(markdown))
         except Exception as e:

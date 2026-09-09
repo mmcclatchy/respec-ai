@@ -46,7 +46,11 @@ class DocumentTools:
         return await tool.validate(content)
 
     async def get_document(
-        self, doc_type: DocumentType, key: str | None = None, loop_id: str | None = None
+        self,
+        doc_type: DocumentType,
+        key: str | None = None,
+        loop_id: str | None = None,
+        include_phases: bool = True,
     ) -> MCPResponse:
         if not key and not loop_id:
             raise ToolError('Either key OR loop_id must be provided')
@@ -55,7 +59,7 @@ class DocumentTools:
         if not tool:
             raise ToolError(f'Unknown document type: {doc_type}')
 
-        return await tool.get(key, loop_id)
+        return await tool.get(key, loop_id, include_phases=include_phases)
 
     async def list_documents(self, doc_type: DocumentType, parent_key: str | None = None) -> MCPResponse:
         tool = self._tool_map.get(doc_type)
@@ -163,7 +167,13 @@ def register_document_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def get_document(doc_type: DocumentType, key: str | None, loop_id: str | None, ctx: Context) -> MCPResponse:
+    async def get_document(
+        doc_type: DocumentType,
+        key: str | None,
+        loop_id: str | None,
+        ctx: Context,
+        include_phases: bool = True,
+    ) -> MCPResponse:
         """Retrieve document as markdown.
 
         Two retrieval modes:
@@ -174,13 +184,16 @@ def register_document_tools(mcp: FastMCP) -> None:
         - doc_type: Type of document ("plan", "phase", "roadmap")
         - key: Hierarchical key (required if not using loop_id)
         - loop_id: Loop identifier (alternative to key)
+        - include_phases: Roadmap only. Set False to return roadmap metadata without
+          concatenating every phase's markdown (e.g. to verify a roadmap exists).
+          Ignored for plan and phase documents.
 
         Returns:
         - MCPResponse: Contains document markdown in message field
         """
         await ctx.info(f'Retrieving {doc_type.value} document')
         try:
-            result = await _get_tools(ctx).get_document(doc_type, key, loop_id)
+            result = await _get_tools(ctx).get_document(doc_type, key, loop_id, include_phases=include_phases)
             await ctx.info(f'Retrieved {doc_type.value} document')
             return result
         except Exception as e:
