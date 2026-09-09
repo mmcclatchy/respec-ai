@@ -12,6 +12,15 @@ from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
 class ClaudeCodeAdapter(TuiAdapter):
+    _MAIN_AGENT_GUARDRAIL = """## Claude Code Subagent Guardrail
+
+Invoke ONLY the respec-* agents explicitly named in this workflow, using the exact invocation shown here.
+- NEVER spawn an ad hoc, general-purpose, or "advisor" subagent (forked or fresh) that is not named in this workflow.
+- NEVER substitute the advisor tool, a fork, or any other subagent for the respec-* critic/reviewer/analyst agents this workflow defines — those are the only evaluators the loop recognizes.
+- NEVER edit, overwrite, or otherwise mutate plan/roadmap/phase documents by any means other than the MCP tools explicitly listed in this workflow's Data Storage Pattern.
+- If a step seems to need a capability this workflow does not define, STOP and report the gap to the user instead of improvising a subagent or a direct edit.
+"""
+
     @property
     def display_name(self) -> str:
         return 'Claude Code'
@@ -19,6 +28,10 @@ class ClaudeCodeAdapter(TuiAdapter):
     @property
     def conversation_workflow_name(self) -> str:
         return 'the plan-conversation command'
+
+    @property
+    def subagent_invocation_guardrail(self) -> str:
+        return self._MAIN_AGENT_GUARDRAIL
 
     @property
     def ask_user_question_tool_name(self) -> str | None:
