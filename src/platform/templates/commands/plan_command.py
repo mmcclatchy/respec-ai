@@ -119,8 +119,7 @@ Human-driven phase (Steps 1-5):
 
 Automated analyst phase (Steps 6-9):
 - Initializes MCP refinement loop with ANALYST_LOOP_ID
-- Stores plan copy in analyst loop: `{tools.store_plan_in_loop}`
-- Analyst agents use ANALYST_LOOP_ID for all MCP operations
+- Analyst agents use ANALYST_LOOP_ID for all MCP operations, including plan retrieval
 - MCP Server manages loop state and decisions
 
 {tools.mcp_tools_reference}
@@ -629,8 +628,10 @@ ELSE (user response does not match 1, 2, or 3):
 Use the MCP tool `{tools.initialize_analyst_loop}`:
 - Call `{tools.initialize_analyst_loop}`
 - Store the returned loop ID as `ANALYST_LOOP_ID` for tracking throughout the analyst validation process
-- Retrieve the strategic plan from MCP using `{tools.get_plan}`
-- Store it in the analyst loop using `{tools.store_plan_in_loop}`
+
+The analyst agents retrieve the plan themselves by ANALYST_LOOP_ID — the loop already
+records which plan it belongs to. Do NOT pull the plan into this context and re-store a
+copy under the loop id; that round-trips the whole document for no reason.
 
 ## Step 7: Extract Objectives
 

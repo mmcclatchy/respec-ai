@@ -136,6 +136,15 @@ class PostgresStateManager(StateManager):
                 loop_state.id,
             )
 
+    async def get_plan_name_for_loop(self, loop_id: str) -> str:
+        async with db_pool.acquire() as conn:
+            plan_name = await conn.fetchval('SELECT plan_name FROM loop_states WHERE id = $1', loop_id)
+
+        if not plan_name:
+            raise LoopNotFoundError(f'Loop not found: {loop_id}')
+
+        return plan_name
+
     async def get_loop(self, loop_id: str) -> LoopState:
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(

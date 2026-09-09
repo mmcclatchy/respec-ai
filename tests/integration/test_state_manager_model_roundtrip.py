@@ -15,14 +15,16 @@ from typing import Callable
 
 import pytest
 
-from src.models.enums import PhaseStatus, PlanStatus, RoadmapStatus, ShapeGate
+from src.mcp.tools.document_tools import DocumentTools
+from src.models.enums import DocumentType, PhaseStatus, PlanStatus, RoadmapStatus, ShapeGate
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
 from src.utils.enums import LoopType
-from src.utils.errors import RoadmapNotFoundError
+from src.utils.errors import LoopNotFoundError, RoadmapNotFoundError
 from src.utils.loop_state import LoopState
 from src.utils.state_manager import InMemoryStateManager, StateManager
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 from src.utils.state_manager.postgres import PostgresStateManager
 
 
@@ -255,6 +257,25 @@ async def test_store_phase_preserves_frozen_fields(
     assert retrieved.objectives == sample_phase.objectives, 'store_phase must preserve frozen objectives'
     assert retrieved.scope == sample_phase.scope, 'store_phase must preserve frozen scope'
     assert retrieved.architecture == 'Updated architecture - should persist'
+
+
+@pytest.mark.asyncio
+async def test_get_plan_name_for_loop_returns_the_plan_the_loop_was_created_for(
+    state_manager: StateManager, plan_name: str
+) -> None:
+    # F4: add_loop has always persisted this association (loop_states.plan_name /
+    # _loop_to_plan) but nothing exposed it, which is why plans could not be addressed
+    # by loop_id and the workflow stored a duplicate copy instead.
+    loop = LoopState(loop_type=LoopType.ANALYST)
+    await state_manager.add_loop(loop, plan_name)
+
+    assert await state_manager.get_plan_name_for_loop(loop.id) == plan_name
+
+
+@pytest.mark.asyncio
+async def test_get_plan_name_for_unknown_loop_raises(state_manager: StateManager) -> None:
+    with pytest.raises(LoopNotFoundError):
+        await state_manager.get_plan_name_for_loop('deadbeef')
 
 
 @pytest.mark.asyncio
@@ -618,3 +639,29 @@ async def test_update_phase_by_loop_preserves_frozen_fields(
     # Verify frozen field unchanged, flexible field updated
     assert retrieved.objectives == sample_phase.objectives
     assert retrieved.testing_strategy == 'Updated testing strategy - should persist'
+
+
+@pytest.mark.asyncio
+async def test_roadmap_refinement_persists_a_phase_scope_change_end_to_end(
+    state_manager: StateManager, plan_name: str, sample_roadmap: Roadmap, sample_phase: Phase
+) -> None:
+    """The scene-smith scenario, through the tool layer agents actually call.
+
+    roadmap-critic raises a finding located in a phase's Scope; respec-roadmap re-sends
+    the whole roadmap with that Scope corrected via create_roadmap. Before the F1 fix the
+    correction was discarded, create_roadmap still reported success, and the loop could
+    never converge.
+    """
+    tools = DocumentTools(state_manager)
+    roadmap_markdown = f'{sample_roadmap.build_markdown()}\n{sample_phase.build_markdown()}'
+
+    await tools.store_document(DocumentType.ROADMAP, key=plan_name, content=roadmap_markdown)
+
+    refined_phase = sample_phase.model_copy(update={'scope': 'Scope corrected per roadmap-critic finding'})
+    refined_markdown = f'{sample_roadmap.build_markdown()}\n{refined_phase.build_markdown()}'
+    result = await tools.store_document(DocumentType.ROADMAP, key=plan_name, content=refined_markdown)
+
+    stored = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+
+    assert stored.scope == 'Scope corrected per roadmap-critic finding'
+    assert FROZEN_DISCARD_WARNING not in result

@@ -7,10 +7,7 @@ from src.utils.enums import LoopStatus
 from src.utils.errors import PhaseNotFoundError
 from src.utils.loop_state import MCPResponse
 from src.utils.state_manager import StateManager
-from src.utils.state_manager.base import FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS
-
-
-FROZEN_DISCARD_WARNING = 'WARNING: frozen Overview fields not written'
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING, FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS
 
 
 def with_discard_warning(message: str, discarded: list[str]) -> str:

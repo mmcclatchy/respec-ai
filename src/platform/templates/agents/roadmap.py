@@ -229,6 +229,10 @@ CALL {tools.create_roadmap}
 → Verify: Roadmap stored successfully to MCP
 → If failed: Report error and STOP
 
+The roadmap you send is authoritative: {tools.create_roadmap} replaces every phase,
+including their Overview fields, so a refinement pass DOES persist Scope, Objectives,
+Dependencies and Deliverables changes. Send the complete corrected roadmap.
+
 STEP 6: Return Completion Status
 Your ONLY output to the orchestrator is:
   "Roadmap generation complete. Stored to MCP."

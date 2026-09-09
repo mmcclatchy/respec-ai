@@ -163,7 +163,8 @@ The Roadmap decomposes a strategic plan into sprint-sized phases with dependency
 - None
 
 ### Retrieved Context (Not Invocation Inputs)
-- Roadmap markdown via {tools.get_roadmap}
+- Roadmap markdown via {tools.get_roadmap}, or, when that overflows, roadmap metadata via
+  {tools.get_roadmap_metadata} plus one {tools.get_phase} call per phase from {tools.list_phases}
 - Prior roadmap-critic feedback via {tools.get_feedback}
 - Strategic plan via {tools.get_plan}
 - Loaded TUI plan references when present
@@ -173,7 +174,23 @@ TASKS:
 STEP 1: Retrieve Roadmap
 CALL {tools.get_roadmap}
 → Verify: Roadmap markdown received
-→ If failed: Request orchestrator provide roadmap directly
+
+IF the result is returned in full: proceed to STEP 1.25.
+
+IF the result exceeds the tool-result limit (a roadmap with many phases reaches
+80,000+ characters): retrieve the same content in pieces. Do NOT give up. Do NOT
+score from assertion.
+  1. CALL {tools.get_roadmap_metadata}
+     → roadmap-level sections only, without any phase bodies
+  2. CALL {tools.list_phases}
+     → the phase keys stored for this plan
+  3. FOR EACH phase key: CALL {tools.get_phase}
+     → one phase at a time, substituting PHASE_NAME
+  Assemble these into the roadmap under review. This yields the same content as the
+  single call, split across several results.
+
+IF BOTH paths fail: report the exact error to the orchestrator and STOP.
+Do NOT store a score derived from anything other than primary text.
 
 STEP 1.25: Retrieve Previous Critic Feedback
 CALL {tools.get_feedback}

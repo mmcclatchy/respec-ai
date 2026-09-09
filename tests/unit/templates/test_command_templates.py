@@ -9,6 +9,7 @@ from src.platform.template_generator import COMMAND_CAPABILITY_REQUIREMENTS
 from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 
 
 _BANNED_ACTION_PATTERNS = (
@@ -674,6 +675,57 @@ class TestCrossPlatformInvocationRendering:
         assert 'Roadmap critic did not persist fresh loop feedback' in template
         assert 'Override MCP decision and proceed to Step 5' not in template
         assert 'MCP will decide the next action after reevaluating stored feedback' in template
+
+    def test_roadmap_template_fails_closed_on_a_frozen_field_discard_warning(self) -> None:
+        # F7: every gate checked "did the agent say the phrase" and "is the document
+        # retrievable". All three of the discarded writes in the original report passed
+        # both. The gate belongs on phase extraction, where create-phase agents write to
+        # LIVE phases and preservation can still refuse a payload - create_roadmap
+        # deactivates every phase first, so it can no longer discard anything. The warning
+        # string is a contract with the storage layer, so assert the shared constant.
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert FROZEN_DISCARD_WARNING in template
+        assert 'Phase storage discarded frozen Overview content' in template
+
+    def test_plan_template_does_not_duplicate_the_plan_into_the_analyst_loop(self) -> None:
+        # F4: the plan was re-stored under the loop id as its key purely so analyst agents
+        # could address it, costing a full document round-trip through the orchestrator's
+        # context. Plans now resolve by loop_id directly.
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert 'Store it in the analyst loop' not in template
+        assert 'Stores plan copy in analyst loop' not in template
+
+    def test_roadmap_template_step_7_glob_matches_the_allowed_tools_grant(self) -> None:
+        # F5: list_project_phases_tool_interpolated ran an unbounded
+        # .replace('*', '{plan_name}') over the markdown adapter's Glob string, but that
+        # '*' is a real wildcard rather than a placeholder. The verification step could
+        # never match, so a correct run halted on "0 phases stored".
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert 'STORED_PHASES = Glob(.respec-ai/plans/{PLAN_NAME}/phases/*/phase.md)' in template
+        assert 'phases/{plan_name}/phase.md' not in template
+
+    def test_roadmap_template_does_not_send_create_phase_agents_to_get_roadmap(self) -> None:
+        # F6: create-phase agents have no get_roadmap tool and their own template forbids
+        # pulling the full roadmap, but the command still instructed exactly that.
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert 'Retrieve roadmap from MCP using get_roadmap' not in template
+        assert 'get_document(doc_type="phase", key="PLAN_NAME/PHASE_NAME")' in template
 
     def test_roadmap_template_places_pre_loop_status_before_roadmap_critic_invocation(self) -> None:
         coordinator = TemplateCoordinator()

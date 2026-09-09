@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from src.mcp.tools.base import DocumentToolsInterface
 from src.models.plan import Plan
 from src.utils.enums import LoopStatus
-from src.utils.errors import PlanNotFoundError
+from src.utils.errors import LoopNotFoundError, PlanNotFoundError
 from src.utils.loop_state import MCPResponse
 
 
@@ -31,16 +31,19 @@ class PlanTools(DocumentToolsInterface):
     async def get(
         self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True
     ) -> MCPResponse:
-        if not key:
-            raise ToolError('Key is required for plans')
-
-        if loop_id:
-            raise ToolError('Plans do not support loop-based retrieval')
+        if not key and not loop_id:
+            raise ToolError('Either key OR loop_id is required for plans')
 
         try:
-            plan = await self.state.get_plan(key)
+            # add_loop already records which plan a loop belongs to, so a loop id resolves
+            # to a plan without the caller first storing a duplicate copy of the plan
+            # keyed on the loop id.
+            plan_key = key or await self.state.get_plan_name_for_loop(loop_id or '')
+            plan = await self.state.get_plan(plan_key)
             markdown = plan.build_markdown()
-            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=markdown, char_length=len(markdown))
+            return MCPResponse(id=plan_key, status=LoopStatus.COMPLETED, message=markdown, char_length=len(markdown))
+        except LoopNotFoundError:
+            raise ResourceError('Loop does not exist or is not linked to a document')
         except PlanNotFoundError as e:
             raise ResourceError(str(e))
         except Exception as e:

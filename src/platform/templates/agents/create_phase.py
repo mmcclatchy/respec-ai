@@ -3,6 +3,7 @@ from textwrap import indent
 from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import CreatePhaseAgentTools
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 
 
 sparse_phase_example = Phase(
@@ -101,6 +102,11 @@ STEP 2: Store in MCP (REQUIRED)
 CALL {tools.store_document}
 → Verify: MCP storage successful
 → If failed: STOP and report error
+→ Inspect the returned message. A phase's Overview fields (Objectives, Scope,
+  Dependencies, Deliverables) are frozen once they hold real content, and storage
+  preserves the stored values while STILL reporting success. If the message contains
+  "{FROZEN_DISCARD_WARNING}": the listed fields were NOT written. Report the exact
+  warning naming each field and STOP. Do NOT report success.
 
 STEP 3: Store to Platform (REQUIRED)
 Save phase to configured platform using platform-specific tool.

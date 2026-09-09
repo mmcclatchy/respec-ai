@@ -1,4 +1,5 @@
 from src.platform.models import PlanRoadmapCommandTools
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 
 
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
@@ -265,10 +266,12 @@ Pass the following information to each agent:
 - loop_id: ROADMAP_LOOP_ID
 
 Each agent will:
-1. Retrieve roadmap from MCP using get_roadmap
-2. Extract the phase matching the provided phase_name
-3. Store to MCP using store_document
-4. Store to platform using platform-specific tool
+1. Retrieve ONLY its own phase via get_document(doc_type="phase", key="PLAN_NAME/PHASE_NAME")
+   — respec-roadmap already stored every phase individually. Agents have no get_roadmap tool,
+   and pulling the full roadmap is a primary cause of context overflow when many create-phase
+   agents run in parallel.
+2. Store to MCP using store_document
+3. Store to platform using platform-specific tool
 
 Each agent will NOT return the phase markdown.
 Each agent will report only: completion status and any errors encountered.
@@ -284,6 +287,13 @@ After all agents complete, collect results:
 - TOTAL_PHASES: MUST equal PHASE_COUNT
 
 Validate that each planned phase has a corresponding phase result.
+
+IF any create-phase agent output contains "{FROZEN_DISCARD_WARNING}":
+  ERROR: "Phase storage discarded frozen Overview content"
+  DIAGNOSTIC: [surface the exact warning, naming each phase and field that was not written]
+  RATIONALE: Retrievability is not fidelity. A phase that stores and reads back can still
+    be missing the Overview content the payload carried, and no count-based check detects it.
+  FAIL-CLOSED: Treat those phases as FAILED_PHASES. Do NOT report the run as successful.
 ```
 
 ### 7. Verify Phase Creation (MANDATORY)
@@ -297,7 +307,7 @@ EXPECTED_PHASE_NAMES = [Extract phase names from FINAL_ROADMAP (retrieved in Ste
 EXPECTED_COUNT = length of EXPECTED_PHASE_NAMES
 
 STEP 2: Query Platform Storage
-STORED_PHASES = {tools.list_project_phases_tool_interpolated}
+STORED_PHASES = {tools.list_project_phases_tool}
 ACTUAL_COUNT = length of STORED_PHASES
 
 IF ACTUAL_COUNT == 0:

@@ -2,8 +2,8 @@ import pytest
 from fastmcp.exceptions import ResourceError, ToolError
 
 from src.mcp.tools.plan_tools import PlanTools
-from src.utils.enums import LoopStatus
-from src.utils.loop_state import MCPResponse
+from src.utils.enums import LoopStatus, LoopType
+from src.utils.loop_state import LoopState, MCPResponse
 from src.utils.state_manager import InMemoryStateManager
 
 
@@ -186,17 +186,31 @@ class TestPlanToolsGet:
             await plan_tools.get(key='non-existent-plan')
 
     @pytest.mark.asyncio
-    async def test_get_requires_key(self, plan_tools: PlanTools) -> None:
-        with pytest.raises(ToolError, match='Key is required for plans'):
+    async def test_get_requires_key_or_loop_id(self, plan_tools: PlanTools) -> None:
+        with pytest.raises(ToolError, match='Either key OR loop_id is required for plans'):
             await plan_tools.get(key=None)
 
     @pytest.mark.asyncio
-    async def test_get_rejects_loop_id(self, plan_tools: PlanTools, sample_plan_markdown: str) -> None:
+    async def test_get_resolves_a_plan_from_its_loop_id(
+        self, plan_tools: PlanTools, state_manager: InMemoryStateManager, sample_plan_markdown: str
+    ) -> None:
+        # F4: plans used to reject loop-based retrieval, so the plan command had to store
+        # a duplicate copy of the whole plan keyed on the loop id just to satisfy
+        # addressing. add_loop already records the association - resolve through it.
         key = 'ai-customer-support'
         await plan_tools.store(key, sample_plan_markdown)
+        loop = LoopState(loop_type=LoopType.ANALYST)
+        await state_manager.add_loop(loop, key)
 
-        with pytest.raises(ToolError, match='Plans do not support loop-based retrieval'):
-            await plan_tools.get(key=key, loop_id='a1b2c3d4')
+        response = await plan_tools.get(key=None, loop_id=loop.id)
+
+        assert response.id == key
+        assert 'AI-Powered Customer Support System' in response.message
+
+    @pytest.mark.asyncio
+    async def test_get_by_unknown_loop_id_raises_resource_error(self, plan_tools: PlanTools) -> None:
+        with pytest.raises(ResourceError, match='Loop does not exist'):
+            await plan_tools.get(key=None, loop_id='a1b2c3d4')
 
 
 class TestPlanToolsList:

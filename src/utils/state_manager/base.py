@@ -23,6 +23,11 @@ FROZEN_FIELD_DEFAULTS = {
     'deliverables': 'Deliverables not specified',
 }
 
+# Contract between the storage layer and the roadmap agent/command templates, which
+# fail closed on this text. Changing it requires changing those templates in the same
+# commit - hence one definition rather than three literals.
+FROZEN_DISCARD_WARNING = 'WARNING: frozen Overview fields not written'
+
 
 def normalize_phase_name(phase_name: str) -> str:
     """
@@ -60,6 +65,16 @@ class StateManager(ABC):
 
     @abstractmethod
     async def get_loop(self, loop_id: str) -> LoopState: ...
+
+    @abstractmethod
+    async def get_plan_name_for_loop(self, loop_id: str) -> str:
+        """Resolve the plan a loop was created for.
+
+        add_loop already persists this association; exposing it lets plan documents be
+        addressed by loop_id without storing a duplicate copy of the plan under the loop
+        id as its key. Raises LoopNotFoundError when the loop is unknown.
+        """
+        ...
 
     @abstractmethod
     async def save_loop(self, loop_state: LoopState) -> None: ...

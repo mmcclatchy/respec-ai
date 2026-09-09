@@ -35,7 +35,6 @@ class PlanCommandTools(CommandToolsModel):
     initialize_plan_loop: str = Field(..., description='Initialize plan quality loop')
     initialize_analyst_loop: str = Field(..., description='Initialize analyst refinement loop')
     store_plan: str = Field(..., description='Store strategic plan in MCP')
-    store_plan_in_loop: str = Field(..., description='Store plan in analyst loop')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_loop_status: str = Field(..., description='Retrieve current analyst loop status')
     get_previous_analysis: str = Field(..., description='Retrieve previous analyst analysis')

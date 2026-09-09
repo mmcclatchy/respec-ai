@@ -177,13 +177,14 @@ def register_document_tools(mcp: FastMCP) -> None:
         """Retrieve document as markdown.
 
         Two retrieval modes:
-        1. By loop_id: Retrieves document linked to active refinement loop
+        1. By loop_id: phase documents linked to the loop, and plan documents via the
+           plan the loop was created for. Roadmaps do not support loop retrieval.
         2. By key: Retrieves document directly from storage
 
         Parameters:
         - doc_type: Type of document ("plan", "phase", "roadmap")
-        - key: Hierarchical key (required if not using loop_id)
-        - loop_id: Loop identifier (alternative to key)
+        - key: Hierarchical key (required if not using loop_id; roadmaps require it)
+        - loop_id: Loop identifier (alternative to key for "plan" and "phase")
         - include_phases: Roadmap only. Set False to return roadmap metadata without
           concatenating every phase's markdown (e.g. to verify a roadmap exists).
           Ignored for plan and phase documents.
@@ -277,15 +278,19 @@ def register_document_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def link_loop_to_document(loop_id: str, doc_type: DocumentType, key: str, ctx: Context) -> MCPResponse:
-        """Link active refinement loop to document for idempotent iteration.
+        """Link active refinement loop to a phase document for idempotent iteration.
 
-        Creates temporary mapping allowing agents to retrieve/update documents via loop_id
+        Creates temporary mapping allowing agents to retrieve/update a phase via loop_id
         during refinement sessions. Enables idempotent architect/critic pattern.
+
+        Phase only. Plans and roadmaps reject loop linking. Plans do not need it: a plan
+        is already retrievable by loop_id via get_document, resolved through the plan the
+        loop was created for.
 
         Parameters:
         - loop_id: Active loop identifier
-        - doc_type: Type of document ("plan", "phase", "roadmap")
-        - key: Hierarchical key to document
+        - doc_type: Must be "phase"
+        - key: Hierarchical key to document ("plan-name/phase-name")
 
         Returns:
         - MCPResponse: Contains linking confirmation
@@ -301,18 +306,24 @@ def register_document_tools(mcp: FastMCP) -> None:
 
     # Dedicated roadmap tools to prevent loop_id misuse
     @mcp.tool()
-    async def get_roadmap(plan_name: str, ctx: Context) -> MCPResponse:
+    async def get_roadmap(plan_name: str, ctx: Context, include_phases: bool = True) -> MCPResponse:
         """Retrieve roadmap as markdown.
 
         Parameters:
         - plan_name: Name of the project
+        - include_phases: Set False to return roadmap metadata without concatenating
+          every phase's markdown. A roadmap with many phases can exceed a caller's
+          tool-result limit; combine include_phases=False with per-phase
+          get_document(doc_type="phase", key="<plan>/<phase>") calls to read it in pieces.
 
         Returns:
         - MCPResponse: Contains roadmap markdown
         """
         await ctx.info(f'Retrieving roadmap for plan: {plan_name}')
         try:
-            result = await _get_tools(ctx).get_document(DocumentType.ROADMAP, key=plan_name, loop_id=None)
+            result = await _get_tools(ctx).get_document(
+                DocumentType.ROADMAP, key=plan_name, loop_id=None, include_phases=include_phases
+            )
             await ctx.info(f'Retrieved roadmap for plan: {plan_name}')
             return result
         except Exception as e:

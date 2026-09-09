@@ -63,12 +63,6 @@ class PlanRoadmapCommandTools(CommandToolsModel):
         return self.get_plan_tool.replace('*', '{plan_name}')
 
     @computed_field
-    def list_project_phases_tool_interpolated(self) -> str:
-        if '*' not in self.list_project_phases_tool:
-            return self.list_project_phases_tool
-        return self.list_project_phases_tool.replace('*', '{plan_name}')
-
-    @computed_field
     def sync_plan_instructions(self) -> str:
         return self._adapter.plan_sync_instructions
 
@@ -190,6 +184,7 @@ class RoadmapCriticAgentTools(AgentToolsModel):
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.GET_ROADMAP,
+        RespecAITool.LIST_DOCUMENTS,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
@@ -201,4 +196,7 @@ class RoadmapCriticAgentTools(AgentToolsModel):
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_feedback: str = Field(..., description='Retrieve prior critic feedback')
     get_roadmap: str = Field(..., description='Retrieve roadmap from MCP')
+    get_roadmap_metadata: str = Field(..., description='Retrieve roadmap metadata without phase bodies')
+    list_phases: str = Field(..., description='List phase keys for the plan')
+    get_phase: str = Field(..., description='Retrieve a single phase by plan/phase key')
     store_feedback: str = Field(..., description='Store critic feedback')

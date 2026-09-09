@@ -424,12 +424,6 @@ def create_plan_command_tools(
         store_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{CURRENT_PLAN}'
         ),
-        store_plan_in_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT,
-            doc_type='"plan"',
-            key='{ANALYST_LOOP_ID}',
-            content='{PLAN_FROM_PREVIOUS_STEP}',
-        ),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
@@ -859,7 +853,7 @@ def create_analyst_critic_agent_tools(tui_adapter: TuiAdapter) -> AnalystCriticA
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='None', loop_id='{LOOP_ID}'
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
@@ -886,7 +880,7 @@ def create_plan_analyst_agent_tools(tui_adapter: TuiAdapter) -> PlanAnalystAgent
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         get_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{LOOP_ID}'
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='None', loop_id='{LOOP_ID}'
         ),
         get_previous_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
@@ -963,6 +957,15 @@ def create_roadmap_critic_agent_tools(tui_adapter: TuiAdapter) -> RoadmapCriticA
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='2'
         ),
         get_roadmap=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_ROADMAP, plan_name='{PLAN_NAME}'),
+        get_roadmap_metadata=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_ROADMAP, plan_name='{PLAN_NAME}', include_phases='false'
+        ),
+        list_phases=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.LIST_DOCUMENTS, doc_type='"phase"', parent_key='{PLAN_NAME}'
+        ),
+        get_phase=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='"{PLAN_NAME}/{PHASE_NAME}"'
+        ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),

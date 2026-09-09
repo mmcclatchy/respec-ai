@@ -186,6 +186,20 @@ class TestPlanRoadmapTemplate:
 
 
 class TestRoadmapCriticTemplate:
+    def test_template_has_a_chunked_retrieval_fallback_for_large_roadmaps(self) -> None:
+        # F3: get_roadmap always concatenates every phase and there is no pagination, so
+        # a realistic roadmap overflowed the critic's tool-result limit. Its Read grant is
+        # scoped to references/ and it has no Bash, so it had no path to the document at
+        # all and correctly refused to score. It does hold get_document - it just was
+        # never told to use it per phase.
+        tools = create_roadmap_critic_agent_tools(_adapter)
+        template = generate_roadmap_critic_template(tools)
+
+        assert 'include_phases=false' in template
+        assert 'mcp__respec-ai__list_documents' in template
+        assert 'doc_type="phase"' in template
+        assert 'Do NOT give up.' in template
+
     def test_template_structure(self) -> None:
         tools = create_roadmap_critic_agent_tools(_adapter)
         template = generate_roadmap_critic_template(tools)

@@ -124,6 +124,13 @@ class InMemoryStateManager(StateManager):
         self._log_state()
         self._log_state_snapshot('add_loop', 'EXIT')
 
+    async def get_plan_name_for_loop(self, loop_id: str) -> str:
+        if loop_id not in self._loop_to_plan:
+            logger.warning(f'get_plan_name_for_loop: Loop not found: {loop_id}')
+            raise LoopNotFoundError(f'Loop not found: {loop_id}')
+
+        return self._loop_to_plan[loop_id]
+
     async def get_loop(self, loop_id: str) -> LoopState:
         self._log_state_snapshot('get_loop', 'ENTRY')
         logger.debug(f'get_loop: loop_id={loop_id}')

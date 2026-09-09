@@ -1,6 +1,6 @@
 from fastmcp.exceptions import ResourceError, ToolError
 
-from src.mcp.tools.base import DocumentToolsInterface, with_discard_warning
+from src.mcp.tools.base import DocumentToolsInterface
 from src.models.phase import Phase
 from src.models.roadmap import Roadmap
 from src.utils.enums import LoopStatus
@@ -10,15 +10,6 @@ from src.utils.loop_state import MCPResponse
 
 class RoadmapTools(DocumentToolsInterface):
     document_model = Roadmap
-
-    async def _discarded_across_phases(
-        self, plan_name: str, phases: list[Phase], allow_frozen_field_edits: bool
-    ) -> list[str]:
-        discarded = []
-        for phase in phases:
-            fields = await self.discarded_frozen_fields(plan_name, phase, allow_frozen_field_edits)
-            discarded.extend(f'{phase.phase_name}.{field}' for field in fields)
-        return discarded
 
     async def store(self, key: str, content: str, allow_frozen_field_edits: bool = False) -> MCPResponse:
         if not key or not content:
@@ -32,15 +23,18 @@ class RoadmapTools(DocumentToolsInterface):
             roadmap = Roadmap.parse_markdown(phase_blocks[0])
             phases = [Phase.parse_markdown(f'# Phase:{phase_block}') for phase_block in phase_blocks[1:]]
 
-            discarded = await self._discarded_across_phases(key, phases, allow_frozen_field_edits)
-
             await self.state.store_roadmap(key, roadmap)
+
+            # Every phase is deactivated first, so no phase written below is live and no
+            # frozen field is preserved: the incoming roadmap is authoritative and there
+            # is nothing to warn about here. Direct phase writes (PhaseTools) target live
+            # phases and DO report discards.
             await self.state.mark_phases_inactive(key)
 
             for phase in phases:
                 await self.state.store_phase(key, phase, allow_frozen_field_edits=allow_frozen_field_edits)
 
-            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=with_discard_warning(key, discarded))
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=key)
         except Exception as e:
             raise ToolError(f'Failed to store roadmap: {str(e)}')
 
@@ -85,9 +79,7 @@ class RoadmapTools(DocumentToolsInterface):
 
         try:
             await self.state.delete_roadmap(key)
-            return MCPResponse(
-                id=key, status=LoopStatus.COMPLETED, message=f'Deleted roadmap and its phases for {key}'
-            )
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=f'Deleted roadmap and its phases for {key}')
         except RoadmapNotFoundError as e:
             raise ResourceError(str(e))
         except Exception as e:
