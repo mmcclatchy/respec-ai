@@ -25,6 +25,7 @@ from src.cli.services.tui_model_setup import run_tui_model_setup
 from src.cli.ui.console import console, print_error, print_info, print_warning
 from src.cli.ui.formatters import print_setup_complete
 from src.mcp.tools import register_all_tools
+from src.platform.phase_layout import blocks_template_generation
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
@@ -88,6 +89,9 @@ def run(args: Namespace) -> int:
         if not config_dir.exists():
             print_error('Initialized project is missing required .respec-ai/config/ directory.')
             print_warning('Run: respec-ai init --force --platform [linear|github|markdown]')
+            return 1
+
+        if blocks_template_generation(project_path):
             return 1
 
         platform = args.platform or config.get('platform')

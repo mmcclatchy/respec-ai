@@ -5,6 +5,11 @@ from pathlib import Path
 
 from src.cli.config.package_info import get_package_version
 from src.cli.ui.formatters import print_validation_report
+from src.platform.phase_layout import (
+    LEGACY_PHASE_MIGRATION_COMMAND,
+    find_legacy_phase_files,
+    legacy_phase_file_summary,
+)
 from src.platform.template_generator import expected_agents_count, expected_commands_count
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
@@ -85,6 +90,17 @@ def run(args: Namespace) -> int:
         checks['MCP Registered'] = (True, 'respec-ai server registered')
     else:
         checks['MCP Registered'] = (False, f'Not registered in {tui_adapter.display_name}')
+
+    # Deliberately independent of `config`: it is unbound when config.json exists but
+    # fails to parse, and a layout problem is worth reporting even then.
+    legacy_phase_files = find_legacy_phase_files(project_path)
+    if legacy_phase_files:
+        checks['Phase Layout'] = (
+            False,
+            f'{legacy_phase_file_summary(len(legacy_phase_files))} (run {LEGACY_PHASE_MIGRATION_COMMAND})',
+        )
+    else:
+        checks['Phase Layout'] = (True, 'Phase bundle layout')
 
     all_passed = all(passed for passed, _ in checks.values())
 

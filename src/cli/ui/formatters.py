@@ -193,5 +193,7 @@ def print_validation_report(
     console.print()
 
     if not all_passed:
-        console.print('[yellow]⚠[/yellow]  Run [cyan]respec-ai init[/cyan] to fix missing files')
+        # Each failing check names its own remedy; a blanket "run init" is wrong advice
+        # for failures init cannot fix, such as a legacy phase layout.
+        console.print('[yellow]⚠[/yellow]  Address the failing checks above')
         console.print()

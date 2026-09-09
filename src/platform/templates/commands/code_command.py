@@ -227,7 +227,6 @@ IF SHAPE_GATE not in ["shape-settled", "shape-amended"]:
   - Do NOT invoke coder
   EXIT: Workflow terminated
 
-PHASE_FILE_PATH = "{tools.phase_resource_pattern}"
 PHASE_DIR = dirname(PHASE_FILE_PATH)
 IMPLEMENTATION_PLAN_PATH = f"{{PHASE_DIR}}/implementation.md"
 IMPLEMENTATION_PLAN_MARKDOWN = Read(IMPLEMENTATION_PLAN_PATH)

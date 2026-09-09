@@ -703,6 +703,19 @@ class TestCrossPlatformInvocationRendering:
         assert 'Store it in the analyst loop' not in template
         assert 'Stores plan copy in analyst loop' not in template
 
+    def test_code_template_derives_the_phase_path_once(self) -> None:
+        # Step 1.3 resolves PHASE_FILE_PATH from the glob result or the user's
+        # disambiguation choice; Step 5 used to silently overwrite it from the adapter's
+        # phase_resource_pattern. The discovered path is the authoritative one.
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.CODE, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert template.count('PHASE_FILE_PATH = ') == 2
+        assert 'PHASE_FILE_PATH = PHASE_FILE_MATCHES[0]' in template
+        assert 'PHASE_DIR = dirname(PHASE_FILE_PATH)' in template
+
     def test_roadmap_template_step_7_glob_matches_the_allowed_tools_grant(self) -> None:
         # F5: list_project_phases_tool_interpolated ran an unbounded
         # .replace('*', '{plan_name}') over the markdown adapter's Glob string, but that

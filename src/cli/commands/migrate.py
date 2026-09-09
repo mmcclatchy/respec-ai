@@ -3,6 +3,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
+from src.platform.phase_layout import legacy_phase_files_in_plan
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -30,11 +31,9 @@ def _migrate_plan(plan_dir: Path) -> tuple[list[str], list[str]]:
     migrated: list[str] = []
     refused: list[str] = []
 
-    phases_dir = plan_dir / 'phases'
-    if not phases_dir.exists():
-        return migrated, refused
-
-    for phase_file in sorted(phases_dir.glob('*.md')):
+    # Shares its predicate with the generation-command gate so the two can never
+    # disagree about what counts as legacy.
+    for phase_file in legacy_phase_files_in_plan(plan_dir):
         status, message = _migrate_phase_file(phase_file)
         if status == 'migrated':
             migrated.append(message)

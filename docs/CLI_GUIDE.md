@@ -774,6 +774,34 @@ Continue? [y/N]: y
 
 ### Utility Commands
 
+#### `respec-ai migrate`
+
+Move phases from the legacy flat layout into phase bundle directories.
+
+| Layout | Path |
+|---|---|
+| Legacy | `.respec-ai/plans/<plan>/phases/<phase-name>.md` |
+| Bundle | `.respec-ai/plans/<plan>/phases/<phase-name>/phase.md` |
+
+Agent and command templates address phases only at the bundle path, so a project on the
+legacy layout would generate agents that cannot find its own phases. `respec-ai regenerate`,
+`respec-ai sync`, and `respec-ai platform` therefore refuse to run until the project has
+migrated, naming the offending files. `respec-ai validate` reports it as a failing
+**Phase Layout** check, and `respec-ai status` warns about it.
+
+**Usage:**
+```bash
+# Migrate every plan under .respec-ai/plans/
+respec-ai migrate
+
+# Migrate a single plan
+respec-ai migrate --plan my-plan
+```
+
+Migration is idempotent — running it on an already-migrated project makes no changes and
+exits 0. It refuses a phase when both `<name>.md` and `<name>/phase.md` already exist, since
+picking a winner could lose work; resolve those by hand and re-run. Any refusal exits 1.
+
 #### `respec-ai frontend-preflight`
 
 Bring the reviewed frontend application to a known, reproducible state: start its dev server, check

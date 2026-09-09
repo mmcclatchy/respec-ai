@@ -131,6 +131,7 @@ respec-ai models opencode --aa-key YOUR_KEY --exa-key YOUR_KEY
 - `respec-ai register-mcp` - Registers MCP endpoints with your TUI so workflow tools are available to agents.
 - `respec-ai unregister-mcp` - Cleans up MCP registration when uninstalling, troubleshooting, or reconfiguring environments.
 - `respec-ai update` - Upgrades CLI/server components and refreshes runtime dependencies to keep tooling current and compatible.
+- `respec-ai migrate` - Moves phases from the old flat layout into phase bundle directories. Agents address phases only at the bundle path, so `regenerate`, `sync`, and `platform` refuse to run until a legacy project has migrated.
 
 ## Documentation
 

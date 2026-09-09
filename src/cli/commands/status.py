@@ -7,6 +7,11 @@ from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import console, print_error, print_warning
 from src.cli.ui.formatters import format_file_counts_table, format_project_config_table
+from src.platform.phase_layout import (
+    LEGACY_PHASE_MIGRATION_COMMAND,
+    find_legacy_phase_files,
+    legacy_phase_file_summary,
+)
 from src.platform.template_generator import expected_agents_count, expected_commands_count
 from src.platform.tui_adapters import get_tui_adapter
 from src.platform.tui_selector import TuiType
@@ -94,6 +99,12 @@ def run(args: Namespace) -> int:
         if version != package_version:
             print_warning(f'Config version ({version}) != package version ({package_version})')
             print_warning('Run: respec-ai regenerate')
+            console.print()
+
+        legacy_phase_files = find_legacy_phase_files(project_path)
+        if legacy_phase_files:
+            print_warning(f'Legacy phase layout: {legacy_phase_file_summary(len(legacy_phase_files))}')
+            print_warning(f'Template generation is blocked until you run: {LEGACY_PHASE_MIGRATION_COMMAND}')
             console.print()
 
         return 0

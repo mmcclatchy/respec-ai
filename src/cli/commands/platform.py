@@ -8,6 +8,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.cli.ui.console import console, print_error, print_success, print_warning
 from src.mcp.tools import register_all_tools
+from src.platform.phase_layout import blocks_template_generation
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.template_generator import generate_templates
@@ -44,6 +45,9 @@ def run(args: Namespace) -> int:
         if not config_path.exists():
             print_error('respec-ai is not initialized in this project')
             print_warning('Run: respec-ai init --platform [linear|github|markdown]')
+            return 1
+
+        if blocks_template_generation(project_path):
             return 1
 
         config = json.loads(config_path.read_text(encoding='utf-8'))

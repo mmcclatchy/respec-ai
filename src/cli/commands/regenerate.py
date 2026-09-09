@@ -10,6 +10,7 @@ from src.cli.config.package_info import get_package_version
 from src.cli.config.project_models import get_project_model_overrides, provider_for_tui
 from src.cli.ui.console import console, print_error, print_info, print_success, print_warning
 from src.mcp.tools import register_all_tools
+from src.platform.phase_layout import blocks_template_generation
 from src.platform.platform_orchestrator import PlatformOrchestrator
 from src.platform.platform_selector import PlatformType
 from src.platform.standards_config import validate_project_config
@@ -76,6 +77,9 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             print_error('Initialized project is missing required .respec-ai/config/ directory.')
             print_warning('Run: respec-ai init --force --platform [linear|github|markdown]')
             return 1
+        if blocks_template_generation(project_path):
+            return 1
+
         standards_errors = validate_project_config(project_path)
         if standards_errors:
             print_error('Invalid standards config. Regeneration aborted.')
