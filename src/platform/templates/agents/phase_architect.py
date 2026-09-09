@@ -393,25 +393,20 @@ Scan for pre-resolved architecture decisions that MUST be honored as hard constr
 ═══════════════════════════════════════════════
 MANDATORY CONSTRAINT PRIORITY PROTOCOL
 ═══════════════════════════════════════════════
-Read constraints from THREE sources in priority order (HIGHEST to LOWEST):
+Read constraints from TWO sources in priority order (HIGHEST to LOWEST):
 
 1. FORMAL PHASE SECTION (HIGHEST):
    "### Implementation Plan References" in CURRENT_PHASE_MARKDOWN
    If this section exists, it is the authoritative source.
 
-2. STRATEGIC PLAN REFERENCES (MEDIUM):
+2. STRATEGIC PLAN REFERENCES (LOWER):
    "Plan Reference: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN
-   "Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN (legacy)
    Read these IF no formal section exists in the phase.
 
-3. AD-HOC DIRECTIVES (LOWEST):
-   "→ before implementing, read `<path>`" in CURRENT_PHASE_MARKDOWN
-   Read ONLY if not already covered by sources 1 or 2.
-
 IF CONFLICTS EXIST between sources:
-  Source 1 overrides sources 2 and 3.
+  Source 1 overrides source 2.
 
-VIOLATION: Merging all three sources without priority
+VIOLATION: Merging both sources without priority
            causes ambiguous implementation decisions.
 ═══════════════════════════════════════════════
 
@@ -431,20 +426,12 @@ SOURCE 1 — Formal section in current phase (HIGHEST PRIORITY):
 SOURCE 2 — Strategic Plan Reference (uses STRATEGIC_PLAN_MARKDOWN from STEP 0.5):
   Search STRATEGIC_PLAN_MARKDOWN for plan reference file paths.
   Look in the Technology Requirements and Project Constraints sections for lines like:
-    "Plan Reference: `<file-path>`" or "Claude Plan: `<file-path>`" (legacy)
+    "Plan Reference: `<file-path>`"
     or any path containing {tools.plans_dir}/ ending in .md
   For each path found:
     CALL Read(file_path)
     IF Read succeeds: Append file content to IMPL_PLAN_CONSTRAINTS list
     ELSE: Note warning — "Could not read {{file_path}} from strategic plan"
-
-SOURCE 3 — Ad-hoc directives (backward compatibility):
-  Search CURRENT_PHASE_MARKDOWN for lines containing "→ before implementing, read"
-  For each directive found:
-    PARSE file_path from backtick-quoted value after "read"
-    IF file_path not already read in SOURCE 1 or SOURCE 2:
-      CALL Read(file_path)
-      IF Read succeeds: Append to IMPL_PLAN_CONSTRAINTS
 
 IF IMPL_PLAN_CONSTRAINTS is non-empty:
   → In STEP 3, treat IMPL_PLAN_CONSTRAINTS as default constraints.
@@ -636,7 +623,7 @@ ELSE:  (phase_mode == "detail", the default)
     approved them at the Phase 3 gate. Do NOT regenerate, reword, or "improve" them in
     this pass.
   ELSE:
-    (No settled shape yet — e.g. a legacy phase, or the shape act was skipped.) Produce
+    (No settled shape yet — e.g. the shape act was skipped.) Produce
     Design Shape/Design Decisions as part of the full expansion below, same as before
     Phase 3 existed.
 
@@ -1230,7 +1217,7 @@ type Resource {{
 
 **Implementation Plan References** (Preserve if present):
 - [ ] If phase has "### Implementation Plan References": copied VERBATIM into output
-- [ ] If no section but plan reference found in strategic plan (including legacy Claude marker): auto-created in output
+- [ ] If no section but plan reference found in strategic plan: auto-created in output
 
 **Plan Context Propagation** (from STEP 0.55):
 - [ ] If PLAN_ARCHITECTURE present: Architecture section refines it; any deviation is documented

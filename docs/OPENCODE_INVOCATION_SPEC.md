@@ -124,7 +124,7 @@ For invoking subagents without user interaction:
     CALL task with:
       - subagent_type: "respec-plan-conversation"
       - prompt: |
-          Context from Claude Plan: {{CLAUDE_PLAN_FILE}}
+          Context from Plan Reference: {{PLAN_REFERENCE_FILE}}
           Initial User Context: {{CONVERSATION_INITIAL_CONTEXT}}
           
           Your Task:

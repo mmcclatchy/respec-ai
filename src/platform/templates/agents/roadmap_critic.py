@@ -217,7 +217,6 @@ IF PLAN_AVAILABLE:
   SOURCE A (strategic plan markers):
     Parse lines matching:
       - Plan Reference: `<path>`
-      - Claude Plan: `<path>` (legacy marker)
     Append extracted paths to PLAN_REFERENCE_PATHS
 
   SOURCE B (roadmap phase propagation):

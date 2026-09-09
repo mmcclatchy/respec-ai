@@ -48,7 +48,7 @@ def generate_roadmap_template(tools: RoadmapAgentTools) -> str:
     - Platform Tools: External phase creation injected via tools parameter
 
     Args:
-        tools: PlanRoadmapAgentTools containing platform-specific tool names
+        tools: RoadmapAgentTools containing platform-specific tool names
     """
     return f"""---
 name: respec-roadmap
@@ -201,8 +201,7 @@ Break requirements into appropriately-sized implementation phases
 
 STEP 3.5: Propagate Plan References to Sparse Phases
 If the strategic plan contains a line matching "Plan Reference: `<path>`",
-"Claude Plan: `<path>`" (legacy), or any path
-containing {tools.plans_dir}/ ending in .md:
+or any path containing {tools.plans_dir}/ ending in .md:
   For each referenced `<path>`:
     1. CALL Read(`<path>`)
     2. Identify section(s) relevant to the specific phase scope

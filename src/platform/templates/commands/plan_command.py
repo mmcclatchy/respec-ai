@@ -403,7 +403,7 @@ Strategic plan creation process:
 
 Write the strategic plan to the user's platform using the platform-specific tool:
 ```text
-{tools.create_project_tool_interpolated}
+{tools.create_project_external}
 ```
 
 This creates:
@@ -757,7 +757,7 @@ ELIF ANALYST_LOOP_STATUS == "user_input":
 
 ELIF ANALYST_LOOP_STATUS == "completed":
   Display: "✅ Score: {{ANALYST_SCORE}}/100 — analyst validation complete"
-  Create external project using {tools.create_project_tool_interpolated}
+  Create external project using {tools.create_project_external}
   Proceed to Step 10.
 ```
 

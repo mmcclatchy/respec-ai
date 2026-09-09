@@ -177,7 +177,10 @@ class StateManager(ABC):
     async def delete_phase(self, plan_name: str, phase_name: str) -> bool:
         """Mark a specific phase as inactive (soft delete).
 
-        This maintains backward compatibility while using the inactive flag approach.
+        The row is kept so iteration/version continue climbing if the phase is recreated;
+        frozen fields are NOT preserved from it, because it is no longer live. This
+        differs deliberately from delete_roadmap and delete_plan, which hard-delete and
+        therefore reset the stamps.
         Returns True if phase was found and marked inactive, False otherwise.
         """
         ...

@@ -1,7 +1,7 @@
 from typing import Any, ClassVar
 
 from fastmcp import FastMCP
-from pydantic import BaseModel, Field, PrivateAttr, computed_field
+from pydantic import Field, PrivateAttr, computed_field
 
 from ..adapters import PlatformAdapter, get_platform_adapter
 from ..platform_selector import PlatformType
@@ -57,12 +57,6 @@ class PlanRoadmapCommandTools(CommandToolsModel):
         cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
-    def get_plan_tool_interpolated(self) -> str:
-        if '*' not in self.get_plan_tool:
-            return self.get_plan_tool
-        return self.get_plan_tool.replace('*', '{plan_name}')
-
-    @computed_field
     def sync_plan_instructions(self) -> str:
         return self._adapter.plan_sync_instructions
 
@@ -97,16 +91,6 @@ class PlanRoadmapCommandTools(CommandToolsModel):
             return ''
 
 
-class PlanRoadmapAgentTools(BaseModel):
-    create_phase_external: str = Field(..., description='Platform-specific tool for creating external phases')
-
-    @computed_field
-    def create_phase_tool_interpolated(self) -> str:
-        if '*' not in self.create_phase_external:
-            return self.create_phase_external
-        return self.create_phase_external.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-
 class CreatePhaseAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.STORE_DOCUMENT,
@@ -116,8 +100,6 @@ class CreatePhaseAgentTools(AgentToolsModel):
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     create_phase_tool: str = Field(..., description='Platform-specific tool for creating external phases')
-    get_phase_tool: str = Field(..., description='Platform-specific tool for retrieving phases')
-    update_phase_tool: str = Field(..., description='Platform-specific tool for updating phases')
     get_phase: str = Field(
         ...,
         description=(
@@ -132,27 +114,6 @@ class CreatePhaseAgentTools(AgentToolsModel):
 
     def model_post_init(self, __context: Any) -> None:
         self._adapter = get_platform_adapter(self.platform)
-
-    @computed_field
-    def create_phase_tool_interpolated(self) -> str:
-        if '*' not in self.create_phase_tool:
-            return self.create_phase_tool
-        # Markdown: Write using PathComponent pattern
-        return self.create_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def get_phase_tool_interpolated(self) -> str:
-        if '*' not in self.get_phase_tool:
-            return self.get_phase_tool
-        # Markdown: Read using PathComponent pattern
-        return self.get_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
-    def update_phase_tool_interpolated(self) -> str:
-        if '*' not in self.update_phase_tool:
-            return self.update_phase_tool
-        # Markdown: Edit using PathComponent pattern
-        return self.update_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
 
     @computed_field
     def platform_tool_documentation(self) -> str:

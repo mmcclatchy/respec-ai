@@ -1,8 +1,14 @@
 import pytest
 from typing import Callable
+from fastmcp import FastMCP
 from fastmcp.exceptions import ResourceError, ToolError
 
-from src.mcp.tools.document_tools import DocumentTools
+from src.mcp.tools.document_tools import DocumentTools, register_document_tools
+from src.platform.template_helpers import create_roadmap_agent_tools
+from src.platform.tool_doc_extractor import ToolDocumentationExtractor
+from src.platform.templates.agents.roadmap import generate_roadmap_template
+from src.platform.tui_adapters import ClaudeCodeAdapter
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 from src.models.enums import DocumentType
 from src.utils.enums import LoopStatus
 from src.utils.loop_state import MCPResponse
@@ -531,3 +537,38 @@ class TestFrozenFieldDiscardWarning:
         )
 
         assert 'WARNING' not in result
+
+
+class TestCreateRoadmapDocstringMatchesBehavior:
+    """The create_roadmap docstring is agent-facing contract, not commentary.
+
+    It once claimed re-running the tool would NOT change a phase's Overview - the exact
+    opposite of what RoadmapTools.store does, and a direct contradiction of the roadmap
+    agent template. An agent that believes it will not attempt the refinement the storage
+    layer now supports, so this drift has to fail loudly.
+    """
+
+    def _create_roadmap_docstring(self) -> str:
+        mcp = FastMCP('docstring-check')
+        register_document_tools(mcp)
+        return ToolDocumentationExtractor(mcp).get_tool_documentation('create_roadmap').full_docstring
+
+    def test_docstring_does_not_claim_overview_is_immutable(self) -> None:
+        docstring = self._create_roadmap_docstring()
+
+        assert 'will NOT change' not in docstring
+        assert 'authoritative' in docstring
+
+    def test_docstring_does_not_promise_a_discard_warning(self) -> None:
+        # RoadmapTools.store deactivates every phase before writing, so it can never
+        # discard frozen fields and never emits the warning.
+        docstring = self._create_roadmap_docstring()
+
+        assert FROZEN_DISCARD_WARNING not in docstring
+        assert 'WARNING' not in docstring
+
+    def test_docstring_agrees_with_the_roadmap_agent_template(self) -> None:
+        docstring = self._create_roadmap_docstring()
+        template = generate_roadmap_template(create_roadmap_agent_tools(ClaudeCodeAdapter()))
+
+        assert 'authoritative' in docstring and 'authoritative' in template

@@ -1,15 +1,54 @@
 from fastmcp.exceptions import ResourceError, ToolError
 from pydantic import ValidationError
 
-from src.mcp.tools.base import DocumentToolsInterface, with_discard_warning
+from src.mcp.tools.base import DocumentToolsInterface
 from src.models.phase import Phase
 from src.utils.enums import LoopStatus
 from src.utils.errors import LoopNotFoundError, PhaseNotFoundError
 from src.utils.loop_state import MCPResponse
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING, FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS
+
+
+def with_discard_warning(message: str, discarded: list[str]) -> str:
+    if not discarded:
+        return message
+
+    return (
+        f'{message}\n'
+        f'{FROZEN_DISCARD_WARNING} ({", ".join(discarded)}). '
+        f'These fields are set once at iteration 0 and preserved thereafter; '
+        f'the stored phase still holds its previous values for them.'
+    )
 
 
 class PhaseTools(DocumentToolsInterface):
     document_model = Phase
+
+    async def discarded_frozen_fields(
+        self, plan_name: str, phase: Phase, allow_frozen_field_edits: bool = False
+    ) -> list[str]:
+        """Report which frozen Overview fields a pending write will not change.
+
+        The state managers preserve frozen fields silently and still return success, so
+        without this the caller cannot tell a stored edit from a discarded one (F1b).
+        Probes the LIVE phase because that is exactly the row store_phase preserves from.
+        """
+        if allow_frozen_field_edits:
+            return []
+
+        try:
+            existing = await self.state.get_phase(plan_name, phase.phase_name)
+        except PhaseNotFoundError:
+            return []
+
+        existing_data = existing.model_dump()
+        incoming = phase.model_dump()
+
+        return [
+            field
+            for field in FROZEN_PHASES_FIELDS
+            if existing_data[field] != FROZEN_FIELD_DEFAULTS[field] and incoming[field] != existing_data[field]
+        ]
 
     async def get_phase_by_path_or_loop(self, path: str | None = None, loop_id: str | None = None) -> MCPResponse:
         try:

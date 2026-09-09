@@ -43,7 +43,6 @@ from .project import (
 )
 from .roadmap import (
     CreatePhaseAgentTools,
-    PlanRoadmapAgentTools,
     PlanRoadmapCommandTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
@@ -73,7 +72,6 @@ __all__ = [
     'CommitCommandTools',
     'PatchCommandTools',
     'PlanRoadmapCommandTools',
-    'PlanRoadmapAgentTools',
     'PhaseArchitectAgentTools',
     'PhaseCriticAgentTools',
     'CreatePhaseAgentTools',

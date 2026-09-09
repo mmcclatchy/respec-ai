@@ -481,7 +481,9 @@ class InMemoryStateManager(StateManager):
     async def delete_phase(self, plan_name: str, phase_name: str) -> bool:
         """Mark a specific phase as inactive (soft delete).
 
-        This maintains backward compatibility while using the inactive flag approach.
+        The phase is kept in _inactive_phases so iteration/version continue climbing if it
+        is recreated; store_phase will not preserve frozen fields from it, because it is no
+        longer live.
         """
         self._log_state_snapshot('delete_phase', 'ENTRY')
         logger.info(f'delete_phase: plan_name={plan_name}, phase_name={phase_name}')

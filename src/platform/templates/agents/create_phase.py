@@ -36,7 +36,7 @@ You have access to MCP tools AND platform-specific tools listed in frontmatter.
 
 When instructions say "CALL tool_name", you execute the tool:
   ✅ CORRECT: phase = {tools.get_phase}
-  ✅ CORRECT: {tools.create_phase_tool_interpolated}
+  ✅ CORRECT: {tools.create_phase_tool}
   ❌ WRONG: <get_document><doc_type>phase</doc_type>
 
 Platform tools vary by configured platform:
@@ -116,7 +116,7 @@ Save phase to configured platform using platform-specific tool.
 - Convert all uppercase to lowercase
 - Example: "Phase 1 - Neo4j Setup" → "phase-1-neo4j-setup"
 
-CALL {tools.create_phase_tool_interpolated}
+CALL {tools.create_phase_tool}
 
 This will use the platform-specific tool to save the phase to external storage.
 

@@ -92,12 +92,6 @@ class PhaseCommandTools(CommandToolsModel):
         cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
-    def create_phase_tool_interpolated(self) -> str:
-        if '*' not in self.create_phase_tool:
-            return self.create_phase_tool
-        return self.create_phase_tool.replace('*', '{plan_name}', 1).replace('*', '{phase_name}', 1)
-
-    @computed_field
     def sync_plan_instructions(self) -> str:
         return self._adapter.plan_sync_instructions
 

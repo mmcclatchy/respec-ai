@@ -694,11 +694,13 @@ class TestTemplateConsistency:
             for pattern in behavioral_patterns:
                 assert pattern not in template, f'Template contains behavioral description: {pattern}'
 
-    def test_roadmap_template_accepts_legacy_and_new_plan_reference_markers(self) -> None:
+    def test_roadmap_template_uses_only_the_canonical_plan_reference_marker(self) -> None:
+        # Nothing in respec-ai has ever written "Claude Plan:" - plan_command.py emits
+        # "Plan Reference:". The second marker was a read path with no producer.
         roadmap_tools = create_roadmap_agent_tools(_adapter)
         template = generate_roadmap_template(roadmap_tools)
         assert '"Plan Reference: `<path>`"' in template
-        assert '"Claude Plan: `<path>`" (legacy)' in template
+        assert 'Claude Plan' not in template
 
     def test_roadmap_template_allows_reference_citation_exception_for_sparse_phase(self) -> None:
         roadmap_tools = create_roadmap_agent_tools(_adapter)
@@ -712,11 +714,34 @@ class TestTemplateConsistency:
         template = generate_roadmap_template(roadmap_tools)
         assert 'Read(.respec-ai/plans/*/references/*.md)' in template
 
-    def test_phase_architect_template_accepts_legacy_and_new_plan_reference_markers(self) -> None:
+    def test_phase_architect_constraint_hierarchy_has_exactly_two_sources(self) -> None:
+        # The third tier scanned for "→ before implementing, read" directives, a format
+        # nothing in respec-ai emits, so it could never fire. It also drove a Read()
+        # fan-out. coder_contracts.py loads the same constraints from the formal section
+        # alone; this matches that shape.
+        architect_tools = create_phase_architect_agent_tools(_adapter)
+        template = generate_phase_architect_template(architect_tools)
+
+        assert 'Read constraints from TWO sources in priority order' in template
+        assert 'SOURCE 1 —' in template
+        assert 'SOURCE 2 —' in template
+        assert 'SOURCE 3' not in template
+        assert 'before implementing, read' not in template
+        assert 'THREE sources' not in template
+
+    def test_patch_planner_reads_constraints_only_from_the_formal_section(self) -> None:
+        planner_tools = create_patch_planner_agent_tools(_adapter)
+        template = generate_patch_planner_template(planner_tools)
+
+        assert '### Implementation Plan References' in template
+        assert 'before implementing, read' not in template
+        assert 'backward compat' not in template
+
+    def test_phase_architect_template_uses_only_the_canonical_plan_reference_marker(self) -> None:
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)
         assert '"Plan Reference: `<file-path>`"' in template
-        assert '"Claude Plan: `<file-path>`" in STRATEGIC_PLAN_MARKDOWN (legacy)' in template
+        assert 'Claude Plan' not in template
         assert 'Execute knowledge base query with BOTH required flags' in template
         assert 'Always pass both `--tech` and `--topics`' in template
         assert 'Never use `--topic`' in template

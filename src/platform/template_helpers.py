@@ -1038,8 +1038,6 @@ def create_create_phase_agent_tools(
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         create_phase_tool=platform_tools[0],
-        get_phase_tool=platform_tools[1],
-        update_phase_tool=platform_tools[2],
         get_phase=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
         ),

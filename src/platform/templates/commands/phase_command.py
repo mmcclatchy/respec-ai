@@ -1594,7 +1594,7 @@ Store the phase using platform-specific tool:
 Ensure directory exists:
 {tools.phase_location_setup}
 
-Use {tools.create_phase_tool_interpolated} to store the phase:
+Use {tools.create_phase_tool} to store the phase:
 
 Title: Phase: [Project Name]
 Content: [FINAL_PHASE_MARKDOWN]

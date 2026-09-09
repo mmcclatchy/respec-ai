@@ -62,18 +62,6 @@ class PlanCommandTools(CommandToolsModel):
         cls._tool_extractor = ToolDocumentationExtractor(mcp)
 
     @computed_field
-    def create_project_tool_interpolated(self) -> str:
-        if '*' not in self.create_project_external:
-            return self.create_project_external
-        return self.create_project_external.replace('*', '{plan_name}')
-
-    @computed_field
-    def get_plan_tool_interpolated(self) -> str:
-        if '*' not in self.get_plan_tool:
-            return self.get_plan_tool
-        return self.get_plan_tool.replace('*', '{plan_name}')
-
-    @computed_field
     def sync_plan_instructions(self) -> str:
         return self._adapter.plan_sync_instructions
 

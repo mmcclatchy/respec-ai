@@ -646,7 +646,8 @@ class PostgresStateManager(StateManager):
     async def delete_phase(self, plan_name: str, phase_name: str) -> bool:
         """Mark a specific phase as inactive (soft delete).
 
-        This maintains backward compatibility while using the inactive flag approach.
+        The row is kept so iteration/version continue climbing if the phase is recreated;
+        store_phase will not preserve frozen fields from it, because it is no longer live.
         """
         normalized_name = normalize_phase_name(phase_name)
 

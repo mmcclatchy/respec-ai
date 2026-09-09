@@ -334,18 +334,17 @@ def register_document_tools(mcp: FastMCP) -> None:
     async def create_roadmap(plan_name: str, roadmap_data: str, ctx: Context) -> str:
         """Create a new roadmap for a project.
 
-        A phase's Overview fields (objectives, scope, dependencies, deliverables) are
-        frozen once they hold real content: re-running this tool will NOT change them on
-        a phase that already exists. Only the human design gate can override that.
+        The submitted roadmap is authoritative: it replaces every phase, including the
+        Overview fields (objectives, scope, dependencies, deliverables). A refinement
+        pass that rewrites a phase's Scope or Dependencies WILL persist. Always send the
+        complete roadmap, not a partial one - phases absent from it are deactivated.
 
         Parameters:
         - plan_name: Name for this project
         - roadmap_data: Complete roadmap markdown content including all Phase sections
 
         Returns:
-        - str: Confirmation message. If any phase's frozen Overview fields differ from
-          what is already stored, the message carries a WARNING naming each one as
-          "<phase-name>.<field>"; those fields were NOT written.
+        - str: Confirmation message
         """
         await ctx.info(f'Creating roadmap for plan: {plan_name}')
         try:

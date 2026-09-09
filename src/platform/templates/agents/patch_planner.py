@@ -109,9 +109,6 @@ TASKS: Phase + Codebase Exploration + Request Brief → Amendment Scope
      IF Read succeeds: append to IMPL_PLAN_CONSTRAINTS — treat as HARD CONSTRAINTS
      IF Read fails: note as "unavailable — proceeding without constraint from {{file_path}}"
 
-   ALSO scan PHASE_MARKDOWN for "→ before implementing, read" directives (backward compat):
-     For each directive found, extract file_path and Read if not already processed
-
    IF IMPL_PLAN_CONSTRAINTS is non-empty:
      Treat as HARD CONSTRAINTS in amendment scope — do NOT deviate from technology choices documented here
 1.6. Phase Document Boundary Gate:
