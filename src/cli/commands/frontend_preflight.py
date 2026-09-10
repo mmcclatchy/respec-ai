@@ -12,6 +12,7 @@ from src.cli.config.claude_config import CLAUDE_CONFIG_PATH, ClaudeConfigError, 
 from src.platform.standards_config import load_toml_file
 from src.platform.tui_selector import TuiType
 
+
 RUN_DIRNAME = 'run'
 PIDFILE_NAME = 'dev-server.pid'
 LOG_NAME = 'dev-server.log'
@@ -27,9 +28,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     action.add_argument(
         '--start', action='store_true', help='Start the configured dev server and wait until it is reachable'
     )
-    action.add_argument(
-        '--status', action='store_true', help='Report whether the dev server is running and reachable'
-    )
+    action.add_argument('--status', action='store_true', help='Report whether the dev server is running and reachable')
     action.add_argument('--stop', action='store_true', help='Stop the dev server and its whole process group')
     action.add_argument('--seed', action='store_true', help='Run the optional seed_command')
     parser.add_argument(

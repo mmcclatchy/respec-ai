@@ -27,6 +27,7 @@ from src.platform.templates.agents import (
 from src.platform.tui_adapters import ClaudeCodeAdapter
 from tests.support.reviewer_feedback_example import extract_reviewer_feedback_markdown_example
 
+
 _adapter = ClaudeCodeAdapter()
 
 # B18: every reviewer template's example markdown must pass the structural validator. Each
@@ -139,9 +140,7 @@ class TestReviewerResultMarkdownValidator:
 
     def test_rejects_execution_report_marker_at_the_wrong_heading_level(self) -> None:
         with pytest.raises(ValueError, match='must appear only as its own H4 heading'):
-            self._make(
-                f'### Automated Quality Check (Score: 50/50)\n##### {REVIEWER_EXECUTION_REPORT_MARKER}'
-            )
+            self._make(f'### Automated Quality Check (Score: 50/50)\n##### {REVIEWER_EXECUTION_REPORT_MARKER}')
 
     def test_rejects_a_level_five_heading_after_the_execution_report(self) -> None:
         # B17

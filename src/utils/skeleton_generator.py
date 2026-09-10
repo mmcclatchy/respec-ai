@@ -1,59 +1,19 @@
-import ast
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from src.utils.language_extensions import language_for_path
+from src.utils.materializers import LanguageMaterializer, UnsupportedLanguageError, get_materializer
+from src.utils.skeleton_types import (
+    SkeletonIndexEntry,
+    SkeletonMember,
+    TestListEntry,
+    parse_bare_signature,
+    strip_tags,
+)
 
-if TYPE_CHECKING:
-    from src.utils.materializers import LanguageMaterializer
 
 _BULLET_PATH = re.compile(r'^-\s*`(?P<inner>[^`]+)`(?P<rest>.*)$')
-_SIGNATURE_TAGS = ('internal', 'consequential', 'user-selected', 'async')
-_SIGNATURE = re.compile(
-    r'^(?:(?P<class_name>[A-Za-z_]\w*)\.)?(?P<member_name>[A-Za-z_]\w*)'
-    r'\((?P<params>.*)\)\s*->\s*(?P<return_type>.+)$'
-)
-# A fully-qualified dotted reference to a non-builtin type, e.g. `kb.models.BestPractice`
-# or `pathlib.Path` -- the Skeleton Index convention for any type that needs an import.
-# Builtin generics like `list[str]` or `tuple[str, str]` have no dot and never match.
-_QUALIFIED_TYPE_REF = re.compile(r'\b(?:[a-zA-Z_]\w*\.)+([A-Z]\w*)\b')
-
-
-def _extract_imports_and_bare_text(text: str) -> tuple[str, frozenset[tuple[str, str]]]:
-    imports: set[tuple[str, str]] = set()
-
-    def _replace(match: re.Match[str]) -> str:
-        class_name = match.group(1)
-        module_path = match.group(0)[: -(len(class_name) + 1)]
-        imports.add((module_path, class_name))
-        return class_name
-
-    bare_text = _QUALIFIED_TYPE_REF.sub(_replace, text)
-    return bare_text, frozenset(imports)
-
-
-@dataclass(frozen=True)
-class SkeletonMember:
-    class_name: str | None
-    member_name: str
-    params: str
-    return_type: str
-    tags: frozenset[str] = field(default_factory=frozenset)
-    required_imports: frozenset[tuple[str, str]] = field(default_factory=frozenset)
-
-
-@dataclass(frozen=True)
-class SkeletonIndexEntry:
-    path: str
-    members: tuple[SkeletonMember, ...]
-
-
-@dataclass(frozen=True)
-class TestListEntry:
-    path: str
-    test_names: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -95,52 +55,8 @@ class SkeletonPathEscapesProjectError(ValueError):
     pass
 
 
-def _strip_tags(signature: str) -> tuple[str, frozenset[str]]:
-    tags: list[str] = []
-    remainder = signature.strip()
-    while True:
-        for tag in _SIGNATURE_TAGS:
-            suffix = f', {tag}'
-            if remainder.endswith(suffix):
-                remainder = remainder[: -len(suffix)]
-                tags.append(tag)
-                break
-        else:
-            break
-    return remainder, frozenset(tags)
-
-
-def parse_bare_signature(remainder: str) -> SkeletonMember:
-    """Language-neutral structural parse of a tag-stripped signature: class/member
-    name, and bare (un-import-extracted) params/return text. Phase 1's on-disk
-    Skeleton Index grammar is uniform across languages -- phase 2 makes it
-    language-aware -- so every LanguageMaterializer.parse_signature can start here."""
-    match = _SIGNATURE.match(remainder)
-    if not match:
-        raise ValueError(f'Unparseable Skeleton Index signature: {remainder!r}')
-    return SkeletonMember(
-        class_name=match.group('class_name'),
-        member_name=match.group('member_name'),
-        params=match.group('params').strip(),
-        return_type=match.group('return_type').strip(),
-    )
-
-
-def parse_python_signature(remainder: str) -> SkeletonMember:
-    bare = parse_bare_signature(remainder)
-    bare_params, param_imports = _extract_imports_and_bare_text(bare.params)
-    bare_return_type, return_imports = _extract_imports_and_bare_text(bare.return_type)
-    return SkeletonMember(
-        class_name=bare.class_name,
-        member_name=bare.member_name,
-        params=bare_params,
-        return_type=bare_return_type,
-        required_imports=param_imports | return_imports,
-    )
-
-
-def _parse_member(materializer: 'LanguageMaterializer | None', signature: str) -> SkeletonMember:
-    remainder, tags = _strip_tags(signature)
+def _parse_member(materializer: LanguageMaterializer | None, signature: str) -> SkeletonMember:
+    remainder, tags = strip_tags(signature)
     if materializer is None:
         # Not yet known whether this path will materialize (generate_skeletons decides
         # that later) -- structural parse must still succeed so an unsupported-language
@@ -159,11 +75,6 @@ def _parse_member(materializer: 'LanguageMaterializer | None', signature: str) -
 
 
 def parse_skeleton_index(text: str) -> tuple[SkeletonIndexEntry, ...]:
-    # Deferred import: src.utils.materializers depends on this module for the shared
-    # dataclasses and neutral parsing helpers (CLAUDE.md's inline-import exception),
-    # matching the pattern already used by generate_skeletons/generate_tests below.
-    from src.utils.materializers import UnsupportedLanguageError, get_materializer
-
     members_by_path: dict[str, list[SkeletonMember]] = {}
     materializer_by_path: dict[str, LanguageMaterializer | None] = {}
     for line in text.splitlines():
@@ -206,80 +117,6 @@ def _resolve_within_project(project_root: Path, relative_path: str) -> Path:
     return target
 
 
-def _render_member_body(member: SkeletonMember, is_method: bool) -> str:
-    params = member.params
-    if is_method and not params.split(',')[0].strip().startswith('self'):
-        params = f'self, {params}' if params else 'self'
-    indent = '    ' if is_method else ''
-    keyword = 'async def' if 'async' in member.tags else 'def'
-    lines = [f'{indent}{keyword} {member.member_name}({params}) -> {member.return_type}:']
-    lines.append(f'{indent}    raise NotImplementedError')
-    return '\n'.join(lines)
-
-
-def _render_import_lines(entry: SkeletonIndexEntry) -> str:
-    imports: set[tuple[str, str]] = set()
-    for member in entry.members:
-        imports |= member.required_imports
-    return '\n'.join(f'from {module} import {name}' for module, name in sorted(imports))
-
-
-def render_skeleton_module(entry: SkeletonIndexEntry) -> str:
-    classes: dict[str, list[SkeletonMember]] = {}
-    functions: list[SkeletonMember] = []
-    for member in entry.members:
-        if member.class_name:
-            classes.setdefault(member.class_name, []).append(member)
-        else:
-            functions.append(member)
-
-    blocks: list[str] = []
-    import_lines = _render_import_lines(entry)
-    if import_lines:
-        blocks.append(import_lines)
-    for class_name, members in classes.items():
-        method_bodies = '\n\n'.join(_render_member_body(m, is_method=True) for m in members)
-        blocks.append(f'class {class_name}:\n{method_bodies}')
-    for member in functions:
-        blocks.append(_render_member_body(member, is_method=False))
-
-    return '\n\n\n'.join(blocks) + '\n'
-
-
-def render_test_module(entry: TestListEntry) -> str:
-    functions = []
-    for test_name in entry.test_names:
-        functions.append(f'def {test_name}() -> None:\n    raise AssertionError({test_name!r})')
-    return '\n\n\n'.join(functions) + '\n'
-
-
-def _render_signature(
-    qualified_name: str, params: list[ast.arg], returns: ast.expr | None, is_method: bool
-) -> str:
-    if is_method and params and params[0].arg == 'self':
-        params = params[1:]
-    rendered_params = [f'{a.arg}: {ast.unparse(a.annotation)}' if a.annotation else a.arg for a in params]
-    return_type = ast.unparse(returns) if returns else 'None'
-    return f'{qualified_name}({", ".join(rendered_params)}) -> {return_type}'
-
-
-def extract_existing_signatures(path: Path) -> tuple[str, ...]:
-    """Full param+return signatures, not bare names -- a same-name divergent signature
-    must be visibly different to the reconciliation menu (B2), not silently equal."""
-    tree = ast.parse(path.read_text())
-    signatures: list[str] = []
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            signatures.append(_render_signature(node.name, node.args.args, node.returns, is_method=False))
-        elif isinstance(node, ast.ClassDef):
-            for item in node.body:
-                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    signatures.append(
-                        _render_signature(f'{node.name}.{item.name}', item.args.args, item.returns, is_method=True)
-                    )
-    return tuple(signatures)
-
-
 def _member_signature(member: SkeletonMember) -> str:
     qualified_name = f'{member.class_name}.{member.member_name}' if member.class_name else member.member_name
     return f'{qualified_name}({member.params}) -> {member.return_type}'
@@ -312,10 +149,6 @@ def _filter_declined_internals(entries: tuple[SkeletonIndexEntry, ...]) -> tuple
 
 
 def generate_skeletons(project_root: Path, entries: tuple[SkeletonIndexEntry, ...]) -> SkeletonGenerationResult:
-    # Deferred import: src.utils.materializers depends on this module for the shared
-    # dataclasses and neutral parsing helpers (CLAUDE.md's inline-import exception).
-    from src.utils.materializers import UnsupportedLanguageError, get_materializer
-
     entries = _filter_declined_internals(entries)
     written: list[Path] = []
     reconciliation: list[ReconciliationChoice] = []
@@ -399,11 +232,18 @@ def merge_new_members(
         # (decisions.md "Introspection is an optional capability") -- Python has it,
         # other languages degrade to create-only rather than risking an unguarded
         # ast.parse SyntaxError on foreign source (F6).
-        if language_for_path(entry.path) != 'python':
+        try:
+            materializer = get_materializer(language_for_path(entry.path), entry.path)
+        except UnsupportedLanguageError:
+            unintrospectable.append(entry.path)
+            continue
+
+        extract = getattr(materializer, 'extract_existing_signatures', None)
+        if extract is None:
             unintrospectable.append(entry.path)
             continue
         try:
-            existing_signatures = set(extract_existing_signatures(target))
+            existing_signatures = set(extract(target))
         except SyntaxError:
             # A Python traceback as a phase-failure diagnostic is a Python-invisibility
             # violation (F6), not just a robustness bug -- surface the path instead.
@@ -426,12 +266,12 @@ def merge_new_members(
         lines = target.read_text().splitlines()
         for member in new_members:
             if member.class_name is None:
-                lines.extend(['', *_render_member_body(member, is_method=False).splitlines()])
+                lines.extend(['', *materializer.render_member_body(member, is_method=False).splitlines()])
                 continue
             insert_at = _class_insertion_point(lines, member.class_name)
             if insert_at is None:
                 continue
-            lines[insert_at:insert_at] = ['', *_render_member_body(member, is_method=True).splitlines()]
+            lines[insert_at:insert_at] = ['', *materializer.render_member_body(member, is_method=True).splitlines()]
         target.write_text('\n'.join(lines) + '\n')
         merged.append(target)
     return MergeResult(
@@ -442,8 +282,6 @@ def merge_new_members(
 
 
 def generate_tests(project_root: Path, entries: tuple[TestListEntry, ...]) -> TestGenerationResult:
-    from src.utils.materializers import UnsupportedLanguageError, get_materializer
-
     written: list[Path] = []
     skipped: list[Path] = []
     unmaterialized: list[UnmaterializedPath] = []

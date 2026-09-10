@@ -30,6 +30,9 @@ from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_selector import TuiType
 
 
+from src.cli.commands import sync as sync_command
+
+
 def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         '-p',
@@ -94,8 +97,6 @@ def run(args: Namespace) -> int:
                 if result is None:
                     return 1
                 if result:
-                    from src.cli.commands import sync as sync_command
-
                     sync_args = Namespace(
                         platform=args.platform,
                         tui=getattr(args, 'tui', None),

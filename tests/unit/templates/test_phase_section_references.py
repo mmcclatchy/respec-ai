@@ -21,6 +21,7 @@ from src.platform.templates.agents import (
 from src.platform.templates.commands.phase_command import technical_phase_template
 from src.platform.tui_adapters import ClaudeCodeAdapter
 
+
 # A Phase section reference is written either as `Phase <H2> [> <H3>] section(s)` or as
 # `<Name> specifications`. Both shapes name a section; the extractor below resolves the
 # named section(s) so the test can assert they exist. This is deliberately closed: it
@@ -41,11 +42,11 @@ def technical_phase_template_additional_section_names() -> set[str]:
     # additional_sections keys are domain-specific H2s not present in HEADER_FIELD_MAPPING.
     # Parsed from the built markdown (rather than hardcoded) so this set can't drift from
     # phase_command.py's technical_phase_template when Phase 2 adds sections.
-    return {
-        line.removeprefix('## ').strip()
-        for line in technical_phase_template.splitlines()
-        if line.startswith('## ')
-    } - {header_path[0] for header_path in Phase.HEADER_FIELD_MAPPING.values()} - {'Metadata'}
+    return (
+        {line.removeprefix('## ').strip() for line in technical_phase_template.splitlines() if line.startswith('## ')}
+        - {header_path[0] for header_path in Phase.HEADER_FIELD_MAPPING.values()}
+        - {'Metadata'}
+    )
 
 
 def _referenced_section_names(template: str) -> set[str]:
@@ -127,9 +128,7 @@ def test_only_the_known_h3_shadow_defect_exists_KNOWN_DEFECT_inverted_in_phase_3
 
     h3_collisions: set[frozenset[str]] = set()
     for h3_names in h2_by_h3.values():
-        h3_collisions.update(
-            frozenset((a, b)) for a in h3_names for b in h3_names if a != b and (a in b or b in a)
-        )
+        h3_collisions.update(frozenset((a, b)) for a in h3_names for b in h3_names if a != b and (a in b or b in a))
 
     assert h3_collisions == _KNOWN_H3_SHADOW_DEFECTS, (
         f'Expected only the documented Functional/Non-Functional Requirements shadow defect, got: {h3_collisions}'

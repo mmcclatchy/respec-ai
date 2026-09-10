@@ -13,6 +13,7 @@ from src.utils.skeleton_generator import (
     parse_test_list,
 )
 
+
 pytestmark_npx = pytest.mark.skipif(shutil.which('npx') is None, reason='npx not available for TS type checking')
 
 
@@ -79,9 +80,7 @@ class TestPythonMaterializationIsUnchanged:
 
 class TestTypeScriptMaterialization:
     def test_typescript_class_entry_materializes_a_real_class(self, tmp_path: Path) -> None:
-        entries = parse_skeleton_index(
-            '- `src/kb/Client.ts` :: Client.query(cypher: string) -> string[]\n'
-        )
+        entries = parse_skeleton_index('- `src/kb/Client.ts` :: Client.query(cypher: string) -> string[]\n')
 
         result = generate_skeletons(tmp_path, entries)
 
@@ -212,9 +211,7 @@ class TestPythonOnlyPhaseIsUnaffectedByLanguageDispatch:
     materialize identically before and after wiring signature-parse dispatch through
     the language seam -- the dispatch change must be invisible to an all-Python phase."""
 
-    def test_a_python_only_index_with_a_dotted_import_materializes_exactly_as_before(
-        self, tmp_path: Path
-    ) -> None:
+    def test_a_python_only_index_with_a_dotted_import_materializes_exactly_as_before(self, tmp_path: Path) -> None:
         entries = parse_skeleton_index(
             '- `src/kb/neo4j_client.py` :: Neo4jClient.__init__(uri: str, auth: tuple[str, str]) -> None\n'
             '- `src/kb/neo4j_client.py` :: Neo4jClient.query(cypher: str) -> list[kb.models.BestPractice]\n'
@@ -293,9 +290,7 @@ class TestComponentContractCarriesTypedProps:
 
         assert member.member_name == 'LoginForm'
         assert member.class_name is None
-        assert member.params == (
-            'props: { email: string; password: string; onSubmit: (data: LoginData) => void }'
-        )
+        assert member.params == ('props: { email: string; password: string; onSubmit: (data: LoginData) => void }')
         assert member.return_type == 'JSX.Element'
 
     def test_a_rendered_component_skeleton_is_a_real_exported_function(self, tmp_path: Path) -> None:

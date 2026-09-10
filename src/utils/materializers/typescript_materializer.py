@@ -1,6 +1,7 @@
 import re
 
-from src.utils.skeleton_generator import SkeletonIndexEntry, SkeletonMember, TestListEntry, parse_bare_signature
+from src.utils.skeleton_types import SkeletonIndexEntry, SkeletonMember, TestListEntry, parse_bare_signature
+
 
 _NAMED_IMPORT = re.compile(r'import\s+(?:type\s+)?\{([^}]*)\}\s+from\s+[\'"][^\'"]+[\'"]')
 # Cheap top-level export enumeration -- NOT full introspection (decisions.md
@@ -23,9 +24,7 @@ def _render_member_body(member: SkeletonMember, is_method: bool) -> str:
     keyword = 'async ' if 'async' in member.tags else ''
     export = '' if is_method else 'export '
     declare = 'function ' if not is_method else ''
-    lines = [
-        f'{indent}{export}{keyword}{declare}{member.member_name}({member.params}): {member.return_type} {{'
-    ]
+    lines = [f'{indent}{export}{keyword}{declare}{member.member_name}({member.params}): {member.return_type} {{']
     lines.append(f'{indent}  {TypeScriptMaterializer.not_implemented_sentinel}')
     lines.append(f'{indent}}}')
     return '\n'.join(lines)
@@ -36,7 +35,7 @@ class TypeScriptMaterializer:
     test_file_suffixes = ('.spec.ts', '.test.ts', '.spec.tsx', '.test.tsx')
 
     def parse_signature(self, remainder: str) -> SkeletonMember:
-        # Dotted-path import inference (skeleton_generator._extract_imports_and_bare_text)
+        # Dotted-path import inference (skeleton_types.extract_imports_and_bare_text)
         # is a Python convention -- TypeScript specifiers are relative paths, not dotted
         # module names, so import resolution is deferred rather than guessed at (see
         # decisions.md "Introspection is an optional capability" and the
@@ -61,12 +60,13 @@ class TypeScriptMaterializer:
 
         return '\n\n\n'.join(blocks) + '\n'
 
+    def render_member_body(self, member: SkeletonMember, is_method: bool) -> str:
+        return _render_member_body(member, is_method)
+
     def render_test_module(self, entry: TestListEntry) -> str:
         cases = []
         for test_name in entry.test_names:
-            cases.append(
-                f"test({test_name!r}, () => {{\n  throw new Error('Not implemented: {test_name}')\n}})"
-            )
+            cases.append(f"test({test_name!r}, () => {{\n  throw new Error('Not implemented: {test_name}')\n}})")
         return '\n\n\n'.join(cases) + '\n'
 
     def test_path_convention(self) -> str:

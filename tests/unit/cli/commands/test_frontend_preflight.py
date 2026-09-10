@@ -7,6 +7,10 @@ from src.cli.commands import frontend_preflight
 from src.platform.standards_config import _toml_quote
 
 
+import socket
+import time as _time
+
+
 def _write_stack_toml(project_path: Path, *, dev_command: str = '', base_url: str = '', seed_command: str = '') -> None:
     config_dir = project_path / '.respec-ai' / 'config'
     config_dir.mkdir(parents=True, exist_ok=True)
@@ -71,15 +75,12 @@ def _run(action: str, tmp_path: Path, **kwargs: object) -> dict:
     if review_iteration is not None:
         args += ['--review-iteration', str(review_iteration)]
 
-    result = subprocess.run(
-        args, cwd=tmp_path, capture_output=True, text=True, timeout=30, check=False
-    )
+    result = subprocess.run(args, cwd=tmp_path, capture_output=True, text=True, timeout=30, check=False)
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
 
 
 def _free_port() -> int:
-    import socket
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
@@ -87,9 +88,7 @@ def _free_port() -> int:
 
 
 class TestFrontendPreflightFailurePaths:
-    def test_missing_dev_command_reports_not_ready_and_exits_zero(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_dev_command_reports_not_ready_and_exits_zero(self, tmp_path: Path) -> None:
         """B5: no config -> ready: false with a reason, exit 0 (not an error)."""
 
         output = _run('start', tmp_path)
@@ -98,9 +97,7 @@ class TestFrontendPreflightFailurePaths:
         assert 'dev_command' in output['reason']
         assert not (tmp_path / '.respec-ai' / 'run' / frontend_preflight.PIDFILE_NAME).exists()
 
-    def test_dev_command_that_exits_immediately_reports_not_ready_with_log_tail(
-        self, tmp_path: Path
-    ) -> None:
+    def test_dev_command_that_exits_immediately_reports_not_ready_with_log_tail(self, tmp_path: Path) -> None:
         """B6: a dev_command exiting non-zero -> ready: false, log_tail present, exit 0, no orphan."""
         dev_command = f'{sys.executable} -c "import sys; print(\'boom\'); sys.exit(1)"'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url='http://127.0.0.1:1/')
@@ -114,9 +111,7 @@ class TestFrontendPreflightFailurePaths:
 
 
 class TestFrontendPreflightHappyPath:
-    def test_start_returns_ready_with_reachable_base_url_within_timeout(
-        self, tmp_path: Path
-    ) -> None:
+    def test_start_returns_ready_with_reachable_base_url_within_timeout(self, tmp_path: Path) -> None:
         """B1."""
         port = _free_port()
         dev_command = f'{sys.executable} -m http.server {port} --bind 127.0.0.1 --directory {tmp_path}'
@@ -148,9 +143,7 @@ class TestFrontendPreflightHappyPath:
         finally:
             _run('stop', tmp_path)
 
-    def test_status_called_twice_does_not_start_a_second_server(
-        self, tmp_path: Path
-    ) -> None:
+    def test_status_called_twice_does_not_start_a_second_server(self, tmp_path: Path) -> None:
         """B2."""
         port = _free_port()
         dev_command = f'{sys.executable} -m http.server {port} --bind 127.0.0.1 --directory {tmp_path}'
@@ -167,17 +160,13 @@ class TestFrontendPreflightHappyPath:
         finally:
             _run('stop', tmp_path)
 
-    def test_stop_leaves_no_process_and_no_orphaned_children(
-        self, tmp_path: Path
-    ) -> None:
+    def test_stop_leaves_no_process_and_no_orphaned_children(self, tmp_path: Path) -> None:
         """B3: the dev_command forks a child; --stop must kill the whole group."""
         port = _free_port()
         marker = tmp_path / 'child.pid'
         child_script = tmp_path / 'child.py'
         child_script.write_text(
-            "import os, sys, time\n"
-            f"open({str(marker)!r}, 'w').write(str(os.getpid()))\n"
-            "time.sleep(60)\n",
+            f"import os, sys, time\nopen({str(marker)!r}, 'w').write(str(os.getpid()))\ntime.sleep(60)\n",
             encoding='utf-8',
         )
         launcher = tmp_path / 'launch.sh'
@@ -194,8 +183,6 @@ class TestFrontendPreflightHappyPath:
         started = _run('start', tmp_path, timeout=10)
         assert started['ready'] is True
 
-        import time as _time
-
         deadline = _time.monotonic() + 5
         while _time.monotonic() < deadline and not marker.exists():
             _time.sleep(0.05)
@@ -208,9 +195,7 @@ class TestFrontendPreflightHappyPath:
         assert not frontend_preflight._pid_alive(child_pid)
         assert not (tmp_path / '.respec-ai' / 'run' / frontend_preflight.PIDFILE_NAME).exists()
 
-    def test_a_base_url_that_never_responds_reports_not_ready_at_timeout_and_cleans_up(
-        self, tmp_path: Path
-    ) -> None:
+    def test_a_base_url_that_never_responds_reports_not_ready_at_timeout_and_cleans_up(self, tmp_path: Path) -> None:
         """B7: the process must be killed at timeout, no orphan left behind."""
         dev_command = f'{sys.executable} -c "import time; time.sleep(60)"'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url='http://127.0.0.1:1/')
@@ -230,17 +215,13 @@ class TestFrontendPreflightHappyPath:
         assert Path(output['scratch_dir']) == expected
         assert expected.is_dir()
 
-    def test_stop_is_safe_to_call_when_nothing_is_running(
-        self, tmp_path: Path
-    ) -> None:
+    def test_stop_is_safe_to_call_when_nothing_is_running(self, tmp_path: Path) -> None:
 
         output = _run('stop', tmp_path)
 
         assert output['stopped'] is True
 
-    def test_status_reports_playwright_mcp_registration_state(
-        self, tmp_path: Path
-    ) -> None:
+    def test_status_reports_playwright_mcp_registration_state(self, tmp_path: Path) -> None:
         """B8."""
 
         output = _run('status', tmp_path)
@@ -252,7 +233,7 @@ class TestFrontendPreflightHappyPath:
         marker = tmp_path / 'seeded.txt'
         _write_stack_toml(
             tmp_path,
-            seed_command=f'{sys.executable} -c "open(\'{marker.name}\', \'w\').write(\'ok\')"',
+            seed_command=f"{sys.executable} -c \"open('{marker.name}', 'w').write('ok')\"",
         )
 
         output = _run('seed', tmp_path)
@@ -260,9 +241,7 @@ class TestFrontendPreflightHappyPath:
         assert output['seeded'] is True
         assert marker.exists()
 
-    def test_seed_without_configured_seed_command_reports_and_does_not_fail(
-        self, tmp_path: Path
-    ) -> None:
+    def test_seed_without_configured_seed_command_reports_and_does_not_fail(self, tmp_path: Path) -> None:
 
         output = _run('seed', tmp_path)
 

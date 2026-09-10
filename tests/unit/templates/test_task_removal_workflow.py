@@ -13,24 +13,32 @@ from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter
 
 
+from src.platform.template_helpers import create_patch_planner_agent_tools
+from src.platform.templates.agents import generate_patch_planner_template
+
+
 def _code_command_template() -> str:
     coordinator = TemplateCoordinator()
-    return coordinator.generate_command_template(RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+    return coordinator.generate_command_template(
+        RespecAICommand.CODE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+    )
 
 
 def _patch_command_template() -> str:
     coordinator = TemplateCoordinator()
-    return coordinator.generate_command_template(RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+    return coordinator.generate_command_template(
+        RespecAICommand.PATCH, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+    )
 
 
 def _phase_command_template() -> str:
     coordinator = TemplateCoordinator()
-    return coordinator.generate_command_template(RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+    return coordinator.generate_command_template(
+        RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+    )
 
 
 def _patch_planner_agent_template() -> str:
-    from src.platform.template_helpers import create_patch_planner_agent_tools
-    from src.platform.templates.agents import generate_patch_planner_template
 
     return generate_patch_planner_template(create_patch_planner_agent_tools(ClaudeCodeAdapter()))
 

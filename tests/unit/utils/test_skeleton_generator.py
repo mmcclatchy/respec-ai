@@ -4,15 +4,16 @@ from pathlib import Path
 
 import pytest
 
+from src.utils.materializers.python_materializer import PythonMaterializer
 from src.utils.skeleton_generator import (
     SkeletonPathEscapesProjectError,
-    extract_existing_signatures,
     generate_skeletons,
     generate_tests,
     merge_new_members,
     parse_skeleton_index,
     parse_test_list,
 )
+
 
 SKELETON_INDEX_TEXT = (
     '- `src/kb/neo4j_client.py` :: Neo4jClient.__init__(uri: str, auth: tuple[str, str]) -> None\n'
@@ -43,9 +44,7 @@ def test_skeleton_index_trailing_tags_do_not_corrupt_the_return_type() -> None:
 
 
 def test_skeleton_index_return_type_containing_a_comma_is_not_split() -> None:
-    entries = parse_skeleton_index(
-        '- `src/kb/client.py` :: Client.auth(uri: str) -> tuple[str, str]\n'
-    )
+    entries = parse_skeleton_index('- `src/kb/client.py` :: Client.auth(uri: str) -> tuple[str, str]\n')
 
     member = entries[0].members[0]
     assert member.return_type == 'tuple[str, str]'
@@ -102,9 +101,7 @@ def test_a_declined_internal_class_never_gets_a_skeleton_file(tmp_path: Path) ->
     # to strip an unselected "internal, consequential" entry from the Skeleton Index
     # before it ever reaches materialization -- this pins that the generator itself
     # never materializes one, even if that prose step under-performs.
-    entries = parse_skeleton_index(
-        '- `src/kb/cache.py` :: _Cache.get(key: str) -> str, internal, consequential\n'
-    )
+    entries = parse_skeleton_index('- `src/kb/cache.py` :: _Cache.get(key: str) -> str, internal, consequential\n')
 
     result = generate_skeletons(tmp_path, entries)
 
@@ -114,9 +111,7 @@ def test_a_declined_internal_class_never_gets_a_skeleton_file(tmp_path: Path) ->
 
 
 def test_a_user_selected_internal_class_still_gets_a_skeleton_file(tmp_path: Path) -> None:
-    entries = parse_skeleton_index(
-        '- `src/kb/cache.py` :: _Cache.get(key: str) -> str, internal, user-selected\n'
-    )
+    entries = parse_skeleton_index('- `src/kb/cache.py` :: _Cache.get(key: str) -> str, internal, user-selected\n')
 
     result = generate_skeletons(tmp_path, entries)
 
@@ -151,9 +146,7 @@ class TestQualifiedTypeReferencesBecomeRealImports:
         assert result.written_paths
 
     def test_a_dotted_param_type_also_produces_an_import(self, tmp_path: Path) -> None:
-        entries = parse_skeleton_index(
-            '- `src/kb/client.py` :: Client.store(entry: kb.models.BestPractice) -> None\n'
-        )
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.store(entry: kb.models.BestPractice) -> None\n')
 
         result = generate_skeletons(tmp_path, entries)
 
@@ -162,9 +155,7 @@ class TestQualifiedTypeReferencesBecomeRealImports:
         assert 'entry: BestPractice' in content
         assert result.written_paths
 
-    def test_multiple_members_referencing_the_same_type_produce_one_deduplicated_import(
-        self, tmp_path: Path
-    ) -> None:
+    def test_multiple_members_referencing_the_same_type_produce_one_deduplicated_import(self, tmp_path: Path) -> None:
         entries = parse_skeleton_index(
             '- `src/kb/client.py` :: Client.query(cypher: str) -> list[kb.models.BestPractice]\n'
             '- `src/kb/client.py` :: Client.store(entry: kb.models.BestPractice) -> None\n'
@@ -176,9 +167,7 @@ class TestQualifiedTypeReferencesBecomeRealImports:
         assert content.count('from kb.models import BestPractice') == 1
 
     def test_builtin_generics_never_produce_a_spurious_import(self, tmp_path: Path) -> None:
-        entries = parse_skeleton_index(
-            '- `src/kb/client.py` :: Client.query(cypher: str) -> tuple[str, str]\n'
-        )
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> tuple[str, str]\n')
 
         generate_skeletons(tmp_path, entries)
 
@@ -214,9 +203,7 @@ class TestQualifiedTypeReferencesBecomeRealImports:
 
 class TestAsyncTag:
     def test_async_tagged_member_renders_as_async_def(self, tmp_path: Path) -> None:
-        entries = parse_skeleton_index(
-            '- `src/kb/client.py` :: Client.query(cypher: str) -> list[str], async\n'
-        )
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> list[str], async\n')
 
         generate_skeletons(tmp_path, entries)
 
@@ -283,9 +270,7 @@ class TestMergeAddsOnlyGenuinelyNewMembers:
     def test_merge_appends_a_new_method_without_touching_the_existing_one(self, tmp_path: Path) -> None:
         target = tmp_path / 'src' / 'kb' / 'client.py'
         target.parent.mkdir(parents=True)
-        target.write_text(
-            'class Client:\n    def query(self, cypher: str) -> list[str]:\n        return ["real"]\n'
-        )
+        target.write_text('class Client:\n    def query(self, cypher: str) -> list[str]:\n        return ["real"]\n')
 
         entries = parse_skeleton_index(
             '- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n'
@@ -319,9 +304,7 @@ class TestMergeAddsOnlyGenuinelyNewMembers:
         original = 'class Client:\n    def query(self, cypher: str) -> list[str]:\n        return []\n'
         target.write_text(original)
 
-        entries = parse_skeleton_index(
-            '- `src/kb/client.py` :: Client.close() -> None\n'
-        )
+        entries = parse_skeleton_index('- `src/kb/client.py` :: Client.close() -> None\n')
         result = merge_new_members(tmp_path, entries, frozenset())
 
         assert result.merged_paths == ()
@@ -359,7 +342,7 @@ class TestMergeAddsOnlyGenuinelyNewMembers:
         )
         merge_new_members(tmp_path, entries, frozenset({'src/kb/client.py'}))
 
-        assert extract_existing_signatures(target) == (
+        assert PythonMaterializer().extract_existing_signatures(target) == (
             'Client.query(cypher: str) -> list[str]',
             'Client.close() -> None',
         )
@@ -414,9 +397,7 @@ class TestGeneratedSkeletonsAreExecutable:
         assert result.returncode == 0, result.stdout + result.stderr
 
     def test_generated_tests_fail_before_implementation(self, tmp_path: Path) -> None:
-        skeleton_entries = parse_skeleton_index(
-            '- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n'
-        )
+        skeleton_entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n')
         test_entries = parse_test_list('- `tests/test_client.py::test_query_returns_a_list`\n')
         generate_skeletons(tmp_path, skeleton_entries)
         generate_tests(tmp_path, test_entries)
@@ -431,9 +412,7 @@ class TestGeneratedSkeletonsAreExecutable:
 
     def test_generated_tests_pass_once_the_seam_is_implemented(self, tmp_path: Path) -> None:
         client_path = tmp_path / 'src' / 'kb' / 'client.py'
-        skeleton_entries = parse_skeleton_index(
-            '- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n'
-        )
+        skeleton_entries = parse_skeleton_index('- `src/kb/client.py` :: Client.query(cypher: str) -> list[str]\n')
         generate_skeletons(tmp_path, skeleton_entries)
 
         test_path = tmp_path / 'tests' / 'test_client.py'

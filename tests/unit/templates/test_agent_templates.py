@@ -32,6 +32,9 @@ from src.platform.templates.agents import (
 )
 
 
+from src.platform.standards_config import language_testing_convention
+
+
 _adapter = ClaudeCodeAdapter()
 
 _BANNED_ACTION_PATTERNS = (
@@ -785,7 +788,6 @@ class TestTemplateConsistency:
         # B3: TypeScript test naming ("describe/it blocks with clear descriptions")
         # must reach the prompt, and it must be rendered from language_standards.json
         # (F21) rather than a second hand-maintained copy.
-        from src.platform.standards_config import language_testing_convention
 
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)

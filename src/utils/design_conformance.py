@@ -4,7 +4,9 @@ from pathlib import Path
 
 from src.utils.language_extensions import language_for_path
 from src.utils.materializers import LanguageMaterializer, UnsupportedLanguageError, get_materializer
-from src.utils.skeleton_generator import SkeletonIndexEntry, SkeletonMember, parse_skeleton_index
+from src.utils.skeleton_generator import parse_skeleton_index
+from src.utils.skeleton_types import SkeletonIndexEntry, SkeletonMember
+
 
 _TEST_PATH_MARKERS = ('test_', '/tests/', '\\tests\\')
 
@@ -285,9 +287,7 @@ def classify_conformance(
                         f'- SD-### | source=implementation | supersedes={qualified} | reason={reason}'
                     )
                 else:
-                    blockers.append(
-                        ConformanceFinding(qualified, 'missing', 'designed member never implemented')
-                    )
+                    blockers.append(ConformanceFinding(qualified, 'missing', 'designed member never implemented'))
                     kept_members.append(member)
                 continue
 
@@ -320,7 +320,9 @@ def classify_conformance(
                 )
             else:
                 blockers.append(
-                    ConformanceFinding(qualified, 'protocol_changed_unrecorded', 'signature changed without a recorded reason')
+                    ConformanceFinding(
+                        qualified, 'protocol_changed_unrecorded', 'signature changed without a recorded reason'
+                    )
                 )
                 kept_members.append(member)
 

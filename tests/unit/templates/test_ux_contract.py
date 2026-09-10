@@ -28,6 +28,7 @@ from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
+
 _ADAPTERS = [ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter()]
 _adapter = ClaudeCodeAdapter()
 
@@ -45,9 +46,9 @@ def test_design_shape_is_preserved_verbatim_so_the_ux_contract_survives_the_deta
     # This prose does not vary per adapter, so a single adapter is sufficient.
     template = generate_phase_architect_template(create_phase_architect_agent_tools(_adapter))
 
-    assert (
-        'Preserve `## Design Shape` and `## Design Decisions` VERBATIM' in template
-    ), 'Detail-act verbatim-preservation guard must cover the whole Design Shape H2, which is where the UX Contract lives'
+    assert 'Preserve `## Design Shape` and `## Design Decisions` VERBATIM' in template, (
+        'Detail-act verbatim-preservation guard must cover the whole Design Shape H2, which is where the UX Contract lives'
+    )
 
 
 def test_ux_contract_is_conditional_on_user_facing_ui_not_always_emitted() -> None:

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from .base import MCPModel
 from .enums import CriticAgent, Priority
 
+
 REVIEWER_EXECUTION_REPORT_MARKER = 'Reviewer Execution Report (Non-Actionable)'
 _REVIEWER_EXECUTION_REPORT_HEADING = f'#### {REVIEWER_EXECUTION_REPORT_MARKER}'
 _HEADING_PATTERN = re.compile(r'^(#{1,6})\s+(.+?)\s*$')

@@ -4,6 +4,7 @@ from src.models.enums import CriticAgent
 from src.models.phase import Phase
 from src.utils.language_extensions import is_frontend_path
 
+
 FRONTEND_DOMAIN_POOL_FLOOR = 15.0
 FRONTEND_DOMAIN_POOL_CEILING = 35.0
 
@@ -106,9 +107,7 @@ def compute_phase1_weights(
     }
 
     active_groups = {
-        domain: members
-        for domain, group in SPECIALIST_DOMAIN_GROUPS.items()
-        if (members := group & active_reviewers)
+        domain: members for domain, group in SPECIALIST_DOMAIN_GROUPS.items() if (members := group & active_reviewers)
     }
     if not active_groups:
         return weights

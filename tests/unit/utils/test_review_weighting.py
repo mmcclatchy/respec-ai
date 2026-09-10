@@ -10,6 +10,9 @@ from src.utils.review_weighting import (
     compute_phase1_weights,
 )
 
+import src.utils.review_weighting as review_weighting
+
+
 _CORE_WEIGHTS = {
     CriticAgent.AUTOMATED_QUALITY_CHECKER: 25.0,
     CriticAgent.SPEC_ALIGNMENT_REVIEWER: 30.0,
@@ -164,7 +167,6 @@ class TestComputePhase1Weights:
 
         # Simulate phase 7 adding a second frontend-domain reviewer by widening the "active"
         # set with a CriticAgent already grouped under 'frontend' in SPECIALIST_DOMAIN_GROUPS.
-        import src.utils.review_weighting as review_weighting
 
         original_groups = review_weighting.SPECIALIST_DOMAIN_GROUPS
         try:

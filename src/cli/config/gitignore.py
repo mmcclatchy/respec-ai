@@ -1,5 +1,6 @@
 from pathlib import Path
 
+
 RESPEC_AI_GITIGNORE_ENTRIES: tuple[str, ...] = ('.respec-ai/run/',)
 
 

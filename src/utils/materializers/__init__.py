@@ -2,6 +2,7 @@ from src.utils.materializers.base import LanguageMaterializer, UnsupportedLangua
 from src.utils.materializers.python_materializer import PythonMaterializer
 from src.utils.materializers.typescript_materializer import TypeScriptMaterializer
 
+
 # Model: src/platform/tui_adapters/__init__.py's _ADAPTER_MAP -- a literal registry plus
 # a fail-loud factory (F27). Adding a language is exactly: a new materializer module +
 # one entry here. Nothing else in the codebase should need to change.

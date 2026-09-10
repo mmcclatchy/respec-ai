@@ -17,6 +17,7 @@ from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
+
 _ADAPTERS = [ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter()]
 
 

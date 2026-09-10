@@ -28,7 +28,9 @@ from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
+
 _ADAPTERS = [ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter()]
+
 
 def _phase_architect_template(adapter: TuiAdapter) -> str:
     return generate_phase_architect_template(create_phase_architect_agent_tools(adapter))

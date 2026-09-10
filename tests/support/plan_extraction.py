@@ -9,6 +9,7 @@ definition of "readable."
 
 import re
 
+
 _STEP_HEADER = re.compile(r'^#### Step (\d+):\s*(.*)$', re.MULTILINE)
 _DEFERRED_RISK = re.compile(
     r'^- (DR-\d+) \| status=(\w+) \| severity=(P[0-3]) \| scope=([\w-]+) \| reason=(.+)$',

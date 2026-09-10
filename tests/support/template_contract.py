@@ -9,6 +9,7 @@ against structure instead of prose. No production code imports this module.
 import re
 from dataclasses import dataclass
 
+
 _ALLOWED_TOOLS_LINE = re.compile(r'^allowed-tools:\s*(.+)$', re.MULTILINE)
 _MCP_TOOL_PATTERN = re.compile(r'\bmcp__[\w-]+__\w+')
 _BUILTIN_CALL_PATTERN = re.compile(r'\b(Read|Write|Glob|Bash|Grep|Task)\(')

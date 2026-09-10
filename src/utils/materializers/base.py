@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from src.utils.skeleton_generator import SkeletonIndexEntry, SkeletonMember, TestListEntry
+from src.utils.skeleton_types import SkeletonIndexEntry, SkeletonMember, TestListEntry
 
 
 class UnsupportedLanguageError(ValueError):
@@ -23,6 +23,11 @@ class LanguageMaterializer(Protocol):
     def render_test_module(self, entry: TestListEntry) -> str: ...
 
     def test_path_convention(self) -> str: ...
+
+    # Rendering one member in isolation, for appending into a file that already
+    # exists. Paired with extract_existing_signatures: merge needs both, so a language
+    # offering neither degrades to create-only.
+    def render_member_body(self, member: SkeletonMember, is_method: bool) -> str: ...
 
     # Optional capability (README.md "the expensive capability is the optional one";
     # decisions.md "introspection is an optional capability"). Absence means the
