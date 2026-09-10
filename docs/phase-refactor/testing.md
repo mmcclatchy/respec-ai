@@ -130,7 +130,7 @@ are bad.
 **The approach: assert the contract, not the prose.** Build a small test-only helper that extracts
 semantic structure from a generated template, and assert against that structure.
 
-```
+```text
 tests/support/template_contract.py     # test-only; no production import
 ```
 

@@ -13,6 +13,11 @@ repos:
         entry: scripts/move-inline-imports.sh
         language: system
         types: [python]
+        # This module has no imports at all, so autoimport has no real work to do in
+        # it -- it only imposes two blank lines after the module docstring, which
+        # ruff-format then collapses back to one. Left in, the two hooks oscillate and
+        # `pre-commit run -a` can never converge.
+        exclude: ^src/platform/templates/phase_contract_grammar\.py$
 
   - repo: local
     hooks:

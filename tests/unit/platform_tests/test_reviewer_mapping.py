@@ -44,9 +44,7 @@ def _template_max_score(reviewer_name: str) -> int:
 
 
 def _every_resolvable_roster() -> list[list[str]]:
-    step_mode_subsets = [
-        combo for size in range(len(StepMode) + 1) for combo in itertools.combinations(StepMode, size)
-    ]
+    step_mode_subsets = [combo for size in range(len(StepMode) + 1) for combo in itertools.combinations(StepMode, size)]
     rosters = []
     for step_modes in step_mode_subsets:
         for has_skeleton_index in (True, False):

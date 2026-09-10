@@ -208,7 +208,9 @@ class TestPolyglotStackRendering:
         assert 'frontend_framework = "react"' in typescript_lines
 
     def test_css_framework_and_ui_components_reach_disk_and_survive_rerender(self) -> None:
-        """B3/F23: css_framework and ui_components were modeled but never rendered."""
+        """
+        B3/F23: css_framework and ui_components were modeled but never rendered.
+        """
         stack = ProjectStack(
             language='typescript',
             languages=['typescript'],
@@ -316,7 +318,9 @@ class TestPolyglotStackRendering:
         assert python_table['storage_state_path'] == ''
 
     def test_typescript_type_checker_override_is_honored_in_render(self) -> None:
-        """B5: a TypeScript project's configured type_checker is honored, not silently dropped."""
+        """
+        B5: a TypeScript project's configured type_checker is honored, not silently dropped.
+        """
         stack = ProjectStack(
             language='typescript',
             languages=['typescript'],
@@ -349,9 +353,7 @@ class TestPolyglotStackRendering:
         project_paths = ['src/backend/app.py', 'src/frontend/App.tsx', 'src/frontend/index.ts']
         assert resolve_languages_for_paths(project_paths) == declared_languages == {'python', 'typescript'}
 
-    def test_detected_language_name_can_disagree_with_source_extensions_without_tsconfig(
-        self, tmp_path: Path
-    ) -> None:
+    def test_detected_language_name_can_disagree_with_source_extensions_without_tsconfig(self, tmp_path: Path) -> None:
         """Documents a real gap rather than papering over it (B7's spirit, per decisions.md: 'if
         they ever disagree, that is a signal worth surfacing, not a reason to prefer one
         silently'). Detection names the JS/TS half from `tsconfig.json` presence, a build-file
@@ -372,9 +374,7 @@ class TestPolyglotStackRendering:
         attribute under the right table, validates clean, and stays clean once dev_command is
         removed (it is optional, never required)."""
         (tmp_path / 'pyproject.toml').write_text('[project]\ndependencies = ["fastapi>=0.100"]\n\n[tool.uv]\n')
-        (tmp_path / 'package.json').write_text(
-            json.dumps({'name': 'web', 'dependencies': {'react': '^18.0'}})
-        )
+        (tmp_path / 'package.json').write_text(json.dumps({'name': 'web', 'dependencies': {'react': '^18.0'}}))
 
         stack = detect_project_stack(tmp_path)
         tooling = detect_project_tooling(tmp_path)

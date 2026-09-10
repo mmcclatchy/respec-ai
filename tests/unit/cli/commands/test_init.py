@@ -58,9 +58,7 @@ class TestInitCommand:
 
         assert '.respec-ai/run/' in (tmp_path / '.gitignore').read_text(encoding='utf-8').splitlines()
 
-    def test_gitignore_generation_preserves_existing_content_and_is_idempotent(
-        self, tmp_path: Path
-    ) -> None:
+    def test_gitignore_generation_preserves_existing_content_and_is_idempotent(self, tmp_path: Path) -> None:
         gitignore_path = tmp_path / '.gitignore'
         gitignore_path.write_text('node_modules/\n', encoding='utf-8')
 

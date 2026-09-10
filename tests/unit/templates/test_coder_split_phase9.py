@@ -123,10 +123,7 @@ class TestOwnershipBoundary:
             generate_coder_template(create_coder_agent_tools(_adapter)),
             generate_frontend_coder_template(create_frontend_coder_agent_tools(_adapter)),
         ):
-            assert (
-                'that is also a `DOCUMENT_AMENDMENT_REQUIRED` handoff, not\na unilateral fix'
-                in template
-            )
+            assert 'that is also a `DOCUMENT_AMENDMENT_REQUIRED` handoff, not\na unilateral fix' in template
 
 
 class TestCodeCommandDefaultDispatch:

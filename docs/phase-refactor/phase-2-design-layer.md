@@ -82,7 +82,7 @@ That is the manual quality review in the exit criteria, and it is the highest-ri
 
 `src/models/phase.py`. Target tree — additions marked:
 
-```
+```text
 ## Overview            ### Objectives / Scope / Dependencies / Deliverables   (roadmap-seeded, frozen)
 ## System Design       ### Architecture / Technology Stack / …Additional Sections
 ## Design Shape        ← NEW
@@ -152,7 +152,7 @@ sharing a name. Only the column goes here.
 **The central fix, at `:485-508`.** The `❌ Specific File Names` rule becomes *scoped* rather than
 global:
 
-```
+```text
 ❌ Specific File Names — in Objectives, Scope, Deliverables, Development Plan
    Wrong: Objectives: "Create `src/neo4j_client.py`"
    Right: Objectives: "Neo4j client module: connection management, query execution"
@@ -171,7 +171,7 @@ Replace with:
 `### Skeleton Index` format — one line per public message, the durable contract the Phase 7 reviewer
 diffs against:
 
-```
+```text
 - src/kb/neo4j_client.py :: Neo4jClient.query(cypher: str) -> list[BestPractice]
 ```
 
@@ -182,7 +182,7 @@ that arrives with the two-act split in Phase 3; here the criteria simply join th
 
 **The anti-speculative-abstraction blocker** — the most important addition in this phase:
 
-```
+```text
 [Unjustified Seam - BLOCKING]: <Interface> has one implementation and no stated axis of
 variation. Every skeletoned abstraction must name what varies behind it. If nothing varies
 yet, make it a concrete class.
@@ -193,7 +193,7 @@ from Phase 3 onward the user approves it and the critics enforce it.
 
 **The anti-anchoring guard**, verbatim block:
 
-```
+```text
 BINDING SCOPE
 Blocker lane, ONLY these:
 1. Module boundaries in `### Module Layout`

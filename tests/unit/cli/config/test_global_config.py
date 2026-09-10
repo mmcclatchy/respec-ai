@@ -76,9 +76,7 @@ class TestSaveGlobalModels:
             patch('src.cli.config.global_config.GLOBAL_CONFIG_DIR', tmp_path),
             patch('src.cli.config.global_config.GLOBAL_MODELS_PATH', models_path),
         ):
-            save_global_models(
-                {'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'}
-            )
+            save_global_models({'reasoning': 'opencode-go/kimi-k2.5', 'orchestration': 'opencode-go/minimax-m2.7'})
         data = json.loads(models_path.read_text())
         assert data['opencode']['reasoning'] == 'opencode-go/kimi-k2.5'
         assert data['opencode']['orchestration'] == 'opencode-go/minimax-m2.7'

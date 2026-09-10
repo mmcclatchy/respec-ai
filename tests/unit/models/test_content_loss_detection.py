@@ -11,6 +11,8 @@ section, inverts Phase 0's B6), B3 (custom H3 under a mapped H2, inverts Phase 0
 
 from typing import Callable
 
+from src.models.base import MCPModel
+
 import pytest
 
 from src.models.phase import Phase
@@ -21,7 +23,7 @@ from src.platform.templates.commands.phase_command import technical_phase_templa
 
 @pytest.mark.parametrize('model_class', [Phase, Plan, Roadmap])
 def test_a_document_this_system_generates_never_reports_content_loss(
-    model_class, markdown_builder: Callable
+    model_class: type[MCPModel], markdown_builder: Callable
 ) -> None:
     seed_markdown = markdown_builder(model_class)
     instance = model_class.parse_markdown(seed_markdown)

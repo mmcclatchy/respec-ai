@@ -67,7 +67,9 @@ class ToolDocumentationExtractor:
             tools = asyncio.run(self.mcp.list_tools())
             tool = next((t for t in tools if t.name == tool_name), None)
             if tool is not None:
-                return tool.fn
+                # fastmcp exposes the wrapped callable as .fn at runtime, but it is not
+                # on the public Tool type.
+                return getattr(tool, 'fn', None)
         except Exception:
             pass
 

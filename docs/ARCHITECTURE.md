@@ -196,9 +196,9 @@ utility commands.
 
 **Utility commands:**
 
-7. **respec-commit** - Builds and executes standardized respec workflow commits
-8. **respec-standards** - Renders derived standards guides from canonical TOML templates
-9. **respec-design-sync** (Claude Code only) - Pushes the project's component library to a Claude
+1. **respec-commit** - Builds and executes standardized respec workflow commits
+2. **respec-standards** - Renders derived standards guides from canonical TOML templates
+3. **respec-design-sync** (Claude Code only) - Pushes the project's component library to a Claude
    Design project so visual design starts from real components; the UX Contract's `Design Source`
    works portably on every TUI without it
 

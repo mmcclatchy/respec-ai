@@ -22,8 +22,7 @@ def run(args: Namespace) -> int:
 
     skeleton_index_text = payload.get('skeleton_index_text', '')
     deviations = tuple(
-        RecordedDeviation(qualified_name=d['qualified_name'], reason=d['reason'])
-        for d in payload.get('deviations', [])
+        RecordedDeviation(qualified_name=d['qualified_name'], reason=d['reason']) for d in payload.get('deviations', [])
     )
 
     try:
@@ -33,12 +32,8 @@ def run(args: Namespace) -> int:
         return 1
 
     output = {
-        'blockers': [
-            {'qualified_name': b.qualified_name, 'kind': b.kind, 'detail': b.detail} for b in report.blockers
-        ],
-        'findings': [
-            {'qualified_name': f.qualified_name, 'kind': f.kind, 'detail': f.detail} for f in report.findings
-        ],
+        'blockers': [{'qualified_name': b.qualified_name, 'kind': b.kind, 'detail': b.detail} for b in report.blockers],
+        'findings': [{'qualified_name': f.qualified_name, 'kind': f.kind, 'detail': f.detail} for f in report.findings],
         'updated_skeleton_index': report.updated_skeleton_index,
         'new_settled_decisions': report.new_settled_decisions,
     }

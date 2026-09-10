@@ -3,7 +3,9 @@ name = "respec-ai"
 version = "0.16.1"
 description = "respec-ai CLI - Lightweight manager for Docker-based specification-driven development workflow"
 readme = "README.md"
-requires-python = ">=3.11"
+# 3.12+: the command templates use PEP 701 f-strings (backslash escapes inside a
+# replacement field). Docker images and the dev venv already run 3.13.
+requires-python = ">=3.12"
 license = { text = "MIT" }
 
 authors = [{ name = "Mark McClatchy" }]
@@ -217,6 +219,11 @@ exclude = [
 ]
 
 respect-ignore-files = true
+
+[tool.ty.environment]
+# tests/support holds shared test helpers imported by bare module name; pytest sees
+# them via its own pythonpath setting, ty needs telling separately.
+extra-paths = ["tests/support"]
 
 [tool.ty.rules]
 # Set default rule severity (ty is strict by default, similar to mypy strict mode)

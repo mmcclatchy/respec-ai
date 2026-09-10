@@ -792,8 +792,10 @@ class TestTemplateConsistency:
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)
 
-        assert language_testing_convention('typescript')['naming'] in template
-        assert language_testing_convention('python')['naming'] in template
+        # The testing block is heterogeneous (naming/location are str, extras is a
+        # list), so it is typed dict[str, object]; narrow the two string fields here.
+        assert str(language_testing_convention('typescript')['naming']) in template
+        assert str(language_testing_convention('python')['naming']) in template
 
     def test_phase_architect_template_requires_config_derived_verify_commands(self) -> None:
         # B5: Checklist verify commands must come from the Step's language config, not

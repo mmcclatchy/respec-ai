@@ -503,13 +503,15 @@ IF selection is "None" or SELECTED_GAPS is empty:
 Normalize SELECTED_GAPS into SYNTHESIS_QUEUE items (Technologies:/Topics: parsed from
 the Gap: entry text; query = the Gap: entry text verbatim).
 
-{_bp_synthesis_orchestration_block(
-    on_bp_unavailable=(
-        '  Display a notice: "bp unavailable — proceeding without research; the flagged'
-        ' gaps remain as Gap: entries for a later pass."\n'
-        '  Proceed to Step 6.'
-    )
-)}
+{
+        _bp_synthesis_orchestration_block(
+            on_bp_unavailable=(
+                '  Display a notice: "bp unavailable — proceeding without research; the flagged'
+                ' gaps remain as Gap: entries for a later pass."\n'
+                '  Proceed to Step 6.'
+            )
+        )
+    }
 
 For each item in SUCCEEDED_SYNTHESIS:
   Rewrite the corresponding "- Gap:" entry in SHAPE_PHASE_MARKDOWN as:
@@ -1416,13 +1418,15 @@ MANDATORY COST-AWARE SYNTHESIS POLICY
 ═══════════════════════════════════════════════
 
 SUB-STEP 3-5: Synthesis orchestration
-{_bp_synthesis_orchestration_block(
-    on_bp_unavailable=(
-        '  ERROR: "bp skill unavailable — cannot synthesize research requirements"\n'
-        '  DIAGNOSTIC: "Expected Task(bp) permission and runtime bp skill registration"\n'
-        '  EXIT: Do NOT proceed to synthesis with fallback behavior'
-    )
-)}
+{
+        _bp_synthesis_orchestration_block(
+            on_bp_unavailable=(
+                '  ERROR: "bp skill unavailable — cannot synthesize research requirements"\n'
+                '  DIAGNOSTIC: "Expected Task(bp) permission and runtime bp skill registration"\n'
+                '  EXIT: Do NOT proceed to synthesis with fallback behavior'
+            )
+        )
+    }
 
 SUB-STEP 6: Update Phase with synthesized paths
 SYNTHESIZED_READ_BLOCKS = []

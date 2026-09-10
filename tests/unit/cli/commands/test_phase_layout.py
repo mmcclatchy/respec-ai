@@ -97,7 +97,6 @@ class TestGenerationIsBlockedOnLegacyLayout:
 
         assert 'Legacy phase layout detected' not in capsys.readouterr().out
 
-
     def test_init_is_not_gated(self) -> None:
         # init --force runs shutil.rmtree on .respec-ai, so it destroys the legacy layout
         # rather than inheriting it, and a fresh init has no plans at all. Gating it would

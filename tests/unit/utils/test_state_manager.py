@@ -508,9 +508,7 @@ class TestUpdatePhaseFrozenFieldGateOverride(TestInMemoryStateManager):
         await state_manager.store_phase(plan_name, sample_phase)
 
         user_edited = sample_phase.model_copy(update={'objectives': 'User-edited objectives at the gate'})
-        await state_manager.update_phase(
-            plan_name, sample_phase.phase_name, user_edited, allow_frozen_field_edits=True
-        )
+        await state_manager.update_phase(plan_name, sample_phase.phase_name, user_edited, allow_frozen_field_edits=True)
 
         retrieved = await state_manager.get_phase(plan_name, sample_phase.phase_name)
         assert retrieved.objectives == 'User-edited objectives at the gate'
@@ -625,9 +623,7 @@ class TestStorePhaseFrozenFields(TestInMemoryStateManager):
     # tests/integration/test_state_manager_model_roundtrip.py::test_store_phase_preserves_frozen_fields.
     # Only the placeholder-population case is unique to this file.
     @pytest.mark.asyncio
-    async def test_store_phase_allows_populating_placeholder_fields(
-        self, state_manager: InMemoryStateManager
-    ) -> None:
+    async def test_store_phase_allows_populating_placeholder_fields(self, state_manager: InMemoryStateManager) -> None:
         plan_name = 'test-project'
         placeholder_phase = Phase(phase_name='placeholder-phase', phase_status=PhaseStatus.DRAFT)
         await state_manager.store_phase(plan_name, placeholder_phase)

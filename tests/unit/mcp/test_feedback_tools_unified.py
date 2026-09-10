@@ -969,9 +969,7 @@ class TestDesignConformanceReviewerRegistration:
         assert '- Score: 48/50' in detailed_feedback
 
     @pytest.mark.asyncio
-    async def test_backend_phase_weights_renormalize_to_100_without_design_conformance(
-        self, plan_name: str
-    ) -> None:
+    async def test_backend_phase_weights_renormalize_to_100_without_design_conformance(self, plan_name: str) -> None:
         state = InMemoryStateManager(max_history_size=10)
         loop = LoopState(loop_type=LoopType.PHASE)
         await state.add_loop(loop, plan_name)
@@ -1186,9 +1184,7 @@ class TestShapeAwareReviewWeighting:
         stored_loop = await state.get_loop(loop.id)
         detailed = stored_loop.feedback_history[-1].detailed_feedback
         start = detailed.index('#### frontend-reviewer')
-        weight_line = next(
-            line for line in detailed[start:].splitlines() if line.startswith('- Configured Weight:')
-        )
+        weight_line = next(line for line in detailed[start:].splitlines() if line.startswith('- Configured Weight:'))
         configured_weight = float(weight_line.split(':')[1].strip())
         assert configured_weight > 25.0  # well above today's fixed 15.0 (let alone a 4-way-split 3.75)
 

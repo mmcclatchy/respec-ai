@@ -81,7 +81,6 @@ def _run(action: str, tmp_path: Path, **kwargs: object) -> dict:
 
 
 def _free_port() -> int:
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]
@@ -89,7 +88,9 @@ def _free_port() -> int:
 
 class TestFrontendPreflightFailurePaths:
     def test_missing_dev_command_reports_not_ready_and_exits_zero(self, tmp_path: Path) -> None:
-        """B5: no config -> ready: false with a reason, exit 0 (not an error)."""
+        """
+        B5: no config -> ready: false with a reason, exit 0 (not an error).
+        """
 
         output = _run('start', tmp_path)
 
@@ -98,7 +99,9 @@ class TestFrontendPreflightFailurePaths:
         assert not (tmp_path / '.respec-ai' / 'run' / frontend_preflight.PIDFILE_NAME).exists()
 
     def test_dev_command_that_exits_immediately_reports_not_ready_with_log_tail(self, tmp_path: Path) -> None:
-        """B6: a dev_command exiting non-zero -> ready: false, log_tail present, exit 0, no orphan."""
+        """
+        B6: a dev_command exiting non-zero -> ready: false, log_tail present, exit 0, no orphan.
+        """
         dev_command = f'{sys.executable} -c "import sys; print(\'boom\'); sys.exit(1)"'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url='http://127.0.0.1:1/')
 
@@ -112,7 +115,9 @@ class TestFrontendPreflightFailurePaths:
 
 class TestFrontendPreflightHappyPath:
     def test_start_returns_ready_with_reachable_base_url_within_timeout(self, tmp_path: Path) -> None:
-        """B1."""
+        """
+        B1.
+        """
         port = _free_port()
         dev_command = f'{sys.executable} -m http.server {port} --bind 127.0.0.1 --directory {tmp_path}'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url=f'http://127.0.0.1:{port}/')
@@ -129,7 +134,9 @@ class TestFrontendPreflightHappyPath:
             _run('stop', tmp_path)
 
     def test_start_called_twice_reuses_the_running_server(self, tmp_path: Path) -> None:
-        """B2, the stronger half: --start itself must not spawn a second process either."""
+        """
+        B2, the stronger half: --start itself must not spawn a second process either.
+        """
         port = _free_port()
         dev_command = f'{sys.executable} -m http.server {port} --bind 127.0.0.1 --directory {tmp_path}'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url=f'http://127.0.0.1:{port}/')
@@ -144,7 +151,9 @@ class TestFrontendPreflightHappyPath:
             _run('stop', tmp_path)
 
     def test_status_called_twice_does_not_start_a_second_server(self, tmp_path: Path) -> None:
-        """B2."""
+        """
+        B2.
+        """
         port = _free_port()
         dev_command = f'{sys.executable} -m http.server {port} --bind 127.0.0.1 --directory {tmp_path}'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url=f'http://127.0.0.1:{port}/')
@@ -161,7 +170,9 @@ class TestFrontendPreflightHappyPath:
             _run('stop', tmp_path)
 
     def test_stop_leaves_no_process_and_no_orphaned_children(self, tmp_path: Path) -> None:
-        """B3: the dev_command forks a child; --stop must kill the whole group."""
+        """
+        B3: the dev_command forks a child; --stop must kill the whole group.
+        """
         port = _free_port()
         marker = tmp_path / 'child.pid'
         child_script = tmp_path / 'child.py'
@@ -196,7 +207,9 @@ class TestFrontendPreflightHappyPath:
         assert not (tmp_path / '.respec-ai' / 'run' / frontend_preflight.PIDFILE_NAME).exists()
 
     def test_a_base_url_that_never_responds_reports_not_ready_at_timeout_and_cleans_up(self, tmp_path: Path) -> None:
-        """B7: the process must be killed at timeout, no orphan left behind."""
+        """
+        B7: the process must be killed at timeout, no orphan left behind.
+        """
         dev_command = f'{sys.executable} -c "import time; time.sleep(60)"'
         _write_stack_toml(tmp_path, dev_command=dev_command, base_url='http://127.0.0.1:1/')
 
@@ -207,7 +220,9 @@ class TestFrontendPreflightHappyPath:
         assert not (tmp_path / '.respec-ai' / 'run' / frontend_preflight.PIDFILE_NAME).exists()
 
     def test_scratch_dir_is_created_and_returned(self, tmp_path: Path) -> None:
-        """B4 (creation/return half; gitignore/commit-exclusion covered separately)."""
+        """
+        B4 (creation/return half; gitignore/commit-exclusion covered separately).
+        """
 
         output = _run('start', tmp_path, coding_loop_id='loop-7', review_iteration='3')
 
@@ -216,13 +231,14 @@ class TestFrontendPreflightHappyPath:
         assert expected.is_dir()
 
     def test_stop_is_safe_to_call_when_nothing_is_running(self, tmp_path: Path) -> None:
-
         output = _run('stop', tmp_path)
 
         assert output['stopped'] is True
 
     def test_status_reports_playwright_mcp_registration_state(self, tmp_path: Path) -> None:
-        """B8."""
+        """
+        B8.
+        """
 
         output = _run('status', tmp_path)
 
@@ -242,7 +258,6 @@ class TestFrontendPreflightHappyPath:
         assert marker.exists()
 
     def test_seed_without_configured_seed_command_reports_and_does_not_fail(self, tmp_path: Path) -> None:
-
         output = _run('seed', tmp_path)
 
         assert output['seeded'] is False

@@ -432,13 +432,13 @@ class TestRunCommand:
         mock_aa.assert_not_called()
         mock_rl.assert_called_once_with('exa-test', 'opencode-go', debug=False)
 
-    def test_project_flag_saves_to_project_config(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_project_flag_saves_to_project_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
         config_dir = tmp_path / '.respec-ai'
         config_dir.mkdir(parents=True)
-        (config_dir / 'config.json').write_text(json.dumps({'platform': 'markdown', 'tui': 'opencode'}), encoding='utf-8')
+        (config_dir / 'config.json').write_text(
+            json.dumps({'platform': 'markdown', 'tui': 'opencode'}), encoding='utf-8'
+        )
 
         models = ['opencode-go/kimi-k2.5', 'opencode-go/minimax-m2.7']
         with (

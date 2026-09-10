@@ -532,9 +532,7 @@ class TestFrozenFieldDiscardWarning:
         await document_tools.store_document(DocumentType.PHASE, key, original)
 
         edited = original.replace('Test scope description', 'User edit at the design gate')
-        result = await document_tools.store_document(
-            DocumentType.PHASE, key, edited, allow_frozen_field_edits=True
-        )
+        result = await document_tools.store_document(DocumentType.PHASE, key, edited, allow_frozen_field_edits=True)
 
         assert 'WARNING' not in result
 

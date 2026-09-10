@@ -28,9 +28,7 @@ class PlanTools(DocumentToolsInterface):
         except Exception as e:
             raise ToolError(f'Failed to store plan: {str(e)}')
 
-    async def get(
-        self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True
-    ) -> MCPResponse:
+    async def get(self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True) -> MCPResponse:
         if not key and not loop_id:
             raise ToolError('Either key OR loop_id is required for plans')
 

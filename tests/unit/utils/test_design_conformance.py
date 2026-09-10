@@ -40,9 +40,7 @@ class TestNewCrossModuleMethodBlocks:
         )
         _write(
             tmp_path / 'src/kb/consumer.py',
-            'from src.kb.client import Neo4jClient\n\n'
-            'def shutdown(client: Neo4jClient) -> None:\n'
-            '    client.close()\n',
+            'from src.kb.client import Neo4jClient\n\ndef shutdown(client: Neo4jClient) -> None:\n    client.close()\n',
         )
         index_text = '- `src/kb/client.py` :: Neo4jClient.query(cypher: str) -> list[dict]'
 
@@ -134,7 +132,7 @@ class TestTypeScriptTestFilesAreRecognizedAsTests:
 class TestCrossModuleReferenceDetectionIsLanguageAware:
     def test_a_typescript_import_of_a_designed_export_is_detected_as_cross_module(self, tmp_path: Path) -> None:
         owning_path = tmp_path / 'src/kb/client.ts'
-        _write(owning_path, "export class Client {\n  close(): void {}\n}\n")
+        _write(owning_path, 'export class Client {\n  close(): void {}\n}\n')
         _write(
             tmp_path / 'src/kb/consumer.ts',
             "import { Client } from './client'\n\nfunction shutdown(c: Client): void {\n  c.close()\n}\n",
@@ -145,7 +143,7 @@ class TestCrossModuleReferenceDetectionIsLanguageAware:
 
     def test_a_typescript_export_never_imported_elsewhere_is_not_cross_module(self, tmp_path: Path) -> None:
         owning_path = tmp_path / 'src/kb/client.ts'
-        _write(owning_path, "export class Client {\n  helper(): void {}\n}\n")
+        _write(owning_path, 'export class Client {\n  helper(): void {}\n}\n')
         member = SkeletonMember(class_name='Client', member_name='helper', params='', return_type='void')
 
         assert not _is_referenced_from_another_module(tmp_path, 'src.kb.client', owning_path, member)
@@ -159,8 +157,8 @@ class TestNewCrossModuleTypeScriptExportBlocks:
         # import scan (references_name), same cost tier as Python's ast-based check.
         _write(
             tmp_path / 'src/kb/client.ts',
-            "export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n\n"
-            "export function reconnect(): void {}\n",
+            'export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n\n'
+            'export function reconnect(): void {}\n',
         )
         _write(
             tmp_path / 'src/kb/consumer.ts',
@@ -175,8 +173,8 @@ class TestNewCrossModuleTypeScriptExportBlocks:
     def test_a_new_exported_typescript_function_never_imported_elsewhere_only_finds(self, tmp_path: Path) -> None:
         _write(
             tmp_path / 'src/kb/client.ts',
-            "export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n\n"
-            "export function helper(): void {}\n",
+            'export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n\n'
+            'export function helper(): void {}\n',
         )
         index_text = '- `src/kb/client.ts` :: Client.query(cypher: string) -> string[]'
 
@@ -188,7 +186,10 @@ class TestNewCrossModuleTypeScriptExportBlocks:
 
 class TestNonPythonEntriesArePassedThroughUnclassified:
     def test_a_typescript_entry_never_crashes_and_produces_no_blockers(self, tmp_path: Path) -> None:
-        _write(tmp_path / 'src/kb/client.ts', "export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n")
+        _write(
+            tmp_path / 'src/kb/client.ts',
+            'export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n',
+        )
         index_text = '- `src/kb/client.ts` :: Client.query(cypher: string) -> string[]'
 
         report = classify_conformance(tmp_path, index_text)
@@ -205,7 +206,10 @@ class TestTypeScriptEntryRoundTripsThroughWriteBack:
     extraction, the re-rendered index would silently lose the qualifier."""
 
     def test_a_dotted_looking_typescript_return_type_survives_write_back_unchanged(self, tmp_path: Path) -> None:
-        _write(tmp_path / 'src/kb/client.ts', "export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n")
+        _write(
+            tmp_path / 'src/kb/client.ts',
+            'export class Client {\n  query(x: string): string[] {\n    return []\n  }\n}\n',
+        )
         index_text = '- `src/kb/client.ts` :: Client.query(cypher: string) -> kb.Result'
 
         report = classify_conformance(tmp_path, index_text)

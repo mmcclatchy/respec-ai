@@ -174,17 +174,13 @@ class PhaseTools(DocumentToolsInterface):
             discarded = await self.discarded_frozen_fields(plan_name, phase, allow_frozen_field_edits)
             await self.state.store_phase(plan_name, phase, allow_frozen_field_edits=allow_frozen_field_edits)
 
-            return MCPResponse(
-                id=key, status=LoopStatus.COMPLETED, message=with_discard_warning(phase_name, discarded)
-            )
+            return MCPResponse(id=key, status=LoopStatus.COMPLETED, message=with_discard_warning(phase_name, discarded))
         except ValidationError as e:
             raise ToolError(f'Invalid phase markdown: {str(e)}')
         except Exception as e:
             raise ToolError(f'Failed to store phase: {str(e)}')
 
-    async def get(
-        self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True
-    ) -> MCPResponse:
+    async def get(self, key: str | None = None, loop_id: str | None = None, include_phases: bool = True) -> MCPResponse:
         return await self.get_phase_by_path_or_loop(path=key, loop_id=loop_id)
 
     async def list(self, parent_key: str | None = None) -> MCPResponse:

@@ -39,7 +39,6 @@ def _phase_command_template() -> str:
 
 
 def _patch_planner_agent_template() -> str:
-
     return generate_patch_planner_template(create_patch_planner_agent_tools(ClaudeCodeAdapter()))
 
 

@@ -143,7 +143,7 @@ as often as initial implementations.
 
 After the review cycle consolidates and deviations are confirmed legitimate, append to `phase.md`:
 
-```
+```text
 - SD-### | source=implementation | supersedes=<index entry> | reason=<from handoff report>
 ```
 

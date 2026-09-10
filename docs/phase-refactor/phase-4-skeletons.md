@@ -237,26 +237,26 @@ The conformance reviewer (Phase 7). `implementation.md` (Phase 5).
         ran against this project) and re-ran `pytest`: both tests went green, and `ty check` still
         passed — the full TDD red-then-green cycle, live.
 
-      **What this does *not* cover:** the Skeleton Index was hand-authored to stand in for a real
-      phase-architect + user design conversation, rather than driven through the actual
-      `/respec-phase` slash command with live `AskUserQuestion` prompts — that requires a second,
-      independent Claude Code session with a human present to answer them, which this pass could not
-      supply. Everything downstream of "a Skeleton Index exists" was exercised against the real
-      production code paths (the CLI command, the generator module, real `ty`/`pytest`, a real git
-      repo), not simulated.
+  **What this does *not* cover:** the Skeleton Index was hand-authored to stand in for a real
+  phase-architect + user design conversation, rather than driven through the actual
+  `/respec-phase` slash command with live `AskUserQuestion` prompts — that requires a second,
+  independent Claude Code session with a human present to answer them, which this pass could not
+  supply. Everything downstream of "a Skeleton Index exists" was exercised against the real
+  production code paths (the CLI command, the generator module, real `ty`/`pytest`, a real git
+  repo), not simulated.
 - [x] Manual: **read the generated skeleton as a reviewer would.**
-      ```python
-      class KBClient:
-          def __init__(self, entries: list[str]) -> None:
-              raise NotImplementedError
+  ```python
+  class KBClient:
+      def __init__(self, entries: list[str]) -> None:
+          raise NotImplementedError
 
-          def query(self, keyword: str) -> list[str]:
-              raise NotImplementedError
-      ```
-      Both seams are genuinely public and necessary — a constructor and the one query method the
-      feature needs — with no speculative abstraction, no unnecessary comments, full typing, and no
-      obvious docstrings, matching `CLAUDE.md` as intended. Because this Skeleton Index was
-      hand-authored rather than architect-generated, this judges the *generator's* rendering quality
-      (formatting, typing, standards compliance) rather than the *architect's* seam-choice judgment —
-      the latter is the harder question flagged by README cross-cutting risk #1 and can only really be
-      assessed against real phase-architect output from a live run.
+      def query(self, keyword: str) -> list[str]:
+          raise NotImplementedError
+  ```
+  Both seams are genuinely public and necessary — a constructor and the one query method the
+  feature needs — with no speculative abstraction, no unnecessary comments, full typing, and no
+  obvious docstrings, matching `CLAUDE.md` as intended. Because this Skeleton Index was
+  hand-authored rather than architect-generated, this judges the *generator's* rendering quality
+  (formatting, typing, standards compliance) rather than the *architect's* seam-choice judgment —
+  the latter is the harder question flagged by README cross-cutting risk #1 and can only really be
+  assessed against real phase-architect output from a live run.

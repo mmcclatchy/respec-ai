@@ -471,7 +471,7 @@ No code validates it and `tests/unit/templates/test_review_agent_templates.py` a
 (`:640`, `:53`), never a complete or ordered H4 set — so adding a section needs no test change.
 
 Common skeleton across reviewers:
-```
+```text
 ### <Reviewer Title> (Score: {TOTAL}/<MAX>)      ← H3, exactly one
 #### <Rubric Category> (Score: {X}/<n>)          ← H4, repeated
 #### Reviewer Execution Report (Non-Actionable)  ← H4, shared block from reviewer_contracts.py:59-84

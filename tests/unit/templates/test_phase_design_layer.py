@@ -76,9 +76,7 @@ def test_coder_builds_modules_at_paths_named_in_skeleton_index() -> None:
     # B7: the coder must consume the real design layer instead of the Phase 0 interim
     # fallback (Architecture / Testing Strategy sections), which never held file
     # layout or interfaces (finding F2).
-    template = generate_coder_template(
-        create_coder_agent_tools(ClaudeCodeAdapter())
-    )
+    template = generate_coder_template(create_coder_agent_tools(ClaudeCodeAdapter()))
 
     assert 'Module Layout' in template
     assert 'Skeleton Index' in template

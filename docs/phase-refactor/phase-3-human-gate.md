@@ -178,7 +178,7 @@ protocol. The detail act keeps the current protocol verbatim.
 
 `### Open Design Decisions` entries, format enforced by the critic:
 
-```
+```text
 - OD-001 | title: <one line>
   - Option A: <name> — <tradeoff>
   - Option B: <name> — <tradeoff>
@@ -202,7 +202,7 @@ Each answer appends
 Use `{selection_prompt_instructions}` / `WAIT for {selection_response_source}` throughout (finding F18).
 Every prompt carries the full non-termination block:
 
-```
+```text
 WAIT for {selection_response_source}.
 DO NOT treat this as workflow completion, cancellation, or failure.
 After the user responds, resume at Step <N>. Continue immediately.
@@ -222,7 +222,7 @@ renders identically on Codex (finding F18).
 and why, offering fix-and-retry (max 3) / drop-those-edits / abort. Then diffs per-heading and appends
 for each change:
 
-```
+```text
 - SD-### | source=user-edit | section=<H2 > H3> | decision=<one-line summary> | binding=yes
 ```
 
@@ -236,7 +236,7 @@ Amend the storage-restriction banner at `phase_command.py:805-819` to permit the
 
 ## 5. Step 11 — the joint gate
 
-```
+```text
 CRITIC_RESULT = decide_loop_next_action(SHAPE_LOOP_ID)
 
 IF completed AND Phase.version == APPROVED_VERSION:

@@ -59,10 +59,10 @@ the system is never without a home for build ordering.
 > an immediate, loud `ValidationError` that pointed straight at the leftover fixture code). Fail
 > loud at import time if a stale `LOOP_TASK_*` var is ever set — do not build defensive tolerance
 > for an environment that does not exist.
-
+>
 > **F13 — positional UPSERT.** Phase 2 already rewrote `postgres.py:453-485`. Dropping
 > `phases.task_breakdown` happened there. Verify no further index shift is introduced here.
-
+>
 > `phases.task_breakdown` (the column, dropped in Phase 2) and `DocumentType.TASK_BREAKDOWN` (the
 > enum, dropped here) are unrelated things sharing a name.
 
@@ -124,12 +124,12 @@ re-running the phase workflow. State this in release notes.
 
 ### B. Templates and agents
 
-11. Delete `src/platform/templates/agents/task_planner.py` and `task_plan_critic.py`; update
+1. Delete `src/platform/templates/agents/task_planner.py` and `task_plan_critic.py`; update
     `templates/agents/__init__.py`.
-12. Delete `src/platform/templates/commands/task_command.py`; update `templates/commands/__init__.py`.
-13. Delete `src/platform/command_strategies/task_strategy.py`; update `__init__.py` (both the import
+2. Delete `src/platform/templates/commands/task_command.py`; update `templates/commands/__init__.py`.
+3. Delete `src/platform/command_strategies/task_strategy.py`; update `__init__.py` (both the import
     and `__all__`).
-14. Delete `src/platform/models/task.py`; update `platform/models/__init__.py:47`.
+4. Delete `src/platform/models/task.py`; update `platform/models/__init__.py:47`.
 
 Confirm the migrations in Phase 5 are complete before deleting `task_planner.py` — the constraint
 carry-forward, execution intent, Deferred Risk Register, Research Read Log, and checklist/steps logic
@@ -137,29 +137,29 @@ all needed to move.
 
 ### C. Registries
 
-15. `src/platform/template_generator.py` — **four edit sites**: `_COMMAND_TEMPLATES:70`;
+1. `src/platform/template_generator.py` — **four edit sites**: `_COMMAND_TEMPLATES:70`;
     `_COMMAND_CATEGORY_BY_NAME:83` (**finding F17** — indexed directly at `:142`, omission is a
     `KeyError`); `_AGENT_NAMES:100-101` (drives `EXPECTED_AGENTS_COUNT` at `:115` via `len()`);
     `_get_agent_specs:233-234,255-256` plus imports at `:34-35,56-57` and tools-builder calls at
     `:225-244`.
-16. `src/platform/template_coordinator.py:12,30` — drop `TaskCommandStrategy`.
-17. `src/platform/tool_enums.py` — drop `RespecAICommand.TASK:190`; `RespecAIAgent.TASK_PLANNER:159`,
+2. `src/platform/template_coordinator.py:12,30` — drop `TaskCommandStrategy`.
+3. `src/platform/tool_enums.py` — drop `RespecAICommand.TASK:190`; `RespecAIAgent.TASK_PLANNER:159`,
     `TASK_PLAN_CRITIC:160`, `CREATE_TASK:161`, `TASK_CRITIC:165`, and the already-dead
     `PHASE_PLANNER:164`; `AbstractOperation.CREATE_TASK_TOOL:136` and `LIST_PHASE_TASKS_TOOL:137`
     (both already dead — verified no references).
-18. `src/platform/template_helpers.py` — delete `create_task_planner_agent_tools`,
+4. `src/platform/template_helpers.py` — delete `create_task_planner_agent_tools`,
     `create_task_plan_critic_agent_tools`, `create_task_tools`; delete `task_command_invocation` from
     `create_phase_command_tools:208-211` and `create_code_command_tools:474-477`; rewire the task-doc
     tool renderers at `:494`, `:508-514`, `:543-555`.
-19. `src/platform/tui_adapters/codex.py:18-21` — drop `'respec-task': 'respec-phase'` from
+5. `src/platform/tui_adapters/codex.py:18-21` — drop `'respec-task': 'respec-phase'` from
     `_SECONDARY_COMMAND_PARENTS`. `claude_code.py` and `opencode.py` are generic — no edits.
-20. `src/platform/startup_validation.py:100-117` — drop `task_sync_instructions`,
+6. `src/platform/startup_validation.py:100-117` — drop `task_sync_instructions`,
     `task_discovery_instructions`, `task_location_hint`, `create_task_tool`, `retrieve_task_tool`,
     `update_task_tool`, `list_tasks_tool` from the required-adapter-property list.
-21. `src/platform/platform_orchestrator.py:96-100` — drop the four task tool mappings.
-22. `src/platform/adapters/{base,markdown,linear,github}.py` — drop all task-tool and
+7. `src/platform/platform_orchestrator.py:96-100` — drop the four task tool mappings.
+8. `src/platform/adapters/{base,markdown,linear,github}.py` — drop all task-tool and
     task-instruction properties.
-23. `src/platform/path_constants.py:10,27-40` — drop `TASKS_DIR` and `build_task_path`.
+9. `src/platform/path_constants.py:10,27-40` — drop `TASKS_DIR` and `build_task_path`.
 
 ### D. Consumers
 

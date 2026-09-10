@@ -71,7 +71,7 @@ forgotten.
 
 ## Target layout
 
-```
+```text
 .respec-ai/plans/{plan}/
   plan.md
   plan-state.md

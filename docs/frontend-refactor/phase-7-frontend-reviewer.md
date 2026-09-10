@@ -148,7 +148,7 @@ With two coders, `(priority, feedback)` is no longer actionable (**F35**) — a 
 unless it names which side changes. Extend the existing tag convention, which is parsed from feedback
 text and so needs no schema or migration change:
 
-```
+```text
 [Severity:P0] [Scope:acceptance-gap] [Target:backend] SEAM-2 — LoginForm destructures
 `user.displayName` but POST /api/session returns `display_name`
 (src/components/LoginForm.tsx:34, src/api/session.py:71)

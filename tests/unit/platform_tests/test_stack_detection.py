@@ -235,18 +235,14 @@ class TestApplyStackToTooling:
 
     def test_updates_checker_to_pyright(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(
-            language='python', language_stack={'python': LanguageStackProfile(type_checker='pyright')}
-        )
+        stack = ProjectStack(language='python', language_stack={'python': LanguageStackProfile(type_checker='pyright')})
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].checker == 'pyright'
         assert result['python'].check_command == 'pyright'
 
     def test_updates_checker_to_pytype(self) -> None:
         tooling = {'python': TOOLING_DEFAULTS['python']}
-        stack = ProjectStack(
-            language='python', language_stack={'python': LanguageStackProfile(type_checker='pytype')}
-        )
+        stack = ProjectStack(language='python', language_stack={'python': LanguageStackProfile(type_checker='pytype')})
         result = apply_stack_to_tooling(tooling, stack)
         assert result['python'].checker == 'pytype'
         assert result['python'].check_command == 'pytype src/'

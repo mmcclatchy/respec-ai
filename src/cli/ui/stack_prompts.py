@@ -191,7 +191,9 @@ def _prompt_language_stack(language: str, detected_profile: LanguageStackProfile
 
     values: dict[str, Any] = {}
     for field_name in PER_LANGUAGE_FIELD_ORDER:
-        options_override = list(TYPE_CHECKER_COMMANDS.get(language, {}).keys()) if field_name == 'type_checker' else None
+        options_override = (
+            list(TYPE_CHECKER_COMMANDS.get(language, {}).keys()) if field_name == 'type_checker' else None
+        )
         detected_value = getattr(detected_profile, field_name)
         values[field_name] = _prompt_stack_field(field_name, detected_value, options_override=options_override)
 

@@ -69,7 +69,10 @@ class TestFrontendReviewerPreflightLifecycle:
         assert 'PREFLIGHT_RESULT.ready is false' in template
         assert 'RUNTIME_EVIDENCE_AVAILABLE = false' in template
         assert 'Do NOT treat this as a review failure and do NOT block on it.' in template
-        assert 'Inspect components, routes, templates, state code, styles, and tests with Read/Glob regardless of RUNTIME_EVIDENCE_AVAILABLE' in template
+        assert (
+            'Inspect components, routes, templates, state code, styles, and tests with Read/Glob regardless of RUNTIME_EVIDENCE_AVAILABLE'
+            in template
+        )
 
     def test_scratch_evidence_is_citable_but_the_agent_may_not_author_it(self) -> None:
         template = self._template()
@@ -94,7 +97,7 @@ class TestFrontendReviewerRubric:
         template = self._template()
 
         assert 'Only these findings qualify as `P0`/`[BLOCKING]`' in template
-        assert "Visual Fit is capped at `P2`" in template
+        assert 'Visual Fit is capped at `P2`' in template
         assert 'Stack-Idiomatic Maintainability' in template
         assert 'never blocks' in template.lower() or 'Never blocks' in template
 

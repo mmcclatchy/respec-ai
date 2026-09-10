@@ -160,7 +160,9 @@ def _unwrap_optional(annotation: Any) -> Any:
 
 
 def _probe_value(model_class: Type[MCPModel], field_name: str) -> Any:
-    """A value distinguishable from the field's default, or None if the type can't carry one."""
+    """
+    A value distinguishable from the field's default, or None if the type can't carry one.
+    """
     field_info = model_class.model_fields[field_name]
     base_type = _unwrap_optional(field_info.annotation)
 

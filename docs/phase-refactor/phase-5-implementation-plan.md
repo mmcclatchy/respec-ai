@@ -84,7 +84,7 @@ same way `phase_command.py:551` already reads `.best-practices/*.md`.
 
 Structure, carried over from the Task document so `respec-code` keeps working:
 
-```
+```text
 # Implementation Plan: {phase-name}
 
 ## Build Order
@@ -133,7 +133,7 @@ and Test List.
 
 New step in `phase_command.py`, after the shape gate closes:
 
-```
+```text
 Present the implementation plan as a walkthrough:
   build order and why, what lands first, what is deferred and why
 

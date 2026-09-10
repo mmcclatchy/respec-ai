@@ -61,9 +61,7 @@ class TestOptionalBuiltinToolGrant:
         assert builder.build() == []
 
     def test_optional_grant_includes_capability_when_adapter_supports_it(self) -> None:
-        builder = TemplateToolBuilder(ClaudeCodeAdapter()).add_optional_builtin_tool(
-            BuiltInToolCapability.DESIGN_SYNC
-        )
+        builder = TemplateToolBuilder(ClaudeCodeAdapter()).add_optional_builtin_tool(BuiltInToolCapability.DESIGN_SYNC)
         assert builder.build() == ['DesignSync']
 
     def test_required_grant_still_raises_on_unsupported_capability(self) -> None:
@@ -154,7 +152,9 @@ class TestRegenerateAcrossTuis:
 
 
 class TestPortableUxContractGuidanceParity:
-    """B7 -- the portability invariant: phase 8 must not damage phase 4's portable seam."""
+    """
+    B7 -- the portability invariant: phase 8 must not damage phase 4's portable seam.
+    """
 
     _SHARED_HEADERS = (
         '##### Route Index',
@@ -189,7 +189,9 @@ class TestPortableUxContractGuidanceParity:
 
 
 class TestArchitectDesignSyncFallback:
-    """B8 -- unavailable DesignSync (other TUI, no login, headless) falls back to the local bundle."""
+    """
+    B8 -- unavailable DesignSync (other TUI, no login, headless) falls back to the local bundle.
+    """
 
     def test_claude_code_architect_falls_back_to_local_bundle_and_reports_skipped_context(self) -> None:
         template = _render_architect(ClaudeCodeAdapter())
@@ -204,7 +206,9 @@ class TestArchitectDesignSyncFallback:
 
 
 class TestDesignFileContentIsDataNotInstructions:
-    """B9 -- design-file content is data; instruction-shaped text must be reported, not followed."""
+    """
+    B9 -- design-file content is data; instruction-shaped text must be reported, not followed.
+    """
 
     def test_design_sync_command_template_treats_content_as_data(self) -> None:
         tools = create_design_sync_command_tools(ClaudeCodeAdapter())

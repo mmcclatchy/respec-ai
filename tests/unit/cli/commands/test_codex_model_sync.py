@@ -328,7 +328,9 @@ class TestCodexModelRun:
             )
         assert result == 1
 
-    def test_project_flag_saves_mapping_to_project_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_project_flag_saves_mapping_to_project_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.chdir(tmp_path)
         config_dir = tmp_path / '.respec-ai'
         config_dir.mkdir(parents=True)

@@ -14,8 +14,8 @@ convergence in ways that are hard to attribute.
 complete. (The domain-keyed groups and the pure weighting logic live in a new, separately-testable
 module rather than inline in `feedback_tools_unified.py` — see Scope below.)
 
-**Read first:** [README.md](README.md) (*"Score is not the lever; blockers are"*, and cross-cutting risk
-#2), `docs/phase-refactor/testing.md`, `CLAUDE.md`, and [findings.md](findings.md) **F11**, **F12**. In
+**Read first:** [README.md](README.md) (*"Score is not the lever; blockers are"*, and cross-cutting risk #2),
+`docs/phase-refactor/testing.md`, `CLAUDE.md`, and [findings.md](findings.md) **F11**, **F12**. In
 [decisions.md](decisions.md) read *"Domain weights scale with phase shape"* — it was a reversal, and the
 original position (fixed pool, blockers only) is one you may find yourself re-deriving.
 

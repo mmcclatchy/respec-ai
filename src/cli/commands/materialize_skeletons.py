@@ -65,9 +65,7 @@ def run(args: Namespace) -> int:
             output = {
                 'written_skeletons': [str(p.relative_to(project_path)) for p in skeleton_result.written_paths],
                 'written_tests': [str(p.relative_to(project_path)) for p in test_result.written_paths],
-                'skipped_existing_tests': [
-                    str(p.relative_to(project_path)) for p in test_result.skipped_existing
-                ],
+                'skipped_existing_tests': [str(p.relative_to(project_path)) for p in test_result.skipped_existing],
                 'merged_paths': [],
                 'unresolved_signature_conflicts': [],
                 'reconciliation_needed': [

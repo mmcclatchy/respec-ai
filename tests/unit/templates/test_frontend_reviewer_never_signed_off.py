@@ -5,7 +5,9 @@ from src.platform.tui_adapters import ClaudeCodeAdapter
 
 
 def _template(command: RespecAICommand) -> str:
-    return TemplateCoordinator().generate_command_template(command, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter())
+    return TemplateCoordinator().generate_command_template(
+        command, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+    )
 
 
 class TestFrontendReviewerNeverSignsOff:

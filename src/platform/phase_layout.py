@@ -25,7 +25,6 @@ def legacy_phase_files_in_plan(plan_dir: Path) -> list[Path]:
 
 
 def find_legacy_phase_files(project_path: Path) -> list[Path]:
-    """Return every flat phase file across all plans in a project, sorted."""
     plans_root = project_path / '.respec-ai' / 'plans'
     if not plans_root.exists():
         return []

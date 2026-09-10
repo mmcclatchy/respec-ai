@@ -93,7 +93,7 @@ UX Contract. No migration, no F13 positional-UPSERT hazard.
 Step numbering is from `phase_command.py` as it stands, not from the phase-3 design document, whose
 numbering predates phases 4-6.
 
-```
+```text
 SHAPE ACT
   Step 4     Init SHAPE_LOOP_ID; 4.2 link; 4.5 project config
   Step 5     phase-architect, phase_mode="shape"
@@ -189,7 +189,7 @@ it invents the visual decisions or writes nothing, and the user finds out after 
 
 Emit it as the **first** `OD-###` on a UI phase, upstream of the three above:
 
-```
+```text
 - OD-001 | title: Visual design source for this phase
   - Option A: Design in Claude Design first, export the handoff bundle, name its path
   - Option B: Match existing components at <path> — no new visual design needed

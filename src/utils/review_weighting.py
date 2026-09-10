@@ -73,7 +73,9 @@ def compute_frontend_ratio(phase: Phase | None) -> float:
 
 
 def compute_domain_pool_size(frontend_ratio: float) -> float:
-    """Linear interpolation between the floor and ceiling, monotonic in frontend_ratio (B7)."""
+    """
+    Linear interpolation between the floor and ceiling, monotonic in frontend_ratio (B7).
+    """
     return FRONTEND_DOMAIN_POOL_FLOOR + (FRONTEND_DOMAIN_POOL_CEILING - FRONTEND_DOMAIN_POOL_FLOOR) * frontend_ratio
 
 

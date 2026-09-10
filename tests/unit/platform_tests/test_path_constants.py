@@ -21,6 +21,7 @@ class TestPathComponentValues:
     def test_completion_file_value(self) -> None:
         assert PathComponent.COMPLETION_FILE == 'project_completion.md'
 
+
 class TestBuildPlanPath:
     def test_build_plan_path_with_plan_name(self) -> None:
         result = PathComponent.build_plan_path('my-project')

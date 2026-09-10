@@ -269,9 +269,7 @@ class TestPromptStackProfile:
         assert result.language_stack['python'].frontend_framework == 'react'
         assert result.language_stack['python'].package_manager == 'uv'
 
-    def test_renaming_detected_javascript_to_typescript_keeps_detected_values(
-        self, mocker: MockerFixture
-    ) -> None:
+    def test_renaming_detected_javascript_to_typescript_keeps_detected_values(self, mocker: MockerFixture) -> None:
         """detect_project_stack names the JS/TS half 'javascript' until tsconfig.json promotes it.
         If the user picks 'typescript' at the language prompt instead, the detected package_manager
         and frontend_framework for that half must not silently vanish."""
@@ -283,9 +281,7 @@ class TestPromptStackProfile:
 
         detected = ProjectStack(
             languages=['javascript'],
-            language_stack={
-                'javascript': LanguageStackProfile(package_manager='npm', frontend_framework='react')
-            },
+            language_stack={'javascript': LanguageStackProfile(package_manager='npm', frontend_framework='react')},
         )
         result = prompt_stack_profile(detected)
 

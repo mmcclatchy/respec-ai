@@ -166,11 +166,7 @@ class MCPModel(BaseModel, ABC):
             return ''
 
         end = next(
-            (
-                i
-                for i in range(h3_idx + 1, len(lines))
-                if lines[i].startswith('## ') or lines[i].startswith('### ')
-            ),
+            (i for i in range(h3_idx + 1, len(lines)) if lines[i].startswith('## ') or lines[i].startswith('### ')),
             len(lines),
         )
         section_lines = cls._trim_at_legitimate_separator(lines[h3_idx + 1 : end])
