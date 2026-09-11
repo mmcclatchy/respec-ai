@@ -27,6 +27,7 @@ from .models import (
     PlanRoadmapCommandTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
+    RoadmapOrchestratorAgentTools,
     SpecAlignmentReviewerAgentTools,
     StandardsCommandTools,
     ToolReference,
@@ -361,10 +362,11 @@ def create_plan_command_tools(
 ) -> 'PlanCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder(adapter)
-    builder.add_task_agent(RespecAIAgent.PLAN_CONVERSATION)
     builder.add_task_agent(RespecAIAgent.PLAN_CRITIC)
     builder.add_task_agent(RespecAIAgent.PLAN_ANALYST)
     builder.add_task_agent(RespecAIAgent.ANALYST_CRITIC)
+    if adapter.render_builtin_tool_name(BuiltInToolCapability.NESTED_TASK) is not None:
+        builder.add_task_agent(RespecAIAgent.ROADMAP_ORCHESTRATOR)
     builder.add_builtin_tool(BuiltInToolCapability.READ)
     builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/references/*.md')
     builder.add_builtin_tool(BuiltInToolCapability.BASH)
@@ -403,11 +405,16 @@ def create_plan_command_tools(
             requires_user_interaction=True,
         ),
         conversation_workflow_name=adapter.conversation_workflow_name,
-        roadmap_command_invocation=adapter.render_command_invocation(
+        roadmap_command_invocation=adapter.render_workflow_handoff(
             'respec-roadmap',
+            'respec-roadmap-orchestrator',
+            'drive the roadmap quality loop and extract phase documents',
+            [
+                ('plan_name', 'PLAN_NAME'),
+                ('phasing_preferences', 'PHASING_PREFERENCES'),
+                ('roadmap_loop_id', 'ROADMAP_LOOP_ID'),
+            ],
             '{PLAN_NAME}',
-            '',
-            requires_user_interaction=False,
         ),
         phase_command_invocation=adapter.render_command_invocation(
             'respec-phase',
@@ -441,6 +448,12 @@ def create_plan_command_tools(
         ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{PLAN_LOOP_ID}', feedback_markdown='{USER_FEEDBACK}'
+        ),
+        get_roadmap_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{ROADMAP_LOOP_ID}', count='1'
+        ),
+        store_roadmap_user_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{ROADMAP_LOOP_ID}', feedback_markdown='{USER_FEEDBACK}'
         ),
     )
 
@@ -653,6 +666,16 @@ def create_code_command_tools(
     )
 
 
+# The thin (nested-capable) roadmap command owns plan sync and the single user gate only.
+# Loop management lives inside respec-roadmap-orchestrator, so the command holds no loop tools.
+THIN_ROADMAP_COMMAND_TOOLS: tuple[RespecAITool, ...] = (
+    RespecAITool.STORE_DOCUMENT,
+    RespecAITool.GET_DOCUMENT,
+    RespecAITool.GET_FEEDBACK,
+    RespecAITool.STORE_USER_FEEDBACK,
+)
+
+
 def create_roadmap_tools(
     platform_tools: list[str],
     platform_type: 'PlatformType',
@@ -660,12 +683,20 @@ def create_roadmap_tools(
 ) -> 'PlanRoadmapCommandTools':
     adapter = _resolve_tui_adapter(tui_adapter)
     builder = TemplateToolBuilder(adapter)
-    builder.add_task_agent(RespecAIAgent.ROADMAP)
-    builder.add_task_agent(RespecAIAgent.ROADMAP_CRITIC)
-    builder.add_task_agent(RespecAIAgent.CREATE_PHASE)
+    nested_orchestration = adapter.render_builtin_tool_name(BuiltInToolCapability.NESTED_TASK) is not None
+
+    if nested_orchestration:
+        builder.add_task_agent(RespecAIAgent.ROADMAP_ORCHESTRATOR)
+    else:
+        builder.add_task_agent(RespecAIAgent.ROADMAP)
+        builder.add_task_agent(RespecAIAgent.ROADMAP_CRITIC)
+        builder.add_task_agent(RespecAIAgent.CREATE_PHASE)
     _add_adapter_question_tool(builder, adapter)
 
-    for tool in PlanRoadmapCommandTools.respec_ai_tools:
+    granted_respec_ai_tools = (
+        THIN_ROADMAP_COMMAND_TOOLS if nested_orchestration else PlanRoadmapCommandTools.respec_ai_tools
+    )
+    for tool in granted_respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
     for builtin_tool, params in PlanRoadmapCommandTools.builtin_tools:
@@ -679,6 +710,18 @@ def create_roadmap_tools(
         get_plan_tool=platform_tools[0],
         list_project_phases_tool=platform_tools[1],
         platform=platform_type,
+        nested_orchestration=nested_orchestration,
+        invoke_roadmap_orchestrator=adapter.render_agent_invocation(
+            'respec-roadmap-orchestrator',
+            'drive the roadmap quality loop and extract phase documents',
+            [
+                ('plan_name', 'PLAN_NAME'),
+                ('phasing_preferences', 'PHASING_PREFERENCES'),
+                ('roadmap_loop_id', 'ROADMAP_LOOP_ID'),
+            ],
+        )
+        if nested_orchestration
+        else '',
         invoke_roadmap_agent=adapter.render_agent_invocation(
             'respec-roadmap',
             'generate implementation roadmap from strategic plan',
@@ -729,6 +772,9 @@ def create_roadmap_tools(
         ),
         get_roadmap=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}'
+        ),
+        store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_USER_FEEDBACK, loop_id='{ROADMAP_LOOP_ID}', feedback_markdown='{USER_FEEDBACK}'
         ),
     )
 
@@ -934,6 +980,74 @@ def create_roadmap_agent_tools(tui_adapter: TuiAdapter, plans_dir: str = '~/.cla
         ),
         create_roadmap=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.CREATE_ROADMAP, plan_name='{PLAN_NAME}', roadmap_data='{ROADMAP_MARKDOWN}'
+        ),
+    )
+
+
+def create_roadmap_orchestrator_agent_tools(
+    tui_adapter: TuiAdapter, platform_tools: list[str]
+) -> RoadmapOrchestratorAgentTools:
+    builder = TemplateToolBuilder(tui_adapter)
+    builder.add_task_agent(RespecAIAgent.ROADMAP)
+    builder.add_task_agent(RespecAIAgent.ROADMAP_CRITIC)
+    builder.add_task_agent(RespecAIAgent.CREATE_PHASE)
+
+    for tool in RoadmapOrchestratorAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in RoadmapOrchestratorAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    builder.add_platform_tools(platform_tools)
+
+    return RoadmapOrchestratorAgentTools(
+        tui_adapter=tui_adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+        list_project_phases_tool=platform_tools[1],
+        invoke_roadmap_agent=tui_adapter.render_agent_invocation(
+            'respec-roadmap',
+            'generate implementation roadmap from strategic plan',
+            [
+                ('loop_id', 'ROADMAP_LOOP_ID'),
+                ('plan_name', 'PLAN_NAME'),
+                ('phasing_preferences', 'PHASING_PREFERENCES'),
+            ],
+        ),
+        invoke_roadmap_critic=tui_adapter.render_agent_invocation(
+            'respec-roadmap-critic',
+            'evaluate roadmap quality against FSDD framework',
+            [('plan_name', 'PLAN_NAME'), ('loop_id', 'ROADMAP_LOOP_ID')],
+        ),
+        invoke_create_phase=tui_adapter.render_agent_invocation(
+            'respec-create-phase',
+            'extract one sparse phase from the roadmap and store it',
+            [
+                ('plan_name', 'PLAN_NAME'),
+                ('phase_name', 'PHASE_NAME'),
+                ('loop_id', 'ROADMAP_LOOP_ID'),
+            ],
+        ),
+        phase_extraction_parallel_policy=tui_adapter.render_parallel_fanout_policy(
+            'create-phase agents',
+            'one completion result per roadmap phase',
+        ),
+        get_plan=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
+        ),
+        initialize_loop=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"roadmap"'
+        ),
+        get_loop_status=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_LOOP_STATUS, loop_id='{ROADMAP_LOOP_ID}'
+        ),
+        decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{ROADMAP_LOOP_ID}'
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{ROADMAP_LOOP_ID}', count='1'
+        ),
+        get_roadmap=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"roadmap"', key='{PLAN_NAME}'
         ),
     )
 

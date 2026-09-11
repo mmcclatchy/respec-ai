@@ -38,7 +38,7 @@ Materialization dispatches by language behind a `LanguageMaterializer` protocol 
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                Template Engine                           │   │
 │  │  • 9 Command Templates (orchestration patterns)          │   │
-│  │  • 20 Agent Templates (specialized workflows)            │   │
+│  │  • 21 Agent Templates (specialized workflows)            │   │
 │  │  • Pydantic Tool Models (type-safe parameter passing)    │   │
 │  │  • Strategy Pattern (clean command generation)           │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -204,7 +204,7 @@ utility commands.
 
 ### Agent Templates (Specialists)
 
-**20 template-generated agent specialists** for focused workflow tasks. Three names below
+**21 template-generated agent specialists** (20 portable + 1 Claude Code orchestrator) for focused workflow tasks. Three names below
 (`research-synthesis-orchestrator`, `code-reviewer`, `review-consolidator`) are referenced in
 workflow prose but have no dedicated `.py` template file of their own — pre-existing drift, tracked
 in `docs/phase-refactor/deferred-issues.md`, not introduced by the frontend work.
@@ -242,8 +242,56 @@ in `docs/phase-refactor/deferred-issues.md`, not introduced by the frontend work
 - Blocking findings (`[BLOCKING]` / `P0`) are enforced as a separate completion gate.
 - Result: scores remain transparent while blocking issues still prevent loop completion.
 
+**Orchestrator Agents (Claude Code only):**
+- **roadmap-orchestrator** - Drives the roadmap → roadmap-critic → MCP-decision loop and the
+  create-phase fan-out as a contained subagent. Dispatched by `respec-plan` Step 10 instead of
+  invoking `/respec-roadmap`.
+
 **Specialized Agents:**
 - **create-phase** - External platform phase creation
+
+### Nested Orchestration Tier (Claude Code)
+
+Claude Code removed the `SlashCommand` tool: a command invoked by the model now goes through the
+Skill tool, which drops the command's `allowed-tools` frontmatter and runs the body under the main
+agent's own grant. In the same release, subagents gained the ability to dispatch subagents (the
+`Task` tool is gated by `agentDepth < CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH`, not by "main agent
+only").
+
+respec-ai therefore splits orchestration by TUI capability:
+
+- Adapters declaring `BuiltInToolCapability.NESTED_TASK` get an **orchestrator agent** whose
+  `tools:` frontmatter is enforced. `TuiAdapter.render_workflow_handoff` dispatches it.
+- Adapters that do not declare it inherit the portable default, which hands off to the sibling
+  command exactly as before. OpenCode and Codex are unchanged.
+
+**One home for the loop.** On a nested-capable adapter the `respec-roadmap` command body is thin:
+argument parsing, plan sync, one orchestrator dispatch, the single user decision point, and an
+independent platform-storage verification. Its grant reduces to `Task(respec-roadmap-orchestrator)`
+plus plan-sync, feedback and platform tools — it holds no worker `Task` grants and no loop-management
+MCP tools, so the loop has exactly one implementation and the command cannot reproduce it. The
+portable adapters keep the full inline body and the full grant. `THIN_ROADMAP_COMMAND_TOOLS` in
+`template_helpers.py` selects from `PlanRoadmapCommandTools.respec_ai_tools`, which stays the
+portable superset.
+
+Agent tiering uses `AGENT_CAPABILITY_REQUIREMENTS` + `_agents_for_adapter` in
+`template_generator.py`, mirroring `COMMAND_CAPABILITY_REQUIREMENTS` for commands.
+
+**Interaction boundary.** A subagent has no user channel at all — its prose is not forwarded
+(`--forward-subagent-text` is opt-in and `--print`-only) and `AskUserQuestion` is not in a
+subagent's toolset. Conversation and every user decision gate therefore stay in commands, which run
+in the main agent. Orchestrators return a structured `needs_user_input` report and let the calling
+command own the prompt.
+
+**Skill-invocation blocking.** Generated Claude Code commands for the user-entry workflows
+(`respec-plan`, `respec-phase`, `respec-code`, `respec-patch`, `respec-roadmap`) carry
+`disable-model-invocation: true`, keeping them typeable by the user but removing them from the
+model's Skill list. Chained sub-workflows (`respec-plan-conversation`, `respec-commit`) stay
+model-invocable because their parents hand off to them by rendered command text, which the main
+agent has no other way to act on. That is safe only because they carry no orchestration: they hold
+no agent-dispatch or loop tools, and `respec-plan-conversation` additionally carries a
+`MANDATORY NO-SIDE-EFFECTS PROTOCOL` forbidding file writes, shell commands, and agent invocation —
+the mitigation for Skill expansion running its body under the main agent's broader grant.
 
 **Guidance Document Path Handling**
 - Commands preserve user-provided project-local guidance document paths in grouped markdown payloads instead of treating them as source files to edit or as malformed phase selectors.

@@ -112,6 +112,7 @@ respec-ai follows a standard enterprise workflow with automated quality gates at
 4. **Quality validation** - plan-critic evaluates the plan against the FSDD framework *and* against the conversation record, then provides a score for your review
 5. **Business objectives extraction** - plan-analyst extracts structured objectives
 6. **Validation** - analyst-critic validates extraction through automated refinement loop
+7. **Roadmap handoff** - on Claude Code the plan dispatches the contained `respec-roadmap-orchestrator` subagent; on OpenCode and Codex it hands off to the `respec-roadmap` command. Either way `/respec-roadmap` stays available to rerun by hand
 
 **Example walkthrough:**
 

@@ -14,6 +14,7 @@ from src.platform.template_helpers import (
     create_phase_command_tools,
     create_patch_command_tools,
     create_plan_command_tools,
+    create_plan_critic_agent_tools,
     create_roadmap_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
@@ -164,6 +165,10 @@ class TestTemplateHelpers:
 
     def test_create_roadmap_critic_tools_include_reference_read_permission(self) -> None:
         tools = create_roadmap_critic_agent_tools(ClaudeCodeAdapter())
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
+
+    def test_create_plan_critic_tools_include_reference_read_permission(self) -> None:
+        tools = create_plan_critic_agent_tools(ClaudeCodeAdapter())
         assert 'Read(.respec-ai/plans/*/references/*.md)' in tools.tools_yaml
 
     def test_create_code_command_tools_include_unrestricted_bash(self) -> None:

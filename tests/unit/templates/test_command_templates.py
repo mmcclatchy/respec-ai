@@ -102,10 +102,10 @@ This should stay ignored.
 
 
 class TestPlanRoadmapRespecAICommand:
-    def test_template_has_required_tools(self) -> None:
+    def test_portable_template_has_required_tools(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
-            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
 
         # Check YAML frontmatter tools (comma-separated format)
@@ -115,6 +115,39 @@ class TestPlanRoadmapRespecAICommand:
         assert 'mcp__linear-server__' in template  # Should contain Linear tools
         assert 'mcp__respec-ai__initialize_refinement_loop' in template
         assert 'mcp__respec-ai__decide_loop_next_action' in template
+
+    def test_nested_capable_template_grants_only_the_orchestrator(self) -> None:
+        # The thin Claude Code body dispatches respec-roadmap-orchestrator, which owns the
+        # loop. Leaving the worker Task grants or the loop tools on the command preserves
+        # exactly the escape hatch the orchestrator exists to close.
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        frontmatter = template.split('---')[1]
+
+        assert 'Task(respec-roadmap-orchestrator)' in frontmatter
+        assert 'Task(respec-roadmap)' not in frontmatter
+        assert 'Task(respec-roadmap-critic)' not in frontmatter
+        assert 'Task(respec-create-phase)' not in frontmatter
+        assert 'initialize_refinement_loop' not in frontmatter
+        assert 'decide_loop_next_action' not in frontmatter
+        assert 'get_loop_status' not in frontmatter
+        # The gate and plan sync stay in the command, which is the only layer that prompts.
+        assert 'mcp__respec-ai__get_feedback' in frontmatter
+        assert 'mcp__respec-ai__store_user_feedback' in frontmatter
+        assert 'mcp__respec-ai__store_document' in frontmatter
+        assert 'mcp__linear-server__' in frontmatter
+
+    def test_nested_capable_template_verifies_platform_storage_itself(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+        )
+
+        assert 'Invoke: respec-roadmap-orchestrator' in template
+        assert 'The orchestrator report is an agent claim, not evidence.' in template
+        assert 'Zero phases found in platform storage' in template
 
     def test_template_includes_required_yaml_sections(self) -> None:
         coordinator = TemplateCoordinator()
@@ -159,10 +192,10 @@ class TestPlanRoadmapRespecAICommand:
         for term in threshold_terms:
             assert term not in template, f'Template should not reference thresholds: {term}'
 
-    def test_template_includes_parallel_phase_creation(self) -> None:
+    def test_portable_template_includes_parallel_phase_creation(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
-            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=CodexAdapter()
         )
 
         # Should include create-phase agent and parallel coordination
@@ -279,13 +312,10 @@ class TestCrossPlatformInvocationRendering:
 
     def test_non_codex_roadmap_retains_legacy_parallel_wording(self) -> None:
         coordinator = TemplateCoordinator()
-        claude_template = coordinator.generate_command_template(
-            RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
-        )
         opencode_template = coordinator.generate_command_template(
             RespecAICommand.ROADMAP, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
         )
-        for template in (claude_template, opencode_template):
+        for template in (opencode_template,):
             assert 'SINGLE message (parallel invocations)' in template
             assert 'True parallelism requires one message with all invocations.' in template
 
@@ -401,6 +431,32 @@ class TestCrossPlatformInvocationRendering:
         assert 'Plan reference mentioned but no readable source provided.' in template
         assert '.respec-ai/plans/{PLAN_NAME}/references/{REFERENCE_FILENAME}' in template
         assert '/resources/' not in template
+
+    def test_plan_template_persists_conversation_record_before_plan_creation(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert '.respec-ai/plans/{PLAN_NAME}/references/conversation-record.md' in template
+        assert 'Conversation Record: {CONVERSATION_RECORD_FILE}' in template
+        assert 'MANDATORY CONTEXT FIDELITY GATE' in template
+
+    def test_plan_template_persists_record_before_any_context_compression(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        record_step = template.index('## Step 2.5')
+        assert record_step < template.index('## Step 3: Create Strategic Plan Document')
+        assert record_step < template.index('Context Management Edge Cases')
+
+    def test_plan_template_scope_carries_context_coverage_sections(self) -> None:
+        coordinator = TemplateCoordinator()
+        template = coordinator.generate_command_template(
+            RespecAICommand.PLAN, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
+        )
+        assert '### Context Coverage' in template
+        assert '### Deliberate Omissions' in template
 
     def test_plan_template_gates_acceptance_when_blockers_active(self) -> None:
         coordinator = TemplateCoordinator()
@@ -685,7 +741,7 @@ class TestCrossPlatformInvocationRendering:
         # string is a contract with the storage layer, so assert the shared constant.
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
-            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=CodexAdapter()
         )
 
         assert FROZEN_DISCARD_WARNING in template
@@ -734,7 +790,7 @@ class TestCrossPlatformInvocationRendering:
         # pulling the full roadmap, but the command still instructed exactly that.
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
-            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=ClaudeCodeAdapter()
+            RespecAICommand.ROADMAP, PlatformType.MARKDOWN, tui_adapter=CodexAdapter()
         )
 
         assert 'Retrieve roadmap from MCP using get_roadmap' not in template
@@ -1162,7 +1218,7 @@ class TestCrossPlatformInvocationRendering:
         assert 'WAIT for AskUserQuestion response.' in template
         assert 'DO NOT treat this as workflow completion, cancellation, or failure.' in template
         assert 'After the user responds, resume at Step 0.1.' in template
-        assert 'After the user responds, resume at Step 4.' in template
+        assert 'After the user responds, resume at Step 2.' in template
 
     def test_patch_template_requires_upfront_mode_and_code_quality_core_reviewer(self) -> None:
         coordinator = TemplateCoordinator()

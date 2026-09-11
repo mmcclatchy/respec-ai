@@ -31,6 +31,7 @@ from src.platform.template_helpers import (
     create_plan_critic_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_roadmap_orchestrator_agent_tools,
     create_spec_alignment_reviewer_agent_tools,
 )
 from src.platform.templates.agents import (
@@ -52,6 +53,7 @@ from src.platform.templates.agents import (
     generate_plan_analyst_template,
     generate_plan_critic_template,
     generate_roadmap_critic_template,
+    generate_roadmap_orchestrator_template,
     generate_roadmap_template,
     generate_spec_alignment_reviewer_template,
 )
@@ -108,6 +110,7 @@ _AGENT_NAMES = [
     'respec-plan-analyst',
     'respec-plan-critic',
     'respec-analyst-critic',
+    'respec-roadmap-orchestrator',
     'respec-roadmap',
     'respec-roadmap-critic',
     'respec-create-phase',
@@ -128,12 +131,29 @@ _AGENT_NAMES = [
 ]
 
 
+# An agent in this map is generated only for adapters that declare the paired capability, mirroring
+# COMMAND_CAPABILITY_REQUIREMENTS -- everything else in _AGENT_NAMES is portable and generated
+# unconditionally.
+AGENT_CAPABILITY_REQUIREMENTS: dict[str, BuiltInToolCapability] = {
+    'respec-roadmap-orchestrator': BuiltInToolCapability.NESTED_TASK,
+}
+
+
+def _agents_for_adapter(tui_adapter: TuiAdapter) -> list[str]:
+    return [
+        name
+        for name in _AGENT_NAMES
+        if AGENT_CAPABILITY_REQUIREMENTS.get(name) is None
+        or tui_adapter.render_builtin_tool_name(AGENT_CAPABILITY_REQUIREMENTS[name]) is not None
+    ]
+
+
 def expected_commands_count(tui_adapter: TuiAdapter) -> int:
     return len(_commands_for_adapter(tui_adapter))
 
 
 def expected_agents_count(tui_adapter: TuiAdapter) -> int:
-    return len(_AGENT_NAMES)
+    return len(_agents_for_adapter(tui_adapter))
 
 
 def generate_templates(
@@ -238,11 +258,17 @@ def _get_agent_specs(
         platform_adapter.update_phase_tool,
     ]
 
+    roadmap_platform_tools = [
+        platform_adapter.retrieve_plan_tool,
+        platform_adapter.list_phases_tool,
+    ]
+
     plan_analyst_tools = create_plan_analyst_agent_tools(tui_adapter)
     plan_critic_tools = create_plan_critic_agent_tools(tui_adapter)
     analyst_critic_tools = create_analyst_critic_agent_tools(tui_adapter)
     roadmap_tools = create_roadmap_agent_tools(tui_adapter, plans_dir=plans_dir)
     roadmap_critic_tools = create_roadmap_critic_agent_tools(tui_adapter)
+    roadmap_orchestrator_tools = create_roadmap_orchestrator_agent_tools(tui_adapter, roadmap_platform_tools)
     create_phase_tools = create_create_phase_agent_tools(tui_adapter, create_phase_platform_tools, platform_type)
     phase_architect_tools = create_phase_architect_agent_tools(tui_adapter, plans_dir=plans_dir)
     phase_critic_tools = create_phase_critic_agent_tools(
@@ -261,12 +287,16 @@ def _get_agent_specs(
     infrastructure_reviewer_tools = create_infrastructure_reviewer_agent_tools(tui_adapter)
     coding_standards_reviewer_tools = create_coding_standards_reviewer_agent_tools(tui_adapter)
 
-    return [
+    specs = [
         _parse_agent_spec('respec-plan-analyst', generate_plan_analyst_template(plan_analyst_tools)),
         _parse_agent_spec('respec-plan-critic', generate_plan_critic_template(plan_critic_tools)),
         _parse_agent_spec('respec-analyst-critic', generate_analyst_critic_template(analyst_critic_tools)),
         _parse_agent_spec('respec-roadmap', generate_roadmap_template(roadmap_tools)),
         _parse_agent_spec('respec-roadmap-critic', generate_roadmap_critic_template(roadmap_critic_tools)),
+        _parse_agent_spec(
+            'respec-roadmap-orchestrator',
+            generate_roadmap_orchestrator_template(roadmap_orchestrator_tools),
+        ),
         _parse_agent_spec('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         _parse_agent_spec('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         _parse_agent_spec('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
@@ -300,3 +330,6 @@ def _get_agent_specs(
             generate_coding_standards_reviewer_template(coding_standards_reviewer_tools),
         ),
     ]
+
+    generated = set(_agents_for_adapter(tui_adapter))
+    return [spec for spec in specs if spec.name in generated]

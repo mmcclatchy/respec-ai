@@ -42,6 +42,7 @@ class OpenCodeAdapter(TuiAdapter):
             BuiltInToolCapability.SLASH_COMMAND: None,
             BuiltInToolCapability.ASK_USER_QUESTION: 'question',
             BuiltInToolCapability.DESIGN_SYNC: None,
+            BuiltInToolCapability.NESTED_TASK: None,
         }
 
     @property

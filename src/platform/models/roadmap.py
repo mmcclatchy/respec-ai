@@ -19,6 +19,9 @@ class PlanRoadmapCommandTools(CommandToolsModel):
         RespecAITool.STORE_DOCUMENT,
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
+        # Step 4's user_input gate stores the user's choice; without this grant that instruction
+        # names a tool the command cannot call.
+        RespecAITool.STORE_USER_FEEDBACK,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = []
@@ -27,6 +30,10 @@ class PlanRoadmapCommandTools(CommandToolsModel):
     get_plan_tool: str = Field(..., description='Platform-specific tool for retrieving project plans')
     list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project phases')
     platform: PlatformType = Field(..., description='Selected platform type')
+    nested_orchestration: bool = Field(
+        default=False,
+        description='True when the adapter supports nested subagents and the loop lives in respec-roadmap-orchestrator',
+    )
 
     # Parameterized MCP tool invocations
     get_plan: str = Field(..., description='Get strategic plan')
@@ -36,8 +43,12 @@ class PlanRoadmapCommandTools(CommandToolsModel):
     decide_loop_action: str = Field(..., description='Decide loop action')
     get_feedback: str = Field(..., description='Get latest feedback')
     get_roadmap: str = Field(..., description='Get final roadmap')
+    store_user_feedback: str = Field(..., description='Store the user decision from the quality gate')
 
     # Agent invocations
+    invoke_roadmap_orchestrator: str = Field(
+        default='', description='Invocation text for respec-roadmap-orchestrator (nested-capable adapters only)'
+    )
     invoke_roadmap_agent: str = Field(..., description='Invocation text for respec-roadmap agent')
     invoke_roadmap_critic: str = Field(..., description='Invocation text for respec-roadmap-critic agent')
     phase_extraction_parallel_policy: str = Field(
@@ -65,14 +76,18 @@ class PlanRoadmapCommandTools(CommandToolsModel):
         if not self._tool_extractor:
             return ''
 
-        tool_names = [
-            'initialize_refinement_loop',
-            'decide_loop_next_action',
-            'get_feedback',
-            'get_plan_markdown',
-            'create_roadmap',
-            'get_roadmap',
-        ]
+        tool_names = (
+            ['get_feedback', 'store_user_feedback', 'get_plan_markdown']
+            if self.nested_orchestration
+            else [
+                'initialize_refinement_loop',
+                'decide_loop_next_action',
+                'get_feedback',
+                'get_plan_markdown',
+                'create_roadmap',
+                'get_roadmap',
+            ]
+        )
 
         try:
             tool_docs = [self._tool_extractor.get_tool_documentation(name) for name in tool_names]
@@ -138,6 +153,37 @@ class RoadmapAgentTools(AgentToolsModel):
     get_loop_status: str = Field(..., description='Get loop status for iteration check')
     get_feedback: str = Field(..., description='Retrieve previous critic feedback')
     create_roadmap: str = Field(..., description='Store roadmap to MCP')
+
+
+class RoadmapOrchestratorAgentTools(AgentToolsModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.INITIALIZE_REFINEMENT_LOOP,
+        RespecAITool.DECIDE_LOOP_NEXT_ACTION,
+        RespecAITool.GET_LOOP_STATUS,
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, '.respec-ai/plans/*/references/*.md'),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    list_project_phases_tool: str = Field(..., description='Platform-specific tool for listing project phases')
+
+    get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
+    initialize_loop: str = Field(..., description='Initialize roadmap loop')
+    get_loop_status: str = Field(..., description='Get roadmap loop status for iteration check')
+    decide_loop_action: str = Field(..., description='Decide loop action')
+    get_feedback: str = Field(..., description='Get latest feedback')
+    get_roadmap: str = Field(..., description='Get final roadmap')
+
+    invoke_roadmap_agent: str = Field(..., description='Invocation text for respec-roadmap agent')
+    invoke_roadmap_critic: str = Field(..., description='Invocation text for respec-roadmap-critic agent')
+    invoke_create_phase: str = Field(..., description='Invocation text for respec-create-phase agent')
+    phase_extraction_parallel_policy: str = Field(
+        ..., description='Adapter-rendered parallel orchestration policy for create-phase fan-out'
+    )
 
 
 class RoadmapCriticAgentTools(AgentToolsModel):

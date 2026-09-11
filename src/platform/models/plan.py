@@ -41,6 +41,8 @@ class PlanCommandTools(CommandToolsModel):
     get_feedback: str = Field(..., description='Retrieve prior critic feedback for analyst loop display')
     decide_loop_action: str = Field(..., description='Decide next loop action')
     store_user_feedback: str = Field(..., description='Store user feedback during plan refinement')
+    get_roadmap_feedback: str = Field(..., description='Retrieve latest roadmap critic feedback for the Step 10 gate')
+    store_roadmap_user_feedback: str = Field(..., description='Store user feedback against the roadmap loop')
 
     # Agent and command invocations
     invoke_plan_critic: str = Field(..., description='Invocation text for respec-plan-critic agent')

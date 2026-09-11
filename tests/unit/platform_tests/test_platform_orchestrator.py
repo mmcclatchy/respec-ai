@@ -98,7 +98,10 @@ class TestPlatformOrchestrator:
         )
         template = self.orchestrator.generate_command_template(request)
 
-        assert '/respec-roadmap {PLAN_NAME}' in template
+        # Claude Code dispatches the roadmap handoff as a contained orchestrator agent rather than
+        # invoking the sibling command; the other adapters keep the command-invocation text.
+        assert 'Invoke: respec-roadmap-orchestrator' in template
+        assert 'Invoke the `respec-roadmap` skill' not in template
 
     def test_generate_command_template_no_config(self) -> None:
         request = TemplateGenerationRequest(

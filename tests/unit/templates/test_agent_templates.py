@@ -2,7 +2,7 @@
 
 import re
 
-from src.platform.models import PlatformType
+from src.platform.models import PlatformType, RoadmapOrchestratorAgentTools
 from src.platform.tui_adapters import ClaudeCodeAdapter
 
 from src.platform.template_generator import _get_agent_specs
@@ -17,6 +17,7 @@ from src.platform.template_helpers import (
     create_phase_critic_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
+    create_roadmap_orchestrator_agent_tools,
 )
 from src.platform.templates.agents import (
     generate_analyst_critic_template,
@@ -28,14 +29,26 @@ from src.platform.templates.agents import (
     generate_phase_architect_template,
     generate_phase_critic_template,
     generate_roadmap_critic_template,
+    generate_roadmap_orchestrator_template,
     generate_roadmap_template,
 )
 
 
 from src.platform.standards_config import language_testing_convention
+from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 
 
 _adapter = ClaudeCodeAdapter()
+
+_ROADMAP_PLATFORM_TOOLS = [
+    'Read(.respec-ai/plans/*/plan.md)',
+    'Glob(.respec-ai/plans/*/phases/*)',
+]
+
+
+def _orchestrator_tools() -> RoadmapOrchestratorAgentTools:
+    return create_roadmap_orchestrator_agent_tools(_adapter, _ROADMAP_PLATFORM_TOOLS)
+
 
 _BANNED_ACTION_PATTERNS = (
     re.compile(r'\bshould\b', re.IGNORECASE),
@@ -186,6 +199,47 @@ class TestPlanRoadmapTemplate:
         template = generate_roadmap_template(tools)
 
         assert 'ERROR HANDLING' in template or 'Error Handling' in template
+
+
+class TestRoadmapOrchestratorTemplate:
+    def test_template_declares_the_worker_agents_it_dispatches(self) -> None:
+        tools = _orchestrator_tools()
+
+        assert 'Task(respec-roadmap)' in tools.tools_yaml
+        assert 'Task(respec-roadmap-critic)' in tools.tools_yaml
+        assert 'Task(respec-create-phase)' in tools.tools_yaml
+
+    def test_template_is_non_interactive_and_returns_the_gate_to_its_caller(self) -> None:
+        template = generate_roadmap_orchestrator_template(_orchestrator_tools())
+
+        assert 'MANDATORY NON-INTERACTIVE CONTRACT' in template
+        assert 'status: needs_user_input' in template
+        assert 'The caller owns every user decision.' in template
+
+    def test_template_resumes_an_existing_loop_without_reinitializing(self) -> None:
+        template = generate_roadmap_orchestrator_template(_orchestrator_tools())
+
+        assert 'roadmap_loop_id' in template
+        assert 'SKIP this step entirely. The loop already exists.' in template
+        assert 'Re-initializing an existing loop is a hard failure, not a no-op.' in template
+
+    def test_template_resume_entry_point_is_the_generation_pass(self) -> None:
+        template = generate_roadmap_orchestrator_template(_orchestrator_tools())
+
+        assert 'This step is the resume entry point.' in template
+        assert 'a fresh generate-and-critique pass is required' in template
+
+    def test_template_keeps_the_frozen_overview_discard_guard(self) -> None:
+        template = generate_roadmap_orchestrator_template(_orchestrator_tools())
+
+        assert FROZEN_DISCARD_WARNING in template
+        assert 'retrievability is not fidelity' in template
+
+    def test_template_keeps_phase_extraction_mandatory(self) -> None:
+        template = generate_roadmap_orchestrator_template(_orchestrator_tools())
+
+        assert 'MANDATORY: PHASE EXTRACTION IS NOT OPTIONAL' in template
+        assert 'Verify actual platform storage, not agent completion messages.' in template
 
 
 class TestRoadmapCriticTemplate:
@@ -608,6 +662,7 @@ class TestAgentImperativeLanguageAudit:
         templates = [
             generate_roadmap_template(create_roadmap_agent_tools(_adapter)),
             generate_roadmap_critic_template(create_roadmap_critic_agent_tools(_adapter)),
+            generate_roadmap_orchestrator_template(_orchestrator_tools()),
             generate_create_phase_template(
                 create_create_phase_agent_tools(
                     _adapter, ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit'], PlatformType.MARKDOWN

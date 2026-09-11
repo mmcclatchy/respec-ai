@@ -101,6 +101,8 @@ Example usage: `{tools.initialize_analyst_loop}`
 - **CONVERSATION_CONTEXT**: Markdown document returned from the conversation workflow - conversation results from Step 2
 - **CONVERSATION_RECORD_FILE**: Path string to the durable conversation record written in Step 2.5 - cited by the plan and read by plan-critic. `None` when persistence failed
 - **CONVERSATION_PASS**: Integer count of completed conversation passes - increments on each return to Step 2 from Step 5 option 1
+- **ROADMAP_LOOP_ID**: `None` until the roadmap handoff reports `needs_user_input` and returns an identifier - passed back on re-dispatch so the roadmap loop resumes instead of restarting. A `None` value means "start a new loop"
+- **PHASING_PREFERENCES**: String roadmap-guidance brief passed to the roadmap handoff - initialized to `""` in Step 1 and left empty unless the user states phasing guidance during conversation
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
@@ -143,6 +145,8 @@ Automated analyst phase (Steps 6-9):
   - `BLOCKERS_ACTIVE = false`
   - `LAST_BLOCKER_SIGNATURE = ""`
   - `PLAN_BLOCKER_STAGNATION_COUNT = 0`
+  - `ROADMAP_LOOP_ID = None`
+  - `PHASING_PREFERENCES = ""`
 
 ## Step 1.5: Detect and Capture TUI Plan Reference (Fail-Closed)
 
@@ -925,6 +929,35 @@ ROADMAP_INVOCATION_METHOD = "orchestration"
 IF roadmap workflow invocation returns error:
   ROADMAP_INVOCATION_STATUS = "failed"
   ROADMAP_ERROR_SUMMARY = [captured error summary]
+
+ELIF roadmap workflow reports "status: needs_user_input":
+  ROADMAP_LOOP_ID = [roadmap_loop_id from the report]
+  Display the score, the iteration, and the latest feedback:
+  LATEST_ROADMAP_FEEDBACK = {tools.get_roadmap_feedback}
+  Display LATEST_ROADMAP_FEEDBACK to user with the reported score and iteration.
+
+  Present options:
+    1. Proceed with the current roadmap — quality is sufficient
+    2. One more refinement iteration — address remaining issues
+    3. Provide specific guidance for refinement
+  Prompt: "Please choose your preferred option (1, 2, or 3)"
+  WAIT for the user response. DO NOT treat this as workflow completion, cancellation, or failure.
+
+  IF user chooses "1":
+    Store user feedback: "User confirmed current roadmap direction is acceptable"
+  ELIF user chooses "2":
+    Store user feedback: "User requested one more roadmap refinement iteration"
+  ELIF user chooses "3":
+    Prompt for specific guidance and store the response as user feedback
+  ELSE:
+    Display: "Please choose option 1, 2, or 3."
+    Wait for the user response again.
+
+  Store via: {tools.store_roadmap_user_feedback}
+  Re-run the roadmap handoff with ROADMAP_LOOP_ID so the loop resumes instead of restarting:
+  {tools.roadmap_command_invocation}
+  Re-evaluate this branch with the new report.
+
 ELSE:
   ROADMAP_IDENTIFIER = PLAN_NAME
   Verify roadmap exists in MCP (metadata only — do NOT load every phase for an existence check):

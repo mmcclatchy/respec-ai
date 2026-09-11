@@ -159,6 +159,22 @@ class TuiAdapter(ABC):
     @abstractmethod
     def render_command_reference(self, command_name: str) -> str: ...
 
+    def render_workflow_handoff(
+        self,
+        command_name: str,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+        args_template: str,
+    ) -> str:
+        """Render how one workflow hands off to another.
+
+        Adapters whose subagents can dispatch subagents override this to dispatch a contained
+        orchestrator agent. The portable default hands off to the sibling command, which is the
+        only path available when nested dispatch is unsupported.
+        """
+        return self.render_command_invocation(command_name, args_template, '', False)
+
     def parallel_worker_limit(self) -> int:
         """Return max active workers hint for adapter-specific orchestration guidance.
 

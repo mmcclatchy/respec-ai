@@ -46,6 +46,7 @@ from .roadmap import (
     PlanRoadmapCommandTools,
     RoadmapAgentTools,
     RoadmapCriticAgentTools,
+    RoadmapOrchestratorAgentTools,
 )
 
 
@@ -84,6 +85,7 @@ __all__ = [
     'PlanCriticAgentTools',
     'RoadmapAgentTools',
     'RoadmapCriticAgentTools',
+    'RoadmapOrchestratorAgentTools',
     'AutomatedQualityCheckerAgentTools',
     'SpecAlignmentReviewerAgentTools',
     'DesignConformanceReviewerAgentTools',

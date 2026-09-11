@@ -3,6 +3,243 @@ from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 
 
 def generate_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
+    if tools.nested_orchestration:
+        return _generate_orchestrated_roadmap_command_template(tools)
+    return _generate_inline_roadmap_command_template(tools)
+
+
+def _generate_orchestrated_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
+    selection_prompt_instructions = tools.tui_adapter.selection_prompt_instruction
+    selection_response_source = tools.tui_adapter.selection_response_source
+    return f"""---
+allowed-tools: {tools.tools_yaml}
+argument-hint: [plan-name] [optional: roadmap-guidance]
+description: Transform strategic plans into multiple Phases through quality-driven refinement
+---
+
+# respec-roadmap Command: Implementation Roadmap Orchestration
+
+## Overview
+Transform a strategic plan into discrete, implementable Phases. This command owns argument parsing, plan synchronization, and the single user-facing decision point. The refinement loop and phase extraction run inside the `respec-roadmap-orchestrator` agent, whose enforced tool grant contains no write access to project files.
+
+{tools.mcp_tools_reference}
+
+{tools.tui_adapter.subagent_invocation_guardrail}
+
+## Workflow Steps
+
+### 0. Setup and Initialization
+
+#### Step 0.1: Extract Command Arguments
+
+Parse command arguments from user input:
+```text
+PLAN_NAME = [first argument from command - the project name]
+RAW_PHASING_REQUEST = [all remaining input after PLAN_NAME]
+PHASING_PREFERENCES = [normalized roadmap-guidance brief derived from RAW_PHASING_REQUEST, or empty string]
+ROADMAP_LOOP_ID = None
+```
+
+**Important**: PLAN_NAME from command arguments is used for all MCP storage operations.
+
+Interpret trailing roadmap guidance as one payload:
+- Treat RAW_PHASING_REQUEST as the only user-authored roadmap guidance after PLAN_NAME.
+- Normalize guidance into PHASING_PREFERENCES or leave it empty.
+- If ambiguity materially changes roadmap structure, {selection_prompt_instructions} or ask one direct clarification question. WAIT for {selection_response_source}. DO NOT treat this as workflow completion, cancellation, or failure. After the user responds, resume at Step 0.1. Update PHASING_PREFERENCES. Continue to Step 0.2 immediately. DO NOT explain that the workflow is stopping unless the user asks why.
+
+#### Step 0.2: Sync Plan from Platform to MCP
+
+**CRITICAL**: Sync the plan from platform storage to MCP before proceeding. This ensures any manual edits the user made to the plan file are captured.
+
+```text
+{tools.sync_plan_instructions}
+```
+
+### 1. Dispatch the Roadmap Orchestrator
+
+═══════════════════════════════════════════════
+MANDATORY ORCHESTRATION CONTRACT
+═══════════════════════════════════════════════
+The roadmap loop, phase extraction, and platform verification run INSIDE the orchestrator agent.
+
+MUST:
+- Dispatch `respec-roadmap-orchestrator` with the exact invocation below
+- Pass ROADMAP_LOOP_ID on every re-dispatch so the existing loop resumes
+
+MUST NOT:
+- Invoke respec-roadmap, respec-roadmap-critic, or respec-create-phase from this command
+- Call initialize_refinement_loop or decide_loop_next_action from this command
+- Write roadmap or phase files to disk from this command
+
+VIOLATION: Reproducing the refinement loop in this command duplicates orchestration
+           that has exactly one home. Dispatch the orchestrator instead.
+═══════════════════════════════════════════════
+
+Dispatch the orchestrator:
+
+{tools.invoke_roadmap_orchestrator}
+
+```text
+ORCHESTRATOR_REPORT = [the single "## Roadmap Orchestration Result" block returned by the agent]
+REPORT_STATUS = [the status field of ORCHESTRATOR_REPORT]
+
+IF ORCHESTRATOR_REPORT is absent OR REPORT_STATUS is absent:
+  ERROR: "Roadmap orchestrator returned no structured report"
+  DIAGNOSTIC: [surface the exact agent output]
+  FAIL-CLOSED: Do NOT retry. Do NOT extract phases directly. EXIT: Workflow terminated
+```
+
+### 2. Handle the Orchestrator Report
+
+═══════════════════════════════════════════════
+MANDATORY DECISION PROTOCOL
+═══════════════════════════════════════════════
+The orchestrator report is FINAL. Execute the matching branch IMMEDIATELY.
+
+"completed"        → Proceed to Step 3. Do NOT ask for confirmation.
+"needs_user_input" → ONLY status that involves the user. Present feedback and wait for response.
+"failed"           → Report the diagnostic and stop. Do NOT improvise a recovery.
+
+VIOLATION: Asking the user whether to continue when the status is "completed"
+           is a workflow violation. The decision has already been made.
+═══════════════════════════════════════════════
+
+```text
+IF REPORT_STATUS == "failed":
+  Display: "❌ Roadmap orchestration failed"
+  Display the error and diagnostic fields from ORCHESTRATOR_REPORT verbatim.
+  STOP. Do NOT present a completion summary. Do NOT suggest a manual phase extraction.
+
+ELIF REPORT_STATUS == "needs_user_input":
+  ROADMAP_LOOP_ID = [roadmap_loop_id field from ORCHESTRATOR_REPORT]
+  Display: "⚠ Quality improvements needed - user input required"
+
+  LATEST_FEEDBACK = {tools.get_feedback}
+  Display LATEST_FEEDBACK to the user with the reported score, iteration, key issues, and recommendations.
+
+  {selection_prompt_instructions}
+  Question: "The roadmap quality is at [score from ORCHESTRATOR_REPORT]/100. How would you like to proceed?"
+  Options:
+    1. "Proceed with current roadmap - quality is sufficient"
+    2. "One more refinement iteration - address remaining issues"
+    3. "Provide specific guidance for refinement"
+  WAIT for {selection_response_source}. DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 2. DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF the user selects option 1:
+    USER_FEEDBACK = "User confirmed current roadmap direction is acceptable"
+  ELIF the user selects option 2:
+    USER_FEEDBACK = "User requested one more roadmap refinement iteration"
+  ELIF the user selects option 3:
+    Prompt for specific guidance and set USER_FEEDBACK to the exact response
+
+  Store the decision: {tools.store_user_feedback}
+
+  Re-dispatch the orchestrator with the now-populated ROADMAP_LOOP_ID so the existing loop resumes:
+
+  [Repeat the Step 1 orchestrator invocation, passing ROADMAP_LOOP_ID]
+
+  Re-evaluate this step with the new report.
+
+ELIF REPORT_STATUS == "completed":
+  Display: "✅ Score: [score from ORCHESTRATOR_REPORT]/100 — roadmap approved"
+  Proceed to Step 3 immediately.
+```
+
+### 3. Independently Verify Phase Creation (MANDATORY)
+
+**CRITICAL**: Verify actual platform storage. The orchestrator report is an agent claim, not evidence.
+
+```text
+STORED_PHASES = {tools.list_project_phases_tool}
+ACTUAL_COUNT = length of STORED_PHASES
+EXPECTED_COUNT = [expected_phases field from ORCHESTRATOR_REPORT]
+
+IF ACTUAL_COUNT == 0:
+  Display: "❌ Zero phases found in platform storage despite an orchestrator completion report."
+  STOP. Do NOT present a completion summary. Do NOT suggest next steps.
+  Report: "Roadmap command failed — 0 of EXPECTED_COUNT phases stored."
+
+IF ACTUAL_COUNT != EXPECTED_COUNT:
+  Record the discrepancy. Report the platform count as authoritative, not the agent report.
+```
+
+### 4. Final Integration and Comprehensive Reporting
+
+Present verified results only:
+
+```text
+**Roadmap Completed**:
+- Quality Score: [score from ORCHESTRATOR_REPORT]
+- Iterations: [iteration from ORCHESTRATOR_REPORT]
+- Plan Constraint Sections: [constraint_sections_found from ORCHESTRATOR_REPORT]
+
+**Phase Storage Verification** (from Step 3):
+- Phases in Platform Storage: [ACTUAL_COUNT] of [EXPECTED_COUNT]
+- Verified Phases: [names present in STORED_PHASES]
+- Missing Phases: [names absent from STORED_PHASES]
+- Evidence: Platform list response
+
+**Readiness Assessment**:
+IF ACTUAL_COUNT == EXPECTED_COUNT:
+  ✅ All phases ready for phase development workflow
+  Next: Run phase workflow on individual phases
+  {tools.phase_command_invocation}
+ELSE:
+  ⚠️ Partial completion - manual intervention required
+  Missing: [list specific phase names without platform storage]
+  Action: Re-run this command, or inspect the orchestrator diagnostic for the failed phases
+```
+
+## Error Handling
+
+### Strategic Plan Not Available
+
+```text
+The orchestrator returns status "failed" with a plan-absent error.
+Display: "No strategic plan found for project: [PLAN_NAME]"
+Suggest: "Use strategic planning workflow to create strategic plan"
+{tools.plan_command_invocation}
+Exit gracefully with guidance
+```
+
+### Orchestrator Failure
+
+```text
+IF the orchestrator returns status "failed":
+  Surface the error and diagnostic fields verbatim
+  Do NOT re-run the orchestrator automatically
+  Do NOT substitute a hand-built roadmap or hand-extracted phases
+  Report the failure and stop
+```
+
+### Partial Phase Storage
+
+```text
+IF ACTUAL_COUNT is greater than 0 and less than EXPECTED_COUNT:
+  Report the verified phases and the missing phases by name
+  Surface the orchestrator's per-phase failure detail
+  Direct the user to re-run this command for the missing phases
+```
+
+## Coordination Pattern
+
+The command maintains orchestration focus by:
+- **Parsing arguments and normalizing roadmap guidance** before dispatch
+- **Synchronizing the plan** from platform storage to MCP
+- **Dispatching a single orchestrator agent** that owns the quality loop
+- **Owning the one user-facing decision point**, which a subagent has no channel to present
+- **Independently verifying platform storage** rather than trusting agent completion messages
+
+All specialized work is delegated:
+- **roadmap-orchestrator**: loop management, roadmap generation, critique, phase extraction, verification
+- **MCP Server**: decision logic and threshold management
+
+Ready for Phase development through the phase workflow on individual phases with validated input.
+"""
+
+
+def _generate_inline_roadmap_command_template(tools: PlanRoadmapCommandTools) -> str:
     selection_prompt_instructions = tools.tui_adapter.selection_prompt_instruction
     selection_response_source = tools.tui_adapter.selection_response_source
     return f"""---
@@ -86,7 +323,7 @@ ELSE:
 Set up MCP-managed quality refinement loop:
 {tools.initialize_refinement_loop_inline_doc}
 ```text
-ROADMAP_LOOP_ID = {tools.initialize_loop})
+ROADMAP_LOOP_ID = {tools.initialize_loop}
 ```
 
 ### 3. Roadmap Generation Loop
@@ -179,7 +416,7 @@ IF LOOP_DECISION == "refine":
 ELIF LOOP_DECISION == "user_input":
   Display: "⚠ Quality improvements needed - user input required"
 
-  LATEST_FEEDBACK = {tools.get_feedback})
+  LATEST_FEEDBACK = {tools.get_feedback}
   Display LATEST_FEEDBACK to user with current score, iteration, key issues, and recommendations.
 
   {selection_prompt_instructions}
@@ -192,14 +429,16 @@ ELIF LOOP_DECISION == "user_input":
   After the user responds, resume at Step 4. Branch on the selected option. Continue with the matching roadmap action immediately. DO NOT explain that the workflow is stopping unless the user asks why.
 
   IF user selects option 1:
-    Store user feedback: "User confirmed current roadmap direction is acceptable"
+    USER_FEEDBACK = "User confirmed current roadmap direction is acceptable"
+    Store the decision: {tools.store_user_feedback}
     Return to Step 3.1 (MCP will decide the next action after reevaluating stored feedback)
   ELIF user selects option 2:
-    Store user feedback: "User requested one more roadmap refinement iteration"
+    USER_FEEDBACK = "User requested one more roadmap refinement iteration"
+    Store the decision: {tools.store_user_feedback}
     Return to Step 3.1 (roadmap generation → roadmap retrieval verification → roadmap-critic → feedback verification → decision)
   ELIF user selects option 3:
-    Prompt for specific guidance
-    Store as user feedback using store_user_feedback
+    Prompt for specific guidance and set USER_FEEDBACK to the exact response
+    Store the decision: {tools.store_user_feedback}
     Return to Step 3.1 (roadmap generation → roadmap retrieval verification → roadmap-critic → feedback verification → decision)
 
 ELIF LOOP_DECISION == "completed":
@@ -224,7 +463,7 @@ Plan extraction of sparse Phases from roadmap before parallel processing:
 
 #### Retrieve Final Roadmap
 ```text
-FINAL_ROADMAP = {tools.get_roadmap})
+FINAL_ROADMAP = {tools.get_roadmap}
 Parse FINAL_ROADMAP to extract:
   - ROADMAP_PHASES: List of all phases with names, durations, dependencies
   - PHASE_COUNT: Total number of phases

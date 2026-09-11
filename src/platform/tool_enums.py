@@ -88,6 +88,11 @@ class BuiltInToolCapability(StrEnum):
     # Design Integration
     DESIGN_SYNC = 'design_sync'
 
+    # Nested Orchestration
+    # Declared by adapters whose subagents can themselves dispatch subagents. Gates whether
+    # orchestration runs as a contained agent or inline in the command body.
+    NESTED_TASK = 'nested_task'
+
 
 class RespecAITool(StrEnum):
     # Loop Management Tools
@@ -174,6 +179,7 @@ class RespecAIAgent(StrEnum):
     PATCH_PLANNER = f'{_RESPEC_AGENT_PREFIX}patch-planner'
 
     # Roadmap workflow agents
+    ROADMAP_ORCHESTRATOR = f'{_RESPEC_AGENT_PREFIX}roadmap-orchestrator'
     ROADMAP = f'{_RESPEC_AGENT_PREFIX}roadmap'
     ROADMAP_CRITIC = f'{_RESPEC_AGENT_PREFIX}roadmap-critic'
     CREATE_PHASE = f'{_RESPEC_AGENT_PREFIX}create-phase'

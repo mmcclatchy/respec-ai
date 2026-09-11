@@ -13,6 +13,20 @@ from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 
 
 class ClaudeCodeAdapter(TuiAdapter):
+    # Claude Code routes an agent's slash-command call through the Skill tool, which drops the
+    # command's allowed-tools frontmatter and lets the main agent run the body under its own grant.
+    # These workflows are entered by the user; chained sub-workflows stay model-invocable because
+    # their parents dispatch them.
+    _USER_INVOKED_ONLY_COMMANDS = frozenset(
+        {
+            'respec-plan',
+            'respec-phase',
+            'respec-code',
+            'respec-patch',
+            'respec-roadmap',
+        }
+    )
+
     _MAIN_AGENT_GUARDRAIL = """## Claude Code Subagent Guardrail
 
 Invoke ONLY the respec-* agents explicitly named in this workflow, using the exact invocation shown here.
@@ -61,6 +75,7 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
             BuiltInToolCapability.SLASH_COMMAND: 'SlashCommand',
             BuiltInToolCapability.ASK_USER_QUESTION: 'AskUserQuestion',
             BuiltInToolCapability.DESIGN_SYNC: 'DesignSync',
+            BuiltInToolCapability.NESTED_TASK: 'Task',
         }
 
     @property
@@ -96,8 +111,10 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
             f'allowed-tools: {", ".join(spec.tools)}',
             f'argument-hint: {spec.argument_hint}',
             f'description: {spec.description}',
-            '---',
         ]
+        if spec.name in self._USER_INVOKED_ONLY_COMMANDS:
+            parts.append('disable-model-invocation: true')
+        parts.append('---')
         return '\n'.join(parts) + '\n\n' + spec.body
 
     def write_all(
@@ -197,6 +214,16 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
 
     def render_command_reference(self, command_name: str) -> str:
         return f'/{command_name}'
+
+    def render_workflow_handoff(
+        self,
+        command_name: str,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+        args_template: str,
+    ) -> str:
+        return self.render_agent_invocation(agent_name, description, params)
 
     def render_parallel_fanout_policy(
         self,
