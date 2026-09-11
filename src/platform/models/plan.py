@@ -233,7 +233,9 @@ class PlanCriticAgentTools(AgentToolsModel):
         RespecAITool.GET_DOCUMENT,
     ]
 
-    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = []
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, '.respec-ai/plans/*/references/*.md'),
+    ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')

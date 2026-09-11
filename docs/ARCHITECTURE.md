@@ -251,6 +251,7 @@ in `docs/phase-refactor/deferred-issues.md`, not introduced by the frontend work
 - `respec-phase` continues to use `reference_context_markdown` for Phase-derived research and implementation-plan references; user-supplied guidance paths remain in workflow guidance.
 - Self-contained exceptions do not need guidance documents: commit metadata synthesis, deterministic review consolidation, platform-only create-phase handoff, and research synthesis workers operating from explicit synthesis prompts.
 - Boundary behavior remains fail-closed for missing/outside-project paths that affect scope; valid project-local guidance documents are read-only context and should not block the workflow.
+- `respec-plan` writes a canonical **conversation record** to `.respec-ai/plans/{PLAN_NAME}/references/conversation-record.md` before creating the plan. The plan cites it via a `Conversation Record: <path>` line under `## Plan Scope > ### Context Coverage`, and `plan-critic` reads it to verify that settled decisions, rejected technologies, anti-requirements, and quantified constraints survived into the plan or were listed under `### Deliberate Omissions`.
 
 ### Frontmatter Formatting Standards
 

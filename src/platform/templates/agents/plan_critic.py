@@ -38,6 +38,7 @@ plan_feedback_template = CriticFeedback(
     blockers=[
         '[Missing Required Plan Section - BLOCKING]: One or more mandatory H2 sections are absent',
         '[Structural Contract Violation - BLOCKING]: Output format does not match required CriticFeedback structure',
+        '[Missing Conversation Record Pointer - BLOCKING]: Plan omits `Conversation Record: <path>` in `## Plan Scope`',
     ],
     recommendations=[
         '[Specific improvement action with clear guidance]',
@@ -95,6 +96,9 @@ Lane 1 — Content score (`overall_score`):
 Lane 2 — Structural/procedural blockers (`### Blockers`):
 - Use blockers only for hard-stop contract failures (missing mandatory plan sections, malformed output structure, unrecoverable evidence/traceability gaps).
 - Do not treat normal quality deficits as blockers.
+- Conversation-record structural failures are blockers: an absent pointer line, a non-canonical pointer path, an unreadable pointer target, or an absent `### Deliberate Omissions` H3.
+- A dropped or contradicted settled decision, anti-requirement, rejected technology, or quantified constraint is a blocker. Each one clears in a single pass — the refining producer adds it to the plan or lists it under `### Deliberate Omissions` with a reason.
+- All other fidelity loss (thinner phrasing, dropped examples, lost nuance) stays in the score lane.
 - If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
 
 ## Invocation Contract
@@ -107,6 +111,7 @@ Lane 2 — Structural/procedural blockers (`### Blockers`):
 
 ### Retrieved Context (Not Invocation Inputs)
 - Strategic plan markdown via {tools.get_plan}
+- Conversation record markdown via Read(.respec-ai/plans/{{PLAN_NAME}}/references/conversation-record.md)
 
 SETUP: Plan Retrieval
 1. Use {tools.get_plan} to retrieve the current strategic plan
@@ -114,14 +119,20 @@ SETUP: Plan Retrieval
 3. If plan retrieval fails, request Main Agent provide plan directly
 4. Proceed with evaluation using retrieved strategic plan document
 
+SETUP 2: Conversation Record Retrieval
+1. CALL Read(.respec-ai/plans/{{PLAN_NAME}}/references/conversation-record.md)
+2. If the read succeeds: set CONVERSATION_RECORD_AVAILABLE = true and treat the file as the record of user intent
+3. If the read fails or the file is absent: set CONVERSATION_RECORD_AVAILABLE = false, add one note to Detailed Feedback, leave every dimension score unaffected, and raise NO blocker
+
 TASKS:
 1. Evaluate plan against 12-dimension FSDD quality framework
-2. Assign scores (0-100) for each quality dimension
-3. Calculate weighted overall score
-4. If prior feedback exists, explicitly compare resolved issues, unresolved issues, and new regressions
-5. Identify specific areas for improvement
-6. Provide actionable feedback
-7. RETURN feedback markdown to Main Agent (do NOT store in MCP - this is human-driven workflow)
+2. Compare the plan against the conversation record for source fidelity when CONVERSATION_RECORD_AVAILABLE is true
+3. Assign scores (0-100) for each quality dimension
+4. Calculate weighted overall score
+5. If prior feedback exists, explicitly compare resolved issues, unresolved issues, and new regressions
+6. Identify specific areas for improvement
+7. Provide actionable feedback
+8. RETURN feedback markdown to Main Agent (do NOT store in MCP - this is human-driven workflow)
 
 ## DOCUMENT SCOPE — What You Are Evaluating
 
@@ -186,6 +197,36 @@ For each quality dimension:
 3. Assign numerical score (0-100)
 4. Document specific findings
 
+### Step 1.5: Source Fidelity Check
+
+IF CONVERSATION_RECORD_AVAILABLE is false: SKIP this step entirely.
+
+Structural checks (blocker lane):
+1. `## Plan Scope` lacks a `Conversation Record: <path>` line
+   → Add BLOCKING issue: "[Missing Conversation Record Pointer - BLOCKING]: plan omits `Conversation Record: <path>` in `## Plan Scope`"
+2. The pointer path does NOT start with `.respec-ai/plans/` OR does NOT contain `/references/`
+   → Add BLOCKING issue: "[Non-Canonical Conversation Record Path - BLOCKING]: `{{path}}`. Canonical required path: .respec-ai/plans/{{PLAN_NAME}}/references/conversation-record.md"
+3. Read of the pointer path fails
+   → Add BLOCKING issue: "[Unreadable Conversation Record - BLOCKING]: `{{path}}`"
+4. `## Plan Scope` lacks a `### Deliberate Omissions` H3
+   → Add BLOCKING issue: "[Missing Deliberate Omissions Statement - BLOCKING]: plan omits `### Deliberate Omissions` under `## Plan Scope`"
+
+Content checks against the record `## Verbatim Detail`:
+5. FOR EACH settled decision, rejected alternative, anti-requirement, and quantified constraint in the record:
+   - Represented in the plan → no finding
+   - Absent from the plan AND listed under `### Deliberate Omissions` with a reason → no finding
+   - Absent from both → Add BLOCKING issue: "[Dropped Recorded Decision - BLOCKING]: `[recorded item]` is absent from the plan and from `### Deliberate Omissions`"
+   - Contradicted by the plan → Add BLOCKING issue: "[Plan Contradicts Conversation Record - BLOCKING]: plan states `[plan text]`; record states `[record quote]`"
+6. FOR EACH concrete example, edge case, and nuance in the record that the plan states more thinly:
+   Record a score-lane fidelity finding. These are NEVER blockers.
+7. Route each score-lane fidelity finding to an existing dimension:
+   - Plan contradicts the record → Consistency
+   - Settled decision or rejected alternative stated thinly → Decision Quality
+   - Concrete number, threshold, or target stated thinly → Testability
+   - Entire discussed topic stated thinly → Completeness
+8. MUST cite the exact record quote for every fidelity finding. Findings without a citation are invalid — drop them.
+9. Add a `### Source Fidelity` subsection to Detailed Feedback listing each finding and the dimension it affected.
+
 ### Step 2: Score Calculation
 
 ═══════════════════════════════════════════════
@@ -239,6 +280,7 @@ You must output your assessment as structured markdown matching the CriticFeedba
   - Quality Gaps Identified
   - Score Supporting Evidence
   - FSDD Criteria Alignment (covering all 12 dimensions: 4 core + 8 standard)
+  - Source Fidelity (required when CONVERSATION_RECORD_AVAILABLE is true)
 - MUST return the feedback markdown to Main Agent for user presentation
 
 ## EVALUATION CRITERIA
@@ -253,6 +295,7 @@ Evaluate each dimension at the **strategic level** appropriate for a Plan docume
 
 ### Completeness Assessment
 - All 10 required H2 sections contain meaningful strategic content
+- Every settled decision, rejected alternative, and quantified target in the conversation record appears in the plan or under `### Deliberate Omissions`
 - Scope boundaries defined (included features and anti-requirements)
 - Risk identification and mitigation strategies present
 - Technology decisions documented with justification
@@ -298,6 +341,8 @@ Do NOT penalize the plan for any of the following. These belong in downstream Ph
 
 **Scoring calibration:** A score of 85+ means the plan provides clear strategic direction across all required sections. It does NOT mean every section contains implementation-level depth. A plan that names technologies, states architecture direction, identifies risks, defines scope boundaries, and sets quality targets is meeting professional standards.
 
+None of the exclusions above applies to detail present in the conversation record. Detail the user already supplied belongs in the plan or under `### Deliberate Omissions`.
+
 ═══════════════════════════════════════════════
 MANDATORY CALIBRATION PROTOCOL
 ═══════════════════════════════════════════════
@@ -309,6 +354,11 @@ Before finalizing scores, verify you have NOT penalized the plan for:
 
 A score of 85+ means clear strategic direction across all sections.
 A score of 85+ does NOT require implementation-level depth.
+
+Fidelity to the conversation record is NOT over-specification.
+This protocol forbids demanding implementation depth the plan never owned.
+It does NOT excuse losing detail the user already supplied in conversation.
+Penalize a plan that drops recorded decisions, numbers, or anti-requirements.
 
 VIOLATION: Scoring Completeness below 70 because "no deployment steps"
            or "no database schema" — these belong in downstream documents.

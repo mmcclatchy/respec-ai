@@ -107,10 +107,11 @@ respec-ai follows a standard enterprise workflow with automated quality gates at
 
 **How it works:**
 1. **Conversational discovery** - Interactive Q&A to gather requirements
-2. **Plan creation** - Generates strategic plan from conversation context
-3. **Quality validation** - plan-critic evaluates and provides score for your review
-4. **Business objectives extraction** - plan-analyst extracts structured objectives
-5. **Validation** - analyst-critic validates extraction through automated refinement loop
+2. **Conversation record** - Persists the discovery dialogue to `.respec-ai/plans/{PLAN_NAME}/references/conversation-record.md` before the plan is written, so settled decisions, rejected alternatives, quantified constraints, and anti-requirements survive in the user's own words
+3. **Plan creation** - Generates strategic plan from conversation context, citing the record and listing any deliberate omissions
+4. **Quality validation** - plan-critic evaluates the plan against the FSDD framework *and* against the conversation record, then provides a score for your review
+5. **Business objectives extraction** - plan-analyst extracts structured objectives
+6. **Validation** - analyst-critic validates extraction through automated refinement loop
 
 **Example walkthrough:**
 

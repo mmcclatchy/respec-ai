@@ -585,6 +585,23 @@ class TestPlanCriticTemplate:
         assert '### Retrieved Context (Not Invocation Inputs)' in template
         assert 'Progress Against Previous Feedback' in template
 
+    def test_template_checks_source_fidelity_against_the_conversation_record(self) -> None:
+        tools = create_plan_critic_agent_tools(_adapter)
+        template = generate_plan_critic_template(tools)
+
+        assert '### Step 1.5: Source Fidelity Check' in template
+        assert 'Missing Conversation Record Pointer - BLOCKING' in template
+        assert 'Dropped Recorded Decision - BLOCKING' in template
+        assert 'Fidelity to the conversation record is NOT over-specification.' in template
+        assert 'Read(.respec-ai/plans/*/references/*.md)' in template
+
+    def test_conversation_record_marker_stays_out_of_downstream_templates(self) -> None:
+        roadmap = generate_roadmap_template(create_roadmap_agent_tools(_adapter))
+        roadmap_critic = generate_roadmap_critic_template(create_roadmap_critic_agent_tools(_adapter))
+
+        assert 'Conversation Record' not in roadmap
+        assert 'Conversation Record' not in roadmap_critic
+
 
 class TestAgentImperativeLanguageAudit:
     def test_non_review_agent_templates_use_imperative_language_in_actionable_sections(self) -> None:

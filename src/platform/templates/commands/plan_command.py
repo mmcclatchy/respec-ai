@@ -21,7 +21,11 @@ plan_template = Plan(
         '### Included Features\n[Core features and capabilities from requirements]\n\n'
         '### Anti-Requirements\n[From conversation — things system must NOT do]\n\n'
         '### Assumptions\n[Key assumptions underlying the project plan]\n\n'
-        '### Constraints\n[Integration and technology limitations]'
+        '### Constraints\n[Integration and technology limitations]\n\n'
+        '### Context Coverage\nConversation Record: [path to the conversation record file]\n\n'
+        '### Deliberate Omissions\n'
+        '[Each recorded detail intentionally excluded from this plan, with a one-line reason — '
+        'or "None — all recorded detail is represented in this plan."]'
     ),
     stakeholders=(
         '### Plan Sponsor\n[Project sponsor from stakeholder discussion]\n\n'
@@ -95,6 +99,8 @@ Example usage: `{tools.initialize_analyst_loop}`
 
 - **PLAN_NAME**: String from user command arguments - used as identifier for MCP plan storage and file/platform naming
 - **CONVERSATION_CONTEXT**: Markdown document returned from the conversation workflow - conversation results from Step 2
+- **CONVERSATION_RECORD_FILE**: Path string to the durable conversation record written in Step 2.5 - cited by the plan and read by plan-critic. `None` when persistence failed
+- **CONVERSATION_PASS**: Integer count of completed conversation passes - increments on each return to Step 2 from Step 5 option 1
 - **CURRENT_PLAN**: String markdown - the strategic plan document created in Step 3
 - **CRITIC_FEEDBACK**: String markdown - feedback returned from plan-critic agent in Step 4
 - **QUALITY_SCORE**: Integer parsed from CRITIC_FEEDBACK - for user decision support
@@ -330,6 +336,79 @@ Expected structured format from plan-conversation (markdown document):
   - **User Engagement Level**: [High/Medium/Low]
   ```
 
+## Step 2.5: Persist Conversation Record (Before Any Context Compression)
+
+Write the discovery dialogue to a durable file BEFORE Step 3 and BEFORE any summarization path in
+"Context Management Edge Cases" executes. The raw dialogue exists only in this context window right now.
+
+```text
+CONVERSATION_RECORD_FILE = .respec-ai/plans/{{PLAN_NAME}}/references/conversation-record.md
+
+IF CONVERSATION_PASS is undefined:
+  CONVERSATION_PASS = 1
+
+IF CONVERSATION_PASS == 1:
+  RECORD_BODY = [render the RECORD STRUCTURE below from the Step 2 dialogue]
+ELSE:
+  CALL Read(CONVERSATION_RECORD_FILE)
+  RECORD_BODY = [existing file content]
+    + "## Pass N — Additional Discovery"
+    + [only the detail new to this pass, using the same RECORD STRUCTURE subsections]
+
+CALL Write(CONVERSATION_RECORD_FILE, RECORD_BODY)
+
+VERIFICATION:
+  CALL Read(CONVERSATION_RECORD_FILE)
+  IF the read fails OR the content is empty:
+    Retry Write once, then Read again.
+    IF the retry also fails verification:
+      Display: "⚠ Conversation record persistence failed — fidelity verification is disabled for this run"
+      DIAGNOSTIC: [surface the exact Write/Read error]
+      CONVERSATION_RECORD_FILE = None
+      Continue to Step 3
+
+IF CONVERSATION_RECORD_FILE is not None:
+  Display: "✓ Stored conversation record: {{CONVERSATION_RECORD_FILE}}"
+```
+
+RECORD STRUCTURE:
+
+```markdown
+# Conversation Record: [PLAN_NAME]
+
+## Structured Digest
+
+[Full CONVERSATION_CONTEXT markdown from Step 2, verbatim and unedited]
+
+## Verbatim Detail
+
+### Settled Decisions (User's Own Words)
+- [decision] — user stated: "[direct quote]"
+
+### Rejected Alternatives
+- [alternative] — rejected because: "[the user's stated reason, quoted]"
+
+### Concrete Numbers, Thresholds, and Examples
+- [name]: [exact value and unit as stated] — context: "[quote]"
+
+### Edge Cases and Failure Modes Raised
+- [edge case] — expected handling: "[quote or close paraphrase]"
+
+### Explicit Anti-Requirements
+- [thing the system MUST NOT do] — user stated: "[quote]"
+
+### Open Questions Left Unresolved
+- [question] — status: [deferred | user declined to decide | needs research]
+```
+
+Record content rules (MANDATORY):
+- Transcribe the Verbatim Detail sections from the actual dialogue in this context window.
+  Do NOT re-derive them from CONVERSATION_CONTEXT — that variable is already a lossy digest.
+- Quote fragments, not whole turns. Cap each quote at 3 sentences.
+- Record each distinct decision, number, and anti-requirement exactly once.
+- Keep the Verbatim Detail section under 800 lines. Drop greetings, restatements, and filler.
+- Do NOT paste tool output, file listings, or code blocks from the conversation into the record.
+
 ## Step 3: Create Strategic Plan Document
 
 ### Initialize plan quality loop (once only)
@@ -380,6 +459,22 @@ VIOLATION: Adding any H2 header not in the list above.
            Content under unauthorized H2 headers is permanently lost.
 ═══════════════════════════════════════════════
 
+═══════════════════════════════════════════════
+MANDATORY CONTEXT FIDELITY GATE
+═══════════════════════════════════════════════
+Every settled decision, rejected technology, anti-requirement, and
+quantified constraint in the conversation record appears in this plan
+OR under `## Plan Scope` > `### Deliberate Omissions` with a reason.
+
+The 10-H2 constraint is not a licence to drop what the user said. It
+routes content into the correct section; `### Deliberate Omissions`
+absorbs whatever genuinely does not belong in this plan.
+
+VIOLATION: Dropping a recorded decision, rejected technology,
+           anti-requirement, or quantified constraint without listing
+           it under `### Deliberate Omissions`.
+═══════════════════════════════════════════════
+
 Strategic plan creation process:
 1. **Use conversation context** from CONVERSATION_CONTEXT variable
 2. **Structure into strategic plan format** using the template above
@@ -393,8 +488,15 @@ Strategic plan creation process:
 6. **If PLAN_REFERENCE_FILE is not None**: You MUST append this exact line to the resource_requirements section:
    `Plan Reference: {{PLAN_REFERENCE_FILE}}` — phase-architect reads this as hard constraints.
    Do NOT inline the decisions and omit the file path. The path is how downstream agents access the full implementation details.
-7. **MUST store in variable** as CURRENT_PLAN — required for Steps 4 and 5
-8. **MUST store in MCP** using: `{tools.store_plan}` — verify storage succeeds before proceeding
+7. **Conversation record citation (MANDATORY)**: In `## Plan Scope` under `### Context Coverage`,
+   append this exact line: `Conversation Record: {{CONVERSATION_RECORD_FILE}}`
+   Do NOT inline the record content in place of the path — the path is how plan-critic verifies fidelity.
+   Then populate `### Deliberate Omissions` with every recorded decision, number, edge case, or
+   anti-requirement intentionally excluded from this plan, each with a one-line reason.
+   When nothing is excluded, write: `- None — all recorded detail is represented in this plan.`
+   When CONVERSATION_RECORD_FILE is None, write: `Conversation Record: unavailable — persistence failed`
+8. **MUST store in variable** as CURRENT_PLAN — required for Steps 4 and 5
+9. **MUST store in MCP** using: `{tools.store_plan}` — verify storage succeeds before proceeding
    IF MCP storage fails: retry once. IF second attempt fails: display error and STOP.
 
 ## Step 3.2: Write Plan to External File/Platform
@@ -516,6 +618,7 @@ STEP 2: Process user choice (EXHAUSTIVE — every case handled)
 IF user chooses "1" (Continue conversation):
   Set USER_DECISION = "continue_conversation"
   CONVERSATION_CONTEXT and CURRENT_PLAN still in context/variables
+  CONVERSATION_PASS += 1
   IMMEDIATELY return to Step 2 to add more details via {tools.conversation_workflow_name}
 
 ELIF user chooses "2" (Refine plan):
@@ -593,6 +696,10 @@ ELSE (user response does not match 1, 2, or 3):
 ### Context Management Edge Cases
 
 #### Context Window Exhaustion
+
+Precondition: Step 2.5 already wrote CONVERSATION_RECORD_FILE. That file remains the source of
+truth for user intent after any compression below.
+
 1. **Warning Threshold (80% capacity)**:
    - Trigger progressive summarization of CONVERSATION_CONTEXT
    - Preserve most recent 20% and highest-priority 30% of content
@@ -604,7 +711,8 @@ ELSE (user response does not match 1, 2, or 3):
    - Notify user of context limitation
 
 3. **Context Loss Recovery**:
-   - If context is lost during processing, attempt recovery from CURRENT_PLAN
+   - If context is lost during processing, re-read CONVERSATION_RECORD_FILE first
+   - If the record is unavailable, attempt recovery from CURRENT_PLAN
    - Use plan-analyst to reconstruct key requirements
    - Continue with reconstructed minimal context
 

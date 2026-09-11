@@ -555,3 +555,76 @@ draft
 
     assert plan.business_objectives == reparsed.business_objectives, 'Nested objectives changed during round-trip'
     assert plan.plan_scope == reparsed.plan_scope, 'Nested features changed during round-trip'
+
+
+def test_conversation_record_pointer_survives_plan_round_trip() -> None:
+    markdown_with_context_coverage = """# Plan Plan: Fidelity Check
+
+## Executive Summary
+
+Summary
+
+## Business Objectives
+
+Objectives
+
+## Plan Scope
+
+### Included Features
+- Streaming generation
+
+### Anti-Requirements
+- No multi-tenant sharing
+
+### Assumptions
+Assumptions
+
+### Constraints
+Constraints
+
+### Context Coverage
+Conversation Record: .respec-ai/plans/fidelity-check/references/conversation-record.md
+
+### Deliberate Omissions
+- Redis caching — deferred to a later phase, recorded not built
+
+## Stakeholders
+
+Stakeholders
+
+## Architecture Direction
+
+Architecture
+
+## Technology Decisions
+
+Decisions
+
+## Plan Structure
+
+Structure
+
+## Resource Requirements
+
+Resources
+
+## Risk Management
+
+Risks
+
+## Quality Assurance
+
+Quality
+
+## Metadata
+
+### Status
+draft
+"""
+
+    plan = Plan.parse_markdown(markdown_with_context_coverage)
+    reparsed = Plan.parse_markdown(plan.build_markdown())
+
+    assert 'Conversation Record: .respec-ai/plans/fidelity-check/references/conversation-record.md' in plan.plan_scope
+    assert '### Deliberate Omissions' in plan.plan_scope
+    assert plan.plan_scope == reparsed.plan_scope, 'Conversation record pointer changed during round-trip'
