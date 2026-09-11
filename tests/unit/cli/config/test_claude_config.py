@@ -380,6 +380,45 @@ class TestProjectDenyRules:
         agents.mkdir(parents=True)
         (agents / 'respec-plan-critic.md').write_text('generated\n', encoding='utf-8')
 
+    def test_denies_write_as_well_as_edit_on_generated_workflow_files(self, tmp_path: Path) -> None:
+        # Write and Edit are separate tools: denying Edit alone leaves a whole-file overwrite open.
+        apply_project_deny_rules(tmp_path)
+
+        deny = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
+        deny = deny['permissions']['deny']
+        for target in ('.claude/agents/respec*', '.claude/commands/respec*'):
+            assert f'Edit({target})' in deny, target
+            assert f'Write({target})' in deny, target
+
+    def test_converges_a_project_holding_an_older_rule_set_in_another_order(self, tmp_path: Path) -> None:
+        # A project that picked up an earlier, shorter rule set keeps its existing entries in
+        # place and gains only the missing ones. Re-running changes nothing further.
+        existing = [
+            'Skill(respec-roadmap)',
+            'Skill(respec-code)',
+            'Skill(respec-phase)',
+            'Skill(respec-plan)',
+            'Skill(respec-patch)',
+            'Edit(.claude/agents/respec*)',
+        ]
+        settings_path = tmp_path / '.claude' / 'settings.local.json'
+        settings_path.write_text(
+            json.dumps({'permissions': {'allow': ['Bash(uv run:*)'], 'deny': list(existing)}}),
+            encoding='utf-8',
+        )
+
+        added = apply_project_deny_rules(tmp_path)
+
+        assert added == [rule for rule in PROJECT_DENY_RULES if rule not in existing]
+        settings = json.loads(settings_path.read_text(encoding='utf-8'))
+        assert settings['permissions']['deny'][: len(existing)] == existing
+        assert set(settings['permissions']['deny']) == set(PROJECT_DENY_RULES)
+        assert settings['permissions']['allow'] == ['Bash(uv run:*)']
+
+        before = settings_path.read_text(encoding='utf-8')
+        assert apply_project_deny_rules(tmp_path) == []
+        assert settings_path.read_text(encoding='utf-8') == before
+
     def test_skips_a_claude_directory_with_no_respec_ai_evidence(self, tmp_path: Path) -> None:
         bare = tmp_path / 'elsewhere'
         (bare / '.claude').mkdir(parents=True)

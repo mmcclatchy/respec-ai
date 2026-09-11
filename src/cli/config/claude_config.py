@@ -12,6 +12,10 @@ MCP_SERVER_NAME = 'respec-ai'
 # chain no longer depends on Skill invocation. respec-plan-conversation and respec-commit stay
 # absent: their parents still dispatch them through the Skill tool.
 # Defence in depth -- the generated commands also carry `disable-model-invocation: true`.
+# Generated agent and command files are the workflow definitions themselves, so an agent that
+# edits one rewrites the rules it is running under. Write and Edit are separate tools in Claude
+# Code, so denying Edit alone still leaves a whole-file overwrite available. Regeneration writes
+# these files through Python, not the Write tool, so it is unaffected by either rule.
 PROJECT_DENY_RULES: tuple[str, ...] = (
     'Skill(respec-plan)',
     'Skill(respec-roadmap)',
@@ -19,6 +23,9 @@ PROJECT_DENY_RULES: tuple[str, ...] = (
     'Skill(respec-code)',
     'Skill(respec-patch)',
     'Edit(.claude/agents/respec*)',
+    'Write(.claude/agents/respec*)',
+    'Edit(.claude/commands/respec*)',
+    'Write(.claude/commands/respec*)',
 )
 MCP_COMMAND: str = 'respec-ai'
 MCP_ARGS: list[str] = ['mcp-server']
