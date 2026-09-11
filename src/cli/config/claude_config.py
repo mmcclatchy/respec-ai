@@ -345,6 +345,21 @@ def _without_duplicate_managed_rules(deny: list[str]) -> list[str]:
     return deduped
 
 
+def _is_respec_ai_project(project_path: Path) -> bool:
+    """Require evidence that this directory is a respec-ai project before writing deny rules.
+
+    A bare `.claude/` directory is not enough. `$HOME/.claude/settings.json` is the user's global
+    Claude Code configuration, so writing project deny rules there from a `respec-ai update` run
+    in the home directory would disable the workflows across every project.
+    """
+    claude_dir = project_path / '.claude'
+    if not claude_dir.is_dir():
+        return False
+    if (project_path / '.respec-ai' / 'config.json').exists():
+        return True
+    return any((claude_dir / 'agents').glob('respec-*.md'))
+
+
 def apply_project_deny_rules(project_path: Path) -> list[str]:
     """Deny agent-driven Skill invocation of respec workflows and edits to generated agents.
 
@@ -354,8 +369,7 @@ def apply_project_deny_rules(project_path: Path) -> list[str]:
     A rule already denied in either settings.json or settings.local.json is in effect for the
     project, so it is never re-added to the other file. Returns the rules newly added.
     """
-    claude_dir = project_path / '.claude'
-    if not claude_dir.is_dir():
+    if not _is_respec_ai_project(project_path):
         return []
 
     settings_path = project_settings_path(project_path)

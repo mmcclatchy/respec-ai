@@ -53,7 +53,7 @@ def _has_any_files(directory: Path) -> bool:
     return any(path.is_file() for path in directory.rglob('*'))
 
 
-def _report_project_guardrails(project_path: Path) -> None:
+def report_project_guardrails(project_path: Path) -> None:
     for tui_type in _DETECTION_ORDER:
         try:
             added = get_tui_adapter(tui_type).apply_project_guardrails(project_path)
@@ -77,6 +77,11 @@ def run(args: Namespace, version_override: str | None = None) -> int:
     try:
         project_path = Path.cwd().resolve()
         config_path = project_path / '.respec-ai' / 'config.json'
+
+        # Guardrails protect generated artifacts already on disk, so they apply before every
+        # initialization and validation guard below. A project whose regeneration is blocked
+        # still has .claude/agents/respec* an agent can edit.
+        report_project_guardrails(project_path)
 
         if not config_path.exists():
             print_error('respec-ai is not initialized in this project')
@@ -108,8 +113,6 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             print_error('Platform not set in config')
             print_warning('Delete .respec-ai/config.json and run: respec-ai init')
             return 1
-
-        _report_project_guardrails(project_path)
 
         if current_version == package_version and not args.force:
             print_info(f'Templates are already up to date (v{package_version})')

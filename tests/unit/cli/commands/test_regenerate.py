@@ -359,6 +359,40 @@ class TestRegenerateProjectGuardrails:
         settings = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
         assert 'Skill(respec-plan)' in settings['permissions']['deny']
 
+    def test_applies_deny_rules_in_an_uninitialized_project(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # The respec-ai repo itself has generated .claude/agents/respec* but no .respec-ai/
+        # directory. Regeneration bails on the missing config, but the agent files an agent
+        # could edit are already on disk, so the guardrails still apply.
+        monkeypatch.chdir(tmp_path)
+        _touch(tmp_path / '.claude' / 'agents' / 'respec-existing.md')
+
+        assert regenerate.run(Namespace(force=False, tui='auto')) == 1
+
+        settings = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
+        deny = settings['permissions']['deny']
+        assert 'Skill(respec-plan)' in deny
+        assert 'Edit(.claude/agents/respec*)' in deny
+
+    def test_leaves_a_bare_claude_directory_untouched(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # $HOME/.claude/settings.json is the user's global Claude Code configuration. Writing
+        # project deny rules there would disable the workflows in every project at once, so a
+        # directory with no respec-ai evidence is skipped entirely.
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / '.claude').mkdir()
+        (tmp_path / '.claude' / 'settings.json').write_text('{}\n', encoding='utf-8')
+
+        assert regenerate.run(Namespace(force=False, tui='auto')) == 1
+
+        assert json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8')) == {}
+
     def test_corrupted_settings_warns_without_failing_regenerate(
         self,
         mocker: MockerFixture,

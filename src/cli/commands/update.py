@@ -4,6 +4,7 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+from src.cli.commands.regenerate import report_project_guardrails
 from src.cli.config.package_info import get_package_version
 from src.cli.docker.manager import DockerManager, DockerManagerError
 from src.cli.ui.console import print_error, print_info, print_success, print_warning
@@ -127,6 +128,10 @@ def run(args: Namespace) -> int:
                     print_success('MCP server re-registered')
                 else:
                     print_warning('MCP re-registration skipped — run `respec-ai register-mcp --force`')
+
+        # Guardrails protect generated artifacts, which exist whether or not this directory is
+        # an initialized respec-ai project. regenerate is only reached below when it is.
+        report_project_guardrails(Path.cwd().resolve())
 
         config_path = Path.cwd() / '.respec-ai' / 'config.json'
         if config_path.exists():

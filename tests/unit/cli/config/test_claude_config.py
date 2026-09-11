@@ -373,9 +373,21 @@ class TestGetMcpServerConfig:
 
 
 class TestProjectDenyRules:
-    def test_creates_settings_json_when_neither_settings_file_exists(self, tmp_path: Path) -> None:
-        (tmp_path / '.claude').mkdir()
+    @pytest.fixture(autouse=True)
+    def _respec_ai_project(self, tmp_path: Path) -> None:
+        # Deny rules only apply where respec-ai artifacts exist; see _is_respec_ai_project.
+        agents = tmp_path / '.claude' / 'agents'
+        agents.mkdir(parents=True)
+        (agents / 'respec-plan-critic.md').write_text('generated\n', encoding='utf-8')
 
+    def test_skips_a_claude_directory_with_no_respec_ai_evidence(self, tmp_path: Path) -> None:
+        bare = tmp_path / 'elsewhere'
+        (bare / '.claude').mkdir(parents=True)
+
+        assert apply_project_deny_rules(bare) == []
+        assert not (bare / '.claude' / 'settings.json').exists()
+
+    def test_creates_settings_json_when_neither_settings_file_exists(self, tmp_path: Path) -> None:
         added = apply_project_deny_rules(tmp_path)
 
         assert added == list(PROJECT_DENY_RULES)
@@ -384,7 +396,6 @@ class TestProjectDenyRules:
 
     def test_prefers_settings_local_json_when_present(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / '.claude'
-        claude_dir.mkdir()
         (claude_dir / 'settings.json').write_text('{}', encoding='utf-8')
         (claude_dir / 'settings.local.json').write_text('{}', encoding='utf-8')
 
@@ -396,7 +407,6 @@ class TestProjectDenyRules:
 
     def test_preserves_existing_permissions_and_is_idempotent(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / '.claude'
-        claude_dir.mkdir()
         settings_path = claude_dir / 'settings.json'
         settings_path.write_text(
             json.dumps({'permissions': {'allow': ['Bash(ls:*)'], 'deny': ['Skill(respec-plan)']}}),
@@ -414,12 +424,14 @@ class TestProjectDenyRules:
         assert apply_project_deny_rules(tmp_path) == []
 
     def test_no_op_without_claude_directory(self, tmp_path: Path) -> None:
-        assert apply_project_deny_rules(tmp_path) == []
-        assert not (tmp_path / '.claude').exists()
+        without_claude = tmp_path / 'no-claude'
+        without_claude.mkdir()
+
+        assert apply_project_deny_rules(without_claude) == []
+        assert not (without_claude / '.claude').exists()
 
     def test_rule_already_denied_in_other_settings_file_is_not_re_added(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / '.claude'
-        claude_dir.mkdir()
         (claude_dir / 'settings.json').write_text(
             json.dumps({'permissions': {'deny': ['Skill(respec-plan)']}}), encoding='utf-8'
         )
@@ -434,7 +446,6 @@ class TestProjectDenyRules:
 
     def test_collapses_pre_existing_duplicates_of_managed_rules(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / '.claude'
-        claude_dir.mkdir()
         settings_path = claude_dir / 'settings.json'
         settings_path.write_text(
             json.dumps(
@@ -451,7 +462,6 @@ class TestProjectDenyRules:
 
     def test_repeated_application_never_changes_the_file(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / '.claude'
-        claude_dir.mkdir()
 
         apply_project_deny_rules(tmp_path)
         settings_path = claude_dir / 'settings.json'
@@ -472,7 +482,6 @@ class TestProjectDenyRules:
 
     def test_corrupted_settings_raises(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / '.claude'
-        claude_dir.mkdir()
         (claude_dir / 'settings.json').write_text('{not json', encoding='utf-8')
 
         with pytest.raises(ClaudeConfigError):
