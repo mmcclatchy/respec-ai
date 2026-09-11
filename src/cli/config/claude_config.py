@@ -7,6 +7,19 @@ CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
 CLAUDE_SETTINGS_PATH = Path.home() / '.claude' / 'settings.json'
 CLAUDE_SETTINGS_LOCAL_PATH = Path.home() / '.claude' / 'settings.local.json'
 MCP_SERVER_NAME = 'respec-ai'
+# Entry-point workflows the user invokes directly. respec-roadmap is included because plan Step 10
+# now hands off to the contained respec-roadmap-orchestrator agent instead of the command, so the
+# chain no longer depends on Skill invocation. respec-plan-conversation and respec-commit stay
+# absent: their parents still dispatch them through the Skill tool.
+# Defence in depth -- the generated commands also carry `disable-model-invocation: true`.
+PROJECT_DENY_RULES: tuple[str, ...] = (
+    'Skill(respec-plan)',
+    'Skill(respec-roadmap)',
+    'Skill(respec-phase)',
+    'Skill(respec-code)',
+    'Skill(respec-patch)',
+    'Edit(.claude/agents/respec*)',
+)
 MCP_COMMAND: str = 'respec-ai'
 MCP_ARGS: list[str] = ['mcp-server']
 EXPECTED_MCP_CONFIG = {
@@ -276,3 +289,90 @@ def add_mcp_permissions() -> bool:
         return True
     except Exception as e:
         raise ClaudeConfigError(f'Failed to update settings: {e}') from e
+
+
+def project_settings_path(project_path: Path) -> Path:
+    claude_dir = project_path / '.claude'
+    local_path = claude_dir / 'settings.local.json'
+    if local_path.exists():
+        return local_path
+    return claude_dir / 'settings.json'
+
+
+def _load_project_settings(settings_path: Path) -> dict:
+    if not settings_path.exists():
+        return {}
+
+    try:
+        loaded = json.loads(settings_path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as e:
+        raise ClaudeConfigError(f'Settings file is corrupted: {settings_path}: {e}') from e
+
+    if not isinstance(loaded, dict):
+        raise ClaudeConfigError(f'Settings file is not a JSON object: {settings_path}')
+    return loaded
+
+
+def _deny_list(settings: dict, settings_path: Path) -> list[str]:
+    permissions = settings.setdefault('permissions', {})
+    if not isinstance(permissions, dict):
+        raise ClaudeConfigError(f'`permissions` is not a JSON object: {settings_path}')
+
+    deny = permissions.setdefault('deny', [])
+    if not isinstance(deny, list):
+        raise ClaudeConfigError(f'`permissions.deny` is not a JSON array: {settings_path}')
+    return deny
+
+
+def _deny_rules_in_effect(project_path: Path) -> set[str]:
+    claude_dir = project_path / '.claude'
+    in_effect: set[str] = set()
+    for name in ('settings.json', 'settings.local.json'):
+        settings_path = claude_dir / name
+        if settings_path.exists():
+            in_effect.update(_deny_list(_load_project_settings(settings_path), settings_path))
+    return in_effect
+
+
+def _without_duplicate_managed_rules(deny: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for rule in deny:
+        if rule in PROJECT_DENY_RULES and rule in seen:
+            continue
+        seen.add(rule)
+        deduped.append(rule)
+    return deduped
+
+
+def apply_project_deny_rules(project_path: Path) -> list[str]:
+    """Deny agent-driven Skill invocation of respec workflows and edits to generated agents.
+
+    Claude Code routes an agent's slash-command call through the Skill tool, which drops the
+    command frontmatter and lets the main agent act outside the command's instructions.
+
+    A rule already denied in either settings.json or settings.local.json is in effect for the
+    project, so it is never re-added to the other file. Returns the rules newly added.
+    """
+    claude_dir = project_path / '.claude'
+    if not claude_dir.is_dir():
+        return []
+
+    settings_path = project_settings_path(project_path)
+    settings = _load_project_settings(settings_path)
+    deny = _deny_list(settings, settings_path)
+
+    in_effect = _deny_rules_in_effect(project_path)
+    added = [rule for rule in PROJECT_DENY_RULES if rule not in in_effect]
+    deduped = _without_duplicate_managed_rules(deny)
+
+    if not added and deduped == deny:
+        return []
+
+    settings['permissions']['deny'] = deduped + added
+
+    try:
+        settings_path.write_text(json.dumps(settings, indent=2) + '\n', encoding='utf-8')
+    except Exception as e:
+        raise ClaudeConfigError(f'Failed to update settings: {settings_path}: {e}') from e
+    return added

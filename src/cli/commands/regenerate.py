@@ -53,6 +53,17 @@ def _has_any_files(directory: Path) -> bool:
     return any(path.is_file() for path in directory.rglob('*'))
 
 
+def _report_project_guardrails(project_path: Path) -> None:
+    for tui_type in _DETECTION_ORDER:
+        try:
+            added = get_tui_adapter(tui_type).apply_project_guardrails(project_path)
+        except Exception as e:
+            print_warning(f'Could not apply {tui_type.value} permission guardrails: {e}')
+            continue
+        for rule in added:
+            print_success(f'Denied {rule}')
+
+
 def _detect_tuis_with_artifacts(project_path: Path) -> list[TuiType]:
     detected: list[TuiType] = []
     for tui_type in _DETECTION_ORDER:
@@ -97,6 +108,8 @@ def run(args: Namespace, version_override: str | None = None) -> int:
             print_error('Platform not set in config')
             print_warning('Delete .respec-ai/config.json and run: respec-ai init')
             return 1
+
+        _report_project_guardrails(project_path)
 
         if current_version == package_version and not args.force:
             print_info(f'Templates are already up to date (v{package_version})')

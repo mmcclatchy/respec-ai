@@ -308,3 +308,71 @@ class TestRegenerateCommand:
 
         assert result == 0
         assert mock_generate.call_count == 3
+
+
+class TestRegenerateProjectGuardrails:
+    @pytest.fixture(autouse=True)
+    def _mock_valid_standards_config(self, mocker: MockerFixture) -> None:
+        mocker.patch('src.cli.commands.regenerate.validate_project_config', return_value=[])
+
+    def test_applies_claude_deny_rules_on_regenerate(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        _write_config(tmp_path, {'platform': 'linear', 'version': '0.1.0'})
+        _touch(tmp_path / '.claude' / 'agents' / 'respec-existing.md')
+
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.regenerate.generate_templates', return_value=([Path('file1.md')], 5, 12))
+
+        assert regenerate.run(Namespace(force=False, tui='auto')) == 0
+
+        settings = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
+        deny = settings['permissions']['deny']
+        assert 'Skill(respec-plan)' in deny
+        assert 'Skill(respec-roadmap)' in deny
+        assert 'Skill(respec-phase)' in deny
+        assert 'Skill(respec-code)' in deny
+        assert 'Skill(respec-patch)' in deny
+        assert 'Edit(.claude/agents/respec*)' in deny
+
+    def test_applies_deny_rules_even_when_templates_are_current(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        _write_config(tmp_path, {'platform': 'linear', 'version': '0.2.0'})
+        _touch(tmp_path / '.claude' / 'agents' / 'respec-existing.md')
+
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
+
+        assert regenerate.run(Namespace(force=False, tui='auto')) == 0
+
+        settings = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
+        assert 'Skill(respec-plan)' in settings['permissions']['deny']
+
+    def test_corrupted_settings_warns_without_failing_regenerate(
+        self,
+        mocker: MockerFixture,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        _write_config(tmp_path, {'platform': 'linear', 'version': '0.1.0'})
+        _touch(tmp_path / '.claude' / 'agents' / 'respec-existing.md')
+        _touch(tmp_path / '.claude' / 'settings.json', '{not json')
+
+        mocker.patch('src.cli.commands.regenerate.get_package_version', return_value='0.2.0')
+        mocker.patch('src.cli.commands.regenerate.PlatformOrchestrator')
+        mocker.patch('src.cli.commands.regenerate.generate_templates', return_value=([Path('file1.md')], 5, 12))
+
+        assert regenerate.run(Namespace(force=False, tui='auto')) == 0

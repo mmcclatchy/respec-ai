@@ -9,7 +9,9 @@ from pytest_mock import MockerFixture
 from src.cli.config.claude_config import (
     EXPECTED_MCP_CONFIG,
     MCP_SERVER_NAME,
+    PROJECT_DENY_RULES,
     ClaudeConfigError,
+    apply_project_deny_rules,
     get_mcp_server_config,
     is_mcp_server_registered,
     load_claude_config,
@@ -368,3 +370,110 @@ class TestGetMcpServerConfig:
         config_file = tmp_path / 'nonexistent' / 'config.json'
         result = get_mcp_server_config(config_file)
         assert result is None
+
+
+class TestProjectDenyRules:
+    def test_creates_settings_json_when_neither_settings_file_exists(self, tmp_path: Path) -> None:
+        (tmp_path / '.claude').mkdir()
+
+        added = apply_project_deny_rules(tmp_path)
+
+        assert added == list(PROJECT_DENY_RULES)
+        settings = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
+        assert settings['permissions']['deny'] == list(PROJECT_DENY_RULES)
+
+    def test_prefers_settings_local_json_when_present(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.mkdir()
+        (claude_dir / 'settings.json').write_text('{}', encoding='utf-8')
+        (claude_dir / 'settings.local.json').write_text('{}', encoding='utf-8')
+
+        apply_project_deny_rules(tmp_path)
+
+        local = json.loads((claude_dir / 'settings.local.json').read_text(encoding='utf-8'))
+        assert 'Skill(respec-plan)' in local['permissions']['deny']
+        assert json.loads((claude_dir / 'settings.json').read_text(encoding='utf-8')) == {}
+
+    def test_preserves_existing_permissions_and_is_idempotent(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.mkdir()
+        settings_path = claude_dir / 'settings.json'
+        settings_path.write_text(
+            json.dumps({'permissions': {'allow': ['Bash(ls:*)'], 'deny': ['Skill(respec-plan)']}}),
+            encoding='utf-8',
+        )
+
+        added = apply_project_deny_rules(tmp_path)
+
+        assert 'Skill(respec-plan)' not in added
+        settings = json.loads(settings_path.read_text(encoding='utf-8'))
+        assert settings['permissions']['allow'] == ['Bash(ls:*)']
+        assert settings['permissions']['deny'].count('Skill(respec-plan)') == 1
+        assert 'Edit(.claude/agents/respec*)' in settings['permissions']['deny']
+
+        assert apply_project_deny_rules(tmp_path) == []
+
+    def test_no_op_without_claude_directory(self, tmp_path: Path) -> None:
+        assert apply_project_deny_rules(tmp_path) == []
+        assert not (tmp_path / '.claude').exists()
+
+    def test_rule_already_denied_in_other_settings_file_is_not_re_added(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.mkdir()
+        (claude_dir / 'settings.json').write_text(
+            json.dumps({'permissions': {'deny': ['Skill(respec-plan)']}}), encoding='utf-8'
+        )
+        (claude_dir / 'settings.local.json').write_text('{}', encoding='utf-8')
+
+        added = apply_project_deny_rules(tmp_path)
+
+        assert 'Skill(respec-plan)' not in added
+        local = json.loads((claude_dir / 'settings.local.json').read_text(encoding='utf-8'))
+        assert 'Skill(respec-plan)' not in local['permissions']['deny']
+        assert 'Skill(respec-code)' in local['permissions']['deny']
+
+    def test_collapses_pre_existing_duplicates_of_managed_rules(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.mkdir()
+        settings_path = claude_dir / 'settings.json'
+        settings_path.write_text(
+            json.dumps(
+                {'permissions': {'deny': ['Skill(respec-plan)', 'Bash(rm:*)', 'Skill(respec-plan)', 'Bash(rm:*)']}}
+            ),
+            encoding='utf-8',
+        )
+
+        apply_project_deny_rules(tmp_path)
+
+        deny = json.loads(settings_path.read_text(encoding='utf-8'))['permissions']['deny']
+        assert deny.count('Skill(respec-plan)') == 1
+        assert deny.count('Bash(rm:*)') == 2
+
+    def test_repeated_application_never_changes_the_file(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.mkdir()
+
+        apply_project_deny_rules(tmp_path)
+        settings_path = claude_dir / 'settings.json'
+        first = settings_path.read_text(encoding='utf-8')
+
+        for _ in range(3):
+            assert apply_project_deny_rules(tmp_path) == []
+        assert settings_path.read_text(encoding='utf-8') == first
+
+    def test_chained_sub_workflows_stay_skill_invocable(self, tmp_path: Path) -> None:
+        # respec-plan dispatches plan-conversation, and code/patch dispatch commit, through the
+        # Skill tool. Denying those would break chains that have no agent-dispatch replacement.
+        assert 'Skill(respec-plan-conversation)' not in PROJECT_DENY_RULES
+        assert 'Skill(respec-commit)' not in PROJECT_DENY_RULES
+
+    def test_roadmap_is_denied_now_that_plan_dispatches_the_orchestrator_agent(self, tmp_path: Path) -> None:
+        assert 'Skill(respec-roadmap)' in PROJECT_DENY_RULES
+
+    def test_corrupted_settings_raises(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.mkdir()
+        (claude_dir / 'settings.json').write_text('{not json', encoding='utf-8')
+
+        with pytest.raises(ClaudeConfigError):
+            apply_project_deny_rules(tmp_path)

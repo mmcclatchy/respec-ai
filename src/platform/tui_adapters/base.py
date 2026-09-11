@@ -120,6 +120,9 @@ class TuiAdapter(ABC):
     @abstractmethod
     def add_mcp_permissions(self, project_path: Path) -> bool: ...
 
+    def apply_project_guardrails(self, project_path: Path) -> list[str]:
+        return []
+
     @abstractmethod
     def is_mcp_registered(self, project_path: Path) -> bool: ...
 

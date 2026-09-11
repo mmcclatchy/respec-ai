@@ -2,6 +2,7 @@ from pathlib import Path
 
 from src.cli.config.claude_config import (
     add_mcp_permissions as _add_mcp_permissions,
+    apply_project_deny_rules as _apply_project_deny_rules,
     is_mcp_server_registered,
     register_mcp_server as _register_mcp_server,
     unregister_all_respec_servers as _unregister_all_respec_servers,
@@ -153,6 +154,9 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
 
     def add_mcp_permissions(self, project_path: Path) -> bool:
         return _add_mcp_permissions()
+
+    def apply_project_guardrails(self, project_path: Path) -> list[str]:
+        return _apply_project_deny_rules(project_path)
 
     def is_mcp_registered(self, project_path: Path) -> bool:
         return is_mcp_server_registered()
