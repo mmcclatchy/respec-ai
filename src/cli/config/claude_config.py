@@ -1,6 +1,7 @@
 import json
 import subprocess
 from pathlib import Path
+from typing import NamedTuple
 
 
 CLAUDE_CONFIG_PATH = Path.home() / '.claude' / 'config.json'
@@ -13,9 +14,9 @@ MCP_SERVER_NAME = 'respec-ai'
 # absent: their parents still dispatch them through the Skill tool.
 # Defence in depth -- the generated commands also carry `disable-model-invocation: true`.
 # Generated agent and command files are the workflow definitions themselves, so an agent that
-# edits one rewrites the rules it is running under. Write and Edit are separate tools in Claude
-# Code, so denying Edit alone still leaves a whole-file overwrite available. Regeneration writes
-# these files through Python, not the Write tool, so it is unaffected by either rule.
+# edits one rewrites the rules it is running under. Claude Code matches file permissions on
+# `Edit(path)` only, and that rule covers every file-editing tool including Write, MultiEdit and
+# NotebookEdit. Regeneration writes these files through Python, so it is unaffected.
 PROJECT_DENY_RULES: tuple[str, ...] = (
     'Skill(respec-plan)',
     'Skill(respec-roadmap)',
@@ -23,8 +24,14 @@ PROJECT_DENY_RULES: tuple[str, ...] = (
     'Skill(respec-code)',
     'Skill(respec-patch)',
     'Edit(.claude/agents/respec*)',
-    'Write(.claude/agents/respec*)',
     'Edit(.claude/commands/respec*)',
+)
+
+# Rules respec-ai wrote in an earlier release that are now removed on sight. A `Write(path)` rule
+# is never matched by Claude Code's file permission checks, so it did nothing but emit a startup
+# warning on every session.
+RETIRED_PROJECT_DENY_RULES: tuple[str, ...] = (
+    'Write(.claude/agents/respec*)',
     'Write(.claude/commands/respec*)',
 )
 MCP_COMMAND: str = 'respec-ai'
@@ -367,17 +374,49 @@ def _is_respec_ai_project(project_path: Path) -> bool:
     return any((claude_dir / 'agents').glob('respec-*.md'))
 
 
-def apply_project_deny_rules(project_path: Path) -> list[str]:
-    """Deny agent-driven Skill invocation of respec workflows and edits to generated agents.
+class DenyRuleUpdate(NamedTuple):
+    added: tuple[str, ...]
+    removed: tuple[str, ...]
+
+
+def _write_project_settings(settings_path: Path, settings: dict) -> None:
+    try:
+        settings_path.write_text(json.dumps(settings, indent=2) + '\n', encoding='utf-8')
+    except Exception as e:
+        raise ClaudeConfigError(f'Failed to update settings: {settings_path}: {e}') from e
+
+
+def _prune_retired_rules(settings_path: Path) -> list[str]:
+    settings = _load_project_settings(settings_path)
+    deny = _deny_list(settings, settings_path)
+    kept = [rule for rule in deny if rule not in RETIRED_PROJECT_DENY_RULES]
+    if kept == deny:
+        return []
+
+    settings['permissions']['deny'] = kept
+    _write_project_settings(settings_path, settings)
+    return [rule for rule in deny if rule in RETIRED_PROJECT_DENY_RULES]
+
+
+def apply_project_deny_rules(project_path: Path) -> DenyRuleUpdate:
+    """Deny agent-driven Skill invocation of respec workflows and edits to generated workflow files.
 
     Claude Code routes an agent's slash-command call through the Skill tool, which drops the
     command frontmatter and lets the main agent act outside the command's instructions.
 
-    A rule already denied in either settings.json or settings.local.json is in effect for the
-    project, so it is never re-added to the other file. Returns the rules newly added.
+    Retired rules are removed from both settings files, since either may carry one written by an
+    earlier release. A rule already denied in either file is in effect for the project, so it is
+    never re-added to the other. Only `permissions.deny` is read or written.
     """
     if not _is_respec_ai_project(project_path):
-        return []
+        return DenyRuleUpdate((), ())
+
+    claude_dir = project_path / '.claude'
+    removed: list[str] = []
+    for name in ('settings.json', 'settings.local.json'):
+        retired_path = claude_dir / name
+        if retired_path.exists():
+            removed.extend(_prune_retired_rules(retired_path))
 
     settings_path = project_settings_path(project_path)
     settings = _load_project_settings(settings_path)
@@ -387,13 +426,7 @@ def apply_project_deny_rules(project_path: Path) -> list[str]:
     added = [rule for rule in PROJECT_DENY_RULES if rule not in in_effect]
     deduped = _without_duplicate_managed_rules(deny)
 
-    if not added and deduped == deny:
-        return []
-
-    settings['permissions']['deny'] = deduped + added
-
-    try:
-        settings_path.write_text(json.dumps(settings, indent=2) + '\n', encoding='utf-8')
-    except Exception as e:
-        raise ClaudeConfigError(f'Failed to update settings: {settings_path}: {e}') from e
-    return added
+    if added or deduped != deny:
+        settings['permissions']['deny'] = deduped + added
+        _write_project_settings(settings_path, settings)
+    return DenyRuleUpdate(tuple(added), tuple(removed))

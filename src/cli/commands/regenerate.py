@@ -56,12 +56,12 @@ def _has_any_files(directory: Path) -> bool:
 def report_project_guardrails(project_path: Path) -> None:
     for tui_type in _DETECTION_ORDER:
         try:
-            added = get_tui_adapter(tui_type).apply_project_guardrails(project_path)
+            changes = get_tui_adapter(tui_type).apply_project_guardrails(project_path)
         except Exception as e:
             print_warning(f'Could not apply {tui_type.value} permission guardrails: {e}')
             continue
-        for rule in added:
-            print_success(f'Denied {rule}')
+        for change in changes:
+            print_success(change)
 
 
 def _detect_tuis_with_artifacts(project_path: Path) -> list[TuiType]:

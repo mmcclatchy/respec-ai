@@ -173,7 +173,10 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
         return _add_mcp_permissions()
 
     def apply_project_guardrails(self, project_path: Path) -> list[str]:
-        return _apply_project_deny_rules(project_path)
+        update = _apply_project_deny_rules(project_path)
+        return [f'Denied {rule}' for rule in update.added] + [
+            f'Removed stale deny rule {rule}' for rule in update.removed
+        ]
 
     def is_mcp_registered(self, project_path: Path) -> bool:
         return is_mcp_server_registered()

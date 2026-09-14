@@ -10,6 +10,7 @@ from src.cli.config.claude_config import (
     EXPECTED_MCP_CONFIG,
     MCP_SERVER_NAME,
     PROJECT_DENY_RULES,
+    RETIRED_PROJECT_DENY_RULES,
     ClaudeConfigError,
     apply_project_deny_rules,
     get_mcp_server_config,
@@ -380,15 +381,54 @@ class TestProjectDenyRules:
         agents.mkdir(parents=True)
         (agents / 'respec-plan-critic.md').write_text('generated\n', encoding='utf-8')
 
-    def test_denies_write_as_well_as_edit_on_generated_workflow_files(self, tmp_path: Path) -> None:
-        # Write and Edit are separate tools: denying Edit alone leaves a whole-file overwrite open.
+    def test_protects_generated_workflow_files_with_edit_rules_only(self, tmp_path: Path) -> None:
+        # Claude Code matches file permissions on Edit(path) only, and that rule covers Write,
+        # MultiEdit and NotebookEdit. A Write(path)/Glob(path) rule matches nothing and makes
+        # Claude Code print a warning on every session start.
         apply_project_deny_rules(tmp_path)
 
         deny = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
         deny = deny['permissions']['deny']
-        for target in ('.claude/agents/respec*', '.claude/commands/respec*'):
-            assert f'Edit({target})' in deny, target
-            assert f'Write({target})' in deny, target
+        assert 'Edit(.claude/agents/respec*)' in deny
+        assert 'Edit(.claude/commands/respec*)' in deny
+        for rule in deny:
+            assert not rule.startswith(('Write(', 'MultiEdit(', 'NotebookEdit(', 'Glob(')), rule
+
+    def test_removes_retired_rules_from_both_settings_files(self, tmp_path: Path) -> None:
+        claude_dir = tmp_path / '.claude'
+        claude_dir.joinpath('settings.json').write_text(
+            json.dumps({'permissions': {'deny': ['Write(.claude/agents/respec*)', 'Bash(rm:*)']}}),
+            encoding='utf-8',
+        )
+        claude_dir.joinpath('settings.local.json').write_text(
+            json.dumps(
+                {
+                    'permissions': {
+                        'allow': ['Bash(uv run:*)'],
+                        'deny': ['Edit(.claude/agents/respec*)', 'Write(.claude/commands/respec*)'],
+                    }
+                }
+            ),
+            encoding='utf-8',
+        )
+
+        update = apply_project_deny_rules(tmp_path)
+
+        assert set(update.removed) == set(RETIRED_PROJECT_DENY_RULES)
+        shared = json.loads(claude_dir.joinpath('settings.json').read_text(encoding='utf-8'))
+        local = json.loads(claude_dir.joinpath('settings.local.json').read_text(encoding='utf-8'))
+        for deny in (shared['permissions']['deny'], local['permissions']['deny']):
+            assert not any(rule in RETIRED_PROJECT_DENY_RULES for rule in deny)
+        # Rules respec-ai does not manage are left exactly as found.
+        assert 'Bash(rm:*)' in shared['permissions']['deny']
+        assert local['permissions']['allow'] == ['Bash(uv run:*)']
+        assert set(PROJECT_DENY_RULES).issubset(set(shared['permissions']['deny']) | set(local['permissions']['deny']))
+
+        before_shared = claude_dir.joinpath('settings.json').read_text(encoding='utf-8')
+        before_local = claude_dir.joinpath('settings.local.json').read_text(encoding='utf-8')
+        assert apply_project_deny_rules(tmp_path) == ((), ())
+        assert claude_dir.joinpath('settings.json').read_text(encoding='utf-8') == before_shared
+        assert claude_dir.joinpath('settings.local.json').read_text(encoding='utf-8') == before_local
 
     def test_converges_a_project_holding_an_older_rule_set_in_another_order(self, tmp_path: Path) -> None:
         # A project that picked up an earlier, shorter rule set keeps its existing entries in
@@ -407,29 +447,29 @@ class TestProjectDenyRules:
             encoding='utf-8',
         )
 
-        added = apply_project_deny_rules(tmp_path)
+        added = apply_project_deny_rules(tmp_path).added
 
-        assert added == [rule for rule in PROJECT_DENY_RULES if rule not in existing]
+        assert list(added) == [rule for rule in PROJECT_DENY_RULES if rule not in existing]
         settings = json.loads(settings_path.read_text(encoding='utf-8'))
         assert settings['permissions']['deny'][: len(existing)] == existing
         assert set(settings['permissions']['deny']) == set(PROJECT_DENY_RULES)
         assert settings['permissions']['allow'] == ['Bash(uv run:*)']
 
         before = settings_path.read_text(encoding='utf-8')
-        assert apply_project_deny_rules(tmp_path) == []
+        assert apply_project_deny_rules(tmp_path) == ((), ())
         assert settings_path.read_text(encoding='utf-8') == before
 
     def test_skips_a_claude_directory_with_no_respec_ai_evidence(self, tmp_path: Path) -> None:
         bare = tmp_path / 'elsewhere'
         (bare / '.claude').mkdir(parents=True)
 
-        assert apply_project_deny_rules(bare) == []
+        assert apply_project_deny_rules(bare) == ((), ())
         assert not (bare / '.claude' / 'settings.json').exists()
 
     def test_creates_settings_json_when_neither_settings_file_exists(self, tmp_path: Path) -> None:
-        added = apply_project_deny_rules(tmp_path)
+        added = apply_project_deny_rules(tmp_path).added
 
-        assert added == list(PROJECT_DENY_RULES)
+        assert list(added) == list(PROJECT_DENY_RULES)
         settings = json.loads((tmp_path / '.claude' / 'settings.json').read_text(encoding='utf-8'))
         assert settings['permissions']['deny'] == list(PROJECT_DENY_RULES)
 
@@ -460,13 +500,13 @@ class TestProjectDenyRules:
         assert settings['permissions']['deny'].count('Skill(respec-plan)') == 1
         assert 'Edit(.claude/agents/respec*)' in settings['permissions']['deny']
 
-        assert apply_project_deny_rules(tmp_path) == []
+        assert apply_project_deny_rules(tmp_path) == ((), ())
 
     def test_no_op_without_claude_directory(self, tmp_path: Path) -> None:
         without_claude = tmp_path / 'no-claude'
         without_claude.mkdir()
 
-        assert apply_project_deny_rules(without_claude) == []
+        assert apply_project_deny_rules(without_claude) == ((), ())
         assert not (without_claude / '.claude').exists()
 
     def test_rule_already_denied_in_other_settings_file_is_not_re_added(self, tmp_path: Path) -> None:
@@ -507,7 +547,7 @@ class TestProjectDenyRules:
         first = settings_path.read_text(encoding='utf-8')
 
         for _ in range(3):
-            assert apply_project_deny_rules(tmp_path) == []
+            assert apply_project_deny_rules(tmp_path) == ((), ())
         assert settings_path.read_text(encoding='utf-8') == first
 
     def test_chained_sub_workflows_stay_skill_invocable(self, tmp_path: Path) -> None:
