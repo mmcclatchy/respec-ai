@@ -8,29 +8,31 @@ composes it into its own placeholder set.
 """
 
 MODULE_LAYOUT_PLACEHOLDER = (
-    '- `src/path/to/module.py` — owns [single responsibility]\n'
-    '- `src/path/to/Component.tsx` — owns [single responsibility]'
+    '- `<path to a source file>` — owns [single responsibility]\n'
+    '- `<path to another source file>` — owns [single responsibility]'
 )
 
 SKELETON_INDEX_PLACEHOLDER = (
-    '- `src/path/to/module.py` :: ClassName.method_name(arg: Type) -> ReturnType\n'
-    '- `src/path/to/Component.tsx` :: ComponentName(props: PropsType) -> JSX.Element\n'
-    '  (one line per public message — this is the durable contract the conformance'
-    ' reviewer diffs against. Use the language that owns the path, per'
-    ' project_config_context_markdown. Python: a non-builtin type MUST be a'
-    ' fully-qualified dotted path, e.g. `list[kb.models.BestPractice]`, so'
-    ' materialization can emit a real import. TypeScript: write the type exactly as'
-    ' declared or imported in the file — import resolution is not inferred, so a'
-    ' dotted-looking name is materialized verbatim, never treated as an import path.'
-    ' Append `, async` for a coroutine method or async function.)'
+    '- `<path to a source file>` :: <Owner>.<member>(<params>) -> <Result>\n'
+    '- `<path to a source file>` :: <member>(<params>) -> <Result>\n'
+    '  (one line per public seam: every exported unit another module calls. This is the'
+    ' durable contract the conformance reviewer diffs against. Every language uses this one'
+    ' notation; drop `<Owner>.` for a unit with no owner. `<Owner>` and `<member>` are each one'
+    ' plain identifier of letters, digits and underscores that does not start with a digit:'
+    ' write a qualified owner as its last segment only, and write any other character in a name'
+    ' as an underscore. Only `<params>` and `<Result>` are'
+    ' written in the syntax of the language that owns the path. Never write a native'
+    ' declaration: materialization parses this notation and rejects anything else.'
+    ' Language-specific rules come from `### Language Authoring Notes` in'
+    ' project_config_context_markdown. Append `, async` for an asynchronous member.)'
 )
 
 TEST_LIST_PLACEHOLDER = (
-    '- `tests/unit/path/test_module.py::test_observable_behavior_under_condition`\n'
-    '- `tests/unit/path/Component.spec.ts::renders the empty state when there are no results`\n'
-    '  (behaviors, not file names — see Testing Strategy for approach. Name each test'
-    " the way its own language's tests read: pytest node-id style for Python, a plain"
-    ' English behavior description for TypeScript describe/it-style tests.)'
+    '- `<path to a test file>::<observable behavior under a condition>`\n'
+    '  (behaviors, not file names — see Testing Strategy for approach. Take the test file'
+    ' location and the name form from the `[testing]` `location` and `naming` values of the'
+    " owning language's standards TOML in project_config_context_markdown, and follow that"
+    " language's section of `### Language Authoring Notes`.)"
 )
 
 UX_CONTRACT_PLACEHOLDER = (

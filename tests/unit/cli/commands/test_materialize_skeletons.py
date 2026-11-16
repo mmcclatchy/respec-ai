@@ -131,3 +131,35 @@ class TestMaterializeSkeletonsCommand:
 
         assert exit_code == 1
         assert not (tmp_path.parent.parent / 'etc' / 'evil.py').exists()
+
+    @pytest.mark.parametrize(
+        ('path', 'native_signature'),
+        [
+            ('src/loader.py', 'def load(paths: list[str]) -> dict[str, int]:'),
+            ('internal/loader/loader.go', 'func Load(paths []string) map[string]int'),
+            ('Sources/App/Router.swift', 'Router.register(_:on:)'),
+        ],
+        ids=['language-with-materializer', 'language-without-materializer', 'text-rich-reads-as-an-emoji-code'],
+    )
+    def test_a_native_declaration_in_the_skeleton_index_is_one_readable_error_quoting_the_entry(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        path: str,
+        native_signature: str,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        index_file = _write(tmp_path / 'index.md', f'- `{path}` :: {native_signature}\n')
+        test_file = _write(tmp_path / 'tests.md', '')
+
+        exit_code = materialize_skeletons.run(
+            Namespace(skeleton_index_file=str(index_file), test_list_file=str(test_file), merge_paths='')
+        )
+
+        captured = capsys.readouterr()
+        output = ' '.join(captured.out.split())
+        assert exit_code == 1
+        assert path in output
+        assert native_signature in output
+        assert 'Traceback' not in captured.out + captured.err

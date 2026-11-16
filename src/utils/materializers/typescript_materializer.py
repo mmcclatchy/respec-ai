@@ -19,6 +19,34 @@ _EXPORT_CLASS = re.compile(r'^export\s+class\s+(\w+)', re.MULTILINE)
 # under-detection here, never a blocker the design record cannot express.
 
 
+_AUTHORING_GUIDANCE = (
+    '- Write each type exactly as it is declared or imported in the file being described:'
+    ' `LoginFormProps`, `Promise<User>`, `JSX.Element`. Do NOT invent a dotted qualifier for it.'
+    ' TypeScript import specifiers are relative paths, not dotted module names, so materialization'
+    ' does not infer an import from the type text: a dotted-looking type (e.g. `kb.Result`) is'
+    " written into the file verbatim, and wiring the real `import` is the implementer's job, per"
+    ' `### Collaboration And Wiring`.\n'
+    '- `Owner.member(<params>) -> <Result>` renders a method of an exported class named `Owner`.'
+    ' A bare `member(<params>) -> <Result>` renders an exported function.\n'
+    '- `, async` renders an `async` function or method, so its `<Result>` MUST be a `Promise<...>`'
+    ' type, e.g. `fetchUser(id: string) -> Promise<User>, async`.\n'
+    '- Component entries (React or similar) in a `.tsx` file: express the component as a function'
+    ' whose one parameter is its props, typed inline or by a named Props type, returning the element'
+    ' type: `LoginForm(props: { email: string; onSubmit: (data: LoginData) => void }) -> JSX.Element`'
+    ' or `LoginForm(props: LoginFormProps) -> JSX.Element`. Carry only: the props (real names and'
+    ' types, not just the component name), what the module exports, and any state or effect that is'
+    ' part of the contract (e.g. "owns fetch-and-cache for the result list"). Do NOT carry JSX'
+    ' structure, styling, internal helpers, or hook implementation details: those are the'
+    ' implementer\'s, per "design the messages, not the internals."\n'
+    '- Example Skeleton Index entry: `src/components/LoginForm.tsx` :: LoginForm(props: LoginFormProps) -> JSX.Element\n'
+    "- A Test List name becomes the description in a `test('<name>', ...)` case in the generated test"
+    ' file, so it is a plain English sentence describing the behavior (describe/it style), e.g.'
+    ' `tests/components/LoginForm.spec.ts::renders the error state when submit fails`. Do not force'
+    ' an identifier-shaped `test_...` name onto a TypeScript path. Keep quote characters and'
+    ' backslashes out of the sentence: it is written verbatim inside quoted strings.'
+)
+
+
 def _render_member_body(member: SkeletonMember, is_method: bool) -> str:
     indent = '  ' if is_method else ''
     keyword = 'async ' if 'async' in member.tags else ''
@@ -33,6 +61,7 @@ def _render_member_body(member: SkeletonMember, is_method: bool) -> str:
 class TypeScriptMaterializer:
     not_implemented_sentinel = "throw new Error('Not implemented')"
     test_file_suffixes = ('.spec.ts', '.test.ts', '.spec.tsx', '.test.tsx')
+    authoring_guidance = _AUTHORING_GUIDANCE
 
     def parse_signature(self, remainder: str) -> SkeletonMember:
         # Dotted-path import inference (skeleton_types.extract_imports_and_bare_text)
@@ -68,9 +97,6 @@ class TypeScriptMaterializer:
         for test_name in entry.test_names:
             cases.append(f"test({test_name!r}, () => {{\n  throw new Error('Not implemented: {test_name}')\n}})")
         return '\n\n\n'.join(cases) + '\n'
-
-    def test_path_convention(self) -> str:
-        return 'tests/ or __tests__/ directories -- describe/it blocks with clear descriptions'
 
     def find_exported_names(self, source: str) -> frozenset[str]:
         names = set(_EXPORT_FUNCTION.findall(source))

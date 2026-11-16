@@ -10,6 +10,27 @@ from src.utils.skeleton_types import (
 )
 
 
+_AUTHORING_GUIDANCE = (
+    '- A type not built into Python (not `str`/`int`/`float`/`bool`/`bytes`/`None`, and not a'
+    ' builtin generic like `list[...]`/`dict[...]`/`tuple[...]`) MUST be written as a'
+    ' fully-qualified dotted path: `list[kb.models.BestPractice]`, not `list[BestPractice]`;'
+    ' `pathlib.Path`, not `Path`. Materialization derives the import from the dotted path and'
+    ' rewrites the annotation to the bare name; a bare non-builtin name has no import and fails'
+    ' type-checking. Only a dotted path whose last segment starts with an uppercase letter'
+    ' becomes an import.\n'
+    '- `Owner.member(<params>) -> <Result>` renders a method on a class named `Owner`.'
+    ' Materialization adds `self`, so leave it out of `<params>`. A bare'
+    ' `member(<params>) -> <Result>` renders a module-level function.\n'
+    '- `, async` renders a coroutine (`async def`); `<Result>` is the awaited result type.\n'
+    '- Example Skeleton Index entry:'
+    ' `src/kb/client.py` :: KnowledgeBase.query(text: str, limit: int) -> list[kb.models.BestPractice], async\n'
+    '- A Test List name becomes the name of a test function in the generated test module, so it'
+    ' MUST be a valid identifier that starts with `test_` (pytest node-id style), e.g.'
+    ' `tests/unit/kb/test_client.py::test_reconnects_after_timeout`. Never write a plain-sentence'
+    ' name for a Python test path: the generated module would not parse.'
+)
+
+
 def _parse_python_signature(remainder: str) -> SkeletonMember:
     bare = parse_bare_signature(remainder)
     bare_params, param_imports = extract_imports_and_bare_text(bare.params)
@@ -55,6 +76,7 @@ class PythonMaterializer:
     # by design_conformance.py's language-neutral _TEST_PATH_MARKERS -- no suffix-based
     # convention to add here.
     test_file_suffixes: tuple[str, ...] = ()
+    authoring_guidance = _AUTHORING_GUIDANCE
 
     def parse_signature(self, remainder: str) -> SkeletonMember:
         return _parse_python_signature(remainder)
@@ -88,9 +110,6 @@ class PythonMaterializer:
         for test_name in entry.test_names:
             functions.append(f'def {test_name}() -> None:\n    raise AssertionError({test_name!r})')
         return '\n\n\n'.join(functions) + '\n'
-
-    def test_path_convention(self) -> str:
-        return 'tests/ directory, mirrors src/ structure -- test_{function}_{scenario} naming'
 
     def extract_existing_signatures(self, path: Path) -> tuple[str, ...]:
         """

@@ -26,6 +26,7 @@ from src.cli.commands import (
     docker,
     frontend_preflight,
     init,
+    language_guidance,
     materialize_skeletons,
     mcp_server,
     migrate,
@@ -114,6 +115,13 @@ def main() -> int:
     )
 
     materialize_skeletons.add_arguments(materialize_skeletons_parser)
+
+    language_guidance_parser = subparsers.add_parser(
+        'language-guidance',
+        help='Print Skeleton Index authoring notes for the languages declared in stack.toml',
+    )
+
+    language_guidance.add_arguments(language_guidance_parser)
 
     check_conformance_parser = subparsers.add_parser(
         'check-conformance',
@@ -215,6 +223,8 @@ def main() -> int:
             return regenerate.run(args)
         case 'materialize-skeletons':
             return materialize_skeletons.run(args)
+        case 'language-guidance':
+            return language_guidance.run(args)
         case 'check-conformance':
             return check_conformance.run(args)
         case 'frontend-preflight':

@@ -56,13 +56,6 @@ def available_languages() -> list[str]:
     return languages
 
 
-def language_testing_convention(language: str) -> dict[str, object]:
-    """The `testing` block (framework/location/naming/extras) for one language, so
-    prompt text can name a language's test-naming convention from the same source
-    `respec-ai standards` renders, instead of a second hardcoded copy (F21)."""
-    return dict(_load_language_standards_defaults()[language]['testing'])
-
-
 def _rules_from_defaults(lang_data: dict) -> dict[str, list[str]]:
     rules: dict[str, list[str]] = {}
     for key in RULE_SECTIONS:

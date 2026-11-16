@@ -3,9 +3,12 @@ import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+from rich.markup import escape
+
 from src.cli.ui.console import print_error
 from src.utils.design_conformance import ConformanceParseError, RecordedDeviation, classify_conformance
 from src.utils.skeleton_generator import SkeletonPathEscapesProjectError
+from src.utils.skeleton_types import SkeletonIndexParseError
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -27,8 +30,8 @@ def run(args: Namespace) -> int:
 
     try:
         report = classify_conformance(project_root, skeleton_index_text, deviations)
-    except (ConformanceParseError, SkeletonPathEscapesProjectError) as e:
-        print_error(str(e))
+    except (ConformanceParseError, SkeletonPathEscapesProjectError, SkeletonIndexParseError) as e:
+        print_error(escape(str(e)))
         return 1
 
     output = {

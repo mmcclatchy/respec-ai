@@ -1,0 +1,596 @@
+# respec-ai — Cooperative phase design that produces an agent-ready brief
+
+Working design documents for reworking `/respec-phase` into a design conversation between the user
+and the LLM, whose output is an implementation brief that any agentic harness can build from.
+
+Breaking changes are in scope. The project has no users and no backward-compatibility requirement,
+so each phase replaces code in place; nothing is built alongside an old mode only to be deleted
+later.
+
+---
+
+## Start here — fresh session
+
+If you have just picked this up with no prior context, this section is your entry point.
+
+**1. Read in this order.** All paths are relative to the repository root.
+
+1. `docs/phase-cooperative/README.md`: this file. It covers the problem, the principles, the phase
+   index and the **Shared contracts**, which every phase document must follow.
+2. `docs/phase-refactor/testing.md`: **required.** It explains how to test in this codebase. This is
+   not obvious, because respec-ai generates prompts and prompts resist ordinary behavioral testing.
+   It is not duplicated here: same codebase, same conventions.
+3. `docs/phase-cooperative/findings.md`: skim it now, and come back whenever a phase document
+   asserts something surprising about the codebase. Phase documents cite findings as **F1**–**F39**
+   rather than restating the evidence.
+4. `docs/phase-cooperative/decisions.md`: read it before questioning any design choice. Three
+   decisions of the previous effort and one recorded contract are revised there, and the reasoning
+   is recorded.
+5. The phase document you are implementing.
+
+Also read `CLAUDE.md` at the repository root. Its coding standards are mandatory and override
+general defaults.
+
+`docs/phase-refactor/` (interface-first design, the human gate, skeletons) and
+`docs/frontend-refactor/` (the language seam, the UX Contract, user-elected research) are the
+**previous** efforts. Both are complete. This effort rebuilds the workflow they produced, so their
+decision logs explain much of what is kept.
+
+**2. Find out which phase to work on.** Each probe was run on 2026-11-13 and reported "not done".
+
+```bash
+# Phase 1 done?  → both hold: the guard test passes (exit 0) AND the grep prints nothing
+uv run pytest -q tests/unit/templates/test_phase_language_neutrality.py
+grep -n -i -E "python|typescript|\.tsx|jsx" src/platform/templates/phase_contract_grammar.py
+# Phase 2 done?  → both print nothing (grep -L lists each file still missing the report contract;
+#                  the second grep prints each removed mechanism still present)
+grep -L "## Decisions needed" src/platform/templates/agents/phase_architect.py src/platform/templates/agents/phase_critic.py src/platform/templates/commands/phase_command.py
+grep -n -E 'post_synthesis|AUTO_API_PROMPTS|phase_mode == "shape"|Task\(bp\)|--no-verify' src/platform/templates/commands/phase_command.py src/platform/templates/agents/phase_architect.py src/platform/templates/agents/phase_critic.py src/platform/template_helpers.py src/platform/models/phase.py
+# Phase 3 done?  → output means done (the MCP checks AND their wiring into the command)
+grep -q "async def validate(" src/mcp/tools/phase_tools.py && grep -n "structural_findings" src/platform/templates/commands/phase_command.py
+# Phase 4 done?  → output means done (the finalizer AND the Claude Code handoff, which lands last)
+test -f src/platform/templates/agents/phase_finalizer.py && grep -n "def brief_handoff_extension" src/platform/tui_adapters/claude_code.py
+```
+
+Each probe is the phase document's own "Already done?" check. A phase is done only when every line
+of its probe agrees, so a partly landed phase never reads as done. On 2026-11-13 the phase 2 residue
+grep printed 35 lines, and the phase 3 and phase 4 lines printed nothing.
+
+Work the lowest-numbered incomplete phase, respecting the dependencies in the phase table below.
+
+**3. Line numbers may be stale.** Every `file:line` reference in these documents was verified at
+design time, but the codebase moves. Before acting on a reference, open it and confirm it says what
+the document claims. If it does not, search for the symbol instead, and correct the reference in
+the document as part of your change. These documents are meant to be maintained, not archived.
+Paths that start with `~/` are outside the repository; they belong to the best-practices-rag
+installation.
+
+**4. Working agreement.**
+
+- Test-first, always. Each phase document opens with *Behaviors to pin*. Write those tests, run them,
+  confirm they fail for the right reason, and only then implement.
+- Tests pin behavior, not implementation. See `docs/phase-refactor/testing.md` for the
+  discriminating question.
+- Do not start a phase whose predecessor is incomplete.
+- Do not expand a phase's scope. Each has an explicit *Out of scope* section; if something seems
+  missing, it is probably assigned to a later phase on purpose. Log out-of-scope defects in
+  [deferred-issues.md](deferred-issues.md).
+- Commit per the `CLAUDE.md` convention: conventional-commit style, no attribution lines.
+
+**5. If something in a phase document is wrong or ambiguous,** fix the document as part of the work.
+A stale design document is worse than none, and the next session inherits whatever you leave.
+
+---
+
+## The problem
+
+The previous effort added a human in the loop on top of an automated architect↔critic loop. That
+first pass was never exercised end to end, and it grew to:
+- two acts, each with its own loop and critic mode
+- about ten kinds of human stop
+- a 1,833-line orchestrator (`src/platform/templates/commands/phase_command.py`)
+- a 90-point scoring loop that runs after the human is done
+
+It also has correctness bugs:
+- **F1:** "Accept current quality" in Step 16 cannot exit.
+- **F2:** the first send-back is probably lost, because the architect reads feedback through a tool
+  it does not hold.
+- **F3:** `shape-amended` is overloaded. It means both "re-shape in progress" and "settled".
+- **F4:** every agent write overwrites the stage marker.
+- **F5:** `implementation.md` is approved before the detail act writes the content it orders.
+
+Three structural problems sit underneath the bugs:
+- **The critic grades the document against a template, not against whether an agent can build from
+  it.** It penalizes the file paths and test IDs the design layer requires (F6, F7), and makes
+  research mandatory (F8).
+- **The workflow is language-biased throughout.** The shared grammar, the architect and the critic
+  name Python, TypeScript, pytest, npm, React and JSX, and render a hardcoded
+  `('python', 'typescript')` loop (F20–F22).
+- **Research never had a working invocation.** `Task(bp)` names nothing that can run on any of the
+  three TUIs (F15).
+
+The strategic picture has also shifted. respec-code is likely outdated: modern harnesses already
+orchestrate subagents, task lists and verification. respec-ai's lasting value is upstream, in the
+plan and the phase design. So the phase output should no longer be respec-code's private input
+contract.
+
+## The outcome
+
+The phase workflow becomes a design conversation with **at most three human touchpoints** on the
+happy path:
+
+1. **Briefing.** The architect explores first: the plan and its constraints, the existing code, and
+   local KB lookups. The user then hears what exists to build on, an approach sketch, and the top
+   decisions with recommendations. They approve, deny or edit proposed research.
+2. **Design review.** The user sees the design and build order that the critic has already
+   reviewed. Mechanical issues are already fixed. The critic's judgment calls arrive as questions.
+   The user says what to change, or edits `phase.md` directly, until they are happy.
+3. **Sign-off.** The user answers any queued questions. Then the workflow writes `phase.md` and
+   `implementation.md`, materializes skeletons (create-only), offers a commit, and shows a handoff
+   for the user's harness.
+
+The output is an **agent-ready brief**:
+- `phase.md` holds what to build and why: grounding, design, decisions with rejected alternatives,
+  delegation bounds, behaviors and guardrails.
+- `implementation.md` holds how, and in what order: steps written as self-contained delegation
+  briefs, with dependencies, test IDs and verify commands taken from project config.
+
+Every item carries an ID, so a harness can build subagent briefs by citing IDs instead of copying
+prose.
+
+## Guiding principles
+
+**The user shapes; the LLM drafts.** The user's input arrives as decisions and reactions in
+conversation, not as edits to a document a parser can break. Hand edits remain possible, and they
+are validated and reconciled.
+
+**Bring a point of view.** Never ask for a decision without showing the sketch it applies to, the
+options with their trade-offs, and a recommendation.
+
+**Ground the design before asking anything.** The plan constraints, the existing codebase and any
+research are read before the first question.
+
+**Checks stay invisible unless a human is needed.** Structural problems and mechanical critic
+findings are fixed before the user sees anything. Only judgment calls reach the user.
+
+**Only the orchestrator talks to the user.** This is not a style choice. Subagents cannot ask the
+user anything (F10). They return questions as data.
+
+**Write for a cold-start implementer.** A fresh agent with only the brief and the repository must
+be able to execute any step without guessing.
+
+**Zero language bias.** No workflow text names a language, framework, test runner or file
+extension. Language specifics arrive at runtime, from the target project's config, and only for
+that project's languages. The MCP server and CLI being written in Python is irrelevant.
+
+## Phases
+
+Four phases. Each one leaves the system working end to end. The new user experience lands in
+phase 2. Each phase has its own document, linked in the first column.
+
+| # | Phase | Delivers | Depends on |
+|---|---|---|---|
+| [1](phase-1-language-neutral.md) | Language-neutral foundation | Neutral grammar placeholders that keep the meta-notation (F24). Runtime language guidance: standards TOMLs plus materializer authoring notes, injected only for the project's languages. The verify-command fallback (empty, `TODO` or `no_preference` means ask; F25). Malformed Skeleton Index lines reported cleanly instead of as tracebacks. The denylist guard test, with the biased tests inverted (F23). | — |
+| [2](phase-2-cooperative-flow.md) | Cooperative flow | The architect's `explore`/`draft`/`revise` modes and the critic's `review` mode, all returning the fixed report. The rewritten orchestrator implementing the relay protocol: briefing, then research approval, then approved `bp-pipeline` runs only, then draft, critic, review loop, sign-off and materialize. The orchestrator-owned stage marker with its storage rule (F4). The respec-code gate edit. Guard tests. Removes the two acts, the FSDD rubric, Step 16, automatic API research and the post-synthesis critic. Trims `create_phase`. | 1 |
+| [3](phase-3-structural-checks.md) | Structural checks in `validate_document` | Pure, unit-tested structural checks behind a `PhaseTools.validate` override, reported separately from content loss (F29), covering `additional_sections` (F27). Wired into the draft step, so mechanical issues are fixed before the user sees them. The MCP-side checks can be built in parallel with phase 2; the wiring needs phase 2. | 1 (MCP side), 2 (wiring) |
+| [4](phase-4-agent-ready-brief.md) | Agent-ready brief format | The fixed-H2 brief sections. Step delegation briefs in `implementation.md`. The `respec-phase-finalizer` agent and the critic's cold-start check. The structural checks for the new fields. The TUI-tiered handoff. Stops generating the old detail fields, folding their content into the new sections, while keeping the frozen-reader contracts. | 2, 3 |
+
+**Why this order.**
+- **Phase 1 is small and makes everything written afterwards neutral by construction.** The phase 2
+  rewrite then cannot reintroduce bias without turning the guard red.
+- **Phase 2 is the user-visible change.** It runs on the current sections, so it can ship and be used
+  before the brief format changes.
+- **Phase 3 comes before phase 4.** Phase 4's new fields need somewhere to be checked, and its
+  finalizer needs checks to repair against.
+
+## Per-phase exit criteria
+
+Every phase is done when all of the following hold:
+
+- Every behavior in its *Behaviors to pin* list has a test that was observed failing first.
+- `uv run pytest` is green. The baseline on 2026-11-13 was 1671 passed, 84 skipped.
+- `uv run respec-ai regenerate --force --tui all` completes with no per-TUI failure in a scratch
+  project, and the written artifacts are valid for claude-code, opencode and codex.
+  - `--force` is required because regeneration is version-gated (`src/cli/commands/regenerate.py:117-120`).
+  - `--tui all` is required because `auto` regenerates only TUIs that already have artifacts
+    (`:203-221`).
+  - opencode and codex must have model tiers configured first (`respec-ai models opencode`,
+    `respec-ai models codex`), or rendering raises (F37).
+- The phase's guard tests pass on all three TUIs. Each guard also has a negative self-test that feeds
+  it a synthetic violating template, so it is proven to fire. Several guards would otherwise pass on
+  day one with no red step.
+- From phase 2 on, a real phase runs end to end on a scratch project, with at most three happy-path
+  touchpoints counted.
+- The manual checks in the phase document pass. Some properties, design quality and brief usability
+  above all, are not machine-checkable and must be judged by a person.
+
+The effort as a whole is verified at the end of phase 4:
+- Run real phases on scratch projects in two languages respec-ai has no special support for (for
+  example Go and Elixir), plus one that has a materializer.
+- Hand each resulting brief to a fresh Claude Code session, and confirm it implements the steps with
+  no clarifying guesses.
+
+Testing method: `docs/phase-refactor/testing.md` ("assert the contract, not the prose"). Render
+helpers parametrized over all three adapters are the pattern there. Agent-level tests must build
+`CodexAdapter` and `OpenCodeAdapter` with `model_overrides` to stay hermetic (F37).
+
+---
+
+## Shared contracts
+
+Every phase document follows these contracts. A phase that needs to change one changes it **here
+first**, in the same commit, and says so.
+
+**Pending amendments.** Each phase document lists the changes it makes to this section: phase 1
+item 10, phase 2 work item 13, phase 3 work item 10 and phase 4 Scope 0. They land here in the same
+commit as the code that needs them, so until a phase lands, this section still shows the earlier
+text. Where this section and the phase document you are implementing disagree about that phase's
+own work, the phase document describes the target.
+
+### Agents and modes
+
+| Agent | `phase_mode` values | Persists | Granted, beyond today |
+|---|---|---|---|
+| `respec-phase-architect` | `explore`, `draft`, `revise` | `phase.md` content via `update_document`; exploration notes via `store_current_analysis`; the `implementation.md` draft via a `Write` grant scoped to `.respec-ai/plans/*/phases/*/implementation.md` | `store_current_analysis`, `get_previous_analysis` (today only plan-workflow agents hold them: `src/platform/models/plan.py:19-20`) |
+| `respec-phase-critic` | `review` | critic feedback via the existing store tool | — (read-only; on opencode and codex this is also stated in the prompt, F14) |
+| `respec-phase-finalizer` (phase 4) | — (one job) | `phase.md` via `update_document`; `implementation.md` via the same scoped `Write` | as the architect |
+
+- **Inputs.** Agents are invoked with their mode, IDs (`loop_id`, `plan_name`, `phase_name`) and the
+  runtime config context (`project_config_context_markdown`). The critic also receives
+  `review_round` (see "Critic findings"). Never pass conversation text, the briefing, or document
+  bodies.
+- **Reports never carry document bodies.** `implementation.md` has no MCP home (F29), which is why
+  the agents write it to disk themselves. This grant is an open call, recorded with its opencode and
+  codex caveat in decisions.md ("The writing agents put the `implementation.md` draft on disk
+  themselves").
+- **Mode names are user-visible on opencode.** The invocation description is prompt text there
+  (`opencode.py:203-224`), so it states the mode accurately and names no language.
+
+### Subagent report format
+
+The final message of every `respec-phase-*` subagent consists of exactly these four H2 sections, in
+this order. Nothing precedes the first one.
+
+```markdown
+## For the user
+## Decisions needed
+## Research proposals
+## Status
+```
+
+- **Empty sections are present and contain exactly `- None`.** They are never omitted, so the
+  orchestrator and the tests can check structure without guessing.
+- **`## For the user`** is markdown the orchestrator shows to the user as written: a briefing, a
+  design summary, or a diff summary. It contains no questions; questions go in
+  `## Decisions needed`. It holds summaries, never document bodies. H3 subheadings are allowed.
+- **`## Decisions needed`** holds decision entries in the canonical format below, ranked by blast
+  radius, highest first.
+- **`## Research proposals`** holds research proposal entries in the format below, ranked by value.
+- **`## Status`** holds these bullets, in this order:
+
+  ```markdown
+  - result: complete | needs-user | failed
+  - mode: explore | draft | revise | review | finalize
+  - persisted: <what was written, e.g. "phase document updated; analysis stored"> | nothing
+  - detail: <one line; required when result is failed>
+  ```
+
+  The orchestrator branches on `result`. A `failed` result stops the workflow with the detail shown
+  (fail-closed).
+
+**Decision entry (canonical).** There is one form. The single-line form parsed today at
+`phase_command.py:545-546` is retired. This form is the nested one the architect already emits
+(`phase_architect.py:519-524`), plus `Affects`:
+
+```markdown
+- OD-003 | <title>
+  - Option A: <name> — <trade-off>
+  - Option B: <name> — <trade-off>
+  - Recommended: A — <why>
+  - Affects: <seam paths, module paths, step numbers, or other IDs>
+```
+
+- **IDs.** The architect's entries use `OD-NNN`. The same ID and text also sit in the document's
+  `### Open Design Decisions`, and the document wins on any mismatch. The critic's judgment questions
+  use `CQ-NNN` and exist only in its report.
+- **Options.** `Option C:` is optional; there is no fourth option. That keeps every question
+  answerable in one prompt that also offers the "accept the recommended default for all remaining"
+  exit.
+- **Validation.** The critic blocks an entry missing its title, Option A, Option B or Recommended
+  (today's rule: `phase_critic.py:290-297`). No Python parses these entries (F35).
+
+**Settled decision entry**, written by the orchestrator only:
+
+```markdown
+- SD-007 | source=user | supersedes=OD-003 | decision=<chosen option> | rationale=<user's reason, or the option's trade-off> | rejected=<the other option(s)> | binding=yes
+```
+
+- **`source` values:**
+  - `user`: an answer to a prompt
+  - `user-edit`: from diffing a hand edit
+  - `architect`: carried forward
+  - `implementation`: written back by frozen respec-code (`src/utils/design_conformance.py:287`)
+- **`supersedes`** names the `OD-NNN` or `CQ-NNN` it settles.
+- **Placement.** SD entries go under `### Settled Design Decisions`, and the settled OD is removed
+  from `### Open Design Decisions`.
+
+**Research proposal entry:**
+
+```markdown
+- RP-002 | <question it answers> | informs: OD-003, `<module path>` | Technologies: <a, b>; Topics: <x, y>; Query: <query> | tier: synthesis-only
+```
+
+- **`tier`** is exactly one of:
+  - `in-kb:<path>`: an existing `.best-practices/` document. It costs nothing and is listed as "will
+    use".
+  - `synthesis-only`: KB full coverage. `bp-pipeline` synthesizes only: no web search, no KB write.
+  - `web-research`: a partial or full gap. Exa and context7 run, and the result is written to the
+    global KB.
+- **Tier source.** The architect assigns the tier in `explore`, from local, read-only commands only:
+  `generate-slug`, then `check-file-cache` **without** `--model` (F17), then `query-kb`.
+- **When the KB is unavailable,** the architect says so in `## For the user` and proposes nothing on
+  that basis. There is no "synthesize everything" fallback (F19).
+- **Ranking.** Proposals are capped and ranked, and each one names what it informs. The phase 2
+  document sets the cap.
+
+### Relay protocol
+
+The protocol is the same at every touchpoint. The critic follows the same pattern as the architect.
+
+1. **Invoke.** The orchestrator invokes the subagent with its mode, IDs and config context, and
+   nothing else (see "Agents and modes").
+2. **Work and persist.** The subagent works in its own context. Before returning, it persists
+   everything it changed:
+   - The document goes to MCP via `update_document`.
+   - Exploration notes go via `store_current_analysis`. That is one slot per loop that each write
+     overwrites (F31), so every write is the **complete** notes, never a delta.
+3. **Return the report** in the format above.
+4. **Present.** The orchestrator shows `## For the user`, then asks each `## Decisions needed` and
+   `## Research proposals` entry through the TUI's selection mechanism
+   (`{selection_prompt_instructions}` / `WAIT for {selection_response_source}`; F12).
+   - **Portable core:** one question per prompt. A research proposal is one question: approve, deny
+     or edit.
+   - **Claude Code extension:** questions are batched into one `AskUserQuestion` call, up to four per
+     call. The limit of four comes from the tool's own schema; the public docs do not state it, so
+     confirm it against the live tool definition when implementing.
+   - **Briefing pacing** follows plan-conversation: one or two questions per message, and free-form
+     pushback is welcome. The orchestrator holds the free-form conversation itself, from the report
+     in its context.
+   - **A user question that needs new codebase knowledge** is stored as feedback (step 5) and
+     relayed to the architect in its current mode. The answer comes back in `## For the user`.
+5. **Record.** The orchestrator records outcomes deterministically, **only from actual user
+   responses**. A subagent's report carries no approval authority (F10).
+   - Decisions become SD entries, written by the orchestrator into the document with
+     `store_document`.
+   - Research choices are marked on the RP line: `[approved]`, `[declined]`, or `[approved]` after an
+     edit, with the line rewritten. A user-added proposal gets the next RP ID, with
+     `source=user` appended.
+   - Free-form direction goes through `store_user_feedback`, prefixed with a round tag:
+     `[round N | briefing|review|sign-off|question]`. `get_feedback` returns every entry, untagged
+     and unbounded (F31). The tag lets the architect apply only what is new.
+   - User hand edits of `phase.md` keep today's path: re-read, `validate_document` for content loss
+     (shown to the user, because they are the user's own edits), diff into `source=user-edit` SDs,
+     store.
+6. **Re-engage.**
+   - **Claude Code extension:** `SendMessage` resumes the same architect, with its exploration
+     intact. It resumes in the background, with its original tool set (F10), and the orchestrator
+     waits for its report. This sits behind a new `BuiltInToolCapability` that maps to `None` on
+     opencode and codex (F13).
+   - **Portable core:** a fresh invocation with the same mode and IDs. The architect rehydrates from
+     `get_document`, `get_previous_analysis` and `get_feedback`.
+   - **Either way,** the architect re-reads the document and **always** calls `get_feedback` before
+     changing anything (F2; decisions.md "The architect always fetches feedback"). Its memory is
+     never the source of truth for the document, because the orchestrator writes SDs and research
+     marks between engagements.
+
+### Stage marker
+
+The marker is `## Metadata > ### Shape Gate`. It reuses the `ShapeGate` values, and the existing
+CHECK constraint already allows all four (`migrations/028_v2_design_layer.sql:14-16`).
+
+| Value | Means | Written by the orchestrator when |
+|---|---|---|
+| `unshaped` | No design exists | never; set by create-phase or a roadmap re-store |
+| `shape-proposed` | A draft exists and is in review | the first draft is persisted |
+| `shape-settled` | Signed off by the user | sign-off, always, including after a re-open |
+| `shape-amended` | A settled phase deliberately re-opened by the user | the user chooses to re-open a `shape-settled` phase |
+
+- **Only the orchestrator writes it.** The storage layer enforces this. `update_phase`, the agent
+  write path through `update_document`, preserves the live row's `shape_gate`, exactly as it
+  preserves frozen fields. `store_document`, the orchestrator path and the disk sync, writes it (F4).
+- **Resume:**
+  - `unshaped`: explore and briefing. Decisions already settled are not asked again.
+  - `shape-proposed` or `shape-amended`: design review, from the on-disk draft.
+  - `shape-settled`: offer to re-open, or show the handoff.
+- **The draft is on disk.** The orchestrator writes the draft to disk on every review iteration, so
+  the disk→MCP sync at the start of a re-run never clobbers newer work.
+- **No version comparisons.** No gate compares `Phase.version`, because every write bumps it (F30).
+
+### Research recording
+
+Phases 2 and 3 work on the current sections:
+- **The ledger** lives in `## Additional Details > ### Research Requirements`. That section exists for
+  every phase, and frozen respec-code reads it (`src/platform/templates/agents/coder_contracts.py:234`). It holds:
+  - every RP line, with its `[approved]` or `[declined]` mark
+  - one `` - Read: `.best-practices/<file>.md` — informs: <IDs> — Source: <RP-NNN | in-kb> `` line
+    per document in use
+- **The UI-only `#### Design Research` block is retired** (`phase_command.py:476-520` today). It
+  covered UI phases only. Its idempotence semantics carry over unchanged: a `[declined]` proposal is
+  never re-offered, and only a genuinely new gap is offered, once.
+- **Results become `- Read:` lines.** The orchestrator writes `- Read:` lines only after validating
+  `bp-pipeline`'s `BP_PIPELINE_COMPLETE. Output: <path>` signal and confirming the file exists.
+
+Phase 4:
+- **The agent-facing copy** moves to `## Grounding > ### Research to read`. Each document there is
+  tagged with the decision, seam and step IDs it informs.
+- **The ledger stays in `### Research Requirements`.** The orchestrator keeps writing the `- Read:`
+  lines there as well, from the same validated list. That costs nothing, keeps frozen readers fed
+  (F34), and lets phase 4's checks flag any disagreement between the two copies.
+
+### Critic findings
+
+- **Every finding starts with a classification tag.** `[mechanical]` or `[judgment]` comes first,
+  before any existing marker, for example
+  `- [mechanical] [Skeleton Index Module Mismatch - BLOCKING]: …`.
+- **`[mechanical]` findings.** These have exactly one correct fix that needs no user preference.
+  Examples:
+  - a structural defect
+  - a missing field
+  - a dangling ID
+  - a seam path missing from Module Layout
+  - a malformed decision entry
+  - a Test List entry with no behavior
+  - a step without a verify command
+  - a step that a cold-start agent cannot execute because something it cites does not exist
+
+  They go in `### Blockers`. The architect fixes them in `revise` mode, and the user is not told.
+  The orchestrator allows **at most two automatic repair rounds** per review. Anything still open
+  after round two goes to the user as one "unresolved checks" decision: send back with direction,
+  or accept as-is, recorded as an SD. It is never dropped silently and never loops forever.
+- **`[judgment]` findings.** These are trade-offs where a reasonable designer could choose
+  otherwise. Examples:
+  - an unjustified seam
+  - an under-surfaced decision
+  - non-divergent options
+  - plan-constraint fit
+
+  They go in `### Key Issues`, and also in the report's `## Decisions needed` as `CQ-NNN` entries.
+  Option A is "keep as designed"; Option B is the critic's alternative. They never block the loop.
+  Sign-off requires every `CQ` to be answered, or the recommended default accepted.
+- **The critic never edits the document.** A finding that an SD has settled (`supersedes=CQ-NNN`) is
+  never raised again.
+- **Score rule.** `Overall Score` is 100 when `### Blockers` is empty, and 0 otherwise. There is no
+  other scoring (F7, F9). Loop completion, still read through `decide_loop_next_action` as the
+  fail-closed check, therefore means "no open mechanical findings".
+- **Iteration rule.** The orchestrator passes `review_round`, starting at 1 and incremented on every
+  critic invocation in the loop, and the critic stores its feedback with `iteration = review_round`.
+  The current `get_loop_status().iteration + 1` rule reports the same number on every run, so each
+  run replaces the last (F9).
+
+### bp invocation per TUI
+
+These sources are verified (F15–F18):
+- `~/.config/best-practices-rag/references/bp-pipeline-interface.md:5`
+- `~/.claude/commands/bp.md:137-157`
+- `~/.claude/agents/bp-pipeline.md:1-7`
+- `~/.config/opencode/opencode.json:5-27`
+- `~/.codex/agents/bp-pipeline.toml:1-4`
+
+The orchestrator dispatches **`bp-pipeline`** directly. It never uses `bp`, `Task(bp)`, `Skill(bp)`
+or `$bp`.
+
+| TUI | Grant | Invocation | Status |
+|---|---|---|---|
+| Claude Code | `Task(bp-pipeline)` in the command's allowed tools | the Task/Agent tool with subagent type `bp-pipeline`; the interface fields form the prompt | Verified. The orchestrator guardrail must name `bp-pipeline` as an allowed exception (F18). |
+| opencode | `Task(bp-pipeline)`, which becomes `permission.task: {"*": "deny", …, "bp-pipeline": "allow"}` (`opencode.py:282-283`) | `CALL task` with `subagent_type: "bp-pipeline"` | **Unverified:** whether a `"hidden": true` subagent can be dispatched by name, and whether the installed opencode honors the `permission.task` map. This is a phase 2 manual check, done before the opencode path is relied on. |
+| codex | none enforceable (`Allowed tools:` is prose; F14) | spawn the custom agent `bp-pipeline` by its exact name | Verified. The adapter's helper renames agents to `respec-<x>-agent` (`codex.py:369-375`), so it needs a render path for external agents. |
+
+Rules for every TUI:
+- **The call text is adapter-rendered.** A new adapter method renders an external, non-respec agent
+  invocation with the exact name, so the template stays TUI-neutral. `phase_command.py:92-93` must
+  stop hardcoding `Task(bp):`.
+- **The preflight is real.** `best-practices-rag check --tui <tui>` runs through Bash, the check
+  `src/cli/services/best_practices_preflight.py:24` already uses. It replaces the grant-string
+  tautology at `phase_command.py:78`. Whether `check` also confirms that the `bp-pipeline` agent is
+  installed is unverified; phase 2 confirms it or adds a check. If bp is unavailable, the workflow
+  degrades: it continues without research and tells the user. It never terminates.
+- **The orchestrator computes bp-pipeline's inputs at dispatch time.** This is bp's own split: *"Steps
+  1-4 run in the main session and produce scalar parameters"* (`~/.claude/commands/bp.md:23`). The
+  inputs come from each approved proposal's Technologies, Topics and Query, using local commands
+  only:
+  - `OUTPUT_FILE` from `generate-slug`
+  - `TECH_VERSIONS_JSON` and `CUTOFF_DATE` from `~/.config/best-practices-rag/references/tech-versions.md`
+  - `PRIMARY_QUERY`
+  - coverage fields from `query-kb`
+  - `MODE: codegen`
+  - `LANGUAGES` or `LANGUAGE_AGNOSTIC` from the project's declared languages in `stack.toml`, never
+    from template text
+
+  An edited or user-added proposal gets its tier recomputed the same way. If the tier rose, the user
+  confirms it again before anything runs.
+- **Concurrency.** `synthesis-only` items run with at most 3 parallel workers, as today
+  (`phase_command.py:71`). `web-research` items run **one at a time**, because `bp-pipeline` writes
+  Exa results to fixed `/tmp` paths (F17).
+- **Completion.** Accept only a result that contains `BP_PIPELINE_COMPLETE. Output: <path>` and
+  whose file exists. Anything else fails that item and records nothing.
+- **The cost invariant is a guard test.** On the path where the user denies everything, no
+  `bp-pipeline` invocation is reachable.
+
+### Section naming and frozen-reader compatibility
+
+- **H2 naming.** A new H2 name must neither contain nor be contained in any other H2 name, typed or
+  additional. `tests/unit/templates/test_phase_section_references.py:92-101` guards this for template
+  sections; extend it to every new H2. Names fixed for phase 4: `Grounding`, `Guardrails`,
+  `Delegation Bounds`, `Behaviors & Acceptance` (decisions.md). Also reserved: `Evolution Log`
+  (respec-patch).
+- **Prose hygiene.** Brief prose contains no bare `---` line, and no `## ` or `### ` line inside a
+  fenced block (F27).
+- **No new H3s under mapped H2s.** New H3s under mapped H2s (`Overview`, `System Design`,
+  `Design Shape`, `Design Decisions`, `Implementation`, `Additional Details`) are dropped (F28).
+- **Frozen-reader compatibility.** Every phase keeps emitting the following, because frozen
+  respec-code and respec-patch parse them (F33, F34):
+  - `phase.md`:
+    - `# Phase: <kebab-case>`, with `## Overview` first
+    - `## Design Shape` with `### Module Layout`, `### Skeleton Index` (meta-notation, F24),
+      `### Collaboration And Wiring`, `### Test List` (`` - `path::behavior` ``) and
+      `### Design Shape - Additional Sections` (home of `#### UX Contract`)
+    - `## Design Decisions > ### Settled Design Decisions`
+    - `## Additional Details > ### Success Criteria`, covering every objective, scope item and
+      deliverable
+    - `### Implementation Plan References` with `` - Constraint: `<path>` `` lines
+    - `### Research Requirements` with `- Read:` lines
+    - `### Shape Gate` = `shape-settled` at sign-off
+  - `implementation.md`, at `.respec-ai/plans/<plan>/phases/<phase>/implementation.md`:
+    - `## Build Order > ### Steps > #### Step N:` with integer N, each step naming the file paths it
+      touches
+    - `## Checklist` with `- [ ] <item> (Step N) (verify: <command from [commands].test>)` items.
+      A Step whose files belong to several languages carries one `(verify: …)` per language.
+      - The command is the `[commands].test` value of the language that owns the Step's files,
+        never a hardcoded or remembered one.
+      - The only permitted non-command verify value is this marker, written verbatim with the
+        language's name (phase 1, item 7):
+        `(verify: ask user — no test command configured for <language>; set [commands].test in .respec-ai/config/standards/<language>.toml)`
+      - The architect writes the marker when that language has no standards TOML, or its
+        `[commands].test` is empty, starts with `TODO` (in any case, optionally bracketed), or is
+        `no_preference` (F25).
+      - Phase 1's B12 test (`tests/unit/templates/test_phase_runtime_language_config.py`) pins
+        the `(verify: ask user` substring. Phase 2's briefing raises the missing command as a
+        decision, and phase 3's structural checks accept the marker as a valid verify value.
+    - `## Policy` (`### Execution Intent Policy`, `### Deferred Risk Register`)
+
+  Phase 4's "Start here" and "Exit criteria" sections are **added** as extra H2s; they do not
+  replace these.
+
+---
+
+## Supporting documents
+
+- **[findings.md](findings.md):** 39 verified findings with `file:line` evidence. This is the
+  perishable asset. Treat it as the reference whenever a phase document seems to assume something
+  surprising.
+- **[decisions.md](decisions.md):** the decision log, with rejected alternatives and rationale. It
+  includes three revised decisions of the previous effort and one revised contract. Read it before
+  re-opening a settled question.
+- **[deferred-issues.md](deferred-issues.md):** small, real issues found while implementing a phase
+  and deliberately left for later. Check it when starting a phase, and add to it instead of letting
+  the phase you're on grow in scope.
+- **`docs/phase-refactor/testing.md`:** the testing method. Required reading.
+
+## Cross-cutting risks
+
+1. **Brief quality is the whole feature.** If the architect drafts speculative abstraction and the
+   user signs it off, the brief makes implementing agents *worse*. It is mitigated by the critic's
+   judgment checks, its cold-start check (phase 4), and a person reviewing the first real runs.
+   Prompts drift, so treat this as ongoing.
+2. **The stage-marker storage rule** (phase 2, F4). If `update_phase` stops preserving
+   `shape_gate`, an agent can silently mark an unapproved draft as settled.
+3. **opencode research dispatch is unverified** (F15, and the bp table above). Do not assume parity
+   until the manual check passes. The rule is TUI tiering, never capping Claude Code to match.
+4. **Parser traps in new sections** (F27). Substring matching, `---` truncation and the missing
+   detection for additional sections are silent. Phase 3's checks are the mitigation, so do not
+   ship phase 4's sections before them.
+5. **Upstream best-practices-rag defects** (F17). The cache-model mismatch and the fixed `/tmp` paths
+   are worked around, not fixed. Report them upstream, and re-check the workarounds when
+   best-practices-rag is upgraded.
+6. **Least privilege is Claude-Code-only** (F14). Read-only and path-scoped guarantees on opencode
+   and codex rest on prompt text.

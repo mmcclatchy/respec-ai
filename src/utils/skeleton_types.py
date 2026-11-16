@@ -13,6 +13,10 @@ _SIGNATURE = re.compile(
 _QUALIFIED_TYPE_REF = re.compile(r'\b(?:[a-zA-Z_]\w*\.)+([A-Z]\w*)\b')
 
 
+class SkeletonIndexParseError(ValueError):
+    pass
+
+
 @dataclass(frozen=True)
 class SkeletonMember:
     class_name: str | None
@@ -75,7 +79,7 @@ def parse_bare_signature(remainder: str) -> SkeletonMember:
     """
     match = _SIGNATURE.match(remainder)
     if not match:
-        raise ValueError(f'Unparseable Skeleton Index signature: {remainder!r}')
+        raise SkeletonIndexParseError(f'Unparseable Skeleton Index signature: {remainder!r}')
     return SkeletonMember(
         class_name=match.group('class_name'),
         member_name=match.group('member_name'),

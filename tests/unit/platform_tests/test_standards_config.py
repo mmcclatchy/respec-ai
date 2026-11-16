@@ -6,7 +6,6 @@ from src.platform.models import LanguageStackProfile, LanguageTooling, ProjectSt
 from src.platform.standards_config import (
     available_languages,
     build_language_defaults,
-    language_testing_convention,
     render_language_toml,
     render_stack_toml,
     resolve_languages_for_paths,
@@ -14,15 +13,6 @@ from src.platform.standards_config import (
     write_project_config_files,
 )
 from src.platform.tooling_defaults import apply_stack_to_tooling, detect_project_stack, detect_project_tooling
-
-
-def test_language_testing_convention_returns_typescripts_own_naming_not_pythons() -> None:
-    python_convention = language_testing_convention('python')
-    typescript_convention = language_testing_convention('typescript')
-
-    assert python_convention['naming'] == 'test_{function}_{scenario}'
-    assert typescript_convention['naming'] == 'describe/it blocks with clear descriptions'
-    assert python_convention['location'] != typescript_convention['location']
 
 
 def test_write_project_config_files_creates_canonical_toml(tmp_path: Path) -> None:

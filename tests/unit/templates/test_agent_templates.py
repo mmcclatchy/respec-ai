@@ -33,8 +33,6 @@ from src.platform.templates.agents import (
     generate_roadmap_template,
 )
 
-
-from src.platform.standards_config import language_testing_convention
 from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
 
 
@@ -844,30 +842,6 @@ class TestTemplateConsistency:
         assert 'Verify Implementation Plan Reference Semantic Application' in template
         assert 'Citation-only preservation is insufficient' in template
         assert 'Implementation Plan Reference Not Applied - BLOCKING' in template
-
-    def test_phase_architect_template_emits_a_typescript_signature_grammar_alongside_python(self) -> None:
-        # Phase 2 (B2/B4): the entry-format spec must branch per language, not describe
-        # Python only -- a Python+React phase needs both grammars in the same prompt.
-        architect_tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(architect_tools)
-
-        assert '```typescript' in template
-        assert 'TypeScript import specifiers are relative paths' in template
-        assert 'Component entries' in template
-        assert 'Do NOT carry JSX structure, styling, internal helpers' in template
-
-    def test_phase_architect_template_derives_test_naming_from_language_standards_json(self) -> None:
-        # B3: TypeScript test naming ("describe/it blocks with clear descriptions")
-        # must reach the prompt, and it must be rendered from language_standards.json
-        # (F21) rather than a second hand-maintained copy.
-
-        architect_tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(architect_tools)
-
-        # The testing block is heterogeneous (naming/location are str, extras is a
-        # list), so it is typed dict[str, object]; narrow the two string fields here.
-        assert str(language_testing_convention('typescript')['naming']) in template
-        assert str(language_testing_convention('python')['naming']) in template
 
     def test_phase_architect_template_requires_config_derived_verify_commands(self) -> None:
         # B5: Checklist verify commands must come from the Step's language config, not

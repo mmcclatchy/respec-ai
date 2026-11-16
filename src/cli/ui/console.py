@@ -9,7 +9,7 @@ def print_success(message: str) -> None:
 
 
 def print_error(message: str) -> None:
-    console.print(f'[red]✗[/red] {message}')
+    console.print(f'[red]✗[/red] {message}', emoji=False)
 
 
 def print_warning(message: str) -> None:

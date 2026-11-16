@@ -310,7 +310,7 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 **Important**:
 - PLAN_NAME identifies which strategic plan to use for context
 - PHASE_NAME_PARTIAL is the user input (e.g., "phase-2a")
-- PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-neo4j-schema-and-llama-index-integration")
+- PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-storage-schema-and-query-translation-integration")
 - PLAN_NAME from config is used for all MCP storage operations
 - OPTIONAL_INSTRUCTIONS provides only the clarified guidance that remains after phase resolution
 - WORKFLOW_GUIDANCE_MARKDOWN passes clarified guidance document paths and instructions to phase agents
@@ -412,6 +412,14 @@ STACK_CONFIG = Read(.respec-ai/config/stack.toml) if file exists, else ""
 LANGUAGE_CONFIGS = For each file in LANGUAGE_TOML_FILES:
   Read(file) — concatenated content
 
+RUN (Bash): respec-ai language-guidance
+IF command exit code == 0:
+  LANGUAGE_AUTHORING_NOTES = command output
+ELSE:
+  LANGUAGE_AUTHORING_NOTES = "Language authoring notes unavailable ([first line of command output]).
+    Write Skeleton Index entries in the notation the phase template shows."
+  Do NOT terminate the workflow. Continue with the compose block below.
+
 PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   ## Project Config Context
   ### Stack Config TOML
@@ -422,6 +430,8 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   ```toml
   [LANGUAGE_CONFIGS if present, otherwise "None"]
   ```
+  ### Language Authoring Notes
+  [LANGUAGE_AUTHORING_NOTES]
 ```
 
 ### Step 5: Launch Shape Architecture Development
@@ -874,7 +884,7 @@ MATERIALIZE_RESULT = [parsed JSON from command stdout]
 
 IF command exit code != 0:
   ERROR: "Skeleton materialization failed"
-  DIAGNOSTIC: [surface stderr]
+  DIAGNOSTIC: [surface the command's stdout and stderr]
   FAIL-CLOSED:
   - Do NOT proceed to Step 12
   EXIT: Workflow terminated
@@ -1329,7 +1339,7 @@ LANGUAGE_RUNTIME_TEXT = concatenate text from:
 - "### Deployment Architecture"
 - "### Integration Context"
 
-IMPLEMENTATION_LANGUAGE_RUNTIME = infer language/runtime from LANGUAGE_RUNTIME_TEXT (examples: Python, TypeScript, Node.js, browser, AWS Lambda)
+IMPLEMENTATION_LANGUAGE_RUNTIME = infer language/runtime from LANGUAGE_RUNTIME_TEXT
 IF no language/runtime is inferred:
   IMPLEMENTATION_LANGUAGE_RUNTIME = "project implementation language/runtime"
 
@@ -1651,12 +1661,10 @@ Knowledge base scanning performed via `best-practices-rag query-kb` and `Glob: .
   ## Research Requirements
 
   ### Existing Documentation
-  - Read: .best-practices/react-hooks-patterns-codegen.md
-  - Read: .best-practices/postgresql-optimization-codegen.md
+  - Read: .best-practices/<topic>-codegen.md
 
   ### External Research Needed
-  - Synthesize: Technologies: React, GraphQL; Topics: integration, hooks, client state; Query: Best practices for integrating React with GraphQL in 2025
-  - Synthesize: Technologies: PostgreSQL; Topics: connection pooling, microservices, production operations; Query: PostgreSQL connection pooling strategies for microservices
+  - Synthesize: Technologies: <technology names>; Topics: <topic keywords>; Query: <specific research request>
   ```
 
   ## Error Handling
@@ -1760,8 +1768,8 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Strip leading/trailing hyphens: `-phase-1-` → `phase-1`
 
 **Critical:** The H1 header in phase markdown MUST match the normalized bundle directory name:
-- Bundle directory: `phase-2a-neo4j-schema-and-llama-index-integration/phase.md`
-- H1 header: `# Phase: phase-2a-neo4j-schema-and-llama-index-integration`
+- Bundle directory: `phase-2a-storage-schema-and-query-translation-integration/phase.md`
+- H1 header: `# Phase: phase-2a-storage-schema-and-query-translation-integration`
 - Mismatch will cause storage/retrieval failures
 
 **Phase-architect agents:** Generate H1 headers in kebab-case to match the bundle directory name.

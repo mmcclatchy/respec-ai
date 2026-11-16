@@ -1118,22 +1118,22 @@ VIOLATION: emitting a blocker for an internal implementation detail turns this c
            into a conformance checker and defeats the purpose of keeping the shape thin.
 
 **BLOCKER RULE FOR UNJUSTIFIED SEAMS**:
-- For each abstraction (interface, base class, protocol) named in `### Skeleton Index`:
-  identify whether `### Settled Design Decisions` or `### Open Design Decisions` states
-  what varies behind it (multiple implementations, a swap point, an explicit extension
-  axis).
+- For each abstraction named in `### Skeleton Index`: a seam whose purpose is
+  substitution, whatever the owning language calls it. Identify whether
+  `### Settled Design Decisions` or `### Open Design Decisions` states what varies
+  behind it (multiple implementations, a swap point, an explicit extension axis).
 - If an abstraction has exactly one implementation and no stated axis of variation:
   raise a blocker. Every skeletoned abstraction must name what varies behind it. If
-  nothing varies yet, use a concrete class, not an interface.
+  nothing varies yet, name the concrete unit directly instead of an abstraction.
 - List each violation in `### Blockers` using this exact marker:
-  [Unjustified Seam - BLOCKING]: `{{Interface}}` has one implementation and no stated axis of variation
+  [Unjustified Seam - BLOCKING]: `{{seam}}` has one implementation and no stated axis of variation
 
 **BLOCKER RULE FOR EMPTY OR FILE-NAMED TEST LIST**:
 - If `### Test List` is empty or missing while `### Skeleton Index` names public
   messages: raise a blocker — behaviors were never surfaced for the modules being built.
   [Empty Test List - BLOCKING]: Skeleton Index names public messages with no corresponding Test List entries
 - If a `### Test List` entry names a file or function instead of an observable
-  behavior (e.g. `tests/test_client.py` with no `::test_...` behavior name): raise a
+  behavior (e.g. `<path to a test file>` with no `::<behavior>` part): raise a
   blocker.
   [Test List Names File Not Behavior - BLOCKING]: `{{entry}}` names a file, not an observable behavior
 
@@ -1256,7 +1256,7 @@ These sections vary by project type. Identify all sections beyond core sections,
 
 Assess phase for implementation details that belong in Task:
 - **Time estimates for tasks**: -2 points (e.g., "Step 1: Schema setup (30 minutes)")
-- **Specific file names/paths**: -2 points (e.g., "Create `src/neo4j_client.py`")
+- **Specific file names/paths**: -2 points (e.g., "Create `<path to a source file>`")
 - **Complete code implementations**: -3 points (vs interface signatures which are OK)
 - **Configuration file examples**: -2 points (e.g., complete `Settings` class code)
 - **Test case IDs**: -1 point (e.g., "TC-4.1: Query X → expect Y")

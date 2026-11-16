@@ -2,6 +2,8 @@ import json
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+from rich.markup import escape
+
 from src.cli.ui.console import print_error
 from src.utils.skeleton_generator import (
     SkeletonPathEscapesProjectError,
@@ -11,6 +13,7 @@ from src.utils.skeleton_generator import (
     parse_skeleton_index,
     parse_test_list,
 )
+from src.utils.skeleton_types import SkeletonIndexParseError
 
 
 def add_arguments(parser: ArgumentParser) -> None:
@@ -82,10 +85,10 @@ def run(args: Namespace) -> int:
                 ],
                 'unintrospectable_paths': list(skeleton_result.unintrospectable_paths),
             }
-    except (SkeletonPathEscapesProjectError, SyntaxError) as e:
+    except (SkeletonPathEscapesProjectError, SkeletonIndexParseError, SyntaxError) as e:
         # SyntaxError as a Python traceback is itself a Python-invisibility violation
         # (F6) -- this is a backstop; known call sites already guard it internally.
-        print_error(str(e))
+        print_error(escape(str(e)))
         return 1
 
     print(json.dumps(output))

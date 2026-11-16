@@ -22,7 +22,7 @@ class LanguageMaterializer(Protocol):
 
     def render_test_module(self, entry: TestListEntry) -> str: ...
 
-    def test_path_convention(self) -> str: ...
+    authoring_guidance: str
 
     # Rendering one member in isolation, for appending into a file that already
     # exists. Paired with extract_existing_signatures: merge needs both, so a language

@@ -6,6 +6,7 @@ from src.utils.language_extensions import language_for_path
 from src.utils.materializers import LanguageMaterializer, UnsupportedLanguageError, get_materializer
 from src.utils.skeleton_types import (
     SkeletonIndexEntry,
+    SkeletonIndexParseError,
     SkeletonMember,
     TestListEntry,
     parse_bare_signature,
@@ -92,7 +93,15 @@ def parse_skeleton_index(text: str) -> tuple[SkeletonIndexEntry, ...]:
                 materializer_by_path[path] = get_materializer(language_for_path(path), path)
             except UnsupportedLanguageError:
                 materializer_by_path[path] = None
-        members_by_path.setdefault(path, []).append(_parse_member(materializer_by_path[path], signature))
+        try:
+            member = _parse_member(materializer_by_path[path], signature)
+        except SkeletonIndexParseError as error:
+            raise SkeletonIndexParseError(
+                f'Skeleton Index entry for `{path}` is not in the notation'
+                ' `<Owner>.<member>(<params>) -> <Result>` (`<Owner>` and `<member>` must each be one'
+                f" identifier of letters, digits and underscores): '{signature}'"
+            ) from error
+        members_by_path.setdefault(path, []).append(member)
     return tuple(SkeletonIndexEntry(path=path, members=tuple(members)) for path, members in members_by_path.items())
 
 
