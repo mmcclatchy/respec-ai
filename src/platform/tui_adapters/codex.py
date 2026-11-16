@@ -48,6 +48,10 @@ Use fresh isolated subagents only.
         return self._NO_FORK_GUARDRAIL
 
     @property
+    def best_practices_tui(self) -> str:
+        return 'codex'
+
+    @property
     def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
         # Source of truth for Codex built-in tool spellings emitted by this repo.
         # Any new built-in capability must be reviewed here explicitly. Preserve
@@ -61,6 +65,7 @@ Use fresh isolated subagents only.
             BuiltInToolCapability.GLOB: 'Glob',
             BuiltInToolCapability.GREP: 'Grep',
             BuiltInToolCapability.TASK: 'Task',
+            BuiltInToolCapability.SEND_MESSAGE: None,
             BuiltInToolCapability.BASH: 'Bash',
             BuiltInToolCapability.BASH_OUTPUT: 'BashOutput',
             BuiltInToolCapability.KILL_SHELL: 'KillShell',
@@ -248,7 +253,22 @@ Use fresh isolated subagents only.
         description: str,
         params: list[tuple[str, str]],
     ) -> str:
-        agent_runtime_name = self._agent_runtime_name(agent_name)
+        return self._render_isolated_invocation(self._agent_runtime_name(agent_name), description, params)
+
+    def render_external_agent_invocation(
+        self,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+    ) -> str:
+        return self._render_isolated_invocation(agent_name, description, params)
+
+    def _render_isolated_invocation(
+        self,
+        agent_runtime_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+    ) -> str:
         lines = [f'Invoke the `{agent_runtime_name}` agent to {description}.']
         if params:
             lines.append('Input:')

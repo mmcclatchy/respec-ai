@@ -67,6 +67,7 @@ class BuiltInToolCapability(StrEnum):
 
     # Agent and Task Management
     TASK = 'task'
+    SEND_MESSAGE = 'send_message'
 
     # System Operations
     BASH = 'bash'

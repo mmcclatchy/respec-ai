@@ -98,6 +98,25 @@ CALL {tools.get_phase}
 → Verify: Phase has required Overview fields (objectives, scope, dependencies, deliverables)
 → If not found: STOP and report error
 
+═══════════════════════════════════════════════
+MANDATORY PHASE COMPLETENESS VALIDATION GATE
+═══════════════════════════════════════════════
+Before any storage, verify ALL 4 Overview fields of the retrieved phase have meaningful content:
+- objectives
+- scope
+- dependencies
+- deliverables
+
+IF ANY field is empty OR contains "not specified":
+  ERROR: "Phase incomplete — [field] missing"
+  DIAGNOSTIC: Show which fields are invalid
+  EXIT: Do NOT proceed to storage steps
+  GUIDANCE: "This indicates roadmap generation issue. Check roadmap output."
+
+VIOLATION: Reporting a missing field but continuing to save
+           an incomplete phase to MCP or platform storage.
+═══════════════════════════════════════════════
+
 STEP 2: Store in MCP (REQUIRED)
 CALL {tools.store_document}
 → Verify: MCP storage successful
@@ -169,25 +188,6 @@ Use the Phase structure below for the Phase retrieved from MCP storage (created 
 {indent(sparse_phase_example, '  ')}
   ```
 
-═══════════════════════════════════════════════
-MANDATORY PHASE COMPLETENESS VALIDATION GATE
-═══════════════════════════════════════════════
-Before saving, verify ALL 4 Overview fields have meaningful content:
-- objectives
-- scope
-- dependencies
-- deliverables
-
-IF ANY field is empty OR contains "not specified":
-  ERROR: "Phase incomplete — [field] missing"
-  DIAGNOSTIC: Show which fields are invalid
-  EXIT: Do NOT proceed to storage steps
-  GUIDANCE: "This indicates roadmap generation issue. Check roadmap output."
-
-VIOLATION: Reporting a missing field but continuing to save
-           an incomplete phase to platform storage.
-═══════════════════════════════════════════════
-
 ## PARALLEL EXECUTION DESIGN
 
 ### Individual Phase Focus
@@ -224,19 +224,6 @@ VIOLATION: Reporting a missing field but continuing to save
 - Fail with clear guidance: verify the roadmap workflow completed and the phase name matches exactly
 - Do NOT fall back to retrieving the full roadmap to search for the phase
 
-### Phase Context Issues
-
-#### Phase Data Incomplete
-- Work with the retrieved phase content as-is; do not invent missing fields
-- Document missing Overview fields explicitly
-- Flag areas requiring manual completion via a re-run of respec-roadmap
-
-#### Insufficient Phase Information
-- Extract available phase details and document gaps
-- Extract Phase with available information and note missing sections
-- Note areas requiring additional context or clarification
-- Proceed with partial phase extraction noting limitations
-
 ### Storage and Creation Issues
 
 #### MCP Storage Failures
@@ -251,26 +238,6 @@ VIOLATION: Reporting a missing field but continuing to save
 - Continue if platform storage fails (MCP storage is primary, platform is secondary)
 - Report partial success: MCP storage complete, platform save failed
 - Provide manual creation guidance for platform-specific recovery
-
-#### Phase Validation Failures
-- Document specific validation errors with context
-- Attempt correction for common formatting issues
-- Provide corrected phase information if identifiable
-- Fail with detailed error analysis for manual resolution
-
-### Quality Assurance
-
-#### Context Completeness Validation
-- Verify all critical phase information extracted successfully
-- Validate Phase structure completeness and accuracy
-- Confirm alignment between phase context and Phase
-- Ensure Phase provides adequate guidance for downstream phase workflow execution
-
-#### Phase Readiness Assessment
-- Check that Phase contains actionable technical guidance
-- Verify research requirements and architecture decisions documented
-- Confirm integration points and dependencies clearly specified
-- Validate success criteria and deliverables appropriately detailed
 
 Always provide clear status indication and detailed context for successful Phase extraction, enabling effective coordination in parallel execution environment.
 """

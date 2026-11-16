@@ -7,8 +7,9 @@ from unittest.mock import patch
 
 import pytest
 
+from src.cli.services.best_practices_preflight import _normalize_tui_name
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, get_tui_adapter
-from src.platform.tui_adapters.base import AgentSpec, CommandSpec
+from src.platform.tui_adapters.base import AgentSpec, CommandSpec, TuiAdapter
 from src.platform.tui_adapters import codex as codex_adapter_module
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 from src.platform.tui_adapters import opencode as opencode_adapter_module
@@ -90,6 +91,70 @@ class TestGetTuiAdapter:
 
         for adapter in (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter()):
             assert set(adapter.builtin_tool_name_map.keys()) == expected
+
+
+_HERMETIC_MODELS = {'reasoning': 'model', 'orchestration': 'model', 'coding': 'model', 'review': 'model'}
+_ALL_ADAPTERS = [
+    ClaudeCodeAdapter(),
+    OpenCodeAdapter(model_overrides=_HERMETIC_MODELS),
+    CodexAdapter(model_overrides=_HERMETIC_MODELS),
+]
+_ALL_ADAPTER_IDS = ['claude-code', 'opencode', 'codex']
+
+
+class TestCooperativePhaseAdapterCapabilities:
+    @pytest.mark.parametrize(
+        ('adapter', 'resume_tool'),
+        zip(_ALL_ADAPTERS, ['SendMessage', None, None], strict=True),
+        ids=_ALL_ADAPTER_IDS,
+    )
+    def test_only_claude_code_can_resume_a_finished_subagent(
+        self, adapter: TuiAdapter, resume_tool: str | None
+    ) -> None:
+        # F13: codex closes every subagent after harvest and opencode has no resume tool, so a
+        # resume tool mapped on either would render a call that cannot run there.
+        assert adapter.builtin_tool_name_map.get(BuiltInToolCapability.SEND_MESSAGE) == resume_tool
+
+    @pytest.mark.parametrize('adapter', _ALL_ADAPTERS, ids=_ALL_ADAPTER_IDS)
+    def test_external_agent_is_invoked_under_its_exact_installed_name(self, adapter: TuiAdapter) -> None:
+        # B14 (F15): bp-pipeline is installed under that exact name on every TUI, so a
+        # respec-<x>-agent rename dispatches an agent that does not exist.
+        params = [('MODE', 'codegen'), ('OUTPUT_FILE', 'OUTPUT_FILE')]
+
+        rendered = adapter.render_external_agent_invocation('bp-pipeline', 'synthesize one research topic', params)
+
+        assert 'bp-pipeline' in rendered
+        assert 'respec-bp-pipeline' not in rendered
+        assert all(f'{name}: {value}' in rendered for name, value in params)
+
+    def test_codex_external_agent_keeps_the_isolated_close_after_harvest_lifecycle(self) -> None:
+        # README "bp invocation per TUI": only the name differs from a respec agent invocation;
+        # explicit inputs only, wait, harvest and close still apply to the external agent.
+        adapter = CodexAdapter(model_overrides=_HERMETIC_MODELS)
+        params = [('MODE', 'codegen')]
+
+        external = adapter.render_external_agent_invocation('bp-pipeline', 'synthesize one research topic', params)
+        respec_style = adapter.render_agent_invocation('bp-pipeline', 'synthesize one research topic', params)
+
+        assert external == respec_style.replace('respec-bp-pipeline-agent', 'bp-pipeline')
+
+    @pytest.mark.parametrize('tui', list(TuiType))
+    def test_bp_check_targets_the_installation_the_init_preflight_checks(self, tui: TuiType) -> None:
+        # B15: the phase workflow's `best-practices-rag check --tui <value>` must check the same
+        # installation as the init preflight, which already normalizes TUI names for that CLI.
+        assert get_tui_adapter(tui).best_practices_tui == _normalize_tui_name(tui.value)
+
+    @pytest.mark.parametrize(
+        ('adapter', 'batch_limit'),
+        zip(_ALL_ADAPTERS, [4, 1, 1], strict=True),
+        ids=_ALL_ADAPTER_IDS,
+    )
+    def test_selection_prompts_never_batch_more_questions_than_the_question_tool_accepts(
+        self, adapter: TuiAdapter, batch_limit: int
+    ) -> None:
+        # M3, confirmed against the live tool schema: AskUserQuestion takes at most 4 questions
+        # per call. The portable core asks one question per prompt (README "Relay protocol").
+        assert adapter.selection_batch_limit == batch_limit
 
 
 class TestClaudeCodeAdapter:
@@ -900,13 +965,6 @@ class TestCodexAdapterInvocationRendering:
         assert (
             'Invoke the `respec-code` skill with: `{PLAN_NAME} {PHASE_NAME} [optional: additional-context]`.'
         ) in template
-
-    def test_codex_generated_templates_do_not_leak_hardcoded_slash_references(self) -> None:
-        phase_template = TemplateCoordinator().generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=self.adapter
-        )
-        assert '/respec-phase` is the ONLY workflow that runs bp synthesis' not in phase_template
-        assert '`respec-phase` skill is the ONLY workflow that runs bp synthesis' in phase_template
 
     def test_codex_code_template_excludes_unused_planning_loop_tools(self) -> None:
         code_template = TemplateCoordinator().generate_command_template(

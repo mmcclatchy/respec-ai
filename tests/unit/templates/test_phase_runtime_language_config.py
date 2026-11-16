@@ -1,8 +1,8 @@
 """Runtime language config reaches the architect on every TUI.
 
 See docs/phase-cooperative/phase-1-language-neutral.md, behaviors B11-B12. These anchor on step
-numbers that phase 2 renumbers, so they live outside the language-neutrality guard; phase 2
-re-anchors both here.
+numbers, so they live outside the language-neutrality guard. Phase 2 re-anchored both: B11 on the
+run setup (Step 3) and B12 on the briefing (the architect's explore mode and Step 6).
 """
 
 import pytest
@@ -48,19 +48,6 @@ def _phase_architect(tui: str) -> str:
 
 
 @pytest.mark.parametrize('tui', TUIS)
-def test_architect_receives_language_authoring_notes_and_a_failed_lookup_never_stops_the_workflow(tui: str) -> None:
-    # Deliberate string assertions (testing.md exception): the CLI parses the subcommand name, and
-    # the architect's prompt names this heading as where its per-language rules arrive.
-    contract = template_contract(_phase_command(tui))
-    body = contract.step_body('4.5')
-
-    assert 'respec-ai language-guidance' in body
-    assert '### Language Authoring Notes' in body
-    assert 'EXIT:' not in body
-    assert contract.outcome_condition(body, 'Language authoring notes unavailable').startswith('ELSE')
-
-
-@pytest.mark.parametrize('tui', TUIS)
 def test_a_missing_verify_command_is_marked_for_the_user_instead_of_guessed(tui: str) -> None:
     # Deliberate string assertion (testing.md exception): phase 2's briefing scans for this marker
     # and phase 3's structural checks inherit it.
@@ -68,3 +55,59 @@ def test_a_missing_verify_command_is_marked_for_the_user_instead_of_guessed(tui:
 
     assert '(verify: ask user' in architect
     assert 'no_preference' in architect
+
+
+def _explore_branch(architect: str) -> str:
+    start = architect.find('IF phase_mode == "explore":')
+    end = architect.find('ELIF phase_mode == "draft":', start)
+    return architect[start:end] if start != -1 and end != -1 else ''
+
+
+@pytest.mark.parametrize('tui', TUIS)
+def test_explore_raises_a_missing_verify_command_as_a_briefing_decision(tui: str) -> None:
+    # Phase 2 re-anchor of B12: the briefing is the first place the user is asked. The
+    # option that ends the run names the file the user edits, never /respec-standards
+    # (standards_command.py:16 forbids editing canonical TOML).
+    explore = _explore_branch(_phase_architect(tui))
+
+    assert 'no_preference' in explore
+    assert '[commands].test' in explore
+    assert '.respec-ai/config/standards/<language>.toml' in explore
+    assert '(verify: ask user' in explore
+    assert 'respec-standards' not in explore
+
+
+@pytest.mark.parametrize('tui', TUIS)
+def test_run_setup_gives_every_architect_route_language_notes_and_a_failed_lookup_never_stops_the_run(tui: str) -> None:
+    # Phase 2 re-anchor of B11: Step 3 sets up the run before Step 4 routes, so every route that
+    # reaches the architect carries the notes. Step 3 also holds the loop link's fail-closed
+    # exits, so the no-EXIT rule covers only the language-guidance block.
+    contract = template_contract(_phase_command(tui))
+    setup = contract.step_section('3')
+    start = setup.find('respec-ai language-guidance')
+    end = setup.find('### Language Authoring Notes', start)
+
+    assert start != -1 and end != -1
+    assert 'EXIT' not in setup[start:end]
+    assert contract.outcome_condition(setup, 'Language authoring notes unavailable').startswith('ELSE')
+
+
+@pytest.mark.parametrize('tui', TUIS)
+def test_choosing_to_configure_a_verify_command_first_ends_the_run_after_recording_the_choice(tui: str) -> None:
+    # Phase 2 re-anchor of B12, orchestrator half: Option A of the briefing's missing-verify-command
+    # decision (and of Design Source) needs work outside the run, so the briefing records the
+    # answer and ends the run before any research or draft. `Option A` is the decision entry's
+    # contract field (README "Decision entry (canonical)").
+    template = _phase_command(tui)
+    contract = template_contract(template)
+    lines = template.split('\n')
+    briefing = [index for index, step in enumerate(contract.line_steps()) if step and step.split('.')[0] == '6']
+
+    endings = [
+        index
+        for index in briefing
+        if 'EXIT' in lines[index] and any('option a' in guard.lower() for guard in contract.guards_at(index))
+    ]
+
+    assert endings, 'no briefing answer ends the run'
+    assert [index for index in briefing if 'mcp__respec-ai__store_document(' in lines[index] and index < endings[0]]

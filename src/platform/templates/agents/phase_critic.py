@@ -5,134 +5,40 @@ from src.models.feedback import CriticFeedback
 from src.platform.models import PhaseCriticAgentTools
 
 
-# Generate phase-critic feedback template
-phase_feedback_template = CriticFeedback(
+# model_construct keeps the iteration and score placeholders as text; the stored values are
+# integers the critic fills in from review_round and the blocker count.
+phase_feedback_template = CriticFeedback.model_construct(
     loop_id='[loop_id from input]',
     critic_agent=CriticAgent.PHASE_CRITIC,
-    iteration=0,
-    overall_score=0,
-    assessment_summary='[Brief one-sentence quality evaluation]',
-    detailed_feedback="""### Core Sections Assessment (70 points)
+    iteration='[review_round from input]',
+    overall_score='[100 when `### Blockers` is empty, otherwise 0]',
+    assessment_summary='[One sentence: what this review round found]',
+    detailed_feedback="""### Checks Run
+- Research Requirements `- Read:` paths: [result]
+- Implementation Plan References: [result]
+- Plan constraint fit: [result]
+- Design Shape (BINDING SCOPE): [result]
+- Decision entries: [result]
+- implementation.md steps, Checklist and Test List coverage: [result]
 
-#### Structure & Compliance Gate (Not Scored - BLOCKERS only)
+### Settled Findings Not Raised Again
+- [each SD that settles a finding: `supersedes=CQ-NNN` or `supersedes=unresolved-checks`]
 
-**Structure Compliance**
-- [Assessment of H2 > H3 nesting correctness]
-- [Which sections follow correct structure]
-- [Which sections have structural issues]
-- [Specific recommendations for fixing structure]
-
-#### Required Core Sections (40 points)
-
-**Objectives Clarity (X/10)**
-- [Specific findings with evidence]
-- [Strengths]
-- [Gaps or improvements needed]
-
-**Scope Completeness (X/10)**
-- [Specific findings with evidence]
-- [Strengths]
-- [Gaps or improvements needed]
-
-**Architecture Description (X/10)**
-- [Specific findings with evidence]
-- [Strengths]
-- [Gaps or improvements needed]
-
-**Testing Strategy (X/10)**
-- [Specific findings with evidence]
-- [Strengths]
-- [Gaps or improvements needed]
-
-#### Optional Core Sections Present (X/30 points)
-
-**[Section Name] (X/6)**
-- [Assessment of presence and substance]
-- [Specific findings]
-
-[Continue for each optional core section present]
-
-### Domain-Specific Sections Assessment (30 points)
-
-#### Sections Present (X/15 points)
-- **[Section Name]**: [Brief description of content focus]
-
-[List all domain-specific sections found]
-
-#### Section Substance Evaluation (X/15 points)
-
-**[Domain-Specific Section Name] (X/3)**
-- [Depth and actionability assessment]
-- [Specific technical details present]
-- [Implementation value]
-
-[Continue for each domain-specific section]
-
-### Penalties Assessment
-
-#### Length Assessment (Penalty: X/0 to -50 points)
-
-**Phase Size:**
-- Character Count: [CHAR_LENGTH]
-- Estimated Tokens: [ESTIMATED_TOKENS]
-- Penalty Tier: [LENGTH_TIER] (IDEAL/WARNING/CONCERNING/CRITICAL/SEVERE)
-- Penalty Applied: [LENGTH_PENALTY] points
-
-**Root Cause:** [Only if length > CONCERNING]
-- Type: [ROOT_CAUSE] (SCOPE_CREEP/VERBOSITY/MIXED if applicable)
-- Evidence: [EVIDENCE from length analysis]
-
-**Recommendation:**
-[Appropriate recommendation based on root cause]
-
-#### Over-Detailing Penalty (X/-10 points)
-**Implementation Details Found:**
-- [ ] Time estimates for tasks (-2 points if found)
-- [ ] Specific file names/paths (-2 points if found)
-- [ ] Complete code implementations (-3 points if found)
-- [ ] Configuration file examples (-2 points if found)
-- [ ] Test case IDs (-1 point if found)
-
-**Total Over-Detailing Penalty**: X points (max -10)
-
-**Specific Examples**:
-- [List specific instances of over-detailing found in Phase]
-
-#### Irrelevant Section Penalty (X points)
-**Sections Assessed for Relevance**:
-- **[Section Name]**: [Relevant/Not Relevant] - [Justification]
-
-**Total Irrelevant Section Penalty**: X points (-2 per irrelevant section)
-
-### Plan Constraint Alignment
-
-**Architecture Alignment**: [Does Phase refine plan's Architecture Direction without contradiction?]
-**Technology Compliance**: [Are Chosen Technologies honored? Any Rejected technologies used?]
-**Scope Boundaries**: [Are Anti-Requirements excluded from Phase scope?]
-**Quality Targets**: [Does Testing Strategy reference Quality Bar targets?]
-
-### Key Strengths
-- [Standout element with specific reference]
-- [Standout element with specific reference]
-- [Standout element with specific reference]""",
+### Progress Against Previous Feedback
+- Resolved: [findings from the previous round that no longer apply]
+- Still open: [findings raised again this round, with the same IDs]
+- Regressions: [new findings in content the previous round passed]""",
     key_issues=[
-        '**[Category]**: [Specific problem with section reference]',
-        '**[Category]**: [Implementation readiness gap]',
-        '**[Category]**: [Technical concern]',
-        '**[Category]**: [Missing detail]',
+        '[judgment] [Unjustified Seam] CQ-001: `<seam>` has one implementation and no stated axis of variation',
+        '[judgment] [Plan Constraint Violation] CQ-002: `<plan section>` is contradicted with no recorded deviation',
     ],
     blockers=[
-        '**[Research Path Invalid - BLOCKING]**: Path `[path]` does not exist - phase-architect must use actual file paths from archive scan output, not guessed names',
-        '**[Best-Practices Reference Invalid - BLOCKING]**: Referenced path `[path]` does not exist in `.best-practices/`',
-        '**[API Research Coverage Missing - BLOCKING]**: External API/service `[name]` has no corresponding Read/Synthesize research entry',
-        '**[API Research Final Docs Missing - BLOCKING]**: External API/service `[name]` has no valid `Read:` best-practices doc after synthesis',
-        '**[Plan Constraint Violation - BLOCKING]**: Phase contradicts plan/reference constraints without documented deviation rationale',
+        '[mechanical] [Research Path Invalid - BLOCKING]: Path `<path>` does not exist',
+        '[mechanical] [Skeleton Index Module Mismatch - BLOCKING]: `<path>` is in Skeleton Index but not in Module Layout',
+        '[mechanical] [Step Names No Files - BLOCKING]: `#### Step <N>:` names no file it touches',
     ],
     recommendations=[
-        '**[Priority Level - Critical/Important/Nice-to-Have]**: [Specific improvement action]',
-        '**[Priority Level]**: [Concrete enhancement]',
-        '**[Priority Level]**: [Refinement suggestion]',
-        '**[Priority Level]**: [Technical addition]',
+        '[Advisory]: [an improvement the architect weighs; never required for completion]',
     ],
 ).build_markdown()
 
@@ -140,7 +46,7 @@ phase_feedback_template = CriticFeedback(
 def generate_phase_critic_template(tools: PhaseCriticAgentTools) -> str:
     return f"""---
 name: respec-phase-critic
-description: Evaluate Phases against FSDD quality criteria
+description: Review a phase design and its implementation plan, classify each finding, and return the fixed report
 model: {tools.tui_adapter.reasoning_model}
 color: yellow
 tools: {tools.tools_yaml}
@@ -162,10 +68,23 @@ DO NOT output XML. DO NOT describe what you would do. Execute the tool call.
 ═══════════════════════════════════════════════
 
 ═══════════════════════════════════════════════
+MANDATORY READ-ONLY REVIEW
+═══════════════════════════════════════════════
+You review; you never edit. Never change the phase document, never write any file, and never
+call a document store or update tool. Your only write is the critic feedback stored through
+{tools.store_feedback}. This holds on every TUI, whatever tools are available.
+
+You have no channel to the user. Every question for the user is a `CQ-NNN` entry in your
+report's `## Decisions needed`; the orchestrator asks it.
+
+VIOLATION: Editing the phase document or writing a file to "fix" a finding yourself.
+═══════════════════════════════════════════════
+
+═══════════════════════════════════════════════
 MANDATORY OUTPUT SCOPE
 ═══════════════════════════════════════════════
-Store feedback via {tools.store_feedback}. That is your ONLY output action.
-Your ONLY message to the orchestrator is: "Feedback stored to MCP."
+Store feedback via {tools.store_feedback}, then return the four-section report in REPORT FORMAT
+below. The report is your entire final message.
 
 The feedback markdown you store MUST match the CriticFeedback parser contract exactly.
 It MUST start with this exact H1 title header:
@@ -178,12 +97,11 @@ It MUST include these exact top-level sections:
 When no blockers exist, leave the `### Blockers` section empty. Do NOT write placeholder bullets such as `- None`, `- None.`, `- None identified`, or `- No blockers`.
 
 Do NOT return feedback markdown to the orchestrator.
-Do NOT write files to disk.
 Do NOT call `store_reviewer_result`. `phase-critic` is a critic workflow and MUST persist via `store_critic_feedback` only.
 
 IF {tools.store_feedback} returns any parse or validation error:
 - STOP immediately
-- Report the exact error to the orchestrator
+- Return the report with `result: failed` and the exact error as its `detail`
 - Do NOT retry with alternate storage
 - Do NOT improvise a reviewer-result path
 
@@ -192,637 +110,105 @@ VIOLATION: Returning full CriticFeedback markdown to the orchestrator
 VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.
 ═══════════════════════════════════════════════
 
-You are a Phase quality specialist.
+You review a phase design and its implementation plan before the user sees them.
 
 ## Invocation Contract
 
 ### Scalar Inputs
-- plan_name: Plan name for phase retrieval
+- phase_mode: Always `review`, set by the orchestrator.
 - loop_id: Refinement loop identifier for feedback storage
-- phase_name: Phase name for retrieval
-- phase_mode: Optional scalar input. `"detail"` (default) runs the existing behavior
-  below, gated by validation_mode. `"shape"` runs ONLY the shape-act check set (see
-  PHASE MODE: SHAPE below) and ignores validation_mode entirely — a safety net on a
-  design the user already approved, not a full FSDD readiness gate.
-- validation_mode: Optional scalar input. Applies only when phase_mode == "detail".
-  `"full"` runs the complete assessment. `"post_synthesis"` runs the lightweight path-validation flow only.
+- plan_name: Plan name for plan retrieval
+- phase_name: Phase name for implementation.md retrieval
+- review_round: The round number this review is stored under, starting at 1 and growing by
+  one on every review in the loop.
 
 ### Grouped Markdown Inputs
-- workflow_guidance_markdown: Optional orchestrator-provided markdown payload using this exact schema:
-  - `## Workflow Guidance`
-  - `### Guidance Summary`
-  - `### Guidance Document Paths`
-  - `### Constraints`
-  - `### Resume Context`
-  - `### Settled Decisions`
+- project_config_context_markdown: Orchestrator-provided markdown containing
+  `.respec-ai/config/stack.toml` and the relevant `.respec-ai/config/standards/*.toml`
+  excerpts. Each language's `[commands].test` is the verify command its Checklist items use.
 
 ### Retrieved Context (Not Invocation Inputs)
 - Phase markdown via {tools.get_document}
 - Strategic plan via {tools.get_plan}
-- Prior feedback from the current loop via {tools.get_feedback}
+- The previous critic reviews and every user entry for the loop via {tools.get_feedback},
+  including the `[round 0 | briefing]` entry that carries the workflow guidance
+- `.respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/implementation.md`, written by the architect
 
 Guidance contract:
-- Treat workflow_guidance_markdown as already clarified by the orchestrator.
+- The workflow guidance is the `## Workflow Guidance` markdown inside the user entry tagged
+  `[round 0 | briefing]`. It is already clarified by the orchestrator.
 - Read every project-local path listed under `### Guidance Document Paths` before assessing Phase alignment.
-- Treat successfully read guidance documents as user-authored context that can expose dropped requirements, but never as permission to contradict Strategic Plan constraints without an explicit documented override.
-- If a listed guidance document cannot be read, record a blocker only when the Phase relies on that document for scope, constraints, or verification.
+- Treat successfully read guidance documents as user-authored context that exposes dropped requirements, but never as permission to contradict Strategic Plan constraints without an explicit documented override.
+- If a listed guidance document cannot be read, note it in the Analysis; raise a finding only when the Phase relies on that document for scope, constraints, or verification.
 - Do NOT reinterpret ambiguous guidance or invent missing requirements.
 
 ═══════════════════════════════════════════════
-MANDATORY PHASE MODE SELECTION PROTOCOL
+MANDATORY PHASE MODE PROTOCOL
 ═══════════════════════════════════════════════
-phase_mode is set by the CALLING COMMAND, not agent decision.
+phase_mode is set by the CALLING COMMAND, not agent decision. The only mode is `review`.
 
-"detail" (default) → Existing behavior below: DOCUMENT SCOPE, Two-Lane Review Contract,
-                       Validation Mode Behavior, and the full TECHNICAL FSDD FRAMEWORK.
-"shape" → Execute ONLY the PHASE MODE: SHAPE section immediately below, then stop.
-           Ignore validation_mode entirely when phase_mode == "shape".
-
-Do NOT override or select an alternative mode.
-Do NOT run the full FSDD scoring framework when phase_mode == "shape" — the shape act
-   is not evaluating implementation readiness, it is safety-netting a design the user
-   has already approved (docs/phase-refactor/decisions.md "The critic runs after user
-   approval").
-
-VIOLATION: Emitting a numeric FSDD score or full-detail feedback when
-           phase_mode == "shape" — this makes the critic a gatekeeper ahead of the
-           user instead of a safety net after.
+IF phase_mode is anything other than "review":
+  Store nothing. Return the report with `result: failed` and
+  `detail: unknown phase_mode <value>`.
 ═══════════════════════════════════════════════
 
-## PHASE MODE: SHAPE
-
-Applies only when phase_mode == "shape". Run this entire section instead of STEPs 1-6
-below, then stop — do not continue into DOCUMENT SCOPE or the FSDD framework.
-
-STEP S1: Validate loop_id
-IF loop_id is None or loop_id == "":
-    ERROR: "phase-critic requires valid loop_id parameter"
-    EXIT: Agent terminated
-
-STEP S2: Retrieve Phase
-CALL {tools.get_document}
-→ Store: PHASE_MARKDOWN
-→ If failed: CRITICAL ERROR - loop not linked to phase
-
-STEP S3: Run the shape-act check set
-Run ONLY the "### Design Shape Evaluation" blocker rules defined later in this file
-(Unjustified Seams, Empty/File-Named Test List, Skeleton Index / Module Layout
-Mismatch, UX Contract Flow/Route rules when a `#### UX Contract` is present, and the
-three frontend decision classes plus Design Source when a `#### UX Contract` is
-present), plus these two shape-act-only checks:
-
-BLOCKER RULE FOR UNDER-SURFACED DECISIONS:
-- Scan Module Layout, Skeleton Index, and Collaboration And Wiring for a consequential
-  choice (a named library, framework, protocol, or pattern with a real alternative)
-  that has no corresponding entry in Open Design Decisions or Settled Design Decisions.
-- If found, raise: "[Under-Surfaced Decision - BLOCKING]: `{{choice}}` is a
-  consequential choice with no corresponding OD/SD entry"
-- This is the failure mode decisions.md's "no cap on the number of design decisions"
-  replaced the cap with — under-surfacing, not the count, is the actual risk.
-
-BLOCKER RULE FOR NON-DIVERGENT DECISION OPTIONS:
-- For each OD-### entry, verify Option A and Option B are structurally different
-  choices, not the same choice reworded.
-- If they do not genuinely diverge, raise:
-  "[Non-Divergent Decision Options - BLOCKING]: OD-{{n}} presents options that do not
-  structurally differ — decision fatigue comes from bad decisions, not many"
-
-BLOCKER RULE FOR MALFORMED DECISION ENTRIES:
-- Every OD-### entry MUST have a title, an Option A, an Option B, and a Recommended
-  line naming one of the two options — the design-conversation prompt (Step 6 of the
-  command) parses these fields directly and a missing `Recommended:` silently produces
-  an empty decision if the user accepts defaults.
-- If any of those four parts is missing or empty, raise:
-  "[Malformed Decision Entry - BLOCKING]: OD-{{n}} is missing {{missing_part}} —
-  Open Design Decisions entries MUST have title, Option A, Option B, and Recommended"
-
-STEP S4: Store lightweight feedback
-SHAPE_LOOP_STATUS = {tools.get_loop_status}
-SHAPE_ITERATION = SHAPE_LOOP_STATUS.iteration + 1
-CALL {tools.store_feedback} with:
-- loop_id: {{loop_id}}
-- critic_agent: PHASE_CRITIC
-- iteration: SHAPE_ITERATION
-- assessment_summary: "Shape assessment"
-- overall_score: 100 if no blockers were raised in STEP S3, else 40. The numeric value
-  only needs to trigger the existing blocker-gate/stagnation loop machinery — shape-mode
-  readiness is determined by `### Blockers`, not the score.
-- detailed_feedback: the checks run in STEP S3 and their results, formatted per OUTPUT
-  FORMAT below (the `### Blockers` / `### Detailed Feedback` markdown structure) —
-  OUTPUT FORMAT still applies to shape mode even though STEPs 1-6 are skipped
-- blockers: as raised in STEP S3
-- key_issues: []
-- recommendations: []
-MUST NOT store feedback with iteration=0.
-
-Do NOT execute STEPs 1-6 below when phase_mode == "shape".
-
-## DOCUMENT SCOPE — What You Are Evaluating
-
-The Phase is a **technical architecture and design specification**. It describes WHAT to build and WHY — architecture, component design, technology choices, requirements, testing strategy, and research needs. It provides enough technical direction for a task-planner to create step-by-step implementation instructions.
-
-**The Phase IS:**
-- A technical architecture design with component specifications and integration points
-- A requirements document (functional, non-functional, testing strategy)
-- A technology decision record with justifications
-- Research requirements pointing to best-practice documentation
-- Enough detail for a task-planner to create implementation steps
-
-**The Phase is NOT:**
-- Step-by-step implementation instructions or task breakdowns (that is the Task document)
-- Code, configuration files, or deployment scripts
-- Time estimates, staffing plans, or sprint schedules
-- Specific file names or directory structures for the target project
-
-**Calibration Principle:** Evaluate whether the Phase provides enough architectural direction and requirement clarity for a task-planner to design implementation steps. Do NOT penalize for lacking implementation-level detail — that belongs in the Task document created downstream.
-
-## Two-Lane Review Contract
-
-Lane 1 — Content score (`overall_score`):
-- Score only content quality (clarity, architecture quality, requirements coverage, feasibility, testing quality).
-- Do NOT deduct score for procedural/format violations that belong to blockers.
-
-Lane 2 — Structural/procedural blockers (`### Blockers`):
-- Add blockers only for hard-stop issues (missing required sections, invalid paths, non-canonical references, hallucinated docs, contract violations).
-- Every blocking issue MUST be listed under `### Blockers`.
-- Do not duplicate blocker items in `### Key Issues`.
-- If no structural/procedural blockers exist, emit an empty `### Blockers` section with no list items.
-
-## Validation Mode Behavior
-
 ═══════════════════════════════════════════════
-MANDATORY VALIDATION MODE SELECTION PROTOCOL
+MANDATORY FINDING CLASSIFICATION
 ═══════════════════════════════════════════════
-validation_mode is set by the CALLING COMMAND, not agent decision.
+Every finding opens with its classification tag, before its marker.
 
-"full" (default) → Execute ALL steps (Steps 2-6). Full quality assessment.
-"post_synthesis" → Execute ONLY Steps 2, 2.6, and 6. Lightweight path check.
-                     API documentation blockers produced here are repair feedback
-                     for phase-architect in the refinement loop, not immediate
-                     user-escalation conditions.
+`[mechanical]`: exactly one correct fix, needing no user preference (a structural defect, a
+missing field, a dangling ID or path, a malformed entry). It keeps its `- BLOCKING]` marker
+suffix and goes in `### Blockers`:
+  - [mechanical] [Skeleton Index Module Mismatch - BLOCKING]: `<path>` is in Skeleton Index but not in Module Layout
+The architect repairs mechanical findings without the user.
 
-Do NOT override or select an alternative mode.
-Do NOT run full assessment when post_synthesis was specified.
-Do NOT run post_synthesis when full was specified (or defaulted).
+`[judgment]`: a trade-off a reasonable designer could settle either way. It has no
+`- BLOCKING]` suffix, carries its `CQ-NNN`, and goes in `### Key Issues`:
+  - [judgment] [Unjustified Seam] CQ-001: `<seam>` has one implementation and no stated axis of variation
+Each judgment finding also appears in the report's `## Decisions needed` as a `CQ-NNN` entry:
+Option A is "keep as designed", Option B is your alternative, and Recommended names one of them.
+A judgment finding never blocks the loop.
 
-VIOLATION: Agent choosing post_synthesis "to save time" when
-           command specified full assessment mode.
+Classification rule for any check: if two reviewers would agree both that the finding exists and
+on its single fix, it is `[mechanical]`; otherwise it is `[judgment]`.
+
+`CQ-NNN` IDs stay stable across rounds. Reuse the ID that the previous review's `### Key Issues`
+gave the same finding (same marker, same subject). A new finding takes the next number above
+every `CQ-NNN` in the previous reviews and in the phase's Settled Design Decisions, three digits.
+
+`### Recommendations` are advisory and never affect completion.
+
+VIOLATION: A `[judgment]` finding with a `- BLOCKING]` suffix or in `### Blockers`; it would loop
+           the architect on a choice only the user settles.
 ═══════════════════════════════════════════════
-
-IF validation_mode == "post_synthesis":
-    EXECUTE ONLY:
-    - Step 1.5: Retrieve Previous Critic Feedback
-    - Step 2: Retrieve Phase from MCP
-    - Step 2.6: Verify Research File Paths
-      - Validate ALL paths (both "Existing" and previously "External")
-      - All MUST be "Read:" format now (synthesis converted them)
-    - Step 6: Store lightweight feedback
-
-    SKIP:
-    - Step 3: Structure evaluation
-    - Step 4: Quality score calculation
-    - Step 5: Recommendations generation
-
-    FEEDBACK FORMAT (simplified):
-    - loop_id: {{loop_id}}
-    - critic_agent: PHASE_CRITIC
-    - iteration: {{POST_SYNTHESIS_ITERATION}}
-    - overall_score: {{POST_SYNTHESIS_SCORE}}
-    - assessment_summary: "Post-synthesis path validation"
-    - detailed_feedback: Only path verification results
-    - key_issues: List any invalid paths found (if any)
-    - recommendations: [] (empty)
-
-    FRESH FEEDBACK REQUIREMENTS:
-    POST_SYNTHESIS_LOOP_STATUS = {tools.get_loop_status}
-    POST_SYNTHESIS_PRIOR_FEEDBACK = {tools.get_feedback}
-    POST_SYNTHESIS_ITERATION = POST_SYNTHESIS_LOOP_STATUS.iteration + 1
-    POST_SYNTHESIS_SCORE = POST_SYNTHESIS_LOOP_STATUS.current_score
-    IF POST_SYNTHESIS_SCORE == 0:
-      Extract the most recent non-post-synthesis PHASE_CRITIC score from POST_SYNTHESIS_PRIOR_FEEDBACK.
-      Set POST_SYNTHESIS_SCORE to that score.
-    IF POST_SYNTHESIS_SCORE == 0 OR no prior non-zero full critic score exists:
-      ERROR: "Post-synthesis validation cannot preserve a non-zero phase score"
-      DIAGNOSTIC: Show POST_SYNTHESIS_LOOP_STATUS and POST_SYNTHESIS_PRIOR_FEEDBACK excerpt
-      EXIT: Do NOT store score-0 post-synthesis feedback
-    MUST NOT store feedback with iteration=0.
-    MUST NOT store feedback with overall_score=0.
-    MUST append fresh feedback; do not reuse the prior full critic iteration.
-
-ELSE (default "full" mode):
-    Execute all steps normally (current behavior)
 
 TASKS:
 
-STEP 1: Validate loop_id Parameter
+STEP 1: Validate Inputs
 IF loop_id is None or loop_id == "":
-    ERROR: "phase-critic requires valid loop_id parameter"
-    DIAGNOSTIC: "loop_id={{loop_id}}, plan_name={{plan_name}}, phase_name={{phase_name}}"
-    HELP: "The phase-critic agent MUST receive loop_id from the calling command"
-    EXIT: Agent terminated
-→ Verify: loop_id is valid (non-empty string)
+    Return the report with `result: failed` and `detail: phase-critic requires a loop_id`.
+IF review_round is missing, not a whole number, or below 1:
+    Return the report with `result: failed` and `detail: phase-critic requires review_round >= 1`.
+→ Verify: loop_id is a non-empty string and review_round is a whole number of at least 1
 
-STEP 1.5: Retrieve Previous Critic Feedback
-CALL {tools.get_feedback}
-→ If prior feedback exists, compare against the latest two iterations
-→ Use prior feedback to document resolved issues, unresolved issues, and regressions
-→ If no prior feedback exists, continue with first-iteration assessment
-
-STEP 2: Retrieve Phase via loop_id
+STEP 2: Retrieve the Phase
 CALL {tools.get_document}
-→ Verify: Phase markdown received
-→ If failed: CRITICAL ERROR - loop not linked to phase
+→ Store: PHASE_MARKDOWN
+→ If failed: return the report with `result: failed` and `detail: loop not linked to a phase`
 
-STEP 2.5: Extract Phase Length from Response Metadata
-Extract length metric calculated by MCP server:
+STEP 3: Retrieve Previous Feedback and Guidance
+CALL {tools.get_feedback}
+→ Store: PRIOR_FEEDBACK
+→ The `## Iteration <N> -` entries are earlier reviews. Their `### Key Issues` give the `CQ-NNN`
+  IDs to reuse, and their findings are the baseline for `### Progress Against Previous Feedback`.
+→ The `## User Input <i>` entries are the user's direction. Read the workflow guidance from the
+  one tagged `[round 0 | briefing]`, per the guidance contract above.
 
-SPEC_RESPONSE = [result from Step 2]
-PHASE_MARKDOWN = PHASE_RESPONSE.message
-CHAR_LENGTH = PHASE_RESPONSE.char_length  # Provided by MCP server
-
-## No need to calculate - server already did it
-ESTIMATED_TOKENS = CHAR_LENGTH / 4  (Approximate token count: ~4 chars per token)
-
-**Length thresholds (based on character count):**
-SOFT_CAP = {tools.phase_length_soft_cap}      (~10k tokens - ideal max, configurable via LOOP_PHASE_LENGTH_SOFT_CAP)
-WARNING = {tools.phase_length_soft_cap + 10000}       (SOFT_CAP + 10k - getting long)
-CONCERNING = {tools.phase_length_soft_cap + 20000}    (SOFT_CAP + 20k - too long)
-CRITICAL = {tools.phase_length_soft_cap + 40000}      (SOFT_CAP + 40k - way too long)
-
-## Determine penalty tier
-IF CHAR_LENGTH <= SOFT_CAP:
-    LENGTH_PENALTY = 0
-    LENGTH_TIER = "IDEAL"
-ELIF CHAR_LENGTH <= WARNING:
-    LENGTH_PENALTY = -5
-    LENGTH_TIER = "WARNING"
-ELIF CHAR_LENGTH <= CONCERNING:
-    LENGTH_PENALTY = -15
-    LENGTH_TIER = "CONCERNING"
-ELIF CHAR_LENGTH <= CRITICAL:
-    LENGTH_PENALTY = -30
-    LENGTH_TIER = "CRITICAL"
-ELSE:
-    LENGTH_PENALTY = -50
-    LENGTH_TIER = "SEVERE"
-
-## Scope vs Verbosity Analysis (only if length > CONCERNING)
-IF CHAR_LENGTH > CONCERNING:
-    # Count structural elements
-    H2_COUNT = count occurrences of '\\n## ' in PHASE_MARKDOWN
-    H3_COUNT = count occurrences of '\\n### ' in PHASE_MARKDOWN
-
-    # Calculate verbosity ratio
-    CHARS_PER_SECTION = CHAR_LENGTH / (H2_COUNT + H3_COUNT)
-
-    # Count major features - extract content between "## System Design" and next H2
-    # Count H2 sections within System Design for complexity detection
-    SYSTEM_DESIGN_H2_COUNT = [count H2 headers within System Design section if present, else 0]
-
-    # Determine root cause
-    IF SYSTEM_DESIGN_H2_COUNT > 5:
-        ROOT_CAUSE = "SCOPE_CREEP"
-        EVIDENCE = f"System Design contains {{SYSTEM_DESIGN_H2_COUNT}} major subsystems (threshold: 5)"
-    ELIF CHARS_PER_SECTION > 3000:
-        ROOT_CAUSE = "VERBOSITY"
-        EVIDENCE = f"Average {{CHARS_PER_SECTION}} chars/section (threshold: 3000)"
-    ELSE:
-        ROOT_CAUSE = "MIXED"
-        EVIDENCE = "Both scope and verbosity contribute to length"
-ELSE:
-    ROOT_CAUSE = None
-    EVIDENCE = None
-
-## Document length assessment for feedback
-LENGTH_ASSESSMENT = {{
-    "character_count": CHAR_LENGTH,
-    "estimated_tokens": ESTIMATED_TOKENS,
-    "penalty": LENGTH_PENALTY,
-    "tier": LENGTH_TIER,
-    "root_cause": ROOT_CAUSE,
-    "evidence": EVIDENCE
-}}
-
-STEP 2.6: Verify Research Coverage and Best-Practices References (API-Aware)
-
-Extract Research Requirements section from PHASE_MARKDOWN:
-
-Search PHASE_MARKDOWN for "### Research Requirements" section
-IF section not found:
-    RESEARCH_PATH_BLOCKERS_PRESENT = false
-    BP_DOC_REFERENCE_BLOCKERS_PRESENT = false
-    API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
-    RESEARCH_PATH_VALIDATION = {{
-        "validated_count": 0,
-        "valid_count": 0,
-        "invalid_count": 0,
-        "valid_paths": [],
-        "invalid_paths": [],
-        "external_research_found": False,
-        "api_integration_triggered": False,
-        "detected_external_apis": [],
-        "apis_missing_coverage": [],
-        "apis_missing_final_docs": [],
-        "api_potential_matches": [],
-        "invalid_bp_references": [],
-    }}
-    # Continue because global best-practices path scanning still applies
-
-Parse section to distinguish subsections:
-- "**Existing Documentation**" → paths with "- Read: `[path]`"
-- "**External Research Needed**" → prompts with "- Synthesize: [prompt]"
-
-PATHS_TO_VALIDATE = []
-SYNTHESIZE_LINES = []
-READ_BLOCKS = []
-READ_BLOCK_METADATA_BY_PATH = {{}}
-
-## Line-by-line parser (header-independent for post-synthesis robustness)
-## Validate all "- Read:" lines found under Research Requirements regardless of subsection headers.
-
-current_read_path = None
-current_read_metadata = []
-
-For each raw_line in research_section.split('\\n'):
-    line = raw_line.strip()
-
-    IF line.startswith('- Read:') AND current_read_path is not None:
-        READ_BLOCK_METADATA_BY_PATH[current_read_path] = current_read_metadata
-        READ_BLOCKS.append({{"path": current_read_path, "metadata": current_read_metadata}})
-        current_read_path = None
-        current_read_metadata = []
-
-    IF line.startswith('- Read:'):
-        # Extract path from: "- Read: `.best-practices/file.md`"
-        # Handle both backtick formats: `path` and plain path
-        IF '`' in line:
-            # Extract from backticks
-            match = regex search for `([^`]+)`
-            IF match found:
-                current_read_path = match.group(1)
-                PATHS_TO_VALIDATE.append(current_read_path)
-        ELSE:
-            # Extract plain text after "- Read: "
-            path = line.replace('- Read:', '').strip()
-            IF path:
-                current_read_path = path
-                PATHS_TO_VALIDATE.append(current_read_path)
-    ELIF line.startswith('- Synthesize:'):
-        IF current_read_path is not None:
-            READ_BLOCK_METADATA_BY_PATH[current_read_path] = current_read_metadata
-            READ_BLOCKS.append({{"path": current_read_path, "metadata": current_read_metadata}})
-            current_read_path = None
-            current_read_metadata = []
-        SYNTHESIZE_LINES.append(line)
-    ELIF current_read_path is not None AND raw_line.startswith('  ') AND ':' in line:
-        current_read_metadata.append(line.lstrip('- ').strip())
-    # Ignore all other lines in Research Requirements.
-
-IF current_read_path is not None:
-    READ_BLOCK_METADATA_BY_PATH[current_read_path] = current_read_metadata
-    READ_BLOCKS.append({{"path": current_read_path, "metadata": current_read_metadata}})
-
-## Validate all "Read:" paths from Research Requirements
-VALID_PATHS = []
-INVALID_PATHS = []
-
-For each path in PATHS_TO_VALIDATE:
-    result = Glob(pattern=path)
-    IF result contains matching file:
-        VALID_PATHS.append(path)
-    ELSE:
-        INVALID_PATHS.append(path)
-
-## Store verification results for scoring
-RESEARCH_PATH_VALIDATION = {{
-    "validated_count": len(PATHS_TO_VALIDATE),
-    "valid_count": len(VALID_PATHS),
-    "invalid_count": len(INVALID_PATHS),
-    "valid_paths": VALID_PATHS,
-    "invalid_paths": INVALID_PATHS,
-    "read_blocks": READ_BLOCKS,
-    "read_metadata_by_path": READ_BLOCK_METADATA_BY_PATH,
-    "external_research_found": ("**External Research Needed**" in research_section)
-}}
-
-## Structural blocker detection for invalid "Read:" paths in Research Requirements
-IF len(INVALID_PATHS) > 0:
-    RESEARCH_PATH_BLOCKERS_PRESENT = true
-    Add blocker for each invalid path:
-      "[Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist"
-ELSE:
-    RESEARCH_PATH_BLOCKERS_PRESENT = false
-
-## GLOBAL best-practices path validation across entire phase (hallucination guard)
-ALL_BP_PATH_MENTIONS = extract all unique `.best-practices/*.md` path mentions from PHASE_MARKDOWN
-VALID_BP_REFERENCES = []
-INVALID_BP_REFERENCES = []
-
-For each path in ALL_BP_PATH_MENTIONS:
-    result = Glob(pattern=path)
-    IF result contains matching file:
-        VALID_BP_REFERENCES.append(path)
-    ELSE:
-        INVALID_BP_REFERENCES.append(path)
-
-IF len(INVALID_BP_REFERENCES) > 0:
-    BP_DOC_REFERENCE_BLOCKERS_PRESENT = true
-    Add blocker for each invalid path:
-      "[Best-Practices Reference Invalid - BLOCKING]: Referenced path `{{path}}` does not exist in .best-practices/"
-ELSE:
-    BP_DOC_REFERENCE_BLOCKERS_PRESENT = false
-
-## Deterministic external API detection and per-service research coverage
-API_DETECTION_TEXT = concatenate text from:
-- "### Integration Context"
-- "## API Design" and/or "### API Design"
-- "### Dependencies"
-- "## System Design" and API-related subsections
-
-API_CANDIDATES = []
-- Extract URL hosts from API_DETECTION_TEXT via regex: `https?://([a-zA-Z0-9.-]+)`
-- Extract service/API tokens from lines containing: "api", "sdk", "webhook", "oauth", "service", "provider"
-
-Normalize each candidate deterministically:
-- Lowercase
-- Trim whitespace and punctuation/backticks/quotes
-- Remove trailing suffix tokens: "api", "sdk", "service", "platform", "client"
-- Collapse repeated spaces
-
-Exclude internal/local-only candidates:
-- Starts with `/api/`
-- Contains `localhost` or `127.0.0.1`
-- Ends with `.local` or `.internal`
-- Equals one of: `internal`, `private`, `local`
-
-EXTERNAL_APIS = unique normalized candidates after exclusions
-API_INTEGRATION_TRIGGER = len(EXTERNAL_APIS) > 0
-
-BP_PATH_REGEX = '(\\\\.best-practices/[A-Za-z0-9._/-]+\\\\.md)'
-VALID_BP_READ_PATHS = []
-
-For each path in VALID_PATHS:
-    IF path matches BP_PATH_REGEX:
-        VALID_BP_READ_PATHS.append(path)
-
-APIS_WITH_COVERAGE = []
-APIS_WITH_VALID_BP_READ_COVERAGE = []
-APIS_MISSING_COVERAGE = []
-APIS_MISSING_FINAL_DOCS = []
-API_DOC_VALIDATION_FAILURES = []
-API_POTENTIAL_MATCHES = []
-
-IF API_INTEGRATION_TRIGGER is true:
-    For each api_name in EXTERNAL_APIS:
-        API_SLUG_TOKEN = api_name with spaces replaced by "-"
-        ## Quick advisory scan for repair hints. This helps identify likely docs without trusting generated filenames.
-        ## These matches are NOT coverage evidence unless the path is also cited in phase `Read:` entries and passes full validation below.
-        API_KEYWORD_MATCH_PATHS = []
-        CALL Bash: rg -il --fixed-strings "{{api_name}}" .best-practices/ || true
-        → Append matching `.best-practices/*.md` paths to API_KEYWORD_MATCH_PATHS
-        For each potential_path in API_KEYWORD_MATCH_PATHS:
-            CALL Bash: cat "{{potential_path}}" | head -n 25
-            OVERVIEW_HEAD = command output
-            OVERVIEW_MATCHES_API = OVERVIEW_HEAD contains `## Overview` AND identifies api_name, API_SLUG_TOKEN, or the official API host/provider
-            IF OVERVIEW_MATCHES_API:
-                API_POTENTIAL_MATCHES.append({{"api": api_name, "path": potential_path, "phase_cited": potential_path in VALID_BP_READ_PATHS}})
-
-        ## Generated filenames are not authoritative because bp controls output slugs.
-        ## Validate only phase-cited Read: best-practices documents using metadata and content.
-        API_DOC_CANDIDATES = VALID_BP_READ_PATHS
-
-        VALIDATED_API_DOC_PATHS = []
-        VALIDATED_API_READ_PATHS = []
-
-        For each doc_path in API_DOC_CANDIDATES:
-            READ_METADATA = READ_BLOCK_METADATA_BY_PATH.get(doc_path, [])
-            METADATA_MATCHES_API = READ_METADATA `Covers API`, `Technologies`, or `Query` identifies api_name, API_SLUG_TOKEN, or the official API host/provider
-            METADATA_MATCHES_RUNTIME = READ_METADATA `Technologies` or `Query` identifies the implementation language/runtime required by the phase, or explicitly states direct HTTP/no language-specific SDK is required
-            CALL Read(doc_path)
-            IF Read fails:
-                API_DOC_VALIDATION_FAILURES.append(f"unreadable:{{doc_path}}")
-                Continue
-
-            CONTENT_MATCHES_API = content identifies api_name, API_SLUG_TOKEN, or the official API host/provider
-            CONTENT_MATCHES_RUNTIME = content identifies the implementation language/runtime required by the phase, language-specific SDK/client guidance, or explicit direct HTTP/no SDK guidance
-            CONTENT_HAS_OFFICIAL_SOURCE = content includes official source URLs or explicit official documentation references
-            CONTENT_HAS_AUTH = content describes authentication model
-            CONTENT_HAS_OPERATIONS = content describes endpoints/operations or SDK/client method contracts
-            CONTENT_HAS_CONTRACTS = content describes request/response schemas, payload contracts, or explains why not applicable
-            CONTENT_HAS_FAILURE_GUIDANCE = content covers relevant rate limits, retries, pagination, webhooks, errors, or versioning
-            CONTENT_HAS_CLIENT_DECISION = content recommends SDK/client library vs direct HTTP with rationale
-
-            IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME) AND all content validation booleans are true:
-                VALIDATED_API_DOC_PATHS.append(doc_path)
-                IF doc_path in VALID_BP_READ_PATHS:
-                    VALIDATED_API_READ_PATHS.append(doc_path)
-            ELSE:
-                API_DOC_VALIDATION_FAILURES.append(f"insufficient_official_api_coverage:{{doc_path}}")
-
-        HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0
-        HAS_SYNTH_COVERAGE = any SYNTHESIZE_LINES item has structured Technologies/Query identifying api_name or API_SLUG_TOKEN AND structured Topics indicating official API docs/API integration intent (`apidocs`, `apiintegration`, or equivalent API-doc terms)
-
-        IF HAS_VALID_BP_READ_COVERAGE:
-            APIS_WITH_VALID_BP_READ_COVERAGE.append(api_name)
-
-        IF validation_mode == "post_synthesis":
-            IF HAS_VALID_BP_READ_COVERAGE:
-                APIS_WITH_COVERAGE.append(api_name)
-            ELSE:
-                APIS_MISSING_FINAL_DOCS.append(api_name)
-        ELSE:
-            IF HAS_VALID_BP_READ_COVERAGE OR HAS_SYNTH_COVERAGE:
-                APIS_WITH_COVERAGE.append(api_name)
-            ELSE:
-                APIS_MISSING_COVERAGE.append(api_name)
-
-    IF validation_mode == "post_synthesis" AND len(APIS_MISSING_FINAL_DOCS) > 0:
-        API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = true
-        Add blocker for each api_name:
-          "[API Research Final Docs Missing - BLOCKING]: External API/service `{{api_name}}` has no valid Read: best-practices document after synthesis"
-    ELIF validation_mode != "post_synthesis" AND len(APIS_MISSING_COVERAGE) > 0:
-        API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = true
-        Add blocker for each api_name:
-          "[API Research Coverage Missing - BLOCKING]: External API/service `{{api_name}}` has no corresponding Read/Synthesize research entry"
-    ELSE:
-        API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
-ELSE:
-    API_RESEARCH_COVERAGE_BLOCKERS_PRESENT = false
-    APIS_WITH_VALID_BP_READ_COVERAGE = []
-    APIS_MISSING_COVERAGE = []
-    APIS_MISSING_FINAL_DOCS = []
-
-RESEARCH_PATH_VALIDATION = {{
-    "validated_count": len(PATHS_TO_VALIDATE),
-    "valid_count": len(VALID_PATHS),
-    "invalid_count": len(INVALID_PATHS),
-    "valid_paths": VALID_PATHS,
-    "invalid_paths": INVALID_PATHS,
-    "external_research_found": ("**External Research Needed**" in research_section),
-    "api_integration_triggered": API_INTEGRATION_TRIGGER,
-    "detected_external_apis": EXTERNAL_APIS,
-    "apis_missing_coverage": APIS_MISSING_COVERAGE,
-    "apis_missing_final_docs": APIS_MISSING_FINAL_DOCS,
-    "api_potential_matches": API_POTENTIAL_MATCHES,
-    "api_doc_validation_failures": API_DOC_VALIDATION_FAILURES,
-    "invalid_bp_references": INVALID_BP_REFERENCES
-}}
-
-STEP 2.7: Verify Implementation Plan Reference Paths
-
-Search PHASE_MARKDOWN for "### Implementation Plan References" section.
-IF section not found:
-  IMPL_PLAN_PATH_BLOCKERS_PRESENT = false
-  Skip to STEP 3
-
-Extract all paths from "- Constraint: `<path>`" lines within the section.
-VALID_IMPL_PATHS = []
-INVALID_IMPL_PATHS = []
-
-For each extracted path:
-  Strip any § section qualifier (take only the file path before §)
-  result = Glob(pattern=path)
-  IF result contains matching file:
-    VALID_IMPL_PATHS.append(path)
-  ELSE:
-    INVALID_IMPL_PATHS.append(path)
-
-IF len(INVALID_IMPL_PATHS) > 0:
-  IMPL_PLAN_PATH_BLOCKERS_PRESENT = true
-  Add blocker for each invalid path:
-    "[Implementation Plan Reference Invalid - BLOCKING]: Path `{{path}}` does not exist"
-ELSE:
-  IMPL_PLAN_PATH_BLOCKERS_PRESENT = false
-
-STEP 2.7.5: Verify Implementation Plan Reference Semantic Application
-
-Apply only when `### Implementation Plan References` exists and referenced
-paths are readable.
-
-For each readable implementation-plan reference:
-  - Identify the referenced section or full-file constraints relevant to this Phase
-  - Verify those constraints are semantically reflected in Phase Objectives,
-    Scope, Architecture, Research Requirements, Success Criteria, deliverables,
-    implementation constraints, or an explicit TUI Plan Deviation Log entry
-  - Citation-only preservation is insufficient; the Phase must show how the
-    referenced requirement changes what will be built, tested, researched, or
-    excluded
-
-IF a referenced constraint is relevant but not reflected in Phase content:
-  Add blocker:
-    "[Implementation Plan Reference Not Applied - BLOCKING]: `{{path}}` is cited but the relevant constraint is not reflected in Phase objectives/scope/architecture/research/success criteria."
-
-IF a referenced constraint is omitted because it is not applicable:
-  Require an explicit not-applicable rationale in the Phase; otherwise add the
-  same blocker.
-
-# Structural blockers gate readiness through `### Blockers`.
-# They do NOT change the content score.
-
-STEP 2.8: Retrieve Plan for Constraint Validation
+STEP 4: Retrieve the Plan for Constraint Fit
 CALL {tools.get_plan}
 → Store: STRATEGIC_PLAN_MARKDOWN
-→ If failed: Set PLAN_CONSTRAINTS_AVAILABLE = False, skip constraint checks in STEP 3
+→ If failed: Set PLAN_CONSTRAINTS_AVAILABLE = False and skip the plan constraint checks in STEP 7
 
 IF STRATEGIC_PLAN_MARKDOWN received:
   PLAN_CONSTRAINTS_AVAILABLE = True
@@ -833,270 +219,117 @@ IF STRATEGIC_PLAN_MARKDOWN received:
   PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
   (IF any section missing: set variable = None)
 
-STEP 3: Evaluate Phase Structure
-Assess Phase against FSDD quality framework criteria
-→ Technical completeness and clarity
-→ Architecture design quality
-→ Implementation readiness
-→ Research requirements adequacy
-→ Plan Constraint Alignment (if PLAN_CONSTRAINTS_AVAILABLE):
+STEP 5: Read the Implementation Plan
+IMPLEMENTATION_PLAN_PATH = `.respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/implementation.md`
+CALL Read(IMPLEMENTATION_PLAN_PATH)
+IF Read fails:
+  IMPLEMENTATION_PLAN_MARKDOWN = None
+  Raise:
+    [mechanical] [Implementation Plan Missing - BLOCKING]: `{{IMPLEMENTATION_PLAN_PATH}}` does not exist
+ELSE:
+  IMPLEMENTATION_PLAN_MARKDOWN = file content
+
+STEP 6: Collect Settled Findings
+SETTLED_FINDINGS = every Settled Design Decision in PHASE_MARKDOWN whose `supersedes=` is a
+`CQ-NNN` or `unresolved-checks`.
+- A `supersedes=CQ-NNN` SD settles that judgment finding: never raise it again, under any ID.
+- A `supersedes=unresolved-checks` SD records mechanical findings the user accepted as-is in its
+  `decision=`: never raise those findings again.
+- A `supersedes=OD-NNN` SD settles that decision; it is no longer open.
+
+STEP 7: Run the Review Checks
+Run every check in REVIEW CHECKS below against PHASE_MARKDOWN and IMPLEMENTATION_PLAN_MARKDOWN.
+Classify each finding per MANDATORY FINDING CLASSIFICATION. Skip any finding SETTLED_FINDINGS
+settles. Reuse `CQ-NNN` IDs per the classification rules.
+
+STEP 8: Score
+IF `### Blockers` is empty:
+  OVERALL_SCORE = 100
+ELSE:
+  OVERALL_SCORE = 0
+The score is this rule and nothing else: no rubric, no length tiers, no section counts.
+
+STEP 9: Store Feedback
+Build the feedback markdown per OUTPUT FORMAT, with `Iteration` set to review_round and
+`Overall Score` set to OVERALL_SCORE.
+CALL {tools.store_feedback}
+→ Verify: Feedback stored successfully
+→ Store under review_round exactly. MUST NOT store feedback with iteration=0, and never derive
+  the iteration from any other source: each round's review is kept as its own entry.
+
+STEP 10: Return the Report
+Return the four-section report per REPORT FORMAT.
+
+## REVIEW CHECKS
+
+### Research Requirements Paths
+
+Search PHASE_MARKDOWN for the "### Research Requirements" section. It is the research ledger:
+`RP-NNN` proposal lines and `- Read:` lines.
+
+For each `- Read:` line:
+  Extract the path from its backticks (or the plain text after `- Read:`)
+  result = Glob(pattern=path)
+  IF result has no matching file:
+    Raise:
+      [mechanical] [Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist
+
+For every `.best-practices/*.md` path mentioned anywhere in PHASE_MARKDOWN:
+  result = Glob(pattern=path)
+  IF result has no matching file:
+    Raise:
+      [mechanical] [Best-Practices Reference Invalid - BLOCKING]: Referenced path `{{path}}` does not exist in .best-practices/
+
+Research coverage is never a finding. No finding ever concerns which research the phase has,
+the research ledger's proposals, or a proposal the user declined: research is proposed by the
+architect and approved by the user. A finding that penalizes declining converts the opt-in into a
+mandate and defeats the cost design.
+
+### Implementation Plan References
+
+Search PHASE_MARKDOWN for "### Implementation Plan References". IF absent: skip this check.
+
+For each "- Constraint: `<path>`" line:
+  Strip any § section qualifier (take only the file path before §)
+  result = Glob(pattern=path)
+  IF result has no matching file:
+    Raise:
+      [mechanical] [Implementation Plan Reference Invalid - BLOCKING]: Path `{{path}}` does not exist
+
+Verify Implementation Plan Reference Semantic Application, for each readable reference:
+  - Identify the referenced section or full-file constraints relevant to this Phase
+  - Verify those constraints are semantically reflected in Phase Objectives,
+    Scope, Architecture, Research Requirements, Success Criteria, deliverables,
+    implementation constraints, or an explicit TUI Plan Deviation Log entry
+  - Citation-only preservation is insufficient; the Phase must show how the
+    referenced requirement changes what will be built, tested, researched, or
+    excluded
+  IF a relevant constraint is not reflected, or is omitted with no not-applicable rationale:
+    Raise:
+      [judgment] [Implementation Plan Reference Not Applied] CQ-NNN: `{{path}}` is cited but its relevant constraint is not reflected in the Phase
+    Option A keeps the Phase as designed; Option B applies the constraint at the place you name.
+
+### Plan Constraint Fit
+
+Apply only when PLAN_CONSTRAINTS_AVAILABLE:
   → IF PLAN_ARCHITECTURE: Verify Phase architecture refines it, or deviation is explicitly documented
   → IF PLAN_TECHNOLOGY_DECISIONS: Verify Technology Stack honors chosen technologies, or deviation is documented
   → IF PLAN_TECHNOLOGY_REJECTIONS: Verify rejected technologies are absent, or any usage is documented as deviation
   → IF PLAN_ANTI_REQUIREMENTS: Verify scope excludes anti-requirements, or deviation is documented
   → IF PLAN_QUALITY_BAR: Verify Testing Strategy/NFRs reference targets, or target deviation is documented
   → Verify presence/quality of `TUI Plan Deviation Log` when deviations exist
+For each undocumented contradiction, raise:
+  [judgment] [Plan Constraint Violation] CQ-NNN: `{{plan section}}` is contradicted with no recorded deviation
+Option A keeps the Phase and records the deviation; Option B conforms to the plan constraint.
 
-STEP 4: Calculate Quality Score
-Use objective assessment criteria to calculate numerical score (0-100)
-→ Apply scoring methodology from framework below
-→ Document rationale with evidence
+### Design Shape
 
-STEP 5: Generate Recommendations
-Create specific improvement recommendations
-→ Prioritize by implementation impact
-→ Provide actionable guidance
-→ Reference specific phase sections
-→ If prior feedback exists, add `### Progress Against Previous Feedback` covering resolved issues, unresolved issues, and regressions
-
-STEP 6: Store Feedback
-CALL {tools.store_feedback}
-→ Verify: Feedback stored successfully
-→ Only report completion after verification
-
-## TECHNICAL FSDD FRAMEWORK - ADAPTIVE EVALUATION
-
-### Evaluation Philosophy
-
-Phases vary by project type. Evaluate based on project context:
-- **Core sections** are common to most phases (required or highly recommended)
-- **Domain-specific sections** vary by project type (API Design, Data Models, CLI Commands, etc.)
-- **Do NOT penalize** missing sections if not applicable to project type
-- **DO penalize** placeholder content ("TBD", "N/A") in relevant sections
-
-### Core Section Evaluation (70% of total score)
-
-#### Required Core Sections (40 points + 5 bonus for structure)
-
-**Structure Compliance (5 bonus points)**
-- Verify phase follows required H2 > H3 nesting for core sections
-- Check that "System Design", "Implementation", and "Additional Details" exist as H2 headers
-- Check that Architecture, Testing Strategy, Research Requirements exist as H3 under their respective H2
-- Award 5 bonus points if structure is correct, 0 if any core section uses wrong header level
-
-**Custom H3 Detection (data loss prevention)**
-- Scan each mapped H2 section (Overview, System Design, Implementation, Additional Details) for H3 headers
-- Required H3 headers per section:
-  - Overview: Objectives, Scope, Dependencies, Deliverables
-  - System Design: Architecture, Technology Stack, System Design - Additional Sections
-  - Design Shape: Module Layout, Skeleton Index, Collaboration And Wiring, Test List, Design Shape - Additional Sections
-  - Design Decisions: Open Design Decisions, Settled Design Decisions
-  - Implementation: Functional Requirements, Non-Functional Requirements, Development Plan, Testing Strategy, Implementation - Additional Sections
-  - Additional Details: Implementation Plan References, Research Requirements, Success Criteria, Integration Context, Additional Details - Additional Sections
-- Any H3 header under a mapped H2 that is NOT in the required set above will be silently dropped on storage
-- Flag each violation: "Custom H3 '### X' under ## Y will be lost — move content into '### Y - Additional Sections' using H4+ sub-headers"
-- Deduct 2 points per violation (from the 5 bonus points, minimum 0)
-
-**If Structure Issues Found**:
-- Note in feedback which sections use wrong header levels
-- Recommend: "Nest Section X under H2 'Y' as '### X', not standalone '## X'"
-- This is implementation-blocking - phase will not parse correctly into model fields
-
-**Phase Naming and Scoping Compliance (included in assessment - not scored separately)**
-
-**Naming Pattern Compliance**:
-- Phase name follows `phase-{{number}}-{{description}}` pattern
-- Lowercase kebab-case format maintained
-- Sequential numbering if multiple phases
-- If naming doesn't follow pattern, note in Key Issues and recommend correction
-
-**Scoping Quality Assessment** (inform Scope Completeness score):
-- Phase represents ONE SPRINT'S worth of cohesive work
-- Not too large: Multiple independent features MUST be separate phases
-- Not too trivial: Single function MUST be part of larger phase
-- Clear, testable increment of value
-- If decomposed, sub-phases also follow sprint-sized scoping
-
-**Scoping Quality Indicators**:
-- ✅ GOOD: Single cohesive feature or multiple related features working together
-- ❌ TOO LARGE: "Complete platform", "Storage + testing + validation + documentation"
-- ❌ TOO TRIVIAL: "Create single configuration class", "Add one validation function"
-
-**Assessment Action**:
-- If scope too large: Recommend splitting into multiple phases with specific breakdown
-- If scope too trivial: Recommend combining with related work
-- Use scoping assessment to inform Scope Completeness score (below)
-
-**1. Objectives Clarity (10 points)**
-- Clear, measurable goals defined
-- Business value articulated
-- Success outcomes specified
-- Alignment with strategic plan evident
-
-**Scoring**:
-- 9-10: Crystal clear objectives with measurable outcomes
-- 7-8: Good clarity, minor ambiguity
-- 5-6: Basic goals, lacking specificity
-- 0-4: Vague or missing objectives
-
-**2. Scope Completeness (10 points)**
-- Boundaries explicitly stated
-- What's included clearly defined
-- What's excluded explicitly stated
-- Constraints and assumptions documented
-
-**Scoring**:
-- 9-10: Comprehensive scope with clear boundaries
-- 7-8: Good scope, minor gaps in exclusions
-- 5-6: Basic scope, missing constraints
-- 0-4: Incomplete or ambiguous scope
-
-**3. Architecture Description (10 points)**
-- System structure clearly described
-- Component interactions mapped
-- Data flow documented
-- Integration points identified
-- Design decisions justified
-
-**Scoring**:
-- 9-10: Comprehensive architecture with clear interactions
-- 7-8: Good structure, minor interaction gaps
-- 5-6: Basic components, missing relationships
-- 0-4: Incomplete or unclear architecture
-
-**4. Testing Strategy (10 points)**
-- Coverage approach defined
-- Testing levels specified (unit, integration, e2e)
-- Quality gates documented
-- Test execution plan included
-
-**Scoring**:
-- 9-10: Comprehensive strategy across all levels
-- 7-8: Good coverage, missing some levels
-- 5-6: Basic mention, no specific approach
-- 0-4: Inadequate or missing testing strategy
-
-#### Optional Core Sections (30 points total - assess only if present)
-
-**5. Dependencies (5 points)**
-- External requirements identified
-- Version specifications included
-- Rationale for choices provided
-
-**6. Deliverables (5 points)**
-- Concrete outputs specified
-- Acceptance criteria defined
-- Timeline implications noted
-
-**7. Technology Stack (5 points)**
-- Technologies listed with versions
-- Justifications provided
-- Trade-offs documented
-
-**8. Functional Requirements (5 points)**
-- Features clearly specified
-- User workflows documented
-- Edge cases considered
-
-**9. Non-Functional Requirements (5 points)**
-- Performance targets quantified
-- Scalability considerations included
-- Availability targets specified
-
-**10. Development Plan (5 points)**
-- Implementation phases structured
-- Dependencies between phases mapped
-- Resource implications noted
-
-**11. Research Requirements (5 points + SEVERE penalties for invalid or missing research)**
-- Knowledge gaps identified
-- Existing documentation paths verified (from STEP 2.6 validation)
-- External research prompts identified (will be synthesized in Step 7.5)
-
-**Archive Path Validation (CRITICAL)**:
-- Valid "Read:" paths found: {{RESEARCH_PATH_VALIDATION.valid_count}}
-- Invalid "Read:" paths found: {{RESEARCH_PATH_VALIDATION.invalid_count}}
-- External research prompts: {{count of "Synthesize:" entries}}
-- API integration triggered: {{RESEARCH_PATH_VALIDATION.api_integration_triggered}}
-- Detected external APIs/services: {{RESEARCH_PATH_VALIDATION.detected_external_apis}}
-- APIs missing coverage: {{RESEARCH_PATH_VALIDATION.apis_missing_coverage}}
-- APIs missing final docs: {{RESEARCH_PATH_VALIDATION.apis_missing_final_docs}}
-- API potential matches from quick overview scan: {{RESEARCH_PATH_VALIDATION.api_potential_matches}}
-- API official-doc validation failures: {{RESEARCH_PATH_VALIDATION.api_doc_validation_failures}}
-- Invalid `.best-practices` references anywhere in phase: {{RESEARCH_PATH_VALIDATION.invalid_bp_references}}
-
-**BLOCKER RULE FOR INVALID ARCHIVE PATHS**:
-- If ANY invalid "Read:" paths found: raise blockers
-- This is a BLOCKING issue - invalid paths cause downstream task-planner failure
-- "Synthesize:" prompts are NOT penalized (converted to files in Step 7.5)
-- However, flag low-value or redundant "Synthesize:" prompts as quality issues
-- If prompt set appears quota-driven (added to fill count rather than clear gaps), deduct points
-- Require prompt discipline: specific, high-value gaps only; avoid broad "research everything" prompts
-- All invalid "Read:" paths MUST be corrected before phase is considered ready
-- List each invalid path in `### Blockers` using this exact marker:
-  [Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist
-
-**BLOCKER RULE FOR HALLUCINATED BEST-PRACTICES REFERENCES**:
-- If ANY `.best-practices/*.md` path mentioned anywhere in phase does not exist: raise blockers
-- This is a BLOCKING issue - hallucinated references make guidance unverifiable
-
-**BLOCKER RULE FOR API RESEARCH COVERAGE GAPS**:
-- In `validation_mode == "full"`: if ANY external API/service lacks corresponding Read/Synthesize research entry: raise blockers
-- In `validation_mode == "post_synthesis"`: if ANY external API/service lacks a valid `Read:` `.best-practices/*.md` doc: raise blockers
-- This is a BLOCKING issue - missing API lookups risks hallucinated integration logic
-- API doc filenames are never authoritative; never approve or reject coverage from generated filename markers
-- Candidate official API docs come only from phase-cited `Read:` `.best-practices/*.md` paths
-- Use API-keyword quick scans plus `cat "{{path}}" | head -n 25` `## Overview` checks only as repair hints for likely docs to cite; quick-scan matches are not coverage evidence by themselves
-- Generic provider docs are insufficient when the phase requires language/runtime-specific SDK/client or HTTP integration guidance
-- Approval requires metadata/content validation of target API/provider identity, official source URLs or official-doc references, auth model, endpoints/operations or SDK/client method contracts, payload/schema contracts where relevant, failure/rate-limit/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP recommendation with rationale
-- In `validation_mode == "full"`, structured `Synthesize:` prompts satisfy planned coverage only when `Technologies:`, `Topics:`, and `Query:` make the API-doc/API-integration intent explicit
-- Post-synthesis API blockers are refinement-loop repair feedback for phase-architect; command routing decides whether to refine, ask for user input, or continue
-
-**BLOCKER RULE FOR INVALID IMPLEMENTATION PLAN REFERENCE PATHS**:
-- If ANY invalid "- Constraint: `<path>`" paths found: raise blockers
-- This is a BLOCKING issue - invalid paths prevent task-planner from loading hard constraints
-- All invalid constraint paths MUST be corrected before phase is considered ready
-- List each invalid path in `### Blockers` (from STEP 2.7 validation)
-
-**Root Cause**: Phase author likely guessed filename instead of using actual archive scan output.
-**Solution**: Re-run archive scan and use exact file paths returned.
-
-**Note on Date Prefixes**: Date prefixes (2025-08-29) indicate when documentation was created, NOT an expiration date. Documents from weeks/months ago remain valid unless superseded.
-
-**12. Success Criteria (5 points)**
-- Measurable outcomes defined
-- Verification methods specified
-- Acceptance thresholds set
-
-**13. Integration Context (5 points)**
-- System relationships mapped
-- Interface contracts defined
-- Integration testing approach specified
-
-### Design Shape Evaluation (Not Scored — BLOCKERS only)
-
-GATE CHECK: If `### Shape Gate` on the Phase is `shape-settled` or `shape-amended`, skip this entire section — raise none of its blockers.
-The phase_mode == "shape" critic pass already ran this exact blocker lane against this design before the user approved
-it at the Phase 3 gate, and Step 11's override lets the user carry forward a shape this
-lane would still flag. Re-running it here would let a blocker the user already accepted
-(or that shape mode already cleared) permanently deadlock the detail act — the detail
-architect is forbidden from modifying `## Design Shape` once the gate is settled, so a
-blocker raised from this section here could never be resolved.
-Run this section normally (as before) when `### Shape Gate` is `unshaped` or
-`shape-proposed` — those phases never went through the shape act's own check.
-
-The design layer (`## Design Shape`, `## Design Decisions`) exists to give module
-boundaries, public seams, and behaviors an owner (findings F1-F4) before the human
-gate (Phase 3) and skeleton materialization (Phase 4) exist. It is a hypothesis, not
-a contract — evaluate whether it names real design, not whether it is exhaustive.
-
-SHAPE_SOFT_CAP = {tools.phase_shape_soft_cap} (combined `## Design Shape` + `## Design Decisions` character count — configurable via LOOP_PHASE_SHAPE_SOFT_CAP)
-If combined length exceeds SHAPE_SOFT_CAP: note in Key Issues that the shape is not
-staying deliberately thin (score lane, never a blocker — "deliberately thin" enforced
-by prose is not enforced).
+The design layer (`## Design Shape`, `## Design Decisions`) gives module boundaries, public seams
+and behaviors an owner. It is a hypothesis, not a contract: evaluate whether it names real design,
+not whether it is exhaustive.
 
 BINDING SCOPE
-Blocker lane, ONLY these:
+Findings come ONLY from these:
 1. Module boundaries in `### Module Layout`
 2. Public seams in `### Skeleton Index`
 3. Ownership/construction in `### Collaboration And Wiring`
@@ -1108,59 +341,55 @@ Blocker lane, ONLY these:
    state ownership, screen decomposition (per flow), component provenance, and the
    visual design source — never the *content* of those decisions (below)
 
-Score lane ONLY, NEVER a blocker:
+NEVER a finding:
 - Private helpers, internal data structures, algorithm choice
 - Intra-module file splits, step ordering
 - Error message text, naming of locals
 - Additions that do not contradict 1-5 (new private modules are ALLOWED)
 
-VIOLATION: emitting a blocker for an internal implementation detail turns this critic
+VIOLATION: raising a finding for an internal implementation detail turns this critic
            into a conformance checker and defeats the purpose of keeping the shape thin.
 
-**BLOCKER RULE FOR UNJUSTIFIED SEAMS**:
+**UNJUSTIFIED SEAMS** (judgment):
 - For each abstraction named in `### Skeleton Index`: a seam whose purpose is
   substitution, whatever the owning language calls it. Identify whether
   `### Settled Design Decisions` or `### Open Design Decisions` states what varies
   behind it (multiple implementations, a swap point, an explicit extension axis).
-- If an abstraction has exactly one implementation and no stated axis of variation:
-  raise a blocker. Every skeletoned abstraction must name what varies behind it. If
-  nothing varies yet, name the concrete unit directly instead of an abstraction.
-- List each violation in `### Blockers` using this exact marker:
-  [Unjustified Seam - BLOCKING]: `{{seam}}` has one implementation and no stated axis of variation
+- If an abstraction has exactly one implementation and no stated axis of variation, raise:
+  [judgment] [Unjustified Seam] CQ-NNN: `{{seam}}` has one implementation and no stated axis of variation
+- Option A keeps the seam; Option B names the concrete unit directly. Recommend B.
 
-**BLOCKER RULE FOR EMPTY OR FILE-NAMED TEST LIST**:
-- If `### Test List` is empty or missing while `### Skeleton Index` names public
-  messages: raise a blocker — behaviors were never surfaced for the modules being built.
-  [Empty Test List - BLOCKING]: Skeleton Index names public messages with no corresponding Test List entries
+**EMPTY OR FILE-NAMED TEST LIST** (mechanical):
+- If `### Test List` is empty or missing while `### Skeleton Index` names public messages:
+  [mechanical] [Empty Test List - BLOCKING]: Skeleton Index names public messages with no corresponding Test List entries
 - If a `### Test List` entry names a file or function instead of an observable
-  behavior (e.g. `<path to a test file>` with no `::<behavior>` part): raise a
-  blocker.
-  [Test List Names File Not Behavior - BLOCKING]: `{{entry}}` names a file, not an observable behavior
+  behavior (e.g. `<path to a test file>` with no `::<behavior>` part):
+  [mechanical] [Test List Names File Not Behavior - BLOCKING]: `{{entry}}` names a file, not an observable behavior
 
-**BLOCKER RULE FOR SKELETON INDEX / MODULE LAYOUT MISMATCH**:
+**SKELETON INDEX / MODULE LAYOUT MISMATCH** (mechanical):
 - Every module path in `### Skeleton Index` MUST also appear in `### Module Layout`.
-- If a Skeleton Index entry names a module absent from Module Layout: raise a blocker.
-  [Skeleton Index Module Mismatch - BLOCKING]: `{{path}}` is in Skeleton Index but not in Module Layout
+  [mechanical] [Skeleton Index Module Mismatch - BLOCKING]: `{{path}}` is in Skeleton Index but not in Module Layout
 
-**BLOCKER RULE FOR UX CONTRACT FLOWS WITH NO OBSERVABLE PASS CONDITION**:
+**UX CONTRACT FLOWS WITH NO OBSERVABLE PASS CONDITION** (mechanical):
 - If `### Design Shape - Additional Sections` contains a `#### UX Contract` with a
   `##### Interaction Flows` subsection: every `FLOW-N:` entry MUST state an explicit,
   mechanically checkable pass condition. Prose that requires human interpretation —
   "the page looks right," "works correctly," "is user friendly," or any equivalent
   restatement — is not observable.
-- If any `FLOW-N` lacks one: raise a blocker.
-  [UX Contract Flow Missing Pass Condition - BLOCKING]: `FLOW-{{N}}` has no observable pass condition
+  [mechanical] [UX Contract Flow Missing Pass Condition - BLOCKING]: `FLOW-{{N}}` has no observable pass condition
+- When the condition cannot be derived from the flow's stated outcome without a user
+  preference, an `OD-NNN` that asks for it counts as the fix.
 - This rule does NOT apply when no `#### UX Contract` is present — a backend-only phase
   raises nothing here.
 
-**BLOCKER RULE FOR UX CONTRACT ROUTE INDEX MISSING AUTH**:
+**UX CONTRACT ROUTE INDEX MISSING AUTH** (mechanical):
 - If a `#### UX Contract` is present and its `##### Route Index` lists any routes: every
-  entry MUST state an `auth=` value (`none`, `session`, or `role:<name>`).
-- If any Route Index entry has no auth value: raise a blocker. The auth column is what
-  tells a runtime reviewer which routes are reachable without a session.
-  [UX Contract Route Missing Auth - BLOCKING]: `{{path}}` has no auth requirement in Route Index
+  entry MUST state an `auth=` value (`none`, `session`, or `role:<name>`). The auth column
+  is what tells a runtime reviewer which routes are reachable without a session.
+  [mechanical] [UX Contract Route Missing Auth - BLOCKING]: `{{path}}` has no auth requirement in Route Index
+- The same `OD-NNN` escape applies.
 
-**BLOCKER RULES FOR THE THREE FRONTEND DECISION CLASSES (presence only, never content)**:
+**THE THREE FRONTEND DECISION CLASSES** (mechanical; presence only, never content):
 - Apply ONLY when a `#### UX Contract` is present — a backend-only phase raises none
   of these.
 - Search `### Open Design Decisions` AND `### Settled Design Decisions` together (an
@@ -1168,188 +397,84 @@ VIOLATION: emitting a blocker for an internal implementation detail turns this c
 - Whether server state belongs in a query cache, which route decomposes to a modal,
   or which component library is chosen is the user's call — evaluate only whether an
   entry exists that addresses each class, never whether the answer given is correct.
-  Blocking on content turns this critic into the conformance checker the BINDING
-  SCOPE guard above exists to prevent.
+  The single fix is to surface an `OD-NNN`, which the user answers through the orchestrator.
 - If no entry addresses state ownership and the data boundary (server state vs.
   local component state vs. URL state; the fetch boundary; caching/invalidation):
-  [Missing State Ownership Decision - BLOCKING]: No OD/SD entry addresses state ownership and the data boundary
+  [mechanical] [Missing State Ownership Decision - BLOCKING]: No OD/SD entry addresses state ownership and the data boundary
 - If any `FLOW-N:` in the UX Contract's `##### Interaction Flows` has no
   corresponding OD/SD entry deciding its screen decomposition (route vs. modal vs.
   nested layout vs. in-place panel) — either a flow-specific entry or a general
   decomposition entry that explicitly states it covers that flow:
-  [Undecided Screen Decomposition - BLOCKING]: `FLOW-{{N}}` has no decided screen decomposition
+  [mechanical] [Undecided Screen Decomposition - BLOCKING]: `FLOW-{{N}}` has no decided screen decomposition
 - If no entry addresses component provenance (consume an existing library/design
   system, or author components in this phase):
-  [Missing Component Provenance Decision - BLOCKING]: No OD/SD entry addresses component provenance
+  [mechanical] [Missing Component Provenance Decision - BLOCKING]: No OD/SD entry addresses component provenance
 
-**BLOCKER RULE FOR MISSING DESIGN SOURCE DECISION**:
-- If no OD/SD entry addresses the visual design source for this phase (Claude
-  Design first vs. matching existing components), raise a blocker — a UX Contract
-  whose `##### Design Source` was silently invented or left blank is exactly the
-  failure this decision class exists to prevent (docs/frontend-refactor/decisions.md
-  "Design Source is a decision, not a field").
-  [Missing Design Source Decision - BLOCKING]: No OD/SD entry decided the visual design source for this phase
+**MISSING DESIGN SOURCE DECISION** (mechanical):
+- If a `#### UX Contract` is present and no OD/SD entry addresses the visual design source
+  for this phase (Claude Design first vs. matching existing components):
+  [mechanical] [Missing Design Source Decision - BLOCKING]: No OD/SD entry decided the visual design source for this phase
 
-**`#### Design Research` is never evaluated here, in any lane.** Declining research
-at Step 5.5 is a legitimate choice. No blocker and no score deduction ever
-references `#### Design Research`, its `Read:`/`Gap:` entries, or whether the user
-elected research — a critic that penalizes declining converts the opt-in into a
-mandate and defeats the entire cost design (docs/frontend-refactor/decisions.md "Shape-act
-research is user-elected, never automatic").
+### Decision Entries
 
-### Domain-Specific Section Evaluation (30% of total score)
+**UNDER-SURFACED DECISIONS** (judgment):
+- Scan Module Layout, Skeleton Index, and Collaboration And Wiring for a consequential
+  choice (a named library, framework, protocol, or pattern with a real alternative)
+  that has no corresponding entry in Open Design Decisions or Settled Design Decisions.
+  [judgment] [Under-Surfaced Decision] CQ-NNN: `{{choice}}` is a consequential choice with no corresponding OD/SD entry
+- Option A keeps the choice as an unrecorded default; Option B records it as a decision with its
+  alternative.
 
-These sections vary by project type. Identify all sections beyond core sections, then evaluate each for:
+**NON-DIVERGENT DECISION OPTIONS** (judgment):
+- For each OD-### entry, verify Option A and Option B are structurally different
+  choices, not the same choice reworded.
+  [judgment] [Non-Divergent Decision Options] CQ-NNN: OD-{{n}} presents options that do not structurally differ
+- Option A keeps the entry; Option B replaces one option with the real alternative you name.
 
-#### Evaluation Strategy (30 points total)
+**MALFORMED DECISION ENTRIES** (mechanical):
+- Every OD-### entry MUST have a title, an Option A, an Option B, and a Recommended
+  line naming one of the options. A missing `Recommended:` silently produces an empty
+  decision when the user accepts the recommended defaults.
+  [mechanical] [Malformed Decision Entry - BLOCKING]: OD-{{n}} is missing {{missing_part}}
 
-**Section Presence (15 points)**:
-- Count relevant domain-specific sections present
-- Award 3 points per section (up to 5 sections = 15 points)
-- Only count sections relevant to project type
+### Implementation Plan
 
-**Section Substance (15 points)**:
-- Evaluate each domain-specific section for depth
-- Award 3 points per substantive section (up to 5 sections = 15 points)
-- "Substantive" = actionable technical detail, not placeholder
+Apply only when IMPLEMENTATION_PLAN_MARKDOWN was read. Frozen respec-code reads this file raw:
+it scans `## Build Order > ### Steps > #### Step N:` and the `## Checklist` items.
 
-#### Example Domain-Specific Sections
+**STEPS NAME THEIR FILES** (mechanical):
+- Every `#### Step N:` section names the file paths it touches.
+  [mechanical] [Step Names No Files - BLOCKING]: `#### Step {{N}}:` names no file it touches
 
-**For Web src/APIs:**
-- API Design: Endpoints, request/response formats, authentication
-- Security Architecture: Threat model, mitigation strategies
-- Performance Requirements: Response time SLAs, throughput targets
+**EVERY STEP HAS A VERIFY COMMAND** (mechanical):
+- Every `#### Step N:` has at least one `## Checklist` item that carries `(Step N)` and a
+  `(verify: …)`.
+  [mechanical] [Step Without Verify Command - BLOCKING]: `#### Step {{N}}:` has no Checklist item with a verify command
 
-**For Data Systems:**
-- Data Models: Entity relationships, schemas with types
-- Data Pipeline: ETL processes, data flow diagrams
+**CHECKLIST ITEMS ARE WELL-FORMED** (mechanical):
+- Every Checklist item is `- [ ] <item> (Step N) (verify: <command>)`, with N an existing step,
+  and one `(verify: …)` per language whose files the step touches.
+  [mechanical] [Checklist Item Malformed - BLOCKING]: `{{item}}` lacks `(Step N)` or `(verify: …)`
 
-**For CLI Tools:**
-- CLI Commands: Command structure, arguments, usage examples
-- Configuration: Config file formats, environment variables
+**VERIFY COMMANDS COME FROM CONFIGURATION** (mechanical):
+- Each `(verify: <command>)` MUST be one of these, for the language that owns the step's files:
+  1. that language's `[commands].test` in project_config_context_markdown
+  2. the command a `source=user` Settled Design Decision records for that language (the user
+     supplied it in the briefing)
+  3. exactly this marker, with the language's name:
+     `(verify: ask user — no test command configured for <language>; set [commands].test in .respec-ai/config/standards/<language>.toml)`
+  [mechanical] [Verify Command Not Configured - BLOCKING]: `{{item}}` verifies with `{{command}}`, which is not the configured, user-recorded or ask-user command for `{{language}}`
 
-**For Libraries:**
-- Public API: Exported functions/classes, usage examples
-- Extension Points: Plugin architecture, hooks
-
-**General (Any Plan):**
-- Deployment: Infrastructure, CI/CD, rollback procedures
-- Monitoring: Metrics, alerting, observability
-
-#### Evaluation Rules
-
-**DO NOT penalize missing sections if not applicable:**
-- CLI tool doesn't need "API Design"
-- Library doesn't need "Deployment Architecture"
-- Read-only system doesn't need "Security Architecture" (beyond auth)
-
-**DO penalize placeholder content:**
-- Section exists but contains only "TBD", "N/A", "To be determined"
-- Section is relevant but superficial (1-2 sentences for complex topics)
-
-**Flexible Content Principle:**
-- Use ANY markdown format for content (code blocks, lists, tables, diagrams)
-- Evaluate substance, NOT formatting style
-- Focus on implementation value
-
-### Over-Detailing Penalty (up to -10 points)
-
-Assess phase for implementation details that belong in Task:
-- **Time estimates for tasks**: -2 points (e.g., "Step 1: Schema setup (30 minutes)")
-- **Specific file names/paths**: -2 points (e.g., "Create `<path to a source file>`")
-- **Complete code implementations**: -3 points (vs interface signatures which are OK)
-- **Configuration file examples**: -2 points (e.g., complete `Settings` class code)
-- **Test case IDs**: -1 point (e.g., "TC-4.1: Query X → expect Y")
-
-**Maximum penalty**: -10 points (caps at 0, cannot go negative)
-
-**Application**:
-- Penalty applies to overall score calculation
-- Document which implementation details found
-- Recommend moving details to Phase phase
-
-### Domain-Specific Section Relevance Penalty
-
-**Relevance Assessment**:
-- Award 3 points presence + 3 points substance ONLY for relevant sections
-- Penalize irrelevant sections: -2 points per section not applicable to project type
-
-**Examples of Irrelevant Sections**:
-- CLI tool with "API Design" section → -2 points (not a web service)
-- Read-only system with "Security Architecture" → 0 points (auth only, minimal security needs)
-- Data pipeline with "Frontend Architecture" → -2 points (no UI)
-- Library with "Deployment Architecture" → -2 points (libraries aren't deployed)
-
-**Evaluation Rule**:
-- If section included, must justify its relevance to project type
-- Placeholder content ("TBD", "N/A") = 0 points presence, 0 points substance
-- Marginally relevant content (1-2 sentences) = presence points only, no substance
-
-## SCORING METHODOLOGY
-
-### Overall Score Calculation
-
-**Total Score = Core Sections + Domain-Specific Sections + Structure Bonus - Length Penalty - Over-Detailing Penalty - Irrelevant Section Penalty**
-
-**Core Sections (70 points)**:
-- Required sections (Objectives, Scope, Architecture, Testing): 40 points
-- Structure compliance bonus: 5 points (if H2 > H3 nesting correct)
-- Optional core sections present and substantive: 30 points (6 points each x 5 sections)
-
-**Structural Blockers (not scored)**:
-- Invalid research file paths, invalid `.best-practices` references, missing API research coverage, invalid implementation plan references, and undocumented plan-constraint contradictions MUST be emitted in `### Blockers`
-- These structural failures block readiness but do NOT reduce or cap `overall_score`
-
-**Domain-Specific Sections (30 points)**:
-- Section presence: 15 points (3 points each x 5 RELEVANT sections only)
-- Section substance: 15 points (3 points each x 5 RELEVANT sections only)
-
-**Penalties**:
-- Length penalty: 0 to -50 points based on phase size (SOFT_CAP=40k chars, WARNING=50k, CONCERNING=60k, CRITICAL=80k, SEVERE=80k+)
-- Over-detailing penalty: Up to -10 points for implementation details
-- Irrelevant section penalty: -2 points per irrelevant domain-specific section
-
-**Maximum possible: 105 points** (base 100 + 5 structure bonus)
-**Minimum possible: 0 points** (penalties reduce the score to 0 but not below)
-
-**Convert to 0-100 scale**:
-1. Calculate Raw Score by adding all positive scores (Core Sections + Domain-Specific Sections + Structure Bonus)
-2. Subtract all content-quality penalties (Length Penalty + Over-Detailing Penalty + Irrelevant Section Penalty)
-3. Ensure Overall Score stays between 0 and 100 by capping at maximum 100 and minimum 0
-4. Separately emit structural failures in `### Blockers`
-
-**Note**:
-- Structure bonus allows phases to reach 100/100 even with minor gaps in optional sections
-- Length penalty escalates dramatically for oversized phases (0, -5, -15, -30, -50 points)
-- Penalties discourage over-detailing, verbosity, scope creep, and padding with irrelevant sections
-- Structural blockers gate readiness through `### Blockers`
-- Score cannot go below 0 or above 100
-
-### Score Interpretation
-Provide objective score (0-100) based on evaluation criteria.
-Loop continuation decisions made by MCP Server based on configuration.
-
-**Note**: Score interpretation guidelines shown below are for reference only.
-MCP Server determines quality thresholds and loop decisions.
-
-Reference ranges (informational only):
-- 90-100: Comprehensive coverage with minor gaps
-- 80-89: Good coverage with some improvements needed
-- 70-79: Adequate coverage with notable gaps
-- 60-69: Incomplete with substantial work needed
-- 0-59: Foundational issues requiring rework
-
-### Assessment Consistency
-- Apply same standards regardless of project
-- Base scores on specific evidence
-- Document rationale for extreme scores (<60 or >90)
-- Track improvement trends across iterations
-- Focus on implementation blockers
+**TEST LIST COVERAGE** (mechanical; BINDING SCOPE item 5):
+- Every `### Test List` entry is covered by some step: the step names the entry's test path among
+  its files, or names the behavior.
+  [mechanical] [Test List Entry Not Covered - BLOCKING]: `{{entry}}` is covered by no step in implementation.md
 
 ## OUTPUT FORMAT
 
 **CRITICAL**: Store feedback directly via {tools.store_feedback}.
-The feedback markdown must include overall_score for MCP database auto-population.
+The feedback markdown carries `Iteration` and `Overall Score`, which the MCP server reads to keep
+each round and to decide whether the loop is complete.
 
 ### Feedback Structure
 
@@ -1358,131 +483,45 @@ The feedback markdown must include overall_score for MCP database auto-populatio
     ```
 
 ### Important Notes
-- **overall_score** field is critical - auto-populates MCP database
 - Replace [bracketed placeholders] with actual values
-- In `validation_mode == "post_synthesis"`, override the template defaults:
-  - Set `iteration` to `POST_SYNTHESIS_ITERATION`, never `0`
-  - Set `overall_score` to `POST_SYNTHESIS_SCORE`, never `0`
-  - Set `assessment_summary` exactly to `Post-synthesis path validation`
-  - Store only after confirming `POST_SYNTHESIS_SCORE > 0`
-- In `phase_mode == "shape"` (see PHASE MODE: SHAPE above), override the template
-  defaults the same way, using this Feedback Structure to store STEP S4's output:
-  - Set `iteration` to `SHAPE_ITERATION`, never `0`
-  - Set `overall_score` per STEP S4 (100 or 40), never `0`
-  - Set `assessment_summary` exactly to `Shape assessment`
-  - Populate `### Blockers` and `### Detailed Feedback` from STEP S3 only — leave
-    Core/Optional/Domain-Specific section scoring and `key_issues`/`recommendations`
-    empty; those lanes never ran
-- **Core Sections**: Evaluate all 4 required sections (Objectives, Scope, Architecture, Testing)
-- **Optional Core Sections**: Only evaluate sections that are present in the phase (up to 5 sections max)
-- **Domain-Specific Sections**: Identify ALL sections beyond core sections, evaluate for presence and substance
-- **Project Context**: Do NOT penalize missing domain-specific sections if not applicable to project type
-- **Placeholder Content**: DO penalize "TBD", "N/A", or superficial content in relevant sections
-- Provide specific evidence with section references for all scores
-- Focus recommendations on implementation blockers
-- Maintain consistency with previous feedback
+- `Iteration` is review_round, never `0`
+- `Overall Score` is 100 when `### Blockers` is empty and 0 otherwise
+- `### Blockers` holds `[mechanical]` findings only, each with its `- BLOCKING]` marker
+- `### Key Issues` holds `[judgment]` findings only, each with its `CQ-NNN`; write `- None identified`
+  when there are none
+- An empty `### Blockers` has no bullet at all
+- Provide specific evidence with section references for every finding
 
-## REFINEMENT BEHAVIOR
+## REPORT FORMAT
 
-### Iteration-Specific Focus
+Your final message is exactly these four sections, in this order, with nothing before the first:
 
-#### First Iteration (iteration=0 → 1)
-- Broad technical assessment
-- Major architectural gaps
-- Critical missing components
-- Feasibility concerns
-- Focus on completeness
+    ```markdown
+    ## For the user
+    <what this round checked and found, in plain language: how many mechanical findings went to the architect for repair, and which judgment calls need the user. No questions.>
 
-#### Middle Iterations (iteration=2-3)
-- Detailed specifications
-- Integration completeness
-- Security hardening
-- Performance optimization
-- Focus on depth
+    ## Decisions needed
+    - CQ-NNN | <title>
+      - Option A: keep as designed — <trade-off>
+      - Option B: <your alternative> — <trade-off>
+      - Recommended: <A or B> — <why>
+      - Affects: <seam paths, module paths, step numbers, or other IDs>
 
-#### Final Iterations (iteration=4+)
-- Implementation details
-- Operational readiness
-- Edge case handling
-- Documentation completeness
-- Focus on polish
+    ## Research proposals
+    - None
 
-### Feedback Progression
-
-Track score improvement and adjust feedback tone:
-- If score improved by more than 10 points: Use encouraging tone highlighting significant technical improvements
-- If score improved by 5-10 points: Use positive tone noting good technical progress
-- If score improved by less than 2 points: Use focused tone directing attention to remaining technical gaps
-
-Adjust focus based on iteration and improvement trend.
-
-## ERROR HANDLING
-
-### Assessment Challenges
-
-#### Incomplete Phases
-- Score based on what's present
-- List missing sections explicitly
-- Provide structural template examples
-- Suggest standard approaches
-
-#### Over-Engineered Solutions
-- Assess complexity appropriateness
-- Note over-engineering risks
-- Suggest simplifications
-- Balance with requirements
-
-#### Technology Mismatches
-- Identify incompatibilities
-- Suggest alternatives
-- Note integration challenges
-- Assess feasibility impact
-
-#### Unrealistic Performance Targets
-- Flag impossible metrics
-- Suggest realistic ranges
-- Note trade-offs required
-- Provide industry benchmarks
-
-#### Research Requirements Issues
-- Check formatting (Read: vs Synthesize:)
-- Verify archive paths are complete
-- Ensure external research is specific
-- Validate "2025" appears in Synthesize prompts
-- Validate per-API coverage when external API integrations are present
-- Validate all `.best-practices/*.md` mentions in phase actually exist
-
-## QUALITY CRITERIA
-
-### Assessment Standards
-
-**Objective Evaluation**:
-- Base scores on specific evidence
-- Document assessment rationale
-- Maintain consistent standards
-- Focus on implementation readiness
-
-**Improvement Focus**:
-- Prioritize by implementation impact
-- Provide specific, actionable guidance
-- Balance strengths recognition with gap identification
-- Focus on 3-4 highest-impact improvements
-
-**Scoring Consistency**:
-- ±3 points tolerance per criterion across iterations
-- ±5 points overall score variance for similar quality
-- No core criteria below 5 without explicit justification
-- Expect 8-15 point improvement per refinement iteration
-
-## COMPLETION
-
-After storing feedback, confirm:
-
-    ```text
-    Phase assessment complete.
-    - Overall Score: [score]
-    - Key Issues Identified: [count]
-    - Recommendations Provided: [count]
-    - Feedback stored successfully in MCP
+    ## Status
+    - result: complete | needs-user | failed
+    - mode: review
+    - persisted: critic feedback stored under review_round | nothing
+    - detail: <one line; required when result is failed>
     ```
+
+- A section with nothing to report contains exactly `- None`. Every section is always present.
+- `## Decisions needed` lists every open `[judgment]` finding of this round as a `CQ-NNN` entry,
+  ranked by blast radius, highest first, with the same ID as in `### Key Issues`.
+- `## Research proposals` is always `- None`: research is never a critic concern.
+- `result` is `needs-user` when `## Decisions needed` has entries, `complete` when it has none,
+  and `failed` when inputs were invalid or storage failed; `failed` requires `detail`.
+- `persisted` is `nothing` whenever the feedback was not stored.
 """

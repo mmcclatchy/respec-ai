@@ -7,6 +7,8 @@ is a real import-time behavior, not a template contract, and must be observed gr
 *before* the task_* LoopConfig fields are deleted -- see that file's history.
 """
 
+import re
+
 from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.tool_enums import RespecAICommand
@@ -15,6 +17,9 @@ from src.platform.tui_adapters import ClaudeCodeAdapter
 
 from src.platform.template_helpers import create_patch_planner_agent_tools
 from src.platform.templates.agents import generate_patch_planner_template
+
+
+_SHAPE_GATE_CONDITION = re.compile(r'^\s*(?:IF|ELIF)\b.*\bSHAPE_GATE\b')
 
 
 def _code_command_template() -> str:
@@ -60,6 +65,19 @@ def test_coding_workflow_refuses_to_start_when_shape_was_never_settled() -> None
     template = _code_command_template()
     assert 'shape-settled' in template
     assert 'respec-phase' in template
+
+
+def test_coding_workflow_refuses_a_reopened_phase_until_it_is_signed_off_again() -> None:
+    # Phase-cooperative B28, gate half (work item 10): shape-amended now means a settled
+    # phase the user re-opened and has not signed off again, so the gate admits only
+    # shape-settled. The values are a contract string: respec-phase writes them verbatim.
+    template = _code_command_template()
+
+    gate_conditions = [line.strip() for line in template.split('\n') if _SHAPE_GATE_CONDITION.match(line)]
+
+    assert len(gate_conditions) == 1
+    assert 'shape-settled' in gate_conditions[0]
+    assert 'shape-amended' not in gate_conditions[0]
 
 
 def test_reviewer_selection_still_derives_from_domains_the_phase_touches() -> None:

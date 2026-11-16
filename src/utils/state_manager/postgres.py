@@ -591,10 +591,13 @@ class PostgresStateManager(StateManager):
             }
         )
 
+        # The stage marker is orchestrator-owned (F4): agent writes arrive here through
+        # update_document, so the live marker is kept whatever the markdown or the flag says.
         final_phase = Phase(
             **{
                 **new_data,
                 **frozen_fields,
+                'shape_gate': existing_data['shape_gate'],
                 'iteration': existing_data['iteration'] + 1,
                 'version': existing_data['version'] + 1,
             }

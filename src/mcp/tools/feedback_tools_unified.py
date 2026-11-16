@@ -196,15 +196,6 @@ class UnifiedFeedbackTools:
         return MCPResponse(id=loop_id, status=loop_state.status, message=message)
 
     async def store_current_analysis(self, loop_id: str, analysis: str) -> MCPResponse:
-        """Store current analysis (used by plan-analyst workflow).
-
-        Args:
-            loop_id: Loop identifier
-            analysis: Structured analysis in markdown format
-
-        Returns:
-            MCPResponse with confirmation
-        """
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
         if not analysis or not analysis.strip():
@@ -219,14 +210,6 @@ class UnifiedFeedbackTools:
         return MCPResponse(id=loop_id, status=loop_status.status, message=f'Stored analysis for loop {loop_id}')
 
     async def get_previous_analysis(self, loop_id: str) -> MCPResponse:
-        """Get previous analysis (used by plan-analyst workflow).
-
-        Args:
-            loop_id: Loop identifier
-
-        Returns:
-            MCPResponse with analysis content or empty message
-        """
         if not loop_id or not loop_id.strip():
             raise ToolError('Loop ID cannot be empty')
 
@@ -973,13 +956,16 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def store_current_analysis(loop_id: str, analysis: str, ctx: Context) -> MCPResponse:
-        """Store current analysis for the analyst validation loop.
+        """Store the working notes for a refinement loop.
 
-        Stores business objectives analysis from plan-analyst for review by analyst-critic.
+        Each loop has exactly one notes slot, and every call replaces its whole content.
+        Always pass the complete notes, never a delta: anything left out of this call is
+        lost. An agent that is re-engaged later reads the notes back with
+        get_previous_analysis.
 
         Parameters:
-        - loop_id (str): Analyst loop ID to store analysis for
-        - analysis (str): Analysis markdown content
+        - loop_id (str): Loop ID that owns the notes slot
+        - analysis (str): The complete notes, as markdown
 
         Returns: MCPResponse with confirmation
         """
@@ -997,15 +983,16 @@ def register_unified_feedback_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def get_previous_analysis(loop_id: str, ctx: Context) -> MCPResponse:
-        """Retrieve previous analysis from the analyst validation loop.
+        """Retrieve the working notes stored for a refinement loop.
 
-        Gets the most recent business objectives analysis stored by plan-analyst
-        for quality validation by analyst-critic.
+        Returns the content of the loop's single notes slot, as written by the most
+        recent store_current_analysis call. The slot is empty until the first store, and
+        a new loop starts with an empty slot.
 
         Parameters:
-        - loop_id (str): Analyst loop ID to retrieve analysis from
+        - loop_id (str): Loop ID that owns the notes slot
 
-        Returns: MCPResponse containing the analysis markdown
+        Returns: MCPResponse containing the notes markdown, or an empty-slot message
         """
         await ctx.info(f'Retrieving previous analysis for loop {loop_id}')
         try:

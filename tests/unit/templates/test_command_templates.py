@@ -356,23 +356,6 @@ class TestCrossPlatformInvocationRendering:
             assert 'If spawn fails' not in claude_template
             assert 'If spawn fails' not in opencode_template
 
-    def test_phase_template_enforces_cost_aware_bp_synthesis_policy(self) -> None:
-        coordinator = TemplateCoordinator()
-        claude_template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=ClaudeCodeAdapter()
-        )
-        opencode_template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=OpenCodeAdapter()
-        )
-        for template in (claude_template, opencode_template):
-            assert 'MANDATORY COST-AWARE SYNTHESIS POLICY' in template
-            assert 'MAX_ACTIVE_BP_WORKERS = 3' in template
-            assert 'Do NOT create or execute prompts to hit a quota' in template
-            assert 'MANDATORY BP OUTPUT VALIDATION GATE' in template
-            assert "BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
-            assert 'PATH_REGEX = BP_PATH_REGEX' in template
-            assert 'IF len(CANDIDATE_PATHS) != 1:' in template
-
     def test_claude_code_patch_uses_single_phase_loop_with_no_critic_step(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -519,85 +502,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'respec-code' in template
         assert 'respec-task' not in template
 
-    def test_phase_template_includes_bp_tool_permission(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'Task(bp)' in template
-
-    def test_phase_template_uses_bp_public_entrypoint_in_step_7_5(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'Task(bp):' in template
-        assert 'IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:' in template
-        assert 'BP_PIPELINE_COMPLETE' not in template
-
-    def test_phase_template_derives_api_based_synthesis_queue(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'SUB-STEP 2.1: Detect external APIs/services from phase content' in template
-        assert "BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'" in template
-        assert 'EXISTING_READ_BLOCKS' in template
-        assert 'SYNTHESIZE_PROMPT_METADATA' in template
-        assert 'EXISTING_BP_READ_PATHS = []' in template
-        assert 'APIS_WITH_VALID_BP_DOCS = []' in template
-        assert 'APIS_MISSING_BP_DOCS = []' in template
-        assert 'VALIDATED_API_DOCS = []' in template
-        assert 'METADATA_MATCHES_API' in template
-        assert 'METADATA_MATCHES_RUNTIME' in template
-        assert 'CONTENT_MATCHES_API' in template
-        assert 'CONTENT_MATCHES_RUNTIME' in template
-        assert (
-            '(METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME)'
-        ) in template
-        assert 'official API integration guidance' in template
-        assert 'IMPLEMENTATION_LANGUAGE_RUNTIME' in template
-        assert 'Technologies: {api_name} API, {IMPLEMENTATION_LANGUAGE_RUNTIME}' in template
-        assert 'Topics: apidocs, apiintegration, official sdk, client library, http endpoints' in template
-        assert 'Official API integration docs for {api_name} in {IMPLEMENTATION_LANGUAGE_RUNTIME}' in template
-        assert 'SDK/client library vs direct HTTP based on official docs' in template
-        assert 'AUTO_API_PROMPTS = []' in template
-        assert 'SYNTHESIS_QUEUE = deduplicated list of normalized SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS' in template
-        assert 'PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)' in template
-        assert 'SYNTHESIZED_READ_BLOCKS = []' in template
-        assert '- "  - Source: synthesized"' in template
-        assert 'Covers API' in template
-        assert 'covered by content-validated official .best-practices API docs' in template
-        assert 'CANDIDATE_MARKER_PATHS' not in template
-        assert 'read_path contains both `apidocs` and `apiintegration`' not in template
-        assert 'lowercase slug marker topics apidocs apiintegration' not in template
-        assert 'any EXISTING_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN' not in template
-
-    def test_phase_template_completed_quality_loop_runs_synthesis_before_storage(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'IF LOOP_DECISION == "completed":' in template
-        assert 'Proceed to Step 16.5.' in template
-
-    def test_phase_template_uses_post_synthesis_critic_and_routes_research_blockers_to_loop(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert 'validation_mode: post_synthesis' in template
-        assert '[Research Path Invalid - BLOCKING]' in template
-        assert '[Best-Practices Reference Invalid - BLOCKING]' in template
-        assert '[API Research Final Docs Missing - BLOCKING]' in template
-        assert '[API Research Coverage Missing - BLOCKING]' in template
-        assert 'Post-synthesis research coverage needs refinement' in template
-        assert 'POST_SYNTHESIS_DECISION_RESPONSE = ' in template
-        assert 'Return to Step 14 (phase-architect will retrieve post-synthesis feedback from MCP itself)' in template
-        assert 'Proceed to Step 17.' in template
-        assert 'Invalid "Read:" paths found: 0' not in template
-        assert 'EXIT: Do NOT proceed to Step 17 with missing external API docs' not in template
-
     def test_plan_template_enforces_fail_closed_roadmap_handoff(self) -> None:
         coordinator = TemplateCoordinator()
         adapters = (ClaudeCodeAdapter(), OpenCodeAdapter(), CodexAdapter())
@@ -655,20 +559,6 @@ class TestCrossPlatformInvocationRendering:
         assert invoke_critic_pos != -1
         assert pre_loop_status_pos < invoke_critic_pos
 
-    def test_phase_template_places_completion_step_after_phase_storage(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-
-        step_17_pos = template.find('### Step 17: Phase Storage')
-        step_18_pos = template.find('### Step 18: Completion Contract and Final Reporting')
-
-        assert step_17_pos != -1
-        assert step_18_pos != -1
-        assert step_17_pos < step_18_pos
-        assert 'Automatic Task Generation' not in template
-
     def test_phase_template_requires_completion_contract_fields(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
@@ -680,14 +570,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'phase_status' in template
         assert 'implementation_plan_path' in template
         assert 'task_invocation_status' not in template
-
-    def test_phase_template_uses_adapter_owned_phase_command_reference(self) -> None:
-        coordinator = TemplateCoordinator()
-        template = coordinator.generate_command_template(
-            RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
-        )
-        assert '- `/respec-phase` is the ONLY workflow that runs bp synthesis' not in template
-        assert '- `respec-phase` skill is the ONLY workflow that runs bp synthesis' in template
 
     def test_code_template_override_prompt_has_no_trailing_quote(self) -> None:
         coordinator = TemplateCoordinator()
@@ -815,7 +697,7 @@ class TestCrossPlatformInvocationRendering:
         assert invoke_critic_pos != -1
         assert pre_loop_status_pos < invoke_critic_pos
 
-    def test_phase_template_fails_closed_on_main_and_post_synthesis_feedback_gaps(self) -> None:
+    def test_phase_template_fails_closed_when_critic_feedback_is_missing_or_stale(self) -> None:
         coordinator = TemplateCoordinator()
         template = coordinator.generate_command_template(
             RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=CodexAdapter()
@@ -826,16 +708,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'Phase critic did not persist CriticFeedback' in template
         assert 'Phase critic did not advance loop state' in template
         assert 'Phase critic did not persist fresh loop feedback' in template
-        assert 'PRE_POST_SYNTHESIS_LOOP_STATUS = ' in template
-        assert 'POST_POST_SYNTHESIS_LOOP_STATUS = ' in template
-        assert 'POST_SYNTHESIS_FEEDBACK = ' in template
-        assert 'Post-synthesis validation feedback missing' in template
-        assert 'LATEST_POST_SYNTHESIS_SCORE = parse score from LATEST_POST_SYNTHESIS_FEEDBACK' in template
-        assert 'Post-synthesis validation feedback preserved score 0' in template
-        assert 'LATEST_POST_SYNTHESIS_SUMMARY != "Post-synthesis path validation"' in template
-        assert 'Post-synthesis validation feedback summary mismatch' in template
-        assert 'Post-synthesis phase critic did not advance loop state' in template
-        assert 'Post-synthesis phase critic did not persist fresh loop feedback' in template
         assert 'validation_result contains' not in template
         assert 'Invalid "Read:" paths found: 0' not in template
 
@@ -1227,7 +1099,6 @@ class TestCrossPlatformInvocationRendering:
         assert 'GUIDANCE_DOCUMENT_PATHS = []' in template
         assert 'WORKFLOW_GUIDANCE_MARKDOWN = compose markdown:' in template
         assert '### Guidance Document Paths' in template
-        assert 'workflow_guidance_markdown: WORKFLOW_GUIDANCE_MARKDOWN' in template
         assert 'Do NOT begin phase lookup until the phase reference is sufficiently clear.' in template
         assert 'After the user responds, resume at Step 1.3.' in template
 

@@ -148,6 +148,10 @@ class StateManager(ABC):
             - scope
             - dependencies
             - deliverables
+
+        MUST never mutate shape_gate, whatever allow_frozen_field_edits says: this is the
+        agent write path, and the stage marker is orchestrator-owned (phase-cooperative
+        decisions.md "The stage marker is orchestrator-owned"). store_phase writes it.
         """
         ...
 

@@ -34,6 +34,7 @@ from src.platform.templates.agents import (
 )
 
 from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
+from tests.support.template_contract import template_contract
 
 
 _adapter = ClaudeCodeAdapter()
@@ -433,140 +434,97 @@ class TestCreatePhaseTemplate:
         assert '- None' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
+    def test_create_phase_validates_the_phase_before_it_stores_anything(self) -> None:
+        # B30: the completeness gate must stop an incomplete phase before the MCP store, not
+        # after it has already been written.
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
+        tools = create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
+        tasks = generate_create_phase_template(tools).split('TASKS:', 1)[1]
 
-class TestPhaseArchitectShapeMode:
-    def test_shape_mode_declared_and_scoped_to_design_shape_only(self) -> None:
-        # Phase 3, decisions.md "critic runs after user approval": the architect must not
-        # produce full implementation detail when phase_mode="shape" - that's exactly the
-        # unapproved-design problem the human gate exists to stop.
-        tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(tools)
+        first_exit = tasks.index('EXIT:')
+        first_store = tasks.index(tools.store_document)
 
-        assert '- phase_mode:' in template
-        assert 'phase_mode == "shape"' in template
-        assert 'Do NOT write Architecture prose beyond what justifies the seams' in template
+        assert first_exit < first_store
 
-    def test_detail_mode_preserves_an_already_settled_shape_verbatim(self) -> None:
-        # Once a human has approved the design at the Phase 3 gate (Shape Gate ==
-        # shape-settled/shape-amended), the detail-act architect must not regenerate
-        # Design Shape/Design Decisions - that would silently overwrite what the user
-        # just approved.
-        tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(tools)
+    def test_create_phase_still_reports_a_frozen_overview_discard_to_both_roadmap_paths(self) -> None:
+        # B30: roadmap_command.py and roadmap_orchestrator.py dispatch this agent and scan its
+        # output for this exact warning, so the trim must keep it.
+        platform_tools = ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit']
+        template = generate_create_phase_template(
+            create_create_phase_agent_tools(_adapter, platform_tools, PlatformType.MARKDOWN)
+        )
 
-        assert 'shape-settled' in template
-        assert 'VERBATIM' in template
+        assert FROZEN_DISCARD_WARNING in template
+        assert 'MANDATORY CREATE PHASE OUTPUT PROTOCOL' in template
 
-    def test_shape_mode_marks_consequential_internals_for_the_skeleton_opt_in_prompt(self) -> None:
-        # phase_command.py Step 7 parses Skeleton Index entries marked "internal,
-        # consequential" to build its multiSelect skeleton opt-in prompt. Without an
-        # instruction telling the architect to emit that marker, Step 7's source list is
-        # always empty and the prompt never fires.
-        tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(tools)
 
-        assert 'internal, consequential' in template
+def _critic_template() -> str:
+    return generate_phase_critic_template(create_phase_critic_agent_tools(_adapter))
+
+
+def _architect_template() -> str:
+    return generate_phase_architect_template(create_phase_architect_agent_tools(_adapter))
+
+
+def _stored_feedback_field(template: str, field: str) -> list[str]:
+    return [line.strip() for line in template.splitlines() if line.strip().startswith(f'- **{field}**:')]
+
+
+# README "Critic findings": these are trade-offs a reasonable designer could settle otherwise.
+_CRITIC_JUDGMENT_CALLS = frozenset(
+    {
+        'unjustified-seam',
+        'under-surfaced-decision',
+        'non-divergent-decision-options',
+        'plan-constraint-violation',
+        'implementation-plan-reference-not-applied',
+    }
+)
 
 
 class TestPhaseCriticTemplate:
     def test_template_treats_best_practices_paths_as_blocking_verification(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
+        template = _critic_template()
         assert 'best-practices-rag query-kb' not in template
         assert '--force-refresh' not in template
-        assert 'per-service research coverage' in template
         assert '.best-practices/*.md' in template
         assert '[Research Path Invalid - BLOCKING]: Path `{path}` does not exist' in template
-        assert 'API Research Coverage Missing - BLOCKING' in template
-        assert 'Best-Practices Reference Invalid - BLOCKING' in template
-        assert 'API_RESEARCH_FRESHNESS_BLOCKERS_PRESENT' not in template
-        assert 'Hard stale blocking' not in template
+        assert {'research-path-invalid', 'best-practices-reference-invalid'} <= template_contract(
+            template
+        ).mechanical_findings()
 
-    def test_template_enforces_deterministic_api_detection_and_mode_aware_coverage(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
-        assert 'API_DETECTION_TEXT = concatenate text from:' in template
-        assert 'Normalize each candidate deterministically:' in template
-        assert 'Exclude internal/local-only candidates:' in template
-        assert (
-            'Validate all "- Read:" lines found under Research Requirements regardless of subsection headers.'
-            in template
-        )
-        assert "line.startswith('- Read:')" in template
-        assert 'READ_BLOCKS = []' in template
-        assert 'READ_BLOCK_METADATA_BY_PATH = {}' in template
-        assert 'IF validation_mode == "post_synthesis":' in template
-        assert 'API_POTENTIAL_MATCHES = []' in template
-        assert 'rg -il --fixed-strings "{api_name}" .best-practices/ || true' in template
-        assert 'cat "{potential_path}" | head -n 25' in template
-        assert 'OVERVIEW_HEAD contains `## Overview`' in template
-        assert 'quick-scan matches are not coverage evidence by themselves' in template
-        assert 'API_DOC_CANDIDATES = VALID_BP_READ_PATHS' in template
-        assert 'METADATA_MATCHES_API' in template
-        assert 'METADATA_MATCHES_RUNTIME' in template
-        assert 'CONTENT_MATCHES_RUNTIME' in template
-        assert 'CONTENT_HAS_OFFICIAL_SOURCE' in template
-        assert 'CONTENT_HAS_CLIENT_DECISION' in template
-        assert (
-            '(METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME)'
-        ) in template
-        assert 'Generic provider docs are insufficient' in template
-        assert 'HAS_VALID_BP_READ_COVERAGE = len(VALIDATED_API_READ_PATHS) > 0' in template
-        assert 'API doc filenames are never authoritative' in template
-        assert 'phase-cited `Read:` `.best-practices/*.md` paths' in template
-        assert 'API_DOC_MARKER_GLOB_PATHS' not in template
-        assert 'API_MARKER_READ_CANDIDATES' not in template
-        assert '.best-practices/*apidocs*apiintegration*.md' not in template
-        assert (
-            'HAS_VALID_BP_READ_COVERAGE = any VALID_BP_READ_PATHS item contains api_name OR API_SLUG_TOKEN'
-            not in template
-        )
-        assert 'APIS_MISSING_FINAL_DOCS = []' in template
-        assert 'API Research Coverage Missing - BLOCKING' in template
-        assert 'API Research Final Docs Missing - BLOCKING' in template
-        assert '"detected_external_apis": EXTERNAL_APIS' in template
-        assert '"apis_missing_final_docs": APIS_MISSING_FINAL_DOCS' in template
-        assert '"api_potential_matches": API_POTENTIAL_MATCHES' in template
-        assert 'POST_SYNTHESIS_LOOP_STATUS = ' in template
-        assert 'POST_SYNTHESIS_ITERATION = POST_SYNTHESIS_LOOP_STATUS.iteration + 1' in template
-        assert 'POST_SYNTHESIS_SCORE = POST_SYNTHESIS_LOOP_STATUS.current_score' in template
-        assert 'ERROR: "Post-synthesis validation cannot preserve a non-zero phase score"' in template
-        assert 'MUST NOT store feedback with iteration=0.' in template
-        assert 'MUST NOT store feedback with overall_score=0.' in template
-        assert 'Set `overall_score` to `POST_SYNTHESIS_SCORE`, never `0`' in template
-
-    def test_template_grants_bash_and_glob_tools(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
+    def test_template_grants_read_only_review_tools(self) -> None:
+        # F14: on Claude Code the tool list is what keeps the critic read-only.
+        tools = create_phase_critic_agent_tools(_adapter)
         assert 'Bash' in tools.tools_yaml
         assert 'Glob' in tools.tools_yaml
         assert 'Read' in tools.tools_yaml
-        assert 'mcp__respec-ai__get_loop_status' in tools.tools_yaml
+        assert 'update_document' not in tools.tools_yaml
+        assert 'store_document' not in tools.tools_yaml
+        assert 'Write' not in tools.tools_yaml
+        assert 'Edit' not in tools.tools_yaml
 
-    def test_template_uses_invocation_contract_style(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
+    def test_template_declares_exactly_the_inputs_the_orchestrator_passes(self) -> None:
+        # README "Agents and modes": mode, IDs and config context; the critic also gets the
+        # round it stores under. Guidance arrives as the round-0 briefing feedback entry the
+        # orchestrator stores ([round 0 | briefing] is the tag it writes), never as an input.
+        template = _critic_template()
 
-        assert '## Invocation Contract' in template
-        assert '### Scalar Inputs' in template
-        assert '- validation_mode: Optional scalar input.' in template
-        assert '### Grouped Markdown Inputs' in template
-        assert 'workflow_guidance_markdown' in template
-        assert '### Guidance Document Paths' in template
-        assert '### Retrieved Context (Not Invocation Inputs)' in template
-
-    def test_template_uses_two_lane_score_and_blocker_contract(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
-
-        assert '## Two-Lane Review Contract' in template
-        assert 'Lane 1 — Content score (`overall_score`):' in template
-        assert 'Lane 2 — Structural/procedural blockers (`### Blockers`):' in template
-        assert 'Structural blockers gate readiness through `### Blockers`' in template
-        assert 'do NOT change the content score' in template
+        assert template_contract(template).declared_inputs('### Scalar Inputs') == {
+            'phase_mode',
+            'loop_id',
+            'plan_name',
+            'phase_name',
+            'review_round',
+        }
+        assert template_contract(template).declared_inputs('### Grouped Markdown Inputs') == {
+            'project_config_context_markdown'
+        }
+        assert '[round 0 | briefing]' in template
+        assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
 
     def test_template_requires_exact_storage_contract(self) -> None:
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
+        template = _critic_template()
 
         assert 'The feedback markdown you store MUST match the CriticFeedback parser contract exactly.' in template
         assert '# Critic Feedback: PHASE-CRITIC' in template
@@ -578,50 +536,110 @@ class TestPhaseCriticTemplate:
         assert 'Do NOT retry with alternate storage' in template
         assert 'VIOLATION: Falling back to `store_reviewer_result` after a `store_critic_feedback` failure.' in template
 
-    def test_shape_mode_runs_only_design_shape_blockers_not_full_fsdd_scoring(self) -> None:
-        # Phase 3, decisions.md "The critic runs after user approval": phase_mode="shape"
-        # is a safety net on the design the user already approved, not a full FSDD
-        # readiness gate. It must declare phase_mode as an invocation input and must not
-        # be able to be confused with validation_mode (a different, detail-act-only axis).
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
+    def test_critic_stores_each_review_under_the_round_the_orchestrator_passes(self) -> None:
+        # B4 (F9): with get_loop_status().iteration + 1 every run reported the same number and
+        # replaced the last. The stored Iteration must come from review_round.
+        template = _critic_template()
+        tools = create_phase_critic_agent_tools(_adapter)
+
+        iteration_fields = _stored_feedback_field(template, 'Iteration')
+        assert iteration_fields
+        assert all('review_round' in field for field in iteration_fields)
+        assert 'get_loop_status' not in template
+        assert 'get_loop_status' not in tools.tools_yaml
+
+    def test_critic_scores_on_blockers_alone(self) -> None:
+        # B4 (F7, F9): Overall Score is 100 when `### Blockers` is empty and 0 otherwise.
+        template = _critic_template()
+
+        score_fields = _stored_feedback_field(template, 'Overall Score')
+        assert score_fields
+        for field in score_fields:
+            assert re.search(r'(?<!\d)100(?!\d)', field) and re.search(r'(?<!\d)0(?!\d)', field)
+            assert 'Blockers' in field
+        assert not re.search(r'\b\d+\s+points?\b|\(X/\d+|\bpenalt', template, re.IGNORECASE)
+        assert 'SOFT_CAP' not in template
+
+    def test_no_critic_finding_concerns_research_coverage_or_declined_research(self) -> None:
+        # B17 (F8): a user who declines every proposal must still be able to pass review.
+        contract = template_contract(_critic_template())
+        findings = contract.blocker_conditions() | contract.judgment_findings()
+
+        assert findings
+        assert not {
+            finding
+            for finding in findings
+            if 'api-research' in finding
+            or 'coverage' in finding
+            or 'declined' in finding
+            or 'design-research' in finding
+        }
+
+    def test_the_critic_never_proposes_research(self) -> None:
+        # B17: research is the architect's proposal and the user's decision, never a critic concern.
+        from_report = template_contract(_critic_template()).report_section('## Research proposals')
+
+        assert from_report == ['- None']
+
+    def test_critic_judgment_calls_never_block_the_loop(self) -> None:
+        # B19: a judgment call becomes a CQ question for the user; a blocker would loop the
+        # architect on a trade-off only the user can settle.
+        contract = template_contract(_critic_template())
+
+        assert not _CRITIC_JUDGMENT_CALLS & contract.blocker_conditions()
+        assert _CRITIC_JUDGMENT_CALLS <= contract.judgment_findings()
+
+    def test_every_blocker_the_critic_raises_is_a_mechanical_finding(self) -> None:
+        # README "Critic findings": `### Blockers` holds `[mechanical]` findings only, so loop
+        # completion means "no open mechanical findings".
+        contract = template_contract(_critic_template())
+
+        assert contract.blocker_conditions()
+        assert contract.blocker_conditions() == contract.mechanical_findings()
+
+    def test_critic_judgment_calls_reach_the_user_as_cq_decisions(self) -> None:
+        # B19: the canonical decision entry the orchestrator asks from `## Decisions needed`.
+        decisions = template_contract(_critic_template()).report_section('## Decisions needed')
+
+        assert decisions and re.match(r'^- CQ-\S+ \| ', decisions[0])
+        assert [line.split(':', 1)[0] for line in decisions[1:]] == [
+            '- Option A',
+            '- Option B',
+            '- Recommended',
+            '- Affects',
+        ]
+
+    def test_critic_raises_implementation_plan_defects_as_mechanical_findings(self) -> None:
+        # F5, F33: implementation.md is reviewed with the design; respec-code reads it raw from
+        # this path and fails closed without it.
+        template = _critic_template()
+
+        assert '.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md' in template
+        assert {
+            'implementation-plan-missing',
+            'step-names-no-files',
+            'step-without-verify-command',
+            'checklist-item-malformed',
+            'verify-command-not-configured',
+            'test-list-entry-not-covered',
+        } <= template_contract(template).mechanical_findings()
+
+    def test_under_surfaced_and_non_divergent_decisions_are_judgment_calls_in_review(self) -> None:
+        # B19 re-anchor: these were shape-mode blockers; in review mode they are CQ questions.
+        template = _critic_template()
+        contract = template_contract(template)
 
         assert '- phase_mode:' in template
-        assert 'phase_mode == "shape"' in template
-        assert 'Under-Surfaced Decision - BLOCKING' in template
-        assert 'Non-Divergent Decision Options - BLOCKING' in template
+        assert {'under-surfaced-decision', 'non-divergent-decision-options'} <= contract.judgment_findings()
+        assert not {'under-surfaced-decision', 'non-divergent-decision-options'} & contract.blocker_conditions()
 
-    def test_shape_mode_stores_nonzero_iteration(self) -> None:
-        # STEP S4 must compute a real iteration via get_loop_status, mirroring the
-        # post_synthesis path — CriticFeedback defaults iteration=0, and storing that
-        # would collide with the "MUST NOT store feedback with iteration=0" contract
-        # the rest of the loop machinery relies on.
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
-
-        assert 'SHAPE_ITERATION = SHAPE_LOOP_STATUS.iteration + 1' in template
-        assert 'MUST NOT store feedback with iteration=0.' in template
-
-    def test_detail_mode_skips_design_shape_blockers_once_shape_gate_is_settled(self) -> None:
-        # decisions.md "the critic runs after user approval": once phase_mode="shape"
-        # already ran the Design Shape Evaluation blocker lane and the user approved at
-        # the Phase 3 gate, detail mode must not re-raise those same blockers — the
-        # detail architect is forbidden from touching Design Shape once the gate is
-        # settled, so a blocker raised here would permanently deadlock the loop.
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
-
-        assert 'skip this entire section — raise none of its blockers.' in template
-
-    def test_shape_mode_enforces_od_entry_format(self) -> None:
-        # Plan §3 (phase-3-human-gate.md): the OD-NNN | title | Option A | Option B |
-        # Recommended format is "enforced by the critic." A missing Recommended line
-        # would let Step 6's "accept recommended default" path silently record an empty
-        # decision, so this must be a blocker, not just the divergence check.
-        tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-        template = generate_phase_critic_template(tools)
+    def test_malformed_decision_entry_is_a_mechanical_blocker_in_review(self) -> None:
+        # A missing Recommended line would let "accept the recommended default" record an empty
+        # decision. Phase 3 moves this check into validate_document.
+        template = _critic_template()
 
         assert 'Malformed Decision Entry - BLOCKING' in template
+        assert 'malformed-decision-entry' in template_contract(template).mechanical_findings()
 
 
 class TestPlanCriticTemplate:
@@ -666,9 +684,7 @@ class TestAgentImperativeLanguageAudit:
                     _adapter, ['Write(.respec-ai/plans/*/phases/*.md)', 'Read', 'Edit'], PlatformType.MARKDOWN
                 )
             ),
-            generate_phase_critic_template(
-                create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000)
-            ),
+            generate_phase_critic_template(create_phase_critic_agent_tools(_adapter)),
             generate_plan_critic_template(create_plan_critic_agent_tools(_adapter)),
             generate_plan_analyst_template(create_plan_analyst_agent_tools(_adapter)),
             generate_analyst_critic_template(create_analyst_critic_agent_tools(_adapter)),
@@ -833,15 +849,15 @@ class TestTemplateConsistency:
         assert 'apply the constraint into Objectives, Scope, Architecture, Research' in template
         assert 'not applicable' in template
 
-    def test_phase_critic_template_blocks_unapplied_implementation_plan_references(self) -> None:
-        critic_tools = create_phase_critic_agent_tools(
-            _adapter, phase_length_soft_cap=40000, phase_shape_soft_cap=10000
-        )
-        template = generate_phase_critic_template(critic_tools)
+    def test_phase_critic_treats_an_unapplied_implementation_plan_reference_as_a_judgment_call(self) -> None:
+        # B19 re-anchor: applying a reference or justifying why it does not apply is a trade-off,
+        # so it reaches the user as a CQ question instead of looping the architect.
+        template = _critic_template()
+        contract = template_contract(template)
 
-        assert 'Verify Implementation Plan Reference Semantic Application' in template
         assert 'Citation-only preservation is insufficient' in template
-        assert 'Implementation Plan Reference Not Applied - BLOCKING' in template
+        assert 'implementation-plan-reference-not-applied' in contract.judgment_findings()
+        assert 'implementation-plan-reference-not-applied' not in contract.blocker_conditions()
 
     def test_phase_architect_template_requires_config_derived_verify_commands(self) -> None:
         # B5: Checklist verify commands must come from the Step's language config, not
@@ -862,82 +878,62 @@ class TestTemplateConsistency:
         assert 'PLAN_DELIVERY_INTENT_POLICY' in template
         assert 'Delivery Intent Override' not in template
 
-    def test_phase_architect_template_uses_invocation_contract_style(self) -> None:
-        architect_tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(architect_tools)
+    def test_phase_architect_template_declares_exactly_the_inputs_the_orchestrator_passes(self) -> None:
+        # README "Agents and modes": mode, IDs and config context only. Guidance arrives as the
+        # round-0 briefing feedback entry ([round 0 | briefing] is the tag the orchestrator
+        # writes), and every guidance path in it is still read.
+        template = _architect_template()
 
-        assert '## Invocation Contract' in template
-        assert '### Scalar Inputs' in template
-        assert '- optional_instructions: Additional user guidance for phase development (if provided)' in template
-        assert '### Grouped Markdown Inputs' in template
-        assert 'workflow_guidance_markdown' in template
+        assert template_contract(template).declared_inputs('### Scalar Inputs') == {
+            'phase_mode',
+            'loop_id',
+            'plan_name',
+            'phase_name',
+        }
+        assert template_contract(template).declared_inputs('### Grouped Markdown Inputs') == {
+            'project_config_context_markdown'
+        }
+        assert '[round 0 | briefing]' in template
         assert 'Read every project-local path listed under `### Guidance Document Paths`' in template
         assert '### Retrieved Context (Not Invocation Inputs)' in template
 
-    def test_phase_architect_template_requires_official_api_doc_research_markers(self) -> None:
-        architect_tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(architect_tools)
+    def test_phase_architect_proposes_research_as_ledger_lines_the_orchestrator_can_dispatch(self) -> None:
+        # README "Research proposal entry": Step 7 computes bp-pipeline's inputs from each
+        # approved line's Technologies, Topics and Query, and routes on its tier.
+        template = _architect_template()
 
-        assert 'OFFICIAL API DOCUMENTATION RESEARCH PROTOCOL' in template
-        assert 'Build an explicit external API inventory before deciding research coverage:' in template
-        assert 'Store as EXTERNAL_API_INVENTORY.' in template
-        assert 'Provider/API name and official host when discoverable' in template
-        assert 'Implementation language/runtime from the project stack' in template
-        assert 'official SDK/client library, direct HTTP endpoints, auth, file upload/import' in template
-        assert '`apidocs` and `apiintegration`' in template
-        assert 'Do NOT browse the web directly from this agent.' in template
-        assert 'Do NOT use PascalCase marker variants' in template
-        assert (
-            'Filename matches are never authoritative for API coverage. Content validation is authoritative.'
-            in template
-        )
-        assert 'Treat `apidocs` and `apiintegration` as topic metadata only' in template
-        assert '*apidocs*apiintegration*' not in template
-        assert 'filename marker matches are candidate filters only' not in template.lower()
-        assert 'official source URLs' in template
-        assert 'direct HTTP endpoint contracts' in template
-        assert 'request/response schemas or payload contracts' in template
-        assert 'payload schemas' in template
-        assert 'http endpoints' in template
-        assert 'webhooks, errors, versioning' in template
-        assert 'SDK/client library vs direct HTTP based on official docs' in template
-        assert 'Do not prefer SDKs globally.' in template
-
-    def test_phase_architect_template_requires_structured_synthesize_prompts(self) -> None:
-        architect_tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(architect_tools)
-
-        assert (
-            '- Synthesize: Technologies: <comma-separated technology names>; '
-            'Topics: <comma-separated topic keywords>; Query: <specific research request>'
-        ) in template
-        assert '`Technologies:` MUST be present and non-empty.' in template
-        assert '`Topics:` MUST be present and non-empty.' in template
-        assert (
-            '`Query:` MUST be specific enough for the bp skill to run without inferring technologies or topics.'
-            in template
-        )
-        assert 'Use the `TECH` and `TOPICS` values from the archive scan as the baseline fields' in template
-        assert 'Do NOT emit vague free-form synthesis prompts without these structured fields.' in template
-
-        synthesize_lines = [line.strip() for line in template.splitlines() if '- Synthesize:' in line]
-        assert synthesize_lines
-        for line in synthesize_lines:
+        proposal_lines = [line.strip() for line in template.splitlines() if line.strip().startswith('- RP-')]
+        assert proposal_lines
+        for line in proposal_lines:
+            assert 'informs:' in line
             assert 'Technologies:' in line
             assert 'Topics:' in line
             assert 'Query:' in line
+            assert '| tier:' in line
+        assert all(tier in template for tier in ('in-kb:', 'synthesis-only', 'web-research'))
+        assert '- Synthesize:' not in template
 
-    def test_phase_architect_template_uses_structured_api_synthesize_topics(self) -> None:
-        architect_tools = create_phase_architect_agent_tools(_adapter)
-        template = generate_phase_architect_template(architect_tools)
+    def test_phase_architect_tiers_proposals_from_a_cache_check_that_never_misses_on_model(self) -> None:
+        # F17: check-file-cache reports a miss whenever --model differs from the model that wrote
+        # the file, which would label an existing document as research to pay for.
+        template = _architect_template()
 
-        assert 'Technologies: {provider_name} API, {implementation_language_runtime}' in template
-        assert (
-            'Topics: apidocs, apiintegration, official sdk, client library, http endpoints, '
-            'authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning'
-        ) in template
-        assert 'Official API integration docs for {provider_name} in {implementation_language_runtime}' in template
-        assert 'include `apidocs` and `apiintegration` in `Topics:` as intent metadata only' in template
+        assert 'best-practices-rag generate-slug' in template
+        assert 'best-practices-rag check-file-cache' in template
+        assert '--model' not in template
+
+    def test_phase_architect_may_write_only_the_implementation_plan(self) -> None:
+        # Open call 1 (decisions.md): the architect puts the implementation.md draft on disk
+        # itself, through a Write grant scoped to that one path. It never needs loop status (F2).
+        tools = create_phase_architect_agent_tools(_adapter)
+        granted = [tool.strip() for tool in tools.tools_yaml.split(',')]
+
+        assert 'Write(.respec-ai/plans/*/phases/*/implementation.md)' in granted
+        assert not [tool for tool in granted if tool.startswith('Write') and '(' not in tool]
+        assert 'mcp__respec-ai__store_current_analysis' in granted
+        assert 'mcp__respec-ai__get_previous_analysis' in granted
+        assert 'mcp__respec-ai__get_loop_status' not in granted
+        assert 'mcp__respec-ai__link_loop_to_document' not in granted
 
     def test_patch_planner_template_requires_execution_intent_and_deferred_risks(self) -> None:
         patch_planner_tools = create_patch_planner_agent_tools(_adapter)

@@ -419,6 +419,122 @@ async def test_update_phase_agent_write_still_cannot_change_frozen_fields(
     assert retrieved.objectives == sample_phase.objectives
 
 
+@pytest.fixture
+def phase_in_review(sample_phase: Phase) -> Phase:
+    return sample_phase.model_copy(update={'shape_gate': ShapeGate.SHAPE_PROPOSED})
+
+
+def _without_stage_marker(phase: Phase) -> str:
+    return phase.build_markdown().replace(f'\n### Shape Gate\n{phase.shape_gate.value}', '')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('allow_frozen_field_edits', [False, True])
+async def test_agent_write_that_omits_the_stage_marker_keeps_the_live_marker(
+    state_manager: StateManager, plan_name: str, phase_in_review: Phase, allow_frozen_field_edits: bool
+) -> None:
+    # Phase-cooperative B1 (F4): the parser defaults a missing ### Shape Gate to unshaped,
+    # so without the storage rule an agent that drops the heading silently resets a draft
+    # under review. update_document exposes allow_frozen_field_edits to agents, so the
+    # flag must not lift the rule either.
+    tools = DocumentTools(state_manager)
+    key = f'{plan_name}/{phase_in_review.phase_name}'
+    await tools.store_document(DocumentType.PHASE, key=key, content=phase_in_review.build_markdown())
+
+    agent_markdown = _without_stage_marker(
+        phase_in_review.model_copy(update={'architecture': 'Architecture revised by the architect'})
+    )
+    assert '### Shape Gate' not in agent_markdown
+    assert Phase.parse_markdown(agent_markdown).shape_gate == ShapeGate.UNSHAPED
+
+    await tools.update_document(
+        DocumentType.PHASE, key=key, content=agent_markdown, allow_frozen_field_edits=allow_frozen_field_edits
+    )
+
+    stored = await state_manager.get_phase(plan_name, phase_in_review.phase_name)
+
+    assert stored.architecture == 'Architecture revised by the architect'
+    assert stored.shape_gate == ShapeGate.SHAPE_PROPOSED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('allow_frozen_field_edits', [False, True])
+async def test_agent_write_that_sets_another_stage_marker_keeps_the_live_marker(
+    state_manager: StateManager, plan_name: str, phase_in_review: Phase, allow_frozen_field_edits: bool
+) -> None:
+    # Phase-cooperative B1 (F4): an agent that writes shape-settled must not sign off a
+    # draft the user never approved.
+    tools = DocumentTools(state_manager)
+    key = f'{plan_name}/{phase_in_review.phase_name}'
+    await tools.store_document(DocumentType.PHASE, key=key, content=phase_in_review.build_markdown())
+
+    agent_phase = phase_in_review.model_copy(
+        update={'architecture': 'Architecture revised by the architect', 'shape_gate': ShapeGate.SHAPE_SETTLED}
+    )
+    await tools.update_document(
+        DocumentType.PHASE,
+        key=key,
+        content=agent_phase.build_markdown(),
+        allow_frozen_field_edits=allow_frozen_field_edits,
+    )
+
+    stored = await state_manager.get_phase(plan_name, phase_in_review.phase_name)
+
+    assert stored.architecture == 'Architecture revised by the architect'
+    assert stored.shape_gate == ShapeGate.SHAPE_PROPOSED
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('allow_frozen_field_edits', [False, True])
+@pytest.mark.parametrize(
+    ('live_marker', 'written_marker'),
+    [(ShapeGate.SHAPE_PROPOSED, ShapeGate.SHAPE_SETTLED), (ShapeGate.SHAPE_SETTLED, ShapeGate.SHAPE_AMENDED)],
+)
+async def test_orchestrator_store_writes_the_stage_marker_it_is_given(
+    state_manager: StateManager,
+    plan_name: str,
+    sample_phase: Phase,
+    live_marker: ShapeGate,
+    written_marker: ShapeGate,
+    allow_frozen_field_edits: bool,
+) -> None:
+    # Phase-cooperative B2, paired with B1: the rule is "agents cannot", not "nobody can".
+    # store_document is the orchestrator's write (sign-off, re-open, hand-edit store) and
+    # the disk sync at the start of a run, so it must persist the marker it is handed.
+    tools = DocumentTools(state_manager)
+    key = f'{plan_name}/{sample_phase.phase_name}'
+    live_phase = sample_phase.model_copy(update={'shape_gate': live_marker})
+    await tools.store_document(DocumentType.PHASE, key=key, content=live_phase.build_markdown())
+
+    await tools.store_document(
+        DocumentType.PHASE,
+        key=key,
+        content=live_phase.model_copy(update={'shape_gate': written_marker}).build_markdown(),
+        allow_frozen_field_edits=allow_frozen_field_edits,
+    )
+
+    stored = await state_manager.get_phase(plan_name, sample_phase.phase_name)
+
+    assert stored.shape_gate == written_marker
+
+
+@pytest.mark.asyncio
+async def test_state_manager_store_phase_writes_the_stage_marker_it_is_given(
+    state_manager: StateManager, plan_name: str, phase_in_review: Phase
+) -> None:
+    # Phase-cooperative B2 at the state-manager layer: store_phase is the path behind
+    # store_document, and it stays outside the B1 rule.
+    phase_name = await state_manager.store_phase(plan_name, phase_in_review)
+
+    await state_manager.store_phase(
+        plan_name, phase_in_review.model_copy(update={'shape_gate': ShapeGate.SHAPE_SETTLED})
+    )
+
+    stored = await state_manager.get_phase(plan_name, phase_name)
+
+    assert stored.shape_gate == ShapeGate.SHAPE_SETTLED
+
+
 @pytest.mark.asyncio
 async def test_phase_frozen_fields_preserved_on_update(
     state_manager: StateManager, plan_name: str, sample_phase: Phase

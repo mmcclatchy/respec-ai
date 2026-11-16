@@ -13,6 +13,20 @@ Historical findings below are preserved as-recorded. Current phase synthesis con
 
 Historical findings below are preserved as-recorded. Phase 6 removed the Task workflow entirely: `task_command.py`, `task_planner.py`, `task_plan_critic.py`, and `task_critic.py` (already orphaned per Batch 3 below) no longer exist. `respec-phase` now produces `implementation.md` directly (Steps 12.5/12.6), and `respec-code` reads it without an intermediate Task step. The "Batch 3: Task" findings below describe files that no longer exist in the codebase.
 
+## Contract Update Note (2026-11-16)
+
+Historical findings below are preserved as-recorded. This note supersedes the 2026-04-22 note's
+synthesis contract (docs/phase-cooperative/decisions.md, "Research runs through `bp-pipeline`
+directly"):
+
+- `respec-phase` dispatches the `bp-pipeline` agent directly, at its Step 7 only, and only for
+  research proposals the user approved. It never invokes `bp`.
+- The phase command computes bp-pipeline's interface inputs itself, from local commands, and the
+  adapter renders the dispatch with the agent's exact name on every TUI.
+- The phase workflow was rewritten as a cooperative design flow with three user touchpoints
+  (briefing, design review, sign-off). Findings below that cite the old phase steps (the shape and
+  detail acts, Step 16's menus, the post-synthesis critic) describe text that no longer exists.
+
 ## The Problem
 
 Claude Code (Sonnet/Opus) follows these templates reasonably well even with soft language. Open-source models (Llama, Qwen, DeepSeek, Mistral) do not. They exploit every gap, interpret every "should" as optional, and default to their pretraining distribution when instructions are ambiguous.

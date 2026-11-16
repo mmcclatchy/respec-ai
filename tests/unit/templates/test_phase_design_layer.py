@@ -49,15 +49,15 @@ def test_architect_quality_check_no_longer_asks_for_planner_file_freedom() -> No
     assert 'Would two engineers given these skeletons write the same public API?' in template
 
 
-def test_critic_blocks_abstractions_with_no_stated_axis_of_variation() -> None:
-    # B6: the anti-speculative-abstraction blocker is the most important addition in
-    # this phase -- without it the design layer makes output worse, because the user
-    # approves whatever the architect produces from Phase 3 onward.
+def test_critic_questions_abstractions_with_no_stated_axis_of_variation() -> None:
+    # B6, re-anchored by phase-cooperative B19: the anti-speculative-abstraction check stays,
+    # but whether a seam earns its keep is a trade-off, so it reaches the user as a CQ
+    # question instead of a blocker the architect would loop on.
     adapter = ClaudeCodeAdapter()
-    tools = create_phase_critic_agent_tools(adapter, phase_length_soft_cap=40_000, phase_shape_soft_cap=10_000)
-    template = generate_phase_critic_template(tools)
+    contract = template_contract(generate_phase_critic_template(create_phase_critic_agent_tools(adapter)))
 
-    assert 'unjustified-seam' in template_contract(template).blocker_conditions()
+    assert 'unjustified-seam' in contract.judgment_findings()
+    assert 'unjustified-seam' not in contract.blocker_conditions()
 
 
 def test_critic_shape_blockers_stay_scoped_to_module_boundaries_and_seams() -> None:
@@ -65,7 +65,7 @@ def test_critic_shape_blockers_stay_scoped_to_module_boundaries_and_seams() -> N
     # critic from drifting into a conformance checker over internal implementation
     # details -- private helpers, algorithm choice, and local naming must never block.
     adapter = ClaudeCodeAdapter()
-    tools = create_phase_critic_agent_tools(adapter, phase_length_soft_cap=40_000, phase_shape_soft_cap=10_000)
+    tools = create_phase_critic_agent_tools(adapter)
     template = generate_phase_critic_template(tools)
 
     assert 'BINDING SCOPE' in template

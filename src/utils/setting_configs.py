@@ -26,16 +26,6 @@ class LoopConfig(BaseSettings):
     roadmap_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
     phase_checkpoint_frequency: int = Field(default=5, ge=1, le=20)
 
-    phase_length_soft_cap: int = Field(
-        default=40_000, ge=30_000, le=60_000, description='Soft cap for phase length in characters (~10k tokens)'
-    )
-    phase_shape_soft_cap: int = Field(
-        default=10_000,
-        ge=5_000,
-        le=20_000,
-        description='Soft cap for combined Design Shape + Design Decisions length in characters',
-    )
-
 
 class LogLevel(StrEnum):
     DEBUG = 'DEBUG'

@@ -1,0 +1,334 @@
+# Phase 2: manual checks for a live TUI
+
+These are the phase 2 exit checks that need a person at a live Claude Code session. Each one is
+written so it can be run cold. Record every result in the place each section names, with the date.
+
+| Check | What it settles | Status (2026-11-16) |
+|---|---|---|
+| M1 | opencode dispatches the hidden `bp-pipeline` subagent and honors `permission.task` | **Not run. Not blocking**: opencode is no longer used. README marks the opencode research path unverified. |
+| M2 | End-to-end on Claude Code: three touchpoints, the research cost invariant, resume by `SendMessage`, background waits | To run |
+| M3 | The `AskUserQuestion` batch limit of 4 | Done. Confirmed against the live tool schema on 2026-11-13 |
+| M4 | Resume from the stage marker after an interrupt, and re-open | To run |
+| M5 | The frozen reader accepts the signed-off output | Scripted half done (stage S5). The live half is step M2.9 below |
+| M6 | Rewording prompts never breaks the suite | Done, scripted (stage S5) |
+| M7 | Whether Claude Code enforces the architect's path-scoped `Write` | To run. The result goes in decisions.md |
+
+## 0. Setup (once)
+
+The checks must run against an MCP server built from the working tree. The `respec-ai`
+server registered at user scope is `respec-ai mcp-server`, which proxies to the released Docker
+image (`src/cli/commands/mcp_server.py`). That image does not have phase 2's storage rule (B1).
+Run everything in a scratch project, never in the respec-ai repo.
+
+1. Set two variables for the shell you run the checks from:
+
+   ```bash
+   export REPO=/path/to/your/respec-ai/checkout
+   export LIVE=/tmp/respec-p2-live
+   ```
+
+2. Bring the dev database up to date. `respec_dev` on `localhost:5433` was at migration 028 on
+   2026-11-16; `migrations/029_v2_drop_tasks.sql` was pending.
+
+   ```bash
+   cd "$REPO"
+   DATABASE_URL=postgresql://respec:respec_dev@localhost:5433/respec_dev uv run python scripts/migrate.py
+   docker exec respec-ai-db-dev psql -U respec -d respec_dev -Atc "select max(version) from schema_migrations"
+   ```
+
+   Expected: `29`.
+
+3. Create the scratch project. A Go module is used because respec-ai has no special support for
+   Go, and `init` needs a detectable language or `regenerate` refuses the stack config.
+
+   ```bash
+   rm -rf "$LIVE" && mkdir -p "$LIVE" && cd "$LIVE"
+   git init -q .
+   printf 'module example.invalid/livecheck\n\ngo 1.22\n' > go.mod
+   printf 'package main\n\nfunc main() {}\n' > main.go
+   git add -A && git commit -qm "scratch: start"
+   "$REPO/.venv/bin/respec-ai" init --platform markdown --skip-mcp-registration --yes
+   ```
+
+   Use the venv binary from inside `$LIVE`. `init` acts on the current directory, and
+   `uv --directory "$REPO" run …` would change the directory to the repo.
+
+4. Register the working-tree server for this project only. Local scope takes precedence over the
+   user-scope `respec-ai` while you are in `$LIVE`, and it writes nothing into the repo.
+
+   ```bash
+   cd "$LIVE"
+   claude mcp add respec-ai -s local \
+     -e MCP_STATE_MANAGER=database \
+     -e DATABASE_URL=postgresql://respec:respec_dev@localhost:5433/respec_dev \
+     -e MCP_LOG_FILE="$LIVE/mcp-server.log" \
+     -- uv --directory "$REPO" run python -m src.mcp
+   claude mcp get respec-ai
+   ```
+
+   Expected: `claude mcp get` shows the `uv … python -m src.mcp` command, not
+   `respec-ai mcp-server`. The tools stay `mcp__respec-ai__*`, which the generated commands grant.
+
+5. Check that bp is available. Some M2 steps need it.
+
+   ```bash
+   best-practices-rag check --tui claude; echo "exit=$?"
+   ```
+
+   With a non-zero exit, the workflow still runs but offers only `in-kb` research. Steps M2.4 and
+   M2.5 then cannot run; record them as blocked by bp, not as failures.
+
+6. Start Claude Code in `$LIVE`. Run `/mcp` and confirm `respec-ai` is connected. Note whether fork
+   mode is on; the sub-agents doc's "Turn fork mode off" describes the setting. Record it with M2.
+
+7. Make a plan with at least three roadmap phases. Use a small but real topic, and if you can,
+   one that the knowledge base already covers, so that a `synthesis-only` proposal appears.
+   Include one UI phase if you want the DesignSync check (M2.10).
+   - `/respec-plan p2-live-check` (or `/respec-plan-conversation` first)
+   - `/respec-roadmap p2-live-check`
+
+   The three phases are called **A**, **B** and **C** below.
+
+## M2: End to end on Claude Code
+
+Record the results in `docs/phase-cooperative/phase-2-cooperative-flow.md`, under Exit criteria, M2.
+
+**Run A, the happy path with research denied.** Run `/respec-phase p2-live-check <phase A>`.
+
+- **M2.1 Three touchpoints.** Count the stages where the workflow stops and waits for you:
+  - accept the recommended default at the first decision
+  - deny every research proposal
+  - choose "Continue"
+  - approve the design
+  - sign off without committing
+
+  Expected: exactly three stopping stages, in this order:
+  - Step 6, Briefing
+  - Step 10, Design Review
+  - Step 11, Sign-off
+
+  Several questions inside one stage count as one stop. The critic review and the automatic
+  repairs (Step 9) never stop for you.
+
+- **M2.2 Research costs nothing when denied.** Expected:
+  - The transcript contains no subagent call to `bp-pipeline`.
+  - `.best-practices/` is unchanged.
+  - In `.respec-ai/plans/p2-live-check/phases/<phase A>/phase.md`, under
+    `### Research Requirements`, every proposal you denied ends with `[declined]`.
+
+- **M2.3 Waits.** Expected:
+  - After each architect or critic call (a subagent spawn or a `SendMessage`), no prompt appears
+    and no later step runs until that agent's report arrives.
+  - With fork mode on, note whether the orchestrator still waited. That wording is a judgment call
+    the spec says only a live run can confirm.
+
+- **M2.4 Brief quality** (README "Cross-cutting risks" 1). Read:
+  - the briefing as shown at Step 6
+  - the signed-off `phase.md`
+  - `implementation.md`, next to `phase.md`
+
+  Judge whether the briefing is useful and the draft is sound: no speculative abstraction, seams
+  justified, steps a cold agent could run. Write a one-paragraph verdict.
+
+**Run B, research, a change request and a commit.** Run `/respec-phase p2-live-check <phase B>`.
+
+- **M2.5 One approved research proposal becomes a `- Read:` line** (needs bp). At the briefing,
+  approve exactly one `synthesis-only` proposal and deny the rest. Expected:
+  - one `bp-pipeline` call
+  - a new `.best-practices/<slug>.md`
+  - a line in `### Research Requirements` of the form
+    ``- Read: `.best-practices/<file>.md` — informs: … — Source: RP-NNN``
+
+- **M2.6 A change request resumes the same architect.** At the design review's final prompt,
+  choose "Tell me what to change" and give one concrete change. Expected:
+  - The next architect engagement is a `SendMessage` addressed to the agent ID recorded at
+    explore, not a new subagent spawn.
+  - The resumed architect calls `get_document`, `get_feedback` and `get_previous_analysis` first.
+  - It runs no knowledge-base lookups (`best-practices-rag generate-slug`, `check-file-cache` or
+    `query-kb`) and no fresh exploration of the codebase.
+  - The critic reviews again (Step 9) before the design review returns.
+
+  Also record whether `to: ARCHITECT_AGENT_ID` (`src/platform/template_helpers.py:199`) resolved.
+  If the send was refused and the orchestrator fell back to a fresh `revise` invocation, copy the
+  error text. This settles the open question stages S2 and S4b raised about addressing a typed
+  spawn by ID.
+
+- **M2.7 The hand-edit window at Step 10.2** (stage S4b's open item). On the next design review,
+  while the open questions are still being asked:
+  1. Edit `phase.md` by hand: add one sentence to `### Collaboration And Wiring`.
+  2. Answer the remaining questions.
+
+  Expected outcomes:
+  - **The window is real** if your sentence is gone from `phase.md` at the final prompt. Step
+    10.2's disk-mirror write (`src/platform/templates/commands/phase_command.py:993-999`) ran
+    before Step 10.4's re-read (`:1039`).
+  - **No window** if the sentence survives, or if the final prompt's re-read detects it and runs
+    the hand-edit path (Step 10.5).
+
+  Record which. If the window is real, the fix is to re-read the disk before 10.2's write.
+
+- **M2.8 Commit with hooks.** At sign-off, choose "Sign off and commit". Expected:
+  - `git log -1 --stat` shows one commit, `design: sign off <phase B>`.
+  - It contains exactly `phase.md`, `implementation.md` and any skeleton files this run wrote.
+  - It contains no scratch files.
+  - If you have a commit hook, it ran.
+  - `### Shape Gate` in `phase.md` reads `shape-settled`.
+
+- **M2.9 The live half of M5.** In the same session, run `/respec-code p2-live-check <phase A>`
+  and stop it once it displays "✓ Phase and implementation plan resolved". Expected:
+  - It passes the shape gate (`src/platform/templates/commands/code_command.py:221`).
+  - It reads `implementation.md` from `dirname(phase.md)` (`:231-232`) without an error.
+
+- **M2.10 DesignSync in a background subagent** (optional, only with a UI phase). Run
+  `/respec-phase` on the UI phase. In the explore architect's transcript, check whether the
+  `DesignSync` tool is available, or whether a call to it fails because the tool is missing. If
+  it is missing, log the deferred-issues entry phase 2 work item 13 describes: the architect's
+  live-design grounding silently falls back to the local bundle. If you have no UI phase, record
+  "not run".
+
+## M4: Resume
+
+Record the results under Exit criteria, M4, in the phase 2 document.
+
+- **M4.1 Interrupt during design review.**
+  1. Run `/respec-phase p2-live-check <phase C>` up to the design review (Step 10).
+  2. Interrupt the session at any question there.
+  3. Check that `phase.md` on disk holds the draft and that `### Shape Gate` reads
+     `shape-proposed`.
+  4. Re-run the same command.
+
+  Expected:
+  - "↻ Resuming the design review from the draft on disk".
+  - Then a critic review (Step 9), then the design review (Step 10).
+  - No briefing, and no explore.
+
+- **M4.2 Interrupt after the briefing, before the draft.**
+  1. Pick a phase that has not been run yet: a fourth roadmap phase, or a fresh plan with one
+     phase. (`respec-ai db delete-plan` deletes a whole plan, not one phase's design.)
+  2. Run `/respec-phase` on it.
+  3. Answer the briefing: settle at least one decision and decline at least one proposal.
+  4. Interrupt as soon as Step 7 or Step 8 starts.
+  5. Check that `phase.md` on disk holds the new `SD-NNN` entries and the `[declined]` marks, and
+     that `### Shape Gate` still reads `unshaped`.
+  6. Re-run.
+
+  Expected:
+  - Explore runs again.
+  - No settled decision is asked again.
+  - No `[declined]` proposal is offered again.
+
+- **M4.3 Re-open a signed-off phase.** Run `/respec-phase p2-live-check <phase A>`, which was
+  signed off in M2. Expected:
+  1. The workflow offers to re-open the phase or show the handoff. Choose re-open.
+  2. Right after you choose, `### Shape Gate` in `phase.md` reads `shape-amended`.
+  3. While it is `shape-amended`, `/respec-code p2-live-check <phase A>` refuses at the shape
+     gate with "### Shape Gate is 'shape-amended', not 'shape-settled'" (B28).
+  4. After review and sign-off, the marker reads `shape-settled` again.
+
+## M7: The architect's write scope on Claude Code
+
+Record the result in `docs/phase-cooperative/decisions.md`, at "M7 result" under "The writing
+agents put the `implementation.md` draft on disk themselves". If the scope is not enforced, also
+correct README "Agents and modes" and "Cross-cutting risks" 6 (phase 2 work item 13).
+
+The architect's own prompt forbids any other write, so it cannot show whether the tool layer
+enforces the scope. Use a probe agent with the same `tools` entry instead.
+
+1. In `$LIVE`, confirm the regenerated architect's grant:
+
+   ```bash
+   grep '^tools:' .claude/agents/respec-phase-architect.md
+   ```
+
+   It must contain `Write(.respec-ai/plans/*/phases/*/implementation.md)`.
+
+2. Create `$LIVE/.claude/agents/m7-write-probe.md` with exactly this content:
+
+   ```markdown
+   ---
+   name: m7-write-probe
+   description: Probe whether a path-scoped Write grant is enforced on a subagent
+   tools: Read, Write(.respec-ai/plans/*/phases/*/implementation.md)
+   ---
+   Report first whether you have a Write tool at all. Then make exactly these two writes with the
+   Write tool, in order, and report each tool result verbatim (success, or the exact error or
+   denial text). Use no other tool to write.
+   1. Write the text "m7 outside" to `m7-outside.txt` in the project root.
+   2. Write the text "m7 inside" to `.respec-ai/plans/m7/phases/m7/implementation.md`.
+   ```
+
+3. Restart Claude Code in `$LIVE`, then ask: "Run the m7-write-probe agent." If a permission
+   prompt appears for the outside write, deny it and note that it appeared.
+
+4. Record one of these outcomes:
+   - **No Write tool.** The `Write(<glob>)` entry does not resolve inside a subagent's `tools`
+     list. This is a defect: the architect cannot write `implementation.md` on Claude Code. Raise
+     it before relying on the draft step.
+   - **Outside write refused by the tool layer, inside write succeeded.** The scope is enforced.
+   - **Outside write produced a permission prompt.** The tool list did not narrow `Write`; only the
+     session's permission layer stood in the way.
+   - **Both writes succeeded silently.** The scope rests on the prompt alone, as it does on
+     opencode and codex.
+
+5. Clean up: delete `.claude/agents/m7-write-probe.md`, `m7-outside.txt` and `.respec-ai/plans/m7`.
+
+## M1: opencode research dispatch (not run)
+
+opencode is no longer used, so M1 does not block phase 2. README "bp invocation
+per TUI" marks the opencode research path unverified. If opencode is used again, check two things
+before relying on research there:
+- The installed opencode dispatches the `"hidden": true` `bp-pipeline` subagent by name from the
+  generated `cmd-respec-phase` agent.
+- It honors that agent's `permission.task` map. Today the map is `{"*": "deny",
+  "respec-phase-architect": "allow", "respec-phase-critic": "allow", "bp-pipeline": "allow"}`,
+  written by `src/platform/tui_adapters/opencode.py:288`.
+
+## Teardown
+
+```bash
+cd "$LIVE" && claude mcp remove respec-ai -s local
+DATABASE_URL=postgresql://respec:respec_dev@localhost:5433/respec_dev "$REPO/.venv/bin/respec-ai" db delete-plan p2-live-check --force
+rm -rf "$LIVE"
+```
+
+The user-scope `respec-ai` registration is never touched by these steps.
+
+## Already verified without a TUI (stage S5, 2026-11-16)
+
+- **Regenerate.** In a scratch project with HOME and every XDG directory isolated, these all
+  exited 0:
+  - `respec-ai init --platform markdown --skip-mcp-registration --yes`
+  - `models opencode … --project`
+  - `models codex … --project --no-apply`
+  - `regenerate --force --tui all`
+
+  No TUI reported a failure. The artifacts checked out as follows:
+  - Every codex TOML and `openai.yaml` parses, `opencode.json` parses, and every `{file:…}`
+    reference in it resolves.
+  - Every Claude Code and codex frontmatter block parses. The five commands whose bracketed
+    `argument-hint` (for example `[plan-name] [phase request]`) is not strict YAML were already
+    rendered that way before phase 2.
+  - No artifact sets `context: fork`.
+  - No opencode or codex artifact mentions `SendMessage`.
+  - codex dispatches `bp-pipeline` by its exact name and keeps the close-after-harvest line.
+  - Claude Code grants `Task(bp-pipeline)`, `SendMessage` and `AskUserQuestion`, and the
+    architect's tools contain no question tool.
+  - All three phase commands render 12 steps and one loop initialization.
+- **M5, scripted.** A `phase.md` built through Step 8's store and Step 11.5's three edits was run
+  through the real store, disk-sync and get paths. Results:
+  - It keeps `shape-settled`, the `- Constraint:` line, the materializer SD and the
+    `- Read:`/`- Applied:` ledger.
+  - respec-code's gate extraction passes it and refuses a `shape-amended` copy.
+  - Its Step 1.2 glob and Step 5 path resolve the architect's `implementation.md`.
+  - `extract_steps` finds every step. Every Checklist item carries `(Step N)` and one
+    `(verify: …)` per language: Go's `[commands].test`, or the verbatim ask-user marker.
+  - The Execution Intent Policy and the Deferred Risk Register parse.
+- **M6, scripted.** The rendered phase command was post-processed on every TUI with 43 rewordings (42 matched the render; the other, a label comparison, matched nothing):
+  - every question, header, option label and description
+  - display lines
+  - sub-step and step titles
+
+  The `IF … == "<label>"` comparisons were changed with their labels. The full suite stayed at 2264
+  passed, 1 skipped. A control run that reworded only the contract strings (`WAIT for`,
+  `resume at Step`, `TOUCHPOINT`) failed 36 tests, which shows the reworded render reached the
+  tests. No test pins prompt phrasing.

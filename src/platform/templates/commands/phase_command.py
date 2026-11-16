@@ -1,188 +1,195 @@
 from textwrap import indent
 
-from src.models.enums import PhaseStatus
-from src.models.phase import Phase
 from src.platform.models import PhaseCommandTools
-from src.platform.templates.phase_contract_grammar import (
-    MODULE_LAYOUT_PLACEHOLDER,
-    SKELETON_INDEX_PLACEHOLDER,
-    TEST_LIST_PLACEHOLDER,
-)
 
 
-# Create template instance with instructional placeholders
-technical_phase_template = Phase(
-    phase_name='[phase-name-in-kebab-case]',
-    objectives='[Clear, measurable goals with business value]',
-    scope="[Boundaries, what's included/excluded, constraints]",
-    dependencies='[External requirements with versions and justifications]',
-    deliverables='[High-level outputs - no specific file names]',
-    architecture='[Component structure, interactions, data flow, design decisions - REQUIRED]',
-    technology_stack='[Technologies with versions, justifications, trade-offs - Optional but recommended]',
-    functional_requirements='[Features and user workflows]',
-    non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
-    development_plan='[Implementation phases - no time estimates, no file names]',
-    testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
-    module_layout=MODULE_LAYOUT_PLACEHOLDER,
-    skeleton_index=SKELETON_INDEX_PLACEHOLDER,
-    collaboration_and_wiring='[Who constructs whom, injection points, call order across the modules above]',
-    test_list=TEST_LIST_PLACEHOLDER,
-    open_design_decisions='[OD-N: unresolved choice, ranked by blast radius if reversed]',
-    settled_design_decisions='[SD-N: decision (source=architect|user-edit) — brief rationale]',
-    implementation_plan_references=(
-        'Pre-resolved architecture decisions that MUST be honored.\n\n'
-        '- Constraint: `<plans-dir>/<plan-name>.md` § "Section Name"\n'
-        '  (brief rationale for why this constraint exists)'
-    ),
-    research_requirements=(
-        '**Existing Documentation**:\n'
-        '- Read: [paths to .best-practices/ docs]\n\n'
-        '**External Research Needed**:\n'
-        '- Synthesize: Technologies: [comma-separated technology names]; Topics: [comma-separated topic keywords]; Query: [specific research request]'
-    ),
-    success_criteria='[Measurable outcomes and verification methods]',
-    integration_context='[System relationships and interface contracts]',
-    additional_sections={
-        'Data Models': '[High-level schema, validation rules - ONLY for data-heavy projects]',
-        'API Design': '[Interface contracts, behavior - ONLY for web services]',
-        'Security Architecture': '[Auth methods, data protection approach - ONLY for security-critical systems]',
-        'Performance Requirements': '[Response time targets, scalability constraints - ONLY for performance-critical systems]',
-        'Deployment Architecture': '[Infrastructure approach, hosting strategy - ONLY for infrastructure-heavy projects]',
-        'CLI Commands': '[Command interface design - ONLY for CLI tools]',
-    },
-    iteration=0,
-    version=1,
-    phase_status=PhaseStatus.DRAFT,
-).build_markdown()
+def _report_check(reader: str) -> str:
+    return '\n'.join(
+        [
+            f"Wait for the {reader}'s report. Do not continue the workflow and do not prompt the user until it arrives.",
+            'REPORT_DECISION = [the `result` bullet under the report\'s `## Status`; "failed" when the report is malformed]',
+            'IF REPORT_DECISION == "failed":',
+            f'  ERROR: "The {reader} returned a failed or malformed report (mode: ARCHITECT_MODE)"'
+            if reader == 'architect'
+            else f'  ERROR: "The {reader} returned a failed or malformed report"',
+            "  DIAGNOSTIC: [the report's `detail` line, or the malformed report as received]",
+            '  EXIT: Workflow terminated',
+        ]
+    )
 
 
-def _bp_synthesis_orchestration_block(*, on_bp_unavailable: str) -> str:
-    """SUB-STEPs 3-5 shared by Step 16.5 (detail act) and Step 5.5 (shape act).
-
-    Bounded workers, `BP_PATH_REGEX` output validation, and the non-existent-path
-    guard are identical in both callers. Only what happens when `bp` itself is
-    unavailable differs -- Step 16.5 hard-exits because the detail act promised those
-    documents; Step 5.5 must degrade, never terminate, because the user asked for
-    optional enrichment, not a dependency (docs/frontend-refactor/decisions.md
-    "Failure posture differs from Step 16.5 deliberately"). `on_bp_unavailable` is
-    that one difference, passed in as text rather than accidentally copied.
-    """
-    return f"""Initialize synthesis orchestration state:
-MAX_ACTIVE_BP_WORKERS = 3
-PATH_REGEX = BP_PATH_REGEX
-PENDING_PROMPTS = copy(SYNTHESIS_QUEUE)
-SUCCEEDED_SYNTHESIS = []
-FAILED_SYNTHESIS = []
-
-Preflight bp tool availability:
-IF "Task(bp)" is NOT present in allowed tools OR runtime cannot invoke bp:
-{on_bp_unavailable}
-
-Launch bp Tasks IN PARALLEL:
-Execute PENDING_PROMPTS with bounded concurrency:
-- ACTIVE_WORKERS max size: MAX_ACTIVE_BP_WORKERS (3)
-- PENDING_PROMPTS: prompts not started yet
-- SUCCEEDED_SYNTHESIS / FAILED_SYNTHESIS trackers
-
-While PENDING_PROMPTS not empty OR ACTIVE_WORKERS not empty:
-  - Launch new bp task while len(ACTIVE_WORKERS) < MAX_ACTIVE_BP_WORKERS
-  - Wait for one task completion
-	  - Record completion result and free slot
-
-	  Task(bp):
-	  <queue item prompt_text>
-
-═══════════════════════════════════════════════
-MANDATORY BP OUTPUT VALIDATION GATE
-═══════════════════════════════════════════════
-For EACH completed bp task result:
-  CANDIDATE_PATHS = regex matches from task output using PATH_REGEX
-
-  IF len(CANDIDATE_PATHS) != 1:
-    ERROR: "bp output path parsing failed — expected exactly one .best-practices path"
-    DIAGNOSTIC: Show prompt, candidate path count, and task output excerpt
-    EXIT: Do NOT proceed with partial research updates
-
-	  RESOLVED_PATH = CANDIDATE_PATHS[0]
-	  IF file at RESOLVED_PATH does NOT exist:
-	    ERROR: "bp returned non-existent output path"
-	    DIAGNOSTIC: Show prompt and RESOLVED_PATH
-	    EXIT: Do NOT proceed with partial research updates
-
-	  Record in SUCCEEDED_SYNTHESIS:
-	  - path: RESOLVED_PATH
-	  - prompt_text: queue item prompt_text
-	  - technologies: queue item technologies
-	  - topics: queue item topics
-	  - query: queue item query
-	  - covers_api: queue item covers_api
-
-VIOLATION: Displaying bp synthesis errors but continuing to update
-           the phase with incomplete research paths.
-═══════════════════════════════════════════════"""
+def _architect_engagement(mode: str, fresh_invocation: str, resume_invocation: str) -> str:
+    if resume_invocation:
+        invocation = '\n'.join(
+            [
+                'IF ARCHITECT_AGENT_ID is set:',
+                indent(resume_invocation, '  '),
+                'IF ARCHITECT_AGENT_ID is not set, OR the resume is refused, OR the architect cannot be reached:',
+                indent(fresh_invocation, '  '),
+                '  ARCHITECT_AGENT_ID = [the agent ID this invocation returns]',
+            ]
+        )
+    else:
+        invocation = fresh_invocation
+    return '\n'.join(
+        [f'ARCHITECT_MODE = "{mode}"', invocation, _report_check('architect'), 'ARCHITECT_REPORT = the report']
+    )
 
 
 def generate_phase_command_template(tools: PhaseCommandTools) -> str:
-    selection_prompt_instructions = tools.tui_adapter.selection_prompt_instruction
-    selection_response_source = tools.tui_adapter.selection_response_source
+    adapter = tools.tui_adapter
+    selection_prompt_instructions = adapter.selection_prompt_instruction
+    selection_response_source = adapter.selection_response_source
+    resumes_architect = bool(tools.resume_architect)
+
+    first_explore = '\n'.join(
+        [
+            'ARCHITECT_MODE = "explore"',
+            tools.invoke_architect_explore,
+            *(['ARCHITECT_AGENT_ID = [the agent ID this invocation returns]'] if resumes_architect else []),
+            _report_check('architect'),
+            'ARCHITECT_REPORT = the report',
+        ]
+    )
+    explore_again = _architect_engagement('explore', tools.invoke_architect_explore, tools.resume_architect)
+    draft = _architect_engagement('draft', tools.invoke_architect_draft, tools.resume_architect)
+    revise = _architect_engagement('revise', tools.invoke_architect_revise, tools.resume_architect)
+    critic_review = '\n'.join([tools.invoke_critic_review, _report_check('critic')])
+    research_dispatch = indent(tools.invoke_bp_pipeline, '  ')
+
+    if resumes_architect:
+        reengagement_rule = (
+            'Resume the architect recorded in ARCHITECT_AGENT_ID, so its exploration stays in its context.\n'
+            '   Invoke it fresh when no ID is recorded, the resume is refused, or the architect cannot be\n'
+            '   reached, and record the agent ID every fresh invocation returns. Either way, the architect\n'
+            '   re-reads the phase document, its stored notes and all feedback before it changes anything.'
+        )
+        architect_id_setup = 'ARCHITECT_AGENT_ID = ""  (no architect recorded yet)'
+    else:
+        reengagement_rule = (
+            "Re-engage the architect with a fresh invocation in the step's mode. It rehydrates from the\n"
+            '   phase document, its stored notes and all feedback before it changes anything.'
+        )
+        architect_id_setup = ''
+    guardrail_exceptions_heading = (
+        'Phase-local exceptions to the guardrail above:'
+        if adapter.subagent_invocation_guardrail
+        else 'Phase-local rules for agents and disk writes:'
+    )
+
+    batch_limit = adapter.selection_batch_limit
+    if batch_limit > 1:
+        briefing_batching = f'Ask up to {min(2, batch_limit)} of these questions per prompt, each as its own question.'
+        review_batching = f'Ask up to {batch_limit} of these questions per prompt, each as its own question.'
+    else:
+        briefing_batching = 'Ask one question per prompt.'
+        review_batching = 'Ask one question per prompt.'
+
     return f"""---
 allowed-tools: {tools.tools_yaml}
 argument-hint: [plan-name] [phase request]
 description: Transform strategic plans into detailed Phases
 ---
 
-# respec-phase Command: Phase Creation
+# respec-phase Command: Cooperative Phase Design
 
 ## Overview
-Transform strategic plans into detailed Phases through quality-driven refinement. This command orchestrates technical architecture design, research integration, and platform-specific Phase storage.
 
-{tools.tui_adapter.subagent_invocation_guardrail}
+Design one phase together with the user, then hand off a signed-off `phase.md` and its
+`implementation.md`. The architect and critic subagents do the heavy work in their own contexts
+and return a fixed report. This command is the only party that talks to the user. The happy path
+stops for the user exactly three times: the briefing (Step 6), the design review (Step 10) and
+the sign-off (Step 11). The critic reviews every draft before the user sees it; mechanical
+problems are repaired without the user, and judgment calls reach the user as questions. Research
+runs only when the user approves it.
 
-## Primary Responsibilities
+{adapter.subagent_invocation_guardrail}
 
-### 1. Initialize Technical Design Process
-- Retrieve strategic plan from previous `respec-plan` phase
-- Launch phase-architect agent for technical architecture development
-- Initialize MCP refinement loop for Phase creation
+**{guardrail_exceptions_heading}**
+- `bp-pipeline` is the one external agent this workflow dispatches: at Step 7 only, for
+  user-approved research only, using the exact invocation shown there.
+- The only disk writes this workflow makes are the ones listed in Step 12's phase file storage
+  restriction: the disk mirror of the phase file after every store, the hand-edit write-back,
+  and the two skeleton scratch files at sign-off.
 
-### 2. Coordinate Architecture Development
-- Guide phase-architect through technical design decisions
-- Integrate existing documentation from archive scanning
-- Identify external research requirements for knowledge gaps
+## Responsibilities
 
-### 3. Manage Quality Assessment Loop
-- Pass Phases to phase-critic for FSDD framework evaluation
-- Handle MCP Server refinement decisions based on quality scores
-- Iterate until MCP Server determines Phase meets quality requirements
-
-### 4. Phase Storage
-- Store final Phase using configured storage tools
-- Maintain platform-agnostic content structure
-- Include research requirements section for future implementation
+- **Relay.** Invoke each subagent with only its mode, IDs and config context. Show the user each
+  report's `## For the user`, ask its decisions and research proposals, and record only what the
+  user actually answered.
+- **Stage marker.** Write `### Shape Gate`. The agents never write it, and storage keeps the live
+  value on every agent write.
+- **Disk mirror.** Write the stored phase document to PHASE_FILE_PATH after every store, so the
+  sync at the start of a re-run (Step 2) never discards decisions, research marks or the draft.
+- **Research.** Dispatch `bp-pipeline` only for proposals the user approved, and record only
+  validated results.
+- **Sign-off.** Write skeletons, mark the design settled, offer a commit, store the phase on the
+  platform and hand off.
 
 ## Orchestration Pattern
 
 ```text
-Main Agent (via respec-phase)
-    │
-    ├── 1. Retrieve Strategic Plan
-    │   └── Access plan from previous phase or user input
-    │
-    ├── 2. Technical Design Loop
-    │   ├── Task: phase-architect (architecture + research identification)
-    │   ├── Task: phase-critic (FSDD quality assessment → score)
-    │   └── MCP: decide_loop_next_action(loop_id)
-    │
-    ├── 3. Handle Loop Decision
-    │   ├── IF "refine" → Pass feedback to phase-architect
-    │   ├── IF "completed" → Proceed to storage
-    │   └── IF "user_input" → Request technical clarification
-    │
-    └── 4. Store Phase
-        └── Platform tool to store Phase
+Main agent (this command): the only party that talks to the user
+    |
+    |-- Steps 1-3   locate the phase, sync the plan and phase, set up the run
+    |-- Step 4      route on ### Shape Gate, so a re-run resumes where it stopped
+    |-- Step 5      architect explores ---------------------> report
+    |-- Step 6      BRIEFING (touchpoint): decisions and research approval
+    |-- Step 7      bp-pipeline runs the approved research only
+    |-- Step 8      architect drafts the design and implementation.md -> report
+    |-- Step 9      critic reviews; architect repairs mechanical findings (at most twice)
+    |-- Step 10     DESIGN REVIEW (touchpoint): questions, changes, hand edits
+    |-- Step 11     SIGN-OFF (touchpoint): skeletons, settled marker, optional commit
+    |-- Step 12     store on the platform and hand off
 ```
 
-{tools.mcp_tools_reference}
+## MANDATORY RELAY PROTOCOL
+
+Every subagent step follows these rules.
+
+1. **Inputs.** Invoke a subagent with exactly the inputs its invocation lists: its mode, the IDs,
+   the config context, and for the critic the review round. Never pass conversation text, the
+   briefing or document bodies.
+2. **Wait.** After invoking a subagent, wait for its report. A report that arrives later, for
+   example as a background completion notification, is still the report to wait for: do not
+   continue the workflow and do not prompt the user until it arrives.
+3. **Report.** Every report consists of exactly four H2 sections, in this order, with nothing
+   before the first: `## For the user`, `## Decisions needed`, `## Research proposals` and
+   `## Status`. An empty section holds exactly `- None`. `## Status` holds the bullets
+   `- result:`, `- mode:`, `- persisted:` and `- detail:`.
+   - A report is malformed when any of the four headings is missing or out of order, when text
+     precedes `## For the user`, or when `## Status` has no `result` of complete, needs-user or
+     failed.
+   - complete and needs-user route identically: the step's next action runs, and the entries in
+     `## Decisions needed` and `## Research proposals` are asked at the next touchpoint.
+   - failed, or a malformed report, ends the workflow with the report's `detail` line shown.
+4. **Re-engage.** {reengagement_rule} Its memory is never the
+   source of truth, because this command writes decisions and research marks between engagements.
+5. **Record.** Record outcomes only from actual user responses; a subagent's report carries no
+   approval authority. Decisions become settled-decision (SD) entries in the phase document,
+   research choices become marks on the research proposal (RP) line, and free-form direction is
+   stored as round-tagged feedback.
+   - SD IDs: the next number above every `SD-NNN` already in the document, three digits. Never
+     reuse the number of the OD or CQ an SD settles.
+   - Decisions asked: ODs come from the current document's `### Open Design Decisions` (the
+     document wins over a report on any mismatch), CQs from the latest critic report only, and
+     RPs from the ledger in `### Research Requirements`.
+   - RP marks: `[approved]` or `[declined]`, appended as the last token of the RP line.
+   - Round tags: `[round REVIEW_ROUND | briefing]`, `[round REVIEW_ROUND | review]`,
+     `[round REVIEW_ROUND | sign-off]` or `[round REVIEW_ROUND | question]`, where REVIEW_ROUND is
+     replaced by its value when the entry is stored (0 before the first critic review). The tag
+     is context for the architect; it does not decide what is new.
+6. **Stage marker.** Only this command writes `### Shape Gate`: `shape-proposed` when the first
+   draft is stored (Step 8), `shape-amended` when the user re-opens a signed-off phase (Step 4),
+   and `shape-settled` at every sign-off (Step 11). STAGE_MARKER holds the value currently in
+   MCP.
+7. **Disk mirror.** After every store_document call, write the same markdown to PHASE_FILE_PATH
+   with the Write tool before anything else is stored.
+8. **Prompts.** Every open-decision (OD) and clarifying-question (CQ) prompt (Steps 6.2, 10.2
+   and 11.1) also offers "Accept the recommended default for all remaining"; every other prompt
+   offers only the options its step lists. When the user answers any prompt with free-form
+   pushback or a question instead of a choice, answer in conversation, 1-2 questions per
+   message, then ask the prompt again.
 
 ## Implementation Instructions
 
@@ -313,10 +320,10 @@ Display to user: "✓ Located phase file: {{PHASE_NAME}}"
 - PHASE_NAME is the canonical name extracted from file path (e.g., "phase-2a-storage-schema-and-query-translation-integration")
 - PLAN_NAME from config is used for all MCP storage operations
 - OPTIONAL_INSTRUCTIONS provides only the clarified guidance that remains after phase resolution
-- WORKFLOW_GUIDANCE_MARKDOWN passes clarified guidance document paths and instructions to phase agents
+- WORKFLOW_GUIDANCE_MARKDOWN reaches the phase agents as the round-0 briefing feedback entry (Step 3)
 - All subsequent operations use PHASE_NAME (canonical)
 
-### Step 2: Load and Store Existing Documents
+### Step 2: Sync the Plan and Phase
 
 Load phase and plan from file system, store in MCP:
 
@@ -337,73 +344,41 @@ Load phase and plan from file system, store in MCP:
 - PHASE_NAME is the canonical name extracted from file path
 - Both documents are now in MCP storage for refinement loop
 
-### Step 3: Determine Workflow Act
+### Step 3: Set Up the Run
+
+Runs before Step 4 routes, so every route that reaches a subagent has the review loop, the config
+context and the run's guidance.
+
+#### Step 3.1: Initialize and link the review loop
 
 ```text
-SHAPE_GATE = read "### Shape Gate" from the synced Phase document (Step 2)
+LOOP_RESPONSE = {tools.initialize_loop}
+LOOP_ID = [loop_id from LOOP_RESPONSE]
 
-IF SHAPE_GATE in ["unshaped", "shape-proposed"] OR user explicitly instructed a re-shape:
-  Proceed to Step 4.
+IF LOOP_ID is None or LOOP_ID == "":
+  CRITICAL ERROR: "initialize_refinement_loop did not return a valid loop_id"
+  DIAGNOSTIC: Show the full LOOP_RESPONSE
+  EXIT: Workflow terminated
 
-ELSE:  (SHAPE_GATE in ["shape-settled", "shape-amended"])
-  Proceed to Step 13.
+{tools.link_loop}
+
+LOOP_STATUS = {tools.get_loop_status}
+
+IF LOOP_STATUS does not show the linked phase:
+  CRITICAL ERROR: "Loop linking failed - phase-architect and phase-critic will fail"
+  DIAGNOSTIC: Show LOOP_STATUS details
+  EXIT: Workflow terminated
+
+Display to user: "✓ Review loop {{LOOP_ID}} linked to {{PHASE_NAME}}"
 ```
 
-### Step 4: Initialize Shape Refinement Loop
+`LOOP_ID` is the one review loop of this run: it carries every critic review and every piece of
+user feedback the agents read.
 
-Initialize a dedicated MCP refinement loop for the shape act, decoupled from the detail
-act's loop (Step 13) so `Phase.version` tracking (finding F22) and the joint gate (Step
-11) never interact with detail-act state.
+#### Step 3.2: Load the project config context
 
-```text
-(Initialize MCP refinement loop for the shape act)
-{tools.initialize_refinement_loop_inline_doc}
-{tools.initialize_loop}
-  plan_name=PLAN_NAME,
-  loop_type="phase"
-)
-```
-
-### Step 4.2: Link Shape Loop to Phase
-
-```text
-(Extract loop_id from initialize_refinement_loop result)
-SHAPE_LOOP_ID = [loop_id from Step 4 MCPResponse]
-
-(Validate loop_id was returned)
-IF SHAPE_LOOP_ID is None or SHAPE_LOOP_ID == "":
-    CRITICAL ERROR: "initialize_refinement_loop did not return valid loop_id for the shape act"
-    DIAGNOSTIC: Show full MCPResponse from Step 4
-    EXIT: Workflow terminated
-
-(Link loop to phase for agents to retrieve via loop_id only)
-{tools.link_loop_to_document_inline_doc}
-{tools.link_shape_loop}
-  loop_id=SHAPE_LOOP_ID,
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
-)
-
-(Verify the link was created)
-SHAPE_LOOP_STATUS = {tools.get_shape_loop_status}
-
-IF SHAPE_LOOP_STATUS does not show linked phase:
-    CRITICAL ERROR: "Shape loop linking failed - phase-architect and phase-critic will fail"
-    DIAGNOSTIC: Show SHAPE_LOOP_STATUS details
-    EXIT: Workflow terminated
-
-Display to user: "✓ Shape refinement loop {{SHAPE_LOOP_ID}} linked to {{PHASE_NAME}}"
-```
-
-**Important**:
-- `SHAPE_LOOP_ID` MUST be extracted and validated before proceeding, same as `LOOP_ID` at Step 13.2
-- `SHAPE_LOOP_ID` and `LOOP_ID` are never the same value and are never mixed across tool calls
-
-### Step 4.5: Load Project Config Context
-
-Gives the architect the same language/stack evidence the coder and reviewers already
-receive (F8) -- without it, a polyglot project's Skeleton Index entries have no way to
-be told apart by language.
+Both agents receive the target project's stack and language evidence, so a polyglot project's
+Skeleton Index entries and verify commands are told apart by language.
 
 ```text
 STANDARDS_TOML_FILES = Glob(.respec-ai/config/standards/*.toml)
@@ -434,286 +409,695 @@ PROJECT_CONFIG_CONTEXT_MARKDOWN = compose markdown:
   [LANGUAGE_AUTHORING_NOTES]
 ```
 
-### Step 5: Launch Shape Architecture Development
-
-Begin the shape act's technical design conversation:
+#### Step 3.3: Record the run's guidance, check bp and reset the counters
 
 ```text
-{tools.invoke_phase_architect_shape}
+IMPLEMENTATION_PLAN_PATH = dirname(PHASE_FILE_PATH) + "/implementation.md"
+(The architect writes the build order there; the coding workflow reads it from the same place.)
 
-Agent will:
-1. Retrieve strategic plan from MCP using plan_name
-2. Execute archive scan to identify existing documentation
-3. Retrieve current phase from MCP using loop_id (SHAPE_LOOP_ID)
-4. Retrieve previous critic feedback from MCP (if iteration > 1)
-5. Propose or refine: Module Layout, Skeleton Index, Collaboration And Wiring, Test
-   List, Open Design Decisions — the public seams and behaviors to pin, not
-   implementation detail (see docs/phase-refactor/decisions.md)
-6. Store updated phase directly in MCP
-7. Return brief status message (no full markdown)
+USER_FEEDBACK_MARKDOWN = "[round 0 | briefing] " + WORKFLOW_GUIDANCE_MARKDOWN
+{tools.store_user_feedback}
+(Both agents read the run's guidance from this feedback entry.)
 
-Verify agent completed successfully:
-IF agent returns error status:
-  ERROR: "phase-architect failed to update Phase shape"
-  DIAGNOSTIC: Check agent logs for MCP tool call failures
+RUN (Bash): {tools.bp_preflight_command}
+IF command exit code == 0:
+  BP_AVAILABLE = true
+ELSE:
+  BP_AVAILABLE = false
+  Do NOT terminate the workflow: the run continues without paid research, and Step 6 tells the user.
+
+REVIEW_ROUND = 0
+REPAIR_ROUNDS = 0
+UNRESOLVED_CHECKS = []
+OPEN_CRITIC_QUESTIONS = []
+DESIGN_CHANGE_SD_IDS = []
+UNRESOLVED_DIRECTION = none
+ARCHITECT_REPORT = none
+CRITIC_REPORT = none
+{architect_id_setup}
+```
+
+### Step 4: Route on the Stage Marker
+
+```text
+PHASE_MARKDOWN = {tools.get_document}
+STAGE_MARKER = the "### Shape Gate" value in PHASE_MARKDOWN (the document Step 2 synced)
+
+IF STAGE_MARKER == "unshaped":
+  Go to Step 5. Decisions already settled in the document are not asked again.
+
+ELIF STAGE_MARKER == "shape-proposed" OR STAGE_MARKER == "shape-amended":
+  Display to user: "↻ Resuming the design review from the draft on disk"
+  Go to Step 9 (the critic reviews the synced draft), then Step 10.
+
+ELIF STAGE_MARKER == "shape-settled":
+  IF OPTIONAL_INSTRUCTIONS explicitly asks to re-open the signed-off design:
+    REOPEN_CHOICE = "Re-open the design"
+  ELSE:
+    {selection_prompt_instructions}
+      Header: "Signed Off"
+      Question: "{{PHASE_NAME}} is already signed off. What do you want to do?"
+      multiSelect: false
+      Options: [
+        {{"label": "Show the handoff", "description": "Keep the signed-off design and show the next workflow"}},
+        {{"label": "Re-open the design", "description": "Mark the phase re-opened and return to the design review"}}
+      ]
+
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 4. Set REOPEN_CHOICE. Continue immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
+
+    REOPEN_CHOICE = [selected option from {selection_response_source}]
+
+  IF REOPEN_CHOICE == "Re-open the design":
+    STAGE_MARKER = "shape-amended"
+    PHASE_MARKDOWN = PHASE_MARKDOWN with "### Shape Gate" set to STAGE_MARKER
+    {tools.store_document}
+    Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+    Go to Step 9 (the critic reviews the signed-off design), then Step 10.
+  ELSE:
+    Go to Step 12 to show the handoff.
+
+ELSE:
+  ERROR: "Unknown stage marker in ### Shape Gate: [STAGE_MARKER]"
   EXIT: Workflow terminated
-
-Display to user: "✓ Phase shape refined by phase-architect"
 ```
 
-### Step 5.5: Research Gate
+### Step 5: Explore
 
-Let the user elect, once per shape pass, to have a flagged knowledge gap researched
-before walking the design decisions — never automatically (three automatic variants
-were considered and rejected; see docs/frontend-refactor/decisions.md "Shape-act
-research is user-elected, never automatic"). Skips silently when the architect
-flagged nothing offerable — no prompt, no output line, no new human gate.
-
-**Cost invariant, absolute:** a user who declines here pays exactly what they pay
-today — zero additional `bp` invocations, on every shape iteration.
-
-**Loop-safety, absolute:** Step 11's refine path returns to Step 5, so this step
-re-runs on every shape iteration. Idempotence comes from state, not position — a
-researched gap becomes a `Read:` entry and is no longer offerable; a declined gap is
-marked `[declined]` and filtered out. Only a genuinely new gap from a re-shaped
-design reappears.
+The architect grounds the design before anything is asked: the plan and its constraints, the
+existing code, and local knowledge-base lookups that set each research proposal's cost tier. It
+writes its open decisions (OD) and research proposals (RP) into the phase document.
 
 ```text
-SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
-SHAPE_PHASE_MARKDOWN = SHAPE_PHASE_RESPONSE.message
+{first_explore}
 
-Parse "#### Design Research" from SHAPE_PHASE_MARKDOWN under "### Design Shape -
-Additional Sections". OFFERABLE_GAPS = "- Gap:" entries NOT marked [declined].
-
-IF OFFERABLE_GAPS is empty:
-  Proceed to Step 6.
-
-{selection_prompt_instructions}
-Header: "Design Research"
-Question: "The architect flagged these knowledge gaps. Research any before we walk the design decisions?"
-multiSelect: true
-Options: [ one per OFFERABLE_GAPS entry, plus {{"label": "None — proceed to the design decisions", "description": "Default. Costs nothing — no bp invocation."}} ]
-
-WAIT for {selection_response_source}.
-DO NOT treat this as workflow completion, cancellation, or failure.
-After the user responds, resume at Step 5.5. Continue immediately.
-DO NOT explain that the workflow is stopping unless the user asks why.
-
-SELECTED_GAPS = [selections from {selection_response_source}] excluding "None — proceed to the design decisions"
-
-IF selection is "None" or SELECTED_GAPS is empty:
-  Mark every OFFERABLE_GAPS entry "[declined]" in SHAPE_PHASE_MARKDOWN.
-  {tools.store_document}
-    doc_type="phase",
-    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-    content=UPDATED_SHAPE_PHASE_MARKDOWN
-  )
-  Proceed to Step 6.
-
-Normalize SELECTED_GAPS into SYNTHESIS_QUEUE items (Technologies:/Topics: parsed from
-the Gap: entry text; query = the Gap: entry text verbatim).
-
-{
-        _bp_synthesis_orchestration_block(
-            on_bp_unavailable=(
-                '  Display a notice: "bp unavailable — proceeding without research; the flagged'
-                ' gaps remain as Gap: entries for a later pass."\n'
-                '  Proceed to Step 6.'
-            )
-        )
-    }
-
-For each item in SUCCEEDED_SYNTHESIS:
-  Rewrite the corresponding "- Gap:" entry in SHAPE_PHASE_MARKDOWN as:
-  "- Read: `{{item.path}}` — Source: shape-act"
-
-Mark every OFFERABLE_GAPS entry NOT in SELECTED_GAPS as "[declined]" in
-SHAPE_PHASE_MARKDOWN.
-
-{tools.store_document}
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=UPDATED_SHAPE_PHASE_MARKDOWN
-)
-
-Display to user: "✓ Researched {{len(SUCCEEDED_SYNTHESIS)}} gap(s)"
-
-Proceed to Step 6.
+Go to Step 6.
 ```
 
-### Step 6: Design Conversation
+### Step 6: Briefing (TOUCHPOINT)
 
-Present the architect's Open Design Decisions to the user, highest blast-radius first
-(the architect's responsibility per Step 5), until every decision is settled or the user
-accepts the recommended defaults for what remains. See
-docs/phase-refactor/decisions.md "No cap on the number of design decisions."
+The user hears what the architect found and settles the consequential decisions and the research
+before any draft exists.
+
+#### Step 6.1: Present the briefing
 
 ```text
-SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
-SHAPE_PHASE_MARKDOWN = SHAPE_PHASE_RESPONSE.message
+Display ARCHITECT_REPORT's `## For the user` as written: the architect's understanding of the
+phase, what exists to build on, the approach sketch, and the research it will use and proposes.
 
-Parse "### Open Design Decisions" from SHAPE_PHASE_MARKDOWN into OPEN_DECISIONS, each:
-  OD-NNN | title | Option A: name — tradeoff | Option B: name — tradeoff | Recommended: X — why
+IF BP_AVAILABLE is false:
+  Display to user once: "bp is unavailable on this machine, so only existing knowledge-base
+  documents are offered. The other research proposals stay open for a later run."
+```
 
-IF OPEN_DECISIONS is empty:
-  Display: "✓ No open design decisions to review"
-  Proceed to Step 7.
+#### Step 6.2: Ask the open decisions
 
-SETTLED_THIS_PASS = []
+```text
+PHASE_MARKDOWN = {tools.get_document}
+OPEN_DECISIONS = the OD entries in PHASE_MARKDOWN's "### Open Design Decisions", in rank order
+ASK_ON_ITS_OWN = []
+{briefing_batching}
 
-FOR each OD in OPEN_DECISIONS, in order:
+FOR each OD in OPEN_DECISIONS:
   {selection_prompt_instructions}
-  Header: "Design Decision"
-  Question: "OD-{{OD.number}}: {{OD.title}}"
-  multiSelect: false
-  Options: [
-    {{"label": "{{OD.option_a.name}}", "description": "{{OD.option_a.tradeoff}}"}},
-    {{"label": "{{OD.option_b.name}}", "description": "{{OD.option_b.tradeoff}}"}},
-    {{"label": "Accept the recommended default for all remaining decisions", "description": "Stops this conversation here; every remaining OD gets its Recommended option"}}
-  ]
+    Header: "Design Decision"
+    Question: "[OD ID]: [OD title]. Affects: [OD Affects]"
+    multiSelect: false
+    Options: [
+      {{"label": "[Option A name]", "description": "[Option A trade-off]"}},
+      {{"label": "[Option B name]", "description": "[Option B trade-off]"}},
+      {{"label": "[Option C name, only when the OD has one]", "description": "[Option C trade-off]"}},
+      {{"label": "Accept the recommended default for all remaining", "description": "This and every remaining decision get their Recommended option; a recommendation that would end this run is asked on its own"}}
+    ]
 
   WAIT for {selection_response_source}.
   DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 6. Continue immediately.
+  After the user responds, resume at Step 6.2. Record the answer. Continue immediately.
   DO NOT explain that the workflow is stopping unless the user asks why.
 
-  IF selection == "Accept the recommended default for all remaining decisions":
-    FOR each remaining OD (including this one):
-      SETTLED_THIS_PASS.append(
-        f"- SD-{{OD.number}} | source=user-menu | supersedes=OD-{{OD.number}} | "
-        f"decision={{OD.recommended}} | rationale=accepted recommended default | binding=yes"
-      )
+  IF the user chose "Accept the recommended default for all remaining":
+    FOR this OD and every OD after it:
+      IF its Recommended option is Option A of the Design Source OD or of a verify command OD:
+        ASK_ON_ITS_OWN.append(the OD)
+      ELSE:
+        Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | binding=yes"
     BREAK
-
   ELSE:
-    SETTLED_THIS_PASS.append(
-      f"- SD-{{OD.number}} | source=user-menu | supersedes=OD-{{OD.number}} | "
-      f"decision={{selected_option}} | rationale={{selected_option.tradeoff}} | binding=yes"
-    )
+    IF the chosen option is the verify command decision's "Supply the command now":
+      IF the user's response does not already carry the command:
+        Ask the user for it in one message.
+        WAIT for the user's reply.
+        DO NOT treat this as workflow completion, cancellation, or failure.
+        After the user responds, resume at Step 6.2. Use the reply verbatim. Continue immediately.
+        DO NOT explain that the workflow is stopping unless the user asks why.
+      Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=Supply the command now: `[the command, verbatim]` | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+    ELSE:
+      Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
 
-Append SETTLED_THIS_PASS to "### Settled Design Decisions" in SHAPE_PHASE_MARKDOWN.
-Remove the now-settled entries from "### Open Design Decisions" in SHAPE_PHASE_MARKDOWN.
+FOR each OD in ASK_ON_ITS_OWN:
+  (Accepting every default never ends the run: an option that ends it takes the user's own choice.)
+  {selection_prompt_instructions}
+    Header: "Design Decision"
+    Question: "[OD ID]: [OD title]. Its recommended option ends this run after the briefing. Affects: [OD Affects]"
+    multiSelect: false
+    Options: [
+      {{"label": "[Option A name]", "description": "[Option A trade-off]"}},
+      {{"label": "[Option B name]", "description": "[Option B trade-off]"}},
+      {{"label": "[Option C name, only when the OD has one]", "description": "[Option C trade-off]"}}
+    ]
 
-{tools.store_document}
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=UPDATED_SHAPE_PHASE_MARKDOWN
-)
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 6.2. Record the answer. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
 
-Display to user: "✓ {{len(SETTLED_THIS_PASS)}} design decision(s) settled"
-
-Proceed to Step 7.
+  IF the chosen option is the verify command decision's "Supply the command now":
+    Ask for the command and record it exactly as the loop above does.
+  ELSE:
+    Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
 ```
 
-### Step 7: Skeleton Opt-In
-
-Offer the user a choice over which internal (module-private) classes the architect
-flagged as consequential enough to warrant a real skeleton file in Phase 4 — the public
-seams in Skeleton Index are always materialized regardless of this step.
+#### Step 6.3: Ask the research proposals
 
 ```text
-CONSEQUENTIAL_INTERNALS = parse architect-flagged internal classes from SHAPE_PHASE_MARKDOWN's
-  Skeleton Index / Collaboration And Wiring content (entries the architect marked
-  "internal, consequential")
+OFFERED_PROPOSALS = the RP lines in PHASE_MARKDOWN's "### Research Requirements" that carry
+  neither [approved] nor [declined], in rank order
+IF BP_AVAILABLE is false:
+  OFFERED_PROPOSALS = only its lines whose tier is in-kb. The other lines stay unmarked:
+  unavailability is not a denial, so a later run with bp available offers them again.
+{briefing_batching}
 
-IF CONSEQUENTIAL_INTERNALS is empty:
-  Display: "✓ No internal classes flagged as consequential — only public seams will get skeletons"
-  Proceed to Step 8.
+FOR each RP in OFFERED_PROPOSALS:
+  {selection_prompt_instructions}
+    Header: "Research"
+    Question: "[RP ID]: [the question it answers]. Informs: [IDs]. Tier: [tier]"
+    multiSelect: false
+    Options: [
+      {{"label": "Approve", "description": "in-kb: use the existing document, free. synthesis-only: synthesize from the knowledge base. web-research: search the web and add the result to the knowledge base every project on this machine shares"}},
+      {{"label": "Deny", "description": "Not researched, and never offered again for this phase"}},
+      {{"label": "Edit", "description": "Change what is researched; its cost tier is recomputed"}}
+    ]
 
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 6.3. Mark the proposal. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF the user chose "Approve":
+    Append " [approved]" to the RP line.
+  ELIF the user chose "Deny":
+    Append " [declined]" to the RP line.
+  ELSE:
+    IF the user's response does not already carry the edit:
+      Ask the user for it in one message.
+      WAIT for the user's reply.
+      DO NOT treat this as workflow completion, cancellation, or failure.
+      After the user responds, resume at Step 6.3. Use the reply verbatim. Continue immediately.
+      DO NOT explain that the workflow is stopping unless the user asks why.
+    Rewrite the RP line's question, Technologies, Topics and Query from the user's edit.
+    Recompute its tier from local, read-only commands:
+      RUN (Bash): best-practices-rag generate-slug --tech "[technologies]" --topics "[topics]"
+      RUN (Bash): best-practices-rag check-file-cache --file ".best-practices/[printed slug].md"
+        (pass only --file; a model option reports a miss for a document another model wrote)
+      RUN (Bash): best-practices-rag query-kb --tech "[technologies]" --topics "[topics]"
+      Tier: in-kb:[path] on a cache hit; synthesis-only when fresh results cover every
+      technology; web-research on any gap.
+    IF the recomputed tier costs more than the tier the user saw (in-kb < synthesis-only < web-research):
+      {selection_prompt_instructions}
+        Header: "Research Cost"
+        Question: "[RP ID] now needs [recomputed tier]. Run it?"
+        multiSelect: false
+        Options: [
+          {{"label": "Approve", "description": "Run it at the new tier"}},
+          {{"label": "Deny", "description": "Not researched, and never offered again for this phase"}}
+        ]
+
+      WAIT for {selection_response_source}.
+      DO NOT treat this as workflow completion, cancellation, or failure.
+      After the user responds, resume at Step 6.3. Mark the edited proposal. Continue immediately.
+      DO NOT explain that the workflow is stopping unless the user asks why.
+
+      Append " [approved]" or " [declined]" to the rewritten line, per the answer.
+    ELSE:
+      Append " [approved]" to the rewritten line.
+```
+
+#### Step 6.4: Record the briefing answers
+
+```text
+PHASE_MARKDOWN = PHASE_MARKDOWN with every SD recorded in Step 6.2 appended to
+  "### Settled Design Decisions", each settled OD removed from "### Open Design Decisions",
+  and every RP mark from Step 6.3 applied
+{tools.store_document}
+Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+
+IF an SD recorded in Step 6.2 has decision=Option A for the Design Source OD or for a missing verify command OD:
+  Display to user what to do before running this workflow again:
+  - Design Source, Option A: create the visual design first.
+  - Missing verify command, Option A: set [commands].test in .respec-ai/config/standards/<language>.toml.
+  Display to user: "Your briefing answers are saved. When that is done, run this workflow again:
+  it explores again and asks only what is still open."
+  EXIT: The run ends cleanly after the briefing. This is not a failure, and no research or draft runs.
+```
+
+#### Step 6.5: Close the briefing
+
+```text
 {selection_prompt_instructions}
-Header: "Skeleton Opt-In"
-Question: "The architect flagged these internal classes as consequential. Which get a real skeleton file too?"
-multiSelect: true
-Options: [ one per CONSEQUENTIAL_INTERNALS entry ]
+  Header: "Briefing"
+  Question: "Ready for the draft?"
+  multiSelect: false
+  Options: [
+    {{"label": "Continue", "description": "Run the approved research, then draft the design"}},
+    {{"label": "Add a research proposal", "description": "Propose research of your own before the draft"}},
+    {{"label": "Ask the architect a question", "description": "Relay a question that needs new codebase knowledge"}}
+  ]
 
 WAIT for {selection_response_source}.
 DO NOT treat this as workflow completion, cancellation, or failure.
-After the user responds, resume at Step 7. Continue immediately.
+After the user responds, resume at Step 6.5. Branch on the choice. Continue immediately.
 DO NOT explain that the workflow is stopping unless the user asks why.
 
-SELECTED_INTERNALS = [selections from {selection_response_source}]
+IF the user chose "Add a research proposal" OR the user chose "Ask the architect a question":
+  IF the user's response does not already carry the proposal or the question:
+    Ask the user for it in one message.
+    WAIT for the user's reply.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 6.5. Use the reply verbatim. Continue immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
-Mark SELECTED_INTERNALS as included in "### Skeleton Index" in SHAPE_PHASE_MARKDOWN
-(as "internal, user-selected"); leave unselected consequential internals out.
+IF the user chose "Add a research proposal":
+  Build the proposal from the user's words: the question it answers, what it informs,
+  Technologies, Topics and Query. Compute its tier with the three commands in Step 6.3.
+  RP_LINE = "- RP-NNN | [question] | informs: [IDs] | Technologies: [list]; Topics: [list]; Query: [query] | tier: [tier] | source=user"
+    (RP-NNN is the next number above every RP-NNN in the document)
+  IF the tier is synthesis-only or web-research:
+    {selection_prompt_instructions}
+      Header: "Research Cost"
+      Question: "Your proposal needs [tier]. Run it?"
+      multiSelect: false
+      Options: [
+        {{"label": "Approve", "description": "Run it at this tier"}},
+        {{"label": "Deny", "description": "Keep it in the ledger as declined"}}
+      ]
 
-{tools.store_document}
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=UPDATED_SHAPE_PHASE_MARKDOWN
-)
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 6.5. Mark the new proposal. Continue immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
-Proceed to Step 8.
-```
+    Append " [approved]" or " [declined]" to RP_LINE, per the answer.
+  ELSE:
+    Append " [approved]" to RP_LINE.
+  PHASE_MARKDOWN = PHASE_MARKDOWN with RP_LINE added to "### Research Requirements"
+  {tools.store_document}
+  Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+  Go back to the start of Step 6.5.
 
-### Step 8: Write Phase Shape to Disk, Block for Editing
-
-═══════════════════════════════════════════════
-MANDATORY EDIT-GATE STORAGE EXCEPTION
-═══════════════════════════════════════════════
-This step and Step 9 are the ONLY places before Step 17 that write phase.md to disk.
-See the amended MANDATORY PHASE FILE STORAGE RESTRICTION banner at Step 17.
-═══════════════════════════════════════════════
-
-```text
-SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
-SHAPE_PHASE_MARKDOWN = SHAPE_PHASE_RESPONSE.message
-
-Write SHAPE_PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
-
-Display to user:
-"✓ Phase shape written to {{PHASE_FILE_PATH}} for review.
-
-Before you edit:
-- Do NOT rename, add, or delete any '##' or '###' heading — the parser matches by exact
-  heading text and a heading it doesn't recognize is silently dropped.
-- Do NOT add a bare '---' line inside a section — it truncates everything after it.
-
-Edit the file now if you want to change anything, then choose how to proceed."
-
-IF SHAPE_PHASE_MARKDOWN contains "#### UX Contract":
-  Display to user:
-  "→ This phase shape includes a UX Contract under Design Shape - Additional Sections.
-  Review its Route Index, Required States, Interaction Flows (each needs an explicit,
-  mechanically checkable pass condition), Accessibility Requirements, Breakpoints, and
-  Design Source before continuing."
-
-{selection_prompt_instructions}
-Header: "Design Review"
-Question: "How do you want to proceed with the phase shape?"
-multiSelect: false
-Options: [
-  {{"label": "Done editing — continue", "description": "Re-read the file and validate your edits"}},
-  {{"label": "No edits — continue", "description": "Proceed without re-reading the file"}},
-  {{"label": "Send back for another shape pass", "description": "Return to the architect with feedback before reviewing again"}}
-]
-
-WAIT for {selection_response_source}.
-DO NOT treat this as workflow completion, cancellation, or failure.
-After the user responds, resume at Step 8. Continue immediately.
-DO NOT explain that the workflow is stopping unless the user asks why.
-
-IF selection == "Send back for another shape pass":
-  USER_FEEDBACK_MARKDOWN = [prompt user for what to change]
-  {tools.store_shape_user_feedback}
-  Return to Step 5 (phase-architect refines under USER direction, not autonomously —
-  see the shape-act protocol exception below).
+ELIF the user chose "Ask the architect a question":
+  IF the user gave direction during the briefing that no SD, RP mark or stored entry records yet:
+    USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | briefing] " + [that direction, verbatim]
+    {tools.store_user_feedback}
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | question] " + [the user's question, verbatim]
+  {tools.store_user_feedback}
+{indent(explore_again, '  ')}
+  Display ARCHITECT_REPORT's `## For the user`: the architect's answer.
+  Go to Step 6.2. Decisions already settled and proposals already marked are not asked again.
 
 ELSE:
-  (Both "Done editing" and "No edits" proceed to Step 9 — validation runs either way,
-  since the file might have been touched outside this menu.)
-  Proceed to Step 9.
+  IF the user gave direction during the briefing that no SD, RP mark or stored entry records yet:
+    USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | briefing] " + [that direction, verbatim]
+    {tools.store_user_feedback}
+    (The draft architect reads it; direction kept only in this conversation never reaches it.)
+  RETURN_TO = "Step 8"
+  Go to Step 7.
 ```
 
-**The protocol exception, stated explicitly:** the MANDATORY DECISION PROTOCOL banner in
-Step 16 declares `refine` must never consult the user. **In the shape act only**, a
-`refine`-equivalent outcome (the user sending the design back) routes to the user via
-this menu instead of auto-refining. The detail act keeps the existing protocol verbatim.
+### Step 7: Run Approved Research
 
-### Step 9: Re-Read, Validate, Diff, Record
+The single place research runs. RETURN_TO names where the run goes afterwards: "Step 8" when the
+briefing sent it here, "Step 10 follow-up" when the design review did.
+
+#### Step 7.1: Select the approved research
 
 ```text
-RAW_EDITED_MARKDOWN = Read PHASE_FILE_PATH (Use Read tool)
+MAX_ACTIVE_BP_WORKERS = 3
+MAX_ACTIVE_WEB_RESEARCH_WORKERS = 1
+PHASE_MARKDOWN = {tools.get_document}
+NEW_READ_LINES = []
 
+FOR each RP line marked [approved] whose tier is in-kb:[path]:
+  IF the file at [path] exists AND no "- Read:" line in "### Research Requirements" names it:
+    NEW_READ_LINES.append("- Read: `[path]` — informs: [the RP's informs IDs] — Source: in-kb")
+
+RESEARCH_QUEUE = every RP line marked [approved] whose tier is synthesis-only or web-research
+  and whose research has no "- Read:" line yet
+
+IF RESEARCH_QUEUE is empty OR BP_AVAILABLE is false:
+  IF BP_AVAILABLE is false AND RESEARCH_QUEUE is not empty:
+    Display to user once: "bp is unavailable, so the approved research was skipped. Those
+    proposals stay approved for a later run."
+  Skip the dispatch: go to Step 7.3, which records NEW_READ_LINES and routes by RETURN_TO.
+```
+
+#### Step 7.2: Dispatch bp-pipeline
+
+```text
+FOR each ITEM in RESEARCH_QUEUE, compute its inputs from local commands only:
+  TECH = the RP line's Technologies, comma-separated
+  TOPICS = the RP line's Topics, comma-separated
+  QUERY = the RP line's Query
+  RUN (Bash): best-practices-rag generate-slug --tech "[TECH]" --topics "[TOPICS]"
+  OUTPUT_FILE = ".best-practices/[printed slug].md"
+  TECH_VERSIONS_JSON and CUTOFF_DATE = read from ~/.config/best-practices-rag/references/tech-versions.md
+    for the technologies in TECH
+  PRIMARY_QUERY = QUERY with each technology's version from TECH_VERSIONS_JSON, and
+    "official documentation" appended
+  RUN (Bash): best-practices-rag query-kb --tech "[TECH]" --topics "[TOPICS]"
+  Route the coverage fields from that result:
+  - full coverage (fresh results cover every technology): COVERED_TECHS and ALL_QUERIED_TECHS
+  - partial gap (fresh results, some technologies uncovered): UNCOVERED_TECH, COVERED_TECHS and
+    ALL_QUERIED_TECHS
+  - full gap (no fresh results): ALL_QUERIED_TECHS only
+  LANGUAGES = the [project].languages list in .respec-ai/config/stack.toml
+  LANGUAGE_AGNOSTIC = "true" only when that list is empty or absent; then omit LANGUAGES
+
+Deduplicate RESEARCH_QUEUE by OUTPUT_FILE, so two proposals never write one file. DEDUPED holds
+each dropped RP with the RP kept for its OUTPUT_FILE.
+ACCEPTED = []
+
+Run the synthesis-only items first, at most MAX_ACTIVE_BP_WORKERS at once. Then run the
+web-research items one at a time (MAX_ACTIVE_WEB_RESEARCH_WORKERS): a web-research run writes
+bp-pipeline's fixed search-result files, so two at once overwrite each other's results. Every
+item is dispatched with this one invocation, filled with that item's inputs:
+
+FOR each ITEM, in that order and within those bounds:
+{research_dispatch}
+  When ITEM's result arrives (do not prompt the user while research runs):
+  IF the result contains "BP_PIPELINE_COMPLETE. Output: [path]" AND the file at [path] exists:
+    ACCEPTED.append(ITEM with its [path])
+  ELSE:
+    Display to user: "⚠ Research for [RP ID] did not complete; nothing was recorded for it."
+    Record nothing for ITEM and continue with the next item. A failed item never ends the run.
+```
+
+#### Step 7.3: Record the research and route
+
+```text
+FOR each ITEM in ACCEPTED:
+  NEW_READ_LINES.append("- Read: `[path]` — informs: [the RP's informs IDs] — Source: [RP ID]")
+
+FOR each DROPPED RP in DEDUPED whose kept RP is in ACCEPTED:
+  NEW_READ_LINES.append("- Read: `[the kept RP's path]` — informs: [the dropped RP's informs IDs] — Source: [the dropped RP ID]")
+
+IF NEW_READ_LINES is not empty:
+  PHASE_MARKDOWN = PHASE_MARKDOWN with NEW_READ_LINES added to "### Research Requirements"
+  {tools.store_document}
+  Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+  Display to user: "✓ Recorded [count] research document(s)"
+
+IF RETURN_TO == "Step 10 follow-up":
+  IF NEW_READ_LINES is not empty OR DESIGN_CHANGE_SD_IDS is not empty OR UNRESOLVED_DIRECTION is set:
+    USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | review] " + [the SD IDs in DESIGN_CHANGE_SD_IDS, the new research documents, and UNRESOLVED_DIRECTION when set]
+    {tools.store_user_feedback}
+    DESIGN_CHANGE_SD_IDS = []
+    UNRESOLVED_DIRECTION = none
+{indent(revise, '    ')}
+    Go to Step 9.
+  ELSE:
+    Go to Step 10.4, the design review's final prompt.
+ELSE:
+  Go to Step 8.
+```
+
+### Step 8: Draft
+
+The architect drafts the whole design and its `implementation.md` in one pass, on the decisions
+the user settled and the research the user approved.
+
+```text
+{draft}
+
+PHASE_MARKDOWN = {tools.get_document}
+STAGE_MARKER = "shape-proposed"
+PHASE_MARKDOWN = PHASE_MARKDOWN with "### Shape Gate" set to STAGE_MARKER
+{tools.store_document}
+Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+
+Go to Step 9.
+```
+
+### Step 9: Critic Review and Automatic Repair
+
+The critic reviews every draft before the user sees it, without editing it. Mechanical findings
+go back to the architect for at most two repair rounds, and the user is not told about them.
+Judgment calls are collected for the design review. This step never prompts the user.
+
+```text
+UNRESOLVED_CHECKS = []
+PRE_PHASE_LOOP_STATUS = {tools.get_loop_status}
+REVIEW_ROUND += 1
+
+{critic_review}
+CRITIC_REPORT = the report
+OPEN_CRITIC_QUESTIONS = the CQ entries in CRITIC_REPORT's `## Decisions needed`
+  (this latest report only; the critic keeps a finding's CQ ID across rounds)
+
+POST_PHASE_LOOP_STATUS = {tools.get_loop_status}
+PHASE_FEEDBACK = {tools.get_feedback}
+
+IF retrieval fails OR PHASE_FEEDBACK does not contain "## Iteration [REVIEW_ROUND] -":
+  ERROR: "Phase critic did not persist CriticFeedback"
+  DIAGNOSTIC: [surface the exact MCP/tool error, or PHASE_FEEDBACK]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_next_action
+  EXIT: Workflow terminated
+
+IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.status == "initialized":
+  ERROR: "Phase critic did not advance loop state"
+  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_next_action
+  EXIT: Workflow terminated
+
+IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iteration <= PRE_PHASE_LOOP_STATUS.iteration:
+  ERROR: "Phase critic did not persist fresh loop feedback"
+  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
+  FAIL-CLOSED:
+  - Do NOT call decide_loop_next_action
+  EXIT: Workflow terminated
+
+REVIEW_DECISION_RESPONSE = {tools.decide_loop_action}
+REVIEW_DECISION = REVIEW_DECISION_RESPONSE.status
+
+IF REVIEW_DECISION == "completed":
+  (The latest review has no open mechanical findings.)
+  Go to Step 10.
+
+ELIF REVIEW_DECISION == "refine":
+  IF REPAIR_ROUNDS < 2:
+    REPAIR_ROUNDS += 1
+{indent(revise, '    ')}
+    Go to Step 9.
+  ELSE:
+    UNRESOLVED_CHECKS = every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
+    Go to Step 10.
+
+ELIF REVIEW_DECISION == "user_input":
+  (This does not mean the repairs are spent: the loop's stagnation rule returns user_input before
+  any repair has run, so it is repaired like refine while repair rounds remain.)
+  IF REPAIR_ROUNDS < 2:
+    REPAIR_ROUNDS += 1
+{indent(revise, '    ')}
+    Go to Step 9.
+  ELSE:
+    UNRESOLVED_CHECKS = every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
+    Go to Step 10.
+
+ELSE:
+  ERROR: "Unexpected loop decision"
+  DIAGNOSTIC: Show REVIEW_DECISION_RESPONSE
+  EXIT: Workflow terminated
+```
+
+### Step 10: Design Review (TOUCHPOINT)
+
+The user sees a design the critic has already reviewed. Mechanical issues are repaired, and the
+critic's judgment calls arrive as questions. Steps 9 and 10 repeat until the user approves.
+
+#### Step 10.1: Put the draft on disk and present it
+
+```text
+REPAIR_ROUNDS = 0
+(Every send-back from this design review starts a fresh repair budget.)
+PHASE_MARKDOWN = {tools.get_document}
+Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+LAST_WRITTEN_PHASE_MARKDOWN = PHASE_MARKDOWN
+
+Display ARCHITECT_REPORT's `## For the user` when this run has one (a resumed run has no
+architect report yet).
+IF PHASE_MARKDOWN contains "#### UX Contract":
+  Display to user: "→ This design includes a UX Contract under Design Shape - Additional Sections.
+  Review its Route Index, Required States, Interaction Flows (each needs an explicit, mechanically
+  checkable pass condition), Accessibility Requirements, Breakpoints, and Design Source."
+Display CRITIC_REPORT's `## For the user`.
+Display to user: "The draft is at [PHASE_FILE_PATH] and its build order at
+[IMPLEMENTATION_PLAN_PATH]. To edit phase.md by hand, wait for the final prompt of this review.
+Do not rename, add or delete any '##' or '###' heading, and do not add a bare '---' line inside a
+section: the parser drops both silently."
+```
+
+#### Step 10.2: Ask the open questions
+
+```text
+OPEN_DECISIONS = the OD entries in PHASE_MARKDOWN's "### Open Design Decisions", in rank order
+  (the draft follows each one's Recommended option)
+QUESTIONS = the CQ entries in OPEN_CRITIC_QUESTIONS that no SD in "### Settled Design Decisions"
+  supersedes, in rank order
+  (Option A keeps the design as drafted; Option B is the critic's alternative)
+NEW_PROPOSALS = []
+IF BP_AVAILABLE:
+  NEW_PROPOSALS = every RP line in "### Research Requirements" with neither [approved] nor
+  [declined]: normally the one new gap from the draft or a revise
+APPROVED_PROPOSALS = []
+{review_batching}
+
+FOR each entry in OPEN_DECISIONS, then in QUESTIONS:
+  {selection_prompt_instructions}
+    Header: "Design Decision"
+    Question: "[OD or CQ ID]: [title]. Affects: [Affects]"
+    multiSelect: false
+    Options: [
+      {{"label": "[Option A name]", "description": "[Option A trade-off]"}},
+      {{"label": "[Option B name]", "description": "[Option B trade-off]"}},
+      {{"label": "[Option C name, only when the entry has one]", "description": "[Option C trade-off]"}},
+      {{"label": "Accept the recommended default for all remaining", "description": "This and every remaining question get their Recommended option"}}
+    ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 10.2. Record the answer. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF the user chose "Accept the recommended default for all remaining":
+    FOR this entry and every entry after it:
+      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | binding=yes"
+      IF the entry is a CQ whose Recommended option is Option B:
+        DESIGN_CHANGE_SD_IDS.append([the new SD ID])
+    BREAK
+  ELSE:
+    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+    IF the entry is an OD answered with anything but its Recommended option, OR a CQ answered with Option B:
+      DESIGN_CHANGE_SD_IDS.append([the new SD ID])
+
+FOR each RP in NEW_PROPOSALS:
+  {selection_prompt_instructions}
+    Header: "Research"
+    Question: "[RP ID]: [the question it answers]. Informs: [IDs]. Tier: [tier]"
+    multiSelect: false
+    Options: [
+      {{"label": "Approve", "description": "Run it, then the architect revises the design with the result"}},
+      {{"label": "Deny", "description": "Not researched, and never offered again for this phase"}}
+    ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 10.2. Mark the proposal. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF the user chose "Approve":
+    Append " [approved]" to the RP line.
+    APPROVED_PROPOSALS.append(RP)
+  ELSE:
+    Append " [declined]" to the RP line.
+
+IF UNRESOLVED_CHECKS is not empty:
+  Display UNRESOLVED_CHECKS: the mechanical findings two automatic repairs did not resolve, each verbatim.
+  {selection_prompt_instructions}
+    Header: "Unresolved Checks"
+    Question: "The critic's mechanical checks still fail after two automatic repairs. How do you want to handle them?"
+    multiSelect: false
+    Options: [
+      {{"label": "Send back with direction", "description": "Tell the architect how to resolve them"}},
+      {{"label": "Accept as-is", "description": "Recorded as your decision; the critic never raises these findings again"}}
+    ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 10.2. Record the answer. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF the user chose "Accept as-is":
+    Record "- SD-NNN | source=user | supersedes=unresolved-checks | decision=accept as-is: [each finding verbatim] | rationale=[the user's reason, or accepted at design review] | binding=yes"
+  ELSE:
+    IF the user's response does not already carry the direction:
+      Ask the user how the architect is to resolve the findings.
+      WAIT for the user's reply.
+      DO NOT treat this as workflow completion, cancellation, or failure.
+      After the user responds, resume at Step 10.2. Use the reply verbatim. Continue immediately.
+      DO NOT explain that the workflow is stopping unless the user asks why.
+    UNRESOLVED_DIRECTION = [the user's direction, verbatim, with the findings it addresses]
+
+IF any SD or RP mark was recorded above:
+  PHASE_MARKDOWN = PHASE_MARKDOWN with every SD recorded above appended to
+    "### Settled Design Decisions", each settled OD removed from "### Open Design Decisions",
+    and every RP mark applied
+  {tools.store_document}
+  Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+  LAST_WRITTEN_PHASE_MARKDOWN = PHASE_MARKDOWN
+```
+
+#### Step 10.3: Send design-changing answers back to the architect
+
+```text
+IF APPROVED_PROPOSALS is not empty:
+  RETURN_TO = "Step 10 follow-up"
+  Go to Step 7. Its follow-up sends the new research, DESIGN_CHANGE_SD_IDS and UNRESOLVED_DIRECTION
+  to the architect in one revise.
+
+IF DESIGN_CHANGE_SD_IDS is not empty OR UNRESOLVED_DIRECTION is set:
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | review] " + [the SD IDs in DESIGN_CHANGE_SD_IDS, and UNRESOLVED_DIRECTION when set]
+  {tools.store_user_feedback}
+  DESIGN_CHANGE_SD_IDS = []
+  UNRESOLVED_DIRECTION = none
+{indent(revise, '  ')}
+  Go to Step 9.
+```
+
+#### Step 10.4: Final prompt
+
+```text
+{selection_prompt_instructions}
+  Header: "Design Review"
+  Question: "How do you want to proceed with this design?"
+  multiSelect: false
+  Options: [
+    {{"label": "Approve the design", "description": "Go to sign-off"}},
+    {{"label": "Tell me what to change", "description": "The architect revises the design, then the critic reviews it again"}},
+    {{"label": "I edited phase.md myself", "description": "Validate and record your edits, then the critic reviews them"}},
+    {{"label": "Ask the architect a question", "description": "Relay a question that needs new codebase knowledge"}}
+  ]
+
+WAIT for {selection_response_source}.
+DO NOT treat this as workflow completion, cancellation, or failure.
+After the user responds, resume at Step 10.4. Set REVIEW_CHOICE. Continue immediately.
+DO NOT explain that the workflow is stopping unless the user asks why.
+
+REVIEW_CHOICE = [selected option from {selection_response_source}]
+DISK_MARKDOWN = Read PHASE_FILE_PATH (Use Read tool)
+
+IF DISK_MARKDOWN differs from LAST_WRITTEN_PHASE_MARKDOWN OR REVIEW_CHOICE == "I edited phase.md myself":
+  Go to Step 10.5 first, whatever the choice: a change request never discards a hand edit.
+ELSE:
+  Go to Step 10.6.
+```
+
+#### Step 10.5: Validate and record a hand edit
+
+```text
+RAW_EDITED_MARKDOWN = DISK_MARKDOWN
 VALIDATION_ATTEMPTS = 0
 CONTENT_TO_VALIDATE = RAW_EDITED_MARKDOWN
 VALIDATION_RESULT = {tools.validate_document}
@@ -722,160 +1106,198 @@ WHILE VALIDATION_RESULT.status != "completed" AND VALIDATION_ATTEMPTS < 3:
   Display to user: VALIDATION_RESULT.message
 
   {selection_prompt_instructions}
-  Header: "Content Would Be Lost"
-  Question: "Some of your edits would be silently dropped. How do you want to proceed?"
-  multiSelect: false
-  Options: [
-    {{"label": "Let me fix it and try again", "description": f"Attempt {{VALIDATION_ATTEMPTS + 1}} of 3"}},
-    {{"label": "Drop those edits and continue", "description": "Proceed with the version the parser accepts; the flagged content is discarded"}},
-    {{"label": "Abort — send back to architect instead", "description": "Return to Step 5 without applying any disk edits"}}
-  ]
+    Header: "Content Would Be Lost"
+    Question: "Some of your edits would be silently dropped. How do you want to proceed?"
+    multiSelect: false
+    Options: [
+      {{"label": "Let me fix it and try again", "description": "Attempt [VALIDATION_ATTEMPTS + 1] of 3"}},
+      {{"label": "Drop those edits and continue", "description": "Proceed with the version the parser accepts; the flagged content is discarded"}},
+      {{"label": "Abort and send it back to the architect", "description": "Keep the stored design; the architect revises it with the validation report"}}
+    ]
 
   WAIT for {selection_response_source}.
   DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 9. Continue immediately.
+  After the user responds, resume at Step 10.5. Continue immediately.
   DO NOT explain that the workflow is stopping unless the user asks why.
 
-  IF selection == "Let me fix it and try again":
+  IF the user chose "Let me fix it and try again":
     VALIDATION_ATTEMPTS += 1
-    (User edits PHASE_FILE_PATH again outside this menu)
+    (The user edits PHASE_FILE_PATH again outside this prompt.)
     RAW_EDITED_MARKDOWN = Read PHASE_FILE_PATH (Use Read tool)
     CONTENT_TO_VALIDATE = RAW_EDITED_MARKDOWN
     VALIDATION_RESULT = {tools.validate_document}
     CONTINUE loop
-
-  IF selection == "Drop those edits and continue":
-    BREAK  (proceed with RAW_EDITED_MARKDOWN as-is; flagged headings are known-lossy)
-
-  IF selection == "Abort — send back to architect instead":
-    USER_FEEDBACK_MARKDOWN = "User aborted the edit gate; validation report: " + VALIDATION_RESULT.message
-    {tools.store_shape_user_feedback}
-    Return to Step 5.
+  ELIF the user chose "Drop those edits and continue":
+    BREAK  (proceed with RAW_EDITED_MARKDOWN as-is; the flagged headings are known to be lost)
+  ELSE:
+    USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | review] The user abandoned a hand edit of phase.md. Validation report: " + VALIDATION_RESULT.message
+    {tools.store_user_feedback}
+{indent(revise, '    ')}
+    Go to Step 9.
 
 IF VALIDATION_ATTEMPTS == 3 AND VALIDATION_RESULT.status != "completed":
   ERROR: "validate_document still reports content loss after 3 attempts"
   DIAGNOSTIC: Show VALIDATION_RESULT.message
   EXIT: Workflow terminated
 
-Diff RAW_EDITED_MARKDOWN against SHAPE_PHASE_MARKDOWN (from Step 8) per (H2, H3) heading.
+Diff RAW_EDITED_MARKDOWN against LAST_WRITTEN_PHASE_MARKDOWN per (H2, H3) heading.
 FOR each heading with a changed value, append to "### Settled Design Decisions":
-  "- SD-### | source=user-edit | section=<H2 > H3> | decision=<one-line summary of the change> | binding=yes"
-
+  "- SD-NNN | source=user-edit | section=[H2 > H3] | decision=[one-line summary of the change] | binding=yes"
 RECONCILED_PHASE_MARKDOWN = RAW_EDITED_MARKDOWN with the appended SD entries
+Set "### Shape Gate" in RECONCILED_PHASE_MARKDOWN back to STAGE_MARKER: a hand edit is not a
+sign-off, and the store below writes whatever marker it is given.
 
 **Frozen fields are editable here and only here.** If Objectives/Scope/Dependencies/
-Deliverables changed, this is the sanctioned human exception — Phase 0 made the freeze
-bind agents only (docs/phase-refactor/decisions.md "Frozen fields are repaired, not deleted").
+Deliverables changed, this is the sanctioned human exception: the freeze binds agents only
+(docs/phase-refactor/decisions.md "Frozen fields are repaired, not deleted").
 
-{tools.store_document_gate_edit}
+{tools.store_document_user_edit}
+Write RECONCILED_PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool), so MCP and disk agree.
+LAST_WRITTEN_PHASE_MARKDOWN = RECONCILED_PHASE_MARKDOWN
 
-Write RECONCILED_PHASE_MARKDOWN back to PHASE_FILE_PATH (Use Write tool) so MCP and disk
-agree byte-for-byte on exit. Disk wins at this gate and nowhere else; MCP is
-authoritative everywhere else.
-
-SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
-APPROVED_VERSION = SHAPE_PHASE_RESPONSE.message's "### Version" (Phase.version, finding F22)
-
-Display to user: "✓ Design shape approved at version {{APPROVED_VERSION}}"
-
-Proceed to Step 10.
+IF REVIEW_CHOICE == "Tell me what to change" OR REVIEW_CHOICE == "Ask the architect a question":
+  Go to Step 10.6.
+ELSE:
+  Go to Step 9. The critic reviews the edited design.
 ```
 
-### Step 10: Critic Runs on the Approved Design
-
-The critic runs on the version the user just approved (Step 9's `APPROVED_VERSION`) — a
-safety net on the user's judgment, not a gatekeeper ahead of it. See
-docs/phase-refactor/decisions.md "The critic runs after user approval."
+#### Step 10.6: Act on the choice
 
 ```text
-{tools.invoke_phase_critic_shape}
+IF REVIEW_CHOICE == "Tell me what to change" OR REVIEW_CHOICE == "Ask the architect a question":
+  IF the user's response does not already carry the change or the question:
+    Ask the user for it in one message.
+    WAIT for the user's reply.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 10.6. Use the reply verbatim. Continue immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
-IF phase-critic reports failure:
-  ERROR: "Shape-act phase critic failed"
-  DIAGNOSTIC: [surface the exact critic error/output]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_action
-  - Do NOT continue to Step 11
-  EXIT: Workflow terminated
+IF REVIEW_CHOICE == "Tell me what to change":
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | review] " + [the user's direction, verbatim]
+  {tools.store_user_feedback}
+{indent(revise, '  ')}
+  Go to Step 9.
 
-Proceed to Step 11.
-```
-
-### Step 11: Joint Gate
-
-The act closes only when the user has approved AND the critic has passed on that exact
-version (`Phase.version`, finding F22). If the design changed after approval, re-approve
-rather than silently proceeding.
-
-```text
-SHAPE_CRITIC_RESULT = {tools.decide_shape_loop_action}
-
-SHAPE_PHASE_RESPONSE = {tools.get_shape_document}
-CURRENT_VERSION = [Phase.version parsed from SHAPE_PHASE_RESPONSE.message's "### Version"]
-
-IF SHAPE_CRITIC_RESULT.status == "completed" AND CURRENT_VERSION == APPROVED_VERSION:
-  Display to user: "✓ Shape settled — critic passed on the version you approved"
-  Proceed to Step 11.5.
-
-ELIF SHAPE_CRITIC_RESULT.status == "completed" AND CURRENT_VERSION != APPROVED_VERSION:
-  Display to user: "⟳ Design changed after approval (version {{APPROVED_VERSION}} → {{CURRENT_VERSION}}) — re-approve before proceeding"
-  Return to Step 8.
+ELIF REVIEW_CHOICE == "Ask the architect a question":
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | question] " + [the user's question, verbatim]
+  {tools.store_user_feedback}
+{indent(revise, '  ')}
+  Display ARCHITECT_REPORT's `## For the user`: the architect's answer.
+  IF the report's `persisted` is nothing:
+    Go to Step 10.4, the final prompt.
+  ELSE:
+    Go to Step 9. The answer changed the design, so the critic reviews it.
 
 ELSE:
-  (SHAPE_CRITIC_RESULT.status is "refine" or "user_input" — display findings, blockers first)
-  Display SHAPE_CRITIC_RESULT feedback to user with blockers listed first.
+  Go to Step 11.
+```
 
+### Step 11: Sign-off (TOUCHPOINT)
+
+The user answers whatever is still open, then signs off. Only then are skeletons written, the
+design marked settled, and a commit offered.
+
+#### Step 11.1: Settle what is still open
+
+```text
+PHASE_MARKDOWN = {tools.get_document}
+REMAINING = the OD entries in "### Open Design Decisions", then the CQ entries in
+  OPEN_CRITIC_QUESTIONS that no SD supersedes
+{review_batching}
+
+FOR each entry in REMAINING:
   {selection_prompt_instructions}
-  Header: "Critic Findings"
-  Question: "The critic flagged issues with the design you approved. How do you want to handle them?"
-  multiSelect: false
-  Options: [
-    {{"label": "Address all of them — refine the design", "description": "Return to the architect with the full critic report"}},
-    {{"label": "Address some — let me pick", "description": "Choose which findings to send back for refinement"}},
-    {{"label": "Override: these are acceptable, proceed anyway", "description": "Records your judgment as a Settled Decision; the critic cannot hold the design hostage over a call you've already made"}}
-  ]
+    Header: "Open Decision"
+    Question: "[OD or CQ ID]: [title]. Affects: [Affects]"
+    multiSelect: false
+    Options: [
+      {{"label": "[Option A name]", "description": "[Option A trade-off]"}},
+      {{"label": "[Option B name]", "description": "[Option B trade-off]"}},
+      {{"label": "[Option C name, only when the entry has one]", "description": "[Option C trade-off]"}},
+      {{"label": "Accept the recommended default for all remaining", "description": "This and every remaining question get their Recommended option"}}
+    ]
 
   WAIT for {selection_response_source}.
   DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 11. Continue immediately.
+  After the user responds, resume at Step 11.1. Record the answer. Continue immediately.
   DO NOT explain that the workflow is stopping unless the user asks why.
 
-  IF selection == "Override: these are acceptable, proceed anyway":
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=user-override | decision=proceed despite critic findings | rationale=<user-provided> | binding=yes"
-    {tools.store_document}
-      doc_type="phase",
-      key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-      content=UPDATED_SHAPE_PHASE_MARKDOWN
-    )
-    Proceed to Step 11.5.
-
+  IF the user chose "Accept the recommended default for all remaining":
+    FOR this entry and every entry after it:
+      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | binding=yes"
+      IF the entry is a CQ whose Recommended option is Option B:
+        DESIGN_CHANGE_SD_IDS.append([the new SD ID])
+    BREAK
   ELSE:
-    USER_FEEDBACK_MARKDOWN = [selection == "Address all..." → "Address all critic findings" |
-                               selection == "Address some..." → prompt for which findings, then record the selection]
-    {tools.store_shape_user_feedback}
-    Return to Step 5 (architect refines under USER direction, not autonomously — same
-    shape-act protocol exception stated at Step 8).
+    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+    IF the entry is an OD answered with anything but its Recommended option, OR a CQ answered with Option B:
+      DESIGN_CHANGE_SD_IDS.append([the new SD ID])
+
+IF REMAINING is not empty:
+  PHASE_MARKDOWN = PHASE_MARKDOWN with every SD recorded above appended to
+    "### Settled Design Decisions" and each settled OD removed from "### Open Design Decisions"
+  {tools.store_document}
+  Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+
+IF DESIGN_CHANGE_SD_IDS is not empty:
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | sign-off] " + [the SD IDs in DESIGN_CHANGE_SD_IDS]
+  {tools.store_user_feedback}
+  DESIGN_CHANGE_SD_IDS = []
+{indent(revise, '  ')}
+  Go to Step 9, then the design review again.
 ```
 
-Option 3 matters: the critic must not be able to hold a design hostage over a judgment
-call the user has already made. It only has to be recorded.
-
-### Step 11.5: Materialize Skeletons
-
-Real files are written only from the version the user approved and the critic passed
-(Step 11) — never from an intermediate draft — and before the gate flips to
-`shape-settled`. See docs/phase-refactor/decisions.md "Skeletons are written into the
-real codebase" and "Skeleton writes are create-only."
+#### Step 11.2: Ask for the sign-off
 
 ```text
+{selection_prompt_instructions}
+  Header: "Sign-off"
+  Question: "Sign off this design?"
+  multiSelect: false
+  Options: [
+    {{"label": "Sign off and commit", "description": "Write skeletons, mark the design settled, and commit the files this run wrote with your hooks enabled"}},
+    {{"label": "Sign off without committing", "description": "Write skeletons and mark the design settled; leave the files uncommitted"}},
+    {{"label": "Go back to design review", "description": "Return to the design review"}}
+  ]
+
+WAIT for {selection_response_source}.
+DO NOT treat this as workflow completion, cancellation, or failure.
+After the user responds, resume at Step 11.2. Set SIGN_OFF_CHOICE. Continue immediately.
+DO NOT explain that the workflow is stopping unless the user asks why.
+
+SIGN_OFF_CHOICE = [selected option from {selection_response_source}]
+IF SIGN_OFF_CHOICE == "Go back to design review":
+  Go to Step 10.
+```
+
+#### Step 11.3: Confirm implementation.md exists
+
+```text
+IF no file exists at IMPLEMENTATION_PLAN_PATH:
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | sign-off] implementation.md is missing at [IMPLEMENTATION_PLAN_PATH]. Write it from the design."
+  {tools.store_user_feedback}
+{indent(revise, '  ')}
+  IF no file exists at IMPLEMENTATION_PLAN_PATH:
+    ERROR: "implementation.md is still missing at IMPLEMENTATION_PLAN_PATH after one revise"
+    DIAGNOSTIC: [the architect report's `## Status`]
+    EXIT: Workflow terminated. The phase is not signed off.
+```
+
+#### Step 11.4: Materialize skeletons
+
+Real files are written only from the design the user signed off, and before the design is marked
+settled. Skeleton writes are create-only (docs/phase-refactor/decisions.md "Skeletons are written
+into the real codebase" and "Skeleton writes are create-only").
+
+```text
+PHASE_MARKDOWN = {tools.get_document}
 PHASE_DIR = dirname(PHASE_FILE_PATH)
 SKELETON_INDEX_SCRATCH = f"{{PHASE_DIR}}/.skeleton-index.md"
 TEST_LIST_SCRATCH = f"{{PHASE_DIR}}/.test-list.md"
 
-Write UPDATED_SHAPE_PHASE_MARKDOWN's "### Skeleton Index" section content to
+Write PHASE_MARKDOWN's "### Skeleton Index" section content to
 SKELETON_INDEX_SCRATCH (Use Write tool).
-Write UPDATED_SHAPE_PHASE_MARKDOWN's "### Test List" section content to
+Write PHASE_MARKDOWN's "### Test List" section content to
 TEST_LIST_SCRATCH (Use Write tool).
 
 RUN (Bash): respec-ai materialize-skeletons --skeleton-index-file {{SKELETON_INDEX_SCRATCH}} --test-list-file {{TEST_LIST_SCRATCH}}
@@ -886,9 +1308,10 @@ IF command exit code != 0:
   ERROR: "Skeleton materialization failed"
   DIAGNOSTIC: [surface the command's stdout and stderr]
   FAIL-CLOSED:
-  - Do NOT proceed to Step 12
+  - Do NOT sign off the phase
   EXIT: Workflow terminated
 
+MATERIALIZATION_SDS = []
 MERGE_PATHS = []
 
 FOR each CONFLICT in MATERIALIZE_RESULT.reconciliation_needed:
@@ -897,48 +1320,43 @@ FOR each CONFLICT in MATERIALIZE_RESULT.reconciliation_needed:
   Designed: {{CONFLICT.designed_signatures}}"
 
   {selection_prompt_instructions}
-  Header: "Skeleton Conflict"
-  Question: "{{CONFLICT.path}} already exists. How do you want to reconcile it with the approved design?"
-  multiSelect: false
-  Options: [
-    {{"label": "Accept the design change", "description": "Record a Settled Decision; respec-code reconciles the file during implementation"}},
-    {{"label": "Keep the existing signature", "description": "Update Skeleton Index to match what's actually on disk"}},
-    {{"label": "Merge — add only the new members", "description": "Append genuinely new members to the existing file; existing members are left untouched"}}
-  ]
+    Header: "Skeleton Conflict"
+    Question: "{{CONFLICT.path}} already exists. How do you want to reconcile it with the signed-off design?"
+    multiSelect: false
+    Options: [
+      {{"label": "Accept the design change", "description": "Record a Settled Decision; the file is reconciled during implementation"}},
+      {{"label": "Keep the existing signature", "description": "Update Skeleton Index to match what is actually on disk"}},
+      {{"label": "Merge: add only the new members", "description": "Append genuinely new members to the existing file; existing members are left untouched"}}
+    ]
 
   WAIT for {selection_response_source}.
   DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume this FOR loop. Continue immediately.
+  After the user responds, resume at Step 11.4 with the next conflict. Continue immediately.
   DO NOT explain that the workflow is stopping unless the user asks why.
 
-  IF selection == "Accept the design change":
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=user-menu | decision=accept design change at {{CONFLICT.path}} | rationale=existing file differs from Skeleton Index; respec-code reconciles during implementation | binding=yes"
+  IF the user chose "Accept the design change":
+    MATERIALIZATION_SDS.append("- SD-NNN | source=user | decision=accept design change at {{CONFLICT.path}} | rationale=existing file differs from Skeleton Index; reconciled during implementation | binding=yes")
 
-  ELIF selection == "Keep the existing signature":
-    Update the "### Skeleton Index" entries for {{CONFLICT.path}} in UPDATED_SHAPE_PHASE_MARKDOWN to match CONFLICT.existing_signatures
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=user-menu | decision=keep existing signature at {{CONFLICT.path}} | rationale=matches what's already implemented | binding=yes"
+  ELIF the user chose "Keep the existing signature":
+    Update the "### Skeleton Index" entries for {{CONFLICT.path}} in PHASE_MARKDOWN to match CONFLICT.existing_signatures
+    MATERIALIZATION_SDS.append("- SD-NNN | source=user | decision=keep existing signature at {{CONFLICT.path}} | rationale=matches what is already implemented | binding=yes")
 
   ELSE:
     MERGE_PATHS.append(CONFLICT.path)
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=user-menu | decision=merge new members into {{CONFLICT.path}} | rationale=existing members kept, only genuinely new ones added | binding=yes"
+    MATERIALIZATION_SDS.append("- SD-NNN | source=user | decision=merge new members into {{CONFLICT.path}} | rationale=existing members kept, only genuinely new ones added | binding=yes")
 
 IF MATERIALIZE_RESULT.unmaterialized_paths is not empty:
   Display to user: "⚠ These Skeleton Index / Test List paths could not be materialized
   and were NOT written: {{MATERIALIZE_RESULT.unmaterialized_paths}}"
   FOR each UNMATERIALIZED in MATERIALIZE_RESULT.unmaterialized_paths:
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=materializer | decision=unmaterialized at {{UNMATERIALIZED.path}} | rationale={{UNMATERIALIZED.reason}} | binding=yes"
+    MATERIALIZATION_SDS.append("- SD-NNN | source=materializer | decision=unmaterialized at {{UNMATERIALIZED.path}} | rationale={{UNMATERIALIZED.reason}} | binding=yes")
 
 IF MATERIALIZE_RESULT.unintrospectable_paths is not empty:
   Display to user: "⚠ These paths already exist and the language has no
   introspection capability yet, so they were left untouched (create-only degrade,
   never overwritten, never merged automatically): {{MATERIALIZE_RESULT.unintrospectable_paths}}"
   FOR each PATH in MATERIALIZE_RESULT.unintrospectable_paths:
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=materializer | decision=unintrospectable at {{PATH}} | rationale=pre-existing file, language has no signature-introspection capability yet; reconcile manually or via respec-code | binding=yes"
+    MATERIALIZATION_SDS.append("- SD-NNN | source=materializer | decision=unintrospectable at {{PATH}} | rationale=pre-existing file, language has no signature-introspection capability yet; reconcile manually or during implementation | binding=yes")
 
 IF MERGE_PATHS is not empty:
   RUN (Bash): respec-ai materialize-skeletons --skeleton-index-file {{SKELETON_INDEX_SCRATCH}} --test-list-file {{TEST_LIST_SCRATCH}} --merge-paths {{",".join(MERGE_PATHS)}}
@@ -947,662 +1365,81 @@ IF MERGE_PATHS is not empty:
   IF MERGE_RESULT.unresolved_signature_conflicts is not empty:
     Display to user: "⚠ These merge-selected members already exist with a different
     signature than designed, so they were left untouched: {{MERGE_RESULT.unresolved_signature_conflicts}}"
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=user-menu | decision=unresolved signature conflict left untouched at merge time: {{MERGE_RESULT.unresolved_signature_conflicts}} | rationale=respec-code reconciles during implementation | binding=yes"
+    MATERIALIZATION_SDS.append("- SD-NNN | source=materializer | decision=unresolved signature conflict left untouched at merge time: {{MERGE_RESULT.unresolved_signature_conflicts}} | rationale=reconciled during implementation | binding=yes")
 
   IF MERGE_RESULT.unintrospectable_paths is not empty:
     Display to user: "⚠ These merge-selected paths have no introspection capability
     for their language, so no merge was attempted: {{MERGE_RESULT.unintrospectable_paths}}"
-    Append to "### Settled Design Decisions":
-      "- SD-### | source=materializer | decision=merge skipped, unintrospectable: {{MERGE_RESULT.unintrospectable_paths}} | rationale=language has no signature-introspection capability yet | binding=yes"
-
-{tools.store_document}
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=UPDATED_SHAPE_PHASE_MARKDOWN  (with reconciliation Settled Decisions and any
-    Skeleton Index corrections from "Keep the existing signature" applied)
-)
+    MATERIALIZATION_SDS.append("- SD-NNN | source=materializer | decision=merge skipped, unintrospectable: {{MERGE_RESULT.unintrospectable_paths}} | rationale=language has no signature-introspection capability yet | binding=yes")
 
 WRITTEN_PATHS = MATERIALIZE_RESULT.written_skeletons + MATERIALIZE_RESULT.written_tests + (MERGE_RESULT.merged_paths if MERGE_PATHS else [])
+```
 
-IF WRITTEN_PATHS is not empty:
-  RUN (Bash): git add -- {{" ".join(WRITTEN_PATHS)}}
-  (Never `git add -A` here — the tree could hold unrelated uncommitted work.)
-  RUN (Bash): git commit --no-verify -F - <<'EOF'
-  design: materialize skeletons for {{PHASE_NAME}}
+#### Step 11.5: Mark the design settled
+
+```text
+PHASE_MARKDOWN = PHASE_MARKDOWN with:
+- MATERIALIZATION_SDS appended to "### Settled Design Decisions" (each with the next SD number)
+- "## Additional Details > ### Implementation Plan References" containing
+  "- Constraint: `{{IMPLEMENTATION_PLAN_PATH}}`" (create the section if absent; add the entry
+  only when it is not already present)
+- "### Shape Gate" set to "shape-settled"
+STAGE_MARKER = "shape-settled"
+{tools.store_document}
+Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+
+Display to user: "✓ Design signed off; [count of WRITTEN_PATHS] skeleton/test file(s) written"
+```
+
+#### Step 11.6: Commit, only when the user chose it
+
+```text
+IF SIGN_OFF_CHOICE == "Sign off and commit":
+  RUN (Bash): git add -- {{PHASE_FILE_PATH}} {{IMPLEMENTATION_PLAN_PATH}} {{" ".join(WRITTEN_PATHS)}}
+  (Stage exactly these files: never everything, and never the two scratch files.)
+  RUN (Bash): git commit -F - <<'EOF'
+  design: sign off {{PHASE_NAME}}
   EOF
-  Display to user: "✓ {{len(WRITTEN_PATHS)}} skeleton/test file(s) written and committed"
-ELSE:
-  Display to user: "✓ No new skeleton/test files to write — all Skeleton Index paths were reconciled against existing files"
-
-Proceed to Step 12.
-```
-
-### Step 12: Shape Settled — Enter Detail Act
-
-```text
-SHAPE_GATE = "shape-settled"
-
-{tools.store_document}
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=UPDATED_SHAPE_PHASE_MARKDOWN  (with "### Shape Gate" set to "shape-settled")
-)
-
-Display to user: "✓ Phase shape settled"
-
-Proceed to Step 12.5.
-```
-
-### Step 12.5: Launch Implementation Plan Development
-
-The build-strategy conversation runs on the shape act's loop (`SHAPE_LOOP_ID`) — the
-inputs (Module Layout, Skeleton Index, Test List) are shape-act artifacts, and this
-gate is lighter than the shape gate itself, so no dedicated critic pass or refinement
-loop is initialized for it. See docs/phase-refactor/decisions.md
-"`implementation.md` is a bundle sibling, not sections inside `phase.md`".
-
-Reusing `SHAPE_LOOP_ID` means Step 12.6's alter/regenerate path shares its feedback
-channel with the shape act: `store_shape_user_feedback` here writes to the same loop
-the shape architect reads at its own STEP 0 on a future re-shape. This is safe today —
-nothing reads `APPROVED_VERSION`/`CURRENT_VERSION` after Step 12, so the version bump
-from Step 12.6's `store_document` never trips Step 11's reapproval check — but if a
-later phase adds shape-loop feedback consumption that isn't scoped to shape-relevant
-content, re-audit this reuse.
-
-```text
-{tools.invoke_phase_architect_implementation_plan}
-
-IMPLEMENTATION_PLAN_MARKDOWN = [the agent's returned output — implementation.md
-  content in full, per the MANDATORY OUTPUT SCOPE exception for phase_mode ==
-  "implementation-plan"]
-
-Proceed to Step 12.6.
-```
-
-### Step 12.6: Implementation Plan Gate
-
-```text
-Present the implementation plan as a walkthrough:
-  build order and why, what lands first, what is deferred and why
-
-{selection_prompt_instructions}
-Header: "Implementation Plan"
-Question: "Here's the order I'd build this. Does it look right?"
-multiSelect: false
-Options: [
-  {{"label": "Looks right — proceed", "description": "Write implementation.md and continue"}},
-  {{"label": "Alter specific parts — let me say which", "description": "Return to the architect with the parts to change"}},
-  {{"label": "Provide direction and regenerate", "description": "Return to the architect with new direction"}}
-]
-
-WAIT for {selection_response_source}.
-DO NOT treat this as workflow completion, cancellation, or failure.
-After the user responds, resume at Step 12.6. Continue immediately.
-DO NOT explain that the workflow is stopping unless the user asks why.
-
-IF selection == "Looks right — proceed":
-  PHASE_DIR = dirname(PHASE_FILE_PATH)
-  IMPLEMENTATION_PLAN_PATH = f"{{PHASE_DIR}}/implementation.md"
-
-  Write IMPLEMENTATION_PLAN_MARKDOWN to IMPLEMENTATION_PLAN_PATH (Use Write tool).
-
-  Ensure "## Additional Details > ### Implementation Plan References" contains
-  "- Constraint: `{{IMPLEMENTATION_PLAN_PATH}}`" (auto-create the section if absent;
-  append the entry only when not already present).
-  {tools.store_document}
-    doc_type="phase",
-    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}",
-    content=UPDATED_SHAPE_PHASE_MARKDOWN  (with the reference ensured)
-  )
-
-  Display to user: "✓ Implementation plan written to {{IMPLEMENTATION_PLAN_PATH}} — entering detail act"
-  Proceed to Step 13.
-
-ELSE:
-  USER_FEEDBACK_MARKDOWN = [selection == "Alter specific parts..." → prompt for which
-                             parts to change |
-                             selection == "Provide direction..." → prompt for direction]
-  {tools.store_shape_user_feedback}
-  Return to Step 12.5.
-```
-
-### Step 13: Initialize Refinement Loop
-Initialize MCP refinement loop:
-
-```text
-(Initialize MCP refinement loop)
-{tools.initialize_refinement_loop_inline_doc}
-{tools.initialize_loop}
-  plan_name=PLAN_NAME,
-  loop_type="phase"
-)
-```
-
-### Step 13.2: Link Loop to Phase
-
-After initializing loop, link it to Phase for idempotent retrieval:
-
-```text
-(Extract loop_id from initialize_refinement_loop result)
-LOOP_ID = [loop_id from Step 13.1 MCPResponse]
-
-(Validate loop_id was returned)
-IF LOOP_ID is None or LOOP_ID == "":
-    CRITICAL ERROR: "initialize_refinement_loop did not return valid loop_id"
-    DIAGNOSTIC: Show full MCPResponse from Step 13.1
-    EXIT: Workflow terminated
-
-(Link loop to phase for agents to retrieve via loop_id only)
-{tools.link_loop_to_document_inline_doc}
-{tools.link_loop}
-  loop_id=LOOP_ID,
-  doc_type="phase",
-  key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
-)
-
-(Verify the link was created)
-LOOP_STATUS = {tools.get_loop_status}
-
-IF LOOP_STATUS does not show linked phase:
-    CRITICAL ERROR: "Loop linking failed - phase-architect and phase-critic will fail"
-    DIAGNOSTIC: Show LOOP_STATUS details
-    EXIT: Workflow terminated
-
-Display to user: "✓ Refinement loop {{LOOP_ID}} linked to {{PHASE_NAME}}"
-```
-
-**Important**:
-- loop_id MUST be extracted and validated before proceeding
-- Agents depend on this link - fail loudly if it's broken
-- Empty string "" is NOT valid - only non-empty string or None
-
-### Step 14: Launch Architecture Development
-Begin technical design:
-
-```text
-{tools.invoke_phase_architect}
-
-Agent will:
-1. Retrieve strategic plan from MCP using plan_name
-2. Execute archive scan to identify existing documentation
-3. Retrieve current phase from MCP using loop_id
-4. Retrieve previous critic feedback from MCP (if iteration > 1)
-5. Refine phase based on strategic plan, feedback, and archive insights
-6. Store updated phase directly in MCP
-7. **Lifecycle Management**: If phase is being decomposed into sub-phases:
-   - Original phase status MUST transition to SUPERSEDED
-   - Each sub-phase MUST follow `phase-{{number}}-{{description}}` naming pattern
-   - Dependencies between sub-phases MUST be documented in Dependencies section
-   - VIOLATION: Leaving original phase as DRAFT when decomposed breaks downstream task-planner
-8. Return brief status message (no full markdown)
-
-Verify agent completed successfully:
-IF agent returns error status:
-  ERROR: "phase-architect failed to update Phase"
-  DIAGNOSTIC: Check agent logs for MCP tool call failures
-  EXIT: Workflow terminated
-
-Display to user: "✓ Phase refined by phase-architect"
-```
-
-### Step 15: Quality Assessment Loop
-
-#### Step 15.1: Invoke Phase-Critic Agent
-
-```text
-PRE_PHASE_LOOP_STATUS = {tools.get_loop_status}
-```
-
-{tools.invoke_phase_critic}
-
-```text
-IF phase-critic reports failure:
-  ERROR: "Phase critic failed"
-  DIAGNOSTIC: [surface the exact critic error/output]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_action
-  - Do NOT continue to Step 16
-  EXIT: Workflow terminated
-
-POST_PHASE_LOOP_STATUS = {tools.get_loop_status}
-PHASE_FEEDBACK = {tools.get_feedback}
-
-IF PHASE_FEEDBACK is empty OR retrieval fails:
-  ERROR: "Phase critic did not persist CriticFeedback"
-  DIAGNOSTIC: [surface the exact MCP/tool error]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_action
-  - Do NOT continue to Step 16
-  EXIT: Workflow terminated
-
-IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.status == "initialized":
-  ERROR: "Phase critic did not advance loop state"
-  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_action
-  - Do NOT continue to Step 16
-  EXIT: Workflow terminated
-
-IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iteration <= PRE_PHASE_LOOP_STATUS.iteration:
-  ERROR: "Phase critic did not persist fresh loop feedback"
-  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_action
-  - Do NOT continue to Step 16
-  EXIT: Workflow terminated
-```
-
-#### Step 15.2: Get Loop Decision
-
-**MCP Server handles score extraction and loop decision internally.**
-
-```text
-LOOP_DECISION_RESPONSE = {tools.decide_loop_action}
-LOOP_DECISION = LOOP_DECISION_RESPONSE.status
-LOOP_SCORE = LOOP_DECISION_RESPONSE.current_score
-LOOP_ITERATION = LOOP_DECISION_RESPONSE.iteration
-```
-
-### Step 16: Handle Refinement Decisions
-
-═══════════════════════════════════════════════
-MANDATORY DECISION PROTOCOL
-═══════════════════════════════════════════════
-The MCP decision is FINAL. Execute the matching branch IMMEDIATELY.
-
-"refine"     → Execute refinement. Do NOT ask, confirm, or present options to the user.
-"user_input" → ONLY status that involves the user. Present feedback and wait for response.
-"completed"  → Proceed to next step. Do NOT ask for confirmation.
-
-VIOLATION: Asking the user whether to continue refining when status is "refine"
-           is a workflow violation. The decision has already been made by the MCP server.
-═══════════════════════════════════════════════
-
-```text
-IF LOOP_DECISION == "completed":
-  Display to user: "✅ Score: {{LOOP_SCORE}}/100 — Phase meets quality standards"
-  Proceed to Step 16.5.
-
-ELIF LOOP_DECISION == "REFINE":
-  Display to user: "⟳ Iteration {{LOOP_ITERATION}} · Score: {{LOOP_SCORE}}/100 — refining Phase"
-  Return to Step 14 (phase-architect will retrieve feedback from MCP itself)
-
-ELIF LOOP_DECISION == "USER_INPUT":
-  (Check for Decomposition Requirement)
-  LATEST_FEEDBACK = {tools.get_feedback})
-
-  IF "DECOMPOSITION_REQUIRED" in LATEST_FEEDBACK or "SCOPE_CREEP" in LATEST_FEEDBACK:
-    Display to user:
-
-    ⚠️ DECOMPOSITION REQUIRED ⚠️
-
-    The Phase is too broad for a single implementation phase.
-
-    Current Size: [Extract character count from LATEST_FEEDBACK]
-    Recommended: Break into 3-5 focused phases
-
-    **Next Steps:**
-    1. Run roadmap workflow:
-       {tools.roadmap_command_invocation}
-    2. This will analyze the current phase and create multiple smaller phases
-    3. Each resulting phase will be appropriately scoped
-
-    **Alternative** (not recommended):
-    - Manually condense the phase to <40,000 characters
-    - Provide technical clarification via user feedback
-    - Resume refinement loop
-
-    EXIT: Graceful stop with guidance
-
+  IF the commit fails (for example, a hook rejects it):
+    Display the hook output to the user and leave the files uncommitted. Never retry with hooks disabled.
   ELSE:
-    (Regular USER_INPUT handling for stagnation or checkpoint)
-    Display LATEST_FEEDBACK to user with:
-    - Current score and iteration
-    - Priority improvement areas
-
-    {selection_prompt_instructions}
-    Header: "Phase Guidance"
-    Question: "Phase quality is at {{LOOP_SCORE}}/100. How would you like to proceed?"
-    Options:
-      1. "Continue refining - address the listed issues"
-      2. "Provide specific technical guidance"
-      3. "Accept current quality and proceed"
-
-    WAIT for {selection_response_source}.
-    DO NOT treat this as workflow completion, cancellation, or failure.
-    After the user responds, resume at Step 16. Continue with feedback storage immediately.
-    DO NOT explain that the workflow is stopping unless the user asks why.
-
-    IF option 1: USER_FEEDBACK_MARKDOWN = "User requested continued refinement"
-    IF option 2: Prompt for guidance; USER_FEEDBACK_MARKDOWN = "## User Guidance\n{{guidance}}"
-    IF option 3: USER_FEEDBACK_MARKDOWN = "User accepted current phase quality"
-
-    {tools.store_user_feedback}
-
-    Return to Step 14 (phase-architect will incorporate user guidance)
-
-ELIF LOOP_DECISION == "MAX_ITERATIONS":
-  Display warning: "Maximum iterations reached. Review feedback and decide next steps."
-  Display LATEST_FEEDBACK to user
-  Proceed to Step 16.5.
-```
-
-### Step 16.5: Synthesize Research Requirements
-
-After quality loop completes, synthesize any "Synthesize:" research prompts using best-practices-rag:
-
-```text
-SUB-STEP 1: Retrieve final phase
-PHASE_RESPONSE = {tools.get_document}
-    doc_type="phase",
-    key="{{PLAN_NAME}}/{{PHASE_NAME}}",
-    loop_id=LOOP_ID
-)
-PHASE_MARKDOWN = PHASE_RESPONSE.message
-
-SUB-STEP 2: Parse Research Requirements
-Extract "### Research Requirements" section from PHASE_MARKDOWN.
-Collect:
-- "Read:" entries plus following indented metadata lines → EXISTING_READ_BLOCKS (keep as-is)
-- Paths from "Read:" entries → EXISTING_READ_PATHS
-- "Synthesize:" entries → SYNTHESIZE_PROMPTS
-- Parsed `Synthesize:` fields when present → SYNTHESIZE_PROMPT_METADATA
-
-Read block parsing:
-- A read block starts at a line beginning `- Read:`
-- Include following indented metadata lines until the next `- Read:`, `- Synthesize:`, or section heading
-- Preserve existing read blocks verbatim when rewriting Research Requirements
-
-Synthesize prompt parsing:
-- Extract `Technologies:`, `Topics:`, and `Query:` fields when present
-- Preserve original prompt text for Task(bp)
-
-Also extract "#### Design Research" from `### Design Shape - Additional Sections` (`##
-Design Shape` is preserved verbatim once the shape gate settles, so this content
-survived from the shape act unchanged):
-- "- Read:" entries → append their paths to EXISTING_READ_PATHS (this doubles as the
-  dedupe: nothing the shape act already fetched is synthesized a second time here)
-- Track each as DESIGN_RESEARCH_READ_PATHS for SUB-STEP 6
-
-SUB-STEP 2.1: Detect external APIs/services from phase content
-API_DETECTION_TEXT = concatenate text from:
-- "### Integration Context"
-- "## API Design" and/or "### API Design"
-- "### Dependencies"
-- "### Technology Stack"
-- "## System Design" and API-related subsections
-
-LANGUAGE_RUNTIME_TEXT = concatenate text from:
-- "### Technology Stack"
-- "### Dependencies"
-- "### Deployment Architecture"
-- "### Integration Context"
-
-IMPLEMENTATION_LANGUAGE_RUNTIME = infer language/runtime from LANGUAGE_RUNTIME_TEXT
-IF no language/runtime is inferred:
-  IMPLEMENTATION_LANGUAGE_RUNTIME = "project implementation language/runtime"
-
-API_CANDIDATES = []
-- Extract URL hosts from API_DETECTION_TEXT using regex:
-  `https?://([a-zA-Z0-9.-]+)`
-- Extract service/API tokens from lines containing:
-  "api", "sdk", "webhook", "oauth", "service", "provider"
-
-Normalize each candidate deterministically:
-- Lowercase
-- Trim whitespace and punctuation/backticks/quotes
-- Remove trailing suffix tokens: "api", "sdk", "service", "platform", "client"
-- Collapse repeated spaces
-
-Exclude internal/local-only candidates:
-- Starts with `/api/`
-- Contains `localhost` or `127.0.0.1`
-- Ends with `.local` or `.internal`
-- Equals one of: `internal`, `private`, `local`
-
-EXTERNAL_APIS = unique normalized candidates after exclusions
-
-BP_PATH_REGEX = '(\\.best-practices/[A-Za-z0-9._/-]+\\.md)'
-EXISTING_BP_READ_PATHS = []
-
-For each read_path in EXISTING_READ_PATHS:
-  IF read_path matches BP_PATH_REGEX:
-    EXISTING_BP_READ_PATHS.append(read_path)
-
-APIS_WITH_VALID_BP_DOCS = []
-APIS_MISSING_BP_DOCS = []
-
-For each api_name in EXTERNAL_APIS:
-  ## Prefer existing Read: docs only when metadata or content confirms official API coverage.
-  VALIDATED_API_DOCS = []
-  For each read_path in EXISTING_BP_READ_PATHS:
-    READ_METADATA = metadata lines from matching EXISTING_READ_BLOCKS
-    METADATA_MATCHES_API = READ_METADATA `Covers API`, `Technologies`, or `Query` identifies api_name or its official API host/provider
-    METADATA_MATCHES_RUNTIME = READ_METADATA `Technologies` or `Query` identifies IMPLEMENTATION_LANGUAGE_RUNTIME, or explicitly states direct HTTP/no language-specific SDK is required
-    CALL Read(read_path)
-    CONTENT_MATCHES_API = document content identifies api_name or its official API host/provider
-    CONTENT_MATCHES_RUNTIME = document content identifies IMPLEMENTATION_LANGUAGE_RUNTIME, language-specific SDK/client guidance, or explicit direct HTTP/no SDK guidance
-    CONTENT_HAS_OFFICIAL_API_GUIDANCE = document content includes official API integration guidance for both the provider and implementation runtime: official source URLs or official-doc references, authentication, endpoints/operations or SDK/client method contracts, request/response schemas or payload contracts where relevant, failure/rate-limit/retry/pagination/webhook/versioning guidance where applicable, and SDK/client library vs direct HTTP rationale
-    IF (METADATA_MATCHES_API OR CONTENT_MATCHES_API) AND (METADATA_MATCHES_RUNTIME OR CONTENT_MATCHES_RUNTIME) AND CONTENT_HAS_OFFICIAL_API_GUIDANCE:
-      VALIDATED_API_DOCS.append(read_path)
-
-  IF len(VALIDATED_API_DOCS) > 0:
-    APIS_WITH_VALID_BP_DOCS.append(api_name)
-  ELSE:
-    APIS_MISSING_BP_DOCS.append(api_name)
-
-AUTO_API_PROMPTS = []
-For each api_name in APIS_MISSING_BP_DOCS:
-  AUTO_API_PROMPTS.append(
-    {{
-      "prompt_text": "Synthesize: Technologies: {{api_name}} API, {{IMPLEMENTATION_LANGUAGE_RUNTIME}}; Topics: apidocs, apiintegration, official sdk, client library, http endpoints, authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning; Query: Official API integration docs for {{api_name}} in {{IMPLEMENTATION_LANGUAGE_RUNTIME}}; include official source URLs, official SDK/client guidance, direct HTTP endpoint contracts, authentication, request/response schemas or payload contracts, rate limits, retries, pagination, webhooks/errors/versioning where applicable, and a recommendation for SDK/client library vs direct HTTP based on official docs, project stack fit, maintenance risk, and API maturity.",
-      "technologies": "{{api_name}} API, {{IMPLEMENTATION_LANGUAGE_RUNTIME}}",
-      "topics": "apidocs, apiintegration, official sdk, client library, http endpoints, authentication, payload schemas, rate limits, retries, pagination, webhooks, errors, versioning",
-      "query": "Official API integration docs for {{api_name}} in {{IMPLEMENTATION_LANGUAGE_RUNTIME}}",
-      "covers_api": "{{api_name}}"
-    }}
-  )
-
-Normalize SYNTHESIZE_PROMPTS into queue items:
-- prompt_text: original `Synthesize:` line text
-- technologies: parsed `Technologies:` field if present, otherwise empty
-- topics: parsed `Topics:` field if present, otherwise empty
-- query: parsed `Query:` field if present, otherwise original prompt text
-- covers_api: matching api_name from EXTERNAL_APIS when technologies/query identifies that API, otherwise empty
-
-SYNTHESIS_QUEUE = deduplicated list of normalized SYNTHESIZE_PROMPTS + AUTO_API_PROMPTS
-
-IF SYNTHESIS_QUEUE is empty:
-  Display: "✓ No bp synthesis required (all detected APIs already covered by content-validated official .best-practices API docs)"
-  Proceed to Step 16.6.
-
-═══════════════════════════════════════════════
-MANDATORY COST-AWARE SYNTHESIS POLICY
-═══════════════════════════════════════════════
-- {tools.phase_command_reference} is the ONLY workflow that runs bp synthesis
-- Run synthesis only for unresolved high-value knowledge gaps
-- Do NOT create or execute prompts to hit a quota
-- Existing "Read:" entries are reused as-is and do NOT consume synthesis worker slots
-- Unresolved synthesis queue items (explicit + API-derived) use bounded workers: MAX_ACTIVE_BP_WORKERS = 3
-═══════════════════════════════════════════════
-
-SUB-STEP 3-5: Synthesis orchestration
-{
-        _bp_synthesis_orchestration_block(
-            on_bp_unavailable=(
-                '  ERROR: "bp skill unavailable — cannot synthesize research requirements"\n'
-                '  DIAGNOSTIC: "Expected Task(bp) permission and runtime bp skill registration"\n'
-                '  EXIT: Do NOT proceed to synthesis with fallback behavior'
-            )
-        )
-    }
-
-SUB-STEP 6: Update Phase with synthesized paths
-SYNTHESIZED_READ_BLOCKS = []
-For each item in SUCCEEDED_SYNTHESIS:
-  Add block:
-  - "- Read: `{{item.path}}`"
-  - "  - Source: synthesized"
-  - "  - Technologies: {{item.technologies}}" when non-empty
-  - "  - Topics: {{item.topics}}" when non-empty
-  - "  - Query: {{item.query}}" when non-empty
-  - "  - Covers API: {{item.covers_api}}" when non-empty
-
-DESIGN_RESEARCH_READ_BLOCKS = []
-For each path in DESIGN_RESEARCH_READ_PATHS (from SUB-STEP 2):
-  IF path already present in EXISTING_READ_BLOCKS (by path): SKIP (already carried
-    forward as-is; do not duplicate)
-  Add block:
-  - "- Read: `{{path}}`"
-  - "  - Source: shape-act"
-
-COMPLETE_READ_BLOCKS = EXISTING_READ_BLOCKS + DESIGN_RESEARCH_READ_BLOCKS + SYNTHESIZED_READ_BLOCKS
-
-Reconstruct Research Requirements section with ONLY `Read:` blocks:
-For each BLOCK in COMPLETE_READ_BLOCKS:
-  emit BLOCK exactly, preserving metadata lines
-
-Replace "### Research Requirements" section in PHASE_MARKDOWN with updated content.
-
-SUB-STEP 7: Store updated Phase
-{tools.store_document}
-  doc_type="phase",
-  key="{{PLAN_NAME}}/{{PHASE_NAME}}",
-  content=UPDATED_PHASE_MARKDOWN
-)
-
-Display: "✓ Synthesized {{len(SYNTHESIZED_PATHS)}} research brief(s), {{len(COMPLETE_PATHS)}} total documents"
-Display: "Research synthesis summary: explicit_prompts={{len(SYNTHESIZE_PROMPTS)}}, auto_api_prompts={{len(AUTO_API_PROMPTS)}}, api_docs_covered_with_valid_bp={{len(APIS_WITH_VALID_BP_DOCS)}}, invoked_bp={{len(SYNTHESIS_QUEUE)}}, generated_docs={{len(SYNTHESIZED_PATHS)}}, failures={{len(FAILED_SYNTHESIS)}}"
-
-Proceed to Step 16.6.
-```
-
-### Step 16.6: Post-Synthesis Quality Validation
-
-After research synthesis completes, validate all research paths exist:
-
-```text
-Display to user: "🔍 Validating synthesized research paths..."
-
-PRE_POST_SYNTHESIS_LOOP_STATUS = {tools.get_loop_status}
-
-{tools.invoke_phase_critic_post_synthesis}
-
-IF phase-critic reports failure:
-    ERROR: "Post-synthesis phase critic failed"
-    DIAGNOSTIC: [surface the exact critic error/output]
-    EXIT: Workflow terminated
-
-POST_POST_SYNTHESIS_LOOP_STATUS = {tools.get_loop_status}
-POST_SYNTHESIS_FEEDBACK = {tools.get_feedback}
-
-IF POST_SYNTHESIS_FEEDBACK is empty OR retrieval fails:
-    ERROR: "Post-synthesis validation feedback missing"
-    DIAGNOSTIC: [surface the exact MCP/tool error]
-    EXIT: Workflow terminated
-
-LATEST_POST_SYNTHESIS_FEEDBACK = extract most recent PHASE_CRITIC feedback block from POST_SYNTHESIS_FEEDBACK
-LATEST_POST_SYNTHESIS_SCORE = parse score from LATEST_POST_SYNTHESIS_FEEDBACK
-LATEST_POST_SYNTHESIS_SUMMARY = parse assessment summary from LATEST_POST_SYNTHESIS_FEEDBACK
-
-IF LATEST_POST_SYNTHESIS_SCORE == 0:
-    ERROR: "Post-synthesis validation feedback preserved score 0"
-    DIAGNOSTIC: [surface LATEST_POST_SYNTHESIS_FEEDBACK and POST_POST_SYNTHESIS_LOOP_STATUS]
-    EXIT: Workflow terminated
-
-IF LATEST_POST_SYNTHESIS_SUMMARY != "Post-synthesis path validation":
-    ERROR: "Post-synthesis validation feedback summary mismatch"
-    DIAGNOSTIC: [surface LATEST_POST_SYNTHESIS_SUMMARY and LATEST_POST_SYNTHESIS_FEEDBACK]
-    EXIT: Workflow terminated
-
-IF PRE_POST_SYNTHESIS_LOOP_STATUS.status == "initialized" AND POST_POST_SYNTHESIS_LOOP_STATUS.status == "initialized":
-    ERROR: "Post-synthesis phase critic did not advance loop state"
-    DIAGNOSTIC: [surface PRE_POST_SYNTHESIS_LOOP_STATUS and POST_POST_SYNTHESIS_LOOP_STATUS]
-    EXIT: Workflow terminated
-
-IF PRE_POST_SYNTHESIS_LOOP_STATUS.status != "initialized" AND POST_POST_SYNTHESIS_LOOP_STATUS.iteration <= PRE_POST_SYNTHESIS_LOOP_STATUS.iteration:
-    ERROR: "Post-synthesis phase critic did not persist fresh loop feedback"
-    DIAGNOSTIC: [surface PRE_POST_SYNTHESIS_LOOP_STATUS and POST_POST_SYNTHESIS_LOOP_STATUS]
-    EXIT: Workflow terminated
-
-IF POST_SYNTHESIS_FEEDBACK contains "[Research Path Invalid - BLOCKING]" OR
-   POST_SYNTHESIS_FEEDBACK contains "[Best-Practices Reference Invalid - BLOCKING]" OR
-   POST_SYNTHESIS_FEEDBACK contains "[API Research Final Docs Missing - BLOCKING]" OR
-   POST_SYNTHESIS_FEEDBACK contains "[API Research Coverage Missing - BLOCKING]":
-    Display: "⟳ Post-synthesis research coverage needs refinement"
-    List blocking research path, best-practices reference, and API coverage issues
-    POST_SYNTHESIS_DECISION_RESPONSE = {tools.decide_loop_action}
-    POST_SYNTHESIS_DECISION = POST_SYNTHESIS_DECISION_RESPONSE.status
-    POST_SYNTHESIS_SCORE = POST_SYNTHESIS_DECISION_RESPONSE.current_score
-    POST_SYNTHESIS_ITERATION = POST_SYNTHESIS_DECISION_RESPONSE.iteration
-
-    IF POST_SYNTHESIS_DECISION == "refine":
-      Display: "⟳ Iteration {{POST_SYNTHESIS_ITERATION}} · Score: {{POST_SYNTHESIS_SCORE}}/100 — refining Phase from post-synthesis feedback"
-      Return to Step 14 (phase-architect will retrieve post-synthesis feedback from MCP itself)
-
-    ELIF POST_SYNTHESIS_DECISION == "user_input":
-      Display POST_SYNTHESIS_FEEDBACK to user with:
-      - Current score and iteration
-      - Research path, best-practices reference, and API documentation coverage blockers
-      - Request for technical clarification only if needed by feedback
-      Return to Step 14 after user guidance is available
-
-    ELIF POST_SYNTHESIS_DECISION == "completed":
-      Display: "✓ Post-synthesis research coverage validated after loop decision"
-      Proceed to Step 17.
-
-    ELSE:
-      ERROR: "Unexpected post-synthesis loop decision"
-      DIAGNOSTIC: Show POST_SYNTHESIS_DECISION_RESPONSE
-      EXIT: Workflow terminated
+    Display to user: "✓ Committed the files this run wrote"
 ELSE:
-    Display: "✓ All research paths validated successfully"
+  Display to user: "✓ Signed off. The files this run wrote are left uncommitted."
 
-Proceed to Step 17.
+Go to Step 12.
 ```
 
-### Step 17: Phase Storage
+### Step 12: Store and Hand Off
 
 ═══════════════════════════════════════════════
 MANDATORY PHASE FILE STORAGE RESTRICTION
 ═══════════════════════════════════════════════
-Phase storage uses ONLY these four mechanisms:
-1. MCP storage (already completed during refinement loop)
-2. Platform storage (Step 17.2 below)
-3. The shape-act edit gate (Steps 8-9 ONLY) — writing PHASE_FILE_PATH for the user to
-   hand-edit the design directly, then re-reading and reconciling it back into MCP. This
-   is the sanctioned exception; decisions.md "Frozen fields are repaired, not deleted."
-4. Skeleton materialization (Step 11.5 ONLY) — writing SKELETON_INDEX_SCRATCH and
-   TEST_LIST_SCRATCH (the two named files under PHASE_DIR) for the `materialize-skeletons`
-   CLI command to read, and create-only writes to real source/test paths named in
-   `### Skeleton Index` / `### Test List`, performed by that command or by the merge path
-   — never phase.md itself. decisions.md "Skeletons are written into the real codebase."
+The phase document reaches disk only through these writes:
+1. MCP storage, through store_document, at every step that records something.
+2. The disk mirror: PHASE_FILE_PATH, written with the same markdown after every orchestrator
+   store, and the hand-edit write-back at Step 10.5.
+3. The two skeleton scratch files at Step 11.4 (SKELETON_INDEX_SCRATCH and TEST_LIST_SCRATCH,
+   under PHASE_DIR). The skeleton command reads them and writes create-only skeletons to the
+   paths named in "### Skeleton Index" and "### Test List"; it never writes phase.md.
+4. The architect's own write of implementation.md at IMPLEMENTATION_PLAN_PATH.
+5. Platform storage (Step 12.2 below).
 
 Do NOT:
-- Write phase.md or any .md file to disk directly, EXCEPT at Steps 8-9 and the two
-  named scratch files at Step 11.5
+- Write phase.md or any other .md file to disk outside the writes listed above
 - Create backup or checkpoint files
-- Store intermediate phases outside MCP/platform/the Step 8-9 gate/the Step 11.5 gate
 
-VIOLATION: Writing any phase file outside the designated
-           MCP, platform, and Step 8-9 gate storage tools.
+VIOLATION: Writing any phase file outside the writes listed above.
 ═══════════════════════════════════════════════
 
-#### Step 17.1: Retrieve Final Phase from MCP
-Retrieve the Phase from MCP storage:
+#### Step 12.1: Retrieve the final phase from MCP
 
 ```text
 FINAL_PHASE_RESPONSE = {tools.get_document}
-    doc_type="phase",
-    key=f"{{PLAN_NAME}}/{{PHASE_NAME}}"
-)
-
 FINAL_PHASE_MARKDOWN = FINAL_PHASE_RESPONSE.message
 ```
 
-#### Step 17.2: Save to External Platform
-Store the phase using platform-specific tool:
+#### Step 12.2: Save to the external platform
 
 ```text
 Ensure directory exists:
@@ -1610,21 +1447,19 @@ Ensure directory exists:
 
 Use {tools.create_phase_tool} to store the phase:
 
-Title: Phase: [Project Name]
+Title: Phase: [PHASE_NAME]
 Content: [FINAL_PHASE_MARKDOWN]
-Labels: phase, architecture, phase-2
+Labels: phase, architecture
 ```
 
-**Important**: Use FINAL_PHASE_MARKDOWN from MCP, NOT raw architect output. This ensures immutable initial fields (objectives, scope, dependencies, deliverables) are preserved.
+**Important**: Use FINAL_PHASE_MARKDOWN from MCP, NOT raw architect output. This ensures immutable
+initial fields (objectives, scope, dependencies, deliverables) are preserved.
 
-### Step 18: Completion Contract and Final Reporting
-
-Phase storage and implementation.md (Step 12.5/12.6) are already complete by this
-point — there is no Task to generate. Chain directly into the coding workflow.
+#### Step 12.3: Completion contract and handoff
 
 ```text
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-Display: "✅  PHASE COMPLETE"
+Display: "✅  PHASE SIGNED OFF"
 Display: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 Completion contract (required in final response):
@@ -1633,128 +1468,9 @@ Completion contract (required in final response):
 3. implementation_plan_path
 
 Display:
-"✅ Phase complete. Next: run implementation workflow"
+"✅ Phase signed off. Next: run the implementation workflow"
 {tools.code_command_invocation}
 ```
-
-## Quality Assessment
-
-### Loop Management
-- Quality evaluation performed by phase-critic agent using FSDD framework
-- Loop continuation decisions made by MCP Server based on configuration
-- MCP Server monitors score improvement and iteration limits
-- User input requested when stagnation detected
-
-### Loop Decision Types
-- **refine**: Continue refinement with critic feedback
-- **complete**: Phase meets quality requirements
-- **user_input**: Stagnation detected, user guidance needed
-- **max_iterations**: Iteration limit reached
-
-## Research Integration
-
-### Knowledge Base Scanning Process
-Knowledge base scanning performed via `best-practices-rag query-kb` and `Glob: .best-practices/*.md` to identify existing documentation and knowledge gaps for research requirements section.
-
-### Research Requirements Format
-  ```markdown
-  ## Research Requirements
-
-  ### Existing Documentation
-  - Read: .best-practices/<topic>-codegen.md
-
-  ### External Research Needed
-  - Synthesize: Technologies: <technology names>; Topics: <topic keywords>; Query: <specific research request>
-  ```
-
-  ## Error Handling
-
-  ### Standardized Error Response Format
-  All error scenarios return structured responses:
-
-  ```json
-  {{
-    "error_type": "missing_plan|archive_failure|mcp_error|storage_failure|quality_plateau",
-    "error_message": "Detailed error description",
-    "recovery_action": "Specific recovery steps taken",
-    "user_guidance": "Clear instructions for user",
-    "partial_output": "Any salvageable work completed"
-  }}
-  ```
-
-### Error Scenario Implementations
-
-#### 1. Missing Strategic Plan
-```text
-IF no strategic plan available:
-  ERROR_RESPONSE = {{
-    "error_type": "missing_plan",
-    "error_message": "No strategic plan found for Phase creation",
-    "recovery_action": "Prompting user for plan location or strategic planning workflow execution",
-    "user_guidance": "Please provide the strategic plan document path or use the strategic planning workflow first",
-    "partial_output": "Phase template prepared"
-  }}
-  → Request plan location OR suggest strategic planning workflow invocation:
-    {tools.plan_command_invocation}
-```
-
-#### 2. Knowledge Base Query Failure
-```text
-IF best-practices-rag query-kb fails:
-  ERROR_RESPONSE = {{
-    "error_type": "kb_query_failure",
-    "error_message": "Cannot query best-practices knowledge base",
-    "recovery_action": "Continuing with external research only, noting KB unavailable",
-    "user_guidance": "Knowledge base unavailable - check Docker and Neo4j status via `best-practices-rag check`. Phase will include comprehensive research requirements.",
-    "partial_output": "Strategic plan analysis completed"
-  }}
-  → Continue with phase-architect but include note: "Knowledge base unavailable - comprehensive external research required"
-```
-
-#### 3. MCP Loop State Errors
-```text
-IF mcp__respec-ai tools unavailable:
-  ERROR_RESPONSE = {{
-    "error_type": "mcp_error",
-    "error_message": "MCP loop state management unavailable",
-    "recovery_action": "Falling back to direct agent coordination with single iteration",
-    "user_guidance": "Quality loop disabled - single-pass Phase generation. Step 18 task handoff still required.",
-    "partial_output": "Strategic plan processed"
-  }}
-  → Continue with single phase-architect → phase-critic → storage workflow, then execute Step 18
-```
-
-#### 4. Storage Platform Failure
-```text
-IF platform storage tool fails:
-  ERROR_RESPONSE = {{
-    "error_type": "storage_failure",
-    "error_message": "Failed to store Phase in configured platform",
-    "recovery_action": "Saving to local Markdown backup at docs/phases/[timestamp]-phase.md",
-    "user_guidance": "Platform storage failed. Phase saved locally. Check platform connectivity and configuration.",
-    "partial_output": "Complete Phase document"
-  }}
-  → Use Write tool to save to local file system as fallback
-```
-
-#### 5. Quality Plateau/Stagnation
-```text
-IF LOOP_DECISION == "user_input" (stagnation detected):
-  ERROR_RESPONSE = {{
-    "error_type": "quality_plateau",
-    "error_message": "Phase quality plateaued at [QUALITY_SCORE]% after [CURRENT_ITERATION] iterations",
-    "recovery_action": "Escalating to user for guidance on technical clarifications",
-    "user_guidance": "Quality plateau reached. Please provide: 1) Technical clarifications, 2) Alternative approaches, 3) Accept current quality level",
-    "partial_output": "Phase at [QUALITY_SCORE]% completeness"
-  }}
-```
-
-### Proactive Error Prevention
-- Validate strategic plan format before processing
-- Check archive accessibility before scanning  
-- Test MCP tool availability before loop initialization
-- Verify storage platform connectivity before final storage
-- Monitor quality score trends for early stagnation detection
 
 ## Phase Name Normalization Rules
 
@@ -1773,69 +1489,4 @@ IF LOOP_DECISION == "user_input" (stagnation detected):
 - Mismatch will cause storage/retrieval failures
 
 **Phase-architect agents:** Generate H1 headers in kebab-case to match the bundle directory name.
-
-## Expected Output Structure
-
-**CRITICAL**: Phase must follow exact H2 > H3 nesting for core sections. Phase name MUST be kebab-case (lowercase, hyphens only).
-
-### Structure Template
-
-  ```markdown
-{indent(technical_phase_template, '  ')}
-  ```
-
-### Structure Rules
-
-**For Core Sections** (Overview, System Design, Implementation, Additional Details):
-- Always use H2 `##` for main section
-- Always use H3 `###` for subsections
-- Parser expects this exact structure - deviations cause field to be None
-
-**For Domain-Specific Sections** (Data Models, API Design, etc.):
-- Use H2 `##` for section header
-- No required subsection structure
-- Content captured in additional_sections dict
-
-**Common Mistakes to Avoid**:
-- ❌ Using "## Architecture" instead of "## System Design\n### Architecture"
-- ❌ Using "## Research Requirements" instead of "## Additional Details\n### Research Requirements"
-- ❌ Using H4 `####` or H5 `#####` for core subsections
-- ❌ Omitting H2 section header (e.g., just "### Architecture" without "## System Design")
-
-**Notes**:
-- Core sections (Overview, Architecture, Testing Strategy) MUST always be present
-- Domain-specific sections MUST only be included if relevant to the project type
-- No placeholder content ("TBD", "N/A") - omit sections instead
-- Use any markdown format for content (code blocks, lists, tables, diagrams)
-
-## Context Preservation
-
-Maintain conversation flow while processing complex backend refinement:
-- Complete conversation history passed to each agent invocation
-- Technical assessments hidden from user interaction  
-- Natural dialogue flow preserved despite multi-agent coordination
-- Context summarization to manage size constraints
-
-## Implementation Integration Notes
-
-### Phase Tools
-- **Storage Tool**: Platform-specific creation tool
-- **Retrieval Tool**: Platform-specific retrieval tool
-- **Update Tool**: Platform-specific update tool
-- **Content Structure**: Platform-agnostic markdown maintained consistently
-- **Research Section**: Included in Phase body for all platforms
-
-## Success Metrics
-
-### Quantitative Targets
-- **Quality Score**: Determined by MCP Server configuration
-- **Iterations to Complete**: ≤3
-- **Archive Hit Rate**: >60% of research needs covered by existing docs
-- **Storage Success**: >99%
-
-### Qualitative Indicators
-- **Technical Completeness**: All architectural decisions documented
-- **Research Coverage**: All knowledge gaps identified with clear paths
-- **Implementation Ready**: Sufficient detail for development teams
-- **Integration**: Seamless storage and retrieval
 """

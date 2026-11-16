@@ -30,56 +30,32 @@ class PhaseCommandTools(CommandToolsModel):
     platform: PlatformType = Field(..., description='Selected platform type')
     plans_dir: str = Field(..., description='TUI-specific plans directory path')
 
-    # Agent invocations
-    invoke_phase_architect: str = Field(
-        ..., description='Invocation text for respec-phase-architect agent (detail act, phase_mode="detail")'
-    )
-    invoke_phase_architect_shape: str = Field(
-        ..., description='Invocation text for respec-phase-architect agent (shape act, phase_mode="shape")'
-    )
-    invoke_phase_architect_implementation_plan: str = Field(
+    code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
+    invoke_architect_explore: str = Field(..., description='Fresh respec-phase-architect invocation in explore mode')
+    invoke_architect_draft: str = Field(..., description='Fresh respec-phase-architect invocation in draft mode')
+    invoke_architect_revise: str = Field(..., description='Fresh respec-phase-architect invocation in revise mode')
+    resume_architect: str = Field(
         ...,
         description=(
-            'Invocation text for respec-phase-architect agent '
-            '(implementation-plan act, phase_mode="implementation-plan")'
+            'Resume of the recorded architect in ARCHITECT_MODE; empty where the TUI cannot resume a subagent'
         ),
     )
-    invoke_phase_critic: str = Field(
-        ..., description='Invocation text for respec-phase-critic agent (detail act, phase_mode="detail")'
+    invoke_critic_review: str = Field(..., description='respec-phase-critic invocation in review mode')
+    invoke_bp_pipeline: str = Field(..., description='bp-pipeline dispatch for one approved research proposal')
+    bp_preflight_command: str = Field(..., description='Shell command whose exit code reports bp availability')
+    store_document_user_edit: str = Field(
+        ..., description='Store a hand-edited phase document with the frozen-field exception'
     )
-    invoke_phase_critic_shape: str = Field(
-        ..., description='Invocation text for respec-phase-critic agent (shape act, phase_mode="shape")'
-    )
-    invoke_phase_critic_post_synthesis: str = Field(
-        ..., description='Invocation text for post-synthesis respec-phase-critic validation'
-    )
-    phase_command_reference: str = Field(..., description='Adapter-rendered reference text for respec-phase command')
-    roadmap_command_invocation: str = Field(..., description='Invocation text to hand off to respec-roadmap command')
-    plan_command_invocation: str = Field(..., description='Invocation text to hand off to respec-plan command')
-    code_command_invocation: str = Field(..., description='Invocation text to hand off to respec-code command')
 
-    # Parameterized MCP tool invocations
-    store_plan: str = Field(..., description='Store strategic plan')
-    store_document: str = Field(..., description='Store phase document')
-    initialize_loop: str = Field(..., description='Initialize refinement loop')
-    get_plan: str = Field(..., description='Retrieve strategic plan')
-    link_loop: str = Field(..., description='Link loop to document (detail act)')
-    get_loop_status: str = Field(..., description='Get loop status (detail act)')
-    decide_loop_action: str = Field(..., description='Decide loop action (detail act)')
-    decide_shape_loop_action: str = Field(..., description='Decide loop action (shape act)')
-    get_feedback: str = Field(..., description='Get latest feedback (detail act)')
-    get_document: str = Field(..., description='Get final phase document')
-    store_user_feedback: str = Field(..., description='Store user feedback (detail act)')
+    store_document: str = Field(..., description='Store the phase document, stage marker included')
+    initialize_loop: str = Field(..., description="Initialize the run's review loop")
+    link_loop: str = Field(..., description='Link the review loop to the phase document')
+    get_loop_status: str = Field(..., description='Get review loop status')
+    decide_loop_action: str = Field(..., description='Decide the next action from the latest critic review')
+    get_feedback: str = Field(..., description='Get the latest critic review and every user feedback entry')
+    get_document: str = Field(..., description='Get the current phase document through the review loop')
+    store_user_feedback: str = Field(..., description='Store round-tagged user feedback')
     validate_document: str = Field(..., description='Check candidate content for silent parser loss')
-
-    # Shape act — mirrors the detail-act fields above but pinned to SHAPE_LOOP_ID
-    link_shape_loop: str = Field(..., description='Link the shape-act loop to document')
-    get_shape_loop_status: str = Field(..., description='Get shape-act loop status')
-    get_shape_document: str = Field(..., description='Get current phase document via the shape-act loop')
-    store_shape_user_feedback: str = Field(..., description='Store user feedback (shape act)')
-    store_document_gate_edit: str = Field(
-        ..., description='Store phase document with the frozen-field gate exception (Step 9 ONLY)'
-    )
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -102,29 +78,6 @@ class PhaseCommandTools(CommandToolsModel):
     @computed_field
     def phase_location_setup(self) -> str:
         return self._adapter.phase_location_setup
-
-    @computed_field
-    def mcp_tools_reference(self) -> str:
-        if not self._tool_extractor:
-            return ''
-
-        tool_names = [
-            'initialize_refinement_loop',
-            'decide_loop_next_action',
-            'store_document',
-            'get_document',
-            'link_loop_to_document',
-            'get_loop_status',
-            'get_feedback',
-            'store_plan',
-            'get_plan_markdown',
-        ]
-
-        try:
-            tool_docs = [self._tool_extractor.get_tool_documentation(name) for name in tool_names]
-            return ToolDocGenerator.generate_reference_section(tool_docs)
-        except Exception:
-            return ''
 
     @computed_field
     def initialize_refinement_loop_inline_doc(self) -> str:
@@ -189,8 +142,9 @@ class PhaseArchitectAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.UPDATE_DOCUMENT,
-        RespecAITool.LINK_LOOP_TO_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
+        RespecAITool.STORE_CURRENT_ANALYSIS,
+        RespecAITool.GET_PREVIOUS_ANALYSIS,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
@@ -198,21 +152,22 @@ class PhaseArchitectAgentTools(AgentToolsModel):
         (BuiltInToolCapability.BASH, ''),
         (BuiltInToolCapability.GREP, ''),
         (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/implementation.md'),
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
     plans_dir: str = Field(..., description='TUI-specific plans directory path')
-    get_loop_status: str = Field(..., description='Get loop status for iteration check')
-    get_feedback: str = Field(..., description='Retrieve previous critic feedback')
+    get_feedback: str = Field(..., description='Retrieve the latest critic review and every user entry')
     get_document: str = Field(..., description='Retrieve current specification')
     update_document: str = Field(..., description='Store complete specification')
+    store_analysis: str = Field(..., description='Replace the loop notes slot with the complete notes')
+    get_analysis: str = Field(..., description='Read the loop notes slot')
 
 
 class PhaseCriticAgentTools(AgentToolsModel):
     respec_ai_tools: ClassVar[list[RespecAITool]] = [
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
-        RespecAITool.GET_LOOP_STATUS,
         RespecAITool.STORE_CRITIC_FEEDBACK,
     ]
 
@@ -223,12 +178,7 @@ class PhaseCriticAgentTools(AgentToolsModel):
     ]
 
     tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
-    phase_length_soft_cap: int = Field(default=40000, description='Soft cap for phase length in characters')
-    phase_shape_soft_cap: int = Field(
-        default=10000, description='Soft cap for combined Design Shape + Design Decisions length in characters'
-    )
     get_plan: str = Field(..., description='Retrieve strategic plan from MCP')
     get_document: str = Field(..., description='Retrieve specification via loop_id')
-    get_feedback: str = Field(..., description='Retrieve prior critic feedback')
-    get_loop_status: str = Field(..., description='Get loop status for post-synthesis score and iteration')
+    get_feedback: str = Field(..., description='Retrieve prior critic reviews and every user entry')
     store_feedback: str = Field(..., description='Store critic feedback')

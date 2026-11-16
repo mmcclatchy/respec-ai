@@ -220,12 +220,27 @@ Would you like me to refine any phase?
 - Ready to break down implementation approach
 - Want architecture and technology decisions documented
 
-**How it works:**
-1. **Plan retrieval** - Retrieves existing strategic plan or roadmap phase
-2. **Phase generation** - phase-architect creates technical specification
-3. **Quality evaluation** - phase-critic validates against parent document (plan or roadmap)
-4. **Platform creation** - Creates phase in your platform (Linear issue, GitHub issue, or Markdown file)
-5. **Refinement** - Iterates until quality threshold met
+**How it works:** a design conversation with at most three stops for you on the happy path.
+The command is the only party that talks to you; the architect and critic subagents work in their
+own contexts and report back.
+1. **Explore** - phase-architect reads the plan and its constraints, the existing code and the
+   local knowledge base, then writes its open decisions and research proposals into the phase.
+2. **Briefing (stop 1)** - You hear what exists to build on and an approach sketch, settle the
+   consequential decisions (or accept the recommended defaults), and approve, deny or edit each
+   proposed research item. Research costs nothing unless you approve it.
+3. **Research and draft** - Approved research runs through `bp-pipeline`; phase-architect then
+   drafts the whole design and its `implementation.md` in one pass.
+4. **Critic review** - phase-critic reviews the draft without editing it. Mechanical problems go
+   back to the architect for at most two silent repairs; judgment calls become questions for you.
+5. **Design review (stop 2)** - You answer the critic's questions, say what to change, or edit
+   `phase.md` yourself. Every change is reviewed by the critic again before you see it.
+6. **Sign-off (stop 3)** - You settle anything still open and sign off. Skeletons are written
+   (create-only), the design is marked settled, a commit is offered (never automatic), and the
+   phase is stored in your platform (Linear issue, GitHub issue, or Markdown file).
+
+A re-run resumes from where the last run stopped: before the draft it explores again and asks
+only what is still open; with a draft in review it resumes at the design review; a signed-off
+phase offers to re-open or shows the handoff.
 
 **Example walkthrough:**
 
@@ -257,7 +272,7 @@ Security Considerations:
 - Password complexity requirements
 - Token expiration and refresh strategy
 
-Quality Score: 92/100 (Excellent)
+Critic review: no open mechanical findings
 
 Creating Linear issue...
 ✓ Created: AUTH-123 "Phase 1: User Authentication"
@@ -266,14 +281,14 @@ Creating Linear issue...
 **Tips:**
 - Phases should include architecture, technology choices, and implementation approach
 - Review security considerations carefully for auth-related features
-- Quality scores >90 indicate well-defined phases
+- The critic's judgment calls are questions, not blockers: answer them, or accept the recommended defaults
 - Phases created in your platform (Linear/GitHub/Markdown) serve as single source of truth
 
 **UX Contract and the Claude Design workflow:**
 
 Phases with a user-facing UI carry a `#### UX Contract` (Route Index, Required States,
 Interaction Flows, Accessibility Requirements, Breakpoints, Design Source) authored in
-shape mode and approved at the same Phase 3 gate as the rest of the design. The
+draft mode and reviewed at the same design review as the rest of the design. The
 recommended workflow for the visual design that feeds `##### Design Source`:
 
 1. Design in Claude Design — the visual step for layout, color, and hierarchy.
@@ -586,11 +601,16 @@ Different workflows have different thresholds:
 |----------|------------------|---------------------|
 | `/respec-plan` | 90 | 5 points |
 | `/respec-roadmap` | 90 | 10 points |
-| `/respec-phase` | 90 | 5 points |
+| `/respec-phase` | 100 or 0 (see below) | n/a |
 | `/respec-code` | 95 | 5 points |
 
 **Threshold:** Minimum score to proceed to next phase
 **Improvement Required:** Points that must improve between iterations to avoid stagnation
+
+`/respec-phase` has no point rubric. Its critic scores 100 when the review has no open mechanical
+findings and 0 otherwise, so the phase threshold of 90 means "no open mechanical findings". Open
+mechanical findings get at most two automatic repair rounds; anything still open then reaches you
+at the design review as one decision: send it back with direction, or accept it as-is.
 
 #### Stagnation Detection
 

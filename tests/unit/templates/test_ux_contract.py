@@ -5,7 +5,7 @@ tests/integration/test_state_manager_model_roundtrip.py via
 sample_phase_with_design_shape.design_shape_additional, since src/models/phase.py has
 zero code changes in this phase -- see decisions.md "The UX Contract lives under
 ### Design Shape - Additional Sections". B3-B6 are pinned here against the generated
-prompts.
+prompts; B6 is re-anchored on the design review (phase-cooperative B29).
 """
 
 import pytest
@@ -29,26 +29,13 @@ from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
 
-_ADAPTERS = [ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter()]
 _adapter = ClaudeCodeAdapter()
-
-
-def _phase_command_template(adapter: TuiAdapter) -> str:
-    return TemplateCoordinator().generate_command_template(
-        RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter
-    )
-
-
-def test_design_shape_is_preserved_verbatim_so_the_ux_contract_survives_the_detail_act() -> None:
-    # B3: the UX Contract lives inside `## Design Shape`, so the existing verbatim-
-    # preservation guard for a settled shape gate already covers it without any new
-    # instruction -- this is the property decisions.md's placement choice depends on.
-    # This prose does not vary per adapter, so a single adapter is sufficient.
-    template = generate_phase_architect_template(create_phase_architect_agent_tools(_adapter))
-
-    assert 'Preserve `## Design Shape` and `## Design Decisions` VERBATIM' in template, (
-        'Detail-act verbatim-preservation guard must cover the whole Design Shape H2, which is where the UX Contract lives'
-    )
+_HERMETIC_MODELS = {'reasoning': 'model', 'orchestration': 'model', 'coding': 'model', 'review': 'model'}
+_HERMETIC_ADAPTERS = [
+    ClaudeCodeAdapter(),
+    CodexAdapter(model_overrides=_HERMETIC_MODELS),
+    OpenCodeAdapter(model_overrides=_HERMETIC_MODELS),
+]
 
 
 def test_ux_contract_is_conditional_on_user_facing_ui_not_always_emitted() -> None:
@@ -64,7 +51,7 @@ def test_ux_contract_is_conditional_on_user_facing_ui_not_always_emitted() -> No
 def test_critic_rejects_an_interaction_flow_with_no_observable_pass_condition() -> None:
     # B5: the automated half of the quality bar -- prose like "looks right" must be
     # rejected as a blocker whenever a UX Contract is present.
-    tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40_000, phase_shape_soft_cap=10_000)
+    tools = create_phase_critic_agent_tools(_adapter)
     template = generate_phase_critic_template(tools)
 
     assert 'ux-contract-flow-missing-pass-condition' in template_contract(template).blocker_conditions()
@@ -72,7 +59,7 @@ def test_critic_rejects_an_interaction_flow_with_no_observable_pass_condition() 
 
 
 def test_critic_rejects_a_route_index_entry_with_no_auth_requirement() -> None:
-    tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40_000, phase_shape_soft_cap=10_000)
+    tools = create_phase_critic_agent_tools(_adapter)
     template = generate_phase_critic_template(tools)
 
     assert 'ux-contract-route-missing-auth' in template_contract(template).blocker_conditions()
@@ -81,22 +68,34 @@ def test_critic_rejects_a_route_index_entry_with_no_auth_requirement() -> None:
 def test_ux_contract_blocker_rules_do_not_apply_when_no_contract_is_present() -> None:
     # The rules must be scoped to "when present" -- a backend-only phase must never
     # trip them.
-    tools = create_phase_critic_agent_tools(_adapter, phase_length_soft_cap=40_000, phase_shape_soft_cap=10_000)
+    tools = create_phase_critic_agent_tools(_adapter)
     template = generate_phase_critic_template(tools)
 
     assert 'does NOT apply when no `#### UX Contract` is present' in template
 
 
-@pytest.mark.parametrize('adapter', _ADAPTERS)
-def test_ux_contract_is_surfaced_to_the_user_at_the_shape_edit_gate(adapter: TuiAdapter) -> None:
-    # B6: the contract must appear in the material presented at Human Gate 1a (Step 8).
-    # No new gate is added -- this asserts a conditional display inside the existing
-    # Step 8 body, not a separate step.
-    contract = template_contract(_phase_command_template(adapter))
-    body = contract.step_body('8')
+@pytest.mark.parametrize('adapter', _HERMETIC_ADAPTERS)
+def test_ux_contract_is_surfaced_at_design_review_when_present(adapter: TuiAdapter) -> None:
+    # Phase-cooperative B29 re-anchors the Step 8 test above on Step 10, the design review.
+    # `#### UX Contract` is the heading the architect emits and the parser reads.
+    template = TemplateCoordinator().generate_command_template(
+        RespecAICommand.PHASE, PlatformType.MARKDOWN, plans_dir=adapter.plans_dir(), tui_adapter=adapter
+    )
+    contract = template_contract(template)
+    design_review = [
+        (index, line)
+        for index, (line, step) in enumerate(zip(template.split('\n'), contract.line_steps(), strict=True))
+        if step and step.split('.')[0] == '10'
+    ]
 
-    assert '#### UX Contract' in body
-    assert 'Design Shape - Additional Sections' in body
+    notices = [
+        index
+        for index, line in design_review
+        if 'Design Shape - Additional Sections' in line
+        and any('#### UX Contract' in guard for guard in contract.guards_at(index))
+    ]
+
+    assert notices, 'design review never points at the UX Contract, or points at it unconditionally'
 
 
 def test_frontend_reviewer_scores_workflow_against_the_ux_contract_when_present() -> None:

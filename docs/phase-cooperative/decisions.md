@@ -188,7 +188,8 @@ shape act to the whole workflow. Step 5.5's semantics and test intent are reused
 **Originally:** *"`respec-phase` invokes `bp` as the public entrypoint. `bp` may delegate to
 `bp-pipeline` internally"* (`docs/TEMPLATE_AUDIT.md:5-10`, commit `be39e52`). bp's own interface
 document names respec-phase as an intended direct caller of `bp-pipeline` (F16), so the "don't
-reach into internals" rationale does not hold. Update `TEMPLATE_AUDIT.md` in phase 2.
+reach into internals" rationale does not hold. `TEMPLATE_AUDIT.md` records the new contract
+(phase 2, 2026-11-16).
 
 ---
 
@@ -306,11 +307,11 @@ The phase 2 test runs against both state managers.
 3. *Orchestrator re-asserts the marker after every architect turn.* It costs a write per turn, and
    MCP is wrong whenever a run stops mid-turn.
 
-**Consequence for frozen respec-code:** `code_command.py:221` accepts `shape-amended` as settled
-(F34). Under the new meaning, a re-opened phase that has not been re-signed-off would pass that
-gate. Sign-off always writes `shape-settled`, so the exposure is limited to the window while a
-re-open is in progress. That window is closed by the one sanctioned edit to respec-code in this
-effort (see "respec-code and respec-patch are frozen" below).
+**Consequence for frozen respec-code:** before phase 2, `code_command.py:221` accepted
+`shape-amended` as settled (F34), so under the new meaning a re-opened phase that had not been
+signed off again would have passed that gate. Phase 2 closed that window with the one sanctioned
+edit to respec-code (see "respec-code and respec-patch are frozen" below): the gate now accepts
+only `shape-settled`, which sign-off always writes.
 
 **Fixes:** F3, where `shape-amended` was overloaded.
 
@@ -355,8 +356,8 @@ Kept unchanged, with the original reasoning in `docs/phase-refactor/decisions.md
 3. *The plan's literal H2 names `Design` and `Decisions`.* They capture content from
    `## System Design` and `## Design Decisions` (F27, probe).
 
-**Rule for every phase:** brief prose never uses a bare `---` line, and never puts a `## `/`### `
-line inside a fenced block (F27).
+**Rule for every phase:** brief prose never uses a bare `---` line, and never puts a line starting with
+`##` or `###` inside a fenced block (F27).
 
 ---
 
@@ -371,7 +372,10 @@ line inside a fenced block (F27).
 **The one sanctioned exception:** `code_command.py:221` changes to accept only `shape-settled`, in
 phase 2, with a test. This is not an update for new sections. It keeps a safety gate correct after
 this effort changes the meaning of the value it tests (see the stage-marker decision). **Confirmed by
-the user on 2026-11-13.**
+the user on 2026-11-13; landed in phase 2 on 2026-11-16.** `code_command.py:221` reads
+`IF SHAPE_GATE != "shape-settled":`, pinned by
+`test_coding_workflow_refuses_a_reopened_phase_until_it_is_signed_off_again`
+(`tests/unit/templates/test_task_removal_workflow.py`).
 
 **Rejected:**
 1. *Update them alongside.* That spends effort on a consumer whose future is undecided.
@@ -399,9 +403,15 @@ and the specs list in `_get_agent_specs` (`:250`), and the phase command must gr
 
 ## The writing agents put the `implementation.md` draft on disk themselves
 
-**Status: confirmed by the user on 2026-11-13, before phase 2.** Chosen by the design work, not by the
-plan. Phase 2's manual check M7 still records whether Claude Code enforces the path scope on a
-subagent; the decision stands either way.
+**Status: decided in phase 2.** Confirmed by the user on 2026-11-13; landed on 2026-11-16 (the
+architect's `Write(.respec-ai/plans/*/phases/*/implementation.md)` grant,
+`create_phase_architect_agent_tools`). Chosen by the design work, not by the plan. Phase 2's manual
+check M7 records whether Claude Code enforces the path scope on a subagent; the decision stands
+either way.
+
+**M7 result: not yet run** (2026-11-16). It needs a live Claude Code spawn of the regenerated
+architect, which no automated test performs. Until it runs, treat the scope as resting on the
+prompt on all three TUIs, and record the result here.
 
 **Chosen:**
 - The architect, and in phase 4 the finalizer, gets a `Write` grant scoped to
@@ -430,3 +440,18 @@ Phase 2's manual check M7 settles it and records the result here. On those TUIs,
 `implementation.md`" is enforced by the prompt alone. That is a least-privilege regression for an
 otherwise read-only agent. If phase 2 judges it unacceptable, fall back to (2) and accept the
 context cost.
+
+## Accepting every default never ends the run
+
+**Status:** decided by the user on 2026-11-16, after phase 2's review.
+
+**Decision:** in the briefing (Step 6.2), "Accept the recommended default for all remaining" records
+every remaining recommendation except one that would end the run: Option A of the Design Source OD
+(design first) or of a verify command OD (set the command, then re-run). Each such decision is asked
+on its own, without the accept-all option, so ending the run always takes the user's own choice.
+
+**Rejected:**
+1. *Accept it like any other default.* The run then stops after the briefing on a batch click the
+   user may not have read as "stop here".
+2. *Pin the Design Source OD's Recommended to B,* as the verify command OD pins C. Accept-all would
+   never end the run, but the recommendation would stop reflecting the architect's judgment.

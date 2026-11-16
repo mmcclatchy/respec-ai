@@ -62,7 +62,6 @@ from src.platform.tui_adapters import AgentSpec, CommandSpec, get_tui_adapter
 from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_selector import TuiType
 from src.platform.tool_enums import BuiltInToolCapability, RespecAICommand
-from src.utils.setting_configs import loop_config
 
 
 _COMMAND_TEMPLATES = [
@@ -271,9 +270,7 @@ def _get_agent_specs(
     roadmap_orchestrator_tools = create_roadmap_orchestrator_agent_tools(tui_adapter, roadmap_platform_tools)
     create_phase_tools = create_create_phase_agent_tools(tui_adapter, create_phase_platform_tools, platform_type)
     phase_architect_tools = create_phase_architect_agent_tools(tui_adapter, plans_dir=plans_dir)
-    phase_critic_tools = create_phase_critic_agent_tools(
-        tui_adapter, loop_config.phase_length_soft_cap, loop_config.phase_shape_soft_cap
-    )
+    phase_critic_tools = create_phase_critic_agent_tools(tui_adapter)
     patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)
     coder_tools = create_coder_agent_tools(tui_adapter)
     frontend_coder_tools = create_frontend_coder_agent_tools(tui_adapter)

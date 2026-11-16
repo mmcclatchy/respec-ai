@@ -20,6 +20,10 @@ class OpenCodeAdapter(TuiAdapter):
         return 'the conversation workflow'
 
     @property
+    def best_practices_tui(self) -> str:
+        return 'opencode'
+
+    @property
     def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
         # Source of truth for OpenCode built-in tool runtime names.
         # Any new built-in capability must be reviewed here explicitly.
@@ -32,6 +36,7 @@ class OpenCodeAdapter(TuiAdapter):
             BuiltInToolCapability.GLOB: 'glob',
             BuiltInToolCapability.GREP: 'grep',
             BuiltInToolCapability.TASK: 'Task',
+            BuiltInToolCapability.SEND_MESSAGE: None,
             BuiltInToolCapability.BASH: 'bash',
             BuiltInToolCapability.BASH_OUTPUT: None,
             BuiltInToolCapability.KILL_SHELL: None,

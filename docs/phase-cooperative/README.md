@@ -225,7 +225,8 @@ first**, in the same commit, and says so.
 item 10, phase 2 work item 13, phase 3 work item 10 and phase 4 Scope 0. They land here in the same
 commit as the code that needs them, so until a phase lands, this section still shows the earlier
 text. Where this section and the phase document you are implementing disagree about that phase's
-own work, the phase document describes the target.
+own work, the phase document describes the target. Phase 2's amendments (its work item 13) landed
+here on 2026-11-16.
 
 ### Agents and modes
 
@@ -240,11 +241,12 @@ own work, the phase document describes the target.
   `review_round` (see "Critic findings"). Never pass conversation text, the briefing, or document
   bodies.
 - **Reports never carry document bodies.** `implementation.md` has no MCP home (F29), which is why
-  the agents write it to disk themselves. This grant is an open call, recorded with its opencode and
-  codex caveat in decisions.md ("The writing agents put the `implementation.md` draft on disk
-  themselves").
+  the agents write it to disk themselves. The grant was decided in phase 2 and is recorded with its
+  caveat in decisions.md ("The writing agents put the `implementation.md` draft on disk
+  themselves"): on opencode and codex the path scope rests on the prompt (F14), and on Claude Code
+  it is unverified until manual check M7 runs.
 - **Mode names are user-visible on opencode.** The invocation description is prompt text there
-  (`opencode.py:203-224`), so it states the mode accurately and names no language.
+  (`opencode.py:208-229`), so it states the mode accurately and names no language.
 
 ### Subagent report format
 
@@ -271,16 +273,18 @@ this order. Nothing precedes the first one.
   ```markdown
   - result: complete | needs-user | failed
   - mode: explore | draft | revise | review | finalize
-  - persisted: <what was written, e.g. "phase document updated; analysis stored"> | nothing
+  - persisted: <the design writes, e.g. "phase document updated; implementation.md written"> | nothing
   - detail: <one line; required when result is failed>
   ```
 
   The orchestrator branches on `result`. A `failed` result stops the workflow with the detail shown
-  (fail-closed).
+  (fail-closed). `persisted` lists only the phase document and `implementation.md` writes, and is
+  `nothing` when neither changed. The architect stores its notes on every engagement and does not
+  list them, so a question-only engagement reports `nothing`.
 
-**Decision entry (canonical).** There is one form. The single-line form parsed today at
-`phase_command.py:545-546` is retired. This form is the nested one the architect already emits
-(`phase_architect.py:519-524`), plus `Affects`:
+**Decision entry (canonical).** There is one form. The single-line form the orchestrator parsed
+before phase 2 is retired. This form is the nested one the architect emits (DECISION ENTRY FORMAT
+in `phase_architect.py`), plus `Affects`:
 
 ```markdown
 - OD-003 | <title>
@@ -292,7 +296,10 @@ this order. Nothing precedes the first one.
 
 - **IDs.** The architect's entries use `OD-NNN`. The same ID and text also sit in the document's
   `### Open Design Decisions`, and the document wins on any mismatch. The critic's judgment questions
-  use `CQ-NNN` and exist only in its report.
+  use `CQ-NNN`. They are asked from its report, and the critic also stores each one in its
+  feedback's `### Key Issues` (`- [judgment] [<Marker>] CQ-NNN: …`), because that stored feedback is
+  its only memory between rounds. A new CQ takes the next number above every `CQ-NNN` in the
+  previous reviews and in the SDs, so a finding keeps its ID across rounds.
 - **Options.** `Option C:` is optional; there is no fourth option. That keeps every question
   answerable in one prompt that also offers the "accept the recommended default for all remaining"
   exit.
@@ -308,9 +315,22 @@ this order. Nothing precedes the first one.
 - **`source` values:**
   - `user`: an answer to a prompt
   - `user-edit`: from diffing a hand edit
+  - `materializer`: a skeleton-materialization outcome at sign-off (an unmaterialized or
+    unintrospectable path, or a merge left untouched). It reports a tool result, not an answer.
   - `architect`: carried forward
   - `implementation`: written back by frozen respec-code (`src/utils/design_conformance.py:287`)
-- **`supersedes`** names the `OD-NNN` or `CQ-NNN` it settles.
+
+  The earlier `user-menu` and `user-override` sources are retired in favor of `user`.
+- **Fields per source.** `user` carries `supersedes` and `rejected` when it settles an `OD-NNN`, a
+  `CQ-NNN` or the unresolved checks; an answer to a sign-off skeleton-conflict prompt settles no
+  ID and has no `supersedes`. `user-edit` carries `section=<H2 > H3>` and neither `supersedes` nor
+  `rejected`. `materializer` carries neither.
+- **`supersedes`** names the `OD-NNN` or `CQ-NNN` it settles, or the reserved token
+  `unresolved-checks`: the user accepted the mechanical findings two automatic repairs did not
+  resolve, recorded as `decision=accept as-is: <each finding verbatim>`. The critic never raises an
+  accepted finding again.
+- **IDs.** An SD takes the next number above every `SD-NNN` already in the document, three digits.
+  It never reuses the number of the OD or CQ it settles.
 - **Placement.** SD entries go under `### Settled Design Decisions`, and the settled OD is removed
   from `### Open Design Decisions`.
 
@@ -367,7 +387,11 @@ The protocol is the same at every touchpoint. The critic follows the same patter
      `source=user` appended.
    - Free-form direction goes through `store_user_feedback`, prefixed with a round tag:
      `[round N | briefing|review|sign-off|question]`. `get_feedback` returns every entry, untagged
-     and unbounded (F31). The tag lets the architect apply only what is new.
+     and unbounded (F31). The tag is context for the architect; it does not decide what is new.
+     Newness is decided by position: `get_feedback` numbers user entries `## User Input <i>` in
+     insertion order, the architect records in its notes the highest `<i>` it has applied, and it
+     applies every entry above that. A round number cannot serve, because the run's guidance, the
+     briefing answers and relayed questions all share round 0.
    - User hand edits of `phase.md` keep today's path: re-read, `validate_document` for content loss
      (shown to the user, because they are the user's own edits), diff into `source=user-edit` SDs,
      store.
@@ -414,9 +438,13 @@ Phases 2 and 3 work on the current sections:
   - every RP line, with its `[approved]` or `[declined]` mark
   - one `` - Read: `.best-practices/<file>.md` — informs: <IDs> — Source: <RP-NNN | in-kb> `` line
     per document in use
-- **The UI-only `#### Design Research` block is retired** (`phase_command.py:476-520` today). It
-  covered UI phases only. Its idempotence semantics carry over unchanged: a `[declined]` proposal is
-  never re-offered, and only a genuinely new gap is offered, once.
+- **The UI-only `#### Design Research` block is retired** (phase 2). It covered UI phases only.
+  Its idempotence semantics carry over unchanged: a `[declined]` proposal is never re-offered, and
+  only a genuinely new gap is offered, once.
+- **What the architect adds.** The ledger's RP marks and `- Read:` lines are the orchestrator's.
+  `draft` and `revise` may add only two things: a nested `- Applied: <where>` line under a
+  `- Read:` entry that a step cites, and at most one new unmarked RP line for a new gap. That line
+  is also the report's single research proposal, which design review offers.
 - **Results become `- Read:` lines.** The orchestrator writes `- Read:` lines only after validating
   `bp-pipeline`'s `BP_PIPELINE_COMPLETE. Output: <path>` signal and confirming the file exists.
 
@@ -481,19 +509,23 @@ or `$bp`.
 
 | TUI | Grant | Invocation | Status |
 |---|---|---|---|
-| Claude Code | `Task(bp-pipeline)` in the command's allowed tools | the Task/Agent tool with subagent type `bp-pipeline`; the interface fields form the prompt | Verified. The orchestrator guardrail must name `bp-pipeline` as an allowed exception (F18). |
-| opencode | `Task(bp-pipeline)`, which becomes `permission.task: {"*": "deny", …, "bp-pipeline": "allow"}` (`opencode.py:282-283`) | `CALL task` with `subagent_type: "bp-pipeline"` | **Unverified:** whether a `"hidden": true` subagent can be dispatched by name, and whether the installed opencode honors the `permission.task` map. This is a phase 2 manual check, done before the opencode path is relied on. |
-| codex | none enforceable (`Allowed tools:` is prose; F14) | spawn the custom agent `bp-pipeline` by its exact name | Verified. The adapter's helper renames agents to `respec-<x>-agent` (`codex.py:369-375`), so it needs a render path for external agents. |
+| Claude Code | `Task(bp-pipeline)` in the command's allowed tools | the Task/Agent tool with subagent type `bp-pipeline`; the interface fields form the prompt | Verified. The phase command names `bp-pipeline` as its one external agent right after the shared guardrail (F18). |
+| opencode | `Task(bp-pipeline)`, which becomes `permission.task: {"*": "deny", …, "bp-pipeline": "allow"}` (`opencode.py:288`) | `CALL task` with `subagent_type: "bp-pipeline"` | **Unverified:** whether a `"hidden": true` subagent can be dispatched by name, and whether the installed opencode honors the `permission.task` map. Phase 2's manual check M1 was not run: opencode is no longer used, so it does not block phase 2. Run it ([phase-2-manual-checks.md](phase-2-manual-checks.md), M1) before relying on the opencode research path. |
+| codex | none enforceable (`Allowed tools:` is prose; F14) | spawn the custom agent `bp-pipeline` by its exact name | Verified. The adapter's helper renames respec agents to `respec-<x>-agent`, so external agents render through `render_external_agent_invocation` (`codex.py:258`), which keeps the exact name. |
 
 Rules for every TUI:
-- **The call text is adapter-rendered.** A new adapter method renders an external, non-respec agent
-  invocation with the exact name, so the template stays TUI-neutral. `phase_command.py:92-93` must
-  stop hardcoding `Task(bp):`.
-- **The preflight is real.** `best-practices-rag check --tui <tui>` runs through Bash, the check
-  `src/cli/services/best_practices_preflight.py:24` already uses. It replaces the grant-string
-  tautology at `phase_command.py:78`. Whether `check` also confirms that the `bp-pipeline` agent is
-  installed is unverified; phase 2 confirms it or adds a check. If bp is unavailable, the workflow
-  degrades: it continues without research and tells the user. It never terminates.
+- **The call text is adapter-rendered.** `TuiAdapter.render_external_agent_invocation` renders an
+  external, non-respec agent invocation with the exact name, so the template stays TUI-neutral. The
+  phase command renders it once, at Step 7, from `PhaseCommandTools.invoke_bp_pipeline`.
+- **The preflight is real.** `best-practices-rag check --tui <tui>` runs through Bash at Step 3, the
+  check `src/cli/services/best_practices_preflight.py:24` already uses. Verified in phase 2 against
+  the installed best-practices-rag v0.2.16 (`best_practices_rag/cli.py:401-426`): `check` confirms
+  that the `bp-pipeline` agent file is installed (`agents/bp-pipeline.md` for claude,
+  `prompts/bp-pipeline.md` for opencode, `agents/bp-pipeline.toml` for codex), and it also fails
+  when Neo4j is unreachable or the Exa key is missing. Any non-zero exit means bp is unavailable. It
+  confirms that the file exists, not that the agent can be dispatched; opencode dispatchability is
+  manual check M1. If bp is unavailable, the workflow degrades: it continues without research and
+  tells the user. It never terminates.
 - **The orchestrator computes bp-pipeline's inputs at dispatch time.** This is bp's own split: *"Steps
   1-4 run in the main session and produce scalar parameters"* (`~/.claude/commands/bp.md:23`). The
   inputs come from each approved proposal's Technologies, Topics and Query, using local commands
@@ -508,9 +540,10 @@ Rules for every TUI:
 
   An edited or user-added proposal gets its tier recomputed the same way. If the tier rose, the user
   confirms it again before anything runs.
-- **Concurrency.** `synthesis-only` items run with at most 3 parallel workers, as today
-  (`phase_command.py:71`). `web-research` items run **one at a time**, because `bp-pipeline` writes
-  Exa results to fixed `/tmp` paths (F17).
+- **Concurrency.** `synthesis-only` items run with at most 3 parallel workers
+  (`MAX_ACTIVE_BP_WORKERS`). `web-research` items run **one at a time**
+  (`MAX_ACTIVE_WEB_RESEARCH_WORKERS = 1`), because `bp-pipeline` writes Exa results to fixed `/tmp`
+  paths (F17).
 - **Completion.** Accept only a result that contains `BP_PIPELINE_COMPLETE. Output: <path>` and
   whose file exists. Anything else fails that item and records nothing.
 - **The cost invariant is a guard test.** On the path where the user denies everything, no
@@ -523,8 +556,8 @@ Rules for every TUI:
   sections; extend it to every new H2. Names fixed for phase 4: `Grounding`, `Guardrails`,
   `Delegation Bounds`, `Behaviors & Acceptance` (decisions.md). Also reserved: `Evolution Log`
   (respec-patch).
-- **Prose hygiene.** Brief prose contains no bare `---` line, and no `## ` or `### ` line inside a
-  fenced block (F27).
+- **Prose hygiene.** Brief prose contains no bare `---` line, and no line starting with `##` or `###`
+  inside a fenced block (F27).
 - **No new H3s under mapped H2s.** New H3s under mapped H2s (`Overview`, `System Design`,
   `Design Shape`, `Design Decisions`, `Implementation`, `Additional Details`) are dropped (F28).
 - **Frozen-reader compatibility.** Every phase keeps emitting the following, because frozen
@@ -593,4 +626,5 @@ Rules for every TUI:
    are worked around, not fixed. Report them upstream, and re-check the workarounds when
    best-practices-rag is upgraded.
 6. **Least privilege is Claude-Code-only** (F14). Read-only and path-scoped guarantees on opencode
-   and codex rest on prompt text.
+   and codex rest on prompt text. The architect's path-scoped `implementation.md` Write is
+   unverified on Claude Code too until manual check M7 runs (decisions.md).

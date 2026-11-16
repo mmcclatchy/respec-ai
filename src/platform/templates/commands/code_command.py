@@ -218,9 +218,9 @@ IF PHASE_MARKDOWN retrieval fails:
 
 SHAPE_GATE = [extract "### Shape Gate" value from PHASE_MARKDOWN]
 
-IF SHAPE_GATE not in ["shape-settled", "shape-amended"]:
+IF SHAPE_GATE != "shape-settled":
   ERROR: "Phase design was never settled by the human gate"
-  DIAGNOSTIC: "### Shape Gate is '{{SHAPE_GATE}}', not 'shape-settled' or 'shape-amended'"
+  DIAGNOSTIC: "### Shape Gate is '{{SHAPE_GATE}}', not 'shape-settled'"
   SUGGEST: "Run the Phase workflow (respec-phase) to settle the design before coding"
   FAIL-CLOSED:
   - Do NOT initialize coding loop

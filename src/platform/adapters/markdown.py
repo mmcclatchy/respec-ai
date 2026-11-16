@@ -85,7 +85,7 @@ PLAN_MATCHES = Glob(pattern=PLAN_GLOB_PATTERN)"""
 
     @property
     def phase_location_setup(self) -> str:
-        return f'Bash: mkdir -p {self.base_path}/plans/{{{{PLAN_NAME}}}}/phases/{{{{PHASE_NAME}}}}/'
+        return f'Bash: mkdir -p {self.base_path}/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/'
 
     @property
     def list_phases_tool(self) -> str:
@@ -118,6 +118,6 @@ PLAN_MATCHES = Glob(pattern=PLAN_GLOB_PATTERN)"""
     @property
     def platform_tool_documentation(self) -> str:
         return f"""Platform-Specific Tool Usage for Markdown:
-- Phase files: Write/Read/Edit for {self.base_path}/plans/{{{{plan_name}}}}/phases/{{{{phase-name}}}}/phase.md
+- Phase files: Write/Read/Edit for {self.base_path}/plans/{{plan_name}}/phases/{{phase-name}}/phase.md
 - Discovery: Use Glob patterns to find matching phase files
 - Storage: Markdown files in hierarchical directory structure"""

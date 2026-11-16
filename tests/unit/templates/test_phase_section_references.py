@@ -18,7 +18,7 @@ from src.platform.templates.agents import (
     generate_coder_template,
     generate_spec_alignment_reviewer_template,
 )
-from src.platform.templates.commands.phase_command import technical_phase_template
+from src.platform.templates.agents.phase_architect import technical_phase_template
 from src.platform.tui_adapters import ClaudeCodeAdapter
 
 
@@ -41,7 +41,7 @@ def _known_section_names() -> set[str]:
 def technical_phase_template_additional_section_names() -> set[str]:
     # additional_sections keys are domain-specific H2s not present in HEADER_FIELD_MAPPING.
     # Parsed from the built markdown (rather than hardcoded) so this set can't drift from
-    # phase_command.py's technical_phase_template when Phase 2 adds sections.
+    # phase_architect.py's technical_phase_template when a phase adds sections.
     return (
         {line.removeprefix('## ').strip() for line in technical_phase_template.splitlines() if line.startswith('## ')}
         - {header_path[0] for header_path in Phase.HEADER_FIELD_MAPPING.values()}

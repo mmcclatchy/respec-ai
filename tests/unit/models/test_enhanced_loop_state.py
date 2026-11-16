@@ -1,3 +1,5 @@
+import pytest
+
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.utils.enums import LoopStatus, LoopType
@@ -294,3 +296,68 @@ class TestEnhancedLoopState:
 
         response = loop_state.decide_next_loop_action()
         assert response.status == LoopStatus.REFINE
+
+
+_OPEN_MECHANICAL_FINDING = '[mechanical] [Empty Test List - BLOCKING]: Design Shape lists no tests'
+
+
+def _phase_critic_review(loop_id: str, review_round: int, has_blockers: bool) -> CriticFeedback:
+    return CriticFeedback(
+        loop_id=loop_id,
+        critic_agent=CriticAgent.PHASE_CRITIC,
+        iteration=review_round,
+        overall_score=0 if has_blockers else 100,
+        assessment_summary=f'Review round {review_round}',
+        detailed_feedback='Phase critic review of the current draft.',
+        key_issues=[],
+        blockers=[_OPEN_MECHANICAL_FINDING] if has_blockers else [],
+        recommendations=[],
+    )
+
+
+class TestPhaseCriticReviewRounds:
+    # Phase-cooperative B3 (F9): the critic stores each review under the review_round the
+    # orchestrator passes, scoring 100 with an empty ### Blockers and 0 otherwise.
+
+    def test_every_review_round_in_a_run_is_kept_in_the_loop_history(self) -> None:
+        loop_state = LoopState(loop_type=LoopType.PHASE)
+
+        for review_round, has_blockers in enumerate((True, True, False), start=1):
+            loop_state.upsert_feedback(_phase_critic_review(loop_state.id, review_round, has_blockers))
+
+        assert [feedback.iteration for feedback in loop_state.feedback_history] == [1, 2, 3]
+        assert loop_state.score_history == [0, 0, 100]
+
+    @pytest.mark.parametrize(
+        ('rounds_with_blockers', 'completes'),
+        [
+            ((False,), True),
+            ((True, False), True),
+            ((True, True, False), True),
+            ((True,), False),
+            ((False, True), False),
+            ((True, True, True), False),
+        ],
+    )
+    def test_loop_completes_exactly_when_the_latest_review_has_no_blockers(
+        self, rounds_with_blockers: tuple[bool, ...], completes: bool
+    ) -> None:
+        loop_state = LoopState(loop_type=LoopType.PHASE)
+        decisions: list[LoopStatus] = []
+
+        for review_round, has_blockers in enumerate(rounds_with_blockers, start=1):
+            loop_state.upsert_feedback(_phase_critic_review(loop_state.id, review_round, has_blockers))
+            decisions.append(loop_state.decide_next_loop_action().status)
+
+        assert (decisions[-1] == LoopStatus.COMPLETED) is completes
+
+    def test_completed_loop_reopens_when_a_later_review_stores_blockers(self) -> None:
+        # The design-review loop runs the critic again on the same loop after a revise, so
+        # a completed decision must not be terminal.
+        loop_state = LoopState(loop_type=LoopType.PHASE)
+        loop_state.upsert_feedback(_phase_critic_review(loop_state.id, 1, has_blockers=False))
+        assert loop_state.decide_next_loop_action().status == LoopStatus.COMPLETED
+
+        loop_state.upsert_feedback(_phase_critic_review(loop_state.id, 2, has_blockers=True))
+
+        assert loop_state.decide_next_loop_action().status == LoopStatus.REFINE

@@ -75,6 +75,14 @@ class TuiAdapter(ABC):
         return f'{ask_tool} response' if ask_tool else 'the user response'
 
     @property
+    def selection_batch_limit(self) -> int:
+        return 1
+
+    @property
+    @abstractmethod
+    def best_practices_tui(self) -> str: ...
+
+    @property
     def subagent_invocation_guardrail(self) -> str:
         return ''
 
@@ -146,6 +154,19 @@ class TuiAdapter(ABC):
         description: str,
         params: list[tuple[str, str]],
     ) -> str: ...
+
+    def render_external_agent_invocation(
+        self,
+        agent_name: str,
+        description: str,
+        params: list[tuple[str, str]],
+    ) -> str:
+        """Render an invocation of an agent respec-ai does not generate, under its exact installed name.
+
+        Adapters that rename respec agents at render time override this so an external agent
+        keeps the name it was installed under.
+        """
+        return self.render_agent_invocation(agent_name, description, params)
 
     @abstractmethod
     def render_command_invocation(

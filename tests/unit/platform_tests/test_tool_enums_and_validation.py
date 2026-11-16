@@ -1,9 +1,17 @@
 """Tests for tool enums and validation system."""
 
+import json
+import re
+from pathlib import Path
+
 import pytest
 
-from src.platform.models import ToolReference
+from src.cli.services.best_practices_preflight import _normalize_tui_name
+from src.platform.adapters import get_platform_adapter
+from src.platform.models import PhaseCommandTools, ToolReference
 from src.platform.platform_selector import PlatformType
+from src.platform.template_coordinator import TemplateCoordinator
+from src.platform.template_generator import _parse_command_spec
 from src.platform.startup_validation import (
     validate_external_platform_tools,
     validate_platform_adapters,
@@ -23,11 +31,14 @@ from src.platform.tool_enums import (
     BuiltInToolCapability,
     ExternalPlatformTool,
     RespecAIAgent,
+    RespecAICommand,
     RespecAITool,
 )
 
 
-from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, OpenCodeAdapter
+from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, OpenCodeAdapter, get_tui_adapter
+from src.platform.tui_adapters.base import TuiAdapter
+from src.platform.tui_selector import TuiType
 
 
 class TestToolEnums:
@@ -120,20 +131,13 @@ class TestTemplateHelpers:
         )
 
         assert 'Task(respec-phase-architect)' in tools.tools_yaml
-        assert 'Task(bp)' in tools.tools_yaml
+        assert 'Task(bp-pipeline)' in tools.tools_yaml.split(', ')
+        assert 'Task(bp)' not in tools.tools_yaml.split(', ')
         assert 'mcp__respec-ai__initialize_refinement_loop' in tools.tools_yaml
         assert 'mcp__linear-server__create_issue' in tools.tools_yaml
-        assert tools.invoke_phase_critic_post_synthesis
-        assert 'post_synthesis' in tools.invoke_phase_critic_post_synthesis
         assert tools.platform == PlatformType.LINEAR
 
-    def test_create_phase_command_tools_grants_write_for_the_shape_act_edit_gate(self) -> None:
-        # Phase 3's Step 8/9 edit gate writes phase.md to disk for the user to hand-edit
-        # (docs/phase-refactor/phase-3-human-gate.md "Step 8/9 — the edit gate") and
-        # reads it back. Without a Write grant scoped to phase.md, that step's "Use Write
-        # tool" instruction has no corresponding tool declaration to act on. The same
-        # glob also covers Step 11.5's two named skeleton-materialization scratch files
-        # (docs/phase-refactor/phase-4-skeletons.md), never real source paths.
+    def test_create_phase_command_tools_grants_write_for_the_phase_disk_mirror(self) -> None:
         tools = create_phase_command_tools(
             'mcp__linear-server__create_issue',
             'mcp__linear-server__get_issue',
@@ -257,6 +261,168 @@ class TestTemplateHelpers:
 
         with pytest.raises(ValueError, match='does not support built-in tool capability'):
             builder.build()
+
+
+_HERMETIC_MODELS = {'reasoning': 'model', 'orchestration': 'model', 'coding': 'model', 'review': 'model'}
+_PHASE_TUIS = [
+    ClaudeCodeAdapter(),
+    OpenCodeAdapter(model_overrides=_HERMETIC_MODELS),
+    CodexAdapter(model_overrides=_HERMETIC_MODELS),
+]
+_PHASE_TUI_IDS = ['claude-code', 'opencode', 'codex']
+_PORTABLE_TUIS = _PHASE_TUIS[1:]
+_PORTABLE_TUI_IDS = _PHASE_TUI_IDS[1:]
+
+_INVOCATION_INPUT = re.compile(r'^\s*-\s*(?P<name>\w+):\s*(?P<value>.+?)\s*$', re.MULTILINE)
+_RESUME_ADDRESSEE = re.compile(r'^\s*to:\s*(?P<addressee>\S+)\s*$', re.MULTILINE)
+
+_AGENT_IDS = {'loop_id': 'LOOP_ID', 'plan_name': 'PLAN_NAME', 'phase_name': 'PHASE_NAME'}
+_CONFIG_CONTEXT = {'project_config_context_markdown': 'PROJECT_CONFIG_CONTEXT_MARKDOWN'}
+
+# Field names from bp-pipeline's published input interface
+# (~/.config/best-practices-rag/references/bp-pipeline-interface.md), which bp-pipeline parses.
+# These are the fields the orchestrator computes at dispatch time (phase 2 work item 6, Step 7).
+_BP_PIPELINE_DISPATCH_FIELDS = frozenset(
+    {
+        'MODE',
+        'TECH',
+        'TOPICS',
+        'QUERY',
+        'PRIMARY_QUERY',
+        'OUTPUT_FILE',
+        'TECH_VERSIONS_JSON',
+        'CUTOFF_DATE',
+        'COVERED_TECHS',
+        'UNCOVERED_TECH',
+        'ALL_QUERIED_TECHS',
+        'LANGUAGES',
+        'LANGUAGE_AGNOSTIC',
+    }
+)
+
+
+def _phase_command_tools(adapter: TuiAdapter, platform: PlatformType = PlatformType.MARKDOWN) -> PhaseCommandTools:
+    platform_adapter = get_platform_adapter(platform)
+    return create_phase_command_tools(
+        platform_adapter.create_phase_tool,
+        platform_adapter.retrieve_phase_tool,
+        platform_adapter.list_phases_tool,
+        platform,
+        tui_adapter=adapter,
+    )
+
+
+def _invocation_inputs(invocation: str) -> dict[str, str]:
+    return {match.group('name'): match.group('value') for match in _INVOCATION_INPUT.finditer(invocation)}
+
+
+class TestPhaseCommandToolsForTheCooperativeFlow:
+    @pytest.mark.parametrize('adapter', _PHASE_TUIS, ids=_PHASE_TUI_IDS)
+    def test_phase_command_is_granted_bp_pipeline_and_never_the_unrunnable_bp(self, adapter: TuiAdapter) -> None:
+        # B14 (F15): no agent named bp exists on any TUI; bp-pipeline is the dispatchable agent.
+        granted = _phase_command_tools(adapter).tools_yaml.split(', ')
+
+        assert 'Task(bp-pipeline)' in granted
+        assert 'Task(bp)' not in granted
+
+    def test_opencode_permits_the_phase_command_to_dispatch_bp_pipeline(self, tmp_path: Path) -> None:
+        # B14: opencode turns a command's Task(...) grants into permission.task, which denies
+        # every subagent the command does not name (README "bp invocation per TUI").
+        adapter = OpenCodeAdapter(model_overrides=_HERMETIC_MODELS)
+        template = TemplateCoordinator().generate_command_template(
+            RespecAICommand.PHASE, PlatformType.MARKDOWN, tui_adapter=adapter
+        )
+        adapter.write_all(tmp_path, [], [_parse_command_spec(RespecAICommand.PHASE, template, 'model')])
+
+        config = json.loads((tmp_path / 'opencode.json').read_text(encoding='utf-8'))
+        task_permission = config['agent'][f'cmd-{RespecAICommand.PHASE.value}']['permission']['task']
+
+        assert task_permission.get('bp-pipeline') == 'allow'
+        assert 'bp' not in task_permission
+
+    @pytest.mark.parametrize('adapter', _PHASE_TUIS, ids=_PHASE_TUI_IDS)
+    def test_research_dispatch_names_bp_pipeline_exactly_with_every_field_it_computes(
+        self, adapter: TuiAdapter
+    ) -> None:
+        # B14 (F15, F16): codex's respec-<x>-agent rename would dispatch an agent that does not exist.
+        invocation = _phase_command_tools(adapter).invoke_bp_pipeline
+        inputs = _invocation_inputs(invocation)
+
+        assert 'bp-pipeline' in invocation
+        assert 'respec-bp-pipeline' not in invocation
+        assert _BP_PIPELINE_DISPATCH_FIELDS <= inputs.keys()
+        assert inputs['MODE'] == 'codegen'
+
+    @pytest.mark.parametrize('tui', list(TuiType))
+    def test_bp_preflight_checks_the_installation_for_the_tui_the_workflow_runs_on(self, tui: TuiType) -> None:
+        # B15: the command string is parsed by the best-practices-rag CLI, whose exit code is the
+        # availability signal; it must check the same installation the init preflight checks.
+        tools = _phase_command_tools(get_tui_adapter(tui))
+
+        assert tools.bp_preflight_command == f'best-practices-rag check --tui {_normalize_tui_name(tui.value)}'
+
+    @pytest.mark.parametrize('adapter', _PHASE_TUIS, ids=_PHASE_TUI_IDS)
+    @pytest.mark.parametrize(
+        ('field', 'mode'),
+        [
+            ('invoke_architect_explore', 'explore'),
+            ('invoke_architect_draft', 'draft'),
+            ('invoke_architect_revise', 'revise'),
+        ],
+    )
+    def test_each_architect_mode_is_invoked_with_its_mode_ids_and_config_context_only(
+        self, adapter: TuiAdapter, field: str, mode: str
+    ) -> None:
+        # README "Agents and modes": never pass conversation text. The workflow guidance reaches
+        # the architect as round-0 feedback, so no invocation carries it.
+        invocation = getattr(_phase_command_tools(adapter), field)
+
+        assert 'respec-phase-architect' in invocation
+        assert _invocation_inputs(invocation) == {'phase_mode': mode, **_AGENT_IDS, **_CONFIG_CONTEXT}
+
+    @pytest.mark.parametrize('adapter', _PHASE_TUIS, ids=_PHASE_TUI_IDS)
+    def test_critic_review_is_invoked_with_the_round_it_stores_under_and_the_config_context(
+        self, adapter: TuiAdapter
+    ) -> None:
+        # B4 (F9): the critic stores each review under review_round, so every round is kept.
+        # F22: the critic gets the project config context too.
+        invocation = _phase_command_tools(adapter).invoke_critic_review
+
+        assert 'respec-phase-critic' in invocation
+        assert _invocation_inputs(invocation) == {
+            'phase_mode': 'review',
+            **_AGENT_IDS,
+            'review_round': 'REVIEW_ROUND',
+            **_CONFIG_CONTEXT,
+        }
+
+    def test_claude_code_resumes_the_recorded_architect_with_its_mode_and_ids_only(self) -> None:
+        # B21 (F13): SendMessage resumes the same architect with its exploration intact; the
+        # relay contract still forbids passing conversation text.
+        tools = _phase_command_tools(ClaudeCodeAdapter())
+        addressee = _RESUME_ADDRESSEE.search(tools.resume_architect)
+
+        assert 'SendMessage' in tools.tools_yaml.split(', ')
+        assert 'SendMessage' in tools.resume_architect
+        assert addressee is not None
+        assert addressee.group('addressee') == 'ARCHITECT_AGENT_ID'
+        assert _invocation_inputs(tools.resume_architect) == {'phase_mode': 'ARCHITECT_MODE', **_AGENT_IDS}
+
+    @pytest.mark.parametrize('adapter', _PORTABLE_TUIS, ids=_PORTABLE_TUI_IDS)
+    def test_portable_tuis_re_engage_the_architect_fresh_and_never_mention_resuming(self, adapter: TuiAdapter) -> None:
+        # B21 (F13): codex closes each subagent after harvest and opencode cannot resume one.
+        tools = _phase_command_tools(adapter)
+
+        assert tools.resume_architect == ''
+        assert 'SendMessage' not in tools.tools_yaml
+
+    def test_hand_edit_store_keeps_the_frozen_field_exception(self) -> None:
+        # B25: a user's hand edit is theirs to make, frozen roadmap fields included; the
+        # parameter name is the store_document MCP tool's own.
+        store = _phase_command_tools(ClaudeCodeAdapter()).store_document_user_edit
+
+        assert store.startswith(f'{RespecAITool.STORE_DOCUMENT.value}(')
+        assert 'allow_frozen_field_edits=true' in store
 
 
 class TestStartupValidation:

@@ -18,7 +18,7 @@ import pytest
 from src.models.phase import Phase
 from src.models.plan import Plan
 from src.models.roadmap import Roadmap
-from src.platform.templates.commands.phase_command import technical_phase_template
+from src.platform.templates.agents.phase_architect import technical_phase_template
 
 
 @pytest.mark.parametrize('model_class', [Phase, Plan, Roadmap])

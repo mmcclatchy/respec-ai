@@ -53,6 +53,15 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
         return 'AskUserQuestion'
 
     @property
+    def selection_batch_limit(self) -> int:
+        # AskUserQuestion's schema accepts at most 4 questions per call.
+        return 4
+
+    @property
+    def best_practices_tui(self) -> str:
+        return 'claude'
+
+    @property
     def builtin_tool_name_map(self) -> dict[BuiltInToolCapability, str | None]:
         # Source of truth for Claude Code built-in tool runtime names.
         # Any new built-in capability must be reviewed here explicitly.
@@ -65,6 +74,7 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
             BuiltInToolCapability.GLOB: 'Glob',
             BuiltInToolCapability.GREP: 'Grep',
             BuiltInToolCapability.TASK: 'Task',
+            BuiltInToolCapability.SEND_MESSAGE: 'SendMessage',
             BuiltInToolCapability.BASH: 'Bash',
             BuiltInToolCapability.BASH_OUTPUT: 'BashOutput',
             BuiltInToolCapability.KILL_SHELL: 'KillShell',

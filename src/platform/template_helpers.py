@@ -157,6 +157,53 @@ def _resolve_tui_adapter(tui_adapter: 'TuiAdapter | None') -> 'TuiAdapter':
     return tui_adapter if tui_adapter is not None else _ClaudeCodeAdapter()
 
 
+_PHASE_AGENT_IDS: tuple[tuple[str, str], ...] = (
+    ('loop_id', 'LOOP_ID'),
+    ('plan_name', 'PLAN_NAME'),
+    ('phase_name', 'PHASE_NAME'),
+)
+_PHASE_CONFIG_CONTEXT_INPUT = ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN')
+
+# bp-pipeline's published input fields (bp-pipeline-interface.md), computed by the orchestrator at
+# dispatch time. Optional fields are omitted rather than sent empty, so each value states its rule.
+_BP_PIPELINE_DISPATCH_INPUTS: tuple[tuple[str, str], ...] = (
+    ('MODE', 'codegen'),
+    ('TECH', 'TECH'),
+    ('QUERY', 'QUERY'),
+    ('TECH_VERSIONS_JSON', 'TECH_VERSIONS_JSON'),
+    ('CUTOFF_DATE', 'CUTOFF_DATE'),
+    ('PRIMARY_QUERY', 'PRIMARY_QUERY'),
+    ('OUTPUT_FILE', 'OUTPUT_FILE'),
+    ('TOPICS', 'TOPICS'),
+    ('LANGUAGES', 'LANGUAGES (omit when LANGUAGE_AGNOSTIC is sent)'),
+    ('LANGUAGE_AGNOSTIC', 'true (only when the project declares no language; omit otherwise)'),
+    ('UNCOVERED_TECH', 'UNCOVERED_TECH (partial gap only; omit on full coverage and full gap)'),
+    ('COVERED_TECHS', 'COVERED_TECHS (omit on full gap)'),
+    ('ALL_QUERIED_TECHS', 'ALL_QUERIED_TECHS'),
+)
+
+
+def _phase_agent_inputs(phase_mode: str, *extra_inputs: tuple[str, str]) -> list[tuple[str, str]]:
+    return [('phase_mode', phase_mode), *_PHASE_AGENT_IDS, *extra_inputs, _PHASE_CONFIG_CONTEXT_INPUT]
+
+
+def _render_architect_resume(adapter: TuiAdapter) -> str:
+    resume_tool = adapter.render_builtin_tool_name(BuiltInToolCapability.SEND_MESSAGE)
+    if resume_tool is None:
+        return ''
+    inputs = '\n'.join(
+        f'    - {name}: {value}' for name, value in [('phase_mode', 'ARCHITECT_MODE'), *_PHASE_AGENT_IDS]
+    )
+    return (
+        f'Use {resume_tool} to resume the {RespecAIAgent.PHASE_ARCHITECT.value} agent:\n'
+        '  to: ARCHITECT_AGENT_ID\n'
+        '  message: |\n'
+        '    Resume in phase_mode ARCHITECT_MODE: re-read the phase document, all feedback and your stored '
+        'notes before changing anything, then return the four-section report.\n'
+        f'{inputs}'
+    )
+
+
 def create_phase_command_tools(
     create_phase_tool: str,
     phase_retrieval_tool: str,
@@ -169,19 +216,22 @@ def create_phase_command_tools(
     builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
-    builder.add_builtin_tool(BuiltInToolCapability.TASK, 'bp')
+    builder.add_builtin_tool(BuiltInToolCapability.TASK, 'bp-pipeline')
+    builder.add_optional_builtin_tool(BuiltInToolCapability.SEND_MESSAGE)
+    _add_adapter_question_tool(builder, adapter)
     builder.add_builtin_tool(BuiltInToolCapability.BASH, '')
 
     for tool in PhaseCommandTools.respec_ai_tools:
         builder.add_respec_ai_tool(tool)
 
     builder.add_builtin_tool(BuiltInToolCapability.READ, '')
-    # Covers phase.md (Steps 8-9 edit gate) and the two named skeleton-materialization
-    # scratch files (Step 11.5: .skeleton-index.md, .test-list.md) -- never source paths;
-    # those are written create-only by the `materialize-skeletons` CLI command via Bash.
+    # Covers phase.md (the disk mirror after every orchestrator store, and the Step 10.5
+    # hand-edit write-back) and the two skeleton scratch files (Step 11.4: .skeleton-index.md,
+    # .test-list.md) -- never source paths; those are written create-only by the
+    # `materialize-skeletons` CLI command via Bash.
     builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/*.md')
-    # Step 4.5 discovers .respec-ai/config/standards/*.toml to assemble
-    # PROJECT_CONFIG_CONTEXT_MARKDOWN for the architect (F8).
+    # Step 3.2 discovers .respec-ai/config/standards/*.toml to assemble
+    # PROJECT_CONFIG_CONTEXT_MARKDOWN for both phase agents.
     builder.add_builtin_tool(BuiltInToolCapability.GLOB, '.respec-ai/config/standards/*.toml')
 
     # sync_plan_instructions (Step 2.1) retrieves the plan from the platform before the
@@ -198,111 +248,50 @@ def create_phase_command_tools(
         create_phase_tool=create_phase_tool,
         platform=platform_type,
         plans_dir=plans_dir,
-        invoke_phase_architect=adapter.render_agent_invocation(
-            'respec-phase-architect',
-            'design technical phase architecture',
-            [
-                ('loop_id', 'LOOP_ID'),
-                ('plan_name', 'PLAN_NAME'),
-                ('phase_name', 'PHASE_NAME'),
-                ('phase_mode', 'detail'),
-                ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
-                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
-                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
-            ],
-        ),
-        invoke_phase_architect_shape=adapter.render_agent_invocation(
-            'respec-phase-architect',
-            'design phase shape: public seams, skeleton index, open design decisions',
-            [
-                ('loop_id', 'SHAPE_LOOP_ID'),
-                ('plan_name', 'PLAN_NAME'),
-                ('phase_name', 'PHASE_NAME'),
-                ('phase_mode', 'shape'),
-                ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
-                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
-                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
-            ],
-        ),
-        invoke_phase_architect_implementation_plan=adapter.render_agent_invocation(
-            'respec-phase-architect',
-            'design implementation plan: build order, execution intent, deferred risks',
-            [
-                ('loop_id', 'SHAPE_LOOP_ID'),
-                ('plan_name', 'PLAN_NAME'),
-                ('phase_name', 'PHASE_NAME'),
-                ('phase_mode', 'implementation-plan'),
-                ('optional_instructions', 'OPTIONAL_INSTRUCTIONS'),
-                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
-                ('project_config_context_markdown', 'PROJECT_CONFIG_CONTEXT_MARKDOWN'),
-            ],
-        ),
-        invoke_phase_critic=adapter.render_agent_invocation(
-            'respec-phase-critic',
-            'evaluate phase quality against FSDD framework',
-            [
-                ('plan_name', 'PLAN_NAME'),
-                ('loop_id', 'LOOP_ID'),
-                ('phase_name', 'PHASE_NAME'),
-                ('phase_mode', 'detail'),
-                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
-            ],
-        ),
-        invoke_phase_critic_shape=adapter.render_agent_invocation(
-            'respec-phase-critic',
-            'evaluate approved phase shape as a safety net, not a gatekeeper',
-            [
-                ('plan_name', 'PLAN_NAME'),
-                ('loop_id', 'SHAPE_LOOP_ID'),
-                ('phase_name', 'PHASE_NAME'),
-                ('phase_mode', 'shape'),
-                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
-            ],
-        ),
-        invoke_phase_critic_post_synthesis=adapter.render_agent_invocation(
-            'respec-phase-critic',
-            'run post-synthesis research-path and API coverage validation',
-            [
-                ('plan_name', 'PLAN_NAME'),
-                ('loop_id', 'LOOP_ID'),
-                ('phase_name', 'PHASE_NAME'),
-                ('validation_mode', 'post_synthesis'),
-                ('workflow_guidance_markdown', 'WORKFLOW_GUIDANCE_MARKDOWN'),
-            ],
-        ),
-        phase_command_reference=adapter.render_command_reference('respec-phase'),
-        roadmap_command_invocation=adapter.render_command_invocation(
-            'respec-roadmap',
-            '{PLAN_NAME}',
-            '',
-            requires_user_interaction=False,
-        ),
-        plan_command_invocation=adapter.render_command_invocation(
-            'respec-plan',
-            '[plan-name] [optional: initial context]',
-            '',
-            requires_user_interaction=False,
-        ),
         code_command_invocation=adapter.render_command_invocation(
             'respec-code',
             '{PLAN_NAME} {PHASE_NAME} [optional: additional-context]',
             '',
             requires_user_interaction=False,
         ),
-        store_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}', content='{STRATEGIC_PLAN_MARKDOWN}'
+        invoke_architect_explore=adapter.render_agent_invocation(
+            RespecAIAgent.PHASE_ARCHITECT.value,
+            'explore the plan, the codebase and the local knowledge base, then return the briefing report',
+            _phase_agent_inputs('explore'),
         ),
+        invoke_architect_draft=adapter.render_agent_invocation(
+            RespecAIAgent.PHASE_ARCHITECT.value,
+            'draft the phase design and its implementation plan from the settled decisions and approved research, '
+            'then return the design summary report',
+            _phase_agent_inputs('draft'),
+        ),
+        invoke_architect_revise=adapter.render_agent_invocation(
+            RespecAIAgent.PHASE_ARCHITECT.value,
+            'apply the new feedback to the phase design and its implementation plan, '
+            'then return the change summary report',
+            _phase_agent_inputs('revise'),
+        ),
+        resume_architect=_render_architect_resume(adapter),
+        invoke_critic_review=adapter.render_agent_invocation(
+            RespecAIAgent.PHASE_CRITIC.value,
+            'review the phase design and its implementation plan without editing either, store the review, '
+            'then return the review report',
+            _phase_agent_inputs('review', ('review_round', 'REVIEW_ROUND')),
+        ),
+        invoke_bp_pipeline=adapter.render_external_agent_invocation(
+            'bp-pipeline',
+            'research and synthesize one user-approved research proposal into its output document',
+            list(_BP_PIPELINE_DISPATCH_INPUTS),
+        ),
+        bp_preflight_command=f'best-practices-rag check --tui {adapter.best_practices_tui}',
         store_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
             key='{PLAN_NAME}/{PHASE_NAME}',
-            content='{EXTRACTED_PHASE_MARKDOWN}',
+            content='{PHASE_MARKDOWN}',
         ),
         initialize_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.INITIALIZE_REFINEMENT_LOOP, plan_name='{PLAN_NAME}', loop_type='"phase"'
-        ),
-        get_plan=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
         link_loop=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.LINK_LOOP_TO_DOCUMENT,
@@ -310,21 +299,9 @@ def create_phase_command_tools(
             doc_type='"phase"',
             key='{PLAN_NAME}/{PHASE_NAME}',
         ),
-        link_shape_loop=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.LINK_LOOP_TO_DOCUMENT,
-            loop_id='{SHAPE_LOOP_ID}',
-            doc_type='"phase"',
-            key='{PLAN_NAME}/{PHASE_NAME}',
-        ),
         get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
-        get_shape_loop_status=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_LOOP_STATUS, loop_id='{SHAPE_LOOP_ID}'
-        ),
         decide_loop_action=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{LOOP_ID}'
-        ),
-        decide_shape_loop_action=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.DECIDE_LOOP_NEXT_ACTION, loop_id='{SHAPE_LOOP_ID}'
         ),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
@@ -332,19 +309,13 @@ def create_phase_command_tools(
         get_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='{LOOP_ID}'
         ),
-        get_shape_document=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.GET_DOCUMENT, doc_type='"phase"', loop_id='{SHAPE_LOOP_ID}'
-        ),
         store_user_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_USER_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
-        ),
-        store_shape_user_feedback=ToolDocGenerator.generate_tool_call_inline(
-            RespecAITool.STORE_USER_FEEDBACK, loop_id='{SHAPE_LOOP_ID}', feedback_markdown='{USER_FEEDBACK_MARKDOWN}'
         ),
         validate_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.VALIDATE_DOCUMENT, doc_type='"phase"', content='{CONTENT_TO_VALIDATE}'
         ),
-        store_document_gate_edit=ToolDocGenerator.generate_tool_call_inline(
+        store_document_user_edit=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
             key='{PLAN_NAME}/{PHASE_NAME}',
@@ -838,7 +809,6 @@ def create_phase_architect_agent_tools(
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
         plans_dir=plans_dir,
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
         ),
@@ -851,12 +821,16 @@ def create_phase_architect_agent_tools(
             key='{PLAN_NAME}/{PHASE_NAME}',
             content='{GENERATED_PHASE_MARKDOWN}',
         ),
+        store_analysis=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.STORE_CURRENT_ANALYSIS, loop_id='{LOOP_ID}', analysis='{ARCHITECT_NOTES}'
+        ),
+        get_analysis=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
+        ),
     )
 
 
-def create_phase_critic_agent_tools(
-    tui_adapter: TuiAdapter, phase_length_soft_cap: int, phase_shape_soft_cap: int
-) -> PhaseCriticAgentTools:
+def create_phase_critic_agent_tools(tui_adapter: TuiAdapter) -> PhaseCriticAgentTools:
     builder = TemplateToolBuilder(tui_adapter)
 
     for tool in PhaseCriticAgentTools.respec_ai_tools:
@@ -868,8 +842,6 @@ def create_phase_critic_agent_tools(
     return PhaseCriticAgentTools(
         tui_adapter=tui_adapter,
         tools_yaml=builder.render_comma_separated_tools(),
-        phase_length_soft_cap=phase_length_soft_cap,
-        phase_shape_soft_cap=phase_shape_soft_cap,
         get_plan=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_DOCUMENT, doc_type='"plan"', key='{PLAN_NAME}'
         ),
@@ -879,7 +851,6 @@ def create_phase_critic_agent_tools(
         get_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='2'
         ),
-        get_loop_status=ToolDocGenerator.generate_tool_call_inline(RespecAITool.GET_LOOP_STATUS, loop_id='{LOOP_ID}'),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),

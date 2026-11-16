@@ -7,9 +7,11 @@ the *format contract* by running the real extraction algorithm (tests/support/
 plan_extraction.py, mirroring code_command.py's `#### Step N:` scanner and the DR-###
 format shared with task_planner.py) against phase_architect.py's own
 `implementation_plan_example` constant -- the actual text shown to the agent, not a
-copy maintained separately in this test. B2-B4 pin the prompt
+copy maintained separately in this test. B2-B3 pin the prompt
 structure via tests/support/template_contract.py, per testing.md's guidance for
-generated templates.
+generated templates. B4's separate implementation-plan gate was retired by
+docs/phase-cooperative (implementation.md is reviewed inside the design review); the
+sign-off half of that contract is pinned below (phase-cooperative B28).
 """
 
 import re
@@ -29,7 +31,12 @@ from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 
 
-_ADAPTERS = [ClaudeCodeAdapter(), CodexAdapter(), OpenCodeAdapter()]
+_HERMETIC_MODELS = {'reasoning': 'model', 'orchestration': 'model', 'coding': 'model', 'review': 'model'}
+_HERMETIC_ADAPTERS = [
+    ClaudeCodeAdapter(),
+    CodexAdapter(model_overrides=_HERMETIC_MODELS),
+    OpenCodeAdapter(model_overrides=_HERMETIC_MODELS),
+]
 
 
 def _phase_architect_template(adapter: TuiAdapter) -> str:
@@ -86,31 +93,28 @@ def test_delivery_intent_has_exactly_one_source_of_truth_in_the_generated_phase(
     assert 'Delivery Intent Override' not in template
 
 
-def test_implementation_plan_mode_carries_forward_every_referenced_constraint() -> None:
-    # B3: migrated from task_planner.py:199-208's carry-forward mandate. Presence in the
-    # plan is what's asserted, not which section it lands in (that's an implementation
-    # choice, per phase-5-implementation-plan.md).
-    body = _phase_mode_branch_body(_phase_architect_template(ClaudeCodeAdapter()), 'implementation-plan')
+def test_draft_mode_carries_forward_every_referenced_constraint() -> None:
+    # B3, re-anchored by phase-cooperative B28: implementation.md is drafted with the design
+    # in draft mode (F5), so the carry-forward mandate moves there. Presence in the plan is
+    # what's asserted, not which section it lands in.
+    body = _phase_mode_branch_body(_phase_architect_template(ClaudeCodeAdapter()), 'draft')
 
     assert 'IMPL_PLAN_CONSTRAINTS' in body
     assert 'CARRY-FORWARD' in body.upper()
 
 
-@pytest.mark.parametrize('adapter', _ADAPTERS)
-def test_implementation_plan_gate_blocks_and_alterations_are_persisted(adapter: TuiAdapter) -> None:
-    # B4: the gate must block for a response and route alterations back into
-    # regeneration via the same feedback mechanism the shape act already proved out.
-    coordinator = TemplateCoordinator()
-    template = coordinator.generate_command_template(RespecAICommand.PHASE, PlatformType.LINEAR, tui_adapter=adapter)
+@pytest.mark.parametrize('adapter', _HERMETIC_ADAPTERS)
+def test_the_run_signs_off_the_implementation_plan_where_the_coding_workflow_reads_it(adapter: TuiAdapter) -> None:
+    # Phase-cooperative B28, orchestrator half. Frozen respec-code derives implementation.md beside
+    # phase.md (code_command.py) and reads `- Constraint:` lines from Implementation Plan
+    # References, so the path and the line are contracts with a consumer (F33).
+    template = TemplateCoordinator().generate_command_template(
+        RespecAICommand.PHASE, PlatformType.MARKDOWN, plans_dir=adapter.plans_dir(), tui_adapter=adapter
+    )
     contract = template_contract(template)
 
-    body = contract.step_body('12.6')
-    waits = contract.wait_prompt_count(body)
-    resumes = contract.resume_marker_count(body)
+    setup, sign_off = contract.step_section('3'), contract.step_section('11')
 
-    assert waits >= 1
-    assert waits == resumes
-    assert 'store_user_feedback' in body
-
-    proceed_condition = contract.outcome_condition(body, 'Proceed to Step 13')
-    assert 'Looks right' in proceed_condition or 'proceed' in proceed_condition.lower()
+    assert re.search(r'\bIMPLEMENTATION_PLAN_PATH\s*=.*implementation\.md', setup)
+    assert '- Constraint:' in sign_off
+    assert 'IMPLEMENTATION_PLAN_PATH' in sign_off
