@@ -152,7 +152,10 @@ class TestGenerateTemplates:
     def test_generates_codex_artifacts(self, mocker: MockerFixture, tmp_path: Path) -> None:
         mock_orchestrator = mocker.MagicMock()
         mock_orchestrator.template_coordinator.generate_command_template.return_value = _MOCK_COMMAND_CONTENT
-        adapter = get_tui_adapter(TuiType.CODEX)
+        adapter = get_tui_adapter(
+            TuiType.CODEX,
+            model_overrides={'reasoning': 'gpt-5', 'orchestration': 'gpt-5', 'coding': 'gpt-5', 'review': 'gpt-5'},
+        )
 
         files_written, commands_count, agents_count = generate_templates(
             mock_orchestrator, tmp_path, PlatformType.LINEAR, tui_adapter=adapter

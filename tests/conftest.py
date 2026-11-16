@@ -13,6 +13,8 @@ import asyncpg
 import pytest
 from pytest_mock import MockerFixture
 
+from src.cli.commands import codex_model, opencode_model
+from src.cli.config import global_config
 from src.mcp.tools.loop_tools import LoopTools
 from src.utils.database_pool import db_pool
 from src.utils.setting_configs import LoopConfig, database_settings
@@ -189,6 +191,19 @@ def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, Non
     mocker.patch('src.utils.setting_configs.loop_config', test_config)
     mocker.patch('src.utils.enums.loop_config', test_config)
     yield test_config
+
+
+@pytest.fixture(autouse=True)
+def isolated_global_config(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    # These paths are bound to the real HOME at import time; without this, CLI tests
+    # overwrite the user's saved API keys and clear their model cache.
+    config_dir = tmp_path_factory.mktemp('global-config') / 'respec-ai'
+    monkeypatch.setattr(global_config, 'GLOBAL_CONFIG_DIR', config_dir)
+    monkeypatch.setattr(global_config, 'GLOBAL_MODELS_PATH', config_dir / 'models.json')
+    monkeypatch.setattr(global_config, 'GLOBAL_API_KEYS_PATH', config_dir / 'api_keys.json')
+    monkeypatch.setattr(codex_model, '_CACHE_DIR', config_dir / 'cache')
+    monkeypatch.setattr(opencode_model, '_CACHE_DIR', config_dir / 'cache')
+    return config_dir
 
 
 @pytest.fixture(scope='session')

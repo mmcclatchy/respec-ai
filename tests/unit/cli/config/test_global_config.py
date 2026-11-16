@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
+from src.cli.commands import codex_model, opencode_model
+from src.cli.config import global_config
 from src.cli.config.global_config import load_global_models, save_global_models
 
 
@@ -91,3 +95,18 @@ class TestSaveGlobalModels:
         data = json.loads(models_path.read_text())
         assert data['codex']['reasoning'] == 'gpt-5.4'
         assert data['codex']['orchestration'] == 'gpt-5.4-mini'
+
+
+@pytest.mark.parametrize(
+    'path_name',
+    ['GLOBAL_CONFIG_DIR', 'GLOBAL_MODELS_PATH', 'GLOBAL_API_KEYS_PATH', 'codex_cache', 'opencode_cache'],
+)
+def test_tests_never_write_to_the_users_real_global_config(path_name: str) -> None:
+    paths = {
+        'GLOBAL_CONFIG_DIR': global_config.GLOBAL_CONFIG_DIR,
+        'GLOBAL_MODELS_PATH': global_config.GLOBAL_MODELS_PATH,
+        'GLOBAL_API_KEYS_PATH': global_config.GLOBAL_API_KEYS_PATH,
+        'codex_cache': codex_model._CACHE_DIR,
+        'opencode_cache': opencode_model._CACHE_DIR,
+    }
+    assert not paths[path_name].is_relative_to(Path.home() / '.config')

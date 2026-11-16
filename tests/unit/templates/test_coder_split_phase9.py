@@ -37,7 +37,7 @@ class TestCoderRegistration:
         }
         for adapter in (
             ClaudeCodeAdapter(),
-            CodexAdapter(),
+            CodexAdapter(model_overrides=opencode_overrides),
             OpenCodeAdapter(model_overrides=opencode_overrides),
         ):
             names = {spec.name for spec in _get_agent_specs(adapter, PlatformType.MARKDOWN)}
