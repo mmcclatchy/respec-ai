@@ -3,13 +3,19 @@
 import re
 from pathlib import Path
 
+import pytest
+
 from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.template_generator import COMMAND_CAPABILITY_REQUIREMENTS
 from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
+from src.platform.tui_adapters.base import TuiAdapter
 from src.platform.tui_adapters.opencode import OpenCodeAdapter
 from src.utils.state_manager.base import FROZEN_DISCARD_WARNING
+
+
+_PLAN_CONVERSATION_MODEL_TIERS = {'reasoning': 'gpt-5', 'orchestration': 'gpt-5', 'coding': 'gpt-5', 'review': 'gpt-5'}
 
 
 _BANNED_ACTION_PATTERNS = (
@@ -840,8 +846,31 @@ class TestCrossPlatformInvocationRendering:
             PlatformType.LINEAR,
             tui_adapter=ClaudeCodeAdapter(),
         )
-        assert 'allowed-tools: mcp__exa__web_search_exa, Read' in template
-        assert 'allowed-tools: [mcp__exa__web_search_exa, Read]' not in template
+        assert 'allowed-tools: Read' in template
+        assert 'allowed-tools: [Read]' not in template
+
+    @pytest.mark.parametrize(
+        'adapter',
+        [
+            ClaudeCodeAdapter(),
+            OpenCodeAdapter(model_overrides=_PLAN_CONVERSATION_MODEL_TIERS),
+            CodexAdapter(model_overrides=_PLAN_CONVERSATION_MODEL_TIERS),
+        ],
+        ids=['claude-code', 'opencode', 'codex'],
+    )
+    def test_plan_conversation_runs_no_web_search(self, adapter: TuiAdapter) -> None:
+        template = (
+            TemplateCoordinator()
+            .generate_command_template(
+                RespecAICommand.PLAN_CONVERSATION,
+                PlatformType.LINEAR,
+                tui_adapter=adapter,
+            )
+            .lower()
+        )
+        assert 'exa' not in re.findall(r'[a-z_]+', template)
+        assert 'web_search' not in template
+        assert 'technology discovery protocol' not in template
 
     def test_plan_conversation_uses_typed_claude_invocation(self) -> None:
         coordinator = TemplateCoordinator()

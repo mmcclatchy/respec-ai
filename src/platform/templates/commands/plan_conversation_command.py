@@ -72,7 +72,7 @@ def generate_plan_conversation_command_template(tools: PlanConversationCommandTo
     plan_command_invocation = tools.plan_command_invocation
 
     return f"""---
-allowed-tools: mcp__exa__web_search_exa, Read
+allowed-tools: Read
 argument-hint: [optional-context]
 description: Conduct conversational requirements gathering
 ---
@@ -218,39 +218,11 @@ If the initial context mentions decisions from a prior plan document:
 - Focus discussion on technology areas NOT covered by the provided plan context
 - Ask whether there are additional technology decisions to capture beyond the plan
 
-═══════════════════════════════════════════════
-MANDATORY TECHNOLOGY DISCOVERY PROTOCOL
-═══════════════════════════════════════════════
-After understanding the user's initial technology preferences,
-you MUST execute technology search. This is NOT optional.
-
-1. Derive 2-3 search queries from the problem domain, requirements, and deployment target
-   Examples:
-   - "best Python [problem-domain] libraries 2026"
-   - "[deployment-target] compatible [technology-category] frameworks"
-   - "[specific-requirement] open source tools actively maintained"
-
-2. CALL mcp__exa__web_search_exa for each query (num_results=5)
-
-3. Filter results for:
-   - Actively maintained (commits within 6 months)
-   - Good documentation
-   - Relevant to the project's specific constraints and deployment target
-
-4. Present findings using the Decision Facilitation Pattern:
-   "Based on your requirements, I found some technologies worth considering:"
-   - For each relevant find: name, what it does, why it's relevant to THIS project
-   - If user already mentioned a technology and search confirms it's a good fit, say so
-   - If search reveals a better alternative the user didn't mention, present both options
-
-5. If user is already familiar with search results, move on quickly
-
-IF user already knows their stack: Execute search anyway to confirm or surface alternatives.
-IF search returns no useful results: Note "Technology search completed — no additional options found" and proceed.
-
-VIOLATION: Skipping technology search because the user "seems knowledgeable"
-           or "already has preferences." Search MUST always execute.
-═══════════════════════════════════════════════
+TECHNOLOGY RESEARCH IS OUT OF SCOPE HERE:
+Do NOT run web searches or research technologies in this conversation. Capture what the user
+has in mind, their hard constraints and their rejections. When the user is undecided, record the
+candidates and the open question. respec-phase researches technologies later, against the actual
+design, through user-approved best-practices research.
 
 ### Technology Validation and Capture
 Confirm and record all technology decisions:
@@ -354,7 +326,7 @@ ALL of the following MUST be true before generating CONVERSATION_CONTEXT:
 - [ ] Key requirements and constraints identified
 - [ ] Priorities and trade-offs discussed
 - [ ] Success criteria defined
-- [ ] Technology stack discussed, searched, and decisions captured with rationale
+- [ ] Technology stack discussed and decisions captured with rationale
 - [ ] Rejected technologies recorded with specific reasons
 - [ ] Deployment target explicitly recorded
 - [ ] Architecture direction established (components, integrations, data flow)
