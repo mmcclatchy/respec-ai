@@ -28,7 +28,6 @@ class TestSyncCommand:
             pin_models=False,
             yes=True,
             aa_key=None,
-            exa_key=None,
         )
         result = sync.run(args)
         assert result == 1
@@ -52,7 +51,6 @@ class TestSyncCommand:
             pin_models=False,
             yes=True,
             aa_key=None,
-            exa_key=None,
         )
         result = sync.run(args)
         assert result == 1
@@ -86,7 +84,6 @@ class TestSyncCommand:
             pin_models=False,
             yes=True,
             aa_key=None,
-            exa_key=None,
         )
         result = sync.run(args)
 
@@ -130,7 +127,6 @@ class TestSyncCommand:
             pin_models=True,
             yes=True,
             aa_key=None,
-            exa_key=None,
         )
         result = sync.run(args)
         assert result == 0
@@ -166,7 +162,6 @@ class TestSyncCommand:
             pin_models=False,
             yes=True,
             aa_key=None,
-            exa_key=None,
         )
         result = sync.run(args)
         assert result == 1

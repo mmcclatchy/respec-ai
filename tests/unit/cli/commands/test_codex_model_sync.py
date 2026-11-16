@@ -106,18 +106,19 @@ class TestCodexModelRun:
         monkeypatch.delenv('ARTIFICIAL_ANALYSIS_API_KEY', raising=False)
 
         with (
-            patch('src.cli.commands.codex_model.load_api_key', return_value=''),
             patch('src.cli.commands.codex_model._discover_codex_models', return_value=_discovered_models()),
             patch('src.cli.commands.codex_model._fetch_aa_data') as mock_fetch_aa,
             patch('src.cli.commands.codex_model._display_aa_table') as mock_display_aa,
             patch('src.cli.commands.codex_model.console.input', side_effect=['1', '2', '1', '2', '']),
             patch('src.cli.commands.codex_model.save_global_models') as mock_save,
+            patch('src.cli.commands.codex_model.print_info') as mock_info,
         ):
             result = codex_model.run(_args(no_update_codex=True))
 
         assert result == 0
         mock_fetch_aa.assert_not_called()
         mock_display_aa.assert_not_called()
+        mock_info.assert_any_call('ARTIFICIAL_ANALYSIS_API_KEY not set — skipping benchmark context.')
         mock_save.assert_called_once_with(
             {
                 'reasoning': 'gpt-example-a',
@@ -163,6 +164,45 @@ class TestCodexModelRun:
             provider='codex',
         )
 
+    def test_reads_aa_key_from_env(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv('ARTIFICIAL_ANALYSIS_API_KEY', 'env-key')
+
+        with (
+            patch('src.cli.commands.codex_model._discover_codex_models', return_value=_discovered_models()),
+            patch('src.cli.commands.codex_model._fetch_aa_data', return_value={}) as mock_fetch_aa,
+            patch('src.cli.commands.codex_model.console.input', side_effect=['1', '1', '1', '1', '']),
+            patch('src.cli.commands.codex_model.save_global_models'),
+        ):
+            result = codex_model.run(_args())
+
+        assert result == 0
+        mock_fetch_aa.assert_called_once_with('env-key', debug=False)
+
+    def test_aa_key_flag_overrides_env_for_one_run_and_is_never_saved(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        isolated_global_config: Path,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv('ARTIFICIAL_ANALYSIS_API_KEY', 'env-key')
+
+        with (
+            patch('src.cli.commands.codex_model._discover_codex_models', return_value=_discovered_models()),
+            patch('src.cli.commands.codex_model._fetch_aa_data', return_value={}) as mock_fetch_aa,
+            patch('src.cli.commands.codex_model.console.input', side_effect=['1', '1', '1', '1', ''] * 2),
+            patch('src.cli.commands.codex_model.save_global_models'),
+            patch('src.cli.commands.codex_model.print_info') as mock_info,
+        ):
+            codex_model.run(_args(aa_key='cli-key'))
+            monkeypatch.delenv('ARTIFICIAL_ANALYSIS_API_KEY')
+            codex_model.run(_args())
+
+        assert [path for path in isolated_global_config.rglob('*') if path.is_file()] == []
+        mock_fetch_aa.assert_called_once_with('cli-key', debug=False)
+        mock_info.assert_any_call('ARTIFICIAL_ANALYSIS_API_KEY not set — skipping benchmark context.')
+
     def test_update_codex_flag_runs_npm_before_discovery(
         self,
         tmp_path: Path,
@@ -172,7 +212,6 @@ class TestCodexModelRun:
         monkeypatch.delenv('ARTIFICIAL_ANALYSIS_API_KEY', raising=False)
 
         with (
-            patch('src.cli.commands.codex_model.load_api_key', return_value=''),
             patch(
                 'src.cli.commands.codex_model.subprocess.run',
                 return_value=subprocess.CompletedProcess(codex_model._CODEX_UPDATE_CMD, 0),
@@ -200,7 +239,6 @@ class TestCodexModelRun:
         monkeypatch.chdir(tmp_path)
         monkeypatch.delenv('ARTIFICIAL_ANALYSIS_API_KEY', raising=False)
         with (
-            patch('src.cli.commands.codex_model.load_api_key', return_value=''),
             patch('src.cli.commands.codex_model._discover_codex_models', return_value=[]),
             patch('src.cli.commands.codex_model.save_global_models') as mock_save,
         ):

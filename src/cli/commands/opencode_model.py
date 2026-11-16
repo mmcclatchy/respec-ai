@@ -10,10 +10,9 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Any
 
-from exa_py import Exa
 from rich.table import Table
 
-from src.cli.config.global_config import GLOBAL_MODELS_PATH, load_api_key, save_api_key, save_global_models
+from src.cli.config.global_config import GLOBAL_MODELS_PATH, save_global_models
 from src.cli.config.project_models import (
     load_project_config_if_exists,
     save_project_config,
@@ -23,7 +22,6 @@ from src.cli.ui.console import console, print_error, print_info, print_warning
 
 
 _AA_MODELS_URL = 'https://artificialanalysis.ai/api/v2/data/llms/models'
-_OPENCODE_GO_DOCS_URL = 'https://opencode.ai/docs/go/'
 _ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
 _CACHE_DIR = Path.home() / '.config' / 'respec-ai' / 'cache'
 _CACHE_TTL_SECONDS = 12 * 60 * 60
@@ -71,11 +69,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         '--aa-key',
-        help='Artificial Analysis API key (overrides ARTIFICIAL_ANALYSIS_API_KEY env var)',
-    )
-    parser.add_argument(
-        '--exa-key',
-        help='Exa API key for rate limit lookup (overrides EXA_API_KEY env var)',
+        help='Artificial Analysis API key for this run only (overrides ARTIFICIAL_ANALYSIS_API_KEY; never saved)',
     )
     parser.add_argument(
         '--debug',
@@ -112,17 +106,7 @@ def run(args: Namespace) -> int:
         print_info("Run 'respec-ai regenerate' to apply new models to your config")
         return 0
 
-    aa_key = (
-        getattr(args, 'aa_key', None)
-        or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
-        or load_api_key('artificial_analysis')
-        or ''
-    )
-    exa_key = getattr(args, 'exa_key', None) or os.environ.get('EXA_API_KEY', '') or load_api_key('exa') or ''
-    if aa_key and getattr(args, 'aa_key', None):
-        save_api_key('artificial_analysis', aa_key)
-    if exa_key and getattr(args, 'exa_key', None):
-        save_api_key('exa', exa_key)
+    aa_key = getattr(args, 'aa_key', None) or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
     if getattr(args, 'no_cache', False):
         _clear_cache()
     debug = getattr(args, 'debug', False)
@@ -143,17 +127,9 @@ def run(args: Namespace) -> int:
         print_warning('Set ARTIFICIAL_ANALYSIS_API_KEY or use --aa-key for benchmark-backed recommendations')
         aa_data = {}
 
-    rate_limits: dict[str, str] = {}
-    if exa_key:
-        rate_limits = _fetch_rate_limits(exa_key, provider, debug=debug)
-
-    scored_by_tier = _score_models_by_tier(models, aa_data, rate_limits=rate_limits, debug=debug)
+    scored_by_tier = _score_models_by_tier(models, aa_data, debug=debug)
     suggestion = _suggest_tiers(scored_by_tier)
-    _display_model_comparison(
-        scored_by_tier.get('metrics', {}),
-        suggestion=suggestion,
-        rate_limits=rate_limits,
-    )
+    _display_model_comparison(scored_by_tier.get('metrics', {}), suggestion=suggestion)
 
     if getattr(args, 'yes', False):
         mapping = suggestion
@@ -297,89 +273,17 @@ def _fetch_aa_data(aa_key: str, *, debug: bool = False) -> dict[str, dict[str, f
         return {}
 
 
-def _fetch_rate_limits(exa_key: str, provider: str, *, debug: bool = False) -> dict[str, str]:
-    cached = _read_cache('rate_limits')
-    if cached is not None:
-        if debug:
-            console.print(f'[dim]  Exa using cached rate limits ({len(cached)} models)[/dim]')
-        return cached
-    if debug:
-        console.print(f'[dim]  Exa get_contents({_OPENCODE_GO_DOCS_URL})[/dim]')
-    try:
-        exa = Exa(api_key=exa_key)
-        response = exa.get_contents(urls=[_OPENCODE_GO_DOCS_URL], text=True)
-        if not response.results:
-            if debug:
-                console.print('[dim]  Exa returned no results[/dim]')
-            return {}
-        text = response.results[0].text or ''
-        if debug:
-            console.print(f'[dim]  Exa text length: {len(text)} chars[/dim]')
-            console.print(f'[dim]  Exa text preview: {text[:300]!r}[/dim]')
-        parsed = _parse_rate_limits_table(text, provider)
-        if debug:
-            console.print(f'[dim]  Parsed rate limits: {parsed}[/dim]')
-        if parsed:
-            _write_cache('rate_limits', parsed)
-        return parsed
-    except Exception as exc:
-        if debug:
-            console.print(f'[red]  Exa error: {type(exc).__name__}: {exc}[/red]')
-        print_warning('Could not fetch rate limits — skipping')
-        return {}
-
-
-def _parse_rate_limits_table(text: str, provider: str) -> dict[str, str]:
-    lines = text.splitlines()
-    header_line = ''
-    data_line = ''
-    for i, line in enumerate(lines):
-        if 'requests per 5 hour' in line.lower():
-            data_line = line
-            for j in range(i - 1, -1, -1):
-                candidate = lines[j].strip()
-                if candidate.startswith('|') and '---' not in candidate:
-                    header_line = candidate
-                    break
-            break
-
-    if not header_line or not data_line:
-        return {}
-
-    headers = [h.strip() for h in header_line.split('|') if h.strip()]
-    values = [v.strip() for v in data_line.split('|') if v.strip()]
-
-    if values and values[0].lower().startswith('requests'):
-        values = values[1:]
-
-    result: dict[str, str] = {}
-    for name, val in zip(headers, values):
-        model_id = f'{provider}/{name.lower().replace(" ", "-")}'
-        result[model_id] = val
-    return result
-
-
-def _parse_rate_limit_value(val: str) -> int:
-    return int(val.replace(',', '').strip())
-
-
 def _score_models_by_tier(
     models: list[str],
     aa_data: dict[str, dict[str, float]],
-    rate_limits: dict[str, str] | None = None,
     *,
     debug: bool = False,
 ) -> dict[str, Any]:
     reasoning_scored: list[tuple[str, float]] = []
     orchestration_scored: list[tuple[str, float]] = []
-    task_scored: list[tuple[str, float]] = []
     coding_scored: list[tuple[str, float]] = []
     review_scored: list[tuple[str, float]] = []
     metrics: dict[str, dict[str, float]] = {}
-
-    parsed_rates: dict[str, int] = {}
-    if rate_limits:
-        parsed_rates = {m: _parse_rate_limit_value(v) for m, v in rate_limits.items()}
 
     for model_id in models:
         short = model_id.split('/', 1)[-1].lower()
@@ -392,22 +296,19 @@ def _score_models_by_tier(
         coding = aa_data[match].get(_CODING_INDEX, 0.0) if match else 0.0
         reasoning_scored.append((model_id, intelligence))
 
-        throughput = float(parsed_rates.get(model_id, 0))
-        task_scored.append((model_id, throughput))
-        orchestration_score = throughput if throughput > 0 else max(intelligence, coding)
+        orchestration_score = max(intelligence, coding)
         coding_score = coding if coding > 0 else orchestration_score
         review_score = (intelligence + coding_score) / 2 if (intelligence > 0 or coding_score > 0) else 0.0
         orchestration_scored.append((model_id, orchestration_score))
         coding_scored.append((model_id, coding_score))
         review_scored.append((model_id, review_score))
-        metrics[model_id] = {'intelligence': intelligence, 'coding': coding, 'throughput': throughput}
+        metrics[model_id] = {'intelligence': intelligence, 'coding': coding}
 
     return {
         'reasoning': sorted(reasoning_scored, key=lambda x: x[1], reverse=True),
         'orchestration': sorted(orchestration_scored, key=lambda x: x[1], reverse=True),
         'coding': sorted(coding_scored, key=lambda x: x[1], reverse=True),
         'review': sorted(review_scored, key=lambda x: x[1], reverse=True),
-        'task': sorted(task_scored, key=lambda x: x[1], reverse=True),
         'metrics': metrics,
     }
 
@@ -448,99 +349,10 @@ def _suggest_tiers(scored_by_tier: dict[str, list[tuple[str, float]]]) -> dict[s
     return mapping
 
 
-def _display_tier_table(
-    title: str,
-    scored: list[tuple[str, float]],
-    score_label: str,
-    rate_limits: dict[str, str],
-    extra_scores: dict[str, float] | None = None,
-    extra_label: str = '',
-    format_int: bool = False,
-) -> None:
-    table = Table(title=title, show_header=True, header_style='bold cyan')
-    table.add_column('Model')
-    table.add_column(score_label, justify='right')
-    if extra_scores:
-        table.add_column(extra_label, justify='right')
-    if rate_limits:
-        table.add_column('Reqs/5hr', justify='right')
-    for model_id, score in scored:
-        short = model_id.split('/', 1)[-1]
-        if format_int:
-            score_text = f'{int(score):,}' if score else '[dim]no data[/dim]'
-        else:
-            score_text = f'{score:.1f}' if score else '[dim]no data[/dim]'
-        row: list[str] = [short, score_text]
-        if extra_scores:
-            extra = extra_scores.get(model_id, 0.0)
-            row.append(f'{extra:.1f}' if extra else '[dim]no data[/dim]')
-        if rate_limits:
-            row.append(rate_limits.get(model_id, '\u2014'))
-        table.add_row(*row)
-    console.print()
-    console.print(table)
-
-
-def _display_model_insights(metrics: dict[str, dict[str, float]], rate_limits: dict[str, str]) -> None:
-    if not metrics:
-        return
-    table = Table(title='OpenCode Model Benchmarks', show_header=True, header_style='bold cyan')
-    table.add_column('Model')
-    table.add_column('Intelligence', justify='right')
-    table.add_column('Coding', justify='right')
-    if rate_limits:
-        table.add_column('Reqs/5hr', justify='right')
-    table.add_column('Insight')
-
-    top_reasoning = max(metrics.items(), key=lambda item: item[1].get('intelligence', 0.0))[0]
-    top_orchestration = max(metrics.items(), key=lambda item: item[1].get('throughput', 0.0))[0]
-    top_coding = max(metrics.items(), key=lambda item: item[1].get('coding', 0.0))[0]
-    top_review = max(metrics.items(), key=lambda item: item[1].get('intelligence', 0.0) + item[1].get('coding', 0.0))[0]
-
-    for model_id, row in sorted(
-        metrics.items(),
-        key=lambda item: (
-            item[1].get('intelligence', 0.0),
-            item[1].get('coding', 0.0),
-            item[1].get('throughput', 0.0),
-        ),
-        reverse=True,
-    ):
-        intelligence = row.get('intelligence', 0.0)
-        coding = row.get('coding', 0.0)
-        throughput = row.get('throughput', 0.0)
-
-        if model_id == top_reasoning and intelligence > 0:
-            insight = 'Best for planning and deep architecture reasoning.'
-        elif model_id == top_orchestration and throughput > 0:
-            insight = 'Best throughput for high-volume orchestration workflows.'
-        elif model_id == top_coding and coding > 0:
-            insight = 'Coding-leaning profile; practical for implementation loops.'
-        elif model_id == top_review and (intelligence > 0 or coding > 0):
-            insight = 'Balanced profile; practical for review loops.'
-        elif intelligence > 0:
-            insight = 'Balanced profile; solid fallback when tiers overlap.'
-        else:
-            insight = 'No benchmark signal; keep as manual/backup option.'
-
-        out = [
-            model_id.split('/', 1)[-1],
-            f'{intelligence:.1f}' if intelligence else '[dim]no data[/dim]',
-            f'{coding:.1f}' if coding else '[dim]no data[/dim]',
-        ]
-        if rate_limits:
-            out.append(rate_limits.get(model_id, '\u2014'))
-        out.append(insight)
-        table.add_row(*out)
-    console.print()
-    console.print(table)
-
-
 def _display_model_comparison(
     metrics: dict[str, dict[str, float]],
     *,
     suggestion: dict[str, str],
-    rate_limits: dict[str, str],
 ) -> None:
     if not metrics:
         return
@@ -557,21 +369,16 @@ def _display_model_comparison(
 
     for model_id, row in sorted(
         metrics.items(),
-        key=lambda item: (
-            item[1].get('intelligence', 0.0),
-            item[1].get('coding', 0.0),
-            item[1].get('throughput', 0.0),
-        ),
+        key=lambda item: (item[1].get('intelligence', 0.0), item[1].get('coding', 0.0)),
         reverse=True,
     ):
         intelligence = float(row.get('intelligence', 0.0))
         coding = float(row.get('coding', 0.0))
-        throughput = float(row.get('throughput', 0.0))
 
         has_aa = intelligence > 0 or coding > 0
         capability_score = intelligence if intelligence > 0 else _infer_capability_score(model_id)
-        speed_score = coding if coding > 0 else _infer_speed_score(throughput, model_id)
-        cost_score = _infer_cost_score(throughput, model_id)
+        speed_score = coding if coding > 0 else _infer_speed_score(model_id)
+        cost_score = _infer_cost_score(model_id)
 
         tiers: list[str] = []
         if model_id == suggestion.get('reasoning'):
@@ -586,8 +393,6 @@ def _display_model_comparison(
 
         if intelligence >= 55:
             insight = 'Strong planning profile for architecture-heavy prompts.'
-        elif throughput > 0:
-            insight = 'Throughput-oriented profile for high-volume task loops.'
         elif coding > 0 and coding >= intelligence:
             insight = 'Coding-leaning profile; practical implementation option.'
         elif has_aa:
@@ -620,9 +425,7 @@ def _infer_capability_score(model_id: str) -> float:
     return 48.0
 
 
-def _infer_speed_score(throughput: float, model_id: str) -> float:
-    if throughput > 0:
-        return min(95.0, 35.0 + (throughput / 250.0))
+def _infer_speed_score(model_id: str) -> float:
     short = model_id.split('/', 1)[-1].lower()
     if any(tag in short for tag in ('mini', 'omni', '2.5')):
         return 56.0
@@ -631,15 +434,7 @@ def _infer_speed_score(throughput: float, model_id: str) -> float:
     return 47.0
 
 
-def _infer_cost_score(throughput: float, model_id: str) -> float:
-    if throughput >= 15000:
-        return 92.0
-    if throughput >= 9000:
-        return 82.0
-    if throughput >= 3000:
-        return 68.0
-    if throughput > 0:
-        return 54.0
+def _infer_cost_score(model_id: str) -> float:
     short = model_id.split('/', 1)[-1].lower()
     if any(tag in short for tag in ('mini', 'omni', '2.5')):
         return 80.0

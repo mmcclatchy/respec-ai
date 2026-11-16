@@ -99,13 +99,12 @@ class TestSaveGlobalModels:
 
 @pytest.mark.parametrize(
     'path_name',
-    ['GLOBAL_CONFIG_DIR', 'GLOBAL_MODELS_PATH', 'GLOBAL_API_KEYS_PATH', 'codex_cache', 'opencode_cache'],
+    ['GLOBAL_CONFIG_DIR', 'GLOBAL_MODELS_PATH', 'codex_cache', 'opencode_cache'],
 )
 def test_tests_never_write_to_the_users_real_global_config(path_name: str) -> None:
     paths = {
         'GLOBAL_CONFIG_DIR': global_config.GLOBAL_CONFIG_DIR,
         'GLOBAL_MODELS_PATH': global_config.GLOBAL_MODELS_PATH,
-        'GLOBAL_API_KEYS_PATH': global_config.GLOBAL_API_KEYS_PATH,
         'codex_cache': codex_model._CACHE_DIR,
         'opencode_cache': opencode_model._CACHE_DIR,
     }

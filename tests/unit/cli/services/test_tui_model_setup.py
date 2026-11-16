@@ -50,14 +50,24 @@ def test_codex_disables_auto_apply_when_requested(mocker: MockerFixture) -> None
 def test_opencode_runs_model_setup_command(mocker: MockerFixture) -> None:
     mock_run = mocker.patch('src.cli.services.tui_model_setup.opencode_model.run', return_value=0)
 
-    args = Namespace(aa_key='aa-key', exa_key='exa-key', yes=False)
+    args = Namespace(aa_key='aa-key', yes=False)
     result = run_tui_model_setup(TuiType.OPENCODE, args)
 
     assert result == 0
     mock_run.assert_called_once()
     passed = mock_run.call_args.args[0]
+    assert set(vars(passed)) == {
+        'aa_key',
+        'yes',
+        'debug',
+        'no_cache',
+        'reasoning_model',
+        'orchestration_model',
+        'coding_model',
+        'review_model',
+        'project',
+    }
     assert passed.aa_key == 'aa-key'
-    assert passed.exa_key == 'exa-key'
     assert passed.yes is False
     assert passed.debug is False
     assert passed.no_cache is False

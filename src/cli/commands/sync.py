@@ -69,11 +69,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         '--aa-key',
-        help='Artificial Analysis API key for model benchmark recommendations',
-    )
-    parser.add_argument(
-        '--exa-key',
-        help='Exa API key for OpenCode rate limit lookup',
+        help='Artificial Analysis API key for this run only (overrides ARTIFICIAL_ANALYSIS_API_KEY; never saved)',
     )
 
 

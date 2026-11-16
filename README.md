@@ -117,11 +117,14 @@ respec-ai models opencode
 respec-ai models codex
 ```
 
-Optional benchmark/enrichment keys:
+Optional benchmark-backed recommendations read the Artificial Analysis key from the environment:
 
 ```bash
-respec-ai models opencode --aa-key YOUR_KEY --exa-key YOUR_KEY
+export ARTIFICIAL_ANALYSIS_API_KEY=YOUR_KEY
+respec-ai models opencode
 ```
+
+`--aa-key YOUR_KEY` overrides the environment variable for a single run. respec-ai never saves the key to disk.
 
 ## Useful Commands
 

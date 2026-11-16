@@ -196,11 +196,10 @@ def stable_loop_config(mocker: MockerFixture) -> Generator[LoopConfig, None, Non
 @pytest.fixture(autouse=True)
 def isolated_global_config(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> Path:
     # These paths are bound to the real HOME at import time; without this, CLI tests
-    # overwrite the user's saved API keys and clear their model cache.
+    # overwrite the user's saved model mapping and clear their model cache.
     config_dir = tmp_path_factory.mktemp('global-config') / 'respec-ai'
     monkeypatch.setattr(global_config, 'GLOBAL_CONFIG_DIR', config_dir)
     monkeypatch.setattr(global_config, 'GLOBAL_MODELS_PATH', config_dir / 'models.json')
-    monkeypatch.setattr(global_config, 'GLOBAL_API_KEYS_PATH', config_dir / 'api_keys.json')
     monkeypatch.setattr(codex_model, '_CACHE_DIR', config_dir / 'cache')
     monkeypatch.setattr(opencode_model, '_CACHE_DIR', config_dir / 'cache')
     return config_dir

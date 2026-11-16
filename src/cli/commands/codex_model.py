@@ -12,7 +12,7 @@ from typing import Any, cast
 
 from rich.table import Table
 
-from src.cli.config.global_config import GLOBAL_MODELS_PATH, load_api_key, save_api_key, save_global_models
+from src.cli.config.global_config import GLOBAL_MODELS_PATH, save_global_models
 from src.cli.config.project_models import (
     load_project_config_if_exists,
     save_project_config,
@@ -39,7 +39,7 @@ _CODEX_DISCOVERY_PAGE_LIMIT = 100
 def add_arguments(parser: ArgumentParser) -> None:
     parser.add_argument(
         '--aa-key',
-        help='Artificial Analysis API key (overrides ARTIFICIAL_ANALYSIS_API_KEY env var)',
+        help='Artificial Analysis API key for this run only (overrides ARTIFICIAL_ANALYSIS_API_KEY; never saved)',
     )
     parser.add_argument('--debug', action='store_true', help='Print debug info for API calls')
     parser.add_argument('--no-cache', action='store_true', help='Bypass cached API responses')
@@ -91,14 +91,7 @@ def run(args: Namespace) -> int:
             project_only=bool(getattr(args, 'project', False)),
         )
 
-    aa_key = (
-        getattr(args, 'aa_key', None)
-        or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
-        or load_api_key('artificial_analysis')
-        or ''
-    )
-    if aa_key and getattr(args, 'aa_key', None):
-        save_api_key('artificial_analysis', aa_key)
+    aa_key = getattr(args, 'aa_key', None) or os.environ.get('ARTIFICIAL_ANALYSIS_API_KEY', '')
     if getattr(args, 'no_cache', False):
         _clear_cache()
     debug = getattr(args, 'debug', False)

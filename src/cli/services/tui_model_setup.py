@@ -33,7 +33,6 @@ def run_tui_model_setup(tui_type: TuiType, args: Namespace, *, auto_apply: bool 
     if tui_type == TuiType.OPENCODE:
         sync_args = Namespace(
             aa_key=getattr(args, 'aa_key', None),
-            exa_key=getattr(args, 'exa_key', None),
             yes=getattr(args, 'yes', False),
             debug=False,
             no_cache=False,

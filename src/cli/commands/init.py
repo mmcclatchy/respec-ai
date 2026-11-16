@@ -69,11 +69,7 @@ def add_arguments(parser: ArgumentParser) -> None:
     )
     parser.add_argument(
         '--aa-key',
-        help='Artificial Analysis API key for model benchmark recommendations',
-    )
-    parser.add_argument(
-        '--exa-key',
-        help='Exa API key for OpenCode rate limit lookup',
+        help='Artificial Analysis API key for this run only (overrides ARTIFICIAL_ANALYSIS_API_KEY; never saved)',
     )
 
 
@@ -105,7 +101,6 @@ def run(args: Namespace) -> int:
                         pin_models=False,
                         yes=args.yes,
                         aa_key=getattr(args, 'aa_key', None),
-                        exa_key=getattr(args, 'exa_key', None),
                     )
                     return sync_command.run(sync_args)
                 should_reconfigure_stack = True
