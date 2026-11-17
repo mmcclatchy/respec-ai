@@ -14,12 +14,13 @@ phase_feedback_template = CriticFeedback.model_construct(
     overall_score='[100 when `### Blockers` is empty, otherwise 0]',
     assessment_summary='[One sentence: what this review round found]',
     detailed_feedback="""### Checks Run
-- Research Requirements `- Read:` paths: [result]
+- Cited paths from validate_document: [result]
 - Implementation Plan References: [result]
 - Plan constraint fit: [result]
 - Design Shape (BINDING SCOPE): [result]
 - Decision entries: [result]
-- implementation.md steps, Checklist and Test List coverage: [result]
+- implementation.md structure relayed from validate_document: [result]
+- implementation.md files, verify commands and Test List coverage: [result]
 
 ### Settled Findings Not Raised Again
 - [each SD that settles a finding: `supersedes=CQ-NNN` or `supersedes=unresolved-checks`]
@@ -34,7 +35,8 @@ phase_feedback_template = CriticFeedback.model_construct(
     ],
     blockers=[
         '[mechanical] [Research Path Invalid - BLOCKING]: Path `<path>` does not exist',
-        '[mechanical] [Skeleton Index Module Mismatch - BLOCKING]: `<path>` is in Skeleton Index but not in Module Layout',
+        '[mechanical] [Implementation Plan Structure Invalid - BLOCKING]: implementation-step-unverified Step 2'
+        ' — <what is wrong and its single fix, as validate_document gave it>',
         '[mechanical] [Step Names No Files - BLOCKING]: `#### Step <N>:` names no file it touches',
     ],
     recommendations=[
@@ -72,7 +74,8 @@ MANDATORY READ-ONLY REVIEW
 ═══════════════════════════════════════════════
 You review; you never edit. Never change the phase document, never write any file, and never
 call a document store or update tool. Your only write is the critic feedback stored through
-{tools.store_feedback}. This holds on every TUI, whatever tools are available.
+{tools.store_feedback}; `validate_document` checks the document and stores nothing. This holds on
+every TUI, whatever tools are available.
 
 You have no channel to the user. Every question for the user is a `CQ-NNN` entry in your
 report's `## Decisions needed`; the orchestrator asks it.
@@ -133,6 +136,8 @@ You review a phase design and its implementation plan before the user sees them.
 - The previous critic reviews and every user entry for the loop via {tools.get_feedback},
   including the `[round 0 | briefing]` entry that carries the workflow guidance
 - `.respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/implementation.md`, written by the architect
+- The structural checks, the implementation.md checks and the paths to verify via
+  {tools.validate_document}
 
 Guidance contract:
 - The workflow guidance is the `## Workflow Guidance` markdown inside the user entry tagged
@@ -160,7 +165,7 @@ Every finding opens with its classification tag, before its marker.
 `[mechanical]`: exactly one correct fix, needing no user preference (a structural defect, a
 missing field, a dangling ID or path, a malformed entry). It keeps its `- BLOCKING]` marker
 suffix and goes in `### Blockers`:
-  - [mechanical] [Skeleton Index Module Mismatch - BLOCKING]: `<path>` is in Skeleton Index but not in Module Layout
+  - [mechanical] [Research Path Invalid - BLOCKING]: Path `<path>` does not exist
 The architect repairs mechanical findings without the user.
 
 `[judgment]`: a trade-off a reasonable designer could settle either way. It has no
@@ -229,6 +234,18 @@ IF Read fails:
 ELSE:
   IMPLEMENTATION_PLAN_MARKDOWN = file content
 
+STEP 5.5: Validate the Document
+CALL {tools.validate_document}
+→ Leave out `implementation_markdown` when IMPLEMENTATION_PLAN_MARKDOWN is None; Implementation
+  Plan Missing already covers that case. Never pass an empty body.
+→ Store: VALIDATION
+→ If failed: return the report with `result: failed` and the exact error as its `detail`
+The server checks structure only, drops every finding the user accepted as-is, and never sees
+the project filesystem:
+- Never raise a finding from `VALIDATION.structural_findings`: the orchestrator's gate repairs those before this review.
+- VALIDATION.implementation_findings are relayed under IMPLEMENTATION PLAN STRUCTURE below.
+- VALIDATION.paths_to_verify are the cited paths whose existence only the host checks, under Cited Paths below.
+
 STEP 6: Collect Settled Findings
 SETTLED_FINDINGS = every Settled Design Decision in PHASE_MARKDOWN whose `supersedes=` is a
 `CQ-NNN` or `unresolved-checks`.
@@ -262,23 +279,19 @@ Return the four-section report per REPORT FORMAT.
 
 ## REVIEW CHECKS
 
-### Research Requirements Paths
+### Cited Paths
 
-Search PHASE_MARKDOWN for the "### Research Requirements" section. It is the research ledger:
-`RP-NNN` proposal lines and `- Read:` lines.
+VALIDATION.paths_to_verify lists every path the phase cites whose existence only the host checks: the
+`- Read:` lines of the research ledger, the `- Constraint:` lines and every other
+`.best-practices/` document mentioned. Check existence for these paths and no others; never
+extract paths from the document yourself. Each entry carries `path`, `kind` and `cited_in`.
 
-For each `- Read:` line:
-  Extract the path from its backticks (or the plain text after `- Read:`)
-  result = Glob(pattern=path)
-  IF result has no matching file:
-    Raise:
-      [mechanical] [Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist
-
-For every `.best-practices/*.md` path mentioned anywhere in PHASE_MARKDOWN:
-  result = Glob(pattern=path)
-  IF result has no matching file:
-    Raise:
-      [mechanical] [Best-Practices Reference Invalid - BLOCKING]: Referenced path `{{path}}` does not exist in .best-practices/
+For each entry in VALIDATION.paths_to_verify:
+  result = Glob(pattern=<the entry's path>)
+  IF result has no matching file, raise exactly one finding, the one the entry's kind names:
+    `read`: [mechanical] [Research Path Invalid - BLOCKING]: Path `{{path}}` does not exist
+    `best-practices`: [mechanical] [Best-Practices Reference Invalid - BLOCKING]: Referenced path `{{path}}` does not exist in .best-practices/
+    `constraint`: [mechanical] [Implementation Plan Reference Invalid - BLOCKING]: Path `{{path}}` does not exist
 
 Research coverage is never a finding. No finding ever concerns which research the phase has,
 the research ledger's proposals, or a proposal the user declined: research is proposed by the
@@ -288,13 +301,7 @@ mandate and defeats the cost design.
 ### Implementation Plan References
 
 Search PHASE_MARKDOWN for "### Implementation Plan References". IF absent: skip this check.
-
-For each "- Constraint: `<path>`" line:
-  Strip any § section qualifier (take only the file path before §)
-  result = Glob(pattern=path)
-  IF result has no matching file:
-    Raise:
-      [mechanical] [Implementation Plan Reference Invalid - BLOCKING]: Path `{{path}}` does not exist
+Whether each `- Constraint:` path exists is checked under Cited Paths.
 
 Verify Implementation Plan Reference Semantic Application, for each readable reference:
   - Identify the referenced section or full-file constraints relevant to this Phase
@@ -328,6 +335,10 @@ The design layer (`## Design Shape`, `## Design Decisions`) gives module boundar
 and behaviors an owner. It is a hypothesis, not a contract: evaluate whether it names real design,
 not whether it is exhaustive.
 
+The structural rules are not raised here: seam paths against Module Layout, the Skeleton Index
+notation, Test List entries, decision and settled-decision entry fields, and ID integrity are
+validate_document's, and its gate repairs them before this review.
+
 BINDING SCOPE
 Findings come ONLY from these:
 1. Module boundaries in `### Module Layout`
@@ -358,17 +369,6 @@ VIOLATION: raising a finding for an internal implementation detail turns this cr
 - If an abstraction has exactly one implementation and no stated axis of variation, raise:
   [judgment] [Unjustified Seam] CQ-NNN: `{{seam}}` has one implementation and no stated axis of variation
 - Option A keeps the seam; Option B names the concrete unit directly. Recommend B.
-
-**EMPTY OR FILE-NAMED TEST LIST** (mechanical):
-- If `### Test List` is empty or missing while `### Skeleton Index` names public messages:
-  [mechanical] [Empty Test List - BLOCKING]: Skeleton Index names public messages with no corresponding Test List entries
-- If a `### Test List` entry names a file or function instead of an observable
-  behavior (e.g. `<path to a test file>` with no `::<behavior>` part):
-  [mechanical] [Test List Names File Not Behavior - BLOCKING]: `{{entry}}` names a file, not an observable behavior
-
-**SKELETON INDEX / MODULE LAYOUT MISMATCH** (mechanical):
-- Every module path in `### Skeleton Index` MUST also appear in `### Module Layout`.
-  [mechanical] [Skeleton Index Module Mismatch - BLOCKING]: `{{path}}` is in Skeleton Index but not in Module Layout
 
 **UX CONTRACT FLOWS WITH NO OBSERVABLE PASS CONDITION** (mechanical):
 - If `### Design Shape - Additional Sections` contains a `#### UX Contract` with a
@@ -431,12 +431,6 @@ VIOLATION: raising a finding for an internal implementation detail turns this cr
   [judgment] [Non-Divergent Decision Options] CQ-NNN: OD-{{n}} presents options that do not structurally differ
 - Option A keeps the entry; Option B replaces one option with the real alternative you name.
 
-**MALFORMED DECISION ENTRIES** (mechanical):
-- Every OD-### entry MUST have a title, an Option A, an Option B, and a Recommended
-  line naming one of the options. A missing `Recommended:` silently produces an empty
-  decision when the user accepts the recommended defaults.
-  [mechanical] [Malformed Decision Entry - BLOCKING]: OD-{{n}} is missing {{missing_part}}
-
 ### Implementation Plan
 
 Apply only when IMPLEMENTATION_PLAN_MARKDOWN was read. Frozen respec-code reads this file raw:
@@ -446,24 +440,24 @@ it scans `## Build Order > ### Steps > #### Step N:` and the `## Checklist` item
 - Every `#### Step N:` section names the file paths it touches.
   [mechanical] [Step Names No Files - BLOCKING]: `#### Step {{N}}:` names no file it touches
 
-**EVERY STEP HAS A VERIFY COMMAND** (mechanical):
-- Every `#### Step N:` has at least one `## Checklist` item that carries `(Step N)` and a
-  `(verify: …)`.
-  [mechanical] [Step Without Verify Command - BLOCKING]: `#### Step {{N}}:` has no Checklist item with a verify command
-
-**CHECKLIST ITEMS ARE WELL-FORMED** (mechanical):
-- Every Checklist item is `- [ ] <item> (Step N) (verify: <command>)`, with N an existing step,
-  and one `(verify: …)` per language whose files the step touches.
-  [mechanical] [Checklist Item Malformed - BLOCKING]: `{{item}}` lacks `(Step N)` or `(verify: …)`
+**IMPLEMENTATION PLAN STRUCTURE** (mechanical; relayed from validate_document):
+For each entry in VALIDATION.implementation_findings:
+  Raise it as one finding, adding a space and `[<part>]` after `<subject>` only when its part is non-empty:
+    [mechanical] [Implementation Plan Structure Invalid - BLOCKING]: <check> <subject> — <detail>
+    [mechanical] [Implementation Plan Structure Invalid - BLOCKING]: <check> <subject> [<part>] — <detail>
+  Copy `<check>`, `<subject>`, `<part>` and `<detail>` exactly as the entry gives them: once the user accepts a finding as-is, validate_document matches that text to stop reporting it.
+These cover the step headings, the required sections, and each Checklist item's `(Step N)` and
+`(verify: …)`. Never raise them again in any other form.
 
 **VERIFY COMMANDS COME FROM CONFIGURATION** (mechanical):
-- Each `(verify: <command>)` MUST be one of these, for the language that owns the step's files:
+- For each language that owns files a step touches, the step's Checklist item carries one
+  `(verify: <command>)` whose command is one of these:
   1. that language's `[commands].test` in project_config_context_markdown
   2. the command a `source=user` Settled Design Decision records for that language (the user
      supplied it in the briefing)
   3. exactly this marker, with the language's name:
      `(verify: ask user — no test command configured for <language>; set [commands].test in .respec-ai/config/standards/<language>.toml)`
-  [mechanical] [Verify Command Not Configured - BLOCKING]: `{{item}}` verifies with `{{command}}`, which is not the configured, user-recorded or ask-user command for `{{language}}`
+  [mechanical] [Verify Command Not Configured - BLOCKING]: `{{item}}` has no configured, user-recorded or ask-user verify command for `{{language}}`
 
 **TEST LIST COVERAGE** (mechanical; BINDING SCOPE item 5):
 - Every `### Test List` entry is covered by some step: the step names the entry's test path among

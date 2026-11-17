@@ -1,12 +1,12 @@
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 
-from src.mcp.tools.base import DocumentToolsInterface
+from src.mcp.tools.base import EXACTLY_ONE_INPUT, DocumentToolsInterface
 from src.mcp.tools.phase_tools import PhaseTools
 from src.mcp.tools.plan_tools import PlanTools
 from src.mcp.tools.roadmap_tools import RoadmapTools
 from src.models.enums import DocumentType
-from src.utils.loop_state import MCPResponse
+from src.utils.loop_state import DocumentValidationResponse, MCPResponse
 from src.utils.state_manager import StateManager
 
 
@@ -35,15 +35,21 @@ class DocumentTools:
         response = await tool.store(key, content, allow_frozen_field_edits=allow_frozen_field_edits)
         return response.message
 
-    async def validate_document(self, doc_type: DocumentType, content: str) -> MCPResponse:
-        if not content:
-            raise ToolError('content cannot be empty')
+    async def validate_document(
+        self,
+        doc_type: DocumentType,
+        content: str | None = None,
+        key: str | None = None,
+        implementation_markdown: str | None = None,
+    ) -> DocumentValidationResponse:
+        if bool(content) == bool(key):
+            raise ToolError(EXACTLY_ONE_INPUT)
 
         tool = self._tool_map.get(doc_type)
         if not tool:
             raise ToolError(f'Unknown document type: {doc_type}')
 
-        return await tool.validate(content)
+        return await tool.validate(content, key, implementation_markdown)
 
     async def get_document(
         self,
@@ -141,25 +147,47 @@ def register_document_tools(mcp: FastMCP) -> None:
             raise
 
     @mcp.tool()
-    async def validate_document(doc_type: DocumentType, content: str, ctx: Context) -> MCPResponse:
-        """Check whether storing this content would silently lose any of the user's edits.
+    async def validate_document(
+        doc_type: DocumentType,
+        ctx: Context,
+        content: str | None = None,
+        key: str | None = None,
+        implementation_markdown: str | None = None,
+    ) -> DocumentValidationResponse:
+        """Check a document without storing it. Pass exactly one of content or key.
 
-        Round-trips the markdown against the document's known headings and reports any
-        heading whose content would be truncated or dropped by the parser (e.g. a bare
-        `---` mid-section, or a custom `###` under a heading the model already maps).
-        Does not store anything.
+        Two modes:
+        1. By content: candidate markdown for any doc_type. Reports any heading whose content
+           storing it would truncate or drop (e.g. a bare `---` mid-section), and content that
+           cannot be stored at all.
+        2. By key: phase only. Checks the stored phase document. Content loss is not checked,
+           because the stored document has already been parsed.
 
         Parameters:
         - doc_type: Type of document ("plan", "phase", "roadmap")
-        - content: Candidate markdown content to check before storing
+        - content: Candidate markdown to check before storing
+        - key: Phase key ("plan-name/phase-name") of the stored phase to check
+        - implementation_markdown: Phase only. The full text of the phase's implementation.md,
+          checked against the phase. When omitted, skipped_checks says that check did not run.
 
         Returns:
-        - MCPResponse: status COMPLETED with an empty report if nothing would be lost,
-          otherwise USER_INPUT with one line per affected heading in message
+        - status and message: content loss only. Content mode returns user_input with one line
+          per affected heading, or completed when nothing would be lost. Key mode always returns
+          completed. Structural findings never change status or message.
+        - structural_findings: phase only. Mechanical defects in the phase document. Each has
+          check, location, subject, part, owner and detail: what is wrong and its single fix.
+          owner "architect" marks text the document's author repairs; owner "orchestrator"
+          marks lines the workflow wrote, which the author leaves unchanged.
+        - implementation_findings: the same, for implementation_markdown.
+        - paths_to_verify: phase only. Each path the phase cites, with its kind and the heading
+          that cites it. The server never checks whether a file exists: verify each path on the
+          host.
+        - skipped_checks: each check that did not run and why, including findings the user has
+          accepted as-is.
         """
         await ctx.info(f'Validating {doc_type.value} document')
         try:
-            result = await _get_tools(ctx).validate_document(doc_type, content)
+            result = await _get_tools(ctx).validate_document(doc_type, content, key, implementation_markdown)
             await ctx.info(f'Validated {doc_type.value} document')
             return result
         except Exception as e:

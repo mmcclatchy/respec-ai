@@ -64,7 +64,7 @@ class CriticFeedback(MCPModel):
 
     @classmethod
     def is_empty_blocker_sentinel(cls, value: str) -> bool:
-        normalized = value.strip().lower().strip(' .:-')
+        normalized = value.strip().lower().strip(' .:-*_`')
         return normalized in cls.EMPTY_BLOCKER_SENTINELS
 
     @classmethod
@@ -118,7 +118,11 @@ class CriticFeedback(MCPModel):
 
         # Extract key issues and recommendations
         key_issues = cls._extract_list_items_by_header_path(tree, ('Issues and Recommendations', 'Key Issues'))
-        blockers = cls._extract_list_items_by_header_path(tree, ('Issues and Recommendations', 'Blockers'))
+        # Blockers keep their inline markup: an accept-as-is decision quotes them back to
+        # validate_document, which matches each finding key character for character.
+        blockers = cls._extract_list_items_by_header_path(
+            tree, ('Issues and Recommendations', 'Blockers'), keep_inline_markup=True
+        )
         recommendations = cls._extract_list_items_by_header_path(
             tree, ('Issues and Recommendations', 'Recommendations')
         )

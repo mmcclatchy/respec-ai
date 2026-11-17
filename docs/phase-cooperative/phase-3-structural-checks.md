@@ -41,6 +41,10 @@ grep -n "structural_findings" src/platform/templates/commands/phase_command.py  
 ```
 
 Both were run on 2026-11-13 at commit `a64f0dc` and printed nothing, so this phase was not done.
+On 2026-11-16, after stage S3 (work items 3–5), the first probe prints a match
+(`src/mcp/tools/phase_tools.py:109`); the wiring probe prints nothing until work items 6–10 land.
+After stage S4 (work items 6–9) both probes print a match, and so does the README probe: the
+wiring probe finds the gate at the top of Step 9 (`src/platform/templates/commands/phase_command.py:872-874`).
 Neither probe can match unrelated text:
 - The `\(` excludes any future `validate_*` method. `phase_tools.py` has no `validate` method of any
   kind today; the only `async def validate` in `src/` is the base one (`src/mcp/tools/base.py:16`).
@@ -66,6 +70,20 @@ of the cited files, so in these, re-find the anchor by symbol or marker text, ne
 
 The other anchors into `src/mcp/`, `src/models/` and `src/utils/` point at code that phases 1 and 2
 do not edit.
+
+**Re-verified 2026-11-16 (phase 3, stage S1, after phases 1 and 2).** The anchors that work items 1
+and 2, the judgment calls and B2/B3 cite were re-found by symbol and corrected in place: the SD
+writers in `phase_command.py`, `skeleton_types.py`, `skeleton_generator.py`, the materializers,
+`loop_state.py` and the taught example in `phase_architect.py`. Other anchors are still as of
+`a64f0dc`. Stage S2 then promoted `BULLET_PATH`, which moved the `skeleton_types.py` and
+`skeleton_generator.py` anchors again; those were re-found and corrected in place too. Stage S3
+found every work item 3–5 anchor in `src/mcp/tools/` and `src/models/` still at its `a64f0dc`
+position, then moved them with its own edits; they are corrected in place, as are the moved
+`template_helpers.py` and `create_phase.py` anchors in work item 5. Stage S4 re-found every work
+item 6–9 anchor by symbol or marker after phase 2's rewrite, and corrected them in place; each
+work item carries a "Landed in stage S4" block. The review fixes after S5 inserted lines into
+`src/models/base.py` and `phase_command.py` Step 10.2; the anchors after those insertions (and the
+`phase_command.py` writer anchors S4's gate had already moved) were re-found and corrected in place.
 
 **Read first:**
 - `CLAUDE.md`
@@ -96,13 +114,15 @@ do not edit.
    - `OD-3` and `OD-003` are the same ID.
    - A `title:` prefix on an OD title is tolerated.
    - `- None` is a valid empty marker.
-   - Unnumbered `SD-###` entries are accepted, because frozen respec-code and today's command both
-     write them (`src/utils/design_conformance.py:287`, `:318`; `phase_command.py:752`).
+   - Unnumbered `SD-###` entries are accepted, because frozen respec-code writes them
+     (`src/utils/design_conformance.py:287`, `:318`) and every orchestrator writer did before
+     phase 2 (`phase_command.py:752` at `a64f0dc`). Phase 2's writers number their entries
+     `SD-NNN` (`phase_command.py:1200` for `user-edit`).
    - SD sources already written to existing documents are accepted: `materializer`, `user-edit`
-     with its extra `section=` key (`phase_command.py:752`), and the legacy `user-menu` and
-     `user-override`. Phase 2 converts today's `user-menu` writers in the materialization block
-     (`phase_command.py:906-947`) to `user` and `materializer`, so only documents written before
-     phase 2 still carry `user-menu`.
+     with its extra `section=` key (`phase_command.py:1200`), and the legacy `user-menu` and
+     `user-override`. Phase 2 converted the `user-menu` writers in the materialization block
+     (`phase_command.py:1393-1428`, formerly `:906-947`) to `user` and `materializer`, so only
+     documents written before phase 2 still carry `user-menu`.
    - An SD value may itself contain ` | `. Frozen respec-code writes a signature into `supersedes=`
      (`src/utils/design_conformance.py:316-319`), and an accepted unresolved check records each
      finding verbatim. A segment that does not start with a not-yet-seen known key continues the
@@ -139,7 +159,10 @@ do not edit.
      single "unresolved checks" decision. Raising an OD too would ask the same question twice.
 6. **Finding text is a repair instruction.** The architect reads `detail` to fix the document, so
    each one:
-   - names the exact subject
+   - names the exact subject, through the `subject` field. Every rendered form,
+     `<check> <subject> [<part>] — <detail>`, carries it. `detail` refers to the subject as "this
+     path", "this entry" or "this item" and never interpolates document text, because real paths
+     carry extensions. IDs, `Step <N>` and known `source` values may appear in `detail`.
    - names the single correct fix
    - names no language, framework or file extension
 7. **Check IDs are a contract.** Prompt text cites them, and the tests assert on `check`, `subject`,
@@ -226,35 +249,35 @@ moved.
     so orphan detection does not see it.
   - `## Design` placed after `## System Design`, where `## Design` captured `### Architecture`
 - No loss occurs, and none must be reported, for a fenced `### …` line inside an **unmapped** H2:
-  the H2-only extractor stops only at `## ` and `---` (`src/models/base.py:77-85`), so the section
-  round-trips whole. A fenced `### …` line with an unmapped name under a mapped H2 is already
-  reported as an orphan by the base implementation.
+  the H2-only extractor stops only at a `##` heading line and `---` (`src/models/base.py:94-103`),
+  so the section round-trips whole. A fenced `### …` line with an unmapped name under a mapped H2
+  is already reported as an orphan by the base implementation.
 - `fastmcp` (3.3.1) serializes an `MCPResponse` subclass's extra fields through the tool layer, and
   publishes the return annotation as the tool's `output_schema`.
 - For every Skeleton Index line tried, `strip_tags` + `parse_bare_signature` accepted and rejected
   exactly what `parse_skeleton_index` did. Both materializers call `parse_bare_signature` first, and
-  nothing after it raises (`src/utils/materializers/python_materializer.py:13-23`,
-  `typescript_materializer.py:37-43`).
+  nothing after it raises (`src/utils/materializers/python_materializer.py:34-44`, called from
+  `parse_signature` at `:81-82`; `typescript_materializer.py:66-72`).
 
 ## Behaviors to pin (red step — write these first)
 
 | # | Behavior the test protects | Lives in |
 |---|---|---|
 | B1 | A seam whose path is not in Module Layout is reported, naming the path. A seam under a Module Layout entry ending in `/` is covered. A phase with no Skeleton Index reports nothing. | `tests/unit/utils/test_phase_structure.py` |
-| B2 | **Parity with the CLI parser:** the check flags a Skeleton Index signature exactly when `parse_skeleton_index` would raise (`SkeletonIndexParseError` after phase 1, a `ValueError` today). Parametrize the lines over a meta-notation line, a native-syntax line, and the two `?`/`!` lines above. Parametrize the path over one with no extension and one per registered materializer, taken from `_MATERIALIZER_MAP` and `EXTENSION_TO_LANGUAGE` rather than written as literals. Validation itself never raises (F24). A column-0 backticked-path bullet with no ` :: ` signature, and an unquoted bullet containing ` :: ` at any indentation, are reported, because the CLI silently skips both (`src/utils/skeleton_generator.py:85-87`). | same |
-| B3 | A column-0 Test List bullet whose first backticked span is not `<path>::<behavior>`, or whose behavior is empty, is reported. The CLI silently skips such entries (`skeleton_generator.py:106-107`). Trailing text after the span is allowed. Seams with an empty Test List are reported once. | same |
+| B2 | **Parity with the CLI parser:** the check flags a Skeleton Index signature exactly when `parse_skeleton_index` would raise (`SkeletonIndexParseError` after phase 1, a `ValueError` today). Parametrize the lines over a meta-notation line, a native-syntax line, and the two `?`/`!` lines above. Parametrize the path over one with no extension and one per registered materializer, taken from `_MATERIALIZER_MAP` and `EXTENSION_TO_LANGUAGE` rather than written as literals. The seam is also parametrized inside a backtick and a tilde fence, because the CLI does not skip fences (review fix). Validation itself never raises (F24). A column-0 backticked-path bullet with no ` :: ` signature, and an unquoted bullet containing ` :: ` at any indentation, are reported, because the CLI silently skips both (`src/utils/skeleton_generator.py:80-86`). | same |
+| B3 | A column-0 Test List bullet whose first backticked span is not `<path>::<behavior>`, or whose behavior is empty, is reported. The CLI silently skips such entries (`skeleton_generator.py:113-114`). Trailing text after the span is allowed. Seams with an empty Test List are reported once; a fenced entry the CLI reads makes the list non-empty (review fix). | same |
 | B4 | An OD entry with any of these problems is reported. There is one finding per defect, and `part` names it: missing title, Option A, Option B or Recommended; a Recommended that names an absent option; a fourth option; the retired single-line form. A canonical entry passes, with or without Option C, with or without a `title:` prefix, and with extra indented sub-lines. This carries the intent of `test_agent_templates.py:618` (a missing Recommended silently records an empty decision). | same |
 | B5 | An SD entry missing a field its `source` requires (`part` names the field), or with an unknown or missing `source`, is reported. These pass: frozen respec-code's `- SD-### \| source=implementation \| supersedes=<member>(<params>) -> <result> \| reason=…`, with a ` \| ` inside the `supersedes` value; today's `source=materializer`, `source=user-menu` and `source=user-edit \| section=…` lines (`phase_command.py:752`, `:906-947`); and a `source=user \| supersedes=unresolved-checks` entry whose `decision` quotes findings that contain ` \| `, including a quoted SD line with its own `source=` and `supersedes=`. That last entry still reads as `source=user`, `supersedes=unresolved-checks`, because the first occurrence of a key wins. | same |
-| B6 | A reference to an undefined OD, SD, CQ, FLOW or RP ID is reported. Settled ODs and CQs resolve through an SD's `supersedes=`. `OD-3` and `OD-003` are one ID. Fenced blocks are ignored, and so are references inside SD entries and Research Requirements ledger lines. Duplicate definitions are reported, and so is an OD that is still open after an SD settled it. | same |
-| B7 | `- Read:`, `- Constraint:` (§ qualifier stripped) and `.best-practices/…md` paths are returned in `paths_to_verify` with their `kind` and where each is cited. A `.best-practices/` path on a `- Read:` line is returned once, as `read`. File existence is listed in `skipped_checks`. The result is identical whether or not the cited files exist where the check runs (`tmp_path` + `monkeypatch.chdir`, no mocking). | same |
+| B6 | A reference to an undefined OD, SD, CQ, FLOW or RP ID is reported. Settled ODs and CQs resolve through an SD's `supersedes=`. `OD-3` and `OD-003` are one ID. Fenced blocks are ignored, and so are references inside SD entries and Research Requirements ledger lines. Duplicate definitions are reported, and so is an OD that is still open after an SD settled it. A `- Read:` or `- Applied:` line naming an RP, and a FLOW-led bullet outside the flow list, never count as a second definition (review fix). | same |
+| B7 | `- Read:`, `- Constraint:` (§ qualifier stripped) and `.best-practices/…md` paths are returned in `paths_to_verify` with their `kind` and where each is cited. A `.best-practices/` path on a `- Read:` line is returned once, as `read`. Paths in Settled Design Decisions are not returned (review fix). File existence is listed in `skipped_checks`. The result is identical whether or not the cited files exist where the check runs (`tmp_path` + `monkeypatch.chdir`, no mocking). | same |
 | B8 | When an `implementation.md` body is passed, each of these is reported: no steps; a step heading that is not `#### Step <integer>: <title>` (frozen readers skip it, F33); a duplicate step number; a missing `## Build Order > ### Steps`, `## Checklist` or `## Policy`; a checklist item with no `(Step N)`, naming an unknown step, or with a verify command that is empty, `TODO`, `no_preference` (F25) or wholly a placeholder; a step no checklist item verifies. Phase 1's `(verify: ask user — …)` marker passes, and so does an item with one `(verify: …)` group per language. **The taught form passes:** the shipped `implementation_plan_example` (`phase_architect.py`), with each `(verify: …)` placeholder replaced by a concrete command, yields no findings. When no body is passed, the result says the check was **skipped**, never clean. | same |
-| B9 | Findings never depend on a path's extension (parametrize over none and two synthetic extensions). Every finding's `detail`, from a corpus that triggers every check ID, and the published tool description pass phase 1's denylist. Import that list from where phase 1 put it. Phase 1 keeps its scanner inside `tests/unit/templates/test_phase_language_neutrality.py`, so move the list and the scanner to `tests/support/language_denylist.py`, and have both guards import them; production never imports it. A negative self-test proves the denylist fires. | same |
+| B9 | Findings never depend on a path's extension (parametrize over none and two synthetic extensions). Every finding's `detail`, from a corpus that triggers every check ID, and the published tool description pass phase 1's denylist. Import that list from where phase 1 put it. Phase 1 kept its scanner inside `tests/unit/templates/test_phase_language_neutrality.py`; stage S1 moved the list and the scanner to `tests/support/language_denylist.py`, and both guards import them from there; production never imports it. A negative self-test proves the denylist fires. The description half is `test_the_published_validate_document_description_names_no_language` (stage S1); stage S3 rewrote the description and re-ran it. | same |
 | B10 | Structural findings never change `status` or `message`. A document with structural findings and no content loss returns `completed` with the unchanged "No content loss detected." message, so the hand-edit menu cannot show a structural problem. Content loss still returns `user_input`. A phase with no design layer (create-phase output) reports no structural findings. | `tests/unit/mcp/test_document_validation.py` (exists; extend it, keeping its two tests green) |
 | B11 | Content that `store` would reject (bad title, F29) neither raises nor validates clean. It is reported to its author as content loss (the whole edit cannot be stored), and the structural checks are listed as skipped with the reason. | same |
-| B12 | Content loss in unmapped H2 sections is reported: bare-`---` truncation, and capture by an earlier H2 whose name contains its own. A `## ` line inside a fenced block is reported wherever it sits. A `### ` line inside a fenced block is reported only under a mapped H2, including one with a mapped name such as `### Test List`. A fenced `### ` line under an unmapped H2 is **not** reported, because nothing is lost there. An unmapped H2 whose name overlaps another H2 name is a **structural** finding, whatever the order (Postgres reorders additional sections, F27 trap 4). Plan and Roadmap content-loss results are unchanged. | `tests/unit/models/test_content_loss_detection.py`; the overlap half in `tests/unit/utils/test_phase_structure.py` |
+| B12 | Content loss in unmapped H2 sections is reported: bare-`---` truncation, and capture by an earlier H2 whose name contains its own. A `##` heading line inside a fenced block is reported wherever it sits. A `###` heading line inside a fenced block is reported only under a mapped H2, including one with a mapped name such as `### Test List`. A fenced `###` heading line under an unmapped H2 is **not** reported, because nothing is lost there. An unmapped H2 whose name overlaps another H2 name is a **structural** finding, whatever the order (Postgres reorders additional sections, F27 trap 4). Plan and Roadmap content-loss results are unchanged. | `tests/unit/models/test_content_loss_detection.py`; the overlap half in `tests/unit/utils/test_phase_structure.py` |
 | B13 | An `update_document` whose content loses text still stores, and its response names each heading that lost content. Frozen respec-patch also writes phases through it, so it warns rather than rejects. | `tests/unit/mcp/test_document_validation.py` |
 | B14 | Key mode validates the **stored** document. Exactly one of `content` and `key` is required. `key` and `implementation_markdown` on a non-phase type are errors. The published tool schema lists `doc_type` as its only required input, and exposes `key`, `implementation_markdown` and the four result fields (`await mcp.list_tools()`, the probe above). Rendered calls therefore never name a parameter the tool lacks. | same |
-| B15 | **The gate**, on all three TUIs. A key-mode validation runs at the top of Step 9, before the critic, so it follows every architect `draft`/`revise` and every stored hand edit. With architect-owned findings open and budget left, the orchestrator re-engages the architect in `revise`, and no user prompt is reachable on that path. Structural repair rounds draw on the same two-round budget as critic `[mechanical]` findings. Orchestrator-owned findings, and leftovers once the budget is spent, join the unresolved-checks decision. They survive a critic `completed`. The critic is not invoked on a failing draft while budget remains. When a content-loss line reads `The document cannot be stored`, the hand-edit menu offers no option that proceeds with the unstorable text. | `tests/unit/templates/test_phase_structural_gate.py` |
+| B15 | **The gate**, on all three TUIs (stage S4: `test_phase_structural_gate.py`; `template_contract` gained only a frontmatter `tools:` fallback in `declared_tools()` and `block_at()`). A key-mode validation runs at the top of Step 9, before the critic, so it follows every architect `draft`/`revise` and every stored hand edit. With architect-owned findings open and budget left, the orchestrator re-engages the architect in `revise`, and no user prompt is reachable on that path. Structural repair rounds draw on the same two-round budget as critic `[mechanical]` findings. Orchestrator-owned findings, and leftovers once the budget is spent, join the unresolved-checks decision. They survive a critic `completed`. The critic is not invoked on a failing draft while budget remains. When a content-loss line reads `The document cannot be stored`, the hand-edit menu offers no option that proceeds with the unstorable text. | `tests/unit/templates/test_phase_structural_gate.py` |
 | B16 | **One owner per rule:** the critic raises none of the moved blockers (work item 9). It verifies existence only for paths in `paths_to_verify`, and relays every `implementation_findings` entry as a `[mechanical]` blocker. The architect and critic invoke only MCP tools they declare (Claude Code rendering, F14). The critic's grants gain only `validate_document`: no `Write`, `Edit`, `update_document` or `store_document`. | same |
 | B17 | **An accepted finding stays accepted.** A structural or implementation finding is not reported when a `source=user \| supersedes=unresolved-checks` SD contains its finding key (work item 2, "Accepted findings"). It is listed in `skipped_checks` instead. These are still reported: the same finding with no such SD, or with only a non-`user` SD quoting it; and a finding on the same `check` and `subject` with a different `part`. Suppression still works when the accept SD quotes a finding whose subject is itself an SD line containing `source=` and `supersedes=`. | `tests/unit/utils/test_phase_structure.py` |
 | B18 | **Ownership is computed, not guessed.** These findings carry `owner: orchestrator`: findings on an SD entry whose `source` is `user`, `user-edit`, `user-menu`, `user-override`, `materializer` or `implementation`, and findings on a Research Requirements line. Every other finding carries `owner: architect`, including findings on an SD with `source=architect` or with an unknown or missing source. | same |
@@ -318,11 +341,11 @@ class DocumentValidationResponse(MCPResponse):
     skipped_checks: list[str] = Field(default_factory=list)
 ```
 
-- **Subclassing `MCPResponse`** (`src/utils/loop_state.py:21-27`) follows the `MCPRoadMapResponse`
-  precedent (`:15-18`). It keeps `status` and `message` where `phase_command.py:702-748`
+- **Subclassing `MCPResponse`** (`src/utils/loop_state.py:22-28`) follows the `MCPRoadMapResponse`
+  precedent (`:16-19`). It keeps `status` and `message` where `phase_command.py:702-748`
   (pre-phase-2) reads them.
 - **Why `loop_state.py` and not `src/models/`.** No module in `src/models/` imports from `src/utils/`.
-  `loop_state.py` already imports downward from `src/models/` (`src/utils/loop_state.py:6-8`), so it
+  `loop_state.py` already imports downward from `src/models/` (`src/utils/loop_state.py:6-9`), so it
   can import `StructuralFinding` and `CitedPath` the same way.
 - **`CONTENT_LOSS_WARNING`** is a constant in `src/models/document_validation.py`, defined like
   `FROZEN_DISCARD_WARNING` (`src/utils/state_manager/base.py:29`). Prompts import it the way
@@ -344,17 +367,20 @@ def drop_accepted_findings(
 
 - **Input is a parsed `Phase`.** Checks read `Phase` fields, not raw text, so they see what
   downstream readers see (F32). Section-scoped rules read the typed fields. ID scanning reads
-  `phase.build_markdown()`. Unmapped H2 names are the keys of `phase.additional_sections`.
+  the content `phase.build_markdown()` emits, one section at a time: each typed field and each
+  `additional_sections` value is scanned on its own, so fence state never carries from one section
+  into the next. Unmapped H2 names are the keys of `phase.additional_sections`.
 - **Reuse only parsers that do not hide the defect being checked:**
-  - **Reuse:** `strip_tags` and `parse_bare_signature` (`src/utils/skeleton_types.py:51-84`). Catch
+  - **Reuse:** `strip_tags` and `parse_bare_signature` (`src/utils/skeleton_types.py:57-90`). Catch
     the parse error phase 1 introduces (`SkeletonIndexParseError`, a `ValueError` subclass); never
     catch a bare `ValueError`.
-  - **Promote:** move the bullet grammar `_BULLET_PATH` from `skeleton_generator.py:16` into
+  - **Promote:** move the bullet grammar `_BULLET_PATH` from `skeleton_generator.py` into
     `skeleton_types.py` as a public name, and re-point `skeleton_generator.py`. `skeleton_types` is
-    the bottom of the skeleton layering (`src/utils/skeleton_types.py:72-74`), and importing a
-    private name across modules invites drift.
+    the bottom of the skeleton layering (`src/utils/skeleton_types.py:78-80`), and importing a
+    private name across modules invites drift. Done in stage S2: it is now `BULLET_PATH`
+    (`src/utils/skeleton_types.py:15`), and `parse_skeleton_index` and `parse_test_list` import it.
   - **Do not reuse:**
-    - `parse_skeleton_index` or `parse_test_list` (`skeleton_generator.py:77-110`). They silently
+    - `parse_skeleton_index` or `parse_test_list` (`skeleton_generator.py:76-117`). They silently
       skip exactly the malformed entries this phase must report, and the first dispatches on file
       extension to materializers.
     - `review_weighting._BULLET_PATH`, which documents why it is deliberately lenient
@@ -370,12 +396,12 @@ unshaped phase reports nothing.
 |---|---|---|
 | `seam-path-not-in-module-layout` | Design Shape > Skeleton Index | A Skeleton Index path is not listed in Module Layout and does not start with a Module Layout entry ending in `/`. Module Layout paths are the backticked path of every bullet at any indentation, read with the promoted bullet grammar. Compare after stripping a leading `./`. |
 | `seam-entry-malformed` | Design Shape > Skeleton Index | A column-0 bullet, other than `- None`, is not `` - `<path>` :: <signature> ``; or a bullet at any indentation has no backticked path but contains ` :: `. Indented bullets with a backticked path and no ` :: ` are notes and pass. |
-| `seam-signature-unparseable` | Design Shape > Skeleton Index | A `` `<path>` :: <signature> `` line at **any** indentation (the CLI strips lines) whose signature, with trailing tags removed by `strip_tags`, fails `parse_bare_signature`. Never raise. |
+| `seam-signature-unparseable` | Design Shape > Skeleton Index | A `` `<path>` :: <signature> `` line at **any** indentation (the CLI strips lines), fenced or not (the CLI does not skip fences), whose signature, with trailing tags removed by `strip_tags`, fails `parse_bare_signature`. Never raise. |
 | `test-list-empty` | Design Shape > Test List | The Skeleton Index has at least one valid entry and the Test List has no bullet other than `- None`. Reported once. Malformed Test List bullets get only their own finding. |
 | `test-entry-without-behavior` | Design Shape > Test List | A column-0 bullet, other than `- None`, whose first backticked span is not `<path>::<behavior>` with a non-empty path and behavior. Text after the span is allowed. |
 | `decision-entry-malformed` | Design Decisions > Open Design Decisions | See "OD entries" below. One finding per defect. `subject` is the entry's ID as written (`OD-003`), or the whole line for a bullet with no ID; `part` is the defect. |
 | `settled-entry-malformed` | Design Decisions > Settled Design Decisions | See "SD entries" below. `subject` is the entry's ID as written (`SD-007`), or the whole line for an unnumbered `SD-###`. |
-| `section-name-overlap` | the H2 | An unmapped H2 whose name contains, or is contained in, another H2 name: a mapped one from `Phase.HEADER_FIELD_MAPPING` (`src/models/phase.py:14-43`), `Metadata`, or another unmapped H2. This enforces README "Section naming" at runtime. |
+| `section-name-overlap` | the H2 | An unmapped H2 whose name contains, or is contained in, another H2 name: a mapped one from `Phase.HEADER_FIELD_MAPPING` (`src/models/phase.py:23-52`), `Metadata`, or another unmapped H2. This enforces README "Section naming" at runtime. |
 | `duplicate-id` | where the second definition sits | The same OD, SD, RP or FLOW number is defined twice. Unnumbered `SD-###` entries are exempt. |
 | `settled-decision-still-open` | Design Decisions > Open Design Decisions | An OD is still listed open although an SD's `supersedes=` names it. README "Settled decision entry → Placement" says to remove it. |
 | `dangling-reference` | the heading containing the reference | See "ID integrity" below. |
@@ -414,7 +440,7 @@ unshaped phase reports nothing.
 | `user` | `decision`, `rationale`, `binding`; plus `rejected` when `supersedes` names an OD or CQ |
 | `user-menu`, `user-override` (legacy: phase 2 retires both, and today's writers in `phase_command.py` become `user` or `materializer`; documents written before phase 2 still carry them) | `decision`, `rationale`, `binding` |
 | `user-edit` | `decision`, `binding` |
-| `materializer` | `decision`, `rationale`, `binding` (`phase_command.py:923`, `:931`, `:947`) |
+| `materializer` | `decision`, `rationale`, `binding` (`phase_command.py:1407`, `:1414`, `:1423`, `:1428`) |
 | `architect` | `decision`, `rationale`, `binding` |
 | `implementation` | `supersedes`, `reason`: the frozen write-back form (`src/utils/design_conformance.py:285-287`, `:316-319`) |
 | anything else, or missing (`part`: `source`) | defect |
@@ -434,9 +460,9 @@ belongs to the orchestrator, and a duplicate OD or FLOW belongs to the architect
 
 **Accepted findings** (`drop_accepted_findings`). `PhaseTools.validate` passes both finding lists
 through it, so the gate, the architect's self-check and the critic all see the same filtered result:
-- **The finding key** is `<check> <subject>`, followed by ` [<part>]` when `part` is non-empty. For
-  example, `decision-entry-malformed OD-003 [Option B]`. Including `part` means accepting one defect
-  never hides a different defect on the same subject.
+- **The finding key** is `<check> <subject>`, followed by a space and `[<part>]` when `part` is
+  non-empty. For example, `decision-entry-malformed OD-003 [Option B]`. Including `part` means
+  accepting one defect never hides a different defect on the same subject.
 - **The match.** A finding is dropped when some SD entry has `source=user` and
   `supersedes=unresolved-checks`, read by the segment rules above, and contains the finding key
   anywhere in its line. The gate and the critic record findings as `<finding key> — <detail>` (work
@@ -452,8 +478,8 @@ through it, so the gate, the architect's self-check and the critic all see the s
 | OD | a column-0 `- OD-<n> \|` entry in Open Design Decisions | any SD's `supersedes=OD-<n>` |
 | SD | a column-0 `- SD-<n> \|` entry in Settled Design Decisions | — |
 | CQ | never defined in the document; CQ IDs live only in the critic's report | any SD's `supersedes=CQ-<n>` |
-| FLOW | a `- FLOW-<n>:` bullet in Design Shape - Additional Sections (the UX Contract) | — |
-| RP | a bullet in Research Requirements, at any indentation, whose first ID token is `RP-<n>`. Approval marks may sit anywhere on the line; README "Research recording" does not fix their position. | — |
+| FLOW | a `- FLOW-<n>:` bullet in Design Shape - Additional Sections (the UX Contract) | any other FLOW-led bullet (see "Further readings": only the flow list counts toward duplicates) |
+| RP | a bullet in Research Requirements, at any indentation, other than a `- Read:` line or a nested `- Applied:` line, whose first ID token is `RP-<n>`. Approval marks may sit anywhere on the line; README "Research recording" does not fix their position. | the RP IDs on a `- Read:` or `- Applied:` line (they resolve references but are never a definition, so never a duplicate) |
 
 - **A reference** is any other match of `\b(OD|SD|CQ|RP)-\d+\b` or `\bFLOW-\d+\b`.
 - **Exempt:** the defining token itself, the value of a `supersedes=` segment, and every token inside
@@ -467,11 +493,18 @@ triple is returned once:
 - `read`: every `- Read:` line in Research Requirements, at any indentation. The path is the first
   backticked span, or else the text after `Read:` up to ` — `.
 - `constraint`: every `- Constraint:` line in Implementation Plan References. The path is the first
-  backticked span, with any ` §` qualifier removed.
-- `best-practices`: every other `.best-practices/…md` mention anywhere in `build_markdown()`. A mention
-  is a run of characters, other than whitespace, backticks, quotes, brackets and parentheses, that
-  starts with `.best-practices/` and ends in `.md`. A path that a `- Read:` line already returned as
-  `read` is not returned again for the same line.
+  backticked span, with any `§` qualifier (and the space before it) removed.
+- `best-practices`: every other `.best-practices/…md` mention anywhere in `build_markdown()` except
+  `### Settled Design Decisions`. A mention is a run of characters, other than whitespace,
+  backticks, quotes, brackets and parentheses, that starts with `.best-practices/` and ends in
+  `.md`. A path that a `- Read:` line already returned as `read` is not returned again for the same
+  line.
+- **Settled Design Decisions are never scanned for cited paths** (review fix, 2026-11-16). They are
+  orchestrator-written history the architect carries forward verbatim, the same reason their
+  references are exempt. An accept-as-is SD quotes the missing-path blocker it accepts, so scanning
+  it would turn the accepted `read` path into a new `best-practices` entry under a different
+  critic marker, which the architect cannot remove and which reaches the user again (judgment
+  call 9). Trade-off: an architect-sourced SD that cites a missing path goes unchecked.
 
 These are respec-ai's own document grammar, not a target language. The critic picks its marker by
 `kind` (work item 9).
@@ -483,7 +516,7 @@ cover only the fields that exist today (README "Frozen-reader compatibility"; F3
 | `check` | Fires when |
 |---|---|
 | `implementation-section-missing` | Any of `## Build Order > ### Steps`, `## Checklist` or `## Policy` is absent. `part` names it. |
-| `implementation-step-heading-malformed` | A `#### ` heading under Steps is not `#### Step <integer>: <non-empty title>`. Readers scan exactly that form (`code_command.py:291`; the test-side mirror is `tests/support/plan_extraction.py:13`). |
+| `implementation-step-heading-malformed` | A `####` heading under Steps is not `#### Step <integer>: <non-empty title>`. Readers scan exactly that form (`code_command.py:291`; the test-side mirror is `tests/support/plan_extraction.py:13`). |
 | `implementation-no-steps` | Steps holds no valid step. |
 | `duplicate-id` | The same step number is defined twice. |
 | `implementation-checklist-item-malformed` | A `- [ ]`, `- [x]` or `- [X]` item under `## Checklist` lacks `(Step <integer>)` (`part`: `step`), or has no `(verify: …)` group (`part`: `verify`). Each group runs from `(verify:` to its balanced `)`; an item may carry one group per language (phase 1, item 7). Also fires (`part`: `verify`) when a group's command is empty; starts with `TODO` in any case, optionally bracketed; is `no_preference` (F25); or is wholly a `<…>` or `[…]` placeholder. A command starting `ask user` is phase 1's sanctioned marker and passes (judgment call 1). |
@@ -492,15 +525,121 @@ cover only the fields that exist today (README "Frozen-reader compatibility"; F3
 
 Every `implementation.md` finding has `owner: architect`, because the architect writes the file.
 
+**Subjects and parts where the tables are silent** (pinned by `tests/unit/utils/test_phase_structure.py`
+in stage S1, choosing the fewest-findings reading per judgment calls 1 and 6). They feed the finding
+keys the gate, the critic and accept-as-is SDs quote:
+- **Line subjects.** `seam-entry-malformed`, `seam-signature-unparseable`,
+  `test-entry-without-behavior`, `implementation-step-heading-malformed` and
+  `implementation-checklist-item-malformed` use the offending line, stripped. An OD bullet with no
+  ID (`part`: `entry line`) and an unnumbered `SD-###` entry also use the stripped line.
+- **Path and ID subjects.** `seam-path-not-in-module-layout` uses the path as written.
+  `duplicate-id` uses the second definition's ID as written (`OD-003` after `OD-3`), and its owner
+  is that line's. `settled-decision-still-open` uses the OD ID as written under Open.
+  `dangling-reference` uses the ID as written. Step references use `Step <N>` for
+  `dangling-reference`, `duplicate-id` and `implementation-step-unverified`.
+- **Section subjects.** `test-list-empty` uses `Test List`, and also fires when the Test List is
+  absent. `implementation-no-steps` uses `Steps`. `implementation-section-missing` uses
+  `implementation.md`, with `part` `Build Order > Steps`, `Checklist` or `Policy`.
+  `section-name-overlap` uses the H2 name with an empty `part`; both names of an overlapping pair of
+  unmapped H2s are reported.
+- **One finding per fix.** The retired single-line OD form yields only `single-line form`, not also
+  missing `Option A`, `Option B` or `Recommended`. A missing Steps section suppresses
+  `implementation-no-steps`, and a missing Checklist suppresses `implementation-step-unverified`.
+  A `#### Step 3:` heading with an empty title yields only the malformed-heading finding.
+  A Recommended that names a missing `Option A` or `Option B` yields only that option's finding:
+  restoring the option is the fix, and a `Recommended` finding would push the architect to change
+  the recommendation instead (stage S2).
+- **SD parts** are the missing field's key, or `source`.
+- **`cited_in`** is `<H2> > <H3>` for a typed field, or the bare name of an unmapped H2.
+- **Definitions are section-scoped.** Parsing copies a captured section's text into an
+  overlapping unmapped H2 (F27 trap 1: `## Design` captures `## Design Shape`), so count
+  definitions only in their own typed fields, or the copy raises a false `duplicate-id`.
+
+**Further readings fixed in stage S2** (the same fewest-findings rule; each is pinned by a test in
+`tests/unit/utils/test_phase_structure.py`):
+- **References the architect cannot repair are not scanned.**
+  - The frozen Overview fields (`FROZEN_PHASES_FIELDS`, `src/utils/state_manager/base.py`) are
+    exempt. Storage preserves them over any `update_document`, so no repair round could fix a
+    reference there.
+  - Every line of `### Settled Design Decisions` is exempt, not only lines shaped like an SD entry.
+  - An additional section reported by `section-name-overlap` is not scanned for references. Its
+    text may be a copy of the section that captured it, and the overlap finding already names
+    the one fix.
+- **Settlement comes from the parsed `supersedes=` value only.** An OD or CQ token quoted anywhere
+  else on an SD line (for example inside an accept-as-is SD's `decision=`) settles nothing.
+- **Definitions are lenient about the line around the ID.** A column-0 bullet whose first token is
+  `OD-<n>` defines that OD whatever follows it; a separator other than `|` is still reported as
+  `entry line`. A bullet at any indentation whose first token is `FLOW-<n>` resolves references to
+  that flow. Only the flow list counts toward `duplicate-id` (review fix, 2026-11-16): a column-0
+  FLOW-led bullet inside `##### Interaction Flows`, or anywhere in the section when the UX Contract
+  has no such subsection. Indented FLOW-led bullets, and FLOW-led bullets under other subsections
+  (per-flow keyboard paths, breakpoint notes), restate a flow; counting them raised a duplicate
+  whose suggested renumbering would corrupt the contract. They still resolve, so an indented flow
+  definition never dangles. Bold markers (`**`) are ignored on FLOW, Option and Recommended lines.
+- **OD sub-lines.** The option letter may be followed by `:`, `.`, `)` or a dash. The
+  `Recommended` separator is optional.
+- **Module Layout.** A Module Layout entry covers every path below it whether or not it was written
+  with a trailing `/`; comparison drops a leading `./` and any trailing `/`. When Module Layout
+  yields no backticked bullet path at all, `seam-path-not-in-module-layout` does not fire. The path
+  check covers every backticked `` `<path>` :: `` line at any indentation, because the CLI reads
+  those too.
+- **Test List.** The `<path>::<behavior>` span must open the bullet: the promoted bullet grammar,
+  the same one the CLI reads. A bullet whose first backticked span sits later on the line is a
+  defect. A bullet at any indentation counts toward a non-empty Test List.
+- **`- None`** matches case-insensitively when `None` is the bullet's first word. A source matches
+  case-insensitively.
+- **Checklist.**
+  - Items at any indentation count, both for validation and for the steps they verify.
+  - A `(verify:` with no balanced `)` is no group, so it gets the `verify` finding.
+  - A `dangling-reference` to `(Step <N>)` is not reported when Steps holds no valid step. A
+    malformed heading that still reads `#### Step <N>` registers `N`, so an item naming it is not
+    also dangling.
+  - `implementation-no-steps` is not reported when any step heading is malformed.
+- **Duplicate findings collapse.** Findings with the same finding key are reported once, at the
+  first location.
+- **Accepted-finding match.** The key is matched as plain text, and must be followed by whitespace
+  or the end of the SD line. So accepting `dangling-reference OD-12` never hides
+  `dangling-reference OD-1`, and accepting a path never hides a finding on a path that is a prefix
+  of it.
+- **Fences.** A fence opens on a line whose first non-space characters are three or more
+  backticks with no backtick after the run, or three or more tildes (CommonMark's info-string
+  rule; review fix, 2026-11-16). So a line like ```` ```x``` notes ```` is inline code and hides
+  nothing. Indentation is not limited, so a fence inside a list item still hides its lines.
+  Fenced lines are skipped everywhere except the Skeleton Index and the Test List: their CLI
+  readers strip each line and never skip fences, so a fenced line the CLI reads (a backticked
+  seam with ` :: `, or a backticked span containing `::`) is checked exactly like an unfenced one,
+  and a valid fenced seam or test entry counts as present. Other fenced lines there stay unreported,
+  because the CLI ignores them too (B2 parity without flagging fenced examples).
+- **Cited paths.**
+  - Fenced lines are skipped.
+  - Settled Design Decisions are skipped (see `best-practices` above).
+  - A best-practices mention is cut from runs delimited by whitespace, backticks, straight and
+    typographic quotes, brackets, braces and parentheses. Only a run that starts with
+    `.best-practices/` counts, so `docs/.best-practices/x.md` is not a mention.
+  - The mention ends at the run's last `.md` that no word character or hyphen follows. Trailing
+    punctuation is dropped, and `.mdx` is not a mention.
+  - A `- Constraint:` line's own path is not also returned as `best-practices`.
+- **Never raise.** ID and step numbers compare as digit strings with leading zeros stripped, never
+  through `int()`, which refuses runs over 4300 digits. Verify groups are balanced with an
+  iterative counter.
+- **Details never interpolate document text.** A `detail` names paths, lines, signatures and H2
+  names only as "this path", "this entry" or "this item", because real paths carry extensions
+  (judgment call 6); `subject` carries the verbatim text. IDs, `Step <N>` and known `source`
+  values are interpolated.
+- **A `*` or `+` marker gets its own detail** (review fix, 2026-11-16). The CLI reads only `-`
+  bullets, so a Skeleton Index or Test List line that would be a valid entry with a `-` marker is
+  told to start with `-`, not to add backticks it already has. `check`, `subject` and `part` are
+  unchanged.
+
 #### 3. `PhaseTools.validate` and the tool interface
 
-- **`DocumentToolsInterface.validate`** (`src/mcp/tools/base.py:16-22`):
+- **`DocumentToolsInterface.validate`** (`src/mcp/tools/base.py:30-38`; `:16-22` before stage S3):
   - **Signature:** `validate(content: str | None = None, key: str | None = None,
     implementation_markdown: str | None = None) -> DocumentValidationResponse`.
   - **The base implementation** keeps today's content-loss behavior, using `content` only. It raises
     `ToolError` when given `key` or `implementation_markdown`: only phase documents support them.
 - **`PhaseTools.validate`** is a new override in `src/mcp/tools/phase_tools.py`, inside the class at
-  `src/mcp/tools/phase_tools.py:24-25`, satisfying the probe.
+  `src/mcp/tools/phase_tools.py:106-107` (`:24-25` before stage S3), satisfying the probe (`:109`).
   - **Exactly one input.** Exactly one of `content` and `key` is required; otherwise `ToolError`.
   - **`content`:**
     - It runs `Phase.find_content_loss` (work item 4) for `status` and `message`, exactly as today.
@@ -509,9 +648,9 @@ Every `implementation.md` finding has `owner: architect`, because the architect 
       content-loss lines, sets `status` to `user_input`, and records
       `structure: document does not parse` in `skipped_checks` (B11).
   - **`key`:**
-    - It loads the stored phase through `_parse_key` (`src/mcp/tools/phase_tools.py:161-165`) and
+    - It loads the stored phase through `_parse_key` (`src/mcp/tools/phase_tools.py:276-280`) and
       `self.state.get_phase`, mapping `PhaseNotFoundError` to `ResourceError` as
-      `src/mcp/tools/phase_tools.py:85-86` does.
+      `src/mcp/tools/phase_tools.py:200-201` does.
     - Content loss is not meaningful on rebuilt markdown, so `status` is `completed`, and `message`
       says that content loss is not checked in key mode.
   - **Both modes** set:
@@ -523,20 +662,22 @@ Every `implementation.md` finding has `owner: architect`, because the architect 
       to `skipped_checks`
     - `skipped_checks` always gets
       `cited-paths-exist: the server cannot see the project filesystem; verify paths_to_verify on the host`
-- **`DocumentTools.validate_document`** (`src/mcp/tools/document_tools.py:38-46`) forwards all three
-  inputs. Its "content cannot be empty" guard at `:39-40` becomes the exactly-one rule.
+- **`DocumentTools.validate_document`** (`src/mcp/tools/document_tools.py:38-52`; `:38-46` before
+  stage S3) forwards all three inputs. Its "content cannot be empty" guard (`:39-40` before stage S3)
+  became the exactly-one rule (`:45-46`).
   - The new signature is `validate_document(self, doc_type, content: str | None = None,
     key: str | None = None, implementation_markdown: str | None = None)`.
   - `content` stays the second positional parameter, because the existing tests in
     `tests/unit/mcp/test_document_validation.py` pass it positionally.
-- **The registered tool** (`document_tools.py:143-167`):
+- **The registered tool** (`document_tools.py:149-195`; `:143-167` before stage S3):
   - It gains `key` and `implementation_markdown`, and `content` becomes optional.
   - Write all three as `str | None = None`, after `ctx: Context`, the way `get_document` orders
-    `include_phases` (`document_tools.py:170-175`). fastmcp marks a `str | None` parameter with no
+    `include_phases` (`document_tools.py:198-203`). fastmcp marks a `str | None` parameter with no
     default as required; the probe confirmed that `doc_type` is then the only required input.
   - Its return annotation becomes `DocumentValidationResponse`, so the published `output_schema` is
     truthful (B14).
-  - **Rewrite the docstring at `:145-159`.** Agents read it as the tool description. It must state:
+  - **Rewrite the docstring** (`:157-187`; `:145-159` before stage S3). Agents read it as the tool
+    description. It must state:
     - the two modes
     - that `status` reports content loss only
     - what each result field holds
@@ -544,23 +685,45 @@ Every `implementation.md` finding has `owner: architect`, because the architect 
 
     It names no language (B9).
 
+**Readings fixed in stage S3.** `tests/unit/mcp/test_document_validation.py` pins the behaviors
+(which inputs count as passed, what is skipped and when); the exact wording, the `id` values and
+the `skipped_checks` order are implemented but unpinned:
+- **Empty strings.** For the exactly-one rule, an empty `content` or `key` counts as absent, as the
+  old "content cannot be empty" guard did. `implementation_markdown` counts as passed whenever it is
+  not `None`, so an empty body is checked and reports its missing sections.
+- **The unstorable line** is `- The document cannot be stored: <reason>` under a
+  `Content loss detected:` header, after any heading lines. `UNSTORABLE_DOCUMENT` (`'The document cannot be stored'`) is a
+  constant in `src/models/document_validation.py`, beside `CONTENT_LOSS_WARNING`; work item 7's
+  hand-edit menu imports it rather than retyping it. The reason is one line: a `ValidationError`
+  becomes `<field>: <message>` pairs joined by a semicolon and a space.
+- **When the content does not parse,** `skipped_checks` holds `structure: document does not parse`,
+  then `implementation.md: not passed` (or, when a body was passed,
+  `implementation.md: not checked, because the phase document does not parse`), then the
+  `cited-paths-exist` line. The structural lists and `paths_to_verify` are empty.
+- **`skipped_checks` order** otherwise: `implementation.md: not passed` when no body was passed,
+  then the `accepted: …` lines (structural, then implementation), then the `cited-paths-exist` line.
+- **Key mode** returns `id` = the key and `message` =
+  `Content loss is not checked in key mode: the stored phase has already been parsed.` Content mode
+  keeps `id` = `validate`.
+
 #### 4. Content loss covers additional sections
 
-A `find_content_loss` classmethod override on `Phase` (`src/models/phase.py`) calls `super()` (base
-implementation at `src/models/base.py:201-221`) and adds:
+A `find_content_loss` classmethod override on `Phase` (`src/models/phase.py:99-120`) calls `super()`
+(base implementation at `src/models/base.py:219-240`; `:201-221` before stage S3) and adds:
 
 - **Unmapped H2 truncation and capture.** For each unmapped H2, enumerated the way `parse_markdown`
-  does at `src/models/base.py:407-425`, it compares `_extract_raw_section_verbatim`
-  (`src/models/base.py:131-173`) against `_extract_content_from_raw_markdown`
-  (`src/models/base.py:54-107`). Any difference is loss. This catches the bare-`---` case and the
+  does (stage S3 moved that enumeration into `MCPModel._unmapped_h2_headings`,
+  `src/models/base.py:241-251`, which `parse_markdown` now calls at `:429-434`), it compares
+  `_extract_raw_section_verbatim` (`src/models/base.py:150-191`) against
+  `_extract_content_from_raw_markdown` (`src/models/base.py:73-126`). Any difference is loss. This catches the bare-`---` case and the
   capture-by-substring case.
 - **Heading lines inside a fence.** A fence-aware line scan of ```` ``` ```` and `~~~` blocks flags:
-  - any `## ` line inside a fence, wherever it sits
-  - a `### ` line inside a fence only when the enclosing real H2 is mapped, whatever the fenced
+  - any `##` heading line inside a fence, wherever it sits
+  - a `###` heading line inside a fence only when the enclosing real H2 is mapped, whatever the fenced
     heading's name
   - Both raw extractors stop at such a line and drop the rest of the section. The verbatim extractor
     stops there too, so the comparison cannot see it (probe above).
-  - Do **not** flag a fenced `### ` line under an unmapped H2. Nothing is lost there, and a false
+  - Do **not** flag a fenced `###` heading line under an unmapped H2. Nothing is lost there, and a false
     report would put a phantom problem in the user's hand-edit menu.
   - Report one line per affected heading, in the base implementation's `<heading path>: …` style.
     Do not repeat a heading that `super()` already reported.
@@ -573,21 +736,48 @@ content loss" (`:24-31`) and "the shipped phase template never reports content l
 second one's import at `:21` must point at the architect's constant (Start here, prerequisites).
 
 Do not repair the parser traps themselves. This phase detects; it does not change parsing, the same
-stance phase-refactor took (`src/models/base.py:201-208`).
+stance phase-refactor took (`src/models/base.py:221-226`).
+
+**Readings fixed in stage S3.** `tests/unit/models/test_content_loss_detection.py` pins which
+headings are reported, the column-0 rule, the unclosed-fence collapse and the two-line orphan case;
+the line wording, the `Before the first section` name and the probe result are unpinned:
+- **Fence spans come from markdown-it,** the parser `parse_markdown` already uses: the lines inside
+  each `fence` node's `map`, closing line included. A line counts only when it starts at column 0
+  with a `##` or `###` heading marker and a space, exactly what the raw extractors stop on, so an indented heading-like line
+  in a list-item fence cuts nothing and is not reported. An unclosed fence runs to the end of the
+  document, as CommonMark reads it.
+- **The affected heading** is the enclosing real section: `<H2> > <H3>` under a mapped H2, the bare
+  H2 name under an unmapped one (its H3s are content), or `Before the first section` when no real
+  H2 precedes the fence. Each heading is reported once, whatever mix of fenced lines and a bare
+  `---` cut it, and an unclosed fence that swallows later headings yields that one line.
+- **Lines** read `<heading>: <reason>`. Truncation reuses the base wording (`CONTENT_TRUNCATED`,
+  `src/models/base.py:11`); a fenced heading line reads `a line inside a fenced block, or after a
+  fence that is never closed, starts like a heading, so storing ends this section at that line and
+  loses the text after it`.
+- **A fenced `###` line with an unmapped name under a mapped H2** yields two lines: the base orphan
+  line for the fenced name, and this check's line for the enclosing H3, which is genuinely cut
+  short. They name different headings, so neither repeats the other.
+- **An unmapped H2 placed before the H2 whose name contains it** loses nothing and is not reported
+  as content loss; `section-name-overlap` reports it as a structural finding.
+- **False-positive probe.** On 2026-11-16 the override added no line to the base report for any of
+  the 30 real `phase.md` files under `~/code/*/.respec-ai` (read only).
 
 #### 5. Agent writes report their own content loss
 
-`PhaseTools.update` (`src/mcp/tools/phase_tools.py:192-208`):
+`PhaseTools.update` (`src/mcp/tools/phase_tools.py:307-325`; `:192-208` before stage S3):
 - runs `Phase.find_content_loss(content)` before parsing
 - when it finds loss, appends a line starting with `CONTENT_LOSS_WARNING` that lists the headings to
-  the response message, mirroring `with_discard_warning` (`:12-21`, applied at `:204`)
+  the response message, mirroring `with_discard_warning` (`:28-37`, applied at `:320`). The line
+  is `WARNING: content lost on write (<line>; <line>). The phase was stored without this text.`,
+  each `<line>` a whole `find_content_loss` line (`<heading>: <reason>`), so heading names that
+  contain a colon stay intact
 - stores exactly as before
 
 **Why a warning, not a rejection.** Frozen respec-patch also writes phases through `update_document`
-(`create_patch_command_tools`, `src/platform/template_helpers.py:1682-1686`, rendered at
+(`create_patch_command_tools`, `src/platform/template_helpers.py:1653-1658`, rendered at
 `src/platform/templates/commands/patch_command.py:1137`), and a rejection would break it.
 Create-phase holds the `update_document` grant (`src/platform/models/roadmap.py:109-114`), but its
-template writes through `store_document` (`src/platform/templates/agents/create_phase.py:102`), so it
+template writes through `store_document` (`src/platform/templates/agents/create_phase.py:121`), so it
 is unaffected either way.
 
 **Why not a pre-write validate.** It would make the architect emit a 20–40KB document twice on every
@@ -599,23 +789,28 @@ Only the agent path changes. `store_document` is untouched (Out of scope).
 
 #### 6. Tool grants and rendered calls
 
-- **The architect** (`src/platform/models/phase.py:188-208`; builder at
-  `src/platform/template_helpers.py:822-854`):
-  - add `RespecAITool.VALIDATE_DOCUMENT` to `respec_ai_tools`
-  - add a `validate_document` field rendered as
-    `validate_document(doc_type="phase", key={PLAN_NAME}/{PHASE_NAME}, implementation_markdown={IMPLEMENTATION_MARKDOWN})`
-- **The critic** (`src/platform/models/phase.py:211-234`; builder at
-  `src/platform/template_helpers.py:857-886`): the same grant and field. It stores nothing, so the
-  critic stays read-only.
-- **The orchestrator** (`PhaseCommandTools`, `src/platform/models/phase.py:14-26`, already granted at
-  `src/platform/models/phase.py:20`): add a `validate_document_structure` field next to today's
-  content-mode `validate_document` (`src/platform/models/phase.py:73`; rendered at
-  `src/platform/template_helpers.py:344-346`). Render it as
-  `validate_document(doc_type="phase", key={PLAN_NAME}/{PHASE_NAME})`, with the `key` value written
-  as `store_document_gate_edit` writes it (`template_helpers.py:350`; phase 2 renames that field
-  `store_document_user_edit`). The name follows phase 2's
-  `verb_object_qualifier` fields, such as `store_document_user_edit`. Keep the content-mode field as
-  it is.
+- **The architect** (`PhaseArchitectAgentTools`, `src/platform/models/phase.py:144`; builder
+  `create_phase_architect_agent_tools`, `src/platform/template_helpers.py:805`):
+  - add `RespecAITool.VALIDATE_DOCUMENT` to `respec_ai_tools` (`:151`)
+  - add a `validate_document` field (`:169`) rendered as
+    `validate_document(doc_type="phase", key={PLAN_NAME}/{PHASE_NAME}, implementation_markdown={IMPLEMENTATION_PLAN_MARKDOWN})`
+- **The critic** (`PhaseCriticAgentTools`, `src/platform/models/phase.py:174`, grant at `:179`,
+  field at `:193`; builder `create_phase_critic_agent_tools`, `src/platform/template_helpers.py:846`):
+  the same grant and field. It stores nothing, so the critic stays read-only.
+- **The orchestrator** (`PhaseCommandTools`, `src/platform/models/phase.py:14`, already granted at
+  `:20`): add a `validate_document_structure` field (`:59`) next to today's content-mode
+  `validate_document` (`:58`; rendered at `src/platform/template_helpers.py:315`). Render it as
+  `validate_document(doc_type="phase", key={PLAN_NAME}/{PHASE_NAME})` (`:318`), with the `key`
+  value written as `store_document_user_edit` writes it (`:321`; it was `store_document_gate_edit`
+  before phase 2). The name follows phase 2's `verb_object_qualifier` fields. Keep the content-mode
+  field as it is.
+
+**Landed in stage S4.**
+- **Placeholder corrected.** The agents' variable is `IMPLEMENTATION_PLAN_MARKDOWN` (both
+  templates already used it), so the field renders `{IMPLEMENTATION_PLAN_MARKDOWN}`, not the
+  `{IMPLEMENTATION_MARKDOWN}` this item first named. One helper,
+  `_render_phase_structure_validation` (`src/platform/template_helpers.py:796`), renders it for
+  both agents.
 
 #### 7. The orchestrator gate
 
@@ -676,7 +871,36 @@ This goes in phase 2's rewritten `src/platform/templates/commands/phase_command.
   version".
 - **If phase 2 fell back** to the orchestrator writing `implementation.md` from the report, pass
   `implementation_markdown` in the gate call and treat `implementation_findings` like
-  `structural_findings`.
+  `structural_findings`. It did not: the architect writes the file, so the gate passes no body.
+
+**Landed in stage S4** (`src/platform/templates/commands/phase_command.py`):
+- **The gate** sits at the top of Step 9 (`:853`), before `PRE_PHASE_LOOP_STATUS`,
+  `REVIEW_ROUND += 1` and the critic: `VALIDATION` at `:864`, the owner split at `:867-868`, the
+  repair branch at `:872`, `STRUCTURAL_LEFTOVERS` at `:878`. The repair branch reuses phase 2's
+  rendered `revise` engagement unchanged (resume behind `ARCHITECT_AGENT_ID` on Claude Code, a
+  fresh invocation otherwise), then returns to the top of Step 9.
+- **Leftovers.** `completed` sets `UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS` when it is non-empty
+  (`:919-920`); both spent-budget branches set `STRUCTURAL_LEFTOVERS` + the latest blockers
+  (`:929`, `:940`). The accept-as-is SD now says to quote each finding exactly as
+  `UNRESOLVED_CHECKS` holds it, all on the SD's one line joined by a semicolon and a space (`:1058-1060`).
+  `drop_accepted_findings` reads only an SD's own line, so a finding wrapped onto a continuation
+  line would be asked again; `test_every_leftover_quoted_on_the_one_accept_line_stays_accepted`
+  pins why.
+- **The budget reset.** Phase 2 resets `REPAIR_ROUNDS` once, at the top of Step 10.1 (`:957`),
+  which every send-back passes. That is equivalent to "each time Step 10 sends work back", so it
+  is unchanged; Step 9 never resets it (B15 pins that).
+- **Step 10.2 wording.** The unresolved-checks prompt no longer says "the critic's checks" or
+  "after two automatic repairs": orchestrator-owned findings arrive with no repair at all. Prompt
+  wording is not test-pinned.
+- **Answered once** (review fix, 2026-11-16). Step 10.2 sets `UNRESOLVED_CHECKS = []` right after
+  recording either answer. Sign-off's "Go back to design review" re-enters Step 10 without passing
+  Step 9, the only other reset, so without it an accepted finding was asked again and recorded in a
+  second accept SD. `test_answering_the_unresolved_checks_clears_them_so_no_return_to_design_review_asks_again`
+  pins it on all three TUIs.
+- **The unstorable edit.** Step 10.5 (`:1127`) withholds "Drop those edits and continue": when a
+  content-loss line reads `UNSTORABLE_DOCUMENT` (imported, `:3`; the guard at `:1141`), the menu
+  offers only "Let me fix it and try again" and "Abort and send it back to the architect", each
+  with its own `WAIT for` and resume marker. The three-option menu stays for storable loss.
 
 #### 8. The architect
 
@@ -697,6 +921,20 @@ This goes in phase 2's rewritten `src/platform/templates/agents/phase_architect.
   return early with "no new feedback".
 - **The constraints from judgment call 5 apply.** A finding it cannot fix without contradicting a
   user entry stays unfixed and is named in `## For the user`, not in `## Decisions needed`.
+
+**Landed in stage S4** (`src/platform/templates/agents/phase_architect.py`):
+- `CONTENT_LOSS_WARNING` is imported (`:3`) and checked after STEP 4's `update_document` (`:655`)
+  and after the self-check's (`:691`). The shared `CONTENT LOSS ON WRITE` rule (`:661`) names the
+  three parser traps to avoid. **Not in the spec, decided here:** when two rewrites still warn,
+  the architect names the headings in `## For the user` instead of looping.
+- The self-check is `STEP 4.5` (`:667`), after STEP 4 persists the document and `implementation.md`
+  and before the notes are stored. It is guarded only by `phase_mode` draft or revise, never by
+  feedback newness, and re-reads `implementation.md` from disk when the engagement did not write
+  it. It validates, Globs each `paths_to_verify` entry outside the ledger's RP and `- Read:` lines
+  and the frozen `## Overview` (storage preserves the Overview, so no fix there survives), fixes,
+  persists, and repeats, with at most two fix passes.
+- The revise branch says that when STEP 2 finds nothing new the engagement is a structural repair
+  round (`:573-574`).
 
 #### 9. The critic
 
@@ -728,7 +966,7 @@ by marker; the origins below are as of 2026-11-13, pre-phase-2.
     - the `- Constraint:` extraction (`phase_critic.py:778-783`)
 - **Relay implementation findings.** Each `implementation_findings` entry becomes
   `[mechanical] [Implementation Plan Structure Invalid - BLOCKING]: <check> <subject> — <detail>`,
-  with ` [<part>]` after `<subject>` when `part` is non-empty. That finding key is what
+  with a space and `[<part>]` after `<subject>` when `part` is non-empty. That finding key is what
   `drop_accepted_findings` matches once the user accepts it (B17), so write it exactly.
 - **Never re-raise `structural_findings`.**
 - **Keep** the judgment rules: Unjustified Seam, Under-Surfaced Decision, Non-Divergent Options,
@@ -749,6 +987,32 @@ by marker; the origins below are as of 2026-11-13, pre-phase-2.
     `Best-Practices Reference Invalid` assertions. Drop its `'.best-practices/*.md' in template`
     assertion: that scan moves into `extract_cited_paths`, and B7 pins it.
 
+**Landed in stage S4** (`src/platform/templates/agents/phase_critic.py`):
+- **Test fates, located by name.** Phase 2 renamed `test_shape_mode_enforces_od_entry_format` to
+  `test_malformed_decision_entry_is_a_mechanical_blocker_in_review`; that test is deleted.
+  `test_template_treats_best_practices_paths_as_blocking_verification` (`test_agent_templates.py:486`)
+  lost only its `'.best-practices/*.md'` assertion. A third phase 2 test pinned the presence half
+  this item moves: `test_critic_raises_implementation_plan_defects_as_mechanical_findings` (`:613`)
+  no longer expects `step-without-verify-command` or `checklist-item-malformed`, and now expects
+  `implementation-plan-structure-invalid`.
+- **The presence half** was phase 2's two markers `Step Without Verify Command` and
+  `Checklist Item Malformed`; both are gone. "One `(verify: …)` per language whose files the step
+  touches" is not a presence check the server can make, so it moved into `Verify Command Not
+  Configured` (`:452`), whose finding now reads "has no configured, user-recorded or ask-user
+  verify command for `<language>`".
+- **Examples.** `Skeleton Index Module Mismatch` also sat in the classification example and in
+  `phase_feedback_template`'s blockers; both now show kept markers, the latter a concrete
+  `Implementation Plan Structure Invalid` relay (`:38`).
+- **Where.** The critic validates in a new `STEP 5.5` (`:237`), after reading `implementation.md`.
+  When that Read fails it leaves `implementation_markdown` out; an empty body would report three
+  missing sections next to `Implementation Plan Missing`. The structural rules are named as not
+  raised at `:338`. `### Cited Paths` (`:282`) replaces the three prompt-encoded extractions, and
+  the relay is `IMPLEMENTATION PLAN STRUCTURE` (`:443-447`).
+- **Known residual, unchanged.** A best-practices path cited in the frozen Overview reaches
+  `paths_to_verify` (stage S2), so a missing one is a blocker the architect cannot repair. It is
+  the same class as the `read` residual above, and it is left for the user's unresolved-checks
+  decision.
+
 #### 10. Contract and index edits (same commit as the change they describe)
 
 In `docs/phase-cooperative/README.md`:
@@ -763,7 +1027,7 @@ In `docs/phase-cooperative/README.md`:
     repeated key, continues the previous value.
   - State that an accept-as-is unresolved-checks SD quotes each structural or implementation finding
     as `<finding key> — <detail>`, and that the server stops reporting a finding so quoted. The
-    finding key is `<check> <subject>`, plus ` [<part>]` when `part` is non-empty.
+    finding key is `<check> <subject>`, plus a space and `[<part>]` when `part` is non-empty.
 - **Critic findings → `[mechanical]` examples:**
   - The structural defects in work item 2 are detected by `validate_document` and repaired through
     the gate, never raised by the critic.
@@ -780,6 +1044,43 @@ In `docs/phase-cooperative/README.md`:
   Confirm it prints a match. The `-q` matters: the probe reads "output means done", and a printing
   first grep would produce output when only the MCP half had landed.
 
+**Landed in stage S5 (2026-11-16).** Every edit above is in `README.md`:
+- The agents table grants `validate_document` to the architect and the critic (the critic keeps no
+  Write, Edit, `update_document` or `store_document`).
+- "Validation" under the decision entry now says Python parses the entries.
+- "Settled decision entry" carries the per-source table, the segment rules and the accept-SD
+  quoting rule (one line, entries joined by a semicolon and a space, plus the `accepted: <finding key>` skip record).
+- "Critic findings" names the structural defects as repaired through the gate and never raised, and
+  states the shared budget and the orchestrator-owned exemption. Its tag example, formerly
+  `Skeleton Index Module Mismatch`, is now `Verify Command Not Configured`.
+- Relay protocol step 5 describes structural repair rounds.
+- The "Pending amendments" paragraph records that phase 3's amendments landed.
+- The README phase 3 probe prints a match (`phase_command.py:872-874`).
+
+**Review fixes (2026-11-16).** After S5, reviewers confirmed defects that the amendments above
+record in place (RP and FLOW definitions, fences, cited paths in Settled Design Decisions, the
+`*`/`+` marker detail, the Step 10.2 reset). Four more need a note here:
+- **"Critic findings" in `README.md`** no longer lists "a step without a verify command" among the
+  defects the gate repairs. `implementation.md` defects come back as `implementation_findings`,
+  which the gate never sees (it passes no body): the architect's self-check fixes them and the
+  critic relays the rest.
+- **Critic blockers keep their inline markup.** The spent-budget branches build `UNRESOLVED_CHECKS`
+  from `### Blockers` in `get_feedback`, which `CriticFeedback.parse_markdown` had flattened
+  (code spans, emphasis and `<…>` lost their markers and gained spaces). An accept-as-is SD
+  quoting such a blocker never matched the finding key, so a relayed `implementation.md` finding
+  was asked again. `CriticFeedback.blockers` now keeps each item's inline source
+  (`MCPModel._extract_list_items_by_header_path(..., keep_inline_markup=True)`, `src/models/base.py`),
+  and the empty-blocker sentinel check ignores `*`, `_` and backtick markers so `- **None**` is
+  still rejected. Key issues and recommendations are unchanged.
+- **Not applied: the prompt-side fix for accepted missing paths.** One review proposed leaving
+  Settled Design Decisions in `extract_cited_paths` and telling the architect and critic to skip
+  paths an accept SD quotes. Excluding the section server-side does the same thing
+  deterministically (judgment call 9), so the prompt change was not made.
+- **A failed gate validation fails closed.** Key mode raises when the phase is missing, the
+  store fails, or the server predates key mode. Like every other MCP call in Step 9, the gate
+  now ends the run with the exact error before any architect or critic is engaged
+  (`test_a_failed_gate_validation_ends_the_run_before_any_agent_is_engaged`).
+
 ## Out of scope
 
 - **Phase 4's checks:**
@@ -792,11 +1093,13 @@ In `docs/phase-cooperative/README.md`:
   - the cold-start check
 
   Phase 4 extends `check_implementation_structure` and `extract_cited_paths`.
-- **A server check that each step names file paths.** The pinned example has none
-  (`src/platform/templates/agents/phase_architect.py:73-110`, pinned by
-  `test_phase_implementation_plan_gate.py:62`, `:71`), so the server cannot tell a missing path from
-  a path-free step. Phase 2's critic check ("every `#### Step N:` names the files it touches") and
-  its Test List coverage check stay with the critic. Phase 4's "files" field replaces both.
+- **A server check that each step names file paths.** The pinned example names only placeholder
+  paths (`src/platform/templates/agents/phase_architect.py:58-98`, pinned by
+  `test_phase_implementation_plan_gate.py:62`, `:71`). It had none at `a64f0dc`; phase 2 added
+  `**Files**: <path to …>` lines. Either way the server has no grammar for a step's files, so it
+  cannot tell a missing path from a placeholder or a path-free step. Phase 2's critic check
+  ("every `#### Step N:` names the files it touches") and its Test List coverage check stay with
+  the critic. Phase 4's "files" field replaces both.
 - **RP line and `- Read:` line field format** (tier values, approval marks, `informs`/`Source`).
   The orchestrator writes them deterministically. Only their IDs are checked here.
 - **The UX Contract's mechanical rules** (Route Index `auth=`, FLOW pass markers) and Deferred Risk
@@ -810,13 +1113,18 @@ In `docs/phase-cooperative/README.md`:
 
 ## Exit criteria
 
-- [ ] B1–B18 are pinned, each observed failing for the right reason before its implementation.
-- [ ] `uv run pytest` is green.
-- [ ] `uv run respec-ai regenerate --force --tui all` completes with no per-TUI failure in a scratch
+- [x] B1–B18 are pinned, each observed failing for the right reason before its implementation. (S5 audit: evidence files in the session scratchpad `p3-red/`; behaviors green on day one carry temporary-break evidence instead.)
+- [x] `uv run pytest` is green (2737 passed, 1 skipped, 2026-11-16; 2807 passed, 1 skipped after the
+      review fixes).
+- [x] `uv run respec-ai regenerate --force --tui all` completes with no per-TUI failure in a scratch
       project with opencode and codex model tiers configured (README "Per-phase exit criteria").
-- [ ] Both "Already done?" probes print a match, and so does the README phase 3 probe
+      (S5: run with a scratch HOME; 21/20/20 agents regenerated, 39 artifact checks pass. Re-run
+      after the review fixes with the same result.)
+- [x] Both "Already done?" probes print a match, and so does the README phase 3 probe
       (`grep -q … && grep -n …`).
-- [ ] README "Shared contracts" carries every edit in work item 10.
+- [x] README "Shared contracts" carries every edit in work item 10.
+- [ ] The manual checks below are written as cold-runnable steps P3.1-P3.5 in
+      `phase-2-manual-checks.md` ("Phase 3"), so one live session covers phases 2 and 3.
 - [ ] Manual, on a scratch project. Use only defects the architect can repair without touching your
       intent:
   - Run a real phase to design review.
@@ -832,6 +1140,6 @@ In `docs/phase-cooperative/README.md`:
       menu shows it to you, and the structural path does not.
 - [ ] Manual, on codex and opencode, where grants are prompt-enforced (F14): the architect and the
       critic actually call `validate_document`, and the critic Globs `paths_to_verify`.
-- [ ] Manual: read the `validate_document` tool description and a sample of finding details as the
-      architect would. Each names its subject and its fix, and names no language. B9 is the machine
-      check.
+- [ ] Manual: read the `validate_document` tool description and a sample of rendered findings
+      (`<check> <subject> [<part>] — <detail>`) as the architect would. Each names its subject and
+      its fix, and no `detail` names a language. B9 is the machine check.

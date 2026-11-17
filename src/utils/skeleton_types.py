@@ -11,6 +11,8 @@ _SIGNATURE = re.compile(
 # or `pathlib.Path` -- the Skeleton Index convention for any type that needs an import.
 # Builtin generics like `list[str]` or `tuple[str, str]` have no dot and never match.
 _QUALIFIED_TYPE_REF = re.compile(r'\b(?:[a-zA-Z_]\w*\.)+([A-Z]\w*)\b')
+# A Skeleton Index, Test List or Module Layout bullet: a backtick-quoted path opening the line.
+BULLET_PATH = re.compile(r'^-\s*`(?P<inner>[^`]+)`(?P<rest>.*)$')
 
 
 class SkeletonIndexParseError(ValueError):

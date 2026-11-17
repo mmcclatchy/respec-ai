@@ -1,5 +1,6 @@
 from textwrap import indent
 
+from src.models.document_validation import UNSTORABLE_DOCUMENT
 from src.platform.models import PhaseCommandTools
 
 
@@ -137,7 +138,7 @@ Main agent (this command): the only party that talks to the user
     |-- Step 6      BRIEFING (touchpoint): decisions and research approval
     |-- Step 7      bp-pipeline runs the approved research only
     |-- Step 8      architect drafts the design and implementation.md -> report
-    |-- Step 9      critic reviews; architect repairs mechanical findings (at most twice)
+    |-- Step 9      structure check, then critic review; architect repairs (at most twice)
     |-- Step 10     DESIGN REVIEW (touchpoint): questions, changes, hand edits
     |-- Step 11     SIGN-OFF (touchpoint): skeletons, settled marker, optional commit
     |-- Step 12     store on the platform and hand off
@@ -851,12 +852,39 @@ Go to Step 9.
 
 ### Step 9: Critic Review and Automatic Repair
 
-The critic reviews every draft before the user sees it, without editing it. Mechanical findings
-go back to the architect for at most two repair rounds, and the user is not told about them.
-Judgment calls are collected for the design review. This step never prompts the user.
+Every pass starts by validating the stored phase document. Structural findings the architect owns
+go back to it before the critic runs. Then the critic reviews the draft, without editing it.
+Structural and critic mechanical findings share the same two repair rounds, and the user is not
+told about them. Judgment calls are collected for the design review. This step never prompts the
+user.
 
 ```text
 UNRESOLVED_CHECKS = []
+STRUCTURAL_LEFTOVERS = []
+VALIDATION = {tools.validate_document_structure}
+IF the call that sets VALIDATION fails:
+  ERROR: "Structural validation of the stored phase failed"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT invoke the architect or the critic
+  EXIT: Workflow terminated
+(Key mode checks the stored phase and always returns status completed: branch on
+structural_findings only.)
+ARCHITECT_FINDINGS = VALIDATION.structural_findings whose owner is "architect"
+ORCHESTRATOR_FINDINGS = VALIDATION.structural_findings whose owner is "orchestrator"
+(Orchestrator findings sit on lines this command writes and the architect carries forward
+verbatim, so no repair round fixes them; they never spend one.)
+
+IF ARCHITECT_FINDINGS is not empty AND REPAIR_ROUNDS < 2:
+  REPAIR_ROUNDS += 1
+  (The revise gets mode and IDs only: the architect validates the stored phase itself.)
+{indent(revise, '  ')}
+  Return to the top of Step 9.
+
+STRUCTURAL_LEFTOVERS = each finding in ARCHITECT_FINDINGS and ORCHESTRATOR_FINDINGS, written as
+  "<check> <subject> — <detail>", or "<check> <subject> [<part>] — <detail>" when part is non-empty
+  (validate_document stops reporting a finding once an accept-as-is decision quotes it this way)
+
 PRE_PHASE_LOOP_STATUS = {tools.get_loop_status}
 REVIEW_ROUND += 1
 
@@ -894,6 +922,8 @@ REVIEW_DECISION = REVIEW_DECISION_RESPONSE.status
 
 IF REVIEW_DECISION == "completed":
   (The latest review has no open mechanical findings.)
+  IF STRUCTURAL_LEFTOVERS is not empty:
+    UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS
   Go to Step 10.
 
 ELIF REVIEW_DECISION == "refine":
@@ -902,7 +932,7 @@ ELIF REVIEW_DECISION == "refine":
 {indent(revise, '    ')}
     Go to Step 9.
   ELSE:
-    UNRESOLVED_CHECKS = every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
+    UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS + every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
     Go to Step 10.
 
 ELIF REVIEW_DECISION == "user_input":
@@ -913,7 +943,7 @@ ELIF REVIEW_DECISION == "user_input":
 {indent(revise, '    ')}
     Go to Step 9.
   ELSE:
-    UNRESOLVED_CHECKS = every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
+    UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS + every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
     Go to Step 10.
 
 ELSE:
@@ -1014,14 +1044,14 @@ FOR each RP in NEW_PROPOSALS:
     Append " [declined]" to the RP line.
 
 IF UNRESOLVED_CHECKS is not empty:
-  Display UNRESOLVED_CHECKS: the mechanical findings two automatic repairs did not resolve, each verbatim.
+  Display UNRESOLVED_CHECKS: the mechanical findings automatic repair did not or cannot resolve, each verbatim.
   {selection_prompt_instructions}
     Header: "Unresolved Checks"
-    Question: "The critic's mechanical checks still fail after two automatic repairs. How do you want to handle them?"
+    Question: "Some mechanical checks still fail, and automatic repair has not resolved them. How do you want to handle them?"
     multiSelect: false
     Options: [
       {{"label": "Send back with direction", "description": "Tell the architect how to resolve them"}},
-      {{"label": "Accept as-is", "description": "Recorded as your decision; the critic never raises these findings again"}}
+      {{"label": "Accept as-is", "description": "Recorded as your decision; these findings are never raised again"}}
     ]
 
   WAIT for {selection_response_source}.
@@ -1031,6 +1061,9 @@ IF UNRESOLVED_CHECKS is not empty:
 
   IF the user chose "Accept as-is":
     Record "- SD-NNN | source=user | supersedes=unresolved-checks | decision=accept as-is: [each finding verbatim] | rationale=[the user's reason, or accepted at design review] | binding=yes"
+    (Quote each finding exactly as UNRESOLVED_CHECKS holds it, all on this one SD line joined by
+    "; ", never on separate lines: validate_document and the critic match that text on the SD's
+    own line to stop reporting it.)
   ELSE:
     IF the user's response does not already carry the direction:
       Ask the user how the architect is to resolve the findings.
@@ -1039,6 +1072,9 @@ IF UNRESOLVED_CHECKS is not empty:
       After the user responds, resume at Step 10.2. Use the reply verbatim. Continue immediately.
       DO NOT explain that the workflow is stopping unless the user asks why.
     UNRESOLVED_DIRECTION = [the user's direction, verbatim, with the findings it addresses]
+  UNRESOLVED_CHECKS = []
+  (Answered here: a return to Step 10 that skips Step 9, such as sign-off's "Go back to design
+  review", never asks them again.)
 
 IF any SD or RP mark was recorded above:
   PHASE_MARKDOWN = PHASE_MARKDOWN with every SD recorded above appended to
@@ -1101,24 +1137,43 @@ RAW_EDITED_MARKDOWN = DISK_MARKDOWN
 VALIDATION_ATTEMPTS = 0
 CONTENT_TO_VALIDATE = RAW_EDITED_MARKDOWN
 VALIDATION_RESULT = {tools.validate_document}
+(Only status and message are read here: they report content lost from the user's own edit. The
+structural fields of this result are ignored; the check at the top of Step 9 reviews structure
+after the edit is stored.)
 
 WHILE VALIDATION_RESULT.status != "completed" AND VALIDATION_ATTEMPTS < 3:
   Display to user: VALIDATION_RESULT.message
 
-  {selection_prompt_instructions}
-    Header: "Content Would Be Lost"
-    Question: "Some of your edits would be silently dropped. How do you want to proceed?"
-    multiSelect: false
-    Options: [
-      {{"label": "Let me fix it and try again", "description": "Attempt [VALIDATION_ATTEMPTS + 1] of 3"}},
-      {{"label": "Drop those edits and continue", "description": "Proceed with the version the parser accepts; the flagged content is discarded"}},
-      {{"label": "Abort and send it back to the architect", "description": "Keep the stored design; the architect revises it with the validation report"}}
-    ]
+  IF a line of VALIDATION_RESULT.message reads "{UNSTORABLE_DOCUMENT}: …":
+    (The whole edit is unstorable, so it is fixed or abandoned; nothing proceeds with it.)
+    {selection_prompt_instructions}
+      Header: "Edit Not Storable"
+      Question: "Your edit cannot be stored as written. How do you want to proceed?"
+      multiSelect: false
+      Options: [
+        {{"label": "Let me fix it and try again", "description": "Attempt [VALIDATION_ATTEMPTS + 1] of 3"}},
+        {{"label": "Abort and send it back to the architect", "description": "Keep the stored design; the architect revises it with the validation report"}}
+      ]
 
-  WAIT for {selection_response_source}.
-  DO NOT treat this as workflow completion, cancellation, or failure.
-  After the user responds, resume at Step 10.5. Continue immediately.
-  DO NOT explain that the workflow is stopping unless the user asks why.
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 10.5. Continue immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
+  ELSE:
+    {selection_prompt_instructions}
+      Header: "Content Would Be Lost"
+      Question: "Some of your edits would be silently dropped. How do you want to proceed?"
+      multiSelect: false
+      Options: [
+        {{"label": "Let me fix it and try again", "description": "Attempt [VALIDATION_ATTEMPTS + 1] of 3"}},
+        {{"label": "Drop those edits and continue", "description": "Proceed with the version the parser accepts; the flagged content is discarded"}},
+        {{"label": "Abort and send it back to the architect", "description": "Keep the stored design; the architect revises it with the validation report"}}
+      ]
+
+    WAIT for {selection_response_source}.
+    DO NOT treat this as workflow completion, cancellation, or failure.
+    After the user responds, resume at Step 10.5. Continue immediately.
+    DO NOT explain that the workflow is stopping unless the user asks why.
 
   IF the user chose "Let me fix it and try again":
     VALIDATION_ATTEMPTS += 1

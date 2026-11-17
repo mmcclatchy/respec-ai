@@ -484,6 +484,38 @@ Content is generally good, but structural contract violations remain.
         ]
         assert feedback.overall_score == 78
 
+    @pytest.mark.parametrize(
+        'blocker',
+        [
+            pytest.param(
+                '[mechanical] [Implementation Plan Structure Invalid - BLOCKING]: implementation-checklist-item-malformed'
+                ' - [ ] Implement repository query (verify: `run-checks all`) [step] — add the step it verifies.',
+                id='code-span',
+            ),
+            pytest.param('Rename `__init__` to *init* only after **review**', id='emphasis'),
+            pytest.param('A Checklist item names no (Step <integer>); add it', id='angle-placeholder'),
+        ],
+    )
+    def test_a_blocker_keeps_the_exact_text_the_critic_wrote(self, blocker: str) -> None:
+        # An accept-as-is decision quotes blockers as they come back from storage, and the
+        # server matches that quote character for character, so no inline markup may be lost.
+        feedback = CriticFeedback.parse_markdown(_feedback_with_blockers(f'- {blocker}'))
+
+        assert feedback.blockers == [blocker]
+        assert CriticFeedback.parse_markdown(feedback.build_markdown()).blockers == [blocker]
+
+    def test_a_blocker_wrapped_onto_continuation_lines_reads_as_one_line(self) -> None:
+        feedback = CriticFeedback.parse_markdown(
+            _feedback_with_blockers('- Path `.best-practices/x.md`\n  does not exist\n- Second blocker')
+        )
+
+        assert feedback.blockers == ['Path `.best-practices/x.md` does not exist', 'Second blocker']
+
+    @pytest.mark.parametrize('sentinel', ['- **None**', '- `None`', '- *n/a*'])
+    def test_an_emphasized_empty_blocker_marker_is_still_rejected(self, sentinel: str) -> None:
+        with pytest.raises(ValueError, match='Blockers must be actionable non-empty strings'):
+            CriticFeedback.parse_markdown(_feedback_with_blockers(sentinel))
+
     def test_parse_markdown_missing_required_fields_fails_fast(self) -> None:
         markdown_missing_score = """# Critic Feedback: PHASE-CRITIC
 
@@ -508,3 +540,32 @@ Detailed analysis present.
 """
         with pytest.raises(ValueError, match='Missing required assessment fields: overall_score'):
             CriticFeedback.parse_markdown(markdown_missing_score)
+
+
+def _feedback_with_blockers(blockers_markdown: str) -> str:
+    return f"""# Critic Feedback: PHASE-CRITIC
+
+## Assessment Summary
+- **Loop ID**: phase-loop-001
+- **Iteration**: 2
+- **Overall Score**: 0
+- **Assessment Summary**: Mechanical findings remain.
+
+## Analysis
+
+One relayed finding remains.
+
+## Issues and Recommendations
+
+### Key Issues
+
+- None identified
+
+### Blockers
+
+{blockers_markdown}
+
+### Recommendations
+
+- None provided
+"""

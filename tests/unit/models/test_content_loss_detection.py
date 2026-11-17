@@ -146,3 +146,177 @@ Lost content that must never silently disappear.
 
     assert phase.objectives == 'Real objective content.'
     assert 'Lost content' not in (phase.objectives or '')
+
+
+# --- Phase-cooperative phase 3, B12: content loss in additional sections and fenced headings ------
+# docs/phase-cooperative/phase-3-structural-checks.md, work item 4 (findings F27 traps 1-3).
+
+OVERVIEW_MARKDOWN = (
+    '# Phase: sample-phase\n\n## Overview\n### Objectives\nSome objective.\n### Scope\nSome scope.\n'
+    '### Dependencies\nSome deps.\n### Deliverables\nSome deliverables.\n'
+)
+WIRING = 'Design Shape > Collaboration And Wiring'
+
+
+def designed_phase(wiring_extra: str = '', extra_sections: str = '', before_system_design: str = '') -> str:
+    return (
+        OVERVIEW_MARKDOWN
+        + before_system_design
+        + '\n## System Design\n### Architecture\nA ledger service and a billing service.\n'
+        + '\n## Design Shape\n### Module Layout\n- `src/ledger/` — owns ledger entries\n'
+        + '### Collaboration And Wiring\nBilling calls the ledger.\n'
+        + wiring_extra
+        + '### Test List\n- `tests/ledger_check.unit::posts an entry`\n'
+        + '\n## Design Decisions\n### Settled Design Decisions\n- None\n'
+        + extra_sections
+    )
+
+
+def fenced(*body: str, fence: str = '```') -> str:
+    return '\n'.join([f'{fence}text', *body, fence]) + '\n'
+
+
+def extra_section(name: str, body: str) -> str:
+    return f'\n## {name}\n{body}'
+
+
+def reported_headings(issues: list[str]) -> list[str]:
+    return sorted(issue.split(': ', 1)[0] for issue in issues)
+
+
+FENCES = [pytest.param('```', id='backtick-fence'), pytest.param('~~~', id='tilde-fence')]
+
+
+def test_the_designed_fixture_reports_no_loss() -> None:
+    assert Phase.find_content_loss(designed_phase()) == []
+
+
+def test_a_bare_separator_inside_an_extra_section_is_reported() -> None:
+    markdown = designed_phase(extra_sections=extra_section('Guardrails', 'Rule one\n---\nRule two\n'))
+
+    assert reported_headings(Phase.find_content_loss(markdown)) == ['Guardrails']
+
+
+@pytest.mark.parametrize(
+    'name',
+    [
+        pytest.param('Design', id='captured-by-system-design'),
+        pytest.param('Decisions', id='captured-by-design-decisions'),
+    ],
+)
+def test_an_extra_section_captured_by_an_earlier_heading_containing_its_name_is_reported(name: str) -> None:
+    markdown = designed_phase(extra_sections=extra_section(name, 'Notes only this section holds.\n'))
+
+    assert reported_headings(Phase.find_content_loss(markdown)) == [name]
+
+
+def test_an_extra_section_placed_before_the_heading_containing_its_name_loses_nothing() -> None:
+    markdown = designed_phase(before_system_design=extra_section('Design', 'Notes only this section holds.\n'))
+
+    assert Phase.find_content_loss(markdown) == []
+
+
+@pytest.mark.parametrize('fence', FENCES)
+@pytest.mark.parametrize(
+    ('wiring_extra', 'extra_sections', 'heading'),
+    [
+        pytest.param('{fence}', '', WIRING, id='under-a-mapped-subsection'),
+        pytest.param(
+            '', extra_section('Guardrails', 'Rule one.\n{fence}Rule two.\n'), 'Guardrails', id='under-an-extra-section'
+        ),
+        pytest.param(
+            '',
+            extra_section('Guardrails', '### Rules\n{fence}Rule two.\n'),
+            'Guardrails',
+            id='under-a-subheading-of-an-extra-section',
+        ),
+    ],
+)
+def test_a_fenced_h2_line_is_reported_wherever_it_sits(
+    fence: str, wiring_extra: str, extra_sections: str, heading: str
+) -> None:
+    block = fenced('## Example heading', 'example body', fence=fence)
+    markdown = designed_phase(
+        wiring_extra=wiring_extra.replace('{fence}', block), extra_sections=extra_sections.replace('{fence}', block)
+    )
+
+    assert reported_headings(Phase.find_content_loss(markdown)) == [heading]
+
+
+@pytest.mark.parametrize('fence', FENCES)
+@pytest.mark.parametrize(
+    ('fenced_heading', 'headings'),
+    [
+        pytest.param('### Test List', [WIRING], id='mapped-name'),
+        pytest.param('### Example', [WIRING, 'Design Shape > Example'], id='unmapped-name-also-an-orphan'),
+    ],
+)
+def test_a_fenced_h3_line_under_a_mapped_section_is_reported(
+    fence: str, fenced_heading: str, headings: list[str]
+) -> None:
+    markdown = designed_phase(wiring_extra=fenced(fenced_heading, '- `tests/x.unit::example`', fence=fence))
+
+    assert reported_headings(Phase.find_content_loss(markdown)) == headings
+
+
+@pytest.mark.parametrize('fence', FENCES)
+def test_an_indented_heading_line_in_a_list_item_fence_is_not_reported(fence: str) -> None:
+    item_fence = f'- Wire the ledger:\n  {fence}text\n  ## Example heading\n  ### Example subheading\n  {fence}\n'
+    markdown = designed_phase(wiring_extra=item_fence)
+
+    assert Phase.find_content_loss(markdown) == []
+
+
+@pytest.mark.parametrize('fence', FENCES)
+def test_a_fenced_h3_line_under_an_extra_section_is_not_reported(fence: str) -> None:
+    body = 'Rule one.\n' + fenced('### Example heading', 'example body', fence=fence) + 'Rule two.\n'
+    markdown = designed_phase(extra_sections=extra_section('Guardrails', body))
+
+    assert Phase.find_content_loss(markdown) == []
+
+
+@pytest.mark.parametrize(
+    ('wiring_extra', 'extra_sections', 'heading'),
+    [
+        pytest.param(
+            'More wiring.\n---\nLost wiring.\n' + fenced('## Example heading'), '', WIRING, id='separator-and-fence'
+        ),
+        pytest.param(
+            '',
+            extra_section('Guardrails', 'Rule one\n---\nRule two\n' + fenced('## Example heading')),
+            'Guardrails',
+            id='extra-section-separator-and-fence',
+        ),
+        pytest.param(
+            fenced('## First example') + 'Between.\n' + fenced('### Second example'), '', WIRING, id='two-fences'
+        ),
+        pytest.param('```text\nan example its author never closed\n', '', WIRING, id='unclosed-fence'),
+    ],
+)
+def test_each_affected_heading_is_reported_once(wiring_extra: str, extra_sections: str, heading: str) -> None:
+    markdown = designed_phase(wiring_extra=wiring_extra, extra_sections=extra_sections)
+
+    assert reported_headings(Phase.find_content_loss(markdown)) == [heading]
+
+
+def test_a_phase_with_extra_sections_round_trips_without_reporting_loss() -> None:
+    phase = Phase.parse_markdown(designed_phase())
+    phase.additional_sections = {
+        'Guardrails': '### Rules\n' + fenced('### Example heading', 'example body') + '- Keep it small.',
+        'Rollout Notes': 'Ship behind a flag.',
+    }
+
+    assert Phase.find_content_loss(phase.build_markdown()) == []
+
+
+@pytest.mark.parametrize('model_class', [Plan, Roadmap])
+def test_plan_and_roadmap_content_loss_ignores_extra_section_checks(
+    model_class: type[MCPModel], markdown_builder: Callable
+) -> None:
+    markdown = (
+        markdown_builder(model_class)
+        + extra_section('Guardrails', 'Rule one\n---\nRule two\n')
+        + extra_section('Examples', fenced('## Example heading'))
+    )
+
+    assert model_class.find_content_loss(markdown) == []

@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from src.models.document_validation import CitedPath, StructuralFinding
 from src.models.enums import CriticAgent
 from src.models.feedback import CriticFeedback
 from src.models.roadmap import Roadmap
@@ -25,6 +26,13 @@ class MCPResponse(BaseModel):
     char_length: int | None = None
     current_score: int = 0
     iteration: int = 0
+
+
+class DocumentValidationResponse(MCPResponse):
+    structural_findings: list[StructuralFinding] = Field(default_factory=list)
+    implementation_findings: list[StructuralFinding] = Field(default_factory=list)
+    paths_to_verify: list[CitedPath] = Field(default_factory=list)
+    skipped_checks: list[str] = Field(default_factory=list)
 
 
 class OperationResponse(BaseModel):

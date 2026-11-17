@@ -8,6 +8,9 @@ from markdown_it.tree import SyntaxTreeNode
 from pydantic import BaseModel
 
 
+CONTENT_TRUNCATED = 'content present in the input is missing or truncated after parsing'
+
+
 def _is_list_annotation(annotation: Any) -> bool:
     """Whether a field holds a list, including inside `list[str] | None` unions.
 
@@ -50,6 +53,21 @@ class MCPModel(BaseModel, ABC):
             return getattr(node, 'content', '')
 
         return ' '.join(cls._extract_text_content(child) for child in node.children)
+
+    @classmethod
+    def _extract_inline_source(cls, node: SyntaxTreeNode) -> str:
+        if node.type == 'inline' or not node.children:
+            return ' '.join(line.strip() for line in getattr(node, 'content', '').splitlines() if line.strip())
+        return ' '.join(cls._extract_inline_source(child) for child in node.children)
+
+    @classmethod
+    def _list_item_values(cls, bullet_list: SyntaxTreeNode, keep_inline_markup: bool) -> list[str]:
+        items = []
+        for item in cls._find_nodes_by_type(bullet_list, 'list_item'):
+            item_text = cls._extract_text_content(item).strip()
+            if item_text and item_text not in ['None identified', 'None provided']:
+                items.append(cls._extract_inline_source(item).strip() if keep_inline_markup else item_text)
+        return items
 
     @classmethod
     def _extract_content_from_raw_markdown(cls, markdown: str, path: tuple[str, ...]) -> str:
@@ -213,12 +231,24 @@ class MCPModel(BaseModel, ABC):
             captured = cls._extract_content_from_raw_markdown(markdown, header_path)
             if ground_truth and ground_truth != captured:
                 heading = ' > '.join(header_path)
-                issues.append(f'{heading}: content present in the input is missing or truncated after parsing')
+                issues.append(f'{heading}: {CONTENT_TRUNCATED}')
 
         for orphan_heading in cls._find_orphan_h3_headings(markdown):
             issues.append(f'{orphan_heading}: not a recognized field under this section and will be dropped')
 
         return issues
+
+    @classmethod
+    def _unmapped_h2_headings(cls, tree: SyntaxTreeNode) -> list[str]:
+        mapped_h2_headers = {header_path[0] for header_path in cls.HEADER_FIELD_MAPPING.values()}
+        headings: list[str] = []
+        for node in cls._find_nodes_by_type(tree, 'heading'):
+            if node.tag != 'h2':
+                continue
+            h2_text = cls._extract_text_content(node).strip()
+            if h2_text not in mapped_h2_headers and h2_text != 'Metadata':
+                headings.append(h2_text)
+        return headings
 
     @classmethod
     def _extract_content_by_header_path(cls, tree: SyntaxTreeNode, path: tuple[str, ...]) -> str:
@@ -289,7 +319,9 @@ class MCPModel(BaseModel, ABC):
         return '\n\n'.join(content_parts).strip()
 
     @classmethod
-    def _extract_list_items_by_header_path(cls, tree: SyntaxTreeNode, path: tuple[str, ...]) -> list[str]:
+    def _extract_list_items_by_header_path(
+        cls, tree: SyntaxTreeNode, path: tuple[str, ...], keep_inline_markup: bool = False
+    ) -> list[str]:
         h2_header = path[0]
         h3_header = path[1] if len(path) > 1 else None
 
@@ -312,12 +344,7 @@ class MCPModel(BaseModel, ABC):
                 if next_node.type == 'heading' and next_node.tag == 'h2':
                     break
                 if next_node.type == 'bullet_list':
-                    items = []
-                    for item in cls._find_nodes_by_type(next_node, 'list_item'):
-                        item_text = cls._extract_text_content(item).strip()
-                        if item_text and item_text not in ['None identified', 'None provided']:
-                            items.append(item_text)
-                    return items
+                    return cls._list_item_values(next_node, keep_inline_markup)
             return []
 
         h3_start_idx = None
@@ -339,12 +366,7 @@ class MCPModel(BaseModel, ABC):
             if next_node.type == 'heading' and next_node.tag in ['h2', 'h3']:
                 break
             if next_node.type == 'bullet_list':
-                items = []
-                for item in cls._find_nodes_by_type(next_node, 'list_item'):
-                    item_text = cls._extract_text_content(item).strip()
-                    if item_text and item_text not in ['None identified', 'None provided']:
-                        items.append(item_text)
-                return items
+                return cls._list_item_values(next_node, keep_inline_markup)
 
         return []
 
@@ -405,23 +427,10 @@ class MCPModel(BaseModel, ABC):
                     fields[field_name] = extracted_content
 
         # Capture unmapped H2 sections in additional_sections (for models that support it)
-        # Build set of mapped H2 headers
-        mapped_h2_headers = {header_path[0] for header_path in cls.HEADER_FIELD_MAPPING.values()}
-
-        # Find all H2 headers in markdown
         additional_sections: dict[str, str] = {}
-        for node in cls._find_nodes_by_type(tree, 'heading'):
-            if node.tag != 'h2':
-                continue
-            h2_text = cls._extract_text_content(node).strip()
-
-            # Skip if this H2 is in mapped headers or is Metadata
-            if h2_text in mapped_h2_headers or h2_text == 'Metadata':
-                continue
-
-            # Extract content for this unmapped H2 section
+        for h2_text in cls._unmapped_h2_headings(tree):
             content = cls._extract_content_from_raw_markdown(markdown, (h2_text,))
-            if content:  # Only store if there's actual content
+            if content:
                 additional_sections[h2_text] = content
 
         # Set additional_sections if we found any unmapped sections

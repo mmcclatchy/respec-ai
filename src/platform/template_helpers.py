@@ -315,6 +315,9 @@ def create_phase_command_tools(
         validate_document=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.VALIDATE_DOCUMENT, doc_type='"phase"', content='{CONTENT_TO_VALIDATE}'
         ),
+        validate_document_structure=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.VALIDATE_DOCUMENT, doc_type='"phase"', key='{PLAN_NAME}/{PHASE_NAME}'
+        ),
         store_document_user_edit=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_DOCUMENT,
             doc_type='"phase"',
@@ -790,6 +793,15 @@ def create_design_sync_command_tools(
     )
 
 
+def _render_phase_structure_validation() -> str:
+    return ToolDocGenerator.generate_tool_call_inline(
+        RespecAITool.VALIDATE_DOCUMENT,
+        doc_type='"phase"',
+        key='{PLAN_NAME}/{PHASE_NAME}',
+        implementation_markdown='{IMPLEMENTATION_PLAN_MARKDOWN}',
+    )
+
+
 def create_phase_architect_agent_tools(
     tui_adapter: TuiAdapter, plans_dir: str = '~/.claude/plans'
 ) -> PhaseArchitectAgentTools:
@@ -827,6 +839,7 @@ def create_phase_architect_agent_tools(
         get_analysis=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
         ),
+        validate_document=_render_phase_structure_validation(),
     )
 
 
@@ -854,6 +867,7 @@ def create_phase_critic_agent_tools(tui_adapter: TuiAdapter) -> PhaseCriticAgent
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
         ),
+        validate_document=_render_phase_structure_validation(),
     )
 
 

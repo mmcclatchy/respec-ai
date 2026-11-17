@@ -226,14 +226,15 @@ item 10, phase 2 work item 13, phase 3 work item 10 and phase 4 Scope 0. They la
 commit as the code that needs them, so until a phase lands, this section still shows the earlier
 text. Where this section and the phase document you are implementing disagree about that phase's
 own work, the phase document describes the target. Phase 2's amendments (its work item 13) landed
-here on 2026-11-16.
+here on 2026-11-16. Phase 3's amendments (its work item 10) landed here on
+2026-11-16.
 
 ### Agents and modes
 
 | Agent | `phase_mode` values | Persists | Granted, beyond today |
 |---|---|---|---|
-| `respec-phase-architect` | `explore`, `draft`, `revise` | `phase.md` content via `update_document`; exploration notes via `store_current_analysis`; the `implementation.md` draft via a `Write` grant scoped to `.respec-ai/plans/*/phases/*/implementation.md` | `store_current_analysis`, `get_previous_analysis` (today only plan-workflow agents hold them: `src/platform/models/plan.py:19-20`) |
-| `respec-phase-critic` | `review` | critic feedback via the existing store tool | — (read-only; on opencode and codex this is also stated in the prompt, F14) |
+| `respec-phase-architect` | `explore`, `draft`, `revise` | `phase.md` content via `update_document`; exploration notes via `store_current_analysis`; the `implementation.md` draft via a `Write` grant scoped to `.respec-ai/plans/*/phases/*/implementation.md` | `store_current_analysis`, `get_previous_analysis` (today only plan-workflow agents hold them: `src/platform/models/plan.py:19-20`); `validate_document` (phase 3: the self-check on the stored phase) |
+| `respec-phase-critic` | `review` | critic feedback via the existing store tool | `validate_document` (phase 3: relays `implementation_findings` and reads `paths_to_verify`; still read-only, with no Write, Edit, `update_document` or `store_document`; on opencode and codex this is also stated in the prompt, F14) |
 | `respec-phase-finalizer` (phase 4) | — (one job) | `phase.md` via `update_document`; `implementation.md` via the same scoped `Write` | as the architect |
 
 - **Inputs.** Agents are invoked with their mode, IDs (`loop_id`, `plan_name`, `phase_name`) and the
@@ -303,8 +304,10 @@ in `phase_architect.py`), plus `Affects`:
 - **Options.** `Option C:` is optional; there is no fourth option. That keeps every question
   answerable in one prompt that also offers the "accept the recommended default for all remaining"
   exit.
-- **Validation.** The critic blocks an entry missing its title, Option A, Option B or Recommended
-  (today's rule: `phase_critic.py:290-297`). No Python parses these entries (F35).
+- **Validation.** `validate_document` reports an entry missing its title, Option A, Option B or
+  Recommended, plus the other entry defects listed in phase 3 work item 2. Python parses these
+  entries (`src/utils/phase_structure.py`), so F35's premise no longer holds. The critic no longer
+  raises these defects.
 
 **Settled decision entry**, written by the orchestrator only:
 
@@ -325,6 +328,29 @@ in `phase_architect.py`), plus `Affects`:
   `CQ-NNN` or the unresolved checks; an answer to a sign-off skeleton-conflict prompt settles no
   ID and has no `supersedes`. `user-edit` carries `section=<H2 > H3>` and neither `supersedes` nor
   `rejected`. `materializer` carries neither.
+- **Required fields per source** (`validate_document` reports a missing or empty one; `part` names
+  it):
+
+  | `source` | Required, non-empty |
+  |---|---|
+  | `user` | `decision`, `rationale`, `binding`; plus `rejected` when `supersedes` names an OD or CQ |
+  | `user-menu`, `user-override` (legacy, in documents written before phase 2) | `decision`, `rationale`, `binding` |
+  | `user-edit` | `decision`, `binding` |
+  | `materializer` | `decision`, `rationale`, `binding` |
+  | `architect` | `decision`, `rationale`, `binding` |
+  | `implementation` | `supersedes`, `reason` |
+  | anything else, or missing | defect (`part`: `source`) |
+
+  Keys beyond the required ones are allowed, for example `user-edit`'s `section=`.
+- **Segment rules.** An entry is split on ` | `. A key segment starts with a known key followed by
+  `=`, and the first occurrence of a key wins. Any other segment, including a repeated key, continues
+  the previous value. This keeps frozen respec-code's signatures, which contain ` | `, intact, and
+  stops a quoted finding from overwriting the quoting SD's own keys.
+- **Accepting findings.** An accept-as-is unresolved-checks SD quotes each structural or
+  implementation finding as `<finding key> — <detail>`, all on the SD's one line and joined by a
+  semicolon and a space. The finding key is `<check> <subject>`, plus a space and `[<part>]` when `part` is
+  non-empty. The server stops reporting a finding whose key is so quoted, and lists it in
+  `skipped_checks` as `accepted: <finding key>`.
 - **`supersedes`** names the `OD-NNN` or `CQ-NNN` it settles, or the reserved token
   `unresolved-checks`: the user accepted the mechanical findings two automatic repairs did not
   resolve, recorded as `decision=accept as-is: <each finding verbatim>`. The critic never raises an
@@ -395,6 +421,9 @@ The protocol is the same at every touchpoint. The critic follows the same patter
    - User hand edits of `phase.md` keep today's path: re-read, `validate_document` for content loss
      (shown to the user, because they are the user's own edits), diff into `source=user-edit` SDs,
      store.
+   - Structural findings from `validate_document` go to the architect as a repair round and never
+     to the user, unless they are orchestrator-owned or left over once the two-round budget is
+     spent. Leftovers reach the user once, as the unresolved-checks decision.
 6. **Re-engage.**
    - **Claude Code extension:** `SendMessage` resumes the same architect, with its exploration
      intact. It resumes in the background, with its original tool set (F10), and the orchestrator
@@ -459,19 +488,30 @@ Phase 4:
 
 - **Every finding starts with a classification tag.** `[mechanical]` or `[judgment]` comes first,
   before any existing marker, for example
-  `- [mechanical] [Skeleton Index Module Mismatch - BLOCKING]: …`.
+  `- [mechanical] [Verify Command Not Configured - BLOCKING]: …`.
 - **`[mechanical]` findings.** These have exactly one correct fix that needs no user preference.
   Examples:
-  - a structural defect
-  - a missing field
-  - a dangling ID
-  - a seam path missing from Module Layout
-  - a malformed decision entry
-  - a Test List entry with no behavior
-  - a step without a verify command
-  - a step that a cold-start agent cannot execute because something it cites does not exist
+  - a cited path that does not exist
+  - a relayed `implementation.md` finding
+  - the verify command not matching project config
+  - a UX Contract rule violation
+  - a frontend presence class
+  - a step file or Test List entry that the structure does not cover (phase 2's coverage checks)
+  - a step that a cold-start agent cannot execute because something it cites does not exist (phase 4)
 
-  They go in `### Blockers`. The architect fixes them in `revise` mode, and the user is not told.
+  The phase-document structural defects (a dangling ID, a seam path missing from Module Layout, a
+  malformed decision entry, a Test List entry with no behavior, and the rest of the
+  `structural_findings` checks in phase 3 work item 2) are detected by `validate_document` and
+  repaired through the gate. The critic never raises them. Structural repair rounds share the
+  two-round budget below; orchestrator-owned findings skip it and go straight to the
+  unresolved-checks decision. `implementation.md` defects (a step no checklist item verifies, a
+  checklist item with no usable verify command, a malformed step heading, a missing section) come
+  back as `implementation_findings`. The gate passes no body, so it never sees them. The
+  architect's self-check fixes them, and the critic relays any that remain as
+  `[mechanical] [Implementation Plan Structure Invalid - BLOCKING]` blockers, repaired in `revise`
+  within the same budget.
+
+  Mechanical findings go in `### Blockers`. The architect fixes them in `revise` mode, and the user is not told.
   The orchestrator allows **at most two automatic repair rounds** per review. Anything still open
   after round two goes to the user as one "unresolved checks" decision: send back with direction,
   or accept as-is, recorded as an SD. It is never dropped silently and never loops forever.

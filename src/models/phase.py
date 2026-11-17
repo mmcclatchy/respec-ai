@@ -1,10 +1,19 @@
 from typing import ClassVar
 from uuid import uuid4
 
+from markdown_it import MarkdownIt
+from markdown_it.tree import SyntaxTreeNode
 from pydantic import Field
 
-from .base import MCPModel
+from .base import CONTENT_TRUNCATED, MCPModel
 from .enums import PhaseStatus, ShapeGate
+
+
+FENCED_HEADING_CUTS_SECTION = (
+    'a line inside a fenced block, or after a fence that is never closed, starts like a heading, '
+    'so storing ends this section at that line and loses the text after it'
+)
+BEFORE_FIRST_SECTION = 'Before the first section'
 
 
 class Phase(MCPModel):
@@ -86,6 +95,61 @@ class Phase(MCPModel):
     version: int = 1
     phase_status: PhaseStatus = PhaseStatus.DRAFT
     shape_gate: ShapeGate = ShapeGate.UNSHAPED
+
+    @classmethod
+    def find_content_loss(cls, markdown: str) -> list[str]:
+        """Extend the base report to unmapped H2 sections and to heading lines inside fenced blocks.
+
+        Neither raw extractor is fence-aware, and the verbatim one stops at the same heading lines,
+        so comparing them cannot see a section cut short by a fenced line (F27). Such a line is
+        reported when it starts with '## ', or with '### ' under a mapped H2. Under an unmapped H2
+        a fenced '### ' line cuts nothing: the H2-only extractor stops only at '## ' and '---'.
+        """
+        issues = super().find_content_loss(markdown)
+        tree = SyntaxTreeNode(MarkdownIt('commonmark').parse(markdown))
+        candidates = [
+            *((heading, CONTENT_TRUNCATED) for heading in cls._truncated_unmapped_sections(markdown, tree)),
+            *(
+                (heading, FENCED_HEADING_CUTS_SECTION)
+                for heading in cls._sections_cut_by_fenced_headings(markdown, tree)
+            ),
+        ]
+        for heading, reason in candidates:
+            if not any(issue.startswith(f'{heading}: ') for issue in issues):
+                issues.append(f'{heading}: {reason}')
+        return issues
+
+    @classmethod
+    def _truncated_unmapped_sections(cls, markdown: str, tree: SyntaxTreeNode) -> list[str]:
+        truncated: list[str] = []
+        for heading in cls._unmapped_h2_headings(tree):
+            ground_truth = cls._extract_raw_section_verbatim(markdown, (heading,))
+            if ground_truth and ground_truth != cls._extract_content_from_raw_markdown(markdown, (heading,)):
+                truncated.append(heading)
+        return truncated
+
+    @classmethod
+    def _sections_cut_by_fenced_headings(cls, markdown: str, tree: SyntaxTreeNode) -> list[str]:
+        fenced_lines = {
+            line_number
+            for fence in cls._find_nodes_by_type(tree, 'fence')
+            if fence.map
+            for line_number in range(fence.map[0] + 1, fence.map[1])
+        }
+        mapped_h2_headers = {header_path[0] for header_path in cls.HEADER_FIELD_MAPPING.values()}
+        cut: list[str] = []
+        section = BEFORE_FIRST_SECTION
+        h2: str | None = None
+        for line_number, line in enumerate(markdown.split('\n')):
+            starts_h3_of_mapped_h2 = line.startswith('### ') and h2 in mapped_h2_headers
+            if line_number in fenced_lines and (line.startswith('## ') or starts_h3_of_mapped_h2):
+                cut.append(section)
+            elif line_number not in fenced_lines and line.startswith('## '):
+                h2 = line[3:].strip()
+                section = h2
+            elif line_number not in fenced_lines and starts_h3_of_mapped_h2:
+                section = f'{h2} > {line[4:].strip()}'
+        return cut
 
     def build_markdown(self) -> str:
         sections = [f'{self.TITLE_PATTERN}: {self.phase_name}']

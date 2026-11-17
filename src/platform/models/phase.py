@@ -56,6 +56,9 @@ class PhaseCommandTools(CommandToolsModel):
     get_document: str = Field(..., description='Get the current phase document through the review loop')
     store_user_feedback: str = Field(..., description='Store round-tagged user feedback')
     validate_document: str = Field(..., description='Check candidate content for silent parser loss')
+    validate_document_structure: str = Field(
+        ..., description='Check the stored phase document for structural findings, in key mode'
+    )
 
     _tool_extractor: ClassVar[ToolDocumentationExtractor | None] = None
     _adapter: PlatformAdapter = PrivateAttr()
@@ -145,6 +148,7 @@ class PhaseArchitectAgentTools(AgentToolsModel):
         RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_CURRENT_ANALYSIS,
         RespecAITool.GET_PREVIOUS_ANALYSIS,
+        RespecAITool.VALIDATE_DOCUMENT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
@@ -162,6 +166,9 @@ class PhaseArchitectAgentTools(AgentToolsModel):
     update_document: str = Field(..., description='Store complete specification')
     store_analysis: str = Field(..., description='Replace the loop notes slot with the complete notes')
     get_analysis: str = Field(..., description='Read the loop notes slot')
+    validate_document: str = Field(
+        ..., description='Check the stored phase document and the implementation.md body, in key mode'
+    )
 
 
 class PhaseCriticAgentTools(AgentToolsModel):
@@ -169,6 +176,7 @@ class PhaseCriticAgentTools(AgentToolsModel):
         RespecAITool.GET_DOCUMENT,
         RespecAITool.GET_FEEDBACK,
         RespecAITool.STORE_CRITIC_FEEDBACK,
+        RespecAITool.VALIDATE_DOCUMENT,
     ]
 
     builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
@@ -182,3 +190,6 @@ class PhaseCriticAgentTools(AgentToolsModel):
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     get_feedback: str = Field(..., description='Retrieve prior critic reviews and every user entry')
     store_feedback: str = Field(..., description='Store critic feedback')
+    validate_document: str = Field(
+        ..., description='Check the stored phase document and the implementation.md body, in key mode'
+    )

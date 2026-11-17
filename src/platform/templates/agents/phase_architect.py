@@ -1,5 +1,6 @@
 from textwrap import indent
 
+from src.models.document_validation import CONTENT_LOSS_WARNING
 from src.models.enums import PhaseStatus
 from src.models.phase import Phase
 from src.platform.models import PhaseArchitectAgentTools
@@ -187,6 +188,8 @@ You are a technical architecture specialist focused on system design.
   `## User Input <i>` entry, including the `[round 0 | briefing]` entry that carries the workflow
   guidance
 - Your notes from earlier engagements via {tools.get_analysis}
+- The structural findings, the implementation.md findings and the paths to verify, in draft and
+  revise, via {tools.validate_document}
 - Strategic plan markdown from MCP
 - Best-practices knowledge-base and local archive results{design_sync_retrieved_context_line}
 
@@ -567,6 +570,8 @@ ELIF phase_mode == "revise":
   ledger rule (at most one new unmarked RP line for a genuinely new gap).
   Change only what the feedback requires. Rebuild IMPLEMENTATION_PLAN_MARKDOWN when its content
   changes; read the current file first, so an unchanged plan is not rewritten.
+  When STEP 2 finds nothing new, change nothing here: the engagement is a structural repair
+  round, and STEP 4.5 does its work.
 ```
 
 MANDATORY PLAN CONTEXT ENFORCEMENT and the protocols below apply to every mode that writes the
@@ -647,10 +652,44 @@ Every engagement persists before it reports.
 IF the phase document changed in this engagement:
   CALL {tools.update_document} with the complete phase markdown
   → Copy `## Metadata` exactly as {tools.get_document} returned it
+  → IF the response contains "{CONTENT_LOSS_WARNING}": apply CONTENT LOSS ON WRITE below
   → IF the call fails: retry once, then return the report with `result: failed`
 IF phase_mode is "draft" or "revise" and IMPLEMENTATION_PLAN_MARKDOWN changed:
   Write IMPLEMENTATION_PLAN_MARKDOWN to `.respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/implementation.md`
   → IF the write fails: return the report with `result: failed`
+
+CONTENT LOSS ON WRITE: the warning names each heading whose text the parser dropped, and the phase
+was stored without that text. Rewrite each named section so it parses whole: no bare `---` line
+inside a section, no line starting with `##` or `###` inside a fenced block, and no new H3 under a
+mapped H2. Then store the complete phase markdown again the same way. When two rewrites still
+warn, name the headings in `## For the user`.
+
+STEP 4.5: Structural Self-Check
+Runs in every draft and revise engagement, even when STEP 2 found nothing new and nothing above
+changed: a revise that carries nothing new is a structural repair round, and this self-check is
+its whole job. Never return early with "no new feedback".
+
+IF phase_mode is "draft" or "revise":
+  IMPLEMENTATION_PLAN_MARKDOWN = the full body of implementation.md as it now stands on disk
+    (read the file when this engagement did not write it)
+  SELF_CHECK_FIXES = 0
+  REPEAT:
+    CALL {tools.validate_document}
+    → Store: VALIDATION
+    OWN_FINDINGS = every entry in VALIDATION.structural_findings and VALIDATION.implementation_findings whose owner is "architect"
+    MISSING_CITATIONS = []
+    FOR each entry in VALIDATION.paths_to_verify cited in text you own (every line except the RP and `- Read:` lines of the research ledger and the frozen `## Overview`):
+      Glob(pattern=<the entry's path>); when it matches no file, add the entry to MISSING_CITATIONS
+    IF OWN_FINDINGS and MISSING_CITATIONS are both empty, OR SELF_CHECK_FIXES == 2:
+      Leave the REPEAT. The orchestrator's check after this engagement is the authority on anything left.
+    SELF_CHECK_FIXES += 1
+    Fix each entry of OWN_FINDINGS as its `detail` says: `subject` names the exact path, ID or line, and `part` the element at fault.
+    Fix each entry of MISSING_CITATIONS: cite the file that exists, or remove the citation.
+    Leave every finding whose owner is "orchestrator" untouched: the lines it names are carried forward verbatim.
+    User edits bind the repair: fix structure around the change a `source=user-edit` SD records, and never rewrite the words of a `source=user` entry. A finding that only contradicting a user entry would fix stays unfixed: name it and the reason in one line of `## For the user`, and raise no OD-NNN for it.
+    CALL {tools.update_document} with the complete phase markdown, when the fixes changed it
+    → IF the response contains "{CONTENT_LOSS_WARNING}": apply CONTENT LOSS ON WRITE above
+    Write IMPLEMENTATION_PLAN_MARKDOWN to `.respec-ai/plans/{{PLAN_NAME}}/phases/{{PHASE_NAME}}/implementation.md` when the fixes changed it
 
 CALL {tools.store_analysis}
 → ARCHITECT_NOTES is the complete notes, never a delta: every call replaces the whole slot.

@@ -12,12 +12,19 @@ written so it can be run cold. Record every result in the place each section nam
 | M5 | The frozen reader accepts the signed-off output | Scripted half done (stage S5). The live half is step M2.9 below |
 | M6 | Rewording prompts never breaks the suite | Done, scripted (stage S5) |
 | M7 | Whether Claude Code enforces the architect's path-scoped `Write` | To run. The result goes in decisions.md |
+| P3.1 | A structural defect hand-edited into `phase.md` is repaired before you see it, and the happy path keeps three touchpoints | To run |
+| P3.2 | An unrepairable defect reaches you once as an unresolved check, and accepting it sticks | To run |
+| P3.3 | A bare `---` in an extra section is a content-loss prompt, never a structural one | To run |
+| P3.4 | codex and opencode agents call `validate_document`, and the critic Globs `paths_to_verify` | To run. **Not blocking** for opencode, which is no longer used |
+| P3.5 | The tool description and a sample of findings read well | To run |
 
 ## 0. Setup (once)
 
 The checks must run against an MCP server built from the working tree. The `respec-ai`
 server registered at user scope is `respec-ai mcp-server`, which proxies to the released Docker
-image (`src/cli/commands/mcp_server.py`). That image does not have phase 2's storage rule (B1).
+image (`src/cli/commands/mcp_server.py`). That image does not have phase 2's storage rule (B1)
+or phase 3's key-mode `validate_document`, so against it Step 9's gate fails closed on the
+first draft.
 Run everything in a scratch project, never in the respec-ai repo.
 
 1. Set two variables for the shell you run the checks from:
@@ -160,8 +167,8 @@ Record the results in `docs/phase-cooperative/phase-2-cooperative-flow.md`, unde
 
   Expected outcomes:
   - **The window is real** if your sentence is gone from `phase.md` at the final prompt. Step
-    10.2's disk-mirror write (`src/platform/templates/commands/phase_command.py:993-999`) ran
-    before Step 10.4's re-read (`:1039`).
+    10.2's disk-mirror write (`src/platform/templates/commands/phase_command.py:1079-1085`) ran
+    before Step 10.4's re-read (`:1125`).
   - **No window** if the sentence survives, or if the final prompt's re-read detects it and runs
     the hand-edit path (Step 10.5).
 
@@ -332,3 +339,73 @@ The user-scope `respec-ai` registration is never touched by these steps.
   passed, 1 skipped. A control run that reworded only the contract strings (`WAIT for`,
   `resume at Step`, `TOUCHPOINT`) failed 36 tests, which shows the reworded render reached the
   tests. No test pins prompt phrasing.
+
+## Phase 3: structural checks (run in the same session as M2, before Teardown)
+
+These cover the phase 3 manual exit checks in `phase-3-structural-checks.md`, under Exit criteria.
+Use the same `$LIVE` project and the working-tree server from section 0. Record each result under
+that heading, with the date. Use only the defects below: each one the architect can repair without
+touching your intent, except P3.2, which is meant to reach you.
+
+Hand edits are made in `.respec-ai/plans/p2-live-check/phases/<phase>/phase.md` while `/respec-phase`
+waits at the design review's final prompt. Afterwards choose "I edited phase.md myself". Replace
+`<phase>` with the phase name you are running. The phase needs a design layer (`## Design Shape`
+with Module Layout, Skeleton Index and Test List), which any phase that reaches design review has.
+
+- **P3.1 A repairable structural defect never reaches you.** Run `/respec-phase p2-live-check <phase C>`
+  to the design review. At the final prompt, edit `phase.md` twice:
+  1. Under `### Skeleton Index`, add one line whose path appears nowhere in `### Module Layout`,
+     in the form below, with a real extension of your project's language. Note the path you used.
+
+     ```text
+     - `src/zz_extra/extra.<ext>` :: Extra.run(input: Input) -> Output
+     ```
+
+  2. In another existing Skeleton Index line, delete the backticks around its path.
+
+  Then choose "I edited phase.md myself". Expected:
+  - Neither problem is shown to you as a question, menu or report line.
+  - The critic does not run until both are repaired. The architect is re-engaged (Step 9 repair
+    round) without a prompt.
+  - When the design review returns, the extra path is a new entry in `### Module Layout` and the
+    backticks are back on the other line. Open `phase.md` to confirm.
+  - The happy path still has at most three stopping stages (M2.1's count).
+
+  If the review returns with an "unresolved checks" decision for either defect, record the finding
+  text: the architect could not repair it.
+
+- **P3.2 An unrepairable defect reaches you once, and accepting it sticks.** On a phase with at
+  least one `OD-NNN` under `### Open Design Decisions`, delete one OD's `- Option B:` line, and
+  choose "I edited phase.md myself". Restoring the line would undo your edit, so the architect
+  leaves it. Expected:
+  - You see it once, as one unresolved-checks decision naming `decision-entry-malformed OD-NNN [Option B]`.
+  - Choose "accept as-is". `phase.md` gains an SD whose line contains
+    `supersedes=unresolved-checks` and quotes that finding key.
+  - Send the design back once more with any small change request. Expected: the decision is not
+    asked again, and the critic's report does not mention the finding.
+
+- **P3.3 A bare `---` is content loss, not structure.** Add a new H2 section at the end of
+  `phase.md`, for example `## Extra Notes`, with a line containing only `---` in the middle of it.
+  Choose "I edited phase.md myself". Expected:
+  - The content-loss menu shows you the `Extra Notes` heading, because the text after the rule
+    would be dropped.
+  - No structural finding is reported for it, and no repair round runs for it.
+
+  Then remove the section, so later checks start clean.
+
+- **P3.4 Grants on codex and opencode** (prompt-enforced: F14). Run a design review on codex. In
+  the transcripts, confirm that the architect calls `validate_document` after it persists the phase,
+  and that the critic calls it once and then Globs the paths in `paths_to_verify`.
+  - **Not blocking for opencode.** It is no longer used. If you do run it, record the same result;
+    if you do not, record "not run, not blocking".
+  - On Claude Code, the grants are in the agents' frontmatter (`tools:`), and the critic's list
+    has no `Write`, `Edit`, `update_document` or `store_document`. Confirm that in
+    `.claude/agents/respec-phase-critic.md`.
+
+- **P3.5 Read the output as the architect would.** Run `/mcp` or inspect the tool list, and read
+  the `validate_document` description. Then run the key-mode call on the stored phase, and read a
+  sample finding rendered as `<check> <subject> [<part>] — <detail>`. Expected:
+  - Each finding names its subject and its single fix.
+  - No `detail` names a programming language, framework or file extension.
+
+  This is a judgment check. B9 (`tests/unit/utils/test_phase_structure.py`) is the machine check.

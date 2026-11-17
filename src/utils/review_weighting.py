@@ -28,7 +28,7 @@ SPECIALIST_DOMAIN_GROUPS: dict[str, frozenset[CriticAgent]] = {
     'infrastructure': frozenset({CriticAgent.INFRASTRUCTURE_REVIEWER}),
 }
 
-# Mirrors skeleton_generator._BULLET_PATH: a Skeleton Index / Module Layout entry always opens
+# Mirrors skeleton_types.BULLET_PATH: a Skeleton Index / Module Layout entry always opens
 # with a backtick-quoted path. Deliberately does not reuse parse_skeleton_index -- that also
 # parses the per-language signature grammar (phase 2) and can raise on a malformed entry: weight
 # computation must never fail review consolidation over a formatting quirk it doesn't need to

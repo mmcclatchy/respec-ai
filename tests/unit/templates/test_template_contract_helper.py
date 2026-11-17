@@ -365,3 +365,45 @@ def test_decision_blocks_stop_at_the_branch_indentation() -> None:
     assert blocks == [
         'IF REPORT_DECISION == "failed":\n  ERROR: "the architect failed: [detail]"\n  EXIT: Workflow terminated'
     ]
+
+
+def test_an_agent_declares_its_tools_on_the_frontmatter_tools_line() -> None:
+    # Agent templates carry `tools:` where commands carry `allowed-tools:`; B16 (phase 3)
+    # compares an agent's invoked MCP tools against it.
+    template = dedent("""\
+    ---
+    name: respec-phase-critic
+    tools: mcp__respec-ai__get_document, Read, Write(.respec-ai/plans/*/phases/*/implementation.md)
+    ---
+
+    CALL mcp__respec-ai__get_document(doc_type="phase")
+    """)
+
+    assert template_contract(template).declared_tools() == {'mcp__respec-ai__get_document', 'read', 'write'}
+
+
+def test_a_tools_line_outside_the_frontmatter_declares_nothing() -> None:
+    template = dedent("""\
+    ---
+    name: respec-phase-critic
+    ---
+
+    tools: mcp__respec-ai__store_document
+    """)
+
+    assert template_contract(template).declared_tools() == set()
+
+
+def test_block_at_is_the_line_with_only_the_lines_indented_beneath_it() -> None:
+    template = dedent("""\
+    IF ARCHITECT_FINDINGS is not empty AND REPAIR_ROUNDS < 2:
+      REPAIR_ROUNDS += 1
+
+      Go to Step 9.
+    LEFTOVERS = []
+      continued
+    """)
+
+    assert template_contract(template).block_at(0) == (
+        'IF ARCHITECT_FINDINGS is not empty AND REPAIR_ROUNDS < 2:\n  REPAIR_ROUNDS += 1\n\n  Go to Step 9.'
+    )

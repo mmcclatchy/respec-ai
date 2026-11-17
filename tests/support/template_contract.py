@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 
 _ALLOWED_TOOLS_LINE = re.compile(r'^allowed-tools:\s*(.+)$', re.MULTILINE)
+# Agent templates declare their grants on a frontmatter `tools:` line instead (F14).
+_AGENT_TOOLS_LINE = re.compile(r'^tools:\s*(.+)$', re.MULTILINE)
 _MCP_TOOL_PATTERN = re.compile(r'\bmcp__[\w-]+__\w+')
 _BUILTIN_CALL_PATTERN = re.compile(r'\b(Read|Write|Glob|Bash|Grep|Task)\(')
 
@@ -114,10 +116,17 @@ class TemplateContract:
         self._template = template
 
     def declared_tools(self) -> set[str]:
-        match = _ALLOWED_TOOLS_LINE.search(self._template)
+        match = _ALLOWED_TOOLS_LINE.search(self._template) or _AGENT_TOOLS_LINE.search(self._frontmatter())
         if not match:
             return set()
         return {raw.strip().split('(', 1)[0].lower() for raw in match.group(1).split(',') if raw.strip()}
+
+    def _frontmatter(self) -> str:
+        lines = self._template.split('\n')
+        if lines[0].strip() != '---':
+            return ''
+        closing = next((index for index, line in enumerate(lines[1:], start=1) if line.strip() == '---'), None)
+        return '\n'.join(lines[1:closing]) if closing else ''
 
     def invoked_tools(self) -> set[str]:
         # Lowercased so a builtin capability invoked with the generic name used in prose
@@ -334,6 +343,11 @@ class TemplateContract:
         return [
             index for index in range(len(stripped) - len(wanted) + 1) if stripped[index : index + len(wanted)] == wanted
         ]
+
+    def block_at(self, index: int) -> str:
+        lines = self._template.split('\n')
+        own = _own_block(lines[index + 1 :], _indentation(lines[index]))
+        return '\n'.join([lines[index], *own]).rstrip()
 
     def decision_blocks(self, value: str) -> list[str]:
         """Each `IF/ELIF <VAR>DECISION == "value"` header with only the lines indented beneath it.

@@ -5,6 +5,7 @@ from pathlib import Path
 from src.utils.language_extensions import language_for_path
 from src.utils.materializers import LanguageMaterializer, UnsupportedLanguageError, get_materializer
 from src.utils.skeleton_types import (
+    BULLET_PATH,
     SkeletonIndexEntry,
     SkeletonIndexParseError,
     SkeletonMember,
@@ -12,9 +13,6 @@ from src.utils.skeleton_types import (
     parse_bare_signature,
     strip_tags,
 )
-
-
-_BULLET_PATH = re.compile(r'^-\s*`(?P<inner>[^`]+)`(?P<rest>.*)$')
 
 
 @dataclass(frozen=True)
@@ -79,7 +77,7 @@ def parse_skeleton_index(text: str) -> tuple[SkeletonIndexEntry, ...]:
     members_by_path: dict[str, list[SkeletonMember]] = {}
     materializer_by_path: dict[str, LanguageMaterializer | None] = {}
     for line in text.splitlines():
-        bullet = _BULLET_PATH.match(line.strip())
+        bullet = BULLET_PATH.match(line.strip())
         if not bullet:
             continue
         rest = bullet.group('rest')
@@ -108,7 +106,7 @@ def parse_skeleton_index(text: str) -> tuple[SkeletonIndexEntry, ...]:
 def parse_test_list(text: str) -> tuple[TestListEntry, ...]:
     tests_by_path: dict[str, list[str]] = {}
     for line in text.splitlines():
-        bullet = _BULLET_PATH.match(line.strip())
+        bullet = BULLET_PATH.match(line.strip())
         if not bullet:
             continue
         inner = bullet.group('inner')

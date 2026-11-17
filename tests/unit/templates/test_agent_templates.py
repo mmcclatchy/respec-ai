@@ -484,10 +484,11 @@ _CRITIC_JUDGMENT_CALLS = frozenset(
 
 class TestPhaseCriticTemplate:
     def test_template_treats_best_practices_paths_as_blocking_verification(self) -> None:
+        # Phase 3 moved the `.best-practices/` mention scan into validate_document's
+        # extract_cited_paths (pinned by B7); the critic keeps the existence markers.
         template = _critic_template()
         assert 'best-practices-rag query-kb' not in template
         assert '--force-refresh' not in template
-        assert '.best-practices/*.md' in template
         assert '[Research Path Invalid - BLOCKING]: Path `{path}` does not exist' in template
         assert {'research-path-invalid', 'best-practices-reference-invalid'} <= template_contract(
             template
@@ -611,15 +612,15 @@ class TestPhaseCriticTemplate:
 
     def test_critic_raises_implementation_plan_defects_as_mechanical_findings(self) -> None:
         # F5, F33: implementation.md is reviewed with the design; respec-code reads it raw from
-        # this path and fails closed without it.
+        # this path and fails closed without it. Phase 3 moved the Checklist presence checks into
+        # validate_document, whose findings the critic relays as one marker.
         template = _critic_template()
 
         assert '.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md' in template
         assert {
             'implementation-plan-missing',
+            'implementation-plan-structure-invalid',
             'step-names-no-files',
-            'step-without-verify-command',
-            'checklist-item-malformed',
             'verify-command-not-configured',
             'test-list-entry-not-covered',
         } <= template_contract(template).mechanical_findings()
@@ -632,14 +633,6 @@ class TestPhaseCriticTemplate:
         assert '- phase_mode:' in template
         assert {'under-surfaced-decision', 'non-divergent-decision-options'} <= contract.judgment_findings()
         assert not {'under-surfaced-decision', 'non-divergent-decision-options'} & contract.blocker_conditions()
-
-    def test_malformed_decision_entry_is_a_mechanical_blocker_in_review(self) -> None:
-        # A missing Recommended line would let "accept the recommended default" record an empty
-        # decision. Phase 3 moves this check into validate_document.
-        template = _critic_template()
-
-        assert 'Malformed Decision Entry - BLOCKING' in template
-        assert 'malformed-decision-entry' in template_contract(template).mechanical_findings()
 
 
 class TestPlanCriticTemplate:
