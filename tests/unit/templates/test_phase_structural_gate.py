@@ -39,8 +39,13 @@ from src.platform.template_helpers import (
     create_phase_architect_agent_tools,
     create_phase_command_tools,
     create_phase_critic_agent_tools,
+    create_phase_finalizer_agent_tools,
 )
-from src.platform.templates.agents import generate_phase_architect_template, generate_phase_critic_template
+from src.platform.templates.agents import (
+    generate_phase_architect_template,
+    generate_phase_critic_template,
+    generate_phase_finalizer_template,
+)
 from src.platform.templates.agents.phase_architect import technical_phase_template
 from src.platform.templates.commands import generate_phase_command_template
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, OpenCodeAdapter
@@ -89,7 +94,6 @@ _KEPT_MECHANICAL_RULES = frozenset(
         'implementation-plan-reference-invalid',
         'implementation-plan-missing',
         'implementation-plan-structure-invalid',
-        'step-names-no-files',
         'verify-command-not-configured',
         'test-list-entry-not-covered',
         'ux-contract-flow-missing-pass-condition',
@@ -98,13 +102,33 @@ _KEPT_MECHANICAL_RULES = frozenset(
         'undecided-screen-decomposition',
         'missing-component-provenance-decision',
         'missing-design-source-decision',
+        'cold-start-gap',
+        'reviewed-section-changed',
+        'grounding-path-invalid',
+        'step-file-verb-invalid',
+        'success-criterion-missing',
     }
 )
-_EXISTENCE_MARKER_BY_KIND = {
-    CitedPathKind.READ: 'Research Path Invalid',
-    CitedPathKind.BEST_PRACTICES: 'Best-Practices Reference Invalid',
-    CitedPathKind.CONSTRAINT: 'Implementation Plan Reference Invalid',
+# Phase 4 Scope 8: each review target checks the paths its own repairer can fix. The design review
+# checks the research and constraint paths; the brief review checks the Grounding paths and each
+# step's create and modify verbs, which the finalizer writes and flips.
+_EXISTENCE_MARKER_BY_TARGET = {
+    'design': {
+        CitedPathKind.READ: 'Research Path Invalid',
+        CitedPathKind.BEST_PRACTICES: 'Best-Practices Reference Invalid',
+        CitedPathKind.CONSTRAINT: 'Implementation Plan Reference Invalid',
+    },
+    'brief': {
+        CitedPathKind.GROUNDING: 'Grounding Path Invalid',
+        CitedPathKind.CREATE: 'Step File Verb Invalid',
+        CitedPathKind.MODIFY: 'Step File Verb Invalid',
+    },
 }
+_RELAYED_OWNERS_BY_TARGET = {
+    'design': {FindingOwner.ARCHITECT},
+    'brief': {FindingOwner.ARCHITECT, FindingOwner.FINALIZER},
+}
+_ARCHITECT_GLOB_KINDS = {CitedPathKind.READ, CitedPathKind.CONSTRAINT, CitedPathKind.BEST_PRACTICES}
 _CRITIC_READ_ONLY_GRANTS = frozenset(
     {
         'mcp__respec-ai__get_document',
@@ -158,6 +182,11 @@ def _architect(tui: str) -> str:
     return generate_phase_architect_template(create_phase_architect_agent_tools(_adapter(tui)))
 
 
+@cache
+def _finalizer(tui: str) -> str:
+    return generate_phase_finalizer_template(create_phase_finalizer_agent_tools(_adapter(tui)))
+
+
 def _indentation(line: str) -> int:
     return len(line) - len(line.lstrip())
 
@@ -177,6 +206,18 @@ def _names(variable: str, text: str) -> bool:
 
 def _owner_value(owner: FindingOwner) -> re.Pattern[str]:
     return re.compile(rf'["\'`]{owner.value}["\'`]')
+
+
+def _owners_named(line: str) -> set[FindingOwner]:
+    return {owner for owner in FindingOwner if _owner_value(owner).search(line)}
+
+
+def _kinds_named(line: str) -> set[CitedPathKind]:
+    return {kind for kind in CitedPathKind if re.search(rf'["\'`]{re.escape(kind.value)}["\'`]', line)}
+
+
+def _review_branch(template: str, target: str) -> str:
+    return template_contract(template).condition_block('review_target', target)
 
 
 class _Step9:
@@ -492,6 +533,23 @@ def test_orchestrator_owned_findings_never_spend_a_repair_round(tui: str) -> Non
 
 
 @pytest.mark.parametrize('tui', _TUIS)
+def test_finalizer_owned_findings_fall_in_neither_step_9_list(tui: str) -> None:
+    # Phase 4 B18, routing half: the gate's two lists filter by exactly one owner each, so a
+    # finding in the finalizer's sections is neither sent to the architect nor left for the user.
+    step = _Step9(tui)
+    lists = {owner: step.findings_variable(owner) for owner in (FindingOwner.ARCHITECT, FindingOwner.ORCHESTRATOR)}
+    splits = {
+        match.group('name'): step.lines[index]
+        for index in step.rows
+        if (match := _ASSIGNMENT.match(step.lines[index])) and 'structural_findings' in match.group('value')
+    }
+
+    assert set(splits) == set(lists.values())
+    for name, line in splits.items():
+        assert _owners_named(line) == {owner for owner, variable in lists.items() if variable == name}
+
+
+@pytest.mark.parametrize('tui', _TUIS)
 def test_leftover_and_orchestrator_findings_reach_the_unresolved_checks_even_after_a_clean_review(tui: str) -> None:
     step = _Step9(tui)
     collected = step.leftovers_assignment()
@@ -592,17 +650,42 @@ def test_the_critic_raises_none_of_the_rules_validate_document_now_owns(tui: str
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-def test_the_critic_checks_existence_only_for_paths_to_verify_choosing_the_marker_by_kind(tui: str) -> None:
+@pytest.mark.parametrize('target', ['design', 'brief'])
+def test_each_review_checks_existence_only_for_its_kinds_of_path_choosing_the_marker_by_kind(
+    target: str, tui: str
+) -> None:
+    # Phase 4 re-shapes phase 3's test: a design review that Globbed a draft's create paths would
+    # report every skeleton the plan has yet to write, and a brief review that reported a missing
+    # research path would send the finalizer a fix only the orchestrator's ledger can make.
+    body = _review_branch(_critic(tui), target)
+    contract = template_contract(body)
+    lines = body.split('\n')
+    markers = _EXISTENCE_MARKER_BY_TARGET[target]
+
+    assert body, f'no {target} review branch'
+    for kind, marker in markers.items():
+        raised = [
+            index for index, line in enumerate(lines) if f'`{kind.value}`' in line and f'[{marker} - BLOCKING]' in line
+        ]
+        assert raised, f'no {marker} finding is raised for a `{kind.value}` path on {target}'
+        assert all(any('paths_to_verify' in outer for outer in contract.enclosing_at(index)) for index in raised)
+    loops = [line for line in lines if 'paths_to_verify' in line and line.lstrip().upper().startswith('FOR ')]
+    assert loops and all(_kinds_named(line) == set(markers) for line in loops), f'{target} globs other kinds: {loops}'
+    other_markers = {
+        marker
+        for other, by_kind in _EXISTENCE_MARKER_BY_TARGET.items()
+        if other != target
+        for marker in by_kind.values()
+    }
+    assert [marker for marker in other_markers if f'[{marker} - BLOCKING]' in body] == []
+
+
+@pytest.mark.parametrize('tui', _TUIS)
+def test_the_critic_globs_only_inside_a_paths_to_verify_loop(tui: str) -> None:
     template = _critic(tui)
     contract = template_contract(template)
     lines = template.split('\n')
 
-    for kind, marker in _EXISTENCE_MARKER_BY_KIND.items():
-        raised = [
-            index for index, line in enumerate(lines) if f'`{kind.value}`' in line and f'[{marker} - BLOCKING]' in line
-        ]
-        assert raised, f'no {marker} finding is raised for a missing `{kind.value}` path'
-        assert all(any('paths_to_verify' in outer for outer in contract.enclosing_at(index)) for index in raised)
     globs = [index for index, line in enumerate(lines) if re.search(r'\bGlob\(', line)]
     assert globs
     assert [
@@ -611,16 +694,36 @@ def test_the_critic_checks_existence_only_for_paths_to_verify_choosing_the_marke
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-def test_the_critic_relays_every_implementation_finding_as_a_mechanical_blocker(tui: str) -> None:
-    template = _critic(tui)
-    contract = template_contract(template)
-    lines = template.split('\n')
+@pytest.mark.parametrize('target', ['design', 'brief'])
+def test_each_review_relays_exactly_the_implementation_findings_its_repairer_owns(target: str, tui: str) -> None:
+    # Phase 4 B16 and B18: the design review's repairer is the architect, which never writes the
+    # finalizer's sections; the brief review's repairer is the finalizer, which also restores a
+    # reviewed section that drifted (an architect-owned finding).
+    body = _review_branch(_critic(tui), target)
+    contract = template_contract(body)
+    lines = body.split('\n')
     relays = [index for index, line in enumerate(lines) if _RELAYED_IMPLEMENTATION_FINDING.search(line)]
     forms = [match.group(0) for line in lines if (match := _RELAYED_IMPLEMENTATION_FINDING.search(line))]
 
-    assert {'[<part>]' in form for form in forms} == {True, False}, f'both relay forms are needed: {forms}'
-    assert all(any('implementation_findings' in outer for outer in contract.enclosing_at(index)) for index in relays)
+    assert {'[<part>]' in form for form in forms} == {True, False}, f'both relay forms are needed on {target}: {forms}'
+    for index in relays:
+        loops = [outer for outer in contract.enclosing_at(index) if 'implementation_findings' in outer]
+        assert loops, f'a {target} relay is not inside an implementation_findings loop'
+        assert _owners_named(loops[0]) == _RELAYED_OWNERS_BY_TARGET[target]
     assert accepted_by_the_server(forms) == dict.fromkeys(forms, True)
+
+
+@pytest.mark.parametrize('tui', _TUIS)
+def test_the_critic_relays_implementation_findings_only_inside_a_review_target_branch(tui: str) -> None:
+    template = _critic(tui)
+    everywhere = _RELAYED_IMPLEMENTATION_FINDING.findall(template)
+    in_branches = [
+        form
+        for target in ('design', 'brief')
+        for form in _RELAYED_IMPLEMENTATION_FINDING.findall(_review_branch(template, target))
+    ]
+
+    assert everywhere and len(everywhere) == len(in_branches)
 
 
 @pytest.mark.parametrize('tui', _TUIS)
@@ -649,9 +752,10 @@ def test_the_critic_never_raises_a_structural_finding_itself(tui: str) -> None:
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-@pytest.mark.parametrize('agent', ['architect', 'critic'])
+@pytest.mark.parametrize('agent', ['architect', 'critic', 'finalizer'])
 def test_the_phase_agents_call_validate_document_and_only_mcp_tools_they_declare(agent: str, tui: str) -> None:
-    contract = template_contract(_architect(tui) if agent == 'architect' else _critic(tui))
+    renderers = {'architect': _architect, 'critic': _critic, 'finalizer': _finalizer}
+    contract = template_contract(renderers[agent](tui))
     invoked = {tool for tool in contract.invoked_tools() if tool.startswith('mcp__')}
 
     assert _VALIDATE_DOCUMENT in invoked
@@ -736,11 +840,31 @@ def test_every_architect_write_is_checked_for_the_content_loss_warning(tui: str)
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-def test_the_architect_globs_every_path_to_verify(tui: str) -> None:
+def test_the_architect_globs_only_the_kinds_of_path_it_cites_itself(tui: str) -> None:
+    # Phase 4: validate_document also returns each step's create and modify paths and the
+    # Grounding paths. A draft's create path never exists yet, so an unfiltered Glob would have the
+    # architect strip its own create items.
     tasks = _tasks(_architect(tui))
     contract = template_contract(tasks)
     lines = tasks.split('\n')
-
     globs = [index for index, line in enumerate(lines) if re.search(r'\bGlob\(', line)]
+    loops = [outer for index in globs for outer in contract.enclosing_at(index) if 'paths_to_verify' in outer]
 
-    assert [index for index in globs if any('paths_to_verify' in outer for outer in contract.enclosing_at(index))]
+    assert loops, 'the self-check never Globs the paths to verify'
+    assert all(_kinds_named(loop) and _kinds_named(loop) <= _ARCHITECT_GLOB_KINDS for loop in loops), loops
+
+
+@pytest.mark.parametrize('tui', _TUIS)
+def test_the_architect_self_check_fixes_only_architect_owned_findings(tui: str) -> None:
+    # Phase 4 B18: findings in the finalizer's sections and fields reach the finalizer only.
+    tasks = _tasks(_architect(tui))
+    own = [
+        line
+        for line in tasks.split('\n')
+        if (match := _ASSIGNMENT.match(line))
+        and 'structural_findings' in match.group('value')
+        and 'implementation_findings' in match.group('value')
+    ]
+
+    assert len(own) == 1, f'the self-check has no single list of findings to fix: {own}'
+    assert _owners_named(own[0]) == {FindingOwner.ARCHITECT}

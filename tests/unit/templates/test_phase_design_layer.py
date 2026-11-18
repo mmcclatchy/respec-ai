@@ -25,16 +25,19 @@ from tests.support.template_contract import template_contract
 
 def test_architect_requires_concrete_paths_in_design_sections_but_not_objectives() -> None:
     # B5: file paths are required in the design layer and forbidden in Objectives /
-    # Scope / Deliverables / Development Plan -- the prohibition must be scoped, not
-    # global (finding F1 was the global version of this rule).
+    # Scope / Deliverables -- the prohibition must be scoped, not global (finding F1 was
+    # the global version of this rule). Phase-cooperative phase 4 retired Development Plan
+    # from generation (its content moved to implementation.md's steps), so the path-free
+    # scope is the Overview alone.
     adapter = ClaudeCodeAdapter()
     template = generate_phase_architect_template(create_phase_architect_agent_tools(adapter))
 
     assert 'Module Layout' in template
     assert 'Skeleton Index' in template
-    assert 'Objectives, Scope, Deliverables, Development Plan' in template, (
+    assert 'in Objectives, Scope, Deliverables (the Overview)' in template, (
         'File-naming prohibition must be explicitly scoped to these sections, not global'
     )
+    assert 'Development Plan' not in template
     assert 'REQUIRED in `### Module Layout`, `### Skeleton Index`, `### Test List`' in template
 
 

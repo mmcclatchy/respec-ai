@@ -14,6 +14,7 @@ FENCED_HEADING_CUTS_SECTION = (
     'so storing ends this section at that line and loses the text after it'
 )
 BEFORE_FIRST_SECTION = 'Before the first section'
+TEXT_BEFORE_FIRST_SUBSECTION = 'text before the first subsection is dropped on parse'
 
 
 class Phase(MCPModel):
@@ -50,6 +51,12 @@ class Phase(MCPModel):
         'phase_status': ('Metadata', 'Status'),
         'shape_gate': ('Metadata', 'Shape Gate'),
     }
+    BRIEF_SECTIONS: ClassVar[tuple[str, ...]] = (
+        'Grounding',
+        'Delegation Bounds',
+        'Behaviors & Acceptance',
+        'Guardrails',
+    )
 
     # Model fields
     id: str = Field(default_factory=lambda: str(uuid4())[:8])
@@ -98,12 +105,14 @@ class Phase(MCPModel):
 
     @classmethod
     def find_content_loss(cls, markdown: str) -> list[str]:
-        """Extend the base report to unmapped H2 sections and to heading lines inside fenced blocks.
+        """Extend the base report to unmapped H2 sections, fenced heading lines and text before a first H3.
 
         Neither raw extractor is fence-aware, and the verbatim one stops at the same heading lines,
         so comparing them cannot see a section cut short by a fenced line (F27). Such a line is
         reported when it starts with '## ', or with '### ' under a mapped H2. Under an unmapped H2
         a fenced '### ' line cuts nothing: the H2-only extractor stops only at '## ' and '---'.
+        Text between a mapped H2 and its first '### ' line belongs to no field, so no field
+        comparison sees it dropped.
         """
         issues = super().find_content_loss(markdown)
         tree = SyntaxTreeNode(MarkdownIt('commonmark').parse(markdown))
@@ -113,6 +122,7 @@ class Phase(MCPModel):
                 (heading, FENCED_HEADING_CUTS_SECTION)
                 for heading in cls._sections_cut_by_fenced_headings(markdown, tree)
             ),
+            *((heading, TEXT_BEFORE_FIRST_SUBSECTION) for heading in cls._text_before_first_subsection(markdown)),
         ]
         for heading, reason in candidates:
             if not any(issue.startswith(f'{heading}: ') for issue in issues):
@@ -127,6 +137,28 @@ class Phase(MCPModel):
             if ground_truth and ground_truth != cls._extract_content_from_raw_markdown(markdown, (heading,)):
                 truncated.append(heading)
         return truncated
+
+    @classmethod
+    def _text_before_first_subsection(cls, markdown: str) -> list[str]:
+        subsection_only = cls._h2s_mapped_only_through_subsections()
+        found: list[str] = []
+        awaiting: str | None = None
+        for line in markdown.split('\n'):
+            if line.startswith('## '):
+                name = line[3:].strip()
+                awaiting = name if name in subsection_only else None
+            elif line.startswith(('### ', '# ')):
+                awaiting = None
+            elif awaiting is not None and line.strip() and awaiting not in found:
+                found.append(awaiting)
+        return found
+
+    @classmethod
+    def _h2s_mapped_only_through_subsections(cls) -> set[str]:
+        paths_by_h2: dict[str, list[tuple[str, ...]]] = {}
+        for header_path in cls.HEADER_FIELD_MAPPING.values():
+            paths_by_h2.setdefault(header_path[0], []).append(header_path)
+        return {h2 for h2, paths in paths_by_h2.items() if h2 != 'Metadata' and all(len(path) == 2 for path in paths)}
 
     @classmethod
     def _sections_cut_by_fenced_headings(cls, markdown: str, tree: SyntaxTreeNode) -> list[str]:
@@ -233,10 +265,12 @@ class Phase(MCPModel):
             if self.additional_details_additional:
                 sections.append(f'\n### Additional Details - Additional Sections\n{self.additional_details_additional}')
 
-        # Include additional sections before metadata
+        # Brief sections lead in a fixed order: jsonb does not keep key order across backends (F27).
         if self.additional_sections:
-            for section_name, content in self.additional_sections.items():
-                sections.append(f'\n## {section_name}\n{content}')
+            brief = [name for name in self.BRIEF_SECTIONS if name in self.additional_sections]
+            others = [name for name in self.additional_sections if name not in self.BRIEF_SECTIONS]
+            for section_name in (*brief, *others):
+                sections.append(f'\n## {section_name}\n{self.additional_sections[section_name]}')
 
         sections.append('\n## Metadata')
         sections.append(f'\n### Iteration\n{self.iteration}')

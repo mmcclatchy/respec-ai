@@ -40,7 +40,16 @@ class PhaseCommandTools(CommandToolsModel):
             'Resume of the recorded architect in ARCHITECT_MODE; empty where the TUI cannot resume a subagent'
         ),
     )
-    invoke_critic_review: str = Field(..., description='respec-phase-critic invocation in review mode')
+    invoke_critic_review: str = Field(..., description='respec-phase-critic invocation reviewing the design')
+    invoke_finalizer: str = Field(
+        ..., description='respec-phase-finalizer invocation that writes the agent-ready brief'
+    )
+    invoke_critic_brief_review: str = Field(
+        ..., description='respec-phase-critic invocation reviewing the finalized brief'
+    )
+    brief_handoff_extension: str = Field(
+        ..., description="The TUI's delegation instruction shown after the handoff; empty where it has none"
+    )
     invoke_bp_pipeline: str = Field(..., description='bp-pipeline dispatch for one approved research proposal')
     bp_preflight_command: str = Field(..., description='Shell command whose exit code reports bp availability')
     store_document_user_edit: str = Field(
@@ -190,6 +199,32 @@ class PhaseCriticAgentTools(AgentToolsModel):
     get_document: str = Field(..., description='Retrieve specification via loop_id')
     get_feedback: str = Field(..., description='Retrieve prior critic reviews and every user entry')
     store_feedback: str = Field(..., description='Store critic feedback')
+    validate_document: str = Field(
+        ..., description='Check the stored phase document and the implementation.md body, in key mode'
+    )
+
+
+class PhaseFinalizerAgentTools(AgentToolsModel):
+    respec_ai_tools: ClassVar[list[RespecAITool]] = [
+        RespecAITool.GET_DOCUMENT,
+        RespecAITool.UPDATE_DOCUMENT,
+        RespecAITool.GET_FEEDBACK,
+        RespecAITool.GET_PREVIOUS_ANALYSIS,
+        RespecAITool.VALIDATE_DOCUMENT,
+    ]
+
+    builtin_tools: ClassVar[list[tuple[BuiltInToolCapability, str]]] = [
+        (BuiltInToolCapability.READ, ''),
+        (BuiltInToolCapability.GLOB, ''),
+        (BuiltInToolCapability.GREP, ''),
+        (BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/implementation.md'),
+    ]
+
+    tools_yaml: str = Field(..., description='Rendered YAML for agent tools section')
+    get_document: str = Field(..., description='Retrieve the approved phase document')
+    update_document: str = Field(..., description='Store the complete phase document')
+    get_feedback: str = Field(..., description='Retrieve the latest critic review and every user entry')
+    get_analysis: str = Field(..., description="Read the architect's exploration notes")
     validate_document: str = Field(
         ..., description='Check the stored phase document and the implementation.md body, in key mode'
     )

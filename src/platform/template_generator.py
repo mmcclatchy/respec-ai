@@ -27,6 +27,7 @@ from src.platform.template_helpers import (
     create_code_quality_reviewer_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
+    create_phase_finalizer_agent_tools,
     create_plan_analyst_agent_tools,
     create_plan_critic_agent_tools,
     create_roadmap_agent_tools,
@@ -50,6 +51,7 @@ from src.platform.templates.agents import (
     generate_patch_planner_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
+    generate_phase_finalizer_template,
     generate_plan_analyst_template,
     generate_plan_critic_template,
     generate_roadmap_critic_template,
@@ -115,6 +117,7 @@ _AGENT_NAMES = [
     'respec-create-phase',
     'respec-phase-architect',
     'respec-phase-critic',
+    'respec-phase-finalizer',
     'respec-patch-planner',
     'respec-coder',
     'respec-frontend-coder',
@@ -271,6 +274,7 @@ def _get_agent_specs(
     create_phase_tools = create_create_phase_agent_tools(tui_adapter, create_phase_platform_tools, platform_type)
     phase_architect_tools = create_phase_architect_agent_tools(tui_adapter, plans_dir=plans_dir)
     phase_critic_tools = create_phase_critic_agent_tools(tui_adapter)
+    phase_finalizer_tools = create_phase_finalizer_agent_tools(tui_adapter)
     patch_planner_tools = create_patch_planner_agent_tools(tui_adapter)
     coder_tools = create_coder_agent_tools(tui_adapter)
     frontend_coder_tools = create_frontend_coder_agent_tools(tui_adapter)
@@ -297,6 +301,7 @@ def _get_agent_specs(
         _parse_agent_spec('respec-create-phase', generate_create_phase_template(create_phase_tools)),
         _parse_agent_spec('respec-phase-architect', generate_phase_architect_template(phase_architect_tools)),
         _parse_agent_spec('respec-phase-critic', generate_phase_critic_template(phase_critic_tools)),
+        _parse_agent_spec('respec-phase-finalizer', generate_phase_finalizer_template(phase_finalizer_tools)),
         _parse_agent_spec('respec-patch-planner', generate_patch_planner_template(patch_planner_tools)),
         _parse_agent_spec('respec-coder', generate_coder_template(coder_tools)),
         _parse_agent_spec('respec-frontend-coder', generate_frontend_coder_template(frontend_coder_tools)),

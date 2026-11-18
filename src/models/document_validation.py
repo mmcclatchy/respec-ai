@@ -29,17 +29,34 @@ class StructuralCheck(str, Enum):
     IMPLEMENTATION_NO_STEPS = 'implementation-no-steps'
     IMPLEMENTATION_CHECKLIST_ITEM_MALFORMED = 'implementation-checklist-item-malformed'
     IMPLEMENTATION_STEP_UNVERIFIED = 'implementation-step-unverified'
+    DELEGATION_BOUNDS_INCOMPLETE = 'delegation-bounds-incomplete'
+    BRIEF_SECTION_INCOMPLETE = 'brief-section-incomplete'
+    TEST_ENTRY_WITHOUT_ID = 'test-entry-without-id'
+    SUCCESS_CRITERION_MALFORMED = 'success-criterion-malformed'
+    RESEARCH_COPIES_DISAGREE = 'research-copies-disagree'
+    IMPLEMENTATION_STEPS_NOT_CONTIGUOUS = 'implementation-steps-not-contiguous'
+    IMPLEMENTATION_STEP_FIELDS_INCOMPLETE = 'implementation-step-fields-incomplete'
+    IMPLEMENTATION_STEP_FILES_MISSING = 'implementation-step-files-missing'
+    IMPLEMENTATION_DEPENDENCY_INVALID = 'implementation-dependency-invalid'
+    IMPLEMENTATION_COMMAND_PLACEHOLDER = 'implementation-command-placeholder'
+    IMPLEMENTATION_FINALIZE_SECTION_MISSING = 'implementation-finalize-section-missing'
+    SEAM_PATH_NOT_IN_ANY_STEP = 'seam-path-not-in-any-step'
+    TEST_NOT_IN_ANY_STEP = 'test-not-in-any-step'
 
 
 class FindingOwner(str, Enum):
     ARCHITECT = 'architect'
     ORCHESTRATOR = 'orchestrator'
+    FINALIZER = 'finalizer'
 
 
 class CitedPathKind(str, Enum):
     READ = 'read'
     CONSTRAINT = 'constraint'
     BEST_PRACTICES = 'best-practices'
+    GROUNDING = 'grounding'
+    CREATE = 'create'
+    MODIFY = 'modify'
 
 
 class StructuralFinding(BaseModel):

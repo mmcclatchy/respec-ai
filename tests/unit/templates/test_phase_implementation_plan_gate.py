@@ -5,8 +5,8 @@ by executing a Pydantic model's build_markdown() the way phase.md can (testing.m
 templates are prompts and resist ordinary behavioral testing). B1 and B5 instead pin
 the *format contract* by running the real extraction algorithm (tests/support/
 plan_extraction.py, mirroring code_command.py's `#### Step N:` scanner and the DR-###
-format shared with task_planner.py) against phase_architect.py's own
-`implementation_plan_example` constant -- the actual text shown to the agent, not a
+format shared with task_planner.py) against phase_contract_grammar.py's
+`IMPLEMENTATION_BRIEF_EXAMPLE` constant -- the actual text shown to the agent, not a
 copy maintained separately in this test. B2-B3 pin the prompt
 structure via tests/support/template_contract.py, per testing.md's guidance for
 generated templates. B4's separate implementation-plan gate was retired by
@@ -24,7 +24,7 @@ from src.platform.platform_selector import PlatformType
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.template_helpers import create_phase_architect_agent_tools
 from src.platform.templates.agents import generate_phase_architect_template
-from src.platform.templates.agents.phase_architect import implementation_plan_example
+from src.platform.templates.phase_contract_grammar import IMPLEMENTATION_BRIEF_EXAMPLE
 from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter
 from src.platform.tui_adapters.base import TuiAdapter
@@ -67,17 +67,17 @@ def _phase_mode_branch_body(template: str, mode: str) -> str:
 
 
 def test_generated_plan_steps_are_readable_by_the_coding_workflow_scanner() -> None:
-    # B1: `#### Step N:` is parsed by code_command.py:315 and patch_command.py's
+    # B1: `#### Step N:` is parsed by code_command.py:291 and patch_command.py's
     # equivalent scanner, so the exact heading format is the contract, not prose. Runs
-    # against phase_architect.py's own `implementation_plan_example` constant -- the
+    # against phase_contract_grammar.py's `IMPLEMENTATION_BRIEF_EXAMPLE` constant -- the
     # actual text the agent is shown -- not a copy hand-maintained in this test, so a
     # rewording of the real example that broke the format would fail here.
-    assert extract_steps(implementation_plan_example) == ['1', '2', '3']
+    assert extract_steps(IMPLEMENTATION_BRIEF_EXAMPLE) == ['1', '2', '3']
 
 
 def test_deferred_risks_are_recorded_in_the_stable_dr_id_format() -> None:
     # B5: the coding workflow needs stable DR-### ids, not prose about deferred risk.
-    assert extract_deferred_risks(implementation_plan_example) == ['DR-001']
+    assert extract_deferred_risks(IMPLEMENTATION_BRIEF_EXAMPLE) == ['DR-001']
 
 
 def test_delivery_intent_has_exactly_one_source_of_truth_in_the_generated_phase() -> None:

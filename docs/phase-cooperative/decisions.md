@@ -6,7 +6,7 @@ and one revises a recorded contract (`docs/TEMPLATE_AUDIT.md`). Those are marked
 keep the original position, because the reasoning that moved them is the part most likely to be
 lost.
 
-Findings are cited as **F1**–**F39** ([findings.md](findings.md)). Read this file before re-opening
+Findings are cited as **F1**–**F40** ([findings.md](findings.md)). Read this file before re-opening
 a settled question.
 
 ---

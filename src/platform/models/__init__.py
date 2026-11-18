@@ -17,7 +17,7 @@ from .code import (
 )
 from .core import AgentToolsModel, CommandToolsModel, PlatformModel, ToolReference
 from .patch import PatchCommandTools, PatchPlannerAgentTools
-from .phase import PhaseArchitectAgentTools, PhaseCommandTools, PhaseCriticAgentTools
+from .phase import PhaseArchitectAgentTools, PhaseCommandTools, PhaseCriticAgentTools, PhaseFinalizerAgentTools
 from ..platform_selector import PlatformType
 from .plan import (
     AnalystCriticAgentTools,
@@ -77,6 +77,7 @@ __all__ = [
     'PlanRoadmapCommandTools',
     'PhaseArchitectAgentTools',
     'PhaseCriticAgentTools',
+    'PhaseFinalizerAgentTools',
     'CreatePhaseAgentTools',
     'CoderAgentTools',
     'FrontendCoderAgentTools',

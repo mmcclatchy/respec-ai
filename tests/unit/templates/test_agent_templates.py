@@ -15,6 +15,7 @@ from src.platform.template_helpers import (
     create_plan_critic_agent_tools,
     create_phase_architect_agent_tools,
     create_phase_critic_agent_tools,
+    create_phase_finalizer_agent_tools,
     create_roadmap_agent_tools,
     create_roadmap_critic_agent_tools,
     create_roadmap_orchestrator_agent_tools,
@@ -28,6 +29,7 @@ from src.platform.templates.agents import (
     generate_plan_critic_template,
     generate_phase_architect_template,
     generate_phase_critic_template,
+    generate_phase_finalizer_template,
     generate_roadmap_critic_template,
     generate_roadmap_orchestrator_template,
     generate_roadmap_template,
@@ -509,15 +511,19 @@ class TestPhaseCriticTemplate:
         # README "Agents and modes": mode, IDs and config context; the critic also gets the
         # round it stores under. Guidance arrives as the round-0 briefing feedback entry the
         # orchestrator stores ([round 0 | briefing] is the tag it writes), never as an input.
+        # Phase-cooperative phase 4 adds review_target on every review, and phase_file_path on the
+        # brief review only, declared under its own heading.
         template = _critic_template()
 
         assert template_contract(template).declared_inputs('### Scalar Inputs') == {
             'phase_mode',
+            'review_target',
             'loop_id',
             'plan_name',
             'phase_name',
             'review_round',
         }
+        assert template_contract(template).declared_inputs('### Brief Review Inputs') == {'phase_file_path'}
         assert template_contract(template).declared_inputs('### Grouped Markdown Inputs') == {
             'project_config_context_markdown'
         }
@@ -613,14 +619,15 @@ class TestPhaseCriticTemplate:
     def test_critic_raises_implementation_plan_defects_as_mechanical_findings(self) -> None:
         # F5, F33: implementation.md is reviewed with the design; respec-code reads it raw from
         # this path and fails closed without it. Phase 3 moved the Checklist presence checks into
-        # validate_document, whose findings the critic relays as one marker.
+        # validate_document, whose findings the critic relays as one marker. Phase-cooperative
+        # phase 4 moved "every step names its files" there too (implementation-step-files-missing),
+        # so the critic's own step-names-no-files rule is gone (test_phase_brief_review.py).
         template = _critic_template()
 
         assert '.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md' in template
         assert {
             'implementation-plan-missing',
             'implementation-plan-structure-invalid',
-            'step-names-no-files',
             'verify-command-not-configured',
             'test-list-entry-not-covered',
         } <= template_contract(template).mechanical_findings()
@@ -682,6 +689,7 @@ class TestAgentImperativeLanguageAudit:
             generate_plan_analyst_template(create_plan_analyst_agent_tools(_adapter)),
             generate_analyst_critic_template(create_analyst_critic_agent_tools(_adapter)),
             generate_phase_architect_template(create_phase_architect_agent_tools(_adapter)),
+            generate_phase_finalizer_template(create_phase_finalizer_agent_tools(_adapter)),
             generate_patch_planner_template(create_patch_planner_agent_tools(_adapter)),
         ]
 
@@ -838,8 +846,10 @@ class TestTemplateConsistency:
         architect_tools = create_phase_architect_agent_tools(_adapter)
         template = generate_phase_architect_template(architect_tools)
 
+        # Phase-cooperative phase 4 retired the Architecture section from generation; the design
+        # it held lives in Design Shape (its Design Narrative and Collaboration And Wiring).
         assert 'For every referenced implementation-plan section relevant to this Phase' in template
-        assert 'apply the constraint into Objectives, Scope, Architecture, Research' in template
+        assert 'apply the constraint into Objectives, Scope, Design Shape, Research' in template
         assert 'not applicable' in template
 
     def test_phase_critic_treats_an_unapplied_implementation_plan_reference_as_a_judgment_call(self) -> None:

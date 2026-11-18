@@ -86,6 +86,10 @@ class TuiAdapter(ABC):
     def subagent_invocation_guardrail(self) -> str:
         return ''
 
+    @property
+    def brief_handoff_extension(self) -> str | None:
+        return None
+
     @abstractmethod
     def commands_dir(self, project_path: Path) -> Path: ...
 

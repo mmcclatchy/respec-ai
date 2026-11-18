@@ -9,7 +9,7 @@ Paths that start with `~/` are **outside this repository**. They belong to the b
 installation on the design machine and are an external dependency, not code respec-ai owns.
 
 These are the facts underneath [README.md](README.md) and the phase documents. Phase documents
-cite them as **F1**–**F39** rather than restating the evidence.
+cite them as **F1**–**F40** rather than restating the evidence.
 
 ## Correctness bugs in the current workflow
 
@@ -149,7 +149,7 @@ iteration 2, and the history stayed at length 1 after each run.
 ## The human-in-the-loop architecture
 
 **F10 — Subagents cannot ask the user anything.**
-Source: https://code.claude.com/docs/en/sub-agents.md, section *Available tools*, fetched verbatim
+Source: <https://code.claude.com/docs/en/sub-agents.md>, section *Available tools*, fetched verbatim
 on 2026-11-13. *"The first filter removes these tools, even when listed in the `tools` field: …
 `AskUserQuestion`"*. Background is the default, and a background subagent additionally loses every
 built-in tool outside a fixed list, which does not include `AskUserQuestion` either. Forks *"skip
@@ -169,7 +169,7 @@ from a subagent's report (README "Relay protocol").
 
 **F11 — `/respec-phase` runs inline as the main agent, because no respec-ai template sets
 `context: fork`.**
-https://code.claude.com/docs/en/skills.md: *"Custom commands have been merged into skills"*, and
+<https://code.claude.com/docs/en/skills.md>: *"Custom commands have been merged into skills"*, and
 *"Add `context: fork` to your frontmatter when you want a skill to run in isolation. Claude Code
 starts a new subagent"*. `grep -rn "context: fork" src/` returns nothing. A fork key added to a
 template would also be lost before reaching disk, because `_parse_command_spec` keeps only
@@ -396,11 +396,11 @@ stores them as one JSONB column (`migrations/001_initial_schema.sql:89`), read b
 F27 and F28 are avoided.
 
 **F27 — Four parser traps for new H2 sections. None is reported by `validate_document`.**
-1. **Substring matching.** `_extract_content_from_raw_markdown` takes the first `## ` line
+1. **Substring matching.** `_extract_content_from_raw_markdown` takes the first `##` line
    *containing* the name (`src/models/base.py:66-71`). Probe: a new `## Design` captured
    `### Architecture` from `## System Design`, and `## Decisions` captured
    `### Settled Design Decisions`. The new sections' own text was lost.
-2. **Truncation.** Extraction stops at the next `## ` line or any bare `---`, and is not
+2. **Truncation.** Extraction stops at the next `##` line or any bare `---`, and is not
    fence-aware (`src/models/base.py:77-85`). Probe: `## Guardrails` holding `Rule one / --- / Rule
    two` stored only `Rule one`.
 3. **No detection.** `find_content_loss` checks only `HEADER_FIELD_MAPPING` paths and orphan H3s
@@ -412,7 +412,7 @@ F27 and F28 are avoided.
 **Implication:**
 - New H2 names must not contain, or be contained in, any other H2 name. `Design` and `Decisions`
   from the plan's table are unusable as written.
-- Brief prose must not use bare `---` or fenced `## ` lines.
+- Brief prose must not use bare `---` or fenced `##` lines.
 - Phase 3's checks cover additional sections.
 - Template order must not matter.
 
@@ -489,7 +489,7 @@ The plan's "Start here / Steps / Exit criteria" layout drops two of them.
 - **Success Criteria:** the spec-alignment reviewer blocks when *"a Phase objective, scope item, or
   deliverable is absent from Phase success criteria"*
   (`src/platform/templates/agents/spec_alignment_reviewer.py:140`).
-- **Constraint lines:** `- Constraint: \`<path>\`` lines under `### Implementation Plan References`
+- **Constraint lines:** `- Constraint:` lines (each with a backticked path) under `### Implementation Plan References`
   are *"HARD CONSTRAINTS"* (`coder_contracts.py:159-170`).
 - **Research:** read from *"Phase's "### Research Requirements" section"* (`coder_contracts.py:234`).
 - **Conformance write-back:** replaces `### Skeleton Index` and appends to
@@ -587,3 +587,12 @@ which are not registered MCP tools; a bare `except Exception: return ''` swallow
 The template embeds `{tools.tui_adapter.subagent_invocation_guardrail}` (`phase_command.py:139`),
 and the codex adapter prepends it again whenever a command delegates
 (`src/platform/tui_adapters/codex.py:117-120`). Cosmetic.
+
+**F40 — Text under a mapped H2 before its first H3 is dropped on parse and not reported.**
+A narrative line placed directly under `## Design Shape`, before `### Module Layout`, is absent
+from the parsed `Phase`, and `Phase.find_content_loss` reported nothing. Probed on 2026-11-13, and
+again on 2026-11-17 after phase 3's validation override landed, with the same result. The same holds
+for every mapped H2 (`Overview`, `System Design`, `Design Shape`, `Design Decisions`,
+`Implementation`, `Additional Details`). Text before the first H3 of an *additional* section is kept.
+**Implication:** the design narrative lives in `#### Design Narrative`, and phase 4 teaches
+`find_content_loss` to report this case (spec Scope 5, B17).

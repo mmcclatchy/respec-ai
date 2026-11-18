@@ -10,6 +10,7 @@ never asserted; check IDs and finding keys are the contract prompts cite.
 
 import random
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -17,8 +18,9 @@ from fastmcp import FastMCP
 
 from src.mcp.tools.document_tools import register_document_tools
 from src.models.document_validation import CitedPath, CitedPathKind, FindingOwner, StructuralCheck, StructuralFinding
+from src.models.enums import ShapeGate
 from src.models.phase import Phase
-from src.platform.templates.agents.phase_architect import implementation_plan_example
+from src.platform.templates.phase_contract_grammar import BRIEF_SECTION_PLACEHOLDERS, IMPLEMENTATION_BRIEF_EXAMPLE
 from src.utils.language_extensions import EXTENSION_TO_LANGUAGE
 from src.utils.materializers import _MATERIALIZER_MAP
 from src.utils.phase_structure import (
@@ -26,6 +28,7 @@ from src.utils.phase_structure import (
     check_phase_structure,
     drop_accepted_findings,
     extract_cited_paths,
+    extract_implementation_paths,
 )
 from src.utils.skeleton_generator import parse_skeleton_index, parse_test_list
 from src.utils.skeleton_types import SkeletonIndexParseError
@@ -59,8 +62,23 @@ def lines(*rows: str) -> str:
     return '\n'.join(rows)
 
 
-def phase_markdown(fields: dict[str, str], extra_sections: tuple[tuple[str, str], ...] = ()) -> str:
+DELEGATION_BOUNDS = lines(
+    '### Out of scope',
+    '- Refunds and credit notes.',
+    "### Implementer's discretion",
+    '- Internal names inside the billing module.',
+    '### Escalate if',
+    '- An invoice would be issued for an account that is not saved.',
+)
+
+
+def phase_markdown(
+    fields: dict[str, str], extra_sections: tuple[tuple[str, str], ...] = (), delegation_bounds: bool = True
+) -> str:
     document = ['# Phase: sample-phase', '', *OVERVIEW]
+    # Ahead of the typed sections, so an unclosed fence in one of them cannot swallow it.
+    if delegation_bounds and all(name != 'Delegation Bounds' for name, _ in extra_sections):
+        document.extend(['## Delegation Bounds', DELEGATION_BOUNDS])
     sections_by_h2: dict[str, list[tuple[str, str]]] = {}
     for field_name, content in fields.items():
         h2, h3 = Phase.HEADER_FIELD_MAPPING[field_name]
@@ -74,8 +92,10 @@ def phase_markdown(fields: dict[str, str], extra_sections: tuple[tuple[str, str]
     return '\n'.join(document) + '\n'
 
 
-def parsed_phase(fields: dict[str, str], extra_sections: tuple[tuple[str, str], ...] = ()) -> Phase:
-    return Phase.parse_markdown(phase_markdown(fields, extra_sections))
+def parsed_phase(
+    fields: dict[str, str], extra_sections: tuple[tuple[str, str], ...] = (), delegation_bounds: bool = True
+) -> Phase:
+    return Phase.parse_markdown(phase_markdown(fields, extra_sections, delegation_bounds))
 
 
 SD_001 = (
@@ -101,8 +121,8 @@ CLEAN_FIELDS: dict[str, str] = {
     ),
     'collaboration_and_wiring': 'Invoices calls AccountStore.save, per SD-001.',
     'test_list': lines(
-        '- `tests/billing_check.unit::issues one invoice per order`',
-        '- `tests/accounts_check.unit::saves a new account` — the happy path',
+        '- `tests/billing_check.unit::issues one invoice per order` — T-1',
+        '- `tests/accounts_check.unit::saves a new account` — the happy path — T-2',
     ),
     'design_shape_additional': lines(
         '#### UX Contract',
@@ -129,9 +149,11 @@ UX_FLOWS = (
 )
 
 
-def design(extra_sections: tuple[tuple[str, str], ...] = (), **overrides: str) -> Phase:
+def design(extra_sections: tuple[tuple[str, str], ...] = (), delegation_bounds: bool = True, **overrides: str) -> Phase:
     fields = {**CLEAN_FIELDS, **overrides}
-    return parsed_phase({name: content for name, content in fields.items() if content}, extra_sections)
+    return parsed_phase(
+        {name: content for name, content in fields.items() if content}, extra_sections, delegation_bounds
+    )
 
 
 def rows(findings: list[StructuralFinding]) -> list[Row]:
@@ -147,14 +169,20 @@ def cited(paths: list[CitedPath]) -> list[tuple[str, str, str]]:
 
 
 IMPLEMENTATION_TITLE = '# Implementation Plan: sample-phase'
+STEP_2_GOAL = '- **Goal:** Issue invoices once accounts persist, per SD-001 and OD-002.'
+STEP_2_BLOCK_END = '- **Depends on:** Step 1'
 STEPS_SECTION = lines(
     '## Build Order',
     '### Steps',
     '#### Step 1: Account Store',
-    '**Objective**: Persist accounts before anything bills them.',
+    '- **Goal:** Persist accounts before anything bills them.',
+    '- **Files:** create `src/accounts/store.unit`',
+    '- **Depends on:** none',
     '',
     '#### Step 2: Invoices',
-    '**Objective**: Issue invoices once accounts persist, per SD-001 and OD-002.',
+    STEP_2_GOAL,
+    '- **Files:** create `src/billing.unit`',
+    STEP_2_BLOCK_END,
 )
 POLICY_SECTION = lines(
     '## Policy',
@@ -173,7 +201,12 @@ EMPTY_CHECKLIST_SECTION = lines('## Checklist', 'Nothing to verify yet.')
 CLEAN_IMPLEMENTATION = lines(IMPLEMENTATION_TITLE, '', STEPS_SECTION, '', POLICY_SECTION, '', CHECKLIST_SECTION)
 
 STEP_2_ITEM = '- [x] Issue invoices (Step 2) (verify: run-checks invoices)'
-STEP_2_BLOCK_END = '**Objective**: Issue invoices once accounts persist, per SD-001 and OD-002.'
+STEP_3_DRAFT = lines(
+    '#### Step 3: Reports',
+    '- **Goal:** Report on issued invoices.',
+    '- **Files:** create `src/reports.unit`',
+    '- **Depends on:** Step 2',
+)
 
 
 def implementation(replace: dict[str, str] | None = None) -> str:
@@ -303,7 +336,7 @@ def test_a_skeleton_index_signature_is_reported_exactly_when_the_cli_parser_woul
         {
             'module_layout': f'- `{path}` — owns accounts',
             'skeleton_index': skeleton_index,
-            'test_list': '- `tests/accounts_check::registers a new account`',
+            'test_list': '- `tests/accounts_check::registers a new account` — T-1',
         }
     )
 
@@ -363,7 +396,7 @@ def test_a_seam_bullet_the_cli_silently_skips_is_reported(defective: str) -> Non
         {
             'module_layout': '- `src/accounts` — owns accounts',
             'skeleton_index': lines(VALID_SEAM, defective),
-            'test_list': '- `tests/accounts_check::finds an account`',
+            'test_list': '- `tests/accounts_check::finds an account` — T-1',
         }
     )
 
@@ -378,7 +411,7 @@ def test_an_indented_signature_line_that_does_not_parse_is_reported() -> None:
         {
             'module_layout': '- `src/accounts` — owns accounts',
             'skeleton_index': lines(VALID_SEAM, defective),
-            'test_list': '- `tests/accounts_check::finds an account`',
+            'test_list': '- `tests/accounts_check::finds an account` — T-1',
         }
     )
 
@@ -419,13 +452,13 @@ def test_validation_never_raises_on_a_garbled_skeleton_index_line(garbage: str) 
     ],
 )
 def test_a_test_list_bullet_without_a_path_and_behavior_is_reported(defective: str) -> None:
-    phase = design(test_list=lines('- `tests/accounts_check.unit::saves a new account`', defective))
+    phase = design(test_list=lines('- `tests/accounts_check.unit::saves a new account` — T-1', defective))
 
     assert rows(check_phase_structure(phase)) == expected((C.TEST_ENTRY_WITHOUT_BEHAVIOR, defective, '', ARCHITECT))
 
 
 def test_text_after_a_test_list_entry_is_allowed() -> None:
-    phase = design(test_list='- `tests/billing_check.unit::issues one invoice per order` (the core seam, SD-001)')
+    phase = design(test_list='- `tests/billing_check.unit::issues one invoice per order` (the core seam, SD-001) — T-1')
 
     assert rows(check_phase_structure(phase)) == []
 
@@ -446,7 +479,7 @@ def test_a_test_list_holding_only_malformed_bullets_reports_only_the_bullets() -
 
 
 def test_a_test_list_holding_only_a_fenced_entry_the_cli_reads_is_not_empty() -> None:
-    test_list = lines('```text', '- `tests/billing_check.unit::issues one invoice per order`', '```')
+    test_list = lines('```text', '- `tests/billing_check.unit::issues one invoice per order` — T-1', '```')
     assert parse_test_list(test_list)
 
     assert rows(check_phase_structure(design(test_list=test_list))) == []
@@ -1146,7 +1179,7 @@ def test_a_checklist_item_naming_an_unknown_step_is_reported() -> None:
 
 
 def test_an_implementation_plan_reference_to_an_undefined_phase_id_is_reported() -> None:
-    markdown = implementation({STEP_2_BLOCK_END: STEP_2_BLOCK_END.replace('OD-002', 'OD-042')})
+    markdown = implementation({STEP_2_GOAL: STEP_2_GOAL.replace('OD-002', 'OD-042')})
 
     assert implementation_findings(markdown) == expected((C.DANGLING_REFERENCE, 'OD-042', '', ARCHITECT))
 
@@ -1170,7 +1203,7 @@ def test_a_step_number_defined_twice_is_reported() -> None:
 
 
 def test_a_step_no_checklist_item_verifies_is_reported() -> None:
-    markdown = implementation({STEP_2_BLOCK_END: lines(STEP_2_BLOCK_END, '', '#### Step 3: Reports')})
+    markdown = implementation({STEP_2_BLOCK_END: lines(STEP_2_BLOCK_END, '', STEP_3_DRAFT)})
 
     assert implementation_findings(markdown) == expected((C.IMPLEMENTATION_STEP_UNVERIFIED, 'Step 3', '', ARCHITECT))
 
@@ -1239,19 +1272,30 @@ def test_a_fenced_heading_under_steps_is_neither_a_step_nor_malformed() -> None:
     assert implementation_findings(markdown) == []
 
 
+# Phase 4 re-pointed both taught-example tests to brief_phase(), which defines the T, SC and G IDs and
+# the Skeleton Index paths the example cites; against design() the brief checks would report those as
+# dangling. The example's step Verify and Exit criteria commands are placeholders too, so making it
+# concrete replaces every [commands] placeholder, and leaving them in is reported on each of them.
 def test_the_taught_implementation_plan_passes_once_its_verify_placeholders_are_concrete_commands() -> None:
-    concrete = re.sub(r'\(verify: <[^>]*>\)', '(verify: run-checks all)', implementation_plan_example)
-    assert concrete != implementation_plan_example
+    assert BRIEF_IMPLEMENTATION != IMPLEMENTATION_BRIEF_EXAMPLE
 
-    assert rows(check_implementation_structure(concrete, design())) == []
+    assert rows(check_implementation_structure(BRIEF_IMPLEMENTATION, brief_phase())) == []
 
 
 def test_the_taught_implementation_plan_with_its_placeholders_left_in_is_reported_on_every_item() -> None:
-    placeholder_items = [line for line in implementation_plan_example.splitlines() if '(verify: <' in line]
-    assert len(placeholder_items) == 3
+    placeholder_items = [line for line in IMPLEMENTATION_BRIEF_EXAMPLE.splitlines() if '(verify: <' in line]
+    placeholder_verify_steps = re.findall(r'^#### Step ([0-9]+):', IMPLEMENTATION_BRIEF_EXAMPLE, flags=re.MULTILINE)
+    exit_commands = ['<each [commands] value that verifies the whole phase>']
+    assert len(placeholder_items) == len(placeholder_verify_steps) == 3
+    assert f'`{exit_commands[0]}`' in IMPLEMENTATION_BRIEF_EXAMPLE
 
-    assert rows(check_implementation_structure(implementation_plan_example, design())) == expected(
-        *((C.IMPLEMENTATION_CHECKLIST_ITEM_MALFORMED, item, 'verify', ARCHITECT) for item in placeholder_items)
+    assert rows(check_implementation_structure(IMPLEMENTATION_BRIEF_EXAMPLE, brief_phase())) == expected(
+        *((C.IMPLEMENTATION_CHECKLIST_ITEM_MALFORMED, item, 'verify', ARCHITECT) for item in placeholder_items),
+        *(
+            (C.IMPLEMENTATION_COMMAND_PLACEHOLDER, f'Step {step}', 'Verify', FINALIZER)
+            for step in placeholder_verify_steps
+        ),
+        *((C.IMPLEMENTATION_COMMAND_PLACEHOLDER, 'Exit criteria', command, FINALIZER) for command in exit_commands),
     )
 
 
@@ -1269,7 +1313,7 @@ def _with_extension(extension: str) -> Phase:
                 f'- `src/billing{extension}` — issues invoices',
             ),
             'test_list': lines(
-                f'- `tests/billing_check{extension}::issues one invoice per order`',
+                f'- `tests/billing_check{extension}::issues one invoice per order` — T-1',
                 f'- `tests/billing_check{extension}`',
             ),
         }
@@ -1306,7 +1350,9 @@ CORPUS_PHASE_FIELDS: dict[str, str] = {
         '- `tests/billing_check::issues one invoice per order`',
         '- `tests/billing_check`',
         '* `tests/billing_check::voids an invoice`',
+        '- `tests/billing_check::refunds an invoice` — T-7',
     ),
+    'success_criteria': '- Invoices issue within a day',
     'collaboration_and_wiring': 'Invoices calls the ledger, per OD-009.',
     'open_design_decisions': lines(
         '- OD-002 | Invoice numbering',
@@ -1324,7 +1370,10 @@ CORPUS_PHASE_FIELDS: dict[str, str] = {
         '- SD-004 | source=architect | decision=Sequential | binding=yes',
     ),
 }
-CORPUS_PHASE_SECTIONS = (('Implementation Notes', 'Notes that shadow the implementation section.'),)
+CORPUS_PHASE_SECTIONS = (
+    ('Implementation Notes', 'Notes that shadow the implementation section.'),
+    ('Grounding', lines('### Build on', '- `src/billing` — extend: issue invoices — informs: Step 1')),
+)
 CORPUS_EMPTY_TEST_LIST_FIELDS = {**CLEAN_FIELDS, 'test_list': '- None'}
 CORPUS_IMPLEMENTATIONS = (
     implementation(
@@ -1355,6 +1404,24 @@ CORPUS_IMPLEMENTATIONS = (
         POLICY_SECTION,
         EMPTY_CHECKLIST_SECTION,
     ),
+    lines(
+        IMPLEMENTATION_TITLE,
+        '## Build Order',
+        '### Steps',
+        '#### Step 1: Invoices',
+        '- **Goal:** Issue invoices.',
+        '- **Context:** SD-001',
+        '- **Files:** create the billing module',
+        '- **Depends on:** Step 9',
+        '- **Tests to turn green:** none — checked by hand',
+        '- **Verify:** `TODO`',
+        '- **Done when:** an invoice is issued.',
+        POLICY_SECTION,
+        '## Checklist',
+        '- [ ] Issue invoices (Step 1) (verify: run-checks invoices)',
+        '## Deviations',
+        '- None',
+    ),
 )
 
 
@@ -1367,7 +1434,7 @@ def test_the_findings_corpus_triggers_every_check_and_every_detail_is_a_language
     corpus_text = '\n'.join(
         [
             phase_markdown(CORPUS_PHASE_FIELDS, CORPUS_PHASE_SECTIONS),
-            phase_markdown(CORPUS_EMPTY_TEST_LIST_FIELDS),
+            phase_markdown(CORPUS_EMPTY_TEST_LIST_FIELDS, delegation_bounds=False),
             *CORPUS_IMPLEMENTATIONS,
         ]
     )
@@ -1375,7 +1442,7 @@ def test_the_findings_corpus_triggers_every_check_and_every_detail_is_a_language
 
     findings = [
         *check_phase_structure(corpus_phase),
-        *check_phase_structure(parsed_phase(CORPUS_EMPTY_TEST_LIST_FIELDS)),
+        *check_phase_structure(parsed_phase(CORPUS_EMPTY_TEST_LIST_FIELDS, delegation_bounds=False)),
         *(
             finding
             for markdown in CORPUS_IMPLEMENTATIONS
@@ -1420,13 +1487,13 @@ async def test_the_published_validate_document_description_names_no_language() -
         pytest.param((('Implementation Notes', 'Notes.'),), ['Implementation Notes'], id='contains-a-mapped-name'),
         pytest.param((('Meta', 'Notes.'),), ['Meta'], id='contained-in-metadata'),
         pytest.param(
-            (('Guardrails', 'Rule one.'), ('Guardrails Extra', 'Rule two.')),
-            ['Guardrails', 'Guardrails Extra'],
+            (('Rollout', 'Rule one.'), ('Rollout Notes', 'Rule two.')),
+            ['Rollout', 'Rollout Notes'],
             id='two-additional-sections-shorter-first',
         ),
         pytest.param(
-            (('Guardrails Extra', 'Rule two.'), ('Guardrails', 'Rule one.')),
-            ['Guardrails', 'Guardrails Extra'],
+            (('Rollout Notes', 'Rule two.'), ('Rollout', 'Rule one.')),
+            ['Rollout', 'Rollout Notes'],
             id='two-additional-sections-longer-first',
         ),
     ],
@@ -1439,11 +1506,38 @@ def test_an_additional_section_whose_name_overlaps_another_h2_name_is_reported(
     )
 
 
+BRIEF_SECTIONS_HOLDING_NONE: dict[str, str] = {
+    'Grounding': lines(
+        '### Build on',
+        '- None',
+        '### Leave alone',
+        '- None',
+        '### Exemplars',
+        '- None',
+        '### Conventions',
+        '- None',
+        '### Research to read',
+        '- `.best-practices/invoice-numbering.md` — informs: OD-002',
+    ),
+    'Delegation Bounds': DELEGATION_BOUNDS,
+    'Behaviors & Acceptance': lines(
+        '- Objective: issue invoices for saved accounts → tests: T-1, T-2', '### Not covered by tests', '- None'
+    ),
+    'Guardrails': lines(
+        '### Invariants',
+        '- None',
+        '### Error policy',
+        '- None',
+        '### Security and performance',
+        '- None',
+        '### Deviation protocol',
+        '- None',
+    ),
+}
+
+
 def test_additional_sections_with_distinct_names_pass() -> None:
-    extra_sections = tuple(
-        (name, 'Content.')
-        for name in ('Guardrails', 'Delegation Bounds', 'Behaviors & Acceptance', 'Grounding', 'Evolution Log')
-    )
+    extra_sections = (*BRIEF_SECTIONS_HOLDING_NONE.items(), ('Evolution Log', 'Content.'))
 
     assert rows(check_phase_structure(design(extra_sections=extra_sections))) == []
 
@@ -1821,6 +1915,10 @@ NAME_FRAGMENTS = (
     'Notes',
     '',
     '\t',
+    'Grounding',
+    'Guardrails',
+    'Delegation Bounds',
+    'Behaviors & Acceptance',
 )
 LINE_FRAGMENTS = (
     *NAME_FRAGMENTS,
@@ -1882,6 +1980,27 @@ LINE_FRAGMENTS = (
     '\x00',
     'TODO',
     'ask user',
+    '- **Goal:** ',
+    '- **Context:** ',
+    '- **Files:** ',
+    '- **Depends on:** ',
+    '- **Tests to turn green:** ',
+    '- **Verify:** ',
+    '- **Done when:** ',
+    'create ',
+    'modify ',
+    ';',
+    'Step 1',
+    'T-',
+    'SC-',
+    'G-',
+    'affects=',
+    'measure:',
+    '## Start here',
+    '## Exit criteria',
+    '## Deviations',
+    '### Research to read',
+    '### Out of scope',
 )
 
 
@@ -1910,7 +2029,7 @@ def _assert_one_line_findings(findings: list[StructuralFinding]) -> None:
 def _run_every_check(phase: Phase, markdown: str) -> None:
     structural = check_phase_structure(phase)
     implementation_side = check_implementation_structure(markdown, phase)
-    paths = extract_cited_paths(phase)
+    paths = [*extract_cited_paths(phase), *extract_implementation_paths(markdown)]
     kept, accepted = drop_accepted_findings([*structural, *implementation_side], phase)
 
     _assert_one_line_findings([*structural, *implementation_side])
@@ -1958,6 +2077,22 @@ EXTREME_PHASE_FIELDS = [
         {'design_shape_additional': lines(f'- FLOW-{LONG_DIGITS}: x', f'- FLOW-{LONG_DIGITS}: y')}, id='long-flow-ids'
     ),
 ]
+
+
+def _dependency_chain(count: int, closes: bool) -> str:
+    last = 1 if closes else count + 1
+    steps = (
+        lines(
+            f'#### Step {number}: Step {number}',
+            '- **Goal:** g',
+            f'- **Files:** create `p{number}`',
+            f'- **Depends on:** Step {number + 1 if number < count else last}',
+        )
+        for number in range(1, count + 1)
+    )
+    return lines('## Build Order', '### Steps', *steps)
+
+
 EXTREME_PLANS = [
     pytest.param('', id='empty'),
     pytest.param('#' * 100_000, id='hash-run'),
@@ -1973,7 +2108,54 @@ EXTREME_PLANS = [
     pytest.param(lines('## Checklist', '- [ ] x (Step 1) (verify: <' + ' ' * 200_000 + 'x'), id='unclosed-placeholder'),
     pytest.param(lines('```', '## Checklist', '- [ ] not an item'), id='unclosed-fence'),
     pytest.param('## ' + ' ' * 200_000 + '#', id='whitespace-heading'),
+    pytest.param(_dependency_chain(3_000, closes=True), id='long-dependency-cycle'),
+    pytest.param(_dependency_chain(3_000, closes=False), id='long-dependency-chain'),
+    pytest.param(
+        lines('## Build Order', '### Steps', '#### Step 1: Wide', '- **Depends on:** ' + 'Step 1, ' * 20_000),
+        id='wide-dependency-list',
+    ),
+    pytest.param(
+        lines('## Build Order', '### Steps', '#### Step 1: Odd', '- **Verify:** `<a' + ' b' * 100_000 + '`'),
+        id='unclosed-angle-token',
+    ),
+    pytest.param(
+        lines('## Build Order', '### Steps', '#### Step 1: Odd', '- **Files:** ' + 'create `x`; ' * 20_000),
+        id='many-files',
+    ),
+    pytest.param(lines('## Exit criteria', '`' * 100_001), id='exit-criteria-backtick-run'),
 ]
+
+
+MALFORMED_BRIEF_PLANS = [
+    pytest.param(
+        lines('## Build Order', '### Steps', '#### Step two: Cache', '- **Goal:** g', '- **Depends on:** Step 1'),
+        C.IMPLEMENTATION_STEP_HEADING_MALFORMED,
+        id='non-integer-step-number',
+    ),
+    pytest.param(
+        lines('## Build Order', '### Steps', '#### Step 1: Cache', '#### Step 2: List'),
+        C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE,
+        id='steps-with-no-fields',
+    ),
+    pytest.param(
+        lines('## Start here', '- Read the brief.', '## Build Order', '### Steps', '#### Step 1: Cache'),
+        C.IMPLEMENTATION_FINALIZE_SECTION_MISSING,
+        id='finalize-sections-missing',
+    ),
+    pytest.param(
+        lines('## Build Order', '### Steps', '#### Step 1: Cache', '- **Depends on:** Step 1, Step one, Step'),
+        C.IMPLEMENTATION_DEPENDENCY_INVALID,
+        id='garbled-dependencies',
+    ),
+]
+
+
+@pytest.mark.parametrize(('markdown', 'check'), MALFORMED_BRIEF_PLANS)
+def test_a_malformed_brief_is_reported_as_a_finding_never_raised(markdown: str, check: StructuralCheck) -> None:
+    findings = check_implementation_structure(markdown, brief_phase())
+
+    _assert_one_line_findings(findings)
+    assert check in {finding.check for finding in findings}
 
 
 @pytest.mark.parametrize('fields', EXTREME_PHASE_FIELDS)
@@ -1997,3 +2179,1335 @@ def test_dropping_accepted_findings_treats_a_key_as_plain_text(subject: str) -> 
     phase = design(settled_design_decisions=lines(SD_001, _accept(f'dangling-reference {subject} — x')))
 
     assert drop_accepted_findings([quoted, other], phase) == ([other], [f'accepted: dangling-reference {subject}'])
+
+
+# --- Phase 4: the brief checks (docs/phase-cooperative/phase-4-agent-ready-brief.md, Scope 5) ----
+#
+# Two baselines, each asserted clean. The design-review stage is design() with CLEAN_IMPLEMENTATION:
+# Delegation Bounds present, the finalizer's sections absent, draft-only steps. The finalized brief
+# is brief_phase() with BRIEF_IMPLEMENTATION: the brief sections the agents are shown, verbatim, the
+# definitions they cite, and the implementation example with its placeholder commands made concrete.
+
+FINALIZER = FindingOwner.FINALIZER
+LocatedRow = tuple[str, str, str, str, str]
+
+BRIEF_SD_001 = (
+    '- SD-001 | source=user | supersedes=OD-001 | decision=Option A | rationale=simpler | rejected=Option B'
+    ' | affects=Step 1, G-1 | binding=yes'
+)
+BRIEF_SD_002 = (
+    '- SD-002 | source=user | supersedes=CQ-001 | decision=Option B | rationale=cheaper reads'
+    ' | rejected=Option A | affects=Step 2 | binding=yes'
+)
+RP_002 = (
+    '- RP-002 | Which cache policy suits repeated queries? | informs: SD-2 | Technologies: caching;'
+    ' Topics: invalidation; Query: a cache in front of a repository | tier: synthesis-only [approved]'
+)
+BRIEF_READ_LINE = '- Read: `.best-practices/<file>.md` — informs: SD-2 — Source: RP-002'
+BRIEF_FIELDS: dict[str, str] = {
+    'module_layout': lines(
+        '- `<path to the repository query module>` — owns queries',
+        '- `<path to the cache module>` — owns cached results',
+        '- `<path to the result list component>` — owns the result list',
+    ),
+    'skeleton_index': lines(
+        '- `<path to the repository query module>` :: Repository.query(query: Query) -> Rows',
+        '- `<path to the cache module>` :: QueryCache.get(query: Query) -> Rows',
+        '- `<path to the result list component>` :: ResultList.render(rows: Rows) -> View',
+    ),
+    'collaboration_and_wiring': 'The service asks QueryCache.get, which falls back to Repository.query, per SD-001.',
+    'test_list': lines(
+        '- `<path to the query test file>::returns the rows a query matches` — T-1',
+        '- `<path to the query test file>::returns no rows for an unmatched query` — T-2',
+        '- `<path to the cache test file>::serves a repeated query from the cache` — T-3',
+        '- `<path to the result list test file>::renders one item per row` — T-4',
+    ),
+    'design_shape_additional': lines('#### Design Narrative', 'A cache sits in front of the repository query path.'),
+    'settled_design_decisions': lines(BRIEF_SD_001, BRIEF_SD_002),
+    'research_requirements': lines(RP_002, BRIEF_READ_LINE),
+    'success_criteria': lines(
+        '- SC-1: a query returns exactly the rows it matches — measure: T-1 and T-2 pass',
+        '- SC-2: results render as a list — measure: T-4 passes',
+        '- SC-3: a repeated query never reaches the repository — measure: T-3 passes',
+    ),
+}
+GROUNDING = BRIEF_SECTION_PLACEHOLDERS['Grounding']
+BOUNDS = BRIEF_SECTION_PLACEHOLDERS['Delegation Bounds']
+BEHAVIORS = BRIEF_SECTION_PLACEHOLDERS['Behaviors & Acceptance']
+GUARDRAILS = BRIEF_SECTION_PLACEHOLDERS['Guardrails']
+FINALIZER_SECTIONS_ABSENT = {'Grounding': '', 'Behaviors & Acceptance': '', 'Guardrails': ''}
+
+
+def brief_markdown(sections: dict[str, str] | None = None, **overrides: str) -> str:
+    fields = {**BRIEF_FIELDS, **overrides}
+    brief = {**BRIEF_SECTION_PLACEHOLDERS, **(sections or {})}
+    return phase_markdown(
+        {name: content for name, content in fields.items() if content},
+        tuple((name, body) for name, body in brief.items() if body),
+        delegation_bounds=False,
+    )
+
+
+def brief_phase(sections: dict[str, str] | None = None, **overrides: str) -> Phase:
+    return Phase.parse_markdown(brief_markdown(sections, **overrides))
+
+
+def with_h3(markdown: str, h3: str, body: str) -> str:
+    return _replace_h3(markdown, h3, [f'### {h3}', *body.splitlines()])
+
+
+def without_h3(markdown: str, h3: str) -> str:
+    return _replace_h3(markdown, h3, [])
+
+
+def _replace_h3(markdown: str, h3: str, replacement: list[str]) -> str:
+    heading = f'### {h3}'
+    assert heading in markdown.splitlines(), f'fixture anchor missing: {heading!r}'
+    kept: list[str] = []
+    in_target = False
+    for line in markdown.splitlines():
+        if line.startswith(('## ', '### ')):
+            in_target = line == heading
+            if in_target:
+                kept.extend(replacement)
+                continue
+        if not in_target:
+            kept.append(line)
+    return '\n'.join(kept) + '\n'
+
+
+def without_h2(markdown: str, *names: str) -> str:
+    headings = {f'## {name}' for name in names}
+    assert headings <= set(markdown.splitlines()), f'fixture anchor missing: {headings!r}'
+    kept: list[str] = []
+    dropping = False
+    for line in markdown.splitlines():
+        if line.startswith('## '):
+            dropping = line in headings
+        if not dropping:
+            kept.append(line)
+    return '\n'.join(kept) + '\n'
+
+
+BRIEF_IMPLEMENTATION = re.sub(r'<[^<>]*\[commands\][^<>]*>', 'run-checks all', IMPLEMENTATION_BRIEF_EXAMPLE)
+STEP_3_END = '- **Done when:** T-4 passes.'
+STEP_3_ITEM = '- [ ] Implement the result list (Step 3) (verify: run-checks all)'
+STEP_2_ITEM_BRIEF = '- [ ] Add the cache layer (Step 2) (verify: run-checks all)'
+STEP_2_VERIFY = '- **Tests to turn green:** T-3\n- **Verify:** `run-checks all`'
+STEP_2_DEPENDS = '- **Depends on:** Step 1\n- **Tests to turn green:** T-3'
+STEP_3_DEPENDS = '- **Depends on:** Step 1\n- **Tests to turn green:** T-4'
+EXIT_COMMAND_LINE = '- `run-checks all` passes'
+EXPORT_PATH = '<path to the export module>'
+EXPORT_GOAL = '- **Goal:** Results export to a file.'
+EXPORT_FILES = f'- **Files:** create `{EXPORT_PATH}`'
+DRAFT_STEP_FIELDS = (EXPORT_GOAL, EXPORT_FILES, '- **Depends on:** Step 1')
+FINALIZED_STEP_FIELDS = (
+    EXPORT_GOAL,
+    '- **Context:** SD-1',
+    EXPORT_FILES,
+    '- **Depends on:** Step 1',
+    '- **Tests to turn green:** none — the export is checked by hand',
+    '- **Verify:** `run-checks all`',
+    '- **Done when:** an export holds one row per result.',
+)
+EVICTION_ENTRY = '- `<path to the cache test file>::evicts a stale entry`'
+OPEN_OD_003 = lines('- OD-003 | Cache size', OPTION_A, OPTION_B, RECOMMENDED)
+
+
+def brief_plan(replace: dict[str, str] | None = None) -> str:
+    text = BRIEF_IMPLEMENTATION
+    for old, new in (replace or {}).items():
+        assert text.count(old) == 1, f'fixture anchor must occur once: {old!r}'
+        text = text.replace(old, new)
+    return text
+
+
+def with_step(number: int, *fields: str) -> dict[str, str]:
+    return {
+        STEP_3_END: lines(STEP_3_END, '', f'#### Step {number}: Export', *fields),
+        STEP_3_ITEM: lines(STEP_3_ITEM, f'- [ ] Export the results (Step {number}) (verify: run-checks all)'),
+    }
+
+
+def step_2_verify(value: str) -> dict[str, str]:
+    return {STEP_2_VERIFY: f'- **Tests to turn green:** T-3\n- **Verify:** {value}'}
+
+
+def brief_findings(markdown: str = BRIEF_IMPLEMENTATION, phase: Phase | None = None) -> list[Row]:
+    return rows(check_implementation_structure(markdown, phase or brief_phase()))
+
+
+def located(findings: list[StructuralFinding]) -> list[LocatedRow]:
+    return sorted((f.check.value, f.location, f.subject, f.part, f.owner.value) for f in findings)
+
+
+def test_the_finalized_brief_baseline_reports_no_findings() -> None:
+    assert '[commands]' not in BRIEF_IMPLEMENTATION
+    phase = brief_phase()
+
+    assert rows(check_phase_structure(phase)) == []
+    assert rows(check_implementation_structure(BRIEF_IMPLEMENTATION, phase)) == []
+
+
+def test_a_document_holding_no_brief_section_reports_no_brief_finding_during_design_review() -> None:
+    design_review = design()
+    assert set(design_review.additional_sections or {}) == {'Delegation Bounds'}
+
+    assert rows(check_phase_structure(parsed_phase({}, delegation_bounds=False))) == []
+    assert rows(check_phase_structure(design_review)) == []
+    assert implementation_findings(CLEAN_IMPLEMENTATION) == []
+
+
+# --- Phase 4, B5: a partially written brief is a structural finding, never content loss ----------
+
+
+@pytest.mark.parametrize(
+    ('sections', 'expected_rows'),
+    [
+        pytest.param(
+            {'Delegation Bounds': ''},
+            [(C.DELEGATION_BOUNDS_INCOMPLETE, 'Delegation Bounds', '', ARCHITECT)],
+            id='delegation-bounds-absent',
+        ),
+        pytest.param(
+            {'Delegation Bounds': without_h3(BOUNDS, 'Escalate if')},
+            [(C.DELEGATION_BOUNDS_INCOMPLETE, 'Delegation Bounds', 'Escalate if', ARCHITECT)],
+            id='delegation-bounds-subsection-missing',
+        ),
+        pytest.param(
+            {'Delegation Bounds': with_h3(BOUNDS, 'Out of scope', '')},
+            [(C.DELEGATION_BOUNDS_INCOMPLETE, 'Delegation Bounds', 'Out of scope', ARCHITECT)],
+            id='delegation-bounds-subsection-empty',
+        ),
+        pytest.param(
+            {'Grounding': '', 'Guardrails': ''},
+            [
+                (C.BRIEF_SECTION_INCOMPLETE, 'Grounding', '', FINALIZER),
+                (C.BRIEF_SECTION_INCOMPLETE, 'Guardrails', '', FINALIZER),
+            ],
+            id='one-finalizer-section-present',
+        ),
+        pytest.param(
+            {'Behaviors & Acceptance': ''},
+            [(C.BRIEF_SECTION_INCOMPLETE, 'Behaviors & Acceptance', '', FINALIZER)],
+            id='two-finalizer-sections-present',
+        ),
+        pytest.param(
+            {'Guardrails': without_h3(GUARDRAILS, 'Deviation protocol')},
+            [(C.BRIEF_SECTION_INCOMPLETE, 'Guardrails', 'Deviation protocol', FINALIZER)],
+            id='finalizer-subsection-missing',
+        ),
+        pytest.param(
+            {'Grounding': with_h3(GROUNDING, 'Leave alone', '')},
+            [(C.BRIEF_SECTION_INCOMPLETE, 'Grounding', 'Leave alone', FINALIZER)],
+            id='finalizer-subsection-empty',
+        ),
+        pytest.param(
+            {'Behaviors & Acceptance': without_h3(BEHAVIORS, 'Not covered by tests')},
+            [(C.BRIEF_SECTION_INCOMPLETE, 'Behaviors & Acceptance', 'Not covered by tests', FINALIZER)],
+            id='traceability-subsection-missing',
+        ),
+    ],
+)
+def test_a_partially_written_brief_is_a_structural_finding_never_content_loss(
+    sections: dict[str, str], expected_rows: list[ExpectedRow]
+) -> None:
+    markdown = brief_markdown(sections)
+
+    assert Phase.find_content_loss(markdown) == []
+    assert rows(check_phase_structure(Phase.parse_markdown(markdown))) == expected(*expected_rows)
+
+
+def test_an_empty_brief_subsection_holding_exactly_none_passes() -> None:
+    sections = {
+        'Grounding': with_h3(GROUNDING, 'Leave alone', '- None'),
+        'Delegation Bounds': with_h3(BOUNDS, 'Escalate if', '- None'),
+        'Behaviors & Acceptance': with_h3(BEHAVIORS, 'Not covered by tests', '- None'),
+        'Guardrails': with_h3(GUARDRAILS, 'Security and performance', '- None'),
+    }
+
+    assert rows(check_phase_structure(brief_phase(sections))) == []
+
+
+# --- Phase 4, B7 (phase.md): every ID resolves and every contract item has an owner ---------------
+
+
+@pytest.mark.parametrize(
+    ('entry', 'expected_row'),
+    [
+        pytest.param(EVICTION_ENTRY, (C.TEST_ENTRY_WITHOUT_ID, EVICTION_ENTRY, '', ARCHITECT), id='no-id'),
+        pytest.param(
+            f'{EVICTION_ENTRY} — not numbered yet',
+            (C.TEST_ENTRY_WITHOUT_ID, f'{EVICTION_ENTRY} — not numbered yet', '', ARCHITECT),
+            id='trailing-text-but-no-id',
+        ),
+        pytest.param(
+            '- `<path to the cache test file>::evicts a stale entry — T-5`',
+            (C.TEST_ENTRY_WITHOUT_ID, '- `<path to the cache test file>::evicts a stale entry — T-5`', '', ARCHITECT),
+            id='id-inside-the-backticks',
+        ),
+        pytest.param(f'{EVICTION_ENTRY} — T-3', (C.DUPLICATE_ID, 'T-3', '', ARCHITECT), id='duplicate-id'),
+        pytest.param(f'{EVICTION_ENTRY} — T-03', (C.DUPLICATE_ID, 'T-03', '', ARCHITECT), id='duplicate-padded-id'),
+    ],
+)
+def test_a_test_list_entry_without_one_unique_trailing_id_is_reported(entry: str, expected_row: ExpectedRow) -> None:
+    phase = brief_phase(test_list=lines(BRIEF_FIELDS['test_list'], entry))
+
+    assert rows(check_phase_structure(phase)) == expected(expected_row)
+
+
+@pytest.mark.parametrize(
+    'entry',
+    [
+        pytest.param('- `tests/billing_check.unit::issues one invoice per order` — T-1', id='id-only'),
+        pytest.param(
+            '- `tests/billing_check.unit::issues one invoice per order` — the core seam, SD-001 — T-12',
+            id='text-then-id',
+        ),
+    ],
+)
+def test_a_trailing_test_id_sits_outside_what_the_test_list_check_and_the_cli_read(entry: str) -> None:
+    unnumbered = entry.rsplit(' — T-', 1)[0]
+
+    assert parse_test_list(entry) == parse_test_list(unnumbered)
+    assert rows(check_phase_structure(design(test_list=entry))) == []
+
+
+def test_a_test_id_inside_the_backticks_would_become_part_of_the_test_name() -> None:
+    entry = '- `tests/billing_check.unit::issues one invoice per order`'
+
+    assert parse_test_list(entry.replace('order`', 'order — T-1`')) != parse_test_list(entry)
+
+
+@pytest.mark.parametrize(
+    ('success_criteria', 'expected_row'),
+    [
+        pytest.param(
+            BRIEF_FIELDS['success_criteria'].replace(' — measure: T-3 passes', ''),
+            (C.SUCCESS_CRITERION_MALFORMED, 'SC-3', 'measure', FINALIZER),
+            id='no-measure',
+        ),
+        pytest.param(
+            lines(BRIEF_FIELDS['success_criteria'], '- Results appear within a second — measure: timed by hand'),
+            (
+                C.SUCCESS_CRITERION_MALFORMED,
+                '- Results appear within a second — measure: timed by hand',
+                'id',
+                FINALIZER,
+            ),
+            id='no-id',
+        ),
+        pytest.param(
+            lines(BRIEF_FIELDS['success_criteria'], '- SC-2: results render again — measure: T-4 passes'),
+            (C.DUPLICATE_ID, 'SC-2', '', FINALIZER),
+            id='duplicate-id',
+        ),
+    ],
+)
+def test_a_success_criterion_that_is_not_one_sc_entry_with_a_measure_is_reported(
+    success_criteria: str, expected_row: ExpectedRow
+) -> None:
+    assert rows(check_phase_structure(brief_phase(success_criteria=success_criteria))) == expected(expected_row)
+
+
+def test_success_criteria_are_held_to_the_sc_form_only_once_a_finalizer_section_exists() -> None:
+    success_criteria = lines(
+        BRIEF_FIELDS['success_criteria'].replace(' — measure: T-3 passes', ''),
+        '- Results appear within a second — measure: timed by hand',
+    )
+
+    assert rows(check_phase_structure(brief_phase(FINALIZER_SECTIONS_ABSENT, success_criteria=success_criteria))) == []
+
+
+def test_an_id_a_guardrail_defines_twice_is_reported_at_the_second_definition() -> None:
+    guardrails = GUARDRAILS.replace(
+        '### Error policy', '- G-1: a cached row never outlives its source\n### Error policy'
+    )
+
+    assert rows(check_phase_structure(brief_phase({'Guardrails': guardrails}))) == expected(
+        (C.DUPLICATE_ID, 'G-1', '', FINALIZER)
+    )
+
+
+@pytest.mark.parametrize(
+    ('sections', 'overrides', 'subject', 'owner'),
+    [
+        pytest.param(
+            {'Guardrails': GUARDRAILS.replace('(target: SC-3)', '(target: SC-9)')},
+            {},
+            'SC-9',
+            FINALIZER,
+            id='guardrails',
+        ),
+        pytest.param(
+            {'Behaviors & Acceptance': BEHAVIORS.replace('tests: T-4', 'tests: T-9')},
+            {},
+            'T-9',
+            FINALIZER,
+            id='behaviors-and-acceptance',
+        ),
+        pytest.param(
+            {'Grounding': GROUNDING.replace('informs: SD-2, Step 3', 'informs: G-9, Step 3')},
+            {},
+            'G-9',
+            FINALIZER,
+            id='grounding',
+        ),
+        pytest.param(
+            {'Delegation Bounds': BOUNDS + '\n- T-9 cannot pass without a schema change.'},
+            {},
+            'T-9',
+            ARCHITECT,
+            id='delegation-bounds',
+        ),
+        pytest.param(
+            {},
+            {'open_design_decisions': lines(OPEN_OD_003, '  - Affects: `<path to the cache module>`, G-9')},
+            'G-9',
+            ARCHITECT,
+            id='open-decision-affects-line',
+        ),
+        pytest.param(
+            {},
+            {'success_criteria': BRIEF_FIELDS['success_criteria'].replace('T-4 passes', 'T-9 passes')},
+            'T-9',
+            FINALIZER,
+            id='success-criteria',
+        ),
+    ],
+)
+def test_a_test_criterion_or_guardrail_reference_to_nothing_is_reported_where_it_is_written(
+    sections: dict[str, str], overrides: dict[str, str], subject: str, owner: FindingOwner
+) -> None:
+    assert rows(check_phase_structure(brief_phase(sections, **overrides))) == expected(
+        (C.DANGLING_REFERENCE, subject, '', owner)
+    )
+
+
+@pytest.mark.parametrize(
+    ('sections', 'overrides'),
+    [
+        pytest.param(
+            {},
+            {'collaboration_and_wiring': 'The cache serves repeated lookups, per SD-001, T-9, SC-9, G-9 and Step 9.'},
+            id='outside-the-scanned-sections',
+        ),
+        pytest.param(
+            {},
+            {
+                'settled_design_decisions': lines(
+                    BRIEF_SD_001,
+                    BRIEF_SD_002,
+                    '- SD-003 | source=user | supersedes=OD-004 | decision=Option A | rationale=fewer parts'
+                    ' | rejected=Option B | affects=T-9, SC-9, G-9, Step 9 | binding=yes',
+                    '- SD-### | source=implementation | supersedes=Search.QueryCache.get'
+                    ' | reason=the cache moved into the repository',
+                )
+            },
+            id='inside-settled-entries',
+        ),
+        pytest.param(
+            {'Behaviors & Acceptance': BEHAVIORS.replace('tests: T-4', 'tests: T-04')},
+            {},
+            id='numbers-compare-as-integers',
+        ),
+    ],
+)
+def test_an_id_outside_the_scanned_sections_or_inside_a_settled_entry_is_never_a_reference(
+    sections: dict[str, str], overrides: dict[str, str]
+) -> None:
+    phase = brief_phase(sections, **overrides)
+
+    assert rows(check_phase_structure(phase)) == []
+    assert rows(check_implementation_structure(BRIEF_IMPLEMENTATION, phase)) == []
+
+
+def test_an_affects_segment_never_hides_an_empty_rejected_value() -> None:
+    # If affects is not a known SD key, its segment is appended to the rejected value before it, and
+    # the missing rejected value goes unreported.
+    entry = (
+        '- SD-003 | source=user | supersedes=OD-004 | decision=Option A | rationale=simpler | rejected='
+        ' | affects=Step 1 | binding=yes'
+    )
+    phase = brief_phase(settled_design_decisions=lines(BRIEF_SD_001, BRIEF_SD_002, entry))
+
+    assert rows(check_phase_structure(phase)) == expected(
+        (C.SETTLED_ENTRY_MALFORMED, 'SD-003', 'rejected', ORCHESTRATOR)
+    )
+
+
+# --- Phase 4, B8: the two research copies never disagree once Grounding exists --------------------
+
+
+@pytest.mark.parametrize(
+    ('sections', 'overrides', 'subject'),
+    [
+        pytest.param(
+            {'Grounding': GROUNDING + '\n- `.best-practices/extra.md` — informs: Step 2'},
+            {},
+            '.best-practices/extra.md',
+            id='only-in-research-to-read',
+        ),
+        pytest.param(
+            {},
+            {
+                'research_requirements': lines(
+                    RP_002,
+                    BRIEF_READ_LINE,
+                    '- Read: `.best-practices/approved-later.md` — informs: SD-2 — Source: in-kb',
+                )
+            },
+            '.best-practices/approved-later.md',
+            id='only-in-the-ledger',
+        ),
+    ],
+)
+def test_a_research_path_in_only_one_of_the_two_copies_is_reported(
+    sections: dict[str, str], overrides: dict[str, str], subject: str
+) -> None:
+    assert rows(check_phase_structure(brief_phase(sections, **overrides))) == expected(
+        (C.RESEARCH_COPIES_DISAGREE, subject, '', FINALIZER)
+    )
+
+
+@pytest.mark.parametrize(
+    ('sections', 'overrides'),
+    [
+        pytest.param(
+            FINALIZER_SECTIONS_ABSENT,
+            {
+                'research_requirements': lines(
+                    RP_002,
+                    BRIEF_READ_LINE,
+                    '- Read: `.best-practices/approved-later.md` — informs: SD-2 — Source: in-kb',
+                )
+            },
+            id='no-grounding-yet',
+        ),
+        pytest.param(
+            {'Grounding': with_h3(GROUNDING, 'Research to read', '- None')},
+            {'research_requirements': RP_002},
+            id='both-empty',
+        ),
+    ],
+)
+def test_the_research_copies_agree_when_grounding_is_absent_or_both_are_empty(
+    sections: dict[str, str], overrides: dict[str, str]
+) -> None:
+    assert rows(check_phase_structure(brief_phase(sections, **overrides))) == []
+
+
+# --- Phase 4, B6 and B7 (implementation.md): every step is executable from a cold start ----------
+
+
+@pytest.mark.parametrize(
+    ('fields', 'expected_rows'),
+    [
+        pytest.param(
+            DRAFT_STEP_FIELDS[:2],
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Depends on', ARCHITECT)],
+            id='draft-step-missing-a-field',
+        ),
+        pytest.param(
+            tuple(field for field in FINALIZED_STEP_FIELDS if not field.startswith('- **Verify:**')),
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Verify', FINALIZER)],
+            id='finalized-step-missing-a-finalize-field',
+        ),
+        pytest.param(
+            FINALIZED_STEP_FIELDS[1:],
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Goal', ARCHITECT)],
+            id='finalized-step-missing-a-draft-field',
+        ),
+        pytest.param(
+            (*DRAFT_STEP_FIELDS, '- **Verify:** `run-checks all`'),
+            [
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Context', FINALIZER),
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Tests to turn green', FINALIZER),
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Done when', FINALIZER),
+            ],
+            id='draft-step-with-one-finalize-field',
+        ),
+        # The part names the first label, in written order, that stands where the order puts another.
+        pytest.param(
+            (EXPORT_FILES, EXPORT_GOAL, '- **Depends on:** Step 1'),
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Files', ARCHITECT)],
+            id='draft-fields-out-of-order',
+        ),
+        pytest.param(
+            (
+                EXPORT_GOAL,
+                EXPORT_FILES,
+                '- **Context:** SD-1',
+                *FINALIZED_STEP_FIELDS[3:],
+            ),
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Context', FINALIZER)],
+            id='context-after-files-names-the-finalize-field',
+        ),
+        pytest.param(
+            (
+                EXPORT_GOAL,
+                EXPORT_FILES,
+                '- **Depends on:** Step 1',
+                '- **Context:** SD-1',
+                *FINALIZED_STEP_FIELDS[4:],
+            ),
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Context', FINALIZER)],
+            id='context-after-depends-on-names-the-finalize-field',
+        ),
+        pytest.param(
+            (
+                FINALIZED_STEP_FIELDS[2],
+                FINALIZED_STEP_FIELDS[0],
+                *FINALIZED_STEP_FIELDS[1:2],
+                *FINALIZED_STEP_FIELDS[3:],
+            ),
+            [(C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Files', ARCHITECT)],
+            id='draft-labels-out-of-order-stay-architect',
+        ),
+        pytest.param(
+            (),
+            [
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Goal', ARCHITECT),
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Files', ARCHITECT),
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Depends on', ARCHITECT),
+            ],
+            id='no-fields',
+        ),
+        pytest.param(
+            ('Export the results to a file.',),
+            [
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Goal', ARCHITECT),
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Files', ARCHITECT),
+                (C.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, 'Step 4', 'Depends on', ARCHITECT),
+            ],
+            id='prose-instead-of-fields',
+        ),
+    ],
+)
+def test_a_step_holding_neither_the_draft_fields_nor_all_seven_in_order_is_reported(
+    fields: tuple[str, ...], expected_rows: list[ExpectedRow]
+) -> None:
+    assert brief_findings(brief_plan(with_step(4, *fields))) == expected(*expected_rows)
+
+
+@pytest.mark.parametrize(
+    'fields', [pytest.param(DRAFT_STEP_FIELDS, id='draft'), pytest.param(FINALIZED_STEP_FIELDS, id='finalized')]
+)
+def test_a_draft_or_finalized_step_beside_finalized_steps_passes(fields: tuple[str, ...]) -> None:
+    assert brief_findings(brief_plan(with_step(4, *fields))) == []
+
+
+def test_a_step_whose_files_name_no_backticked_path_is_reported() -> None:
+    fields = (EXPORT_GOAL, '- **Files:** create the export module', '- **Depends on:** Step 1')
+
+    assert brief_findings(brief_plan(with_step(4, *fields))) == expected(
+        (C.IMPLEMENTATION_STEP_FILES_MISSING, 'Step 4', 'Files', ARCHITECT)
+    )
+
+
+@pytest.mark.parametrize(
+    ('replace', 'expected_row'),
+    [
+        pytest.param(
+            with_step(4, EXPORT_GOAL, EXPORT_FILES, '- **Depends on:** Step 9'),
+            (C.IMPLEMENTATION_DEPENDENCY_INVALID, 'Step 4', 'Step 9', ARCHITECT),
+            id='missing-step',
+        ),
+        pytest.param(
+            with_step(4, EXPORT_GOAL, EXPORT_FILES, '- **Depends on:** Step 1, Step 4'),
+            (C.IMPLEMENTATION_DEPENDENCY_INVALID, 'Step 4', 'Step 4', ARCHITECT),
+            id='itself',
+        ),
+        pytest.param(
+            {
+                STEP_2_DEPENDS: STEP_2_DEPENDS.replace('Step 1', 'Step 1, Step 3'),
+                STEP_3_DEPENDS: STEP_3_DEPENDS.replace('Step 1', 'Step 1, Step 2'),
+            },
+            (C.IMPLEMENTATION_DEPENDENCY_INVALID, 'Step 2', 'cycle', ARCHITECT),
+            id='cycle',
+        ),
+    ],
+)
+def test_a_dependency_on_a_missing_step_on_itself_or_in_a_cycle_is_reported(
+    replace: dict[str, str], expected_row: ExpectedRow
+) -> None:
+    assert brief_findings(brief_plan(replace)) == expected(expected_row)
+
+
+def test_dependencies_that_converge_without_a_cycle_pass() -> None:
+    plan = brief_plan({STEP_3_DEPENDS: STEP_3_DEPENDS.replace('Step 1', 'Step 1, Step 2')})
+
+    assert brief_findings(plan) == []
+
+
+def test_step_numbers_that_are_not_contiguous_from_one_are_reported() -> None:
+    assert brief_findings(brief_plan(with_step(5, *DRAFT_STEP_FIELDS))) == expected(
+        (C.IMPLEMENTATION_STEPS_NOT_CONTIGUOUS, 'Steps', '', ARCHITECT)
+    )
+
+
+@pytest.mark.parametrize('subsection', ['Execution Intent Policy', 'Deferred Risk Register'])
+def test_a_policy_section_missing_one_of_its_subsections_is_reported(subsection: str) -> None:
+    assert brief_findings(without_h3(BRIEF_IMPLEMENTATION, subsection)) == expected(
+        (C.IMPLEMENTATION_SECTION_MISSING, 'implementation.md', f'Policy > {subsection}', ARCHITECT)
+    )
+
+
+@pytest.mark.parametrize(
+    'value',
+    [
+        pytest.param('', id='empty'),
+        pytest.param('run-checks all', id='not-backticked'),
+        pytest.param('` `', id='blank-command'),
+        pytest.param('`TODO`', id='todo'),
+        pytest.param('`todo: pick a command`', id='todo-lowercase'),
+        pytest.param('`[TODO] pick a command`', id='todo-bracketed'),
+        pytest.param('`no_preference`', id='no-preference'),
+        pytest.param('`<the test command>`', id='angle-placeholder'),
+        pytest.param('`run-checks <suite>`', id='angle-token-inside-a-command'),
+        pytest.param('`[the test command]`', id='square-placeholder'),
+        pytest.param('`run-checks all` `<the command of the second language>`', id='one-placeholder-among-commands'),
+    ],
+)
+def test_a_step_verify_without_a_usable_command_is_reported(value: str) -> None:
+    assert brief_findings(brief_plan(step_2_verify(value))) == expected(
+        (C.IMPLEMENTATION_COMMAND_PLACEHOLDER, 'Step 2', 'Verify', FINALIZER)
+    )
+
+
+@pytest.mark.parametrize(
+    'value',
+    [
+        pytest.param('`run-checks all < cases.txt > results.txt`', id='shell-redirection'),
+        pytest.param(ASK_USER_MARKER, id='ask-user-marker'),
+        pytest.param(f'`{ASK_USER_MARKER}`', id='backticked-ask-user-marker'),
+        pytest.param(f'`run-checks all`; {ASK_USER_MARKER}', id='command-and-marker'),
+        pytest.param('`run-checks all` `run-checks screens`', id='one-command-per-language'),
+    ],
+)
+def test_a_step_verify_holding_commands_or_the_ask_user_marker_passes(value: str) -> None:
+    assert brief_findings(brief_plan(step_2_verify(value))) == []
+
+
+@pytest.mark.parametrize(
+    'command',
+    [
+        '<the whole-phase check command>',
+        'TODO',
+        'no_preference',
+        '[the whole-phase check command]',
+        'run-checks <suite>',
+    ],
+)
+def test_a_placeholder_exit_criteria_command_is_reported(command: str) -> None:
+    plan = brief_plan({EXIT_COMMAND_LINE: f'- `{command}` passes'})
+
+    assert brief_findings(plan) == expected((C.IMPLEMENTATION_COMMAND_PLACEHOLDER, 'Exit criteria', command, FINALIZER))
+
+
+@pytest.mark.parametrize(
+    'exit_lines',
+    [
+        pytest.param('- `run-checks all < cases.txt > results.txt` passes', id='shell-redirection'),
+        pytest.param(f'- `{ASK_USER_MARKER}` passes', id='ask-user-marker'),
+        pytest.param(lines(EXIT_COMMAND_LINE, '- `run-checks lint` passes'), id='two-commands'),
+    ],
+)
+def test_exit_criteria_holding_commands_or_the_ask_user_marker_pass(exit_lines: str) -> None:
+    assert brief_findings(brief_plan({EXIT_COMMAND_LINE: exit_lines})) == []
+
+
+def test_a_checklist_verify_group_holding_a_placeholder_token_is_reported() -> None:
+    item = '- [ ] Add the cache layer (Step 2) (verify: run-checks <suite>)'
+
+    assert brief_findings(brief_plan({STEP_2_ITEM_BRIEF: item})) == expected(
+        (C.IMPLEMENTATION_CHECKLIST_ITEM_MALFORMED, item, 'verify', ARCHITECT)
+    )
+
+
+def test_a_checklist_verify_group_holding_shell_redirection_passes() -> None:
+    item = '- [ ] Add the cache layer (Step 2) (verify: run-checks all < cases.txt > results.txt)'
+
+    assert brief_findings(brief_plan({STEP_2_ITEM_BRIEF: item})) == []
+
+
+@pytest.mark.parametrize(
+    ('markdown', 'expected_rows'),
+    [
+        pytest.param(
+            without_h2(BRIEF_IMPLEMENTATION, 'Exit criteria'),
+            [(C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Exit criteria', '', FINALIZER)],
+            id='exit-criteria-missing',
+        ),
+        pytest.param(
+            without_h2(BRIEF_IMPLEMENTATION, 'Deviations'),
+            [(C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Deviations', '', FINALIZER)],
+            id='deviations-missing',
+        ),
+        pytest.param(
+            without_h2(BRIEF_IMPLEMENTATION, 'Start here'),
+            [(C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Start here', '', FINALIZER)],
+            id='start-here-missing',
+        ),
+        pytest.param(
+            without_h3(BRIEF_IMPLEMENTATION, 'First action'),
+            [(C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Start here', 'First action', FINALIZER)],
+            id='start-here-subsection-missing',
+        ),
+        pytest.param(
+            brief_plan({EXIT_COMMAND_LINE: '- every check command passes'}),
+            [(C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Exit criteria', 'command', FINALIZER)],
+            id='exit-criteria-without-a-command',
+        ),
+        pytest.param(
+            without_h2(BRIEF_IMPLEMENTATION, 'Start here', 'Exit criteria', 'Deviations'),
+            [
+                (C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Start here', '', FINALIZER),
+                (C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Exit criteria', '', FINALIZER),
+                (C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Deviations', '', FINALIZER),
+            ],
+            id='finalized-steps-without-any',
+        ),
+    ],
+)
+def test_a_finalize_section_missing_beside_finalized_content_is_reported(
+    markdown: str, expected_rows: list[ExpectedRow]
+) -> None:
+    assert brief_findings(markdown) == expected(*expected_rows)
+
+
+def test_a_finalize_section_beside_draft_only_steps_needs_the_other_two() -> None:
+    markdown = lines(CLEAN_IMPLEMENTATION, '', '## Deviations', '- None')
+
+    assert implementation_findings(markdown) == expected(
+        (C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Start here', '', FINALIZER),
+        (C.IMPLEMENTATION_FINALIZE_SECTION_MISSING, 'Exit criteria', '', FINALIZER),
+    )
+
+
+@pytest.mark.parametrize(
+    ('replace', 'subject'),
+    [
+        pytest.param({'- **Context:** SD-1, G-2, ': '- **Context:** SD-1, G-9, '}, 'G-9', id='guardrail-in-context'),
+        pytest.param({'- **Context:** SC-2, ': '- **Context:** SC-9, '}, 'SC-9', id='criterion-in-context'),
+        pytest.param(
+            {'- **Tests to turn green:** T-3': '- **Tests to turn green:** T-3, T-9'}, 'T-9', id='tests-to-turn-green'
+        ),
+    ],
+)
+def test_an_id_a_step_cites_that_the_phase_never_defines_is_reported(replace: dict[str, str], subject: str) -> None:
+    assert brief_findings(brief_plan(replace)) == expected((C.DANGLING_REFERENCE, subject, '', FINALIZER))
+
+
+@pytest.mark.parametrize(
+    ('sections', 'overrides', 'owner'),
+    [
+        pytest.param(
+            {'Grounding': GROUNDING.replace('informs: Step 2, Step 3', 'informs: Step 2, Step 9')},
+            {},
+            FINALIZER,
+            id='grounding',
+        ),
+        pytest.param(
+            {'Delegation Bounds': BOUNDS + '\n- Step 9 would need a second cache.'},
+            {},
+            ARCHITECT,
+            id='delegation-bounds',
+        ),
+        pytest.param(
+            {},
+            {'open_design_decisions': lines(OPEN_OD_003, '  - Affects: `<path to the cache module>`, Step 9')},
+            ARCHITECT,
+            id='open-decision-affects-line',
+        ),
+    ],
+)
+def test_a_step_the_phase_document_names_but_the_plan_lacks_is_reported_with_the_plan(
+    sections: dict[str, str], overrides: dict[str, str], owner: FindingOwner
+) -> None:
+    phase = brief_phase(sections, **overrides)
+
+    assert rows(check_phase_structure(phase)) == []
+    assert brief_findings(phase=phase) == expected((C.DANGLING_REFERENCE, 'Step 9', '', owner))
+
+
+def test_a_skeleton_index_path_no_step_names_in_its_files_is_reported() -> None:
+    phase = brief_phase(
+        module_layout=lines(BRIEF_FIELDS['module_layout'], f'- `{EXPORT_PATH}` — owns exports'),
+        skeleton_index=lines(
+            BRIEF_FIELDS['skeleton_index'], f'- `{EXPORT_PATH}` :: Exporter.write(rows: Rows) -> Report'
+        ),
+    )
+    cited_only_in_context = brief_plan(
+        {'- **Context:** SC-2, ': f'- **Context:** SC-2, `{EXPORT_PATH}` :: Exporter.write, '}
+    )
+
+    assert brief_findings(cited_only_in_context, phase) == expected(
+        (C.SEAM_PATH_NOT_IN_ANY_STEP, EXPORT_PATH, '', ARCHITECT)
+    )
+
+
+@pytest.mark.parametrize(
+    ('skeleton_path', 'files_path'),
+    [
+        ('<path to the cache module>', './<path to the cache module>'),
+        ('./<path to the cache module>', '<path to the cache module>'),
+    ],
+    ids=['dot-slash-in-files', 'dot-slash-in-skeleton-index'],
+)
+def test_a_leading_dot_slash_never_separates_a_seam_from_the_step_that_creates_it(
+    skeleton_path: str, files_path: str
+) -> None:
+    phase = brief_phase(
+        skeleton_index=BRIEF_FIELDS['skeleton_index'].replace('`<path to the cache module>`', f'`{skeleton_path}`')
+    )
+    plan = brief_plan({'create `<path to the cache module>`': f'create `{files_path}`'})
+
+    assert brief_findings(plan, phase) == []
+
+
+def test_a_test_no_step_turns_green_is_reported_once_every_step_is_finalized() -> None:
+    phase = brief_phase(test_list=lines(BRIEF_FIELDS['test_list'], f'{EVICTION_ENTRY} — T-5'))
+
+    assert brief_findings(phase=phase) == expected((C.TEST_NOT_IN_ANY_STEP, 'T-5', '', FINALIZER))
+
+
+def test_a_re_opened_phase_with_a_draft_step_beside_finalized_ones_reports_nothing() -> None:
+    markdown = brief_markdown(test_list=lines(BRIEF_FIELDS['test_list'], f'{EVICTION_ENTRY} — T-5'))
+    phase = Phase.parse_markdown(lines(markdown, '## Metadata', '### Shape Gate', 'shape-amended'))
+    deviation = '- DEV-1 | Step 2 | expected: a cache module | found: a cache package | action: kept within discretion'
+    plan = brief_plan({**with_step(4, *DRAFT_STEP_FIELDS), '## Deviations\n- None': f'## Deviations\n{deviation}'})
+    assert phase.shape_gate == ShapeGate.SHAPE_AMENDED
+
+    assert rows(check_phase_structure(phase)) == []
+    assert brief_findings(plan, phase) == []
+
+
+# Deviations lines are the implementers' record, which no agent may edit (Scope 3), so an ID they cite
+# is never a reference: a finding on one would have no fix its owner is permitted to make.
+def test_an_id_a_deviation_line_cites_is_never_a_reference() -> None:
+    deviation = '- DEV-1 | Step 2 | expected: a cache per SD-9 | found: CQ-3 still open | action: escalated'
+
+    assert brief_findings(brief_plan({'## Deviations\n- None': f'## Deviations\n{deviation}'})) == []
+
+
+# --- Phase 4, B18 (ownership half): the owner is computed from the location ----------------------
+
+
+@pytest.mark.parametrize(
+    ('sections', 'owner'),
+    [
+        pytest.param(
+            {'Grounding': GROUNDING.replace('informs: SD-2, Step 3', 'informs: OD-042, Step 3')},
+            FINALIZER,
+            id='grounding',
+        ),
+        pytest.param(
+            {'Behaviors & Acceptance': BEHAVIORS + '\n- OD-042 is verified by hand.'},
+            FINALIZER,
+            id='behaviors-and-acceptance',
+        ),
+        pytest.param({'Guardrails': GUARDRAILS + '\n- Per OD-042.'}, FINALIZER, id='guardrails'),
+        pytest.param({'Delegation Bounds': BOUNDS + '\n- Stop if OD-042 reopens.'}, ARCHITECT, id='delegation-bounds'),
+    ],
+)
+def test_a_phase_3_finding_inside_a_finalizer_section_belongs_to_the_finalizer(
+    sections: dict[str, str], owner: FindingOwner
+) -> None:
+    assert rows(check_phase_structure(brief_phase(sections))) == expected((C.DANGLING_REFERENCE, 'OD-042', '', owner))
+
+
+def test_a_section_whose_name_only_begins_like_a_finalizer_section_stays_the_architects() -> None:
+    phase = design(extra_sections=(('Grounding Notes', 'Revisit OD-042 after launch.'),))
+
+    assert rows(check_phase_structure(phase)) == expected((C.DANGLING_REFERENCE, 'OD-042', '', ARCHITECT))
+
+
+LOCATED_FINDINGS = [
+    pytest.param(
+        lambda: check_phase_structure(brief_phase({'Delegation Bounds': ''})),
+        ('delegation-bounds-incomplete', 'Delegation Bounds', 'Delegation Bounds', '', 'architect'),
+        id='delegation-bounds-absent',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(brief_phase({'Delegation Bounds': without_h3(BOUNDS, 'Escalate if')})),
+        (
+            'delegation-bounds-incomplete',
+            'Delegation Bounds > Escalate if',
+            'Delegation Bounds',
+            'Escalate if',
+            'architect',
+        ),
+        id='delegation-bounds-subsection',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(brief_phase({'Grounding': ''})),
+        ('brief-section-incomplete', 'Grounding', 'Grounding', '', 'finalizer'),
+        id='finalizer-section-missing',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(brief_phase({'Guardrails': without_h3(GUARDRAILS, 'Deviation protocol')})),
+        (
+            'brief-section-incomplete',
+            'Guardrails > Deviation protocol',
+            'Guardrails',
+            'Deviation protocol',
+            'finalizer',
+        ),
+        id='finalizer-subsection',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(brief_phase(test_list=lines(BRIEF_FIELDS['test_list'], EVICTION_ENTRY))),
+        ('test-entry-without-id', 'Design Shape > Test List', EVICTION_ENTRY, '', 'architect'),
+        id='test-entry-without-id',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase(test_list=lines(BRIEF_FIELDS['test_list'], f'{EVICTION_ENTRY} — T-3'))
+        ),
+        ('duplicate-id', 'Design Shape > Test List', 'T-3', '', 'architect'),
+        id='duplicate-test-id',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase(success_criteria=BRIEF_FIELDS['success_criteria'].replace(' — measure: T-3 passes', ''))
+        ),
+        ('success-criterion-malformed', 'Additional Details > Success Criteria', 'SC-3', 'measure', 'finalizer'),
+        id='success-criterion-malformed',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase(success_criteria=lines(BRIEF_FIELDS['success_criteria'], '- SC-2: again — measure: T-4 passes'))
+        ),
+        ('duplicate-id', 'Additional Details > Success Criteria', 'SC-2', '', 'finalizer'),
+        id='duplicate-criterion-id',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(design(success_criteria='- SC-1: first\n- SC-1: again')),
+        ('duplicate-id', 'Additional Details > Success Criteria', 'SC-1', '', 'architect'),
+        id='duplicate-criterion-id-before-finalize',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase(success_criteria=lines(BRIEF_FIELDS['success_criteria'], '- SC-9: more — measure: T-9 passes'))
+        ),
+        ('dangling-reference', 'Additional Details > Success Criteria', 'T-9', '', 'finalizer'),
+        id='dangling-test-in-finalized-success-criteria',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase({'Guardrails': GUARDRAILS.replace('### Error policy', '- G-1: again\n### Error policy')})
+        ),
+        ('duplicate-id', 'Guardrails', 'G-1', '', 'finalizer'),
+        id='duplicate-guardrail-id',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase({'Behaviors & Acceptance': BEHAVIORS.replace('tests: T-4', 'tests: T-9')})
+        ),
+        ('dangling-reference', 'Behaviors & Acceptance', 'T-9', '', 'finalizer'),
+        id='dangling-test-in-behaviors',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase({'Grounding': GROUNDING.replace('informs: SD-2, Step 3', 'informs: OD-042, Step 3')})
+        ),
+        ('dangling-reference', 'Grounding', 'OD-042', '', 'finalizer'),
+        id='phase-3-family-in-grounding',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(design(extra_sections=(('Grounding Notes', 'Revisit OD-042.'),))),
+        ('dangling-reference', 'Grounding Notes', 'OD-042', '', 'architect'),
+        id='section-named-like-grounding',
+    ),
+    pytest.param(
+        lambda: check_phase_structure(
+            brief_phase({'Grounding': GROUNDING + '\n- `.best-practices/extra.md` — informs: Step 2'})
+        ),
+        ('research-copies-disagree', 'Grounding > Research to read', '.best-practices/extra.md', '', 'finalizer'),
+        id='research-copies-disagree',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            without_h3(BRIEF_IMPLEMENTATION, 'Deferred Risk Register'), brief_phase()
+        ),
+        (
+            'implementation-section-missing',
+            'implementation.md > Policy',
+            'implementation.md',
+            'Policy > Deferred Risk Register',
+            'architect',
+        ),
+        id='policy-subsection-missing',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(brief_plan(with_step(5, *DRAFT_STEP_FIELDS)), brief_phase()),
+        ('implementation-steps-not-contiguous', 'implementation.md > Build Order > Steps', 'Steps', '', 'architect'),
+        id='steps-not-contiguous',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({STEP_2_VERIFY: '- **Tests to turn green:** T-3'}), brief_phase()
+        ),
+        (
+            'implementation-step-fields-incomplete',
+            'implementation.md > Step 2 > Verify',
+            'Step 2',
+            'Verify',
+            'finalizer',
+        ),
+        id='finalize-field-missing',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({'- **Goal:** A repeated query is served from a cache in front of the repository.\n': ''}),
+            brief_phase(),
+        ),
+        ('implementation-step-fields-incomplete', 'implementation.md > Step 2 > Goal', 'Step 2', 'Goal', 'architect'),
+        id='draft-field-missing',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan(with_step(4, EXPORT_GOAL, '- **Files:** create the export module', '- **Depends on:** Step 1')),
+            brief_phase(),
+        ),
+        ('implementation-step-files-missing', 'implementation.md > Step 4 > Files', 'Step 4', 'Files', 'architect'),
+        id='files-missing',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan(with_step(4, EXPORT_GOAL, EXPORT_FILES, '- **Depends on:** Step 9')), brief_phase()
+        ),
+        (
+            'implementation-dependency-invalid',
+            'implementation.md > Step 4 > Depends on',
+            'Step 4',
+            'Step 9',
+            'architect',
+        ),
+        id='dependency-on-a-missing-step',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan(
+                {
+                    STEP_2_DEPENDS: STEP_2_DEPENDS.replace('Step 1', 'Step 1, Step 3'),
+                    STEP_3_DEPENDS: STEP_3_DEPENDS.replace('Step 1', 'Step 1, Step 2'),
+                }
+            ),
+            brief_phase(),
+        ),
+        (
+            'implementation-dependency-invalid',
+            'implementation.md > Step 2 > Depends on',
+            'Step 2',
+            'cycle',
+            'architect',
+        ),
+        id='dependency-cycle',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(brief_plan(step_2_verify('`TODO`')), brief_phase()),
+        ('implementation-command-placeholder', 'implementation.md > Step 2 > Verify', 'Step 2', 'Verify', 'finalizer'),
+        id='verify-placeholder',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(brief_plan({EXIT_COMMAND_LINE: '- `TODO` passes'}), brief_phase()),
+        (
+            'implementation-command-placeholder',
+            'implementation.md > Exit criteria',
+            'Exit criteria',
+            'TODO',
+            'finalizer',
+        ),
+        id='exit-criteria-placeholder',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(without_h2(BRIEF_IMPLEMENTATION, 'Deviations'), brief_phase()),
+        ('implementation-finalize-section-missing', 'implementation.md > Deviations', 'Deviations', '', 'finalizer'),
+        id='finalize-section-missing',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(without_h3(BRIEF_IMPLEMENTATION, 'First action'), brief_phase()),
+        (
+            'implementation-finalize-section-missing',
+            'implementation.md > Start here > First action',
+            'Start here',
+            'First action',
+            'finalizer',
+        ),
+        id='start-here-subsection-missing',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({EXIT_COMMAND_LINE: '- every check command passes'}), brief_phase()
+        ),
+        (
+            'implementation-finalize-section-missing',
+            'implementation.md > Exit criteria',
+            'Exit criteria',
+            'command',
+            'finalizer',
+        ),
+        id='exit-criteria-without-a-command',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({'- **Context:** SD-1, G-2, ': '- **Context:** SD-1, G-9, '}), brief_phase()
+        ),
+        ('dangling-reference', 'implementation.md > Step 2 > Context', 'G-9', '', 'finalizer'),
+        id='dangling-in-context',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({'- **Tests to turn green:** T-3': '- **Tests to turn green:** T-3, T-9'}), brief_phase()
+        ),
+        ('dangling-reference', 'implementation.md > Step 2 > Tests to turn green', 'T-9', '', 'finalizer'),
+        id='dangling-in-tests-to-turn-green',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan(
+                {'- **Goal:** Query results render as a list.': '- **Goal:** Query results render as a list, per SD-9.'}
+            ),
+            brief_phase(),
+        ),
+        ('dangling-reference', 'implementation.md > Step 3 > Goal', 'SD-9', '', 'architect'),
+        id='phase-3-family-in-a-draft-field',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({'- **Context:** SD-1, G-1, ': '- **Context:** SD-9, G-1, '}), brief_phase()
+        ),
+        ('dangling-reference', 'implementation.md > Step 1 > Context', 'SD-9', '', 'finalizer'),
+        id='phase-3-family-in-a-finalize-field',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(brief_plan({'Guardrails; SD-1;': 'Guardrails; SD-9;'}), brief_phase()),
+        ('dangling-reference', 'implementation.md > Start here > Required reading', 'SD-9', '', 'finalizer'),
+        id='phase-3-family-in-start-here',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({'every SC-n holds as its measure states': 'every SC-n holds as its measure states, per SD-9'}),
+            brief_phase(),
+        ),
+        ('dangling-reference', 'implementation.md > Exit criteria', 'SD-9', '', 'finalizer'),
+        id='phase-3-family-in-exit-criteria',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({'before anything builds on it.': 'before anything builds on it, per SD-9.'}), brief_phase()
+        ),
+        ('dangling-reference', 'implementation.md > Build Order > Staging', 'SD-9', '', 'architect'),
+        id='phase-3-family-in-staging',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            BRIEF_IMPLEMENTATION,
+            brief_phase({'Grounding': GROUNDING.replace('informs: Step 2, Step 3', 'informs: Step 2, Step 9')}),
+        ),
+        ('dangling-reference', 'Grounding', 'Step 9', '', 'finalizer'),
+        id='step-in-grounding',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            BRIEF_IMPLEMENTATION,
+            brief_phase(open_design_decisions=lines(OPEN_OD_003, '  - Affects: `<path to the cache module>`, Step 9')),
+        ),
+        ('dangling-reference', 'Design Decisions > Open Design Decisions', 'Step 9', '', 'architect'),
+        id='step-on-an-open-decision',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            BRIEF_IMPLEMENTATION,
+            brief_phase(
+                module_layout=lines(BRIEF_FIELDS['module_layout'], f'- `{EXPORT_PATH}` — owns exports'),
+                skeleton_index=lines(
+                    BRIEF_FIELDS['skeleton_index'], f'- `{EXPORT_PATH}` :: Exporter.write(rows: Rows) -> Report'
+                ),
+            ),
+        ),
+        ('seam-path-not-in-any-step', 'implementation.md > Build Order > Steps', EXPORT_PATH, '', 'architect'),
+        id='seam-path-not-in-any-step',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            BRIEF_IMPLEMENTATION, brief_phase(test_list=lines(BRIEF_FIELDS['test_list'], f'{EVICTION_ENTRY} — T-5'))
+        ),
+        (
+            'test-not-in-any-step',
+            'implementation.md > Build Order > Steps > Tests to turn green',
+            'T-5',
+            '',
+            'finalizer',
+        ),
+        id='test-not-in-any-step',
+    ),
+    pytest.param(
+        lambda: check_implementation_structure(
+            brief_plan({STEP_2_ITEM_BRIEF: '- [ ] Add the cache layer (Step 2) (verify: TODO)'}), brief_phase()
+        ),
+        (
+            'implementation-checklist-item-malformed',
+            'implementation.md > Checklist',
+            '- [ ] Add the cache layer (Step 2) (verify: TODO)',
+            'verify',
+            'architect',
+        ),
+        id='checklist-placeholder',
+    ),
+]
+
+
+@pytest.mark.parametrize(('findings_of', 'row'), LOCATED_FINDINGS)
+def test_every_finding_is_located_where_its_owner_is_computed_from(
+    findings_of: Callable[[], list[StructuralFinding]], row: LocatedRow
+) -> None:
+    assert located(findings_of()) == [row]
+
+
+# --- Phase 4, Scope 5 "Cited paths": paths the host verifies ------------------------------------
+
+
+GROUNDING_WITH_PATHS = lines(
+    '### Build on',
+    '- `src/query/service.unit` — extend: route queries through the cache — informs: Step 1',
+    '### Leave alone',
+    '- `src/query/legacy.unit` — other teams still call it',
+    '### Exemplars',
+    '- `src/orders/cache.unit` — imitate for read-through caching — informs: Step 2',
+    '### Conventions',
+    '- `docs/contributing.md` — governs naming and layout',
+    '### Research to read',
+    '- `.best-practices/<file>.md` — informs: SD-2, Step 2 — Source: RP-002',
+)
+
+
+def test_grounding_paths_are_returned_for_the_host_to_verify_with_their_subsection() -> None:
+    paths = extract_cited_paths(brief_phase({'Grounding': GROUNDING_WITH_PATHS}))
+
+    assert cited([path for path in paths if path.kind == CitedPathKind.GROUNDING]) == sorted(
+        [
+            ('src/query/service.unit', CitedPathKind.GROUNDING.value, 'Grounding > Build on'),
+            ('src/query/legacy.unit', CitedPathKind.GROUNDING.value, 'Grounding > Leave alone'),
+            ('src/orders/cache.unit', CitedPathKind.GROUNDING.value, 'Grounding > Exemplars'),
+            ('docs/contributing.md', CitedPathKind.GROUNDING.value, 'Grounding > Conventions'),
+        ]
+    )
+
+
+def test_each_step_files_path_is_returned_with_its_verb_and_step() -> None:
+    files = 'implementation.md > Step {} > Files'
+
+    assert cited(extract_implementation_paths(BRIEF_IMPLEMENTATION)) == sorted(
+        [
+            ('<path to the repository query module>', CitedPathKind.CREATE.value, files.format(1)),
+            ('<path to the query test file>', CitedPathKind.CREATE.value, files.format(1)),
+            ('<path to the service wiring module>', CitedPathKind.MODIFY.value, files.format(1)),
+            ('<path to the cache module>', CitedPathKind.CREATE.value, files.format(2)),
+            ('<path to the cache test file>', CitedPathKind.CREATE.value, files.format(2)),
+            ('<path to the result list component>', CitedPathKind.CREATE.value, files.format(3)),
+            ('<path to the result list test file>', CitedPathKind.CREATE.value, files.format(3)),
+        ]
+    )

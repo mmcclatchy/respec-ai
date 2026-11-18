@@ -320,3 +320,56 @@ def test_plan_and_roadmap_content_loss_ignores_extra_section_checks(
     )
 
     assert model_class.find_content_loss(markdown) == []
+
+
+# --- Phase-cooperative phase 4, B17: text between a mapped H2 and its first subsection ------------
+# docs/phase-cooperative/phase-4-agent-ready-brief.md, judgment call 6 and Scope 5. The parser drops
+# that text, and the base report does not see it, because no mapped field reads it.
+
+MAPPED_H2S = sorted({header_path[0] for header_path in Phase.HEADER_FIELD_MAPPING.values()} - {'Metadata'})
+NARRATIVE = 'A design narrative written straight under the heading.'
+
+
+def every_mapped_section() -> str:
+    subsections: dict[str, list[str]] = {}
+    for field_name, (h2, h3) in Phase.HEADER_FIELD_MAPPING.items():
+        if h2 != 'Metadata':
+            subsections.setdefault(h2, []).extend([f'### {h3}', f'Content of {field_name}.'])
+    sections = ['\n'.join([f'## {h2}', *body]) for h2, body in subsections.items()]
+    return '\n\n'.join(['# Phase: sample-phase', *sections]) + '\n'
+
+
+def test_a_document_holding_every_mapped_section_reports_no_loss() -> None:
+    assert Phase.find_content_loss(every_mapped_section()) == []
+
+
+@pytest.mark.parametrize('h2', MAPPED_H2S)
+def test_text_between_a_mapped_h2_and_its_first_subsection_is_reported(h2: str) -> None:
+    markdown = every_mapped_section().replace(f'## {h2}\n', f'## {h2}\n{NARRATIVE}\n', 1)
+    assert NARRATIVE in markdown
+    assert NARRATIVE not in Phase.parse_markdown(markdown).build_markdown()
+
+    assert reported_headings(Phase.find_content_loss(markdown)) == [h2]
+
+
+def test_blank_lines_between_a_mapped_h2_and_its_first_subsection_are_not_loss() -> None:
+    markdown = designed_phase().replace('## Design Shape\n', '## Design Shape\n\n\n')
+
+    assert Phase.find_content_loss(markdown) == []
+
+
+def test_text_before_the_first_subsection_of_an_extra_section_is_kept_and_not_reported() -> None:
+    body = '- Objective: post ledger entries → tests: T-1\n### Not covered by tests\n- None\n'
+    markdown = designed_phase(extra_sections=extra_section('Behaviors & Acceptance', body))
+
+    assert '- Objective: post ledger entries' in (Phase.parse_markdown(markdown).additional_sections or {}).get(
+        'Behaviors & Acceptance', ''
+    )
+    assert Phase.find_content_loss(markdown) == []
+
+
+def test_text_under_a_heading_mapped_on_its_own_is_that_fields_content_not_loss(markdown_builder: Callable) -> None:
+    markdown = markdown_builder(Plan, stakeholders='The product owner and support.\n### Escalation\nThe on-call lead.')
+    assert 'The product owner and support.' in Plan.parse_markdown(markdown).stakeholders
+
+    assert Plan.find_content_loss(markdown) == []

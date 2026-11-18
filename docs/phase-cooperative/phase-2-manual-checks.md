@@ -17,6 +17,13 @@ written so it can be run cold. Record every result in the place each section nam
 | P3.3 | A bare `---` in an extra section is a content-loss prompt, never a structural one | To run |
 | P3.4 | codex and opencode agents call `validate_document`, and the critic Globs `paths_to_verify` | To run. **Not blocking** for opencode, which is no longer used |
 | P3.5 | The tool description and a sample of findings read well | To run |
+| P4.1 | Three touchpoints, and no prompt between design approval and sign-off | To run |
+| P4.2 | Going back from sign-off and signing off again regenerates the finalizer's sections | To run |
+| P4.3 | `phase.md` holds no retired section, and `implementation.md` keeps its frozen formats | To run |
+| P4.4 | Frozen respec-code reads a phase-4 brief | To run |
+| P4.5 | Brief quality, judged against the spec's judgment calls 1-4 | To run |
+| P4.6 | A fresh session implements the brief with no guesses, in two languages without special support and one with a materializer | To run |
+| P4.7 | The finalizer on opencode and codex | To run. **Not blocking** for opencode, which is no longer used |
 
 ## 0. Setup (once)
 
@@ -409,3 +416,71 @@ with Module Layout, Skeleton Index and Test List), which any phase that reaches 
   - No `detail` names a programming language, framework or file extension.
 
   This is a judgment check. B9 (`tests/unit/utils/test_phase_structure.py`) is the machine check.
+
+## Phase 4: the agent-ready brief (run in the same session as M2 and Phase 3, before Teardown)
+
+These cover the phase 4 manual exit checks in `phase-4-agent-ready-brief.md`, under Exit criteria.
+Use the same `$LIVE` project and working-tree server from section 0, and a working-tree
+`respec-ai regenerate --force` first, so `.claude/agents/respec-phase-finalizer.md` exists. Record
+each result under its heading, with the date. Replace `<phase>` with the phase name you are running.
+
+- **P4.1 Touchpoints, and nothing between approval and sign-off.** Run
+  `/respec-phase p2-live-check <phase D>` to the end, answering only what it asks. Expected:
+  - At most three stopping stages (M2.1's count). Finalizing the brief and reviewing it are not
+    stages.
+  - After you choose "Approve the design", no prompt appears until the sign-off stage. The
+    transcript shows the finalizer engaged once, a structure check, and the brief critic engaged,
+    all without asking you anything.
+  - At sign-off you see the brief summary. Brief questions, if any, are asked inside the sign-off
+    stage, in one batch.
+
+- **P4.2 Go back and sign off again.** At sign-off choose "go back to design review" and ask for one
+  change (for example, one more Test List behavior). Approve the design again. Expected:
+  - The finalizer runs again. `phase.md`'s `## Grounding`, `## Behaviors & Acceptance` and
+    `## Guardrails`, and `implementation.md`'s `## Start here`, `## Exit criteria` and
+    `## Deviations`, mention the new behavior. None of them is left from the first pass.
+  - Still no prompt between approval and sign-off, and the touchpoint count over the whole run
+    stays at three plus the one extra design review you asked for.
+
+- **P4.3 No retired section, frozen formats kept.** Open the signed-off files. Expected:
+  - `phase.md` has none of the retired sections: `## System Design`, `## Implementation`, or the
+    headings `Architecture`, `Technology Stack`, `Functional Requirements`,
+    `Non-Functional Requirements`, `Development Plan`, `Testing Strategy` and `Integration Context`.
+    Run `grep -n -E '^#{2,4} (System Design|Implementation$|Architecture|Technology Stack|Functional Requirements|Non-Functional Requirements|Development Plan|Testing Strategy|Integration Context)' <phase.md>`.
+    It prints nothing.
+  - `## Grounding`, `## Delegation Bounds`, `## Behaviors & Acceptance` and `## Guardrails` appear in
+    that order.
+  - `implementation.md` keeps `#### Step N:` headings, `## Checklist` and `## Policy`.
+
+- **P4.4 Frozen readers still work.** In the same project run `/respec-code` on the signed-off
+  phase, and stop it after the planning steps. Expected:
+  - The `shape-settled` gate passes.
+  - The steps are found, so dispatch is not silently backend-only: the command lists one task per
+    `#### Step N:`.
+  - The coder reads the `## Checklist`.
+
+- **P4.5 Judge the brief.** Read `phase.md` and `implementation.md` as the implementer would.
+  Judgment calls 1-4 in the spec are the yardstick. Expected:
+  - Every path under `## Grounding` exists in the repository.
+  - `## Delegation Bounds` lines each name a seam, a module, a decision or a concrete condition.
+  - `## Behaviors & Acceptance` is a one-line-per-item map, not prose.
+  - Every step reads as executable from cold: goal, files, dependencies, verify command and done
+    condition are all concrete. No `<...>` placeholder remains, and no command was guessed.
+  - The brief is not much longer than the `docs/phase-refactor/phase-*.md` documents (7-18 KB).
+  - Cold-start questions asked at sign-off number at most four. Record the count.
+
+- **P4.6 The effort-level check, two languages.** Create two scratch projects in languages
+  respec-ai has no special support for (for example Go and Elixir), and a third in a language that
+  has a materializer. In each, configure `[commands]` in the standards TOML first, then run one real
+  phase to sign-off. Expected, per project:
+  - The handoff at the end of the run shows the Claude Code delegation instruction.
+  - Paste that instruction into a fresh Claude Code session in the project. It implements the steps
+    in dependency order, runs each step's Verify command, and asks no clarifying question.
+  - Record every point where it had to guess in
+    [deferred-issues.md](deferred-issues.md), or fix the prompts and rerun.
+
+- **P4.7 codex and opencode.** Run one phase on codex. In the transcripts confirm that the
+  orchestrator invokes `respec-phase-finalizer-agent`, and that the finalizer writes
+  `implementation.md`. The handoff on codex has no delegation instruction (Claude Code only).
+  - **Not blocking for opencode.** It is no longer used. If you run it, record the same result;
+    if not, record "not run, not blocking".

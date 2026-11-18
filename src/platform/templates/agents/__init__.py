@@ -12,6 +12,7 @@ from .frontend_reviewer import generate_frontend_reviewer_template
 from .infrastructure_reviewer import generate_infrastructure_reviewer_template
 from .phase_architect import generate_phase_architect_template
 from .phase_critic import generate_phase_critic_template
+from .phase_finalizer import generate_phase_finalizer_template
 from .plan_analyst import generate_plan_analyst_template
 from .plan_critic import generate_plan_critic_template
 from .roadmap import generate_roadmap_template
@@ -30,6 +31,7 @@ __all__ = [
     'generate_plan_critic_template',
     'generate_phase_architect_template',
     'generate_phase_critic_template',
+    'generate_phase_finalizer_template',
     'generate_coder_template',
     'generate_frontend_coder_template',
     'generate_analyst_critic_template',

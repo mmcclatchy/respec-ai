@@ -21,7 +21,7 @@ If you have just picked this up with no prior context, this section is your entr
    not obvious, because respec-ai generates prompts and prompts resist ordinary behavioral testing.
    It is not duplicated here: same codebase, same conventions.
 3. `docs/phase-cooperative/findings.md`: skim it now, and come back whenever a phase document
-   asserts something surprising about the codebase. Phase documents cite findings as **F1**–**F39**
+   asserts something surprising about the codebase. Phase documents cite findings as **F1**–**F40**
    rather than restating the evidence.
 4. `docs/phase-cooperative/decisions.md`: read it before questioning any design choice. Three
    decisions of the previous effort and one recorded contract are revised there, and the reasoning
@@ -227,7 +227,7 @@ commit as the code that needs them, so until a phase lands, this section still s
 text. Where this section and the phase document you are implementing disagree about that phase's
 own work, the phase document describes the target. Phase 2's amendments (its work item 13) landed
 here on 2026-11-16. Phase 3's amendments (its work item 10) landed here on
-2026-11-16.
+2026-11-16. Phase 4's amendments (its Scope 0) landed here on 2026-11-17.
 
 ### Agents and modes
 
@@ -235,12 +235,21 @@ here on 2026-11-16. Phase 3's amendments (its work item 10) landed here on
 |---|---|---|---|
 | `respec-phase-architect` | `explore`, `draft`, `revise` | `phase.md` content via `update_document`; exploration notes via `store_current_analysis`; the `implementation.md` draft via a `Write` grant scoped to `.respec-ai/plans/*/phases/*/implementation.md` | `store_current_analysis`, `get_previous_analysis` (today only plan-workflow agents hold them: `src/platform/models/plan.py:19-20`); `validate_document` (phase 3: the self-check on the stored phase) |
 | `respec-phase-critic` | `review` | critic feedback via the existing store tool | `validate_document` (phase 3: relays `implementation_findings` and reads `paths_to_verify`; still read-only, with no Write, Edit, `update_document` or `store_document`; on opencode and codex this is also stated in the prompt, F14) |
-| `respec-phase-finalizer` (phase 4) | — (one job) | `phase.md` via `update_document`; `implementation.md` via the same scoped `Write` | as the architect |
+| `respec-phase-finalizer` (phase 4) | — (one job; its report says `mode: finalize`) | `phase.md` via `update_document`; `implementation.md` via the same scoped `Write`, declared in `PhaseFinalizerAgentTools.builtin_tools` as the architect's is in `PhaseArchitectAgentTools.builtin_tools` | `get_previous_analysis` (it reads the architect's exploration notes and writes none, so it gets no `store_current_analysis`: least privilege, F14); `validate_document` (its self-check, the way phase 3 has the architect check itself) |
 
 - **Inputs.** Agents are invoked with their mode, IDs (`loop_id`, `plan_name`, `phase_name`) and the
-  runtime config context (`project_config_context_markdown`). The critic also receives
-  `review_round` (see "Critic findings"). Never pass conversation text, the briefing, or document
-  bodies.
+  runtime config context (`project_config_context_markdown`). Never pass conversation text, the
+  briefing, or document bodies.
+  - **The critic** also receives `review_round` (see "Critic findings") and, on every invocation,
+    `review_target`: `design` or `brief` (phase 4). Phase 2's `invoke_critic_review` passes
+    `design`. `phase_mode` stays `review`; `review_target` is not a new mode (decisions.md, "Kept
+    from the previous effort"). On `review_target=brief` the critic also receives
+    `phase_file_path`, the orchestrator's `PHASE_FILE_PATH`, for its reviewed-sections check.
+  - **The finalizer** has no mode. It receives the IDs, `project_config_context_markdown` and
+    `phase_file_path` (the approved copy every restore of a reviewed section reads; declared under its
+    own `### Approved Copy Inputs` heading), and builds `.respec-ai/plans/{PLAN_NAME}/phases/{PHASE_NAME}/implementation.md` exactly
+    as the architect does. On the markdown platform that is the phase file's sibling, the rule
+    frozen respec-code uses (`src/platform/templates/commands/code_command.py:230-231`).
 - **Reports never carry document bodies.** `implementation.md` has no MCP home (F29), which is why
   the agents write it to disk themselves. The grant was decided in phase 2 and is recorded with its
   caveat in decisions.md ("The writing agents put the `implementation.md` draft on disk
@@ -300,7 +309,9 @@ in `phase_architect.py`), plus `Affects`:
   use `CQ-NNN`. They are asked from its report, and the critic also stores each one in its
   feedback's `### Key Issues` (`- [judgment] [<Marker>] CQ-NNN: …`), because that stored feedback is
   its only memory between rounds. A new CQ takes the next number above every `CQ-NNN` in the
-  previous reviews and in the SDs, so a finding keeps its ID across rounds.
+  previous reviews and in the SDs, so a finding keeps its ID across rounds. The finalizer's
+  entries (phase 4) use `OD-NNN`, numbered above every OD and SD number in the document. Like `CQ`
+  entries, they exist only in its report: the finalizer never edits `## Design Decisions`.
 - **Options.** `Option C:` is optional; there is no fourth option. That keeps every question
   answerable in one prompt that also offers the "accept the recommended default for all remaining"
   exit.
@@ -312,7 +323,7 @@ in `phase_architect.py`), plus `Affects`:
 **Settled decision entry**, written by the orchestrator only:
 
 ```markdown
-- SD-007 | source=user | supersedes=OD-003 | decision=<chosen option> | rationale=<user's reason, or the option's trade-off> | rejected=<the other option(s)> | binding=yes
+- SD-007 | source=user | supersedes=OD-003 | decision=<chosen option> | rationale=<user's reason, or the option's trade-off> | rejected=<the other option(s)> | affects=<the settled entry's Affects: line, verbatim> | binding=yes
 ```
 
 - **`source` values:**
@@ -325,9 +336,10 @@ in `phase_architect.py`), plus `Affects`:
 
   The earlier `user-menu` and `user-override` sources are retired in favor of `user`.
 - **Fields per source.** `user` carries `supersedes` and `rejected` when it settles an `OD-NNN`, a
-  `CQ-NNN` or the unresolved checks; an answer to a sign-off skeleton-conflict prompt settles no
-  ID and has no `supersedes`. `user-edit` carries `section=<H2 > H3>` and neither `supersedes` nor
-  `rejected`. `materializer` carries neither.
+  `CQ-NNN` or the unresolved checks, plus `affects` when it settles an OD or a CQ (below); an
+  answer to a sign-off skeleton-conflict prompt settles no ID and has no `supersedes`. `user-edit`
+  carries `section=<H2 > H3>` and neither `supersedes` nor `rejected`. `materializer` carries
+  neither.
 - **Required fields per source** (`validate_document` reports a missing or empty one; `part` names
   it):
 
@@ -355,6 +367,15 @@ in `phase_architect.py`), plus `Affects`:
   `unresolved-checks`: the user accepted the mechanical findings two automatic repairs did not
   resolve, recorded as `decision=accept as-is: <each finding verbatim>`. The critic never raises an
   accepted finding again.
+- **`affects`** (phase 4) records what the decision binds, so that survives the OD leaving
+  `### Open Design Decisions`. Every writer of an SD whose `supersedes=` names an OD or a CQ
+  (Steps 6, 10 and 11) writes it after `rejected=`, copied verbatim from the settled entry's
+  `Affects:` line when it has one. It is absent otherwise: `source=user-edit`,
+  `source=implementation`, `source=materializer` and `supersedes=unresolved-checks` have no
+  `Affects:` line to copy. `validate_document` never requires it, because it cannot tell whether
+  the OD had an `Affects:` line, so it is not in the table above; phase 4's B14 pins the writers.
+  The segment rules treat `affects` as a known key (phase 4 Scope 5), so its segment never runs
+  into the `rejected` value. Nothing inside an SD entry is checked as a reference.
 - **IDs.** An SD takes the next number above every `SD-NNN` already in the document, three digits.
   It never reuses the number of the OD or CQ it settles.
 - **Placement.** SD entries go under `### Settled Design Decisions`, and the settled OD is removed
@@ -478,11 +499,14 @@ Phases 2 and 3 work on the current sections:
   `bp-pipeline`'s `BP_PIPELINE_COMPLETE. Output: <path>` signal and confirming the file exists.
 
 Phase 4:
-- **The agent-facing copy** moves to `## Grounding > ### Research to read`. Each document there is
-  tagged with the decision, seam and step IDs it informs.
-- **The ledger stays in `### Research Requirements`.** The orchestrator keeps writing the `- Read:`
-  lines there as well, from the same validated list. That costs nothing, keeps frozen readers fed
-  (F34), and lets phase 4's checks flag any disagreement between the two copies.
+- **The orchestrator writes only the ledger** in `### Research Requirements`, exactly as in phases
+  2 and 3. The ledger keeps frozen readers fed (F34).
+- **The finalizer writes the agent-facing copy** in `## Grounding > ### Research to read`, from the
+  ledger's validated `- Read:` lines, tagging each document with the decision, seam and step IDs it
+  informs. Step tags exist only once the steps are finalized, and the finalizer owns
+  `## Grounding`.
+- **The two copies never disagree once `## Grounding` exists.** Phase 4's
+  `research-copies-disagree` check compares their path sets.
 
 ### Critic findings
 
@@ -498,6 +522,12 @@ Phase 4:
   - a frontend presence class
   - a step file or Test List entry that the structure does not cover (phase 2's coverage checks)
   - a step that a cold-start agent cannot execute because something it cites does not exist (phase 4)
+  - phase 4's brief-review markers: `Grounding Path Invalid`, `Step File Verb Invalid`,
+    `Reviewed Section Changed`, `Cold Start Gap` (an answer that exists but the step does not
+    cite) and `Success Criterion Missing` (an objective, scope item or deliverable with no SC-n).
+    A brief-review finding is `[mechanical]` only when the finalizer may make its fix. A gap only
+    a change to a step's `Goal`, `Files` paths or `Depends on`, or to a reviewed section, would
+    close is advisory, and going back to design review closes it.
 
   The phase-document structural defects (a dangling ID, a seam path missing from Module Layout, a
   malformed decision entry, a Test List entry with no behavior, and the rest of the
@@ -515,12 +545,30 @@ Phase 4:
   The orchestrator allows **at most two automatic repair rounds** per review. Anything still open
   after round two goes to the user as one "unresolved checks" decision: send back with direction,
   or accept as-is, recorded as an SD. It is never dropped silently and never loops forever.
+- **On `review_target=brief`** (phase 4, the review of the finalized brief in Step 10.7):
+  - `[mechanical]` findings, and open `structural_findings` from the Step 10.7 gate, are repaired
+    by a fresh **finalizer** invocation, never by the architect's `revise`. They share one
+    two-round budget, which resets when Step 10.7 starts.
+  - `[judgment]` findings are asked at sign-off.
+  - The brief review re-opens no design judgment: the user settled those at design review.
+  - Structural repair in Step 10.7 goes to the finalizer; Step 9's gate is unchanged. Ownership is
+    computed (`FindingOwner.FINALIZER`, see "Brief format (phase 4)").
+- **The review target is in the stored feedback.** The critic's `- **Assessment Summary**:` value
+  starts with `Review target: design` or `Review target: brief`, followed by a dash and the
+  summary. `get_feedback` shows that value as the first line under each
+  `## Iteration N - Score: X` heading, so the finalizer acts only on brief findings and the
+  architect only on design findings. `get_feedback` is otherwise untagged (F31): it never renders
+  the detailed feedback, and a line before the `# Critic Feedback:` heading is dropped on parse
+  (probe, 2026-11-17).
 - **`[judgment]` findings.** These are trade-offs where a reasonable designer could choose
   otherwise. Examples:
   - an unjustified seam
   - an under-surfaced decision
   - non-divergent options
   - plan-constraint fit
+  - on the brief review, a choice nobody made (`Cold Start Decision`) and a criterion with no
+    target value (`Unmeasured Success Criterion`). Their Option A is "leave it to the
+    implementer's discretion (recorded under Delegation Bounds)".
 
   They go in `### Key Issues`, and also in the report's `## Decisions needed` as `CQ-NNN` entries.
   Option A is "keep as designed"; Option B is the critic's alternative. They never block the loop.
@@ -600,6 +648,11 @@ Rules for every TUI:
   inside a fenced block (F27).
 - **No new H3s under mapped H2s.** New H3s under mapped H2s (`Overview`, `System Design`,
   `Design Shape`, `Design Decisions`, `Implementation`, `Additional Details`) are dropped (F28).
+- **No text between a mapped H2 and its first H3.** It is dropped on parse **and not reported by
+  `find_content_loss`**: probed on 2026-11-13 with a narrative line directly under
+  `## Design Shape`, and again on 2026-11-17 after phase 3's override landed, with the same result.
+  So the design narrative lives in `#### Design Narrative`, and phase 4 adds this case to
+  `Phase.find_content_loss` ([F40](findings.md)).
 - **Frozen-reader compatibility.** Every phase keeps emitting the following, because frozen
   respec-code and respec-patch parse them (F33, F34):
   - `phase.md`:
@@ -631,14 +684,118 @@ Rules for every TUI:
         decision, and phase 3's structural checks accept the marker as a valid verify value.
     - `## Policy` (`### Execution Intent Policy`, `### Deferred Risk Register`)
 
-  Phase 4's "Start here" and "Exit criteria" sections are **added** as extra H2s; they do not
-  replace these.
+  Phase 4's `## Start here`, `## Exit criteria` and `## Deviations` sections are **added** as extra
+  H2s; they do not replace these.
+
+### Brief format (phase 4)
+
+The writing agents are shown these layouts through `BRIEF_SECTION_PLACEHOLDERS` and
+`IMPLEMENTATION_BRIEF_EXAMPLE` (`src/platform/templates/phase_contract_grammar.py`). The four H2
+names come from `Phase.BRIEF_SECTIONS` (`src/models/phase.py`). Templates and checks import these;
+none restates the layout in its own words.
+
+**`phase.md` brief sections.** All four are raw markdown in `additional_sections` (F26), and
+`build_markdown` renders them in this order, ahead of any other additional section:
+
+| H2 | Required H3s | Written by |
+|---|---|---|
+| `## Grounding` | `### Build on`, `### Leave alone`, `### Exemplars`, `### Conventions`, `### Research to read` | finalizer |
+| `## Delegation Bounds` | `### Out of scope`, `### Implementer's discretion`, `### Escalate if` | architect |
+| `## Behaviors & Acceptance` | one traceability line per objective, scope item and deliverable, then `### Not covered by tests` | finalizer |
+| `## Guardrails` | `### Invariants`, `### Error policy`, `### Security and performance`, `### Deviation protocol` | finalizer |
+
+- Every required H3 is present, and an empty one holds exactly `- None`. A brief H2 with no content
+  is dropped on parse, so "empty" is still `- None`.
+- Every step reference is a `Step N` token (`informs: Step 2, Step 3`), never `Steps: 2, 3`.
+- `## Behaviors & Acceptance` maps each item to its tests and criteria; it never defines a criterion
+  (one home per fact).
+
+**Typed homes kept**, because code or frozen readers parse them (F33, F34):
+
+- `### Success Criteria`: `- SC-<n>: <measurable outcome> — measure: <a [commands] value or an
+  observable check>`, together covering every objective, scope item and deliverable.
+- `### Test List`: `` - `<test path>::<observable behavior>` — T-<n> ``, the ID after the closing
+  backtick, because `parse_test_list` reads only the backticked text.
+- `### Skeleton Index`: unchanged, with no IDs. A seam is cited as `` `<path>` :: <Owner>.<member> ``.
+- `### Settled Design Decisions`: canonical SD entries with `rejected=` and `affects=`.
+- `### Design Shape - Additional Sections`: `#### Design Narrative` first, then `#### UX Contract`
+  when the phase has a user-facing UI.
+- `### Research Requirements` (the ledger) and `### Implementation Plan References`: unchanged.
+- **Retired from generation:** Architecture, Technology Stack, System Design - Additional Sections,
+  Functional and Non-Functional Requirements, Development Plan, Testing Strategy, Implementation -
+  Additional Sections and Integration Context. The model fields stay, so a hand-written one still
+  round-trips; removing them is a follow-up migration.
+
+**IDs.** Phase 4 adds these to the OD, SD, CQ, RP and FLOW families:
+
+| ID | Defined by |
+|---|---|
+| `T-<n>` | a Test List entry's trailing `— T-<n>` |
+| `SC-<n>` | a column-0 `- SC-<n>:` in Success Criteria |
+| `G-<n>` | a column-0 `- G-<n>:` in Guardrails |
+| `Step N` | an `implementation.md` `#### Step N:` heading |
+| `DEV-<n>` | a line under `implementation.md`'s `## Deviations` |
+
+An existing T, SC or G number is never renumbered, and a removed one's number is never reused; gaps
+are allowed. Steps stay contiguous from 1, and only the architect's `revise` renumbers them,
+updating every reference in both files.
+
+**`implementation.md`**, with its H2s in this order: `## Start here` (`### Prerequisites`,
+`### Required reading`, `### First action`), `## Build Order` (`### Staging`, `### Steps`),
+`## Policy` (`### Execution Intent Policy`, `### Deferred Risk Register`), `## Checklist`,
+`## Exit criteria`, `## Deviations`.
+
+- **Step fields.** Each field is one bullet that starts with its bold label, in this order:
+  `- **Goal:**`, `- **Context:**`, `- **Files:**`, `- **Depends on:**`,
+  `- **Tests to turn green:**`, `- **Verify:**`, `- **Done when:**`. A step holds exactly the three
+  draft fields (`Goal`, `Files`, `Depends on`) or all seven. No `##` or `###` line appears inside a
+  step.
+- **Field values.** `Files` is `create` and `modify` items separated by `;`, each naming one
+  backticked path; respec-code dispatches each step by these paths. `Depends on` is `none` or
+  `Step N` items. `Tests to turn green` is T-IDs, or `none — <reason>`. `Verify` holds one
+  backticked command per language the step touches, the `[commands].test` value or an SD, or
+  phase 1's `ask user` marker.
+- **`## Deviations`** holds `- DEV-<n> | Step <N> | expected: … | found: … | action: …` lines from
+  implementing agents, or `- None`.
+
+**Who writes what.** Everything the user reviews at design review is the architect's. Everything
+derived from the approved design afterwards is the finalizer's.
+
+- **The architect**, in `draft` and `revise`: `## Delegation Bounds`, `#### Design Narrative`, the
+  Test List's `T-<n>` IDs and the `SC-<n>:` Success Criteria; in `implementation.md`, the draft
+  fields, `### Staging`, `## Policy` and `## Checklist`. A `revise` on a document that holds the
+  finalizer's three H2s removes them, so the next finalize is a full pass.
+- **The finalizer**, in Step 10.7: `## Grounding`, `## Behaviors & Acceptance` and `## Guardrails`.
+  In Success Criteria it only completes a missing `measure:` and appends an `SC-<n>` for an
+  uncovered objective, scope item or deliverable. In `implementation.md` it writes the four other
+  step fields, `## Start here`, `## Exit criteria` and `## Deviations` (`- None` when empty), adds
+  a Checklist item for any step without one, and sets each item's `(verify: …)` to its step's
+  `Verify`. It reproduces every section the user reviewed verbatim.
+
+**Finding ownership.** `FindingOwner` gains `finalizer`, computed and never guessed:
+
+- A `phase.md` finding is `finalizer`-owned when the first segment of its `location` (the H2) is
+  `Grounding`, `Behaviors & Acceptance` or `Guardrails`, or its `check` is
+  `success-criterion-malformed`, or it is located in `Additional Details > Success Criteria` while any
+  of the finalizer's three H2s is present (the finalizer appends criteria and completes measures
+  there; before finalize the architect owns them). An additional section named `Grounding Notes` stays the
+  architect's.
+- An `implementation.md` finding is `finalizer`-owned when its `location` names a finalize-only
+  section or field: `Start here`, `Exit criteria`, `Deviations`, `Context`, `Tests to turn green`,
+  `Verify` or `Done when`.
+- Phase 3's `orchestrator` rules are unchanged and take precedence. Every other finding stays
+  `architect`.
+- **Routing.** Step 9's gate acts only on `architect` and `orchestrator` findings, the architect's
+  self-check fixes only `architect` findings, and the design-review critic relays only `architect`
+  implementation findings, so a `finalizer` finding never reaches the architect. In Step 10.7,
+  `architect` and `finalizer` findings go to the finalizer (an `architect` finding there means a
+  section it reproduces has drifted), and `orchestrator` findings go to `STRUCTURAL_LEFTOVERS`.
 
 ---
 
 ## Supporting documents
 
-- **[findings.md](findings.md):** 39 verified findings with `file:line` evidence. This is the
+- **[findings.md](findings.md):** 40 verified findings with `file:line` evidence. This is the
   perishable asset. Treat it as the reference whenever a phase document seems to assume something
   surprising.
 - **[decisions.md](decisions.md):** the decision log, with rejected alternatives and rationale. It

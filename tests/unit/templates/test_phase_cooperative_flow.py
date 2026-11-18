@@ -38,8 +38,13 @@ from src.platform.template_helpers import (
     create_phase_architect_agent_tools,
     create_phase_command_tools,
     create_phase_critic_agent_tools,
+    create_phase_finalizer_agent_tools,
 )
-from src.platform.templates.agents import generate_phase_architect_template, generate_phase_critic_template
+from src.platform.templates.agents import (
+    generate_phase_architect_template,
+    generate_phase_critic_template,
+    generate_phase_finalizer_template,
+)
 from src.platform.templates.agents.phase_architect import technical_phase_template
 from src.platform.templates.commands import generate_phase_command_template
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, OpenCodeAdapter
@@ -53,7 +58,8 @@ _TUIS = ('claude-code', 'opencode', 'codex')
 STATUS_RESULT_LINE = '- result: complete | needs-user | failed'
 ARCHITECT = 'respec-phase-architect'
 CRITIC = 'respec-phase-critic'
-AGENT_MODES = {ARCHITECT: 'explore | draft | revise', CRITIC: 'review'}
+FINALIZER = 'respec-phase-finalizer'
+AGENT_MODES = {ARCHITECT: 'explore | draft | revise', CRITIC: 'review', FINALIZER: 'finalize'}
 
 
 def _adapter(tui: str) -> TuiAdapter:
@@ -72,7 +78,11 @@ def _critic(tui: str) -> str:
     return generate_phase_critic_template(create_phase_critic_agent_tools(_adapter(tui)))
 
 
-_RENDERERS: dict[str, Callable[[str], str]] = {ARCHITECT: _architect, CRITIC: _critic}
+def _finalizer(tui: str) -> str:
+    return generate_phase_finalizer_template(create_phase_finalizer_agent_tools(_adapter(tui)))
+
+
+_RENDERERS: dict[str, Callable[[str], str]] = {ARCHITECT: _architect, CRITIC: _critic, FINALIZER: _finalizer}
 
 _INVOCATION_INPUT = re.compile(r'^\s*-\s*(?P<name>\w+):', re.MULTILINE)
 
@@ -118,7 +128,7 @@ def _after_tasks(template: str) -> str:
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC])
+@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC, FINALIZER])
 def test_every_phase_subagent_ends_with_the_four_report_sections_in_order(agent: str, tui: str) -> None:
     block = template_contract(_RENDERERS[agent](tui)).report_format()
 
@@ -127,7 +137,7 @@ def test_every_phase_subagent_ends_with_the_four_report_sections_in_order(agent:
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC])
+@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC, FINALIZER])
 def test_the_report_status_carries_the_result_the_orchestrator_branches_on(agent: str, tui: str) -> None:
     status = template_contract(_RENDERERS[agent](tui)).report_section('## Status')
 
@@ -136,7 +146,7 @@ def test_the_report_status_carries_the_result_the_orchestrator_branches_on(agent
     assert status[1] == f'- mode: {AGENT_MODES[agent]}'
 
 
-@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC])
+@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC, FINALIZER])
 def test_an_empty_report_section_is_written_as_a_single_none_bullet(agent: str) -> None:
     template = _RENDERERS[agent]('claude-code')
 
@@ -144,7 +154,7 @@ def test_an_empty_report_section_is_written_as_a_single_none_bullet(agent: str) 
     assert '`- None`' in template
 
 
-@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC])
+@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC, FINALIZER])
 def test_a_report_with_no_four_sections_is_not_mistaken_for_one(agent: str) -> None:
     template = _RENDERERS[agent]('claude-code')
     without_status = '\n'.join(line for line in template.split('\n') if line.strip() != '## Status')
@@ -156,25 +166,30 @@ def test_a_report_with_no_four_sections_is_not_mistaken_for_one(agent: str) -> N
 
 @pytest.mark.parametrize('tui', _TUIS)
 @pytest.mark.parametrize(
-    ('agent', 'invocation_field'),
+    ('agent', 'invocation_field', 'conditional_headings'),
     [
-        (ARCHITECT, 'invoke_architect_explore'),
-        (ARCHITECT, 'invoke_architect_draft'),
-        (ARCHITECT, 'invoke_architect_revise'),
-        (CRITIC, 'invoke_critic_review'),
+        (ARCHITECT, 'invoke_architect_explore', ()),
+        (ARCHITECT, 'invoke_architect_draft', ()),
+        (ARCHITECT, 'invoke_architect_revise', ()),
+        (CRITIC, 'invoke_critic_review', ()),
+        (CRITIC, 'invoke_critic_brief_review', ('### Brief Review Inputs',)),
+        (FINALIZER, 'invoke_finalizer', ('### Approved Copy Inputs',)),
     ],
 )
 def test_every_input_the_orchestrator_passes_is_one_the_agent_declares(
-    agent: str, invocation_field: str, tui: str
+    agent: str, invocation_field: str, conditional_headings: tuple[str, ...], tui: str
 ) -> None:
     # README "Agents and modes": the relay passes mode, IDs and config context (plus the critic's
-    # review_round). An input the agent does not declare is dropped; one it declares but never
-    # receives is read as empty.
+    # review_round and review_target). An input the agent does not declare is dropped; one it
+    # declares but never receives is read as empty. Phase 4: an input passed on one invocation
+    # only (the critic's and the finalizer's phase_file_path) is declared under its own heading,
+    # which only that invocation's row names.
     invocation = getattr(_phase_command_tools(tui), invocation_field)
     passed = {match.group('name') for match in _INVOCATION_INPUT.finditer(invocation)}
 
     contract = template_contract(_RENDERERS[agent](tui))
-    declared = contract.declared_inputs('### Scalar Inputs') | contract.declared_inputs('### Grouped Markdown Inputs')
+    headings = ('### Scalar Inputs', '### Grouped Markdown Inputs', *conditional_headings)
+    declared = set().union(*(contract.declared_inputs(heading) for heading in headings))
 
     assert passed == declared
 
@@ -237,14 +252,14 @@ def test_every_architect_engagement_stores_its_complete_notes(tui: str) -> None:
 
 
 @pytest.mark.parametrize('tui', _TUIS)
-@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC])
+@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC, FINALIZER])
 def test_no_phase_subagent_sets_tests_or_branches_on_a_stage_marker_value(agent: str, tui: str) -> None:
     template = _RENDERERS[agent](tui)
 
     assert stage_marker_values_outside_the_example(template, _embedded_example(agent)) == {}
 
 
-@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC])
+@pytest.mark.parametrize('agent', [ARCHITECT, CRITIC, FINALIZER])
 def test_the_stage_marker_check_fires_on_an_instruction_that_sets_the_marker(agent: str) -> None:
     template = _RENDERERS[agent]('claude-code') + '\nSet `### Shape Gate` to `shape-proposed`.\n'
 

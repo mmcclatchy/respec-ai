@@ -12,12 +12,18 @@ from collections import defaultdict
 from functools import cache
 
 import pytest
+from template_contract import template_contract
 
 from src.platform.platform_selector import PlatformType
 from src.platform.standards_config import build_language_defaults
 from src.platform.template_coordinator import TemplateCoordinator
 from src.platform.template_generator import _get_agent_specs
-from src.platform.templates.phase_contract_grammar import SKELETON_INDEX_PLACEHOLDER, TEST_LIST_PLACEHOLDER
+from src.platform.templates.phase_contract_grammar import (
+    BRIEF_SECTION_PLACEHOLDERS,
+    IMPLEMENTATION_BRIEF_EXAMPLE,
+    SKELETON_INDEX_PLACEHOLDER,
+    TEST_LIST_PLACEHOLDER,
+)
 from src.platform.tool_enums import RespecAICommand
 from src.platform.tui_adapters import ClaudeCodeAdapter, CodexAdapter, OpenCodeAdapter
 from src.platform.tui_adapters.base import TuiAdapter
@@ -51,8 +57,11 @@ RENDER_TARGETS = tuple((tui, platform) for tui in TUIS for platform in PlatformT
 PHASE_COMMAND = RespecAICommand.PHASE.value
 PHASE_ARCHITECT = 'respec-phase-architect'
 GUARDED_AGENT_PREFIX = 'respec-phase-'
+PHASE_FINALIZER = 'respec-phase-finalizer'
 CREATE_PHASE_AGENT = 'respec-create-phase'
-REQUIRED_TEMPLATES = frozenset({PHASE_COMMAND, PHASE_ARCHITECT, 'respec-phase-critic', CREATE_PHASE_AGENT})
+REQUIRED_TEMPLATES = frozenset(
+    {PHASE_COMMAND, PHASE_ARCHITECT, 'respec-phase-critic', PHASE_FINALIZER, CREATE_PHASE_AGENT}
+)
 
 
 def _adapter(tui: str) -> TuiAdapter:
@@ -108,6 +117,32 @@ def test_no_phase_workflow_artifact_names_a_language_framework_tool_extension_or
                 renders_by_hit[template][hit].add(_render_label(tui, platform))
 
     assert not renders_by_hit, _format_hits(renders_by_hit)
+
+
+@pytest.mark.parametrize(('tui', 'platform'), RENDER_TARGETS, ids=[_render_label(*target) for target in RENDER_TARGETS])
+def test_the_scan_covers_the_finalizer_and_the_brief_example_constants(tui: str, platform: PlatformType) -> None:
+    # Phase 4 B16: the finalizer and the example constants are newest, so this keeps them from
+    # silently falling out of the scan. block_sites compares stripped lines, because an agent
+    # embeds an example indented inside a fence.
+    rendered = render_phase_workflow(tui, platform)
+    agent_bodies = [text for name, text in rendered.items() if name != PHASE_COMMAND]
+    embedded = [IMPLEMENTATION_BRIEF_EXAMPLE, *BRIEF_SECTION_PLACEHOLDERS.values()]
+
+    assert PHASE_FINALIZER in rendered
+    assert [
+        text for text in embedded if not any(template_contract(body).block_sites(text) for body in agent_bodies)
+    ] == []
+
+
+@pytest.mark.parametrize('platform', list(PlatformType), ids=[platform.value for platform in PlatformType])
+def test_the_scan_covers_the_claude_code_handoff_instruction(platform: PlatformType) -> None:
+    # Phase 4 B16: the delegation instruction is adapter text that only the Claude Code command
+    # render carries, so the guard reaches it only through that render.
+    extension = ClaudeCodeAdapter().brief_handoff_extension
+    rendered = render_phase_workflow('claude-code', platform)
+
+    assert extension
+    assert template_contract(rendered[PHASE_COMMAND]).block_sites(extension)
 
 
 CATEGORY_SAMPLES = (

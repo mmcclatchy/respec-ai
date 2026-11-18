@@ -12,6 +12,7 @@ from src.utils.phase_structure import (
     check_phase_structure,
     drop_accepted_findings,
     extract_cited_paths,
+    extract_implementation_paths,
 )
 from src.utils.state_manager.base import FROZEN_DISCARD_WARNING, FROZEN_FIELD_DEFAULTS, FROZEN_PHASES_FIELDS
 
@@ -81,18 +82,20 @@ def with_structural_checks(
     implementation: list[StructuralFinding] = []
     accepted_implementation: list[str] = []
     implementation_skipped: list[str] = []
+    paths_to_verify = extract_cited_paths(phase)
     if implementation_markdown is None:
         implementation_skipped.append(IMPLEMENTATION_NOT_PASSED)
     else:
         implementation, accepted_implementation = drop_accepted_findings(
             check_implementation_structure(implementation_markdown, phase), phase
         )
+        paths_to_verify.extend(extract_implementation_paths(implementation_markdown))
 
     return response.model_copy(
         update={
             'structural_findings': structural,
             'implementation_findings': implementation,
-            'paths_to_verify': extract_cited_paths(phase),
+            'paths_to_verify': paths_to_verify,
             'skipped_checks': [
                 *implementation_skipped,
                 *accepted_structural,

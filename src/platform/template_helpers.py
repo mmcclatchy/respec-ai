@@ -20,6 +20,7 @@ from .models import (
     PhaseArchitectAgentTools,
     PhaseCommandTools,
     PhaseCriticAgentTools,
+    PhaseFinalizerAgentTools,
     PlanAnalystAgentTools,
     PlanCommandTools,
     PlanConversationCommandTools,
@@ -216,6 +217,7 @@ def create_phase_command_tools(
     builder = TemplateToolBuilder(adapter)
     builder.add_task_agent(RespecAIAgent.PHASE_ARCHITECT)
     builder.add_task_agent(RespecAIAgent.PHASE_CRITIC)
+    builder.add_task_agent(RespecAIAgent.PHASE_FINALIZER)
     builder.add_builtin_tool(BuiltInToolCapability.TASK, 'bp-pipeline')
     builder.add_optional_builtin_tool(BuiltInToolCapability.SEND_MESSAGE)
     _add_adapter_question_tool(builder, adapter)
@@ -225,8 +227,9 @@ def create_phase_command_tools(
         builder.add_respec_ai_tool(tool)
 
     builder.add_builtin_tool(BuiltInToolCapability.READ, '')
-    # Covers phase.md (the disk mirror after every orchestrator store, and the Step 10.5
-    # hand-edit write-back) and the two skeleton scratch files (Step 11.4: .skeleton-index.md,
+    # Covers phase.md (the disk mirror after every orchestrator store, the Step 10.5
+    # hand-edit write-back, and the approved design Step 10.7 writes before the finalizer runs)
+    # and the two skeleton scratch files (Step 11.4: .skeleton-index.md,
     # .test-list.md) -- never source paths; those are written create-only by the
     # `materialize-skeletons` CLI command via Bash.
     builder.add_builtin_tool(BuiltInToolCapability.WRITE, '.respec-ai/plans/*/phases/*/*.md')
@@ -276,8 +279,25 @@ def create_phase_command_tools(
             RespecAIAgent.PHASE_CRITIC.value,
             'review the phase design and its implementation plan without editing either, store the review, '
             'then return the review report',
-            _phase_agent_inputs('review', ('review_round', 'REVIEW_ROUND')),
+            _phase_agent_inputs('review', ('review_target', 'design'), ('review_round', 'REVIEW_ROUND')),
         ),
+        invoke_finalizer=adapter.render_agent_invocation(
+            RespecAIAgent.PHASE_FINALIZER.value,
+            'write the agent-ready brief and step delegation briefs for the approved design',
+            [*_PHASE_AGENT_IDS, ('phase_file_path', 'PHASE_FILE_PATH'), _PHASE_CONFIG_CONTEXT_INPUT],
+        ),
+        invoke_critic_brief_review=adapter.render_agent_invocation(
+            RespecAIAgent.PHASE_CRITIC.value,
+            'review the finalized brief and its implementation plan without editing either, store the review, '
+            'then return the review report',
+            _phase_agent_inputs(
+                'review',
+                ('review_target', 'brief'),
+                ('review_round', 'REVIEW_ROUND'),
+                ('phase_file_path', 'PHASE_FILE_PATH'),
+            ),
+        ),
+        brief_handoff_extension=adapter.brief_handoff_extension or '',
         invoke_bp_pipeline=adapter.render_external_agent_invocation(
             'bp-pipeline',
             'research and synthesize one user-approved research proposal into its output document',
@@ -866,6 +886,37 @@ def create_phase_critic_agent_tools(tui_adapter: TuiAdapter) -> PhaseCriticAgent
         ),
         store_feedback=ToolDocGenerator.generate_tool_call_inline(
             RespecAITool.STORE_CRITIC_FEEDBACK, loop_id='{LOOP_ID}', feedback_markdown='{GENERATED_FEEDBACK}'
+        ),
+        validate_document=_render_phase_structure_validation(),
+    )
+
+
+def create_phase_finalizer_agent_tools(tui_adapter: TuiAdapter) -> PhaseFinalizerAgentTools:
+    builder = TemplateToolBuilder(tui_adapter)
+
+    for tool in PhaseFinalizerAgentTools.respec_ai_tools:
+        builder.add_respec_ai_tool(tool)
+
+    for builtin_tool, params in PhaseFinalizerAgentTools.builtin_tools:
+        builder.add_builtin_tool(builtin_tool, params)
+
+    return PhaseFinalizerAgentTools(
+        tui_adapter=tui_adapter,
+        tools_yaml=builder.render_comma_separated_tools(),
+        get_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_DOCUMENT, doc_type='"phase"', key='None', loop_id='{LOOP_ID}'
+        ),
+        update_document=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.UPDATE_DOCUMENT,
+            doc_type='"phase"',
+            key='{PLAN_NAME}/{PHASE_NAME}',
+            content='{GENERATED_PHASE_MARKDOWN}',
+        ),
+        get_feedback=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_FEEDBACK, loop_id='{LOOP_ID}', count='1'
+        ),
+        get_analysis=ToolDocGenerator.generate_tool_call_inline(
+            RespecAITool.GET_PREVIOUS_ANALYSIS, loop_id='{LOOP_ID}'
         ),
         validate_document=_render_phase_structure_validation(),
     )

@@ -1,3 +1,5 @@
+from itertools import permutations
+
 from src.models.phase import Phase
 
 
@@ -379,3 +381,46 @@ approved
         assert 'JWT tokens' in reparsed_phase.additional_sections['Security Architecture']
         assert '<200ms p95' in reparsed_phase.additional_sections['Performance Requirements']
         assert 'CloudWatch' in reparsed_phase.additional_sections['Deployment Architecture']
+
+
+BRIEF_ORDER = ('Grounding', 'Delegation Bounds', 'Behaviors & Acceptance', 'Guardrails')
+OTHER_SECTION = 'Rollout Notes'
+
+
+def rendered_h2_names(phase: Phase) -> list[str]:
+    return [line.removeprefix('## ') for line in phase.build_markdown().splitlines() if line.startswith('## ')]
+
+
+class TestBriefSectionOrder:
+    # Phase 4 B1: Postgres jsonb does not keep key order (F27 #4), so the same brief would read
+    # differently from each backend unless rendering fixes the order.
+    def test_the_brief_sections_render_in_one_fixed_order_whatever_order_they_are_stored_in(self) -> None:
+        for stored_order in permutations(BRIEF_ORDER):
+            phase = Phase(
+                phase_name='brief-order',
+                additional_sections={OTHER_SECTION: '- note', **{name: '- None' for name in stored_order}},
+            )
+
+            assert rendered_h2_names(phase)[-6:] == [*BRIEF_ORDER, OTHER_SECTION, 'Metadata'], stored_order
+
+    def test_only_the_brief_sections_present_are_rendered_in_that_order(self) -> None:
+        phase = Phase(
+            phase_name='brief-order',
+            additional_sections={'Guardrails': '- None', OTHER_SECTION: '- note', 'Grounding': '- None'},
+        )
+
+        assert rendered_h2_names(phase)[-4:] == ['Grounding', 'Guardrails', OTHER_SECTION, 'Metadata']
+
+    def test_brief_sections_written_out_of_order_come_back_in_the_fixed_order(self) -> None:
+        written = (
+            Phase(phase_name='brief-order')
+            .build_markdown()
+            .replace(
+                '## Metadata',
+                '\n'.join(f'## {name}\n- None\n' for name in (OTHER_SECTION, *reversed(BRIEF_ORDER))) + '## Metadata',
+            )
+        )
+        reparsed = Phase.parse_markdown(written)
+
+        assert reparsed.additional_sections is not None
+        assert rendered_h2_names(reparsed)[-6:] == [*BRIEF_ORDER, OTHER_SECTION, 'Metadata']

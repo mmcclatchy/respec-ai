@@ -44,9 +44,27 @@ Invoke ONLY the respec-* agents explicitly named in this workflow, using the exa
     def conversation_workflow_name(self) -> str:
         return 'the plan-conversation command'
 
+    # Phase 4 handoff: a ready-to-run instruction for a fresh session. The braces stay literal; the
+    # phase command substitutes both paths at runtime.
+    _BRIEF_HANDOFF_EXTENSION = """Implement {IMPLEMENTATION_PLAN_PATH}, using {PHASE_FILE_PATH} as the contract.
+1. Read "## Start here" and complete it first.
+2. Work through "## Build Order > ### Steps". Whenever several steps have every step in their
+   "Depends on" complete, run them in parallel, one subagent per step. Give each subagent only
+   that step's brief and the phase.md sections and IDs its "Context" cites.
+3. When a subagent returns, run the step's "Verify" command yourself and confirm "Done when"
+   before starting any step that depends on it. Only then tick its "## Checklist" item. If a
+   "Verify" value starts with "ask user", ask me for the command first.
+4. Stop and ask me if any condition under "## Delegation Bounds > ### Escalate if" occurs.
+   Record any deviation under "## Deviations", as "## Guardrails > ### Deviation protocol" says.
+5. Finish by running every command under "## Exit criteria"."""
+
     @property
     def subagent_invocation_guardrail(self) -> str:
         return self._MAIN_AGENT_GUARDRAIL
+
+    @property
+    def brief_handoff_extension(self) -> str | None:
+        return self._BRIEF_HANDOFF_EXTENSION
 
     @property
     def ask_user_question_tool_name(self) -> str | None:

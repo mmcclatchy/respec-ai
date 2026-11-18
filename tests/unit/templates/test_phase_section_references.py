@@ -9,6 +9,8 @@ written, with no error -- just silent absence.
 
 import re
 
+from section_names import h2_collisions, mapped_h2_names
+
 from src.models.phase import Phase
 from src.platform.template_helpers import (
     create_coder_agent_tools,
@@ -93,12 +95,11 @@ def test_no_h2_section_name_can_shadow_another_and_silently_swallow_content() ->
     # Finding F7: `## ` headings are matched by substring
     # (`h2_header in line`), so any H2 name that is a substring of another silently
     # attributes the wrong content to a field, with no error.
-    all_h2_names = {header_path[0] for header_path in Phase.HEADER_FIELD_MAPPING.values()}
-    all_h2_names.update(technical_phase_template_additional_section_names())
-    all_h2_names.add('Metadata')
+    # The collision rule's negative self-test is in test_phase_brief_format.py (phase 4 B2).
+    all_h2_names = {*mapped_h2_names(), *technical_phase_template_additional_section_names(), 'Metadata'}
 
-    h2_collisions = {frozenset((a, b)) for a in all_h2_names for b in all_h2_names if a != b and (a in b or b in a)}
-    assert not h2_collisions, f'H2 section names shadow each other: {h2_collisions}'
+    collisions = h2_collisions(all_h2_names)
+    assert not collisions, f'H2 section names shadow each other: {collisions}'
 
 
 _KNOWN_H3_SHADOW_DEFECTS = frozenset({frozenset(('Functional Requirements', 'Non-Functional Requirements'))})

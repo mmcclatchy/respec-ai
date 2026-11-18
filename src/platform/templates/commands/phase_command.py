@@ -37,6 +37,98 @@ def _architect_engagement(mode: str, fresh_invocation: str, resume_invocation: s
     )
 
 
+def _finalizer_engagement(invocation: str, after_report: str) -> str:
+    return '\n'.join([invocation, _report_check('finalizer'), 'FINALIZER_REPORT = the report', after_report])
+
+
+def _critic_persistence_checks(tools: PhaseCommandTools) -> str:
+    return '\n'.join(
+        [
+            f'POST_PHASE_LOOP_STATUS = {tools.get_loop_status}',
+            f'PHASE_FEEDBACK = {tools.get_feedback}',
+            '',
+            'IF retrieval fails OR PHASE_FEEDBACK does not contain "## Iteration [REVIEW_ROUND] -":',
+            '  ERROR: "Phase critic did not persist CriticFeedback"',
+            '  DIAGNOSTIC: [surface the exact MCP/tool error, or PHASE_FEEDBACK]',
+            '  FAIL-CLOSED:',
+            '  - Do NOT call decide_loop_next_action',
+            '  EXIT: Workflow terminated',
+            '',
+            'IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.status == "initialized":',
+            '  ERROR: "Phase critic did not advance loop state"',
+            '  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]',
+            '  FAIL-CLOSED:',
+            '  - Do NOT call decide_loop_next_action',
+            '  EXIT: Workflow terminated',
+            '',
+            'IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iteration <= PRE_PHASE_LOOP_STATUS.iteration:',
+            '  ERROR: "Phase critic did not persist fresh loop feedback"',
+            '  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]',
+            '  FAIL-CLOSED:',
+            '  - Do NOT call decide_loop_next_action',
+            '  EXIT: Workflow terminated',
+        ]
+    )
+
+
+def _brief_checks_decision(tools: PhaseCommandTools, shown: str, after_accept: list[str]) -> str:
+    adapter = tools.tui_adapter
+    return '\n'.join(
+        [
+            'IF UNRESOLVED_CHECKS is not empty:',
+            f'  Display UNRESOLVED_CHECKS: {shown}, each verbatim.',
+            f'  {adapter.selection_prompt_instruction}',
+            '    Header: "Unresolved Checks"',
+            '    Question: "Some checks on the brief still fail. How do you want to handle them?"',
+            '    multiSelect: false',
+            '    Options: [',
+            '      {"label": "Accept as-is", "description": "Recorded as your decision; these findings are never raised again"},',
+            '      {"label": "Go back to design review", "description": "Return to the design review; the brief is checked and reviewed again after the next approval, and written again if the design changes"}',
+            '    ]',
+            '',
+            f'  WAIT for {adapter.selection_response_source}.',
+            '  DO NOT treat this as workflow completion, cancellation, or failure.',
+            '  After the user responds, resume at Step 11.1. Record the answer. Continue immediately.',
+            '  DO NOT explain that the workflow is stopping unless the user asks why.',
+            '',
+            '  IF the user chose "Accept as-is":',
+            '    Record "- SD-NNN | source=user | supersedes=unresolved-checks | decision=accept as-is: [each finding verbatim] | rationale=[the user\'s reason, or accepted at sign-off] | binding=yes"',
+            '    (Quote each finding exactly as UNRESOLVED_CHECKS holds it, all on this one SD line joined by "; ".)',
+            '    UNRESOLVED_CHECKS = []',
+            *(f'    {line}' for line in after_accept),
+            '  ELSE:',
+            '    UNRESOLVED_CHECKS = []',
+            '    Go to Step 10. A revise there removes the brief sections, so the brief is written in full',
+            '    after the next approval; an approval with no change keeps them, and Step 10.7 repairs and',
+            '    reviews the brief again, keeping its unanswered questions.',
+        ]
+    )
+
+
+def _brief_handoff(tools: PhaseCommandTools) -> str:
+    core = '\n'.join(
+        [
+            'Display to user, with every braced name replaced by its value:',
+            '  Brief ready.',
+            '  - Contract: {PHASE_FILE_PATH}',
+            '  - Plan:     {IMPLEMENTATION_PLAN_PATH}',
+            '  Hand implementation.md to your coding agent. It starts at "## Start here"; every step under',
+            '  "## Build Order > ### Steps" is a self-contained brief with its own Verify command.',
+            f'  Or run the respec-code workflow: {tools.code_command_invocation}',
+        ]
+    )
+    if not tools.brief_handoff_extension:
+        return core
+    return '\n'.join(
+        [
+            core,
+            '',
+            'Then display this instruction, ready to run in a fresh session, with the same values filled in:',
+            indent(tools.brief_handoff_extension, '  '),
+        ]
+    )
+
+
 def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     adapter = tools.tui_adapter
     selection_prompt_instructions = adapter.selection_prompt_instruction
@@ -56,6 +148,29 @@ def generate_phase_command_template(tools: PhaseCommandTools) -> str:
     draft = _architect_engagement('draft', tools.invoke_architect_draft, tools.resume_architect)
     revise = _architect_engagement('revise', tools.invoke_architect_revise, tools.resume_architect)
     critic_review = '\n'.join([tools.invoke_critic_review, _report_check('critic')])
+    brief_review = '\n'.join([tools.invoke_critic_brief_review, _report_check('critic')])
+    critic_persistence = _critic_persistence_checks(tools)
+    finalize = _finalizer_engagement(
+        tools.invoke_finalizer,
+        "Add each entry in FINALIZER_REPORT's `## Decisions needed` to BRIEF_QUESTIONS, unless an entry\n"
+        '  with the same title and Affects line is already there (a repair re-raises an unanswered one).',
+    )
+    finalize_answers = _finalizer_engagement(
+        tools.invoke_finalizer, "Display FINALIZER_REPORT's `## For the user`: how the brief applies the answers."
+    )
+    brief_leftovers_decision = _brief_checks_decision(
+        tools, 'the mechanical findings on the brief that automatic repair did not resolve', []
+    )
+    sign_off_checks_decision = _brief_checks_decision(
+        tools,
+        'what the check still finds after the finalizer applied the answers',
+        [
+            f'PHASE_MARKDOWN = {tools.get_document}, with that SD appended to "### Settled Design Decisions"',
+            tools.store_document,
+            'Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).',
+        ],
+    )
+    handoff = _brief_handoff(tools)
     research_dispatch = indent(tools.invoke_bp_pipeline, '  ')
 
     if resumes_architect:
@@ -97,12 +212,14 @@ description: Transform strategic plans into detailed Phases
 ## Overview
 
 Design one phase together with the user, then hand off a signed-off `phase.md` and its
-`implementation.md`. The architect and critic subagents do the heavy work in their own contexts
-and return a fixed report. This command is the only party that talks to the user. The happy path
-stops for the user exactly three times: the briefing (Step 6), the design review (Step 10) and
-the sign-off (Step 11). The critic reviews every draft before the user sees it; mechanical
-problems are repaired without the user, and judgment calls reach the user as questions. Research
-runs only when the user approves it.
+`implementation.md`. The architect, critic and finalizer subagents do the heavy work in their own
+contexts and return a fixed report. This command is the only party that talks to the user. The
+happy path stops for the user exactly three times: the briefing (Step 6), the design review
+(Step 10) and the sign-off (Step 11). The critic reviews every draft before the user sees it;
+mechanical problems are repaired without the user, and judgment calls reach the user as questions.
+Once the user approves the design, the finalizer writes the agent-ready brief around it and the
+critic reviews that brief before sign-off, with no prompt in between. Research runs only when the
+user approves it.
 
 {adapter.subagent_invocation_guardrail}
 
@@ -111,7 +228,9 @@ runs only when the user approves it.
   user-approved research only, using the exact invocation shown there.
 - The only disk writes this workflow makes are the ones listed in Step 12's phase file storage
   restriction: the disk mirror of the phase file after every store, the hand-edit write-back,
-  and the two skeleton scratch files at sign-off.
+  the approved design written before the brief is finalized, the finalized brief written at
+  Step 11.1 before the sign-off and again after the finalizer applies the sign-off answers, and
+  the two skeleton scratch files at sign-off.
 
 ## Responsibilities
 
@@ -124,8 +243,10 @@ runs only when the user approves it.
   sync at the start of a re-run (Step 2) never discards decisions, research marks or the draft.
 - **Research.** Dispatch `bp-pipeline` only for proposals the user approved, and record only
   validated results.
-- **Sign-off.** Write skeletons, mark the design settled, offer a commit, store the phase on the
-  platform and hand off.
+- **Brief.** After design approval, have the finalizer write the brief and the critic review it;
+  only the finalizer repairs it.
+- **Sign-off.** Ask the brief's questions, write skeletons, mark the design settled, offer a
+  commit, store the phase on the platform and hand off.
 
 ## Orchestration Pattern
 
@@ -140,7 +261,9 @@ Main agent (this command): the only party that talks to the user
     |-- Step 8      architect drafts the design and implementation.md -> report
     |-- Step 9      structure check, then critic review; architect repairs (at most twice)
     |-- Step 10     DESIGN REVIEW (touchpoint): questions, changes, hand edits
-    |-- Step 11     SIGN-OFF (touchpoint): skeletons, settled marker, optional commit
+    |-- Step 10.7   finalizer writes the brief; structure check, then critic review of the brief;
+    |               finalizer repairs (at most twice); no prompt
+    |-- Step 11     SIGN-OFF (touchpoint): brief questions, skeletons, settled marker, optional commit
     |-- Step 12     store on the platform and hand off
 ```
 
@@ -148,9 +271,10 @@ Main agent (this command): the only party that talks to the user
 
 Every subagent step follows these rules.
 
-1. **Inputs.** Invoke a subagent with exactly the inputs its invocation lists: its mode, the IDs,
-   the config context, and for the critic the review round. Never pass conversation text, the
-   briefing or document bodies.
+1. **Inputs.** Invoke a subagent with exactly the inputs its invocation lists: its mode where it
+   has one, the IDs, the config context, and for the critic the review target and round (plus the
+   phase file path on the brief review). Never pass conversation text, the briefing or document
+   bodies.
 2. **Wait.** After invoking a subagent, wait for its report. A report that arrives later, for
    example as a background completion notification, is still the report to wait for: do not
    continue the workflow and do not prompt the user until it arrives.
@@ -174,7 +298,11 @@ Every subagent step follows these rules.
      reuse the number of the OD or CQ an SD settles.
    - Decisions asked: ODs come from the current document's `### Open Design Decisions` (the
      document wins over a report on any mismatch), CQs from the latest critic report only, and
-     RPs from the ledger in `### Research Requirements`.
+     RPs from the ledger in `### Research Requirements`. The brief's questions (the finalizer's
+     ODs, which exist only in its reports, and the brief review's CQs) are asked from
+     BRIEF_QUESTIONS (Step 10.7).
+   - An SD that settles an OD or a CQ copies that entry's Affects line into `affects=`, so what it
+     binds survives the entry leaving the document.
    - RP marks: `[approved]` or `[declined]`, appended as the last token of the RP line.
    - Round tags: `[round REVIEW_ROUND | briefing]`, `[round REVIEW_ROUND | review]`,
      `[round REVIEW_ROUND | sign-off]` or `[round REVIEW_ROUND | question]`, where REVIEW_ROUND is
@@ -431,10 +559,13 @@ REVIEW_ROUND = 0
 REPAIR_ROUNDS = 0
 UNRESOLVED_CHECKS = []
 OPEN_CRITIC_QUESTIONS = []
+BRIEF_QUESTIONS = []
+BRIEF_SUMMARY = none
 DESIGN_CHANGE_SD_IDS = []
 UNRESOLVED_DIRECTION = none
 ARCHITECT_REPORT = none
 CRITIC_REPORT = none
+IMPLEMENTATION_PLAN_REBUILT = false
 {architect_id_setup}
 ```
 
@@ -543,7 +674,7 @@ FOR each OD in OPEN_DECISIONS:
       IF its Recommended option is Option A of the Design Source OD or of a verify command OD:
         ASK_ON_ITS_OWN.append(the OD)
       ELSE:
-        Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | binding=yes"
+        Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | affects=[the OD's Affects line, verbatim] | binding=yes"
     BREAK
   ELSE:
     IF the chosen option is the verify command decision's "Supply the command now":
@@ -553,9 +684,9 @@ FOR each OD in OPEN_DECISIONS:
         DO NOT treat this as workflow completion, cancellation, or failure.
         After the user responds, resume at Step 6.2. Use the reply verbatim. Continue immediately.
         DO NOT explain that the workflow is stopping unless the user asks why.
-      Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=Supply the command now: `[the command, verbatim]` | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+      Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=Supply the command now: `[the command, verbatim]` | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the OD's Affects line, verbatim] | binding=yes"
     ELSE:
-      Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+      Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the OD's Affects line, verbatim] | binding=yes"
 
 FOR each OD in ASK_ON_ITS_OWN:
   (Accepting every default never ends the run: an option that ends it takes the user's own choice.)
@@ -577,7 +708,7 @@ FOR each OD in ASK_ON_ITS_OWN:
   IF the chosen option is the verify command decision's "Supply the command now":
     Ask for the command and record it exactly as the loop above does.
   ELSE:
-    Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+    Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the OD's Affects line, verbatim] | binding=yes"
 ```
 
 #### Step 6.3: Ask the research proposals
@@ -893,29 +1024,7 @@ CRITIC_REPORT = the report
 OPEN_CRITIC_QUESTIONS = the CQ entries in CRITIC_REPORT's `## Decisions needed`
   (this latest report only; the critic keeps a finding's CQ ID across rounds)
 
-POST_PHASE_LOOP_STATUS = {tools.get_loop_status}
-PHASE_FEEDBACK = {tools.get_feedback}
-
-IF retrieval fails OR PHASE_FEEDBACK does not contain "## Iteration [REVIEW_ROUND] -":
-  ERROR: "Phase critic did not persist CriticFeedback"
-  DIAGNOSTIC: [surface the exact MCP/tool error, or PHASE_FEEDBACK]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_next_action
-  EXIT: Workflow terminated
-
-IF PRE_PHASE_LOOP_STATUS.status == "initialized" AND POST_PHASE_LOOP_STATUS.status == "initialized":
-  ERROR: "Phase critic did not advance loop state"
-  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_next_action
-  EXIT: Workflow terminated
-
-IF PRE_PHASE_LOOP_STATUS.status != "initialized" AND POST_PHASE_LOOP_STATUS.iteration <= PRE_PHASE_LOOP_STATUS.iteration:
-  ERROR: "Phase critic did not persist fresh loop feedback"
-  DIAGNOSTIC: [surface PRE_PHASE_LOOP_STATUS and POST_PHASE_LOOP_STATUS]
-  FAIL-CLOSED:
-  - Do NOT call decide_loop_next_action
-  EXIT: Workflow terminated
+{critic_persistence}
 
 REVIEW_DECISION_RESPONSE = {tools.decide_loop_action}
 REVIEW_DECISION = REVIEW_DECISION_RESPONSE.status
@@ -1013,12 +1122,12 @@ FOR each entry in OPEN_DECISIONS, then in QUESTIONS:
 
   IF the user chose "Accept the recommended default for all remaining":
     FOR this entry and every entry after it:
-      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | binding=yes"
+      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
       IF the entry is a CQ whose Recommended option is Option B:
         DESIGN_CHANGE_SD_IDS.append([the new SD ID])
     BREAK
   ELSE:
-    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
     IF the entry is an OD answered with anything but its Recommended option, OR a CQ answered with Option B:
       DESIGN_CHANGE_SD_IDS.append([the new SD ID])
 
@@ -1244,18 +1353,134 @@ ELIF REVIEW_CHOICE == "Ask the architect a question":
     Go to Step 9. The answer changed the design, so the critic reviews it.
 
 ELSE:
+  (REVIEW_CHOICE is "Approve the design".)
+  Go to Step 10.7.
+```
+
+#### Step 10.7: Finalize the brief
+
+The user approved the design. The finalizer writes the agent-facing brief around it, the stored
+phase is checked, then the critic reviews the brief without re-opening the design. Mechanical
+findings go back to the finalizer, never the architect, within a fresh two-round budget, and
+judgment calls wait for the sign-off. This step never prompts the user and never researches:
+research is reachable again only through the sign-off's "Go back to design review".
+
+```text
+REPAIR_ROUNDS = 0
+STRUCTURAL_LEFTOVERS = []
+UNRESOLVED_CHECKS = []
+BRIEF_REVIEW_SUMMARY = none
+PHASE_MARKDOWN = {tools.get_document}
+Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+LAST_WRITTEN_PHASE_MARKDOWN = PHASE_MARKDOWN
+FULL_PASS = none of `## Grounding`, `## Behaviors & Acceptance` and `## Guardrails` is in PHASE_MARKDOWN
+  (the finalizer's own STEP 2 test)
+IF FULL_PASS:
+  BRIEF_QUESTIONS = []
+ELSE:
+  BRIEF_QUESTIONS = the entries already in BRIEF_QUESTIONS that no SD in "### Settled Design Decisions" supersedes
+  (a targeted pass never re-raises a gap from an earlier full pass, so an unanswered one is kept)
+(The brief review compares the finalized sections with this copy of the approved design, which
+holds every decision Step 10 recorded after its own disk write. A hand edit never reaches this
+point: Step 10.4 re-reads the disk and sends any edit through Step 9 first.)
+
+IF no file exists at IMPLEMENTATION_PLAN_PATH:
+  Go to Step 11.3. (The finalizer cannot rebuild the architect's draft steps, Staging, Policy or
+  Checklist. Step 11.3 re-engages the architect once and returns through Step 9, or fails closed
+  on a second miss.)
+
+{finalize}
+IF FULL_PASS OR BRIEF_SUMMARY is none:
+  BRIEF_SUMMARY = FINALIZER_REPORT's `## For the user`
+  (a full pass describes the brief; a targeted pass's report describes only its changes, and a
+  repair's report describes only the repair)
+
+BRIEF GATE:
+(Every repair below returns here, never to the top of this step.)
+BRIEF_VALIDATION = {tools.validate_document_structure}
+IF the call that sets BRIEF_VALIDATION fails:
+  ERROR: "Structural validation of the finalized brief failed"
+  DIAGNOSTIC: [surface the exact MCP/tool error]
+  FAIL-CLOSED:
+  - Do NOT invoke the finalizer or the critic
+  EXIT: Workflow terminated
+(Key mode checks the stored phase only; the critic relays the implementation.md findings below.)
+FINALIZER_FINDINGS = BRIEF_VALIDATION.structural_findings whose owner is "finalizer" or "architect"
+ORCHESTRATOR_FINDINGS = BRIEF_VALIDATION.structural_findings whose owner is "orchestrator"
+(An architect finding here is drift in a section the finalizer reproduces, so the finalizer
+restores it. Orchestrator findings sit on lines this command writes, so no repair round fixes them
+and they never spend one.)
+
+IF FINALIZER_FINDINGS is not empty AND REPAIR_ROUNDS < 2:
+  REPAIR_ROUNDS += 1
+{indent(finalize, '  ')}
+  Return to BRIEF GATE.
+
+STRUCTURAL_LEFTOVERS = each finding in FINALIZER_FINDINGS and ORCHESTRATOR_FINDINGS, written as
+  "<check> <subject> — <detail>", or "<check> <subject> [<part>] — <detail>" when part is non-empty
+  (validate_document stops reporting a finding once an accept-as-is decision quotes it this way)
+
+PRE_PHASE_LOOP_STATUS = {tools.get_loop_status}
+REVIEW_ROUND += 1
+
+{brief_review}
+BRIEF_CRITIC_REPORT = the report
+BRIEF_REVIEW_SUMMARY = BRIEF_CRITIC_REPORT's `## For the user`
+  (it names each gap that only going back to design review closes)
+BRIEF_QUESTIONS = the finalizer's OD entries already in BRIEF_QUESTIONS, then the CQ entries in
+  BRIEF_CRITIC_REPORT's `## Decisions needed` (this latest review only; the critic keeps a
+  finding's CQ ID across rounds)
+
+{critic_persistence}
+
+BRIEF_REVIEW_DECISION_RESPONSE = {tools.decide_loop_action}
+BRIEF_REVIEW_DECISION = BRIEF_REVIEW_DECISION_RESPONSE.status
+
+IF BRIEF_REVIEW_DECISION == "completed":
+  IF STRUCTURAL_LEFTOVERS is not empty:
+    UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS
   Go to Step 11.
+
+ELIF BRIEF_REVIEW_DECISION == "refine":
+  IF REPAIR_ROUNDS < 2:
+    REPAIR_ROUNDS += 1
+{indent(finalize, '    ')}
+    Return to BRIEF GATE.
+  ELSE:
+    UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS + every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
+    Go to Step 11.
+
+ELIF BRIEF_REVIEW_DECISION == "user_input":
+  (Repaired like refine while rounds remain: the loop's stagnation rule returns user_input even
+  before any repair has run.)
+  IF REPAIR_ROUNDS < 2:
+    REPAIR_ROUNDS += 1
+{indent(finalize, '    ')}
+    Return to BRIEF GATE.
+  ELSE:
+    UNRESOLVED_CHECKS = STRUCTURAL_LEFTOVERS + every finding in the latest review's "### Blockers" in PHASE_FEEDBACK
+    Go to Step 11.
+
+ELSE:
+  ERROR: "Unexpected loop decision"
+  DIAGNOSTIC: Show BRIEF_REVIEW_DECISION_RESPONSE
+  EXIT: Workflow terminated
 ```
 
 ### Step 11: Sign-off (TOUCHPOINT)
 
-The user answers whatever is still open, then signs off. Only then are skeletons written, the
-design marked settled, and a commit offered.
+The user answers whatever is still open, sees the brief and settles its questions, then signs
+off. Only then are skeletons written, the design marked settled, and a commit offered.
 
 #### Step 11.1: Settle what is still open
 
 ```text
 PHASE_MARKDOWN = {tools.get_document}
+Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+LAST_WRITTEN_PHASE_MARKDOWN = PHASE_MARKDOWN
+(The finalized brief reaches the disk before the sign-off, so the user reads what they sign and a
+stopped run never leaves the approved design as the only copy. Step 10.7 never reaches this line
+before the brief critic has read its approved copy.)
 REMAINING = the OD entries in "### Open Design Decisions", then the CQ entries in
   OPEN_CRITIC_QUESTIONS that no SD supersedes
 {review_batching}
@@ -1279,12 +1504,12 @@ FOR each entry in REMAINING:
 
   IF the user chose "Accept the recommended default for all remaining":
     FOR this entry and every entry after it:
-      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | binding=yes"
+      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
       IF the entry is a CQ whose Recommended option is Option B:
         DESIGN_CHANGE_SD_IDS.append([the new SD ID])
     BREAK
   ELSE:
-    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | binding=yes"
+    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
     IF the entry is an OD answered with anything but its Recommended option, OR a CQ answered with Option B:
       DESIGN_CHANGE_SD_IDS.append([the new SD ID])
 
@@ -1298,8 +1523,77 @@ IF DESIGN_CHANGE_SD_IDS is not empty:
   USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | sign-off] " + [the SD IDs in DESIGN_CHANGE_SD_IDS]
   {tools.store_user_feedback}
   DESIGN_CHANGE_SD_IDS = []
+  REPAIR_ROUNDS = 0
+  (A sign-off send-back starts a fresh repair budget: Step 10.7 spent the last one on the brief.)
 {indent(revise, '  ')}
   Go to Step 9, then the design review again.
+
+Display BRIEF_SUMMARY: the brief the finalizer wrote. Tell the user the full brief is now in
+[PHASE_FILE_PATH] and [IMPLEMENTATION_PLAN_PATH].
+IF BRIEF_REVIEW_SUMMARY names a gap that only going back to design review closes:
+  Display BRIEF_REVIEW_SUMMARY. "Go back to design review", offered next and at the sign-off
+  prompt, is how such a gap is closed.
+
+{brief_leftovers_decision}
+
+(The brief's questions bind steps, guardrails and criteria, which the finalizer owns: their answers
+go to the finalizer, never to the architect. Wanting the design itself changed is "Go back to
+design review".)
+{review_batching}
+FOR each entry in BRIEF_QUESTIONS:
+  {selection_prompt_instructions}
+    Header: "Brief Decision"
+    Question: "[OD or CQ ID]: [title]. Affects: [Affects]"
+    multiSelect: false
+    Options: [
+      {{"label": "[Option A name]", "description": "[Option A trade-off]"}},
+      {{"label": "[Option B name]", "description": "[Option B trade-off]"}},
+      {{"label": "[Option C name, only when the entry has one]", "description": "[Option C trade-off]"}},
+      {{"label": "Accept the recommended default for all remaining", "description": "This and every remaining question get their Recommended option"}}
+    ]
+
+  WAIT for {selection_response_source}.
+  DO NOT treat this as workflow completion, cancellation, or failure.
+  After the user responds, resume at Step 11.1. Record the answer. Continue immediately.
+  DO NOT explain that the workflow is stopping unless the user asks why.
+
+  IF the user chose "Accept the recommended default for all remaining":
+    FOR this entry and every entry after it:
+      Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[Recommended option] | rationale=accepted the recommended default | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
+    BREAK
+  ELIF the chosen option is the verify command decision's "Supply the command now":
+    IF the user's response does not already carry the command:
+      Ask the user for it in one message.
+      WAIT for the user's reply.
+      DO NOT treat this as workflow completion, cancellation, or failure.
+      After the user responds, resume at Step 11.1. Use the reply verbatim. Continue immediately.
+      DO NOT explain that the workflow is stopping unless the user asks why.
+    Record "- SD-NNN | source=user | supersedes=[OD ID] | decision=Supply the command now: `[the command, verbatim]` | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
+  ELSE:
+    Record "- SD-NNN | source=user | supersedes=[OD or CQ ID] | decision=[chosen option] | rationale=[the user's reason, or the option's trade-off] | rejected=[the other options] | affects=[the entry's Affects line, verbatim] | binding=yes"
+
+IF an SD was recorded since REMAINING was stored:
+  PHASE_MARKDOWN = PHASE_MARKDOWN with every such SD appended to "### Settled Design Decisions"
+  {tools.store_document}
+  Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+
+IF an SD recorded in this step supersedes an OD or a CQ:
+  (The finalizer applies each answer to what its affects= names. The critic does not review again:
+  reviewing after the user decides is the cycle this workflow removes.)
+{indent(finalize_answers, '  ')}
+  PHASE_MARKDOWN = {tools.get_document}
+  Write PHASE_MARKDOWN to PHASE_FILE_PATH (Use Write tool).
+  LAST_WRITTEN_PHASE_MARKDOWN = PHASE_MARKDOWN
+  SIGN_OFF_VALIDATION = {tools.validate_document_structure}
+  IF the call that sets SIGN_OFF_VALIDATION fails:
+    ERROR: "Structural validation of the finalized brief failed"
+    DIAGNOSTIC: [surface the exact MCP/tool error]
+    FAIL-CLOSED:
+    - Do NOT continue the sign-off
+    EXIT: Workflow terminated
+  UNRESOLVED_CHECKS = each finding in SIGN_OFF_VALIDATION.structural_findings, written as
+    "<check> <subject> — <detail>", or "<check> <subject> [<part>] — <detail>" when part is non-empty
+{indent(sign_off_checks_decision, '  ')}
 ```
 
 #### Step 11.2: Ask for the sign-off
@@ -1321,6 +1615,15 @@ After the user responds, resume at Step 11.2. Set SIGN_OFF_CHOICE. Continue imme
 DO NOT explain that the workflow is stopping unless the user asks why.
 
 SIGN_OFF_CHOICE = [selected option from {selection_response_source}]
+DISK_MARKDOWN = Read PHASE_FILE_PATH (Use Read tool)
+
+IF DISK_MARKDOWN differs from LAST_WRITTEN_PHASE_MARKDOWN:
+  (A hand edit made at sign-off is never overwritten: it is validated, recorded and reviewed, and
+  the design is approved again before any sign-off.)
+  REVIEW_CHOICE = "I edited phase.md myself"
+  REPAIR_ROUNDS = 0
+  Go to Step 10.5.
+
 IF SIGN_OFF_CHOICE == "Go back to design review":
   Go to Step 10.
 ```
@@ -1329,13 +1632,18 @@ IF SIGN_OFF_CHOICE == "Go back to design review":
 
 ```text
 IF no file exists at IMPLEMENTATION_PLAN_PATH:
-  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | sign-off] implementation.md is missing at [IMPLEMENTATION_PLAN_PATH]. Write it from the design."
-  {tools.store_user_feedback}
-{indent(revise, '  ')}
-  IF no file exists at IMPLEMENTATION_PLAN_PATH:
+  IF IMPLEMENTATION_PLAN_REBUILT is true:
     ERROR: "implementation.md is still missing at IMPLEMENTATION_PLAN_PATH after one revise"
     DIAGNOSTIC: [the architect report's `## Status`]
     EXIT: Workflow terminated. The phase is not signed off.
+  IMPLEMENTATION_PLAN_REBUILT = true
+  REPAIR_ROUNDS = 0
+  USER_FEEDBACK_MARKDOWN = "[round REVIEW_ROUND | sign-off] implementation.md is missing at [IMPLEMENTATION_PLAN_PATH]. Write it from the design."
+  {tools.store_user_feedback}
+{indent(revise, '  ')}
+  Go to Step 9. Only the architect writes the draft steps, Staging, Policy and Checklist, and its
+  revise also removes the brief sections, so the design passes review and the brief is written
+  again before the next sign-off.
 ```
 
 #### Step 11.4: Materialize skeletons
@@ -1473,11 +1781,14 @@ MANDATORY PHASE FILE STORAGE RESTRICTION
 The phase document reaches disk only through these writes:
 1. MCP storage, through store_document, at every step that records something.
 2. The disk mirror: PHASE_FILE_PATH, written with the same markdown after every orchestrator
-   store, and the hand-edit write-back at Step 10.5.
+   store, the hand-edit write-back at Step 10.5, and the approved design written at Step 10.7
+   before the finalizer runs, and the finalized brief written at Step 11.1 before the sign-off and
+   again after the finalizer applies the sign-off answers.
 3. The two skeleton scratch files at Step 11.4 (SKELETON_INDEX_SCRATCH and TEST_LIST_SCRATCH,
    under PHASE_DIR). The skeleton command reads them and writes create-only skeletons to the
    paths named in "### Skeleton Index" and "### Test List"; it never writes phase.md.
-4. The architect's own write of implementation.md at IMPLEMENTATION_PLAN_PATH.
+4. The architect's and the finalizer's own writes of implementation.md at
+   IMPLEMENTATION_PLAN_PATH.
 5. Platform storage (Step 12.2 below).
 
 Do NOT:
@@ -1522,9 +1833,7 @@ Completion contract (required in final response):
 2. phase_status
 3. implementation_plan_path
 
-Display:
-"✅ Phase signed off. Next: run the implementation workflow"
-{tools.code_command_invocation}
+{handoff}
 ```
 
 ## Phase Name Normalization Rules

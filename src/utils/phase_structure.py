@@ -22,13 +22,32 @@ OPEN_DECISIONS_LOCATION = ' > '.join(Phase.HEADER_FIELD_MAPPING['open_design_dec
 SETTLED_DECISIONS_LOCATION = ' > '.join(Phase.HEADER_FIELD_MAPPING['settled_design_decisions'])
 UX_CONTRACT_LOCATION = ' > '.join(Phase.HEADER_FIELD_MAPPING['design_shape_additional'])
 RESEARCH_REQUIREMENTS_LOCATION = ' > '.join(Phase.HEADER_FIELD_MAPPING['research_requirements'])
+SUCCESS_CRITERIA_LOCATION = ' > '.join(Phase.HEADER_FIELD_MAPPING['success_criteria'])
 RESERVED_H2_NAMES = frozenset(header_path[0] for header_path in Phase.HEADER_FIELD_MAPPING.values())
+DESIGN_SHAPE_FIELDS = tuple(
+    field_name for field_name, header_path in Phase.HEADER_FIELD_MAPPING.items() if header_path[0] == 'Design Shape'
+)
+
+GROUNDING, DELEGATION_BOUNDS, BEHAVIORS_AND_ACCEPTANCE, GUARDRAILS = Phase.BRIEF_SECTIONS
+FINALIZER_SECTIONS = (GROUNDING, BEHAVIORS_AND_ACCEPTANCE, GUARDRAILS)
+RESEARCH_TO_READ = 'Research to read'
+REQUIRED_BRIEF_SUBSECTIONS: dict[str, tuple[str, ...]] = {
+    GROUNDING: ('Build on', 'Leave alone', 'Exemplars', 'Conventions', RESEARCH_TO_READ),
+    DELEGATION_BOUNDS: ('Out of scope', "Implementer's discretion", 'Escalate if'),
+    BEHAVIORS_AND_ACCEPTANCE: ('Not covered by tests',),
+    GUARDRAILS: ('Invariants', 'Error policy', 'Security and performance', 'Deviation protocol'),
+}
+GROUNDING_PATH_SUBSECTIONS: dict[str, str] = {
+    name.casefold(): name for name in REQUIRED_BRIEF_SUBSECTIONS[GROUNDING] if name != RESEARCH_TO_READ
+}
 
 # Lines the architect cannot change: the frozen Overview is preserved by storage, and SD entries
 # and the Research Requirements ledger are orchestrator-written history it carries forward verbatim.
 REFERENCE_EXEMPT_FIELDS = frozenset({*FROZEN_PHASES_FIELDS, 'settled_design_decisions', 'research_requirements'})
 
-SD_KEYS = frozenset({'source', 'supersedes', 'decision', 'rationale', 'rejected', 'binding', 'section', 'reason'})
+SD_KEYS = frozenset(
+    {'source', 'supersedes', 'decision', 'rationale', 'rejected', 'affects', 'binding', 'section', 'reason'}
+)
 DECIDED_FIELDS = ('decision', 'rationale', 'binding')
 REQUIRED_SD_FIELDS: dict[str, tuple[str, ...]] = {
     'user': DECIDED_FIELDS,
@@ -43,6 +62,7 @@ ORCHESTRATOR_SOURCES = frozenset({'user', 'user-edit', 'user-menu', 'user-overri
 ACCEPT_SOURCE = 'user'
 ACCEPT_SUPERSEDES = 'unresolved-checks'
 ID_FAMILIES = ('OD', 'SD', 'CQ', 'RP', 'FLOW')
+BRIEF_ID_FAMILIES = ('T', 'SC', 'G')
 SETTLED_BY_SUPERSEDES = frozenset({'OD', 'CQ'})
 REQUIRED_OPTIONS = ('A', 'B')
 ALLOWED_OPTIONS = frozenset({'A', 'B', 'C'})
@@ -55,6 +75,19 @@ CHECKLIST = 'Checklist'
 POLICY = 'Policy'
 STEPS_PART = f'{BUILD_ORDER} > {STEPS}'
 REQUIRED_PLAN_PARTS = (STEPS_PART, CHECKLIST, POLICY)
+POLICY_SUBSECTIONS = ('Execution Intent Policy', 'Deferred Risk Register')
+START_HERE = 'Start here'
+EXIT_CRITERIA = 'Exit criteria'
+DEVIATIONS = 'Deviations'
+FINALIZE_SECTIONS = (START_HERE, EXIT_CRITERIA, DEVIATIONS)
+FINALIZE_SECTION_BY_FOLD: dict[str, str] = {name.casefold(): name for name in FINALIZE_SECTIONS}
+START_HERE_SUBSECTIONS = ('Prerequisites', 'Required reading', 'First action')
+DRAFT_FIELDS = ('Goal', 'Files', 'Depends on')
+STEP_FIELDS = ('Goal', 'Context', 'Files', 'Depends on', 'Tests to turn green', 'Verify', 'Done when')
+FINALIZE_FIELDS = tuple(label for label in STEP_FIELDS if label not in DRAFT_FIELDS)
+STEP_FIELD_BY_FOLD: dict[str, str] = {label.casefold(): label for label in STEP_FIELDS}
+ID_SCANNED_FIELDS = frozenset({'Context', 'Tests to turn green'})
+FINALIZE_ONLY_SEGMENTS = frozenset(name.casefold() for name in (*FINALIZE_SECTIONS, *FINALIZE_FIELDS))
 VERIFY_OPEN = '(verify:'
 ASK_USER_MARKER = 'ask user'
 BEST_PRACTICES_PREFIX = '.best-practices/'
@@ -81,6 +114,21 @@ _NUMBERED_STEP_HEADING = re.compile(r'^####\s+Step\s+(?P<number>[0-9]+)')
 _CHECKLIST_ITEM = re.compile(r'^\s*[-*+]\s+\[[ xX]\]')
 _STEP_REFERENCE = re.compile(r'\(Step (?P<number>[0-9]+)\)')
 _PLACEHOLDER_COMMAND = re.compile(r'[\[<(]?\s*todo\b|no_preference$|<.*>$|\[.*\]$', re.IGNORECASE | re.DOTALL)
+# An angle-bracket placeholder token such as <command>; never shell redirection like `cmd < in > out`.
+_PLACEHOLDER_TOKEN = re.compile(r'<[A-Za-z](?:[^<>]*[^\s<>])?>')
+_BRIEF_ID_TOKEN = re.compile(r'\b(?P<family>T|SC|G)-(?P<number>[0-9]+)\b')
+_TRAILING_TEST_ID = re.compile(r'(?:^|\s)[—–-]\s*(?P<id>T-(?P<number>[0-9]+))\s*$')
+_CRITERION_ENTRY = re.compile(r'^[-*+]\s+(?P<id>SC-(?P<number>[0-9]+))\s*:')
+_GUARDRAIL_ENTRY = re.compile(r'^[-*+]\s+(?P<id>G-(?P<number>[0-9]+))\s*:')
+_MEASURE = re.compile(r'\bmeasure\s*:', re.IGNORECASE)
+_STEP_TOKEN = re.compile(r'\bStep (?P<number>[0-9]+)\b')
+_AFFECTS_LINE = re.compile(r'^\s*[-*+]\s+Affects\s*:', re.IGNORECASE)
+_STEP_FIELD = re.compile(
+    r'^[-*+]\s+\*\*\s*(?P<label>' + '|'.join(re.escape(label) for label in STEP_FIELDS) + r')\s*(?::\*\*|\*\*\s*:)'
+    r'(?P<value>.*)$',
+    re.IGNORECASE,
+)
+_FILE_ITEM = re.compile(r'`(?P<path>[^`]+)`|\b(?P<verb>create|modify)\b|(?P<separator>;)', re.IGNORECASE)
 _READ_LINE = re.compile(r'^\s*[-*+]\s+Read:\s*(?P<rest>.*)$')
 _APPLIED_LINE = re.compile(r'^\s*[-*+]\s+Applied:')
 _CONSTRAINT_LINE = re.compile(r'^\s*[-*+]\s+Constraint:\s*(?P<rest>.*)$')
@@ -95,6 +143,9 @@ DEFINED_BY: dict[str, str] = {
     'CQ': 'SD supersedes= value (CQ IDs live only in the critic report)',
     'RP': 'Research Requirements line',
     'FLOW': '- FLOW-<n>: bullet in the UX Contract',
+    'T': 'Test List entry ending in — T-<n>',
+    'SC': '- SC-<n>: entry in Success Criteria',
+    'G': '- G-<n>: entry in Guardrails',
 }
 PLAN_SECTION_DETAILS: dict[str, str] = {
     STEPS_PART: (
@@ -108,6 +159,20 @@ PLAN_SECTION_DETAILS: dict[str, str] = {
     POLICY: (
         'implementation.md has no ## Policy section; add it with its ### Execution Intent Policy and'
         ' ### Deferred Risk Register subsections.'
+    ),
+}
+FINALIZE_SECTION_DETAILS: dict[str, str] = {
+    START_HERE: (
+        'implementation.md has finalized content but no ## Start here section; add it with its ### Prerequisites,'
+        ' ### Required reading and ### First action subsections.'
+    ),
+    EXIT_CRITERIA: (
+        'implementation.md has finalized content but no ## Exit criteria section; add it, naming in backticks'
+        ' each configured command that verifies the whole phase.'
+    ),
+    DEVIATIONS: (
+        'implementation.md has finalized content but no ## Deviations section; add it holding - None until an'
+        ' implementer records a deviation.'
     ),
 }
 
@@ -169,13 +234,57 @@ class _IdIndex:
 
 
 @dataclass
+class _Step:
+    written: str
+    number: str
+    fields: list[tuple[str, list[str]]] = field(default_factory=list)
+
+    @property
+    def subject(self) -> str:
+        return f'Step {self.written}'
+
+    @property
+    def labels(self) -> list[str]:
+        return [label for label, _ in self.fields]
+
+    @property
+    def is_finalized(self) -> bool:
+        return set(STEP_FIELDS) <= set(self.labels)
+
+    def location(self, label: str = '') -> str:
+        return ' > '.join(part for part in (IMPLEMENTATION_FILE, self.subject, label) if part)
+
+    def lines(self, label: str) -> list[str]:
+        return [line for written, field_lines in self.fields if written == label for line in field_lines]
+
+
+@dataclass
+class _PlanPosition:
+    h2: str = ''
+    h3: str = ''
+    step: _Step | None = None
+    label: str = ''
+
+    @property
+    def location(self) -> str:
+        if self.step is not None:
+            return self.step.location(self.label)
+        return ' > '.join(name for name in (IMPLEMENTATION_FILE, self.h2, self.h3) if name)
+
+
+@dataclass
 class _PlanScan:
     sections: set[str] = field(default_factory=set)
     steps: dict[str, str] = field(default_factory=dict)
+    step_blocks: list[_Step] = field(default_factory=list)
     numbered_steps: set[str] = field(default_factory=set)
     has_malformed_heading: bool = False
+    finalize_sections: set[str] = field(default_factory=set)
+    subsections: dict[str, set[str]] = field(default_factory=dict)
     items: list[str] = field(default_factory=list)
+    exit_lines: list[str] = field(default_factory=list)
     references: list[tuple[str, str]] = field(default_factory=list)
+    brief_references: list[tuple[str, str]] = field(default_factory=list)
     findings: list[StructuralFinding] = field(default_factory=list)
 
 
@@ -185,17 +294,24 @@ def check_phase_structure(phase: Phase) -> list[StructuralFinding]:
     index = _id_index(phase, open_entries, settled_entries)
     seam_findings, valid_seams = _skeleton_index_findings(phase)
     overlapping = _overlapping_sections(phase)
-    return _unique(
+    return _reported(
         [
             *seam_findings,
             *_test_list_findings(phase.test_list, valid_seams),
+            *_test_id_findings(phase.test_list),
             *(finding for entry in open_entries for finding in _open_entry_findings(entry)),
             *(finding for entry in settled_entries for finding in _settled_entry_findings(entry)),
             *(_overlap_finding(name) for name in overlapping),
             *index.duplicates,
             *_still_open_findings(open_entries, index),
-            *_dangling_findings(_phase_reference_lines(phase, overlapping), index),
-        ]
+            *_dangling_findings(_phase_reference_lines(phase, overlapping), index, _ID_TOKEN),
+            *_dangling_findings(_brief_reference_lines(phase, overlapping), index, _BRIEF_ID_TOKEN),
+            *_delegation_bounds_findings(phase),
+            *_finalizer_section_findings(phase),
+            *_success_criteria_findings(phase),
+            *_research_copy_findings(phase),
+        ],
+        finalized=_has_finalizer_section(phase),
     )
 
 
@@ -209,18 +325,37 @@ def extract_cited_paths(phase: Phase) -> list[CitedPath]:
     return list(unique.values())
 
 
+def extract_implementation_paths(markdown: str) -> list[CitedPath]:
+    unique: dict[tuple[str, CitedPathKind, str], CitedPath] = {}
+    for step in _scan_plan(markdown).step_blocks:
+        cited_in = step.location('Files')
+        for path, kind in _file_items(step.lines('Files')):
+            unique.setdefault((path, kind, cited_in), CitedPath(path=path, kind=kind, cited_in=cited_in))
+    return list(unique.values())
+
+
 def check_implementation_structure(markdown: str, phase: Phase) -> list[StructuralFinding]:
     scan = _scan_plan(markdown)
     index = _id_index(
         phase, _open_entries(phase.open_design_decisions), _settled_entries(phase.settled_design_decisions)
     )
-    return _unique(
+    return _reported(
         [
             *_missing_plan_sections(scan),
+            *_policy_subsection_findings(scan),
             *scan.findings,
             *_no_steps_findings(scan),
+            *_contiguity_findings(scan),
+            *(finding for step in scan.step_blocks for finding in _step_findings(step)),
+            *_dependency_findings(scan),
             *_checklist_findings(scan),
-            *_dangling_findings(scan.references, index),
+            *_exit_criteria_findings(scan),
+            *_finalize_section_findings(scan),
+            *_dangling_findings(scan.references, index, _ID_TOKEN),
+            *_dangling_findings(scan.brief_references, index, _BRIEF_ID_TOKEN),
+            *_seam_coverage_findings(scan, phase),
+            *_test_coverage_findings(scan, phase),
+            *_phase_step_reference_findings(scan, phase),
         ]
     )
 
@@ -264,6 +399,33 @@ def _unique(findings: Iterable[StructuralFinding]) -> list[StructuralFinding]:
     for finding in findings:
         unique.setdefault(_finding_key(finding), finding)
     return list(unique.values())
+
+
+def _reported(findings: Iterable[StructuralFinding], finalized: bool = False) -> list[StructuralFinding]:
+    return [_owned(finding, finalized) for finding in _unique(findings)]
+
+
+def _owned(finding: StructuralFinding, finalized: bool = False) -> StructuralFinding:
+    """Hand a finding to the finalizer when it sits in content only the finalizer writes.
+
+    The owner is computed from the location, never guessed: in phase.md the first segment names
+    the H2, and in implementation.md any later segment can name a finalize-only section or step
+    field. Once the finalizer's sections exist, Success Criteria lines belong to it too, because it
+    appends criteria and completes measures there. Orchestrator-owned findings stay the
+    orchestrator's, whatever their location.
+    """
+    if finding.owner == FindingOwner.ORCHESTRATOR or not _finalizer_writes(finding, finalized):
+        return finding
+    return finding.model_copy(update={'owner': FindingOwner.FINALIZER})
+
+
+def _finalizer_writes(finding: StructuralFinding, finalized: bool = False) -> bool:
+    first, *rest = finding.location.split(' > ')
+    if first == IMPLEMENTATION_FILE:
+        return any(segment.casefold() in FINALIZE_ONLY_SEGMENTS for segment in rest)
+    if first in FINALIZER_SECTIONS or finding.check == StructuralCheck.SUCCESS_CRITERION_MALFORMED:
+        return True
+    return finalized and finding.location == SUCCESS_CRITERIA_LOCATION
 
 
 def _finding(
@@ -696,9 +858,13 @@ def _id_index(phase: Phase, open_entries: list[_OpenEntry], settled_entries: lis
         ),
         *_flow_definitions(phase.design_shape_additional),
         *_research_definitions(phase.research_requirements),
+        *_test_definitions(phase.test_list),
+        *_entry_definitions(phase.success_criteria, _CRITERION_ENTRY, 'SC', SUCCESS_CRITERIA_LOCATION),
+        *_entry_definitions((phase.additional_sections or {}).get(GUARDRAILS), _GUARDRAIL_ENTRY, 'G', GUARDRAILS),
     ]
-    resolvable: dict[str, set[str]] = {family: set() for family in ID_FAMILIES}
-    counted: dict[str, set[str]] = {family: set() for family in ID_FAMILIES}
+    families = (*ID_FAMILIES, *BRIEF_ID_FAMILIES)
+    resolvable: dict[str, set[str]] = {family: set() for family in families}
+    counted: dict[str, set[str]] = {family: set() for family in families}
     duplicates: list[StructuralFinding] = []
     for definition in definitions:
         resolvable[definition.family].add(definition.number)
@@ -777,6 +943,44 @@ def _research_definitions(text: str | None) -> Iterator[_Definition]:
                 )
 
 
+def _test_entries(test_list: str | None) -> Iterator[str]:
+    for line in _cli_read_lines(test_list, _cli_reads_test):
+        stripped = line.strip()
+        if _is_bullet(line) and _is_test_entry(stripped):
+            yield stripped
+
+
+def _trailing_test_id(entry: str) -> re.Match[str] | None:
+    bullet = BULLET_PATH.match(entry)
+    return _TRAILING_TEST_ID.search(bullet.group('rest')) if bullet else None
+
+
+def _test_definitions(test_list: str | None) -> Iterator[_Definition]:
+    for entry in _test_entries(test_list):
+        test_id = _trailing_test_id(entry)
+        if test_id is not None:
+            yield _Definition(
+                'T',
+                _normalized_number(test_id.group('number')),
+                test_id.group('id'),
+                TEST_LIST_LOCATION,
+                FindingOwner.ARCHITECT,
+            )
+
+
+def _entry_definitions(text: str | None, entry: re.Pattern[str], family: str, location: str) -> Iterator[_Definition]:
+    for line in _unfenced_lines(text):
+        defined = entry.match(line.replace('**', ''))
+        if defined is not None:
+            yield _Definition(
+                family,
+                _normalized_number(defined.group('number')),
+                defined.group('id'),
+                location,
+                FindingOwner.ARCHITECT,
+            )
+
+
 def _duplicate_finding(definition: _Definition) -> StructuralFinding:
     return _finding(
         StructuralCheck.DUPLICATE_ID,
@@ -811,7 +1015,28 @@ def _phase_reference_lines(phase: Phase, overlapping: list[str]) -> list[tuple[s
     ]
 
 
-def _dangling_findings(references: Iterable[tuple[str, str]], index: _IdIndex) -> list[StructuralFinding]:
+def _brief_reference_lines(phase: Phase, overlapping: list[str]) -> list[tuple[str, str]]:
+    """Lines where a T, SC or G token is a reference: the brief sections, Open Design Decisions and Success Criteria.
+
+    A whole-document scan would flag ordinary prose, such as a product name ending in -7. Settled
+    entries stay exempt, as for the other ID families.
+    """
+    return [
+        (section.location, line)
+        for section in _sections(phase)
+        if section.location not in overlapping
+        and (section.field_name in ('open_design_decisions', 'success_criteria') or _is_brief_section(section))
+        for line in _unfenced_lines(section.text)
+    ]
+
+
+def _is_brief_section(section: _Section) -> bool:
+    return not section.field_name and section.location in Phase.BRIEF_SECTIONS
+
+
+def _dangling_findings(
+    references: Iterable[tuple[str, str]], index: _IdIndex, token_pattern: re.Pattern[str]
+) -> list[StructuralFinding]:
     return [
         _finding(
             StructuralCheck.DANGLING_REFERENCE,
@@ -821,14 +1046,187 @@ def _dangling_findings(references: Iterable[tuple[str, str]], index: _IdIndex) -
             ' remove the reference.',
         )
         for location, line in references
-        for token in _ID_TOKEN.finditer(line)
+        for token in token_pattern.finditer(line)
         if _normalized_number(token.group('number')) not in index.resolvable[token.group('family')]
     ]
 
 
+def _test_id_findings(test_list: str | None) -> list[StructuralFinding]:
+    return [
+        _finding(
+            StructuralCheck.TEST_ENTRY_WITHOUT_ID,
+            TEST_LIST_LOCATION,
+            entry,
+            'This Test List entry has no trailing — T-<n> after its closing backtick; append one with the next'
+            ' unused T number.',
+        )
+        for entry in _test_entries(test_list)
+        if _trailing_test_id(entry) is None
+    ]
+
+
+def _subsection_bodies(text: str | None) -> dict[str, list[str]]:
+    bodies: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for line, fenced in _lines_with_fence_state(text):
+        heading = None if fenced else _heading(line)
+        if heading is not None and heading[0] <= 3:
+            current = bodies.setdefault(heading[1].casefold(), []) if heading[0] == 3 else None
+        elif current is not None and line.strip():
+            current.append(line)
+    return bodies
+
+
+def _brief_section_findings(check: StructuralCheck, name: str, text: str | None) -> list[StructuralFinding]:
+    required = REQUIRED_BRIEF_SUBSECTIONS[name]
+    if not text:
+        return [
+            _finding(
+                check,
+                name,
+                name,
+                f'## {name} is missing; add it with its {", ".join(f"### {h3}" for h3 in required)} subsections,'
+                ' writing exactly - None under an empty one.',
+            )
+        ]
+    bodies = _subsection_bodies(text)
+    return [
+        _finding(check, f'{name} > {h3}', name, _brief_subsection_detail(name, h3, h3.casefold() in bodies), h3)
+        for h3 in required
+        if not bodies.get(h3.casefold())
+    ]
+
+
+def _brief_subsection_detail(name: str, h3: str, present: bool) -> str:
+    if present:
+        return f'### {h3} under ## {name} is empty; write its entries, or exactly - None when it has none.'
+    return f'## {name} has no ### {h3} subsection; add it, holding exactly - None when it has no entries.'
+
+
+def _delegation_bounds_findings(phase: Phase) -> list[StructuralFinding]:
+    if not any(getattr(phase, field_name) for field_name in DESIGN_SHAPE_FIELDS):
+        return []
+    return _brief_section_findings(
+        StructuralCheck.DELEGATION_BOUNDS_INCOMPLETE,
+        DELEGATION_BOUNDS,
+        (phase.additional_sections or {}).get(DELEGATION_BOUNDS),
+    )
+
+
+def _has_finalizer_section(phase: Phase) -> bool:
+    return any((phase.additional_sections or {}).get(name) for name in FINALIZER_SECTIONS)
+
+
+def _finalizer_section_findings(phase: Phase) -> list[StructuralFinding]:
+    if not _has_finalizer_section(phase):
+        return []
+    sections = phase.additional_sections or {}
+    return [
+        finding
+        for name in FINALIZER_SECTIONS
+        for finding in _brief_section_findings(StructuralCheck.BRIEF_SECTION_INCOMPLETE, name, sections.get(name))
+    ]
+
+
+def _success_criteria_findings(phase: Phase) -> list[StructuralFinding]:
+    if not _has_finalizer_section(phase):
+        return []
+    findings: list[StructuralFinding] = []
+    for line in _unfenced_lines(phase.success_criteria):
+        if not _is_bullet(line) or _is_none_marker(line):
+            continue
+        plain = line.replace('**', '')
+        entry = _CRITERION_ENTRY.match(plain)
+        subject = entry.group('id') if entry else line.strip()
+        if entry is None:
+            findings.append(_criterion_finding(subject, 'id'))
+        if not _MEASURE.search(plain):
+            findings.append(_criterion_finding(subject, 'measure'))
+    return findings
+
+
+def _criterion_finding(subject: str, part: str) -> StructuralFinding:
+    detail = (
+        'This Success Criteria entry does not start with SC-<n>:; prefix it with the next unused SC number,'
+        ' as - SC-<n>: <outcome> — measure: <check>.'
+        if part == 'id'
+        else 'This Success Criteria entry has no measure: part; append — measure: <a configured command or an'
+        ' observable check>.'
+    )
+    return _finding(StructuralCheck.SUCCESS_CRITERION_MALFORMED, SUCCESS_CRITERIA_LOCATION, subject, detail, part)
+
+
+def _research_copy_findings(phase: Phase) -> list[StructuralFinding]:
+    grounding = (phase.additional_sections or {}).get(GROUNDING)
+    if not grounding:
+        return []
+    agent_facing = _keyed_paths(_research_to_read_paths(grounding))
+    ledger = _keyed_paths(_ledger_read_paths(phase.research_requirements))
+    location = f'{GROUNDING} > {RESEARCH_TO_READ}'
+    return [
+        *(
+            _finding(
+                StructuralCheck.RESEARCH_COPIES_DISAGREE,
+                location,
+                path,
+                'This Research to read path has no matching - Read: line in Research Requirements; remove it, since'
+                ' Research to read lists exactly the validated - Read: paths.',
+            )
+            for key, path in agent_facing.items()
+            if key not in ledger
+        ),
+        *(
+            _finding(
+                StructuralCheck.RESEARCH_COPIES_DISAGREE,
+                location,
+                path,
+                'This - Read: path in Research Requirements is missing from Research to read; add it there with'
+                ' the decisions, seams and steps it informs.',
+            )
+            for key, path in ledger.items()
+            if key not in agent_facing
+        ),
+    ]
+
+
+def _keyed_paths(paths: Iterable[str]) -> dict[str, str]:
+    keyed: dict[str, str] = {}
+    for path in paths:
+        keyed.setdefault(_normalized_path(path), path)
+    return keyed
+
+
+def _research_to_read_paths(grounding: str) -> Iterator[str]:
+    subsection = ''
+    for line in _unfenced_lines(grounding):
+        heading = _heading(line)
+        if heading is not None and heading[0] <= 3:
+            subsection = heading[1].casefold() if heading[0] == 3 else ''
+        elif subsection == RESEARCH_TO_READ.casefold() and _is_bullet(line.strip()):
+            span = _BACKTICK_SPAN.search(line)
+            if span and (path := span.group('inner').strip()):
+                yield path
+
+
+def _ledger_read_paths(research_requirements: str | None) -> Iterator[str]:
+    for line in _unfenced_lines(research_requirements):
+        read = _READ_LINE.match(line)
+        if read and (path := _read_line_path(read.group('rest'))):
+            yield path
+
+
+def _read_line_path(rest: str) -> str:
+    span = _BACKTICK_SPAN.search(rest)
+    return span.group('inner').strip() if span else rest.split(' — ', 1)[0].strip()
+
+
 def _section_citations(section: _Section) -> Iterator[CitedPath]:
+    subsection = ''
     for line in _unfenced_lines(section.text):
-        own = _own_citation(section, line)
+        heading = _heading(line)
+        if heading is not None and heading[0] <= 3:
+            subsection = heading[1] if heading[0] == 3 else ''
+        own = _own_citation(section, line, subsection)
         if own is not None:
             yield own
         yield from (
@@ -838,17 +1236,24 @@ def _section_citations(section: _Section) -> Iterator[CitedPath]:
         )
 
 
-def _own_citation(section: _Section, line: str) -> CitedPath | None:
+def _own_citation(section: _Section, line: str, subsection: str) -> CitedPath | None:
     if section.field_name == 'research_requirements' and (read := _READ_LINE.match(line)):
-        rest = read.group('rest')
-        span = _BACKTICK_SPAN.search(rest)
-        path = span.group('inner').strip() if span else rest.split(' — ', 1)[0].strip()
+        path = _read_line_path(read.group('rest'))
         return CitedPath(path=path, kind=CitedPathKind.READ, cited_in=section.location) if path else None
     if section.field_name == 'implementation_plan_references' and (constraint := _CONSTRAINT_LINE.match(line)):
         span = _BACKTICK_SPAN.search(constraint.group('rest'))
         path = span.group('inner').split('§', 1)[0].strip() if span else ''
         return CitedPath(path=path, kind=CitedPathKind.CONSTRAINT, cited_in=section.location) if path else None
+    if _is_brief_section(section) and section.location == GROUNDING:
+        return _grounding_citation(line, subsection)
     return None
+
+
+def _grounding_citation(line: str, subsection: str) -> CitedPath | None:
+    name = GROUNDING_PATH_SUBSECTIONS.get(subsection.casefold())
+    bullet = BULLET_PATH.match(line.strip()) if name else None
+    path = bullet.group('inner').strip() if bullet else ''
+    return CitedPath(path=path, kind=CitedPathKind.GROUNDING, cited_in=f'{GROUNDING} > {name}') if path else None
 
 
 def _best_practices_mentions(line: str) -> list[str]:
@@ -862,36 +1267,77 @@ def _through_last_markdown_suffix(run: str) -> str:
 
 
 def _scan_plan(markdown: str) -> _PlanScan:
+    """Read implementation.md once into the facts every check needs.
+
+    A step owns the lines below its heading up to the next heading of level four or above. Within
+    a step, a column-0 field bullet opens a field, and indented or blank lines continue it, so a
+    field written over several lines keeps its commands and IDs. The lines after a malformed or
+    duplicate step heading belong to no step. Deviations lines are the implementers' record, which
+    no agent may edit, so an ID they cite is never a reference.
+    """
     scan = _PlanScan()
-    h2 = h3 = ''
+    position = _PlanPosition()
     for line in _unfenced_lines(markdown):
         heading = _heading(line)
-        if heading is not None:
-            h2, h3 = _enter_heading(scan, line, heading, h2, h3)
-        elif h2 == CHECKLIST and _CHECKLIST_ITEM.match(line):
-            scan.items.append(line.strip())
-        scan.references.append((' > '.join(name for name in (IMPLEMENTATION_FILE, h2, h3) if name), line))
+        if heading is None:
+            _record_plan_line(scan, position, line)
+        else:
+            _enter_heading(scan, position, line, heading)
+        if _finalize_section(position.h2) != DEVIATIONS:
+            scan.references.append((position.location, line))
+        if position.label in ID_SCANNED_FIELDS:
+            scan.brief_references.append((position.location, line))
     return scan
 
 
-def _enter_heading(scan: _PlanScan, line: str, heading: tuple[int, str], h2: str, h3: str) -> tuple[str, str]:
+def _record_plan_line(scan: _PlanScan, position: _PlanPosition, line: str) -> None:
+    if position.h2 == CHECKLIST and _CHECKLIST_ITEM.match(line):
+        scan.items.append(line.strip())
+    if _finalize_section(position.h2) == EXIT_CRITERIA:
+        scan.exit_lines.append(line)
+    if position.step is not None:
+        _record_step_line(position, position.step, line)
+
+
+def _record_step_line(position: _PlanPosition, step: _Step, line: str) -> None:
+    step_field = _STEP_FIELD.match(line)
+    if step_field is not None:
+        position.label = STEP_FIELD_BY_FOLD[step_field.group('label').casefold()]
+        step.fields.append((position.label, [step_field.group('value')]))
+    elif position.label and (not line.strip() or line[0].isspace()):
+        step.fields[-1][1].append(line)
+    else:
+        position.label = ''
+
+
+def _finalize_section(h2: str) -> str:
+    return FINALIZE_SECTION_BY_FOLD.get(h2.casefold(), '')
+
+
+def _enter_heading(scan: _PlanScan, position: _PlanPosition, line: str, heading: tuple[int, str]) -> None:
     level, name = heading
+    position.label = ''
+    if level >= 5:
+        return
+    position.step = None
     if level == 1:
-        return '', ''
-    if level == 2:
+        position.h2 = position.h3 = ''
+    elif level == 2:
+        position.h2, position.h3 = name, ''
         if name in (CHECKLIST, POLICY):
             scan.sections.add(name)
-        return name, ''
-    if level == 3:
-        if (h2, name) == (BUILD_ORDER, STEPS):
+        if _finalize_section(name):
+            scan.finalize_sections.add(_finalize_section(name))
+    elif level == 3:
+        position.h3 = name
+        scan.subsections.setdefault(_finalize_section(position.h2) or position.h2, set()).add(name.casefold())
+        if (position.h2, name) == (BUILD_ORDER, STEPS):
             scan.sections.add(STEPS_PART)
-        return h2, name
-    if level == 4 and (h2, h3) == (BUILD_ORDER, STEPS):
-        _record_step(scan, line.rstrip())
-    return h2, h3
+    elif (position.h2, position.h3) == (BUILD_ORDER, STEPS):
+        position.step = _record_step(scan, line.rstrip())
 
 
-def _record_step(scan: _PlanScan, line: str) -> None:
+def _record_step(scan: _PlanScan, line: str) -> _Step | None:
     step = _STEP_HEADING.match(line)
     numbered = _NUMBERED_STEP_HEADING.match(line)
     if numbered:
@@ -907,7 +1353,7 @@ def _record_step(scan: _PlanScan, line: str) -> None:
                 ' it in that form.',
             )
         )
-        return
+        return None
     number = _normalized_number(step.group('number'))
     if number in scan.steps:
         scan.findings.append(
@@ -919,8 +1365,11 @@ def _record_step(scan: _PlanScan, line: str) -> None:
                 ' step number and update the Checklist to match.',
             )
         )
-        return
+        return None
     scan.steps[number] = step.group('number')
+    opened = _Step(written=step.group('number'), number=number)
+    scan.step_blocks.append(opened)
+    return opened
 
 
 def _missing_plan_sections(scan: _PlanScan) -> list[StructuralFinding]:
@@ -948,6 +1397,376 @@ def _no_steps_findings(scan: _PlanScan) -> list[StructuralFinding]:
             'Build Order > Steps holds no #### Step <integer>: <title> heading; add one heading per step.',
         )
     ]
+
+
+def _policy_subsection_findings(scan: _PlanScan) -> list[StructuralFinding]:
+    if POLICY not in scan.sections:
+        return []
+    present = scan.subsections.get(POLICY, set())
+    return [
+        _finding(
+            StructuralCheck.IMPLEMENTATION_SECTION_MISSING,
+            f'{IMPLEMENTATION_FILE} > {POLICY}',
+            IMPLEMENTATION_FILE,
+            f'## Policy has no ### {subsection} subsection; add it.',
+            f'{POLICY} > {subsection}',
+        )
+        for subsection in POLICY_SUBSECTIONS
+        if subsection.casefold() not in present
+    ]
+
+
+def _contiguity_findings(scan: _PlanScan) -> list[StructuralFinding]:
+    numbers = scan.numbered_steps
+    if not scan.steps or numbers == {str(number) for number in range(1, len(numbers) + 1)}:
+        return []
+    return [
+        _finding(
+            StructuralCheck.IMPLEMENTATION_STEPS_NOT_CONTIGUOUS,
+            f'{IMPLEMENTATION_FILE} > {STEPS_PART}',
+            STEPS,
+            'The step numbers are not exactly 1 to N, which frozen readers require; renumber the step headings'
+            ' from 1 without gaps and update every reference to them in both files.',
+        )
+    ]
+
+
+def _step_findings(step: _Step) -> list[StructuralFinding]:
+    findings = _field_order_findings(step)
+    if 'Files' in step.labels and not any(path.strip() for path in _spans(step.lines('Files'))):
+        findings.append(
+            _finding(
+                StructuralCheck.IMPLEMENTATION_STEP_FILES_MISSING,
+                step.location('Files'),
+                step.subject,
+                f'{step.subject} names no backticked path in Files, so it cannot be dispatched by its files; write'
+                ' each file as create `<path>` or modify `<path>`, separated by ;.',
+                'Files',
+            )
+        )
+    if 'Verify' in step.labels and not _verify_holds_command(step.lines('Verify')):
+        findings.append(
+            _finding(
+                StructuralCheck.IMPLEMENTATION_COMMAND_PLACEHOLDER,
+                step.location('Verify'),
+                step.subject,
+                f'{step.subject} has no usable Verify command (empty, not backticked, TODO, no_preference or a'
+                ' placeholder); write the configured command in backticks for each language that owns its files,'
+                ' or the ask user marker when none is configured.',
+                'Verify',
+            )
+        )
+    return findings
+
+
+def _field_order_findings(step: _Step) -> list[StructuralFinding]:
+    labels = step.labels
+    target = STEP_FIELDS if any(label in FINALIZE_FIELDS for label in labels) else DRAFT_FIELDS
+    order = ', '.join(target)
+    missing = [label for label in target if label not in labels]
+    if missing:
+        return [
+            _field_finding(
+                step, label, f'{step.subject} has no - **{label}:** field; add it, so its fields are {order}.'
+            )
+            for label in missing
+        ]
+    expected = [*target, *([''] * len(labels))]
+    draft_in_order = [label for label in labels if label in DRAFT_FIELDS] == list(DRAFT_FIELDS)
+    suspects = [
+        label
+        for label, wanted in zip(labels, expected)
+        if label != wanted and (label in FINALIZE_FIELDS or not draft_in_order)
+    ]
+    misplaced = suspects[0] if suspects else ''
+    if not misplaced:
+        return []
+    return [
+        _field_finding(
+            step,
+            misplaced,
+            f'{step.subject} has its fields out of order or repeated; write them once each, as {order}.',
+        )
+    ]
+
+
+def _field_finding(step: _Step, label: str, detail: str) -> StructuralFinding:
+    return _finding(
+        StructuralCheck.IMPLEMENTATION_STEP_FIELDS_INCOMPLETE, step.location(label), step.subject, detail, label
+    )
+
+
+def _spans(lines: Iterable[str]) -> list[str]:
+    return [span.group('inner') for line in lines for span in _BACKTICK_SPAN.finditer(line)]
+
+
+def _verify_holds_command(lines: list[str]) -> bool:
+    if _starts_with_ask_user(' '.join(lines)):
+        return True
+    commands = _spans(lines)
+    return bool(commands) and not any(_is_placeholder_command(command) for command in commands)
+
+
+def _starts_with_ask_user(text: str) -> bool:
+    return text.strip().lstrip('-*+').strip().lstrip('`').strip().lower().startswith(ASK_USER_MARKER)
+
+
+def _dependency_findings(scan: _PlanScan) -> list[StructuralFinding]:
+    findings: list[StructuralFinding] = []
+    graph: dict[str, list[str]] = {}
+    for step in scan.step_blocks:
+        named = {_normalized_number(token.group('number')): token.group('number') for token in _step_tokens(step)}
+        findings.extend(
+            _dependency_finding(step, f'Step {written}', _invalid_dependency_detail(step, number, written))
+            for number, written in named.items()
+            if number == step.number or number not in scan.numbered_steps
+        )
+        graph[step.number] = [number for number in named if number != step.number and number in scan.steps]
+    findings.extend(_cycle_finding(scan, cycle) for cycle in _dependency_cycles(graph))
+    return findings
+
+
+def _step_tokens(step: _Step) -> Iterator[re.Match[str]]:
+    for line in step.lines('Depends on'):
+        yield from _STEP_TOKEN.finditer(line)
+
+
+def _invalid_dependency_detail(step: _Step, number: str, written: str) -> str:
+    if number == step.number:
+        return f'{step.subject} depends on itself; remove Step {written} from its Depends on.'
+    return f'{step.subject} depends on Step {written}, which no step heading defines; point it at an existing step.'
+
+
+def _dependency_finding(step: _Step, part: str, detail: str) -> StructuralFinding:
+    return _finding(
+        StructuralCheck.IMPLEMENTATION_DEPENDENCY_INVALID, step.location('Depends on'), step.subject, detail, part
+    )
+
+
+def _cycle_finding(scan: _PlanScan, cycle: list[str]) -> StructuralFinding:
+    members = sorted(cycle, key=_number_order)
+    shown = ', '.join(f'Step {scan.steps[number]}' for number in members[:6])
+    more = f' and {len(members) - 6} more' if len(members) > 6 else ''
+    steps_by_number = {step.number: step for step in scan.step_blocks}
+    return _dependency_finding(
+        steps_by_number[members[0]],
+        'cycle',
+        f'{shown}{more} depend on one another in a cycle, so none of them can start; remove one of these dependencies.',
+    )
+
+
+def _number_order(number: str) -> tuple[int, str]:
+    return len(number), number
+
+
+def _dependency_cycles(graph: dict[str, list[str]]) -> list[list[str]]:
+    """Strongly connected components of more than one step, found without recursion.
+
+    Kosaraju's two passes: a post-order walk of the graph, then a walk of the reversed graph in
+    reverse post-order, where each tree is one component. Iterative, so a plan with thousands of
+    chained steps cannot exhaust the stack.
+    """
+    reverse: dict[str, list[str]] = {node: [] for node in graph}
+    for node, targets in graph.items():
+        for target in targets:
+            reverse[target].append(node)
+    assigned: set[str] = set()
+    components = [_collect(root, reverse, assigned) for root in reversed(_post_order(graph)) if root not in assigned]
+    return [component for component in components if len(component) > 1]
+
+
+def _post_order(graph: dict[str, list[str]]) -> list[str]:
+    visited: set[str] = set()
+    order: list[str] = []
+    for root in graph:
+        if root in visited:
+            continue
+        visited.add(root)
+        stack = [(root, iter(graph[root]))]
+        while stack:
+            node, targets = stack[-1]
+            unvisited = next((target for target in targets if target not in visited), None)
+            if unvisited is None:
+                stack.pop()
+                order.append(node)
+            else:
+                visited.add(unvisited)
+                stack.append((unvisited, iter(graph[unvisited])))
+    return order
+
+
+def _collect(root: str, graph: dict[str, list[str]], assigned: set[str]) -> list[str]:
+    assigned.add(root)
+    stack = [root]
+    members: list[str] = []
+    while stack:
+        node = stack.pop()
+        members.append(node)
+        unassigned = [target for target in graph[node] if target not in assigned]
+        assigned.update(unassigned)
+        stack.extend(unassigned)
+    return members
+
+
+def _exit_criteria_findings(scan: _PlanScan) -> list[StructuralFinding]:
+    return [
+        _finding(
+            StructuralCheck.IMPLEMENTATION_COMMAND_PLACEHOLDER,
+            f'{IMPLEMENTATION_FILE} > {EXIT_CRITERIA}',
+            EXIT_CRITERIA,
+            'An Exit criteria command is empty, TODO, no_preference or a placeholder; replace it with the configured'
+            ' command, or the ask user marker when none is configured.',
+            command.strip(),
+        )
+        for command in _spans(scan.exit_lines)
+        if _is_placeholder_command(command)
+    ]
+
+
+def _finalize_section_findings(scan: _PlanScan) -> list[StructuralFinding]:
+    if not scan.finalize_sections and not any(step.is_finalized for step in scan.step_blocks):
+        return []
+    findings = [
+        _finding(
+            StructuralCheck.IMPLEMENTATION_FINALIZE_SECTION_MISSING,
+            f'{IMPLEMENTATION_FILE} > {name}',
+            name,
+            FINALIZE_SECTION_DETAILS[name],
+        )
+        for name in FINALIZE_SECTIONS
+        if name not in scan.finalize_sections
+    ]
+    if START_HERE in scan.finalize_sections:
+        present = scan.subsections.get(START_HERE, set())
+        findings.extend(
+            _finding(
+                StructuralCheck.IMPLEMENTATION_FINALIZE_SECTION_MISSING,
+                f'{IMPLEMENTATION_FILE} > {START_HERE} > {subsection}',
+                START_HERE,
+                f'## Start here has no ### {subsection} subsection; add it.',
+                subsection,
+            )
+            for subsection in START_HERE_SUBSECTIONS
+            if subsection.casefold() not in present
+        )
+    if EXIT_CRITERIA in scan.finalize_sections and not _exit_criteria_name_a_command(scan.exit_lines):
+        findings.append(
+            _finding(
+                StructuralCheck.IMPLEMENTATION_FINALIZE_SECTION_MISSING,
+                f'{IMPLEMENTATION_FILE} > {EXIT_CRITERIA}',
+                EXIT_CRITERIA,
+                '## Exit criteria names no backticked command; add each configured command that verifies the whole'
+                ' phase, in backticks.',
+                'command',
+            )
+        )
+    return findings
+
+
+def _exit_criteria_name_a_command(lines: list[str]) -> bool:
+    return bool(_spans(lines)) or any(_starts_with_ask_user(line) for line in lines)
+
+
+def _seam_coverage_findings(scan: _PlanScan, phase: Phase) -> list[StructuralFinding]:
+    if not scan.step_blocks:
+        return []
+    named = {_normalized_path(path) for step in scan.step_blocks for path in _spans(step.lines('Files'))}
+    return [
+        _finding(
+            StructuralCheck.SEAM_PATH_NOT_IN_ANY_STEP,
+            f'{IMPLEMENTATION_FILE} > {STEPS_PART}',
+            path,
+            "This Skeleton Index path is named by no step's Files; add it as a create item to the step that fills"
+            ' in its skeleton.',
+        )
+        for path in _seam_paths(phase.skeleton_index)
+        if _normalized_path(path) not in named
+    ]
+
+
+def _seam_paths(skeleton_index: str | None) -> Iterator[str]:
+    for line in _cli_read_lines(skeleton_index, _cli_reads_seam):
+        stripped = line.strip()
+        bullet = BULLET_PATH.match(stripped)
+        if bullet is not None and _cli_reads_seam(stripped):
+            yield bullet.group('inner')
+
+
+def _test_coverage_findings(scan: _PlanScan, phase: Phase) -> list[StructuralFinding]:
+    if not scan.step_blocks or not all(step.is_finalized for step in scan.step_blocks):
+        return []
+    turned_green = {
+        _normalized_number(token.group('number'))
+        for step in scan.step_blocks
+        for line in step.lines('Tests to turn green')
+        for token in _BRIEF_ID_TOKEN.finditer(line)
+        if token.group('family') == 'T'
+    }
+    return [
+        _finding(
+            StructuralCheck.TEST_NOT_IN_ANY_STEP,
+            f'{IMPLEMENTATION_FILE} > {STEPS_PART} > Tests to turn green',
+            definition.written,
+            f'{definition.written} is turned green by no step; add it to the Tests to turn green of the step that'
+            ' makes it pass.',
+        )
+        for definition in _first_test_definitions(phase.test_list)
+        if definition.number not in turned_green
+    ]
+
+
+def _first_test_definitions(test_list: str | None) -> list[_Definition]:
+    first: dict[str, _Definition] = {}
+    for definition in _test_definitions(test_list):
+        first.setdefault(definition.number, definition)
+    return list(first.values())
+
+
+def _phase_step_reference_findings(scan: _PlanScan, phase: Phase) -> list[StructuralFinding]:
+    if not scan.steps:
+        return []
+    return [
+        _finding(
+            StructuralCheck.DANGLING_REFERENCE,
+            location,
+            f'Step {token.group("number")}',
+            f'Step {token.group("number")} names no step heading in implementation.md; point it at an existing step'
+            ' or remove the reference.',
+        )
+        for location, line in _phase_step_reference_lines(phase)
+        for token in _STEP_TOKEN.finditer(line)
+        if _normalized_number(token.group('number')) not in scan.numbered_steps
+    ]
+
+
+def _phase_step_reference_lines(phase: Phase) -> list[tuple[str, str]]:
+    overlapping = _overlapping_sections(phase)
+    sections = phase.additional_sections or {}
+    return [
+        *(
+            (name, line)
+            for name in Phase.BRIEF_SECTIONS
+            if name not in overlapping
+            for line in _unfenced_lines(sections.get(name))
+        ),
+        *(
+            (OPEN_DECISIONS_LOCATION, line)
+            for line in _unfenced_lines(phase.open_design_decisions)
+            if _AFFECTS_LINE.match(line.replace('**', ''))
+        ),
+    ]
+
+
+def _file_items(lines: list[str]) -> Iterator[tuple[str, CitedPathKind]]:
+    for line in lines:
+        verb: CitedPathKind | None = None
+        for item in _FILE_ITEM.finditer(line):
+            if item.group('separator'):
+                verb = None
+            elif item.group('verb'):
+                verb = CitedPathKind(item.group('verb').lower())
+            elif verb is not None and (path := item.group('path').strip()):
+                yield path, verb
 
 
 def _checklist_findings(scan: _PlanScan) -> list[StructuralFinding]:
@@ -1044,7 +1863,12 @@ def _balanced_close(text: str, start: int) -> int:
 
 
 def _is_placeholder_command(command: str) -> bool:
+    """The one placeholder rule for step Verify, Exit criteria and Checklist verify groups.
+
+    Empty, TODO, no_preference and a wholly bracketed value are phase 3's rule; a value holding an
+    angle-bracket token such as <command> is also a placeholder. Phase 1's ask user marker never is.
+    """
     bare = command.strip().strip('`').strip()
     if bare.lower().startswith(ASK_USER_MARKER):
         return False
-    return not bare or bool(_PLACEHOLDER_COMMAND.match(bare))
+    return not bare or bool(_PLACEHOLDER_COMMAND.match(bare) or _PLACEHOLDER_TOKEN.search(bare))

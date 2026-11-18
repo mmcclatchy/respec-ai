@@ -154,6 +154,7 @@ class RespecAIAgent(StrEnum):
     # Phase workflow agents
     PHASE_ARCHITECT = f'{_RESPEC_AGENT_PREFIX}phase-architect'
     PHASE_CRITIC = f'{_RESPEC_AGENT_PREFIX}phase-critic'
+    PHASE_FINALIZER = f'{_RESPEC_AGENT_PREFIX}phase-finalizer'
 
     # Plan workflow agents
     PLAN_CONVERSATION = f'{_RESPEC_AGENT_PREFIX}plan-conversation'

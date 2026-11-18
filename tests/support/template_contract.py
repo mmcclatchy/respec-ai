@@ -349,6 +349,21 @@ class TemplateContract:
         own = _own_block(lines[index + 1 :], _indentation(lines[index]))
         return '\n'.join([lines[index], *own]).rstrip()
 
+    def condition_block(self, variable: str, value: str) -> str:
+        """The lines indented beneath the one `IF/ELIF <variable> == "value":` header, or ''.
+
+        Like test_phase_implementation_plan_gate._phase_mode_branch_body, but it also stops where
+        the header's own block ends, so the last branch of a chain never takes in the text after
+        it. '' when the header is missing or appears more than once.
+        """
+        header = re.compile(rf'^(?P<indent>[ \t]*)(?:IF|ELIF)\s+{re.escape(variable)}\s*==\s*"{re.escape(value)}"\s*:')
+        lines = self._template.split('\n')
+        found = [(index, match) for index, line in enumerate(lines) if (match := header.match(line))]
+        if len(found) != 1:
+            return ''
+        index, match = found[0]
+        return '\n'.join(_own_block(lines[index + 1 :], len(match.group('indent')))).rstrip()
+
     def decision_blocks(self, value: str) -> list[str]:
         """Each `IF/ELIF <VAR>DECISION == "value"` header with only the lines indented beneath it.
 

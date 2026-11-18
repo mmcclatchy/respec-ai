@@ -6,8 +6,12 @@ from src.models.phase import Phase
 from src.platform.models import PhaseArchitectAgentTools
 from src.platform.tool_enums import BuiltInToolCapability
 from src.platform.templates.phase_contract_grammar import (
+    BRIEF_SECTION_PLACEHOLDERS,
+    DESIGN_REVIEW_TAG,
+    IMPLEMENTATION_BRIEF_EXAMPLE,
     MODULE_LAYOUT_PLACEHOLDER,
     SKELETON_INDEX_PLACEHOLDER,
+    SUCCESS_CRITERION_PLACEHOLDER,
     TEST_LIST_PLACEHOLDER,
     UX_CONTRACT_PLACEHOLDER,
 )
@@ -19,12 +23,6 @@ technical_phase_template = Phase(
     scope="[Boundaries, what's included/excluded, constraints]",
     dependencies='[External requirements with versions and justifications]',
     deliverables='[High-level outputs - no specific file names]',
-    architecture='[Component structure, interactions, data flow, design decisions - REQUIRED]',
-    technology_stack='[Technologies with versions, justifications, trade-offs - Optional but recommended]',
-    functional_requirements='[Features and user workflows]',
-    non_functional_requirements='[Performance targets, scalability, availability - quantified where possible]',
-    development_plan='[Implementation phases - no time estimates, no file names]',
-    testing_strategy='[Coverage approach, test levels, quality gates - strategy not test cases - REQUIRED]',
     implementation_plan_references=(
         'Pre-resolved architecture decisions that MUST be honored.\n\n'
         '- Constraint: `<plans-dir>/<plan-name>.md` § "Section Name"\n'
@@ -35,71 +33,37 @@ technical_phase_template = Phase(
         ' Topics: [x, y]; Query: [query] | tier: [in-kb:<path> | synthesis-only | web-research]\n'
         '- Read: `.best-practices/<file>.md` — informs: [IDs] — Source: [RP-NNN | in-kb]'
     ),
-    success_criteria='[Measurable outcomes covering every objective, scope item and deliverable]',
-    integration_context='[System relationships and interface contracts]',
+    success_criteria=(
+        f'{SUCCESS_CRITERION_PLACEHOLDER}\n'
+        '  (together the criteria cover every objective, scope item and deliverable; an SC-<n> is never'
+        ' renumbered or reused)'
+    ),
     module_layout=MODULE_LAYOUT_PLACEHOLDER,
     skeleton_index=SKELETON_INDEX_PLACEHOLDER,
     collaboration_and_wiring=('[Who constructs whom, injection points, call order across the modules above]'),
     test_list=TEST_LIST_PLACEHOLDER,
+    design_shape_additional=(
+        '#### Design Narrative\n'
+        '<a short narrative: the shape of the design, its main flow, and why this structure. A UX Contract'
+        ' block follows this one only when the phase has a user-facing UI>'
+    ),
     open_design_decisions='[OD-NNN entries in the canonical nested form, ranked by blast radius if reversed]',
-    settled_design_decisions='[SD-NNN entries, written by the orchestrator and carried forward verbatim]',
-    system_design_additional='[Custom architecture content using H4+ sub-headers — e.g., #### Data Model, #### Cost Monitoring]',
-    implementation_additional='[Custom implementation content using H4+ sub-headers — e.g., #### CI/CD Pipeline, #### Migration Strategy]',
+    settled_design_decisions=(
+        '- SD-NNN | source=user | supersedes=OD-NNN | decision=<chosen option> | rationale=<the reason>'
+        " | rejected=<the other options> | affects=<the settled entry's Affects: line, verbatim> | binding=yes\n"
+        '  (written by the orchestrator and carried forward verbatim)'
+    ),
     additional_details_additional='[Custom detail content using H4+ sub-headers — e.g., #### Compliance Notes, #### Performance Baselines]',
+    additional_sections=BRIEF_SECTION_PLACEHOLDERS,
     iteration=0,
     version=1,
     phase_status=PhaseStatus.DRAFT,
 ).build_markdown()
 
 
-# implementation.md is not a DocumentType (docs/phase-refactor/decisions.md), so there
-# is no Pydantic model to build this from — it is a plain string, kept concrete (not
-# bracket placeholders) so the format contract stays testable via
-# tests/support/plan_extraction.py against this exact constant.
-implementation_plan_example = """# Implementation Plan: phase-2-core-implementation
-
-## Build Order
-### Staging
-Query path lands before the cache that sits in front of it (per plan reference:
-docker-compose-best-practices.md § "Layering" (lines 10-14)).
-
-### Steps
-#### Step 1: Query Path
-**Objective**: Prove the query path end to end before anything caches it.
-**Files**: `<path to the repository query module>`, `<path to its test file>`
-**Actions**:
-- Implement the repository query
-- Wire it into the service layer
-
-#### Step 2: Cache Layer
-**Objective**: Add caching once the query path is proven correct.
-**Files**: `<path to the cache module>`, `<path to its test file>`
-**Actions**:
-- Add a cache in front of the repository query
-
-#### Step 3: Result List Component
-**Objective**: Render query results once the cached query path is proven correct.
-**Files**: `<path to the result list component>`, `<path to its test file>`
-**Actions**:
-- Implement the result list component
-
-## Policy
-### Execution Intent Policy
-- Mode: MVP
-- Source: plan-default
-- Tie-Break Policy: Prioritize core functional/spec delivery; defer non-P0 hardening gaps.
-
-### Deferred Risk Register
-- DR-001 | status=accepted | severity=P2 | scope=global | reason=Cache invalidation hardening deferred to post-MVP
-
-## Checklist
-- [ ] Implement repository query (Step 1) (verify: <[commands].test of the language that owns this step's files>)
-- [ ] Add cache layer (Step 2) (verify: <[commands].test of the language that owns this step's files>)
-- [ ] Implement result list component (Step 3) (verify: <[commands].test of the language that owns this step's files>)
-"""
-
-
 def generate_phase_architect_template(tools: PhaseArchitectAgentTools) -> str:
+    finalizer_sections = [f'`## {name}`' for name in Phase.BRIEF_SECTIONS if name != 'Delegation Bounds']
+    finalizer_headings = f'{", ".join(finalizer_sections[:-1])} or {finalizer_sections[-1]}'
     design_sync_tool_name = tools.tui_adapter.render_builtin_tool_name(BuiltInToolCapability.DESIGN_SYNC)
     if design_sync_tool_name:
         design_source_live_project_note = (
@@ -243,9 +207,8 @@ Then set:
   LAST_APPLIED_USER_INPUT, in order
 - WORKFLOW_GUIDANCE = the `## Workflow Guidance` markdown inside the entry tagged
   `[round 0 | briefing]`, or None
-- LATEST_BLOCKERS = the `### Blockers` of the latest `## Iteration <N> -` critic entry in
-  FEEDBACK, or none when no review has run
-- LATEST_KEY_ISSUES = the `### Key Issues` of that same entry
+- LATEST_BLOCKERS = the `### Blockers` of the latest `## Iteration <N> -` critic entry in FEEDBACK when the first line under its heading starts with `{DESIGN_REVIEW_TAG}`, or none: a review of the finalized brief is the finalizer's
+- LATEST_KEY_ISSUES = the `### Key Issues` of that same entry when it starts with `{DESIGN_REVIEW_TAG}`, or none
 - SETTLED_DECISIONS = every SD-NNN in CURRENT_PHASE_MARKDOWN's `### Settled Design Decisions`
 
 STEP 0.5: Retrieve Strategic Plan
@@ -268,7 +231,7 @@ These sections drive architecture decisions — do NOT re-derive decisions they 
 
 ```text
 PLAN_ARCHITECTURE = extract content of "## Architecture Direction" section
-  (starting point for Phase Architecture — refine, don't reinvent)
+  (starting point for the Design Shape — refine, don't reinvent)
   IF section missing: PLAN_ARCHITECTURE = None
 
 PLAN_TECHNOLOGY_DECISIONS = extract content of "### Chosen Technologies" section
@@ -284,7 +247,7 @@ PLAN_ANTI_REQUIREMENTS = extract content of "### Anti-Requirements" section
   IF section missing: PLAN_ANTI_REQUIREMENTS = None
 
 PLAN_QUALITY_BAR = extract content of "### Quality Bar" section
-  (performance targets, security reqs, test coverage minimum — reference in Testing Strategy)
+  (performance targets, security reqs, test coverage minimum — carried into Success Criteria)
   IF section missing: PLAN_QUALITY_BAR = None
 
 PLAN_DELIVERY_INTENT_POLICY = extract content of "### Delivery Intent Policy" section
@@ -352,7 +315,7 @@ IF IMPL_PLAN_CONSTRAINTS is non-empty:
   → Do NOT ignore or silently bypass decisions documented here.
   → Deviations are allowed ONLY when explicitly justified and logged (see DEVIATION LOG PROTOCOL).
   → For every referenced implementation-plan section relevant to this Phase,
-    apply the constraint into Objectives, Scope, Architecture, Research
+    apply the constraint into Objectives, Scope, Design Shape, Research
     Requirements, Success Criteria, or explicit implementation constraints.
   → If a referenced implementation-plan section is read but not applicable to
     this Phase, record a short "not applicable" rationale in the TUI Plan
@@ -476,17 +439,25 @@ IF phase_mode == "explore":
     explore, each naming what it informs. `in-kb:` lines are uncapped. Zero proposals is valid;
     never fill a quota.
 
-  Record in your notes (STEP 4): reuse candidates, exemplar files, constraints read, the KB
-  results per proposal, and the approach sketch (module map and flow).
+  Record in your notes (STEP 4) four lists of paths you opened, which the finalizer cites after
+  the design is approved: build-on, leave-alone, exemplar and convention locations (code this
+  phase extends, code it must not change, files to imitate, and the project's standards config,
+  contributor guide or lint config). Add the constraints read, the KB results per proposal, and
+  the approach sketch (module map and flow).
 
 ELIF phase_mode == "draft":
   The phase document, in one pass on the current sections:
   - The design layer: `### Module Layout`, `### Skeleton Index` (one notation for every
     language, public seams only; see OUTPUT DETAIL GUIDELINES), `### Collaboration And
-    Wiring`, `### Test List`, and `### Design Shape - Additional Sections`. Concrete paths and
-    signatures belong here and only here.
+    Wiring`, `### Test List`, and `### Design Shape - Additional Sections`. Signatures belong
+    here and only here; anywhere else, cite a seam as `` `<path>` :: <Owner>.<member> ``.
+    - Each `### Test List` entry ends in its ID after the closing backtick: `— T-<n>`. A new
+      entry takes the next number above every T-<n> in the document; never renumber or reuse one.
+    - `### Design Shape - Additional Sections` opens with `#### Design Narrative`: a short
+      narrative of the design's shape, its main flow and why this structure. Text directly under
+      `## Design Shape`, before its first H3, is dropped on parse.
     IF this phase delivers a user-facing UI (the same condition explore used):
-      Emit a `#### UX Contract` block under `### Design Shape - Additional Sections`, with the
+      Emit a `#### UX Contract` block after `#### Design Narrative`, with the
       H5 subsections and format in UX CONTRACT FORMAT below.
       `### Collaboration And Wiring` MUST also carry the **state-ownership map** — which
       module owns which slice of state and how it reaches a component. The frontend and
@@ -501,9 +472,13 @@ ELIF phase_mode == "draft":
   - `## Design Decisions`: every SD-NNN carried forward verbatim, and only the ODs still open.
     Where an OD is still open, the design follows its Recommended option, and the design
     summary says so.
-  - Every current detail section: Architecture, Technology Stack, Functional and Non-Functional
-    Requirements, Development Plan, Testing Strategy, Success Criteria and Integration Context.
-    `### Success Criteria` covers every objective, scope item and deliverable.
+  - `## Delegation Bounds` with its three H3s, as REQUIRED MARKDOWN STRUCTURE shows. Each line
+    names a seam, a module, a decision or a concrete condition of this phase; "follow best
+    practices" bounds nothing. `### Out of scope` carries the Overview's exclusions and
+    PLAN_ANTI_REQUIREMENTS. An H3 with nothing to say holds exactly `- None`.
+  - `### Success Criteria`: entries in the form `{SUCCESS_CRITERION_PLACEHOLDER}`, together
+    covering every objective, scope item and deliverable; never renumber or reuse an SC-<n>.
+  - Never write {finalizer_headings}, implementation.md's `## Start here`, `## Exit criteria` or `## Deviations`, or a step's Context, Tests to turn green, Verify or Done when: the finalizer writes them after the user approves the design.
   - `### Implementation Plan References` with its `- Constraint:` lines (STEP 1.5).
   - `### Research Requirements` preserved verbatim. Two additions only: a nested
     `- Applied: <where in the plan>` line under a `- Read:` entry that a step cites, and at
@@ -520,7 +495,7 @@ ELIF phase_mode == "draft":
   For every IMPL_PLAN_CONSTRAINTS item (from STEP 1.5) relevant to this Phase, carry
   the constraint into at least one concrete plan artifact:
   - `### Staging`: sequencing rationale
-  - `### Steps`: a concrete `**Actions**` item
+  - `### Steps`: the Goal of a step it binds
   - `### Checklist`: a `- [ ]` work item
 
   If a referenced constraint is read but not relevant, state the not-applicable
@@ -530,12 +505,19 @@ ELIF phase_mode == "draft":
              constraints from Staging, Steps, and Checklist.
   ═══════════════════════════════════════════════
 
-  Build IMPLEMENTATION_PLAN_MARKDOWN following the EXACT structure shown in
-  "IMPLEMENTATION PLAN STRUCTURE (CONCRETE EXAMPLE)" below, replacing example values
-  with actual content:
-  - `## Build Order` → `### Staging` (sequencing rationale), `### Steps` (`#### Step N:`
-    with **Objective**/**Files**/**Actions** — keep the exact `#### Step N:` format; respec-code
-    and respec-patch scan for it). **Files** names every file path the step touches.
+  Build IMPLEMENTATION_PLAN_MARKDOWN in the structure "IMPLEMENTATION PLAN STRUCTURE (CONCRETE
+  EXAMPLE)" shows below, with only the parts you write, replacing example values with actual
+  content:
+  - `## Build Order` → `### Staging` (sequencing rationale: which steps run in parallel, and
+    why), `### Steps` (`#### Step N:` with N contiguous from 1 — keep the exact format;
+    respec-code and respec-patch scan for it). Each step holds exactly its three draft fields,
+    one bullet each, in this order:
+    - `- **Goal:**` its one-sentence outcome
+    - `- **Files:**` `create` and `modify` items separated by `;`, each naming one backticked
+      path the step touches: `create` for a path that does not exist yet (a Skeleton Index path
+      until sign-off writes its skeleton), `modify` for one that does. Every Skeleton Index path
+      appears in some step's Files; respec-code dispatches each step by these paths.
+    - `- **Depends on:**` `none`, or `Step N` items separated by commas
   - `## Policy` → `### Execution Intent Policy` (Mode: PLAN_DELIVERY_INTENT_POLICY's mode
     if present and valid (MVP|hardening), else `MVP`; Source: `plan-default` if
     PLAN_DELIVERY_INTENT_POLICY supplied it, else `default-MVP`; Tie-Break Policy:
@@ -564,13 +546,22 @@ ELIF phase_mode == "draft":
   already tolerates indented metadata under existing bullets).
 
 ELIF phase_mode == "revise":
+  IF CURRENT_PHASE_MARKDOWN holds {finalizer_headings} (a finalized design sent back to design review), remove all three, whatever STEP 2 found:
+    - Remove them entirely, so the finalizer writes them afresh after the next approval. Make no
+      other change to them.
+    - A step whose Goal, Files or Depends on changes goes back to exactly its three draft fields;
+      keep every other finalized step as it is.
+    - Never edit implementation.md's `## Start here` or `## Exit criteria`: the finalizer rewrites them.
+    - Never edit a `## Deviations` line: it is the implementers' record, and input to this revise.
   Apply STEP 2's new feedback to the phase document and to implementation.md, keeping every
   rule of draft mode: the same sections, the same implementation.md structure, the same
   constraint carry-forward, Checklist verify rule and `- Applied:` carry-forward, and the same
   ledger rule (at most one new unmarked RP line for a genuinely new gap).
   Change only what the feedback requires. Rebuild IMPLEMENTATION_PLAN_MARKDOWN when its content
   changes; read the current file first, so an unchanged plan is not rewritten.
-  When STEP 2 finds nothing new, change nothing here: the engagement is a structural repair
+  Steps stay contiguous from 1; when a change renumbers them, update every `Step N` reference in
+  both files.
+  When STEP 2 finds nothing new, change nothing else here: the engagement is a structural repair
   round, and STEP 4.5 does its work.
 ```
 
@@ -583,10 +574,10 @@ MANDATORY PLAN CONTEXT ENFORCEMENT
 Plan context variables from STEP 0.55 are the default decision baseline.
 Preserve these decisions unless there is a concrete technical reason to deviate.
 
-PLAN_ARCHITECTURE → Architecture section refines and elaborates this baseline
-PLAN_TECHNOLOGY_DECISIONS → Align Technology Stack to this baseline by default
-PLAN_ANTI_REQUIREMENTS → Preserve these scope exclusions
-PLAN_QUALITY_BAR → Reference these targets in Testing Strategy and NFRs
+PLAN_ARCHITECTURE → the Design Shape refines and elaborates this baseline
+PLAN_TECHNOLOGY_DECISIONS → Align the design and its decisions to this baseline by default
+PLAN_ANTI_REQUIREMENTS → Carry these exclusions into `### Out of scope` under Delegation Bounds
+PLAN_QUALITY_BAR → Carry these targets into Success Criteria, each with its measure
 PLAN_DELIVERY_INTENT_POLICY → Consumed only by draft and revise (STEP 3) when building
   implementation.md's Execution Intent Policy — this Phase document declares no
   delivery-intent section of its own; implementation.md is the single source of truth for it
@@ -620,11 +611,11 @@ VIOLATION: Including rejected technology without a documented deviation rational
 
 ```text
 IF PLAN_ARCHITECTURE is not None:
-  → Use as the starting point for the Architecture section — refine and elaborate, don't reinvent
+  → Use as the starting point for the Design Shape — refine and elaborate, don't reinvent
   → If deviating, document via DEVIATION LOG PROTOCOL
 
 IF PLAN_TECHNOLOGY_DECISIONS is not None:
-  → Honor all technology choices in Phase Technology Stack section
+  → Honor all technology choices in the design and its decisions
   → Treat as default constraints (same precedence as IMPL_PLAN_CONSTRAINTS)
   → If deviating, document via DEVIATION LOG PROTOCOL
 
@@ -632,13 +623,13 @@ IF PLAN_TECHNOLOGY_REJECTIONS is not None:
   → See MANDATORY REJECTED TECHNOLOGY PROTOCOL above
 
 IF PLAN_ANTI_REQUIREMENTS is not None:
-  → Propagate into Phase Scope "what's excluded" section
+  → Propagate into `### Out of scope` under Delegation Bounds
   → Coder must see these boundaries — they prevent over-building
   → If deviating, document via DEVIATION LOG PROTOCOL
 
 IF PLAN_QUALITY_BAR is not None:
-  → Reference in Testing Strategy section (test coverage minimum, performance targets)
-  → Reference in Non-Functional Requirements (security, accessibility thresholds)
+  → Carry each target (test coverage minimum, performance, security, accessibility thresholds)
+    into an SC-<n> entry with its measure
   → If deviating from targets, document via DEVIATION LOG PROTOCOL
 ```
 
@@ -660,8 +651,8 @@ IF phase_mode is "draft" or "revise" and IMPLEMENTATION_PLAN_MARKDOWN changed:
 
 CONTENT LOSS ON WRITE: the warning names each heading whose text the parser dropped, and the phase
 was stored without that text. Rewrite each named section so it parses whole: no bare `---` line
-inside a section, no line starting with `##` or `###` inside a fenced block, and no new H3 under a
-mapped H2. Then store the complete phase markdown again the same way. When two rewrites still
+inside a section, no line starting with `##` or `###` inside a fenced block, no text between a
+mapped H2 and its first H3, and no new H3 under a mapped H2. Then store the complete phase markdown again the same way. When two rewrites still
 warn, name the headings in `## For the user`.
 
 STEP 4.5: Structural Self-Check
@@ -678,7 +669,7 @@ IF phase_mode is "draft" or "revise":
     → Store: VALIDATION
     OWN_FINDINGS = every entry in VALIDATION.structural_findings and VALIDATION.implementation_findings whose owner is "architect"
     MISSING_CITATIONS = []
-    FOR each entry in VALIDATION.paths_to_verify cited in text you own (every line except the RP and `- Read:` lines of the research ledger and the frozen `## Overview`):
+    FOR each entry in VALIDATION.paths_to_verify whose kind is "read", "constraint" or "best-practices" and that is cited in text you own (every line except the RP and `- Read:` lines of the research ledger and the frozen `## Overview`):
       Glob(pattern=<the entry's path>); when it matches no file, add the entry to MISSING_CITATIONS
     IF OWN_FINDINGS and MISSING_CITATIONS are both empty, OR SELF_CHECK_FIXES == 2:
       Leave the REPEAT. The orchestrator's check after this engagement is the authority on anything left.
@@ -693,8 +684,8 @@ IF phase_mode is "draft" or "revise":
 
 CALL {tools.store_analysis}
 → ARCHITECT_NOTES is the complete notes, never a delta: every call replaces the whole slot.
-  Include the reuse candidates and exemplar files, the constraints and guidance paths read, the
-  KB results per proposal (TECH, TOPICS, OUTPUT_FILE, tier), the approach sketch (module map and
+  Include the build-on, leave-alone, exemplar and convention lists (paths you opened), the
+  constraints and guidance paths read, the KB results per proposal (TECH, TOPICS, OUTPUT_FILE, tier), the approach sketch (module map and
   flow), and `LAST_APPLIED_USER_INPUT: <the highest ## User Input index in FEEDBACK>`.
 → IF the call fails: retry once, then return the report with `result: failed`
 
@@ -753,11 +744,13 @@ others: never the same choice reworded.
 
 ## IMPLEMENTATION PLAN STRUCTURE (CONCRETE EXAMPLE)
 
-Applies in draft and revise (STEP 3). Copy this structure exactly, replacing example values
-with actual content:
+Applies in draft and revise (STEP 3). The example shows the finalized brief. Write only its
+`## Build Order`, `## Policy` and `## Checklist`, in this structure, with each step holding exactly
+its three draft fields: `- **Goal:**`, `- **Files:**` and `- **Depends on:**`. Never write the
+other H2s or step fields it shows: the finalizer adds them after the user approves the design.
 
 ```markdown
-{indent(implementation_plan_example, '  ')}
+{indent(IMPLEMENTATION_BRIEF_EXAMPLE, '  ')}
 ```
 
 ## PROJECT CONFIGURATION
@@ -766,14 +759,14 @@ Read .respec-ai/config/stack.toml for project execution stack context.
 
 ## OUTPUT DETAIL GUIDELINES
 
-### INCLUDE (Architecture/Requirements Level)
+### INCLUDE (Design Level)
 
 ✅ **Technology Choices**:
 - What: "Use an existing query-translation library to turn natural-language questions into graph queries"
 - Why: "Abstracts LLM prompt engineering, reduces dev time by 60%"
 - Trade-offs: "Adds dependency but simpler than calling the model API directly"
 
-✅ **Component Architecture**:
+✅ **Component Structure**:
 - Structure: "Integration Layer: storage client + query translator"
 - Interactions: "Client receives a natural-language question → query translator produces a graph query → storage client executes it"
 - Data Flow: "Stored records → result parser → typed best-practice records"
@@ -786,13 +779,13 @@ Read .respec-ai/config/stack.toml for project execution stack context.
 The parameter and result text is written in the owning language's syntax (see
 `### Language Authoring Notes`); the second entry is a unit with no owner.
 
-✅ **Non-Functional Requirements**:
-- "Query performance: <2 seconds for POC dataset (<10 nodes)"
-- "Configuration: All credentials via environment variables (security requirement)"
+✅ **Measurable Targets**, written as `### Success Criteria` entries:
+- "SC-3: A query answers in under 2 seconds on the proof-of-concept dataset — measure: <an observable check>"
+- "SC-4: Every credential comes from the environment — measure: <an observable check>"
 
 ### EXCLUDE (Implementation Details)
 
-❌ **Specific File Names** — in Objectives, Scope, Deliverables, Development Plan:
+❌ **Specific File Names** — in Objectives, Scope, Deliverables (the Overview):
 - Wrong: Objectives: "Create `<path to the storage client file>`"
 - Right: Objectives: "Storage client module: connection management, query execution"
 
@@ -800,9 +793,9 @@ The parameter and result text is written in the owning language's syntax (see
 - Right: `<path to the storage client file>` — owns connection lifecycle + query execution
 - Right: `<path to its test file>::reconnects after a timeout`
 
-The design layer (`## Design Shape`, `## Design Decisions`) and implementation.md's steps are
-the places concrete paths and signatures belong. Everywhere else in the Phase, name capability
-and intent, not files.
+Concrete paths belong in the design layer (`## Design Shape`, `## Design Decisions`), in seam
+citations (`` `<path>` :: <Owner>.<member> ``) and in implementation.md's steps. In the Overview,
+name capability and intent, not files.
 
 ✅ **`### Skeleton Index` signature format** — materialization turns these into real
 files, so every entry uses respec-ai's one notation, whatever language owns its path
@@ -968,23 +961,22 @@ Phase names MUST follow this pattern to ensure:
 
 ### Section Structure
 
-Every phase uses the core sections in the structure below:
-- Overview (objectives, scope, dependencies, deliverables)
-- Architecture (required)
-- Technology Stack
-- Functional Requirements
-- Non-Functional Requirements
-- Development Plan
-- Testing Strategy (required)
-- Research Requirements (the research ledger)
-- Success Criteria
-- Integration Context
+Every phase uses the sections in the structure below:
+- Overview (objectives, scope, dependencies, deliverables), carried forward from the roadmap
+- Design Shape: Module Layout, Skeleton Index, Collaboration And Wiring, Test List, and Design
+  Shape - Additional Sections (Design Narrative first)
+- Design Decisions: Open and Settled Design Decisions
+- Additional Details: Implementation Plan References, Research Requirements (the research
+  ledger), Success Criteria
+- Delegation Bounds: Out of scope, Implementer's discretion, Escalate if
 
-Domain-specific content (data models, interfaces, security, deployment, monitoring) goes under
-the `### <H2 Name> - Additional Sections` header of the H2 it belongs to, as H4+ sub-headers.
+Domain-specific content (data models, interfaces, security, deployment, monitoring) goes in the
+design layer: seams and contracts in `### Skeleton Index` and `#### Design Narrative`, user-facing
+behavior in `#### UX Contract`, measurable targets in `### Success Criteria`.
 
 **IMPORTANT**:
-- Do NOT use placeholder content like "TBD" or "N/A" - omit the content instead
+- Do NOT use placeholder content like "TBD" or "N/A". A required H3 with nothing to say holds
+  exactly `- None`; other content you have nothing for is omitted
 - DO include substantive, actionable content for each section you add
 - Use ANY markdown format for content (code blocks, lists, tables, diagrams)
 
@@ -998,6 +990,8 @@ the `### <H2 Name> - Additional Sections` header of the H2 it belongs to, as H4+
 {indent(technical_phase_template, '  ')}
   ```
 
+The structure shows the whole signed-off document. Never write {finalizer_headings}: the finalizer writes them after the user approves the design.
+
 **NOTE**:
 - Use `##` for section headers (H2)
 - Use `###` for field headers (H3)
@@ -1005,8 +999,9 @@ the `### <H2 Name> - Additional Sections` header of the H2 it belongs to, as H4+
 - Use any markdown within sections (code blocks, lists, tables, H4+ for subsections)
 
 **CRITICAL CONSTRAINTS — Violating these causes silent data loss**:
-- Do NOT add custom H3 headers under mapped H2 sections (Overview, System Design, Implementation, Additional Details). Only the H3 headers shown in the template are parsed. Custom H3 headers under these H2s are silently dropped during storage.
-- For custom content within System Design, Implementation, or Additional Details: use the designated `### {{H2 Name}} - Additional Sections` header and structure content using H4+ sub-headers underneath it.
+- Do NOT add custom H3 headers under mapped H2 sections (Overview, Design Shape, Design Decisions, Additional Details). Only the H3 headers shown in the template are parsed. Custom H3 headers under these H2s are silently dropped during storage.
+- For custom content within Design Shape or Additional Details: use its `### <H2 Name> - Additional Sections` header and structure content using H4+ sub-headers underneath it.
+- Write no text between a mapped H2 and its first H3: it is silently dropped during storage.
 - Do NOT rename or remove any core H3 header.
 
 ## QUALITY CRITERIA
@@ -1016,32 +1011,32 @@ the `### <H2 Name> - Additional Sections` header of the H2 it belongs to, as H4+
 **Core Requirements** (Always include):
 - [ ] Objectives clear and measurable
 - [ ] Scope with boundaries and constraints defined
-- [ ] Architecture components and interactions well-defined
-- [ ] Testing strategy comprehensive and actionable
+- [ ] Module boundaries, public seams and their wiring well-defined
+- [ ] Every Test List entry is an observable behavior with its T-<n>
+- [ ] Delegation Bounds specific to this phase
 
 **Implementation Plan References** (Preserve if present):
 - [ ] If phase has "### Implementation Plan References": copied VERBATIM into output
 - [ ] If no section but plan reference found in strategic plan: auto-created in output
 
 **Plan Context Propagation** (from STEP 0.55):
-- [ ] If PLAN_ARCHITECTURE present: Architecture section refines it; any deviation is documented
-- [ ] If PLAN_TECHNOLOGY_DECISIONS present: Technology Stack honors choices by default; deviations are documented
+- [ ] If PLAN_ARCHITECTURE present: the Design Shape refines it; any deviation is documented
+- [ ] If PLAN_TECHNOLOGY_DECISIONS present: the design honors the choices by default; deviations are documented
 - [ ] If PLAN_TECHNOLOGY_REJECTIONS present: Rejected technologies are excluded unless deviation is documented
-- [ ] If PLAN_ANTI_REQUIREMENTS present: Phase Scope includes exclusions unless deviation is documented
-- [ ] If PLAN_QUALITY_BAR present: Testing Strategy and NFRs reference targets unless deviation is documented
+- [ ] If PLAN_ANTI_REQUIREMENTS present: Delegation Bounds' Out of scope holds the exclusions unless deviation is documented
+- [ ] If PLAN_QUALITY_BAR present: Success Criteria carry the targets with their measure unless deviation is documented
 - [ ] Success Criteria does NOT include a delivery-intent override section — that lives solely in implementation.md
 - [ ] If any plan/reference deviation exists: `#### TUI Plan Deviation Log` is present with required fields
 
 **Detail Sections** (draft and revise):
 - [ ] Dependencies identified with versions
 - [ ] Deliverables specified with acceptance criteria
-- [ ] Technology choices explained with trade-offs
-- [ ] Functional requirements detailed
-- [ ] Non-functional requirements quantified
-- [ ] Development plan with phases and dependencies
+- [ ] Technology choices explained with trade-offs, in the decisions
+- [ ] Non-functional targets quantified as SC-<n> entries with their measure
+- [ ] implementation.md steps with their files and dependencies
 - [ ] Research ledger preserved verbatim
 - [ ] Success criteria cover every objective, scope item and deliverable
-- [ ] Integration context and touch points specified
+- [ ] Touch points with existing code named in Collaboration And Wiring
 
 **Quality Standards**:
 - All included sections have substantive, actionable content

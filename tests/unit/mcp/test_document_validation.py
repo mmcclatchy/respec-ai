@@ -105,6 +105,16 @@ def accept_as_is(*finding_keys: str) -> str:
     )
 
 
+DELEGATION_BOUNDS = (
+    '### Out of scope',
+    '- Refunds.',
+    "### Implementer's discretion",
+    '- Internal names inside the ledger module.',
+    '### Escalate if',
+    '- An entry would post twice.',
+)
+
+
 def designed_phase(module_layout: str, settled: str = '', research: str = '') -> str:
     document = [
         CLEAN_PHASE.rstrip('\n'),
@@ -116,13 +126,14 @@ def designed_phase(module_layout: str, settled: str = '', research: str = '') ->
         '- `src/ledger/entries.unit` :: Ledger.post(entry: Entry) -> Receipt',
         f'- `{UNCOVERED_SEAM}` :: Billing.issue(order: Order) -> Invoice',
         '### Test List',
-        '- `tests/ledger_check.unit::posts an entry`',
-        '- `tests/billing_check.unit::issues an invoice`',
+        '- `tests/ledger_check.unit::posts an entry` — T-1',
+        '- `tests/billing_check.unit::issues an invoice` — T-2',
     ]
     if settled:
         document.extend(['', '## Design Decisions', '### Settled Design Decisions', settled])
     if research:
         document.extend(['', '## Additional Details', '### Research Requirements', research])
+    document.extend(['', '## Delegation Bounds', *DELEGATION_BOUNDS])
     return '\n'.join(document) + '\n'
 
 
@@ -134,10 +145,14 @@ CLEAN_IMPLEMENTATION = """# Implementation Plan: sample-phase
 ## Build Order
 ### Steps
 #### Step 1: Ledger entries
-**Objective**: Post entries before anything bills them.
+- **Goal:** Post entries before anything bills them.
+- **Files:** create `src/ledger/entries.unit`
+- **Depends on:** none
 
 #### Step 2: Invoices
-**Objective**: Issue invoices once entries post.
+- **Goal:** Issue invoices once entries post.
+- **Files:** create `src/billing/invoices.unit`
+- **Depends on:** Step 1
 
 ## Policy
 ### Execution Intent Policy
@@ -156,7 +171,9 @@ IMPLEMENTATION_WITHOUT_POLICY = """# Implementation Plan: sample-phase
 ## Build Order
 ### Steps
 #### Step 1: Ledger entries
-**Objective**: Post entries before anything bills them.
+- **Goal:** Post entries and issue invoices.
+- **Files:** create `src/ledger/entries.unit`; create `src/billing/invoices.unit`
+- **Depends on:** none
 
 ## Checklist
 - [ ] Post entries (Step 1) (verify: run-checks ledger)
@@ -291,6 +308,34 @@ async def test_cited_paths_are_returned_and_their_existence_is_listed_as_skipped
 
     assert [(cited.path, cited.kind) for cited in result.paths_to_verify] == [(READ_PATH, CitedPathKind.READ)]
     assert len(skipped_with_prefix(result, 'cited-paths-exist')) == 1
+
+
+STEP_FILE_KINDS = (CitedPathKind.CREATE, CitedPathKind.MODIFY)
+
+
+# Phase 4, Scope 5 "Cited paths": the host verifies each step's Files paths, so they join
+# paths_to_verify whenever the implementation body is passed, and never otherwise.
+@pytest.mark.parametrize('mode', ['content', 'key'])
+async def test_step_file_paths_join_the_paths_to_verify_only_when_the_implementation_body_is_passed(
+    document_tools: DocumentTools, mode: str
+) -> None:
+    await store_phase(document_tools, CLEAN_DESIGN)
+
+    async def validate(implementation_markdown: str | None) -> DocumentValidationResponse:
+        if mode == 'content':
+            return await document_tools.validate_document(
+                DocumentType.PHASE, CLEAN_DESIGN, implementation_markdown=implementation_markdown
+            )
+        return await validate_by_key(document_tools, implementation_markdown)
+
+    with_body = await validate(CLEAN_IMPLEMENTATION)
+    without_body = await validate(None)
+
+    assert sorted((c.path, c.kind, c.cited_in) for c in with_body.paths_to_verify if c.kind in STEP_FILE_KINDS) == [
+        ('src/billing/invoices.unit', CitedPathKind.CREATE, 'implementation.md > Step 2 > Files'),
+        ('src/ledger/entries.unit', CitedPathKind.CREATE, 'implementation.md > Step 1 > Files'),
+    ]
+    assert [c for c in without_body.paths_to_verify if c.kind in STEP_FILE_KINDS] == []
 
 
 async def test_an_implementation_body_that_was_not_passed_is_skipped_never_clean(
@@ -580,6 +625,35 @@ async def test_an_agent_write_that_loses_an_extra_section_names_it(document_tool
     warnings = content_loss_warnings(message)
     assert len(warnings) == 1
     assert 'Rollout Notes' in warnings[0]
+
+
+# Phase 4, B17: text between a mapped H2 and its first subsection reaches the user and the agent.
+NARRATIVE_UNDER_DESIGN_SHAPE = CLEAN_DESIGN.replace(
+    '## Design Shape\n', '## Design Shape\nA narrative no field holds.\n'
+)
+
+
+async def test_a_hand_edit_with_text_before_a_mapped_sections_first_subsection_asks_the_user(
+    document_tools: DocumentTools,
+) -> None:
+    assert NARRATIVE_UNDER_DESIGN_SHAPE != CLEAN_DESIGN
+
+    result = await document_tools.validate_document(DocumentType.PHASE, NARRATIVE_UNDER_DESIGN_SHAPE)
+
+    assert result.status == LoopStatus.USER_INPUT
+    assert [line for line in result.message.splitlines() if line.startswith('- Design Shape: ')]
+
+
+async def test_an_agent_write_with_text_before_a_mapped_sections_first_subsection_is_warned(
+    document_tools: DocumentTools,
+) -> None:
+    await store_phase(document_tools, CLEAN_DESIGN)
+
+    message = await document_tools.update_document(DocumentType.PHASE, PHASE_KEY, NARRATIVE_UNDER_DESIGN_SHAPE)
+
+    warnings = content_loss_warnings(message)
+    assert len(warnings) == 1
+    assert 'Design Shape: ' in warnings[0]
 
 
 async def test_a_lossless_agent_write_carries_no_content_loss_warning(document_tools: DocumentTools) -> None:

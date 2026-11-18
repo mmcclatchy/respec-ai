@@ -385,13 +385,15 @@ class TestPhaseCommandToolsForTheCooperativeFlow:
         self, adapter: TuiAdapter
     ) -> None:
         # B4 (F9): the critic stores each review under review_round, so every round is kept.
-        # F22: the critic gets the project config context too.
+        # F22: the critic gets the project config context too. Phase 4 (Scope 0, amendment 1):
+        # every critic invocation names its review target; this one reviews the design.
         invocation = _phase_command_tools(adapter).invoke_critic_review
 
         assert 'respec-phase-critic' in invocation
         assert _invocation_inputs(invocation) == {
             'phase_mode': 'review',
             **_AGENT_IDS,
+            'review_target': 'design',
             'review_round': 'REVIEW_ROUND',
             **_CONFIG_CONTEXT,
         }
