@@ -1872,6 +1872,26 @@ Tests:
   - Hand each brief to a fresh Claude Code session using the handoff's Claude Code instruction.
   - Confirm it implements the steps with no clarifying guesses.
   - Record what it had to guess in [deferred-issues.md](deferred-issues.md), or fix the prompts.
+
+  **Headless run on 2026-11-18** (method in [phase-2-manual-checks.md](phase-2-manual-checks.md),
+  "Headless run"; sonnet subagents):
+  - **End to end (P4.1-P4.3) passes.** Approval went to sign-off with zero prompts in four runs: the
+    finalizer, one structure check, then the brief critic. The brief summary was never displayed
+    (D1). Going back from sign-off reran the finalizer, and `phase.md`'s three sections were
+    regenerated with the new test. `implementation.md` changed in the affected step, not in Start
+    here, Exit criteria or Deviations. No retired section appeared, and the frozen formats were
+    kept.
+  - **Brief quality (P4.5) passes, with issues.** Grounding paths exist, Delegation Bounds are
+    specific, Behaviors & Acceptance is a map, and every step has all seven fields. Sign-off asked
+    no cold-start questions. Sizes were 10.4-20.4 KB for the two files together. The finalizer left
+    the approved design untouched. The issues:
+    - `Files` says `create` for files an earlier phase writes, and `Prerequisites: None` despite a
+      cross-phase dependency;
+    - stale SD text survived review;
+    - the per-path materializer SDs are padding (D6).
+  - **Frozen readers (P4.4) are partial.** The gate passed, and the coder's first action was reading
+    `implementation.md`. respec-code did not display its step-detection line.
+  - **P4.6 and P4.7 were not run.**
 - [x] README "Shared contracts" is amended per Scope 0, findings.md has F40 per Scope 12, the README
       phase 4 probe prints a match, and every `file:line` in this document has been re-verified
       against the code you leave behind.

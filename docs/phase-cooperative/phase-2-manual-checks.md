@@ -3,27 +3,72 @@
 These are the phase 2 exit checks that need a person at a live Claude Code session. Each one is
 written so it can be run cold. Record every result in the place each section names, with the date.
 
-| Check | What it settles | Status (2026-11-16) |
-|---|---|---|
-| M1 | opencode dispatches the hidden `bp-pipeline` subagent and honors `permission.task` | **Not run. Not blocking**: opencode is no longer used. README marks the opencode research path unverified. |
-| M2 | End-to-end on Claude Code: three touchpoints, the research cost invariant, resume by `SendMessage`, background waits | To run |
-| M3 | The `AskUserQuestion` batch limit of 4 | Done. Confirmed against the live tool schema on 2026-11-13 |
-| M4 | Resume from the stage marker after an interrupt, and re-open | To run |
-| M5 | The frozen reader accepts the signed-off output | Scripted half done (stage S5). The live half is step M2.9 below |
-| M6 | Rewording prompts never breaks the suite | Done, scripted (stage S5) |
-| M7 | Whether Claude Code enforces the architect's path-scoped `Write` | To run. The result goes in decisions.md |
-| P3.1 | A structural defect hand-edited into `phase.md` is repaired before you see it, and the happy path keeps three touchpoints | To run |
-| P3.2 | An unrepairable defect reaches you once as an unresolved check, and accepting it sticks | To run |
-| P3.3 | A bare `---` in an extra section is a content-loss prompt, never a structural one | To run |
-| P3.4 | codex and opencode agents call `validate_document`, and the critic Globs `paths_to_verify` | To run. **Not blocking** for opencode, which is no longer used |
-| P3.5 | The tool description and a sample of findings read well | To run |
-| P4.1 | Three touchpoints, and no prompt between design approval and sign-off | To run |
-| P4.2 | Going back from sign-off and signing off again regenerates the finalizer's sections | To run |
-| P4.3 | `phase.md` holds no retired section, and `implementation.md` keeps its frozen formats | To run |
-| P4.4 | Frozen respec-code reads a phase-4 brief | To run |
-| P4.5 | Brief quality, judged against the spec's judgment calls 1-4 | To run |
-| P4.6 | A fresh session implements the brief with no guesses, in two languages without special support and one with a materializer | To run |
-| P4.7 | The finalizer on opencode and codex | To run. **Not blocking** for opencode, which is no longer used |
+| Check | What it settles | Status (2026-11-16) | Headless run (2026-11-18) |
+|---|---|---|---|
+| M1 | opencode dispatches the hidden `bp-pipeline` subagent and honors `permission.task` | **Not run. Not blocking**: opencode is no longer used. README marks the opencode research path unverified. | Not run |
+| M2 | End-to-end on Claude Code: three touchpoints, the research cost invariant, resume by `SendMessage`, background waits | To run | M2.1-M2.3, M2.6 pass; M2.8 passes (no hook existed); M2.9 passes (its Display line was skipped); M2.4 pass with issues; M2.5 blocked (empty KB, no research proposed); M2.7 not testable (no Step 10.2 questions); M2.10 not run |
+| M3 | The `AskUserQuestion` batch limit of 4 | Done. Confirmed against the live tool schema on 2026-11-13 | — |
+| M4 | Resume from the stage marker after an interrupt, and re-open | To run | M4.1 and M4.3 pass; M4.2 partial (settled decisions not re-asked; no research existed to decline) |
+| M5 | The frozen reader accepts the signed-off output | Scripted half done (stage S5). The live half is step M2.9 below | Live half (M2.9) passes |
+| M6 | Rewording prompts never breaks the suite | Done, scripted (stage S5) | — |
+| M7 | Whether Claude Code enforces the architect's path-scoped `Write` | To run. The result goes in decisions.md | Both writes prompted the host: the scope is not enforced at the tool layer (decisions.md) |
+| P3.1 | A structural defect hand-edited into `phase.md` is repaired before you see it, and the happy path keeps three touchpoints | To run | **Fail** (D2). The backticks finding alone shows it; a verbatim rerun is optional |
+| P3.2 | An unrepairable defect reaches you once as an unresolved check, and accepting it sticks | To run | Pass with caveats (vehicle: P3.1's leftover findings; reached only after the orchestrator resumed a run D3 had ended, on a scripted "Continue.") |
+| P3.3 | A bare `---` in an extra section is a content-loss prompt, never a structural one | To run | Pass, reached the same way as P3.2 |
+| P3.4 | codex and opencode agents call `validate_document`, and the critic Globs `paths_to_verify` | To run. **Not blocking** for opencode, which is no longer used | Not run |
+| P3.5 | The tool description and a sample of findings read well | To run | Pass with issues (D7; two checks offer two fixes) |
+| P4.1 | Three touchpoints, and no prompt between design approval and sign-off | To run | Pass; the brief summary was not displayed (D1) |
+| P4.2 | Going back from sign-off and signing off again regenerates the finalizer's sections | To run | Pass; implementation.md changed in the step, not in the three sections named |
+| P4.3 | `phase.md` holds no retired section, and `implementation.md` keeps its frozen formats | To run | Pass |
+| P4.4 | Frozen respec-code reads a phase-4 brief | To run | Partial: gate passed and the coder read the plan; step detection not displayed |
+| P4.5 | Brief quality, judged against the spec's judgment calls 1-4 | To run | Pass with issues (cross-phase `create` verbs, stale SD text, materializer SD padding); 0 cold-start questions |
+| P4.6 | A fresh session implements the brief with no guesses, in two languages without special support and one with a materializer | To run | Not run |
+| P4.7 | The finalizer on opencode and codex | To run. **Not blocking** for opencode, which is no longer used | Not run |
+
+## Headless run (2026-11-18)
+
+The checks marked in the last column ran without a person at the keyboard. They are evidence, not
+sign-off: tick an exit criterion only after you have read the results below.
+
+How it ran:
+- Claude Code 2.1.327 was driven through claude-agent-sdk 0.2.184. It used the `claude_code`
+  system-prompt preset and project settings only. `--strict-mcp-config` loaded the working-tree
+  server against the dev database (migration 29), so nothing was written to `~/.claude.json`.
+- A scratch Go project held plan `live-check-1118`. Its five phases were written as sparse
+  `phase.md` files in the roadmap's format, because `/respec-roadmap` failed closed (deferred-issues,
+  respec-roadmap critic iteration).
+- The orchestrator ran on opus. Every subagent was pinned to sonnet in the scratch project's agent
+  frontmatter. Real use pins opus, so read quality findings with that in mind.
+- A script answered every prompt by option label and made the hand edits. The knowledge base was
+  empty.
+- The per-run event logs and evidence digests are in that session's scratchpad (`live/main/logs`,
+  `live/main/evidence`), which a reboot can clear.
+
+What a headless run cannot settle: M2.3's fork-mode note, whether M7's prompts look the same
+interactively, and whether D1 below reproduces in the TUI. Run A once interactively to confirm D1.
+
+Defects found. Each one has a row in [deferred-issues.md](deferred-issues.md):
+- **D1.** The orchestrator rarely displays the subagents' `## For the user` text:
+  - the briefing (Step 6.1): 0 of 4 runs;
+  - the design-review presentation (Step 10.1): 3 of 13 prompts;
+  - the brief summary before sign-off: 0 of 6.
+
+  The decisions themselves reach you through the prompt options. The understanding, approach
+  sketch, critic summary, draft path and the hand-edit warning do not. respec-code skipped its
+  Display lines too.
+- **D2.** Step 10.5 records a hand edit as a binding `source=user-edit` SD whose text describes the
+  edit. When the edit is itself a structural defect, the architect will not repair it, so P3.1's
+  expectation cannot hold.
+- **D3.** A report with prose before `## For the user` ends the workflow. This happened twice. Both
+  times it was a resumed architect asked for a repair round with nothing left to repair.
+- **D4.** "Accept as-is" is offered for `seam-signature-unparseable`, and Step 11.4's
+  materialization then fails on that entry even when no materializer exists for the language.
+- **D6.** Step 11.4 writes one binding SD per unmaterialized path: eight for the export phase.
+- **D7.** The `validate_document` description lists owners `architect` and `orchestrator`, but not
+  `finalizer`.
+- Not a respec-phase defect: both workflow commits gained a `Co-Authored-By` trailer that Step
+  11.6's heredoc does not contain. It came from Claude Code's own commit guidance, because the
+  scratch project had no CLAUDE.md.
 
 ## 0. Setup (once)
 

@@ -1502,3 +1502,21 @@ step M2.9.
       file outside `.respec-ai/plans/*/phases/*/implementation.md`. Record whether the
       `Write(<glob>)` entry in its `tools` list resolves at all, and whether it refuses that write.
       Do not assume either answer (open call 1). Record the result in decisions.md.
+
+**Live checks, headless run on 2026-11-18.** Method, caveats and the per-step table are in
+[phase-2-manual-checks.md](phase-2-manual-checks.md) ("Headless run"). Results:
+- **M2:**
+  - M2.1 (three touchpoints), M2.2 (zero `bp-pipeline` calls with research denied), M2.3 (no prompt
+    while any agent or `SendMessage` resume was pending), M2.6 (the change request resumed the
+    explore architect by `SendMessage` with no re-exploration) and M2.9 pass. M2.9's
+    "✓ Phase and implementation plan resolved" line was never displayed.
+  - M2.8 passes: the commit holds exactly `phase.md` and `implementation.md`. The scratch repo had
+    no hook, so the hook half is untested.
+  - M2.4 passes with issues.
+  - M2.5 is blocked: the knowledge base was empty, and no research was proposed.
+  - M2.7 was not testable: the second design review asked no Step 10.2 questions.
+- **M4:** M4.1 and M4.3 pass. M4.2 is partial: settled decisions were not asked again, but no
+  research proposal existed to decline.
+- **M7:** recorded in decisions.md. The scope is not enforced at the tool layer.
+- **New defect D1:** the orchestrator rarely displays the subagents' `## For the user` text. See
+  deferred-issues.md. The boxes above stay unticked until someone has read these results.

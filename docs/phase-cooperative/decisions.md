@@ -409,9 +409,15 @@ architect's `Write(.respec-ai/plans/*/phases/*/implementation.md)` grant,
 check M7 records whether Claude Code enforces the path scope on a subagent; the decision stands
 either way.
 
-**M7 result: not yet run** (2026-11-16). It needs a live Claude Code spawn of the regenerated
-architect, which no automated test performs. Until it runs, treat the scope as resting on the
-prompt on all three TUIs, and record the result here.
+**M7 result (2026-11-18, headless): the path scope is not enforced at the tool layer.** A probe
+subagent with `tools: Read, Write(.respec-ai/plans/*/phases/*/implementation.md)` had a Write tool.
+Both of its writes raised a permission request to the host: the one outside the glob and the one
+inside it. The outside write was denied by the script answering for the user, and the inside write
+went through once allowed. So the `Write(<glob>)` entry neither narrows Write nor acts as an allow
+rule; only the session's permission layer stands in the way. This ran headless (Claude Code 2.1.327,
+default permission mode, project settings only), so confirm interactively that the inside write
+prompts too. Until then, treat the scope as resting on the prompt on all three TUIs, as before.
+The headless orchestrator told the "user" that the grant was enforced, which was wrong.
 
 **Chosen:**
 - The architect, and in phase 4 the finalizer, gets a `Write` grant scoped to

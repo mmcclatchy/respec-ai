@@ -1143,3 +1143,26 @@ record in place (RP and FLOW definitions, fences, cited paths in Settled Design 
 - [ ] Manual: read the `validate_document` tool description and a sample of rendered findings
       (`<check> <subject> [<part>] — <detail>`) as the architect would. Each names its subject and
       its fix, and no `detail` names a language. B9 is the machine check.
+
+**Headless run on 2026-11-18** (method in [phase-2-manual-checks.md](phase-2-manual-checks.md),
+"Headless run"):
+- **P3.1 fails.** Repair round 1 added the missing Module Layout bullet without asking. But Step 10.5
+  had recorded the hand edit as `SD-009 | source=user-edit | binding=yes`, whose text describes the
+  unquoted path. So the architect left the backticks off, because restoring them "would contradict
+  your own edit" (D2). Round 2 then ended the run on a malformed report (D3). The script wrote the
+  added seam in Go notation rather than the prescribed `Extra.run(input: Input) -> Output`, which
+  added a third finding. The backticks finding alone shows D2 with any signature. A verbatim rerun
+  is optional, to see whether round 2 still trips D3.
+- **P3.2 passes, with caveats.** Phase C had no open OD, so P3.1's leftover findings were the
+  vehicle. They reached the user once, as one decision. "Accept as-is" wrote
+  `SD-010 | supersedes=unresolved-checks` quoting both keys, and they were not asked again after a
+  send-back. The critic names them as settled but does not raise them. Caveat: this run also
+  ended on D3 first. P3.2 and P3.3 were reached only because the orchestrator resumed after the
+  script's "Continue." A real user would have seen the workflow end. The mechanisms work, but the
+  path to them was off-contract.
+- **P3.3 passes, with the same caveat as P3.2.** The content-loss prompt named `## Extra Notes`, and no
+  structural path ran.
+- **P3.4 was not run.**
+- **P3.5 passes, with issues.** No `detail` names a language. But the description omits owner
+  `finalizer` (D7), `dangling-reference` and `seam-path-not-in-module-layout` each offer two fixes,
+  and two checks use the whole raw bullet as `subject`.
